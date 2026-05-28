@@ -3,8 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { loginSchema, signupSchema } from '@/lib/validators/auth'
 import { redirect } from 'next/navigation'
-import { generateUniqueSlug } from './organization'
-import { traduzirErro } from '@/lib/utils/error-translator'
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -68,55 +66,20 @@ export async function signup(formData: FormData) {
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } }
+    options: {
+      // Store name + inviteToken in metadata so the confirm route can
+      // finish org setup after the user clicks the email link.
+      data: { name, inviteToken: inviteToken ?? null },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/confirm`,
+    },
   })
 
   if (authError || !authData.user) {
     return { ok: false, error: authError?.message || 'Erro ao criar conta' }
   }
 
-  const firstName = name.split(' ')[0]
-  const orgName   = `Workspace de ${firstName}`
-  const slug      = await generateUniqueSlug(orgName)
-
-  const { error } = await supabase
-    .rpc('create_organization_for_user', { org_name: orgName, org_slug: slug })
-    .single()
-
-  if (error) {
-    return { ok: false, error: traduzirErro(error) }
-  }
-
-  // Find the newly created org ID to apply billing settings
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('organization_id')
-    .eq('user_id', authData.user.id)
-    .maybeSingle()
-
-  const orgId = (membership as any)?.organization_id as string | undefined
-
-  if (orgId) {
-    if (inviteToken) {
-      // Redeem invite → sets plan to agency/pro/whatever was configured
-      const { redeemInvite } = await import('@/actions/invites')
-      await redeemInvite(inviteToken, orgId)
-    } else {
-      // Standard self-signup: 7-day trial with 50-lead limit
-      const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      await supabase
-        .from('organizations')
-        .update({
-          plan:                'trial',
-          subscription_status: 'trialing',
-          trial_ends_at:       trialEndsAt,
-          limit_leads:         50,
-        })
-        .eq('id', orgId)
-    }
-  }
-
-  return { ok: true, redirectTo: `/app/${slug}/pipeline` }
+  // Org creation is deferred to /auth/confirm (after email verification).
+  return { ok: true, redirectTo: '/verify-email' }
 }
 
 export async function logout() {
