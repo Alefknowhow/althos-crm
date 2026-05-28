@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signup } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import Link from 'next/link'
 
-export default function SignupPage() {
+function SignupForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const inviteToken  = searchParams.get('invite') || ''
@@ -82,5 +82,22 @@ export default function SignupPage() {
         </form>
       </Card>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Criar conta</CardTitle>
+            <CardDescription>Carregando...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   )
 }
