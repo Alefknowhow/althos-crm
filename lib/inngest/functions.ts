@@ -1,8 +1,6 @@
 import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
-import { Resend } from 'resend'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+import { resend } from '../resend'
 
 export function renderTemplate(templateStr: string, variables: any) {
   if (!templateStr) return ''

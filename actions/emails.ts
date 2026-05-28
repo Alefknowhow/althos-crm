@@ -4,11 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { inngest } from '@/lib/inngest/client'
-import { Resend } from 'resend'
+import { resend } from '@/lib/resend'
 import { renderTemplate } from '@/lib/inngest/functions'
 import { getTemplateSeed } from '@/lib/email/template-seeds'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 /**
  * Creates a new template in the user's org from one of the pre-built seeds.
