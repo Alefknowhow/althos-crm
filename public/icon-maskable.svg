@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable variant: solid background fills full square, safe zone is
+       the inner 80% per the maskable-icons spec so OS-applied masks
+       (circle, rounded square, squircle) don't clip the mark. -->
+  <rect width="512" height="512" fill="#0a0a0a"/>
+  <path d="M256 144 L384 384 H336 L312 328 H200 L176 384 H128 Z M218 280 H294 L256 192 Z" fill="#ffffff"/>
+</svg>
