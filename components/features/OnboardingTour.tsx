@@ -18,7 +18,11 @@
  * stay aligned if the user moves the page.
  */
 
-import { useEffect, useLayoutEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+
+// useLayoutEffect is not safe on the server — use useEffect instead.
+// For DOM measurement this is fine since we only measure after mount.
+const useLayoutEffect = useEffect
 import { createPortal } from 'react-dom'
 import { Sparkles, X, ArrowRight, ArrowLeft, Check } from 'lucide-react'
 
