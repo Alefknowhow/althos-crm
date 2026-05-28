@@ -105,7 +105,15 @@ export async function updateSession(request: NextRequest) {
   // Bounce logged-in users away from login/signup to avoid confusion.
   if (pathname === '/login' || pathname === '/signup') {
     const dest = request.nextUrl.clone()
-    dest.pathname = '/onboarding'
+    // If email not confirmed yet, keep them on the verify-email screen.
+    dest.pathname = user.email_confirmed_at ? '/onboarding' : '/verify-email'
+    return NextResponse.redirect(dest)
+  }
+
+  // Block authenticated-but-unconfirmed users from accessing app routes.
+  if (!user.email_confirmed_at && routeClass === 'authenticated') {
+    const dest = request.nextUrl.clone()
+    dest.pathname = '/verify-email'
     return NextResponse.redirect(dest)
   }
 
