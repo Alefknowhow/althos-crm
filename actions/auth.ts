@@ -82,6 +82,19 @@ export async function signup(formData: FormData) {
   return { ok: true, redirectTo: '/verify-email' }
 }
 
+export async function resendConfirmationEmail(email: string) {
+  const supabase = createClient()
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/confirm`,
+    },
+  })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 export async function logout() {
   const supabase = createClient()
   await supabase.auth.signOut()

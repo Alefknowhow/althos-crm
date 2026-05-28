@@ -33,7 +33,12 @@ function SignupForm() {
       setError(result.error || 'Erro ao criar conta')
       setLoading(false)
     } else {
-      router.push(result.redirectTo!)
+      const dest = result.redirectTo!
+      // Append email so /verify-email can offer a resend button
+      const to = dest.startsWith('/verify-email')
+        ? `${dest}?email=${encodeURIComponent(formData.get('email') as string)}`
+        : dest
+      router.push(to)
     }
   }
 
