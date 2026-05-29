@@ -16,6 +16,7 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/verify-email' ||   // post-signup "check your email" screen
+    pathname === '/forgot-password' || // password reset request
     pathname === '/onboarding' ||
     pathname.startsWith('/auth/')    ||  // auth callbacks (email confirm, OAuth)
     pathname.startsWith('/f/')       ||  // public forms

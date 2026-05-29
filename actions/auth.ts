@@ -95,6 +95,22 @@ export async function resendConfirmationEmail(email: string) {
   return { ok: true }
 }
 
+export async function requestPasswordReset(email: string) {
+  const supabase = createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/reset-password`,
+  })
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
+}
+
+export async function updatePassword(newPassword: string) {
+  const supabase = createClient()
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
+}
+
 export async function logout() {
   const supabase = createClient()
   await supabase.auth.signOut()
