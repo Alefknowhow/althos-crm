@@ -101,8 +101,8 @@ export default function OrgTable({ orgs }: Props) {
                     <div className="flex items-center gap-1.5">
                       <p className="font-medium text-white">{org.name}</p>
                       {org.onboarding_completed
-                        ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Cadastro completo" />
-                        : <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" title="Cadastro pendente" />
+                        ? <span title="Cadastro completo"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /></span>
+                        : <span title="Cadastro pendente"><Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" /></span>
                       }
                     </div>
                     <p className="text-xs text-slate-500 font-mono mt-0.5">{org.slug}</p>
