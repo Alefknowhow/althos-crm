@@ -1,13 +1,22 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: string, initialCount: number }) {
   const [count, setCount] = useState(initialCount)
 
-  // Stable client reference — never recreated on re-renders.
+  // createBrowserClient (@supabase/ssr) is a singleton — every call returns the
+  // same instance. We keep a ref here so supabase is never listed in useEffect
+  // deps (it's stable by design).
   const supabaseRef = useRef(createClient())
+
+  // useId gives a unique, stable id per component instance. SidebarShell
+  // renders children twice (desktop aside + mobile drawer), producing two
+  // SidebarUnreadBadge instances that share the singleton Supabase client.
+  // Without a unique name the second instance calls .on() on the already-
+  // subscribed channel and crashes. The suffix makes each channel unique.
+  const instanceId = useId()
 
   useEffect(() => {
     setCount(initialCount)
@@ -15,8 +24,11 @@ export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: str
 
   useEffect(() => {
     const supabase = supabaseRef.current
+    // Replace React's ":r0:" style colons — Supabase channel names must not
+    // contain colons.
+    const safeSuffix = instanceId.replace(/:/g, '')
     const channel = supabase
-      .channel(`whatsapp_sidebar_${orgId}`)
+      .channel(`whatsapp_sidebar_${orgId}_${safeSuffix}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'whatsapp_conversations', filter: `organization_id=eq.${orgId}` },
