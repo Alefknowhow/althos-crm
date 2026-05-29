@@ -167,7 +167,7 @@ export default function OrgSetupWizard({ orgSlug, initialName }: Props) {
   const progress = ((step + 1) / STEPS.length) * 100
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#eef2f7] flex items-center justify-center p-4">
+    <div className="light fixed inset-0 z-[200] bg-[#eef2f7] flex items-center justify-center p-4">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex min-h-[520px]">
 
         {/* ── Left sidebar ─────────────────────────────────────────────── */}

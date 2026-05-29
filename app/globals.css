@@ -65,6 +65,9 @@
     --input: 240 6% 83%;
     --ring: 211 100% 45%;
     color-scheme: light;
+    /* Break dark-mode color inheritance from body */
+    color: hsl(240 3% 12%);
+    background-color: hsl(0 0% 100%);
   }
 
   .dark {
