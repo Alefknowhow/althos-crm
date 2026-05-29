@@ -2,6 +2,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
 import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
+import { PRESET_COLORS } from '@/components/features/AppearanceTab'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
@@ -55,8 +56,20 @@ export default async function OrgLayout({
 
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
+  // Inject saved primary color so it persists on every full page load.
+  const { data: orgStyle } = await supabase
+    .from('organizations')
+    .select('primary_color')
+    .eq('id', org.id)
+    .maybeSingle()
+  const savedPreset = PRESET_COLORS.find(c => c.hex === orgStyle?.primary_color)
+  const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
+      {primaryCSS && (
+        <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
+      )}
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
       <div className="flex flex-1">

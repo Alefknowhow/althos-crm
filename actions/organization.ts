@@ -119,6 +119,39 @@ export async function getOrgAIConfig(orgSlug: string) {
   }
 }
 
+// ─── Appearance ───────────────────────────────────────────────────────────────
+
+export async function getOrgAppearance(orgSlug: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select('logo_url, primary_color')
+    .eq('id', org.id)
+    .maybeSingle()
+  return {
+    logo_url:      data?.logo_url      ?? null,
+    primary_color: data?.primary_color ?? null,
+  }
+}
+
+export async function updateOrgAppearance(
+  orgSlug: string,
+  payload: { logo_url?: string | null; primary_color?: string | null },
+) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('organizations')
+    .update(payload)
+    .eq('id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/configuracoes`)
+  return { ok: true as const }
+}
+
 // ─── Meta / Facebook integration ─────────────────────────────────────────────
 
 export async function getOrgMetaConfig(orgSlug: string) {
