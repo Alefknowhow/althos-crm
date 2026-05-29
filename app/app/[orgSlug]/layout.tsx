@@ -2,7 +2,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
 import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
-import { PRESET_COLORS } from '@/components/features/AppearanceTab'
+import { PRESET_COLORS } from '@/lib/constants/colors'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
@@ -10,6 +10,7 @@ import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
+import OrgSetupWizard from '@/components/features/OrgSetupWizard'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -57,18 +58,23 @@ export default async function OrgLayout({
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   // Inject saved primary color so it persists on every full page load.
+  // Also fetch onboarding_completed to conditionally show the setup wizard.
   const { data: orgStyle } = await supabase
     .from('organizations')
-    .select('primary_color')
+    .select('primary_color, onboarding_completed')
     .eq('id', org.id)
     .maybeSingle()
   const savedPreset = PRESET_COLORS.find(c => c.hex === orgStyle?.primary_color)
   const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
+  const onboardingCompleted = orgStyle?.onboarding_completed ?? false
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {primaryCSS && (
         <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
+      )}
+      {!onboardingCompleted && (
+        <OrgSetupWizard orgSlug={params.orgSlug} initialName={org.name} />
       )}
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />

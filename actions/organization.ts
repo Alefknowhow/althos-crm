@@ -119,6 +119,35 @@ export async function getOrgAIConfig(orgSlug: string) {
   }
 }
 
+// ─── Onboarding setup ────────────────────────────────────────────────────────
+
+export async function completeOrgSetup(
+  orgSlug: string,
+  data: {
+    name:           string
+    contact_email:  string
+    contact_phone:  string
+    niche:          string
+    address_city:   string
+    address_state:  string
+    address_zip:    string
+  },
+) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('organizations')
+    .update({ ...data, onboarding_completed: true })
+    .eq('id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}`, 'layout')
+  return { ok: true as const }
+}
+
 // ─── Appearance ───────────────────────────────────────────────────────────────
 
 export async function getOrgAppearance(orgSlug: string) {
