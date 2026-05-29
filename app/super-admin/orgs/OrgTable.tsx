@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Search, ExternalLink, Settings2 } from 'lucide-react'
+import { Search, ExternalLink, Settings2, CheckCircle2, Clock } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,7 +38,11 @@ export default function OrgTable({ orgs }: Props) {
       const matchQ = !q ||
         o.name.toLowerCase().includes(q) ||
         o.slug.toLowerCase().includes(q) ||
-        (o.notes || '').toLowerCase().includes(q)
+        (o.notes         || '').toLowerCase().includes(q) ||
+        (o.niche         || '').toLowerCase().includes(q) ||
+        (o.contact_email || '').toLowerCase().includes(q) ||
+        (o.contact_phone || '').toLowerCase().includes(q) ||
+        (o.address_city  || '').toLowerCase().includes(q)
       const matchS = statusFilter === 'all' || o.subscription_status === statusFilter
       return matchQ && matchS
     })
@@ -80,7 +84,7 @@ export default function OrgTable({ orgs }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 bg-white/[0.03]">
-              {['Organização', 'Tipo / Status', 'Plano', 'Leads', 'Usuários', 'Criado em', ''].map(h => (
+              {['Organização', 'Nicho', 'Tipo / Status', 'Plano', 'Leads', 'Usuários', 'Criado em', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   {h}
                 </th>
@@ -94,8 +98,20 @@ export default function OrgTable({ orgs }: Props) {
               return (
                 <tr key={org.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white">{org.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-white">{org.name}</p>
+                      {org.onboarding_completed
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Cadastro completo" />
+                        : <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" title="Cadastro pendente" />
+                      }
+                    </div>
                     <p className="text-xs text-slate-500 font-mono mt-0.5">{org.slug}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    {org.niche
+                      ? <span className="text-xs text-slate-300">{org.niche}</span>
+                      : <span className="text-xs text-slate-600">—</span>
+                    }
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">

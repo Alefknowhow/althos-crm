@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { CheckCircle2, Clock, Mail, Phone, MapPin, Tag } from 'lucide-react'
 import { updateOrgLimits, type SuperAdminOrg } from '@/actions/super-admin'
 
 const PLANS = [
@@ -90,6 +91,52 @@ export default function OrgLimitsDialog({ org, open, onClose }: Props) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Onboarding data (read-only) */}
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Dados do Cadastro</span>
+              {org.onboarding_completed
+                ? <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400"><CheckCircle2 className="w-3 h-3" /> Completo</span>
+                : <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400"><Clock className="w-3 h-3" /> Pendente</span>
+              }
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                {org.contact_email
+                  ? <span className="text-slate-300 truncate">{org.contact_email}</span>
+                  : <span className="text-slate-600">—</span>
+                }
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Phone className="w-3 h-3 text-slate-500 shrink-0" />
+                {org.contact_phone
+                  ? <span className="text-slate-300">{org.contact_phone}</span>
+                  : <span className="text-slate-600">—</span>
+                }
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0 col-span-2">
+                <Tag className="w-3 h-3 text-slate-500 shrink-0" />
+                {org.niche
+                  ? <span className="text-slate-300">{org.niche}</span>
+                  : <span className="text-slate-600">Nicho não informado</span>
+                }
+              </div>
+              <div className="flex items-start gap-1.5 min-w-0 col-span-2">
+                <MapPin className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" />
+                {(org.address_city || org.address_state || org.address_zip)
+                  ? (
+                    <span className="text-slate-300">
+                      {[org.address_city, org.address_state].filter(Boolean).join(' – ')}
+                      {org.address_zip ? <span className="text-slate-500"> · {org.address_zip}</span> : null}
+                    </span>
+                  )
+                  : <span className="text-slate-600">Endereço não informado</span>
+                }
+              </div>
+            </div>
+          </div>
+
           {/* Plan + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

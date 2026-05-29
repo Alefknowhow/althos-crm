@@ -123,6 +123,14 @@ export type SuperAdminOrg = {
   notes:               string | null
   leadCount:           number
   memberCount:         number
+  // Onboarding wizard fields
+  onboarding_completed: boolean
+  contact_email:        string | null
+  contact_phone:        string | null
+  niche:                string | null
+  address_city:         string | null
+  address_state:        string | null
+  address_zip:          string | null
 }
 
 export async function getAllOrganizations(): Promise<SuperAdminOrg[]> {
@@ -136,7 +144,9 @@ export async function getAllOrganizations(): Promise<SuperAdminOrg[]> {
       id, name, slug, plan, account_type, subscription_status,
       created_at, trial_ends_at,
       limit_leads, limit_whatsapp_monthly, limit_email_monthly, limit_users,
-      notes
+      notes,
+      onboarding_completed, contact_email, contact_phone,
+      niche, address_city, address_state, address_zip
     `)
     .order('created_at', { ascending: false })
 
