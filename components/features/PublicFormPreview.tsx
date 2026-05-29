@@ -206,18 +206,21 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
           )}
 
           {field.type === 'multi_select' && (
-            <select
-              multiple
-              name={field.id}
-              className={`flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${isPreview ? 'pointer-events-none' : ''}`}
-              tabIndex={isPreview ? -1 : 0}
-              disabled={loading}
-              required={field.required}
-            >
+            <div className={`grid gap-2 ${isPreview ? 'pointer-events-none' : ''}`}>
               {field.options?.map((opt, i) => (
-                <option key={i} value={opt}>{opt}</option>
+                <label key={i} className="flex items-center gap-3 px-4 py-3 border rounded-lg cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10 bg-background">
+                  <input
+                    type="checkbox"
+                    name={field.id}
+                    value={opt}
+                    tabIndex={isPreview ? -1 : 0}
+                    disabled={loading}
+                    className="w-4 h-4 rounded accent-primary shrink-0"
+                  />
+                  <span className="text-sm">{opt}</span>
+                </label>
               ))}
-            </select>
+            </div>
           )}
 
           {field.type === 'checkbox' && (

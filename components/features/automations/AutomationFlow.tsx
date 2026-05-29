@@ -8,7 +8,7 @@
  * that slides in when a node is clicked, richer node cards.
  */
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,7 +33,7 @@ import {
   X,
   Bell,
   Webhook,
-  ChevronDown,
+  GripVertical,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -63,11 +63,26 @@ const TRIGGER_COLOR = '#7c3aed'
 
 type Step = { id: string; type: string; config: Record<string, any> }
 
+type StepStat = { success: number; errors: number }
+
+type WaTemplate = {
+  id: string
+  name: string
+  display_name: string
+  body_text: string
+  variable_names: string[] | null
+  header_type: string
+  header_media_url: string | null
+  language: string
+}
+
 type Props = {
   auto: any
   setAuto: (next: any) => void
   forms: Array<{ id: string; name: string }>
   stages: Array<{ id: string; name: string }>
+  stepStats?: Record<number, StepStat>
+  whatsappTemplates?: WaTemplate[]
 }
 
 type SelectedNode = { kind: 'trigger' } | { kind: 'step'; index: number } | null
@@ -119,6 +134,7 @@ function FlowNode({
   isSelected,
   onClick,
   onDelete,
+  stats,
 }: {
   icon: any
   color: string
@@ -129,6 +145,7 @@ function FlowNode({
   isSelected: boolean
   onClick: () => void
   onDelete?: () => void
+  stats?: StepStat
 }) {
   return (
     <div className="relative group/node">
@@ -175,12 +192,31 @@ function FlowNode({
           <p className="text-xs text-muted-foreground leading-relaxed">{detail}</p>
         </div>
 
-        {/* Footer */}
-        <div className="px-3 py-2 mt-1 border-t border-border/30 bg-muted/30 rounded-b-xl">
-          <p className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider">
-            Próximos passos
-          </p>
-        </div>
+        {/* Footer — show step counters only when stats prop is present (i.e. not the trigger node) */}
+        {stats !== undefined ? (
+          <div className="px-3 py-2 mt-1 border-t border-border/30 bg-muted/30 rounded-b-xl grid grid-cols-3 divide-x divide-border/40">
+            <div className="flex flex-col items-center gap-0.5 pr-1">
+              <span className={cn('text-[11px] font-bold tabular-nums', stats.success > 0 ? 'text-emerald-500' : 'text-muted-foreground/40')}>
+                {stats.success}
+              </span>
+              <span className="text-[8px] uppercase tracking-wide text-muted-foreground/50">Sucessos</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5 px-1">
+              <span className="text-[11px] font-bold tabular-nums text-muted-foreground/40">0</span>
+              <span className="text-[8px] uppercase tracking-wide text-muted-foreground/50">Alertas</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5 pl-1">
+              <span className={cn('text-[11px] font-bold tabular-nums', stats.errors > 0 ? 'text-red-500' : 'text-muted-foreground/40')}>
+                {stats.errors}
+              </span>
+              <span className="text-[8px] uppercase tracking-wide text-muted-foreground/50">Erros</span>
+            </div>
+          </div>
+        ) : (
+          <div className="px-3 py-2 mt-1 border-t border-border/30 bg-muted/30 rounded-b-xl">
+            <p className="text-[10px] text-muted-foreground/50 font-medium text-center">Início do fluxo</p>
+          </div>
+        )}
       </button>
 
       {/* Delete button */}
@@ -304,7 +340,16 @@ function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (
   )
 }
 
-function StepConfig({ step, index, steps, setSteps, stages }: { step: Step; index: number; steps: Step[]; setSteps: (s: Step[]) => void; stages: Props['stages'] }) {
+function StepConfig({
+  step, index, steps, setSteps, stages, whatsappTemplates,
+}: {
+  step: Step
+  index: number
+  steps: Step[]
+  setSteps: (s: Step[]) => void
+  stages: Props['stages']
+  whatsappTemplates?: WaTemplate[]
+}) {
   function patch(u: Record<string, any>) {
     const next = [...steps]
     next[index] = { ...next[index], config: { ...next[index].config, ...u } }
@@ -342,15 +387,95 @@ function StepConfig({ step, index, steps, setSteps, stages }: { step: Step; inde
           <p className="text-xs text-muted-foreground">Cole o ID do template criado em Templates.</p>
         </div>
       )
-    case 'send_whatsapp':
+    case 'send_whatsapp': {
+      const templates = whatsappTemplates ?? []
+      const selectedTpl = templates.find(t => t.name === step.config.templateName) ?? null
+      const varNames: string[] = selectedTpl?.variable_names ?? []
+
       return (
-        <div className="space-y-2">
-          <Label className={labelClass}>Nome do template HSM</Label>
-          <Input placeholder="boas_vindas_v1" value={step.config.templateName || ''}
-            onChange={e => patch({ templateName: e.target.value })} />
-          <p className="text-xs text-muted-foreground">Nome aprovado no Meta Business Manager.</p>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className={labelClass}>Template HSM</Label>
+            {templates.length > 0 ? (
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                value={step.config.templateName || ''}
+                onChange={e => {
+                  const tpl = templates.find(t => t.name === e.target.value) ?? null
+                  patch({
+                    templateName:   e.target.value,
+                    templateId:     tpl?.id ?? '',
+                    language:       tpl?.language ?? 'pt_BR',
+                    headerType:     tpl?.header_type ?? 'none',
+                    headerMediaUrl: tpl?.header_media_url ?? '',
+                    variables:      tpl?.variable_names ? tpl.variable_names.map(() => '') : [],
+                  })
+                }}
+              >
+                <option value="">Selecione um template…</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.name}>{t.display_name} ({t.name})</option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <Input
+                  placeholder="boas_vindas_v1"
+                  value={step.config.templateName || ''}
+                  onChange={e => patch({ templateName: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Crie templates em <strong>Operações › Templates WA</strong> para selecionar aqui.
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Preview do template selecionado */}
+          {selectedTpl && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-xs space-y-1">
+              <p className="font-semibold text-emerald-800 leading-tight">{selectedTpl.display_name}</p>
+              <p className="text-emerald-700 leading-relaxed line-clamp-3">{selectedTpl.body_text}</p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                {selectedTpl.header_type !== 'none' && (
+                  <span className="inline-block bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase">
+                    Header: {selectedTpl.header_type}
+                  </span>
+                )}
+                <span className="inline-block bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+                  {selectedTpl.language}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Variable value inputs */}
+          {varNames.map((varName, idx) => (
+            <div key={idx} className="space-y-1.5">
+              <Label className={labelClass}>
+                {`{{${idx + 1}}}`} — {varName}
+              </Label>
+              <Input
+                placeholder={`Valor para ${varName}`}
+                value={(step.config.variables ?? [])[idx] ?? ''}
+                onChange={e => {
+                  const vars = [...(step.config.variables ?? Array(varNames.length).fill(''))] as string[]
+                  vars[idx] = e.target.value
+                  patch({ variables: vars })
+                }}
+              />
+            </div>
+          ))}
+
+          {step.config.templateName && (
+            <p className="text-[10px] text-muted-foreground">
+              Nome Meta: <code className="bg-muted px-1 rounded">{step.config.templateName}</code>
+              {' · '}Idioma: <strong>{step.config.language || 'pt_BR'}</strong>
+            </p>
+          )}
         </div>
       )
+    }
     case 'create_task':
       return (
         <div className="space-y-3">
@@ -445,16 +570,85 @@ function StepConfig({ step, index, steps, setSteps, stages }: { step: Step; inde
   }
 }
 
+// ── Canvas constants ──────────────────────────────────────────────────────────
+
+const NODE_W  = 260
+const NODE_H  = 172  // approximate node height (strip+header+body+footer)
+const V_GAP   = 52   // vertical gap between nodes in default layout
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) {
+export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats, whatsappTemplates }: Props) {
   const [selected, setSelected] = useState<SelectedNode>(null)
+
+  // Free-drag canvas state
+  const canvasRef  = useRef<HTMLDivElement>(null)
+  const [nodePos, setNodePos] = useState<Record<string, { x: number; y: number }>>({})
+  const dragRef    = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const didDrag    = useRef(false)
 
   const steps: Step[] = auto.steps || []
 
-  function setSteps(next: Step[]) {
-    setAuto({ ...auto, steps: next })
+  // Build ordered node ID list: trigger first, then each step
+  const allIds = ['__trigger', ...steps.map(s => s.id || `s${steps.indexOf(s)}`)]
+
+  // Initialise positions once canvas is mounted or when steps change
+  const initPositions = useCallback(() => {
+    const cw = canvasRef.current?.clientWidth ?? 600
+    const cx = Math.max(20, (cw - NODE_W) / 2)
+    setNodePos(prev => {
+      const next = { ...prev }
+      // Trigger
+      if (!next['__trigger']) next['__trigger'] = { x: cx, y: 30 }
+      // Steps — only add missing ones
+      steps.forEach((s, i) => {
+        const id = s.id || `s${i}`
+        if (!next[id]) next[id] = { x: cx, y: 30 + (i + 1) * (NODE_H + V_GAP) }
+      })
+      // Remove positions for deleted steps
+      const validIds = new Set(allIds)
+      Object.keys(next).forEach(k => { if (!validIds.has(k)) delete next[k] })
+      return next
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steps.length, steps.map(s => s.id).join(',')])
+
+  useEffect(() => { initPositions() }, [initPositions])
+
+  function getPos(id: string, fallbackIndex: number): { x: number; y: number } {
+    return nodePos[id] ?? {
+      x: Math.max(20, ((canvasRef.current?.clientWidth ?? 600) - NODE_W) / 2),
+      y: 30 + fallbackIndex * (NODE_H + V_GAP),
+    }
   }
+
+  // Drag handlers
+  function onDragStart(e: React.PointerEvent, nodeId: string, fallbackIndex: number) {
+    // Don't start drag when clicking interactive elements inside the card
+    if ((e.target as HTMLElement).closest('button,select,input,a,[role="menuitem"]')) return
+    e.preventDefault()
+    e.stopPropagation()
+    const p = getPos(nodeId, fallbackIndex)
+    dragRef.current  = { id: nodeId, sx: e.clientX, sy: e.clientY, ox: p.x, oy: p.y }
+    didDrag.current  = false
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  function onDragMove(e: React.PointerEvent, nodeId: string) {
+    if (dragRef.current?.id !== nodeId) return
+    const { sx, sy, ox, oy } = dragRef.current
+    const dx = e.clientX - sx
+    const dy = e.clientY - sy
+    if (Math.abs(dx) + Math.abs(dy) > 3) didDrag.current = true
+    setNodePos(prev => ({ ...prev, [nodeId]: { x: ox + dx, y: oy + dy } }))
+  }
+
+  function onDragEnd() { dragRef.current = null }
+
+  // Returns true if the last pointer interaction was a real drag (suppress click)
+  function wasDrag() { return didDrag.current }
+
+  function setSteps(next: Step[]) { setAuto({ ...auto, steps: next }) }
 
   function insertStep(atIndex: number, type: string) {
     const newStep: Step = { id: `step_${Date.now()}`, type, config: {} }
@@ -463,6 +657,9 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
     const next = [...steps]
     next.splice(atIndex, 0, newStep)
     setSteps(next)
+    // Position new node below current lowest node
+    const maxY = Object.values(nodePos).reduce((m, p) => Math.max(m, p.y), 0)
+    setNodePos(prev => ({ ...prev, [newStep.id]: { x: getPos('__trigger', 0).x, y: maxY + NODE_H + V_GAP } }))
   }
 
   function removeStep(index: number) {
@@ -472,9 +669,15 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
     if (selected?.kind === 'step' && selected.index === index) setSelected(null)
   }
 
-  const selectedStep = selected?.kind === 'step' && steps[selected.index] ? steps[selected.index] : null
+  const selectedStep     = selected?.kind === 'step' && steps[selected.index] ? steps[selected.index] : null
   const selectedStepMeta = selectedStep ? stepMeta(selectedStep.type) : null
-  const panelOpen = !!selected
+  const panelOpen        = !!selected
+
+  // Canvas bounding box: large enough to contain all nodes
+  const canvasMinH = Math.max(
+    600,
+    ...Object.values(nodePos).map(p => p.y + NODE_H + 80),
+  )
 
   return (
     <div className="flex h-full overflow-hidden bg-muted/20">
@@ -488,7 +691,6 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
       >
         {panelOpen && (
           <div className="p-5">
-            {/* Panel header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 {selected?.kind === 'trigger' ? (
@@ -515,37 +717,17 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
                   </>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="w-7 h-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground"
-              >
+              <button type="button" onClick={() => setSelected(null)} className="w-7 h-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
-
             <div className="border-b border-border mb-5" />
-
-            {/* Config form */}
-            {selected?.kind === 'trigger' && (
-              <TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />
-            )}
+            {selected?.kind === 'trigger' && <TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
             {selected?.kind === 'step' && selectedStep && (
               <>
-                <StepConfig
-                  step={selectedStep}
-                  index={(selected as any).index}
-                  steps={steps}
-                  setSteps={setSteps}
-                  stages={stages}
-                />
+                <StepConfig step={selectedStep} index={(selected as any).index} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />
                 <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10 w-full justify-start"
-                    onClick={() => removeStep((selected as any).index)}
-                  >
+                  <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 w-full justify-start" onClick={() => removeStep((selected as any).index)}>
                     <Trash2 className="w-4 h-4 mr-2" /> Remover passo
                   </Button>
                 </div>
@@ -555,9 +737,9 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
         )}
       </div>
 
-      {/* ── Canvas ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto relative">
-        {/* Dot grid */}
+      {/* ── Free-drag canvas ──────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto relative select-none">
+        {/* Dot-grid background */}
         <div
           className="absolute inset-0 opacity-40 pointer-events-none"
           style={{
@@ -567,29 +749,83 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
           }}
         />
 
-        {/* Flow */}
-        <div className="relative flex flex-col items-center py-12 px-8 min-h-full">
+        {/* Inner canvas — grows to fit all nodes */}
+        <div ref={canvasRef} className="relative w-full" style={{ minHeight: canvasMinH }}>
 
-          {/* Trigger node */}
-          <FlowNode
-            icon={Zap}
-            color={TRIGGER_COLOR}
-            typeLabel="Gatilho"
-            nodeName={triggerMeta(auto.trigger_type).label}
-            detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
-            badge="Início"
-            isSelected={selected?.kind === 'trigger'}
-            onClick={() => setSelected({ kind: 'trigger' })}
-          />
+          {/* ── SVG connector lines ──────────────────────────────────────── */}
+          <svg className="absolute inset-0 w-full pointer-events-none overflow-visible" style={{ height: canvasMinH }}>
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L7,3 z" fill="hsl(var(--border))" opacity="0.7" />
+              </marker>
+            </defs>
+            {allIds.map((id, idx) => {
+              if (idx === allIds.length - 1) return null
+              const from = getPos(id, idx)
+              const to   = getPos(allIds[idx + 1], idx + 1)
+              const x1 = from.x + NODE_W / 2,  y1 = from.y + NODE_H
+              const x2 = to.x   + NODE_W / 2,  y2 = to.y
+              const cy = (y1 + y2) / 2
+              return (
+                <path
+                  key={`edge-${id}`}
+                  d={`M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`}
+                  stroke="hsl(var(--border))"
+                  strokeWidth="1.5"
+                  fill="none"
+                  opacity="0.7"
+                  markerEnd="url(#arrowhead)"
+                />
+              )
+            })}
+          </svg>
 
-          {/* Connector before first step */}
-          <Connector onSelect={t => insertStep(0, t)} />
-
-          {/* Step nodes */}
-          {steps.map((step, i) => {
-            const meta = stepMeta(step.type)
+          {/* ── Trigger node ─────────────────────────────────────────────── */}
+          {(() => {
+            const pos = getPos('__trigger', 0)
             return (
-              <div key={step.id || i} className="flex flex-col items-center">
+              <div
+                className="absolute cursor-grab active:cursor-grabbing"
+                style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
+                onPointerDown={e => onDragStart(e, '__trigger', 0)}
+                onPointerMove={e => onDragMove(e, '__trigger')}
+                onPointerUp={onDragEnd}
+              >
+                {/* Drag handle hint */}
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
+                  <GripVertical className="w-4 h-4" />
+                </div>
+                <FlowNode
+                  icon={Zap}
+                  color={TRIGGER_COLOR}
+                  typeLabel="Gatilho"
+                  nodeName={triggerMeta(auto.trigger_type).label}
+                  detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
+                  badge="Início"
+                  isSelected={selected?.kind === 'trigger'}
+                  onClick={() => { if (!wasDrag()) setSelected({ kind: 'trigger' }) }}
+                />
+              </div>
+            )
+          })()}
+
+          {/* ── Step nodes ───────────────────────────────────────────────── */}
+          {steps.map((step, i) => {
+            const nodeId = step.id || `s${i}`
+            const pos    = getPos(nodeId, i + 1)
+            const meta   = stepMeta(step.type)
+            return (
+              <div
+                key={nodeId}
+                className="absolute cursor-grab active:cursor-grabbing"
+                style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
+                onPointerDown={e => onDragStart(e, nodeId, i + 1)}
+                onPointerMove={e => onDragMove(e, nodeId)}
+                onPointerUp={onDragEnd}
+              >
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
+                  <GripVertical className="w-4 h-4" />
+                </div>
                 <FlowNode
                   icon={meta.icon}
                   color={meta.color}
@@ -598,21 +834,81 @@ export default function AutomationFlow({ auto, setAuto, forms, stages }: Props) 
                   detail={describeStep(step, stages)}
                   badge={`Passo ${i + 1}`}
                   isSelected={selected?.kind === 'step' && selected.index === i}
-                  onClick={() => setSelected({ kind: 'step', index: i })}
+                  onClick={() => { if (!wasDrag()) setSelected({ kind: 'step', index: i }) }}
                   onDelete={() => removeStep(i)}
+                  stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
                 />
-                <Connector onSelect={t => insertStep(i + 1, t)} />
               </div>
             )
           })}
 
-          {/* End marker */}
-          <div className="flex flex-col items-center gap-1 mt-1 text-muted-foreground/50">
-            <div className="w-9 h-9 rounded-full border-2 border-dashed border-border flex items-center justify-center">
-              <ChevronDown className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] uppercase tracking-wider font-medium">Fim do fluxo</span>
-          </div>
+          {/* ── "+" add-step buttons (midpoint of each edge) ─────────────── */}
+          {allIds.map((id, idx) => {
+            if (idx === allIds.length - 1) return null
+            const from  = getPos(id, idx)
+            const to    = getPos(allIds[idx + 1], idx + 1)
+            const bx    = (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2 - 14
+            const by    = (from.y + NODE_H + to.y) / 2 - 14
+            const insertAt = idx  // insert after node idx (trigger=0, step[i]=i+1)
+            return (
+              <div key={`add-${id}`} className="absolute z-20" style={{ left: bx, top: by }}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      title="Adicionar passo"
+                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" className="w-52">
+                    <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {STEP_TYPES.map(t => (
+                      <DropdownMenuItem key={t.id} onClick={() => insertStep(insertAt, t.id)}>
+                        <t.icon className="w-4 h-4 mr-2 shrink-0" style={{ color: t.color }} />
+                        <span className="text-sm">{t.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )
+          })}
+
+          {/* ── "+" after last node ──────────────────────────────────────── */}
+          {(() => {
+            const lastId  = allIds[allIds.length - 1]
+            const lastPos = getPos(lastId, allIds.length - 1)
+            const bx      = lastPos.x + NODE_W / 2 - 14
+            const by      = lastPos.y + NODE_H + 20
+            return (
+              <div className="absolute z-20" style={{ left: bx, top: by }}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      title="Adicionar passo"
+                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" className="w-52">
+                    <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {STEP_TYPES.map(t => (
+                      <DropdownMenuItem key={t.id} onClick={() => insertStep(steps.length, t.id)}>
+                        <t.icon className="w-4 h-4 mr-2 shrink-0" style={{ color: t.color }} />
+                        <span className="text-sm">{t.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )
+          })()}
 
         </div>
       </div>

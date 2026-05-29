@@ -152,6 +152,18 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </span>
         </SidebarNavLink>
 
+        <SidebarNavLink href={`${base}/social`}>
+          <span className="flex items-center gap-2.5">
+            {/* Instagram icon (custom SVG — lucide doesn't export Instagram) */}
+            <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+              <circle cx="12" cy="12" r="4"/>
+              <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+            </svg>
+            <span>Social · DMs</span>
+          </span>
+        </SidebarNavLink>
+
         <SidebarNavGroup
           label="Atendente IA"
           icon={<Bot className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />}
@@ -213,6 +225,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           <span className="flex items-center gap-2.5">
             <Mail className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
             <span>Templates</span>
+          </span>
+        </SidebarNavLink>
+
+        <SidebarNavLink href={`${base}/whatsapp-templates`}>
+          <span className="flex items-center gap-2.5">
+            <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+            <span>Templates WA</span>
           </span>
         </SidebarNavLink>
 

@@ -101,15 +101,36 @@ export const executeAutomationRun = inngest.createFunction(
     let currentStep = run.current_step
     const steps = auto.steps || []
 
+    // Helper: write a row to automation_step_logs (best-effort, never throws).
+    async function logStep(
+      stepIndex: number,
+      stepType: string,
+      status: 'success' | 'error' | 'skipped',
+      message?: string,
+    ) {
+      try {
+        await supabase.from('automation_step_logs').insert({
+          organization_id: orgId,
+          automation_id:   auto.id,
+          run_id:          runId,
+          step_index:      stepIndex,
+          step_type:       stepType,
+          status,
+          message: message ?? null,
+        })
+      } catch { /* ignore logging failures */ }
+    }
+
     try {
       while (currentStep < steps.length) {
         const stepDef = steps[currentStep]
-        
-        await step.run(`execute-step-${currentStep}`, async () => {
+        let stepError: string | undefined
+
+        try { await step.run(`execute-step-${currentStep}`, async () => {
           switch (stepDef.type) {
             case 'wait':
               // We don't sleep inside the run callback because run callbacks can't contain sleeps.
-              // Instead we break out, but Inngest step.sleep is a special step. 
+              // Instead we break out, but Inngest step.sleep is a special step.
               // Wait, if it's wait, we shouldn't do it inside `step.run`. We do it outside.
               break;
             case 'send_email':
@@ -132,7 +153,15 @@ export const executeAutomationRun = inngest.createFunction(
               break;
             case 'send_whatsapp':
               if (stepDef.config.templateName && lead.phone && orgConfig) {
-                await sendTemplateMessage(orgConfig, lead.phone, stepDef.config.templateName, [])
+                await sendTemplateMessage(
+                  orgConfig,
+                  lead.phone,
+                  stepDef.config.templateName,
+                  stepDef.config.variables || [],
+                  stepDef.config.language || 'pt_BR',
+                  stepDef.config.headerType,
+                  stepDef.config.headerMediaUrl,
+                )
               }
               break;
             case 'create_task':
@@ -218,7 +247,14 @@ export const executeAutomationRun = inngest.createFunction(
               break;
             }
           }
-        })
+        }) } catch (err: any) { stepError = err?.message || 'Unknown error' }
+
+        // Log step outcome (skipped for 'wait' — it's a timing step, not an action).
+        if (stepDef.type !== 'wait') {
+          await step.run(`log-step-${currentStep}`, async () => {
+            await logStep(currentStep, stepDef.type, stepError ? 'error' : 'success', stepError)
+          })
+        }
 
         if (stepDef.type === 'wait') {
           const { amount, unit } = stepDef.config

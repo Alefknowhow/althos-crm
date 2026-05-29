@@ -36,6 +36,8 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   const [schema, setSchema] = useState(initialForm.schema || { fields: [] })
   const [selectedField, setSelectedField] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  // Raw text in the options textarea — avoids trim/filter killing spaces & newlines on every keystroke.
+  const [rawOptions, setRawOptions] = useState<string>('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -70,6 +72,12 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
     setSchema({ ...schema, fields: [...schema.fields, newField] })
   }
 
+  /** Open a field in the properties panel and seed the raw options textarea. */
+  function selectField(field: any) {
+    setSelectedField(field)
+    setRawOptions(field?.options?.join('\n') ?? '')
+  }
+
   const updateSelectedField = (updates: any) => {
     const updated = { ...selectedField, ...updates }
     setSelectedField(updated)
@@ -77,6 +85,12 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
       ...schema,
       fields: schema.fields.map((f: any) => f.id === updated.id ? updated : f)
     })
+  }
+
+  /** Called when the options textarea loses focus — parse and persist. */
+  function commitOptions() {
+    const opts = rawOptions.split('\n').map((s: string) => s.trim()).filter(Boolean)
+    updateSelectedField({ options: opts })
   }
 
   return (
@@ -359,7 +373,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={schema.fields.map((f:any) => f.id)} strategy={verticalListSortingStrategy}>
                     {schema.fields.map((f: any) => (
-                      <SortableField key={f.id} field={f} onEdit={setSelectedField} onDelete={(id: string) => {
+                      <SortableField key={f.id} field={f} onEdit={selectField} onDelete={(id: string) => {
                         setSchema({ ...schema, fields: schema.fields.filter((field:any) => field.id !== id) })
                         if(selectedField?.id === id) setSelectedField(null)
                       }} />
@@ -405,9 +419,10 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
                 <div className="space-y-2 pt-4 border-t">
                   <Label>Opções (uma por linha)</Label>
                   <textarea
-                    className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={selectedField.options?.join('\n') || ''}
-                    onChange={e => updateSelectedField({ options: e.target.value.split('\n').map((s:string)=>s.trim()).filter(Boolean) })}
+                    className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                    value={rawOptions}
+                    onChange={e => setRawOptions(e.target.value)}
+                    onBlur={commitOptions}
                     placeholder={'Opção 1\nOpção 2\nOpção 3'}
                   />
                 </div>

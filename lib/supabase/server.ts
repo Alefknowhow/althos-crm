@@ -36,15 +36,21 @@ export function createClient() {
 }
 
 export function createAdminClient() {
+  // Service-role client: never reads user session cookies so the SDK
+  // authenticates via the service-role key only (bypasses RLS).
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
       cookies: {
-        get(name: string) { return cookies().get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {},
-        remove(name: string, options: CookieOptions) {},
-      }
+        get()    { return undefined },
+        set()    {},
+        remove() {},
+      },
     }
   )
 }
