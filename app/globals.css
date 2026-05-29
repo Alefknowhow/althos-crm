@@ -43,6 +43,30 @@
     --sidebar-accent-foreground: 240 3% 12%;
   }
 
+  /* Force light theme regardless of OS preference — used on public pages */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 240 3% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 3% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 3% 12%;
+    --primary: 211 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 9% 96%;
+    --secondary-foreground: 240 3% 12%;
+    --muted: 240 9% 96%;
+    --muted-foreground: 240 2% 54%;
+    --accent: 240 9% 96%;
+    --accent-foreground: 240 3% 12%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 83%;
+    --input: 240 6% 83%;
+    --ring: 211 100% 45%;
+    color-scheme: light;
+  }
+
   .dark {
     /* Apple-inspired dark palette */
     --background: 0 0% 0%;              /* #000000 — OLED true black */
