@@ -44,9 +44,12 @@ export default async function OrgLayout({
   }
 
   const supabase = createClient()
+  // Filter by user.id explicitly so super-admins only see their OWN orgs
+  // in the switcher (not every org in the system via the super-admin RLS policy).
   const { data: memberships } = await supabase
     .from('memberships')
     .select('organizations(id, name, slug)')
+    .eq('user_id', user.id)
 
   const orgs: { id: string; name: string; slug: string }[] =
     memberships?.flatMap(m => {
