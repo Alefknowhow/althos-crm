@@ -24,7 +24,7 @@ import { resend } from '@/lib/resend'
 // ---------------------------------------------------------------------------
 
 function trialWarningHtml(orgName: string, daysLeft: number, orgSlug: string): string {
-  const upgradeUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.althos.io'}/app/${orgSlug}/upgrade`
+  const upgradeUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/app/${orgSlug}/upgrade`
   const dayWord = daysLeft === 1 ? 'dia' : 'dias'
 
   return `<!DOCTYPE html>
@@ -96,7 +96,7 @@ function trialWarningHtml(orgName: string, daysLeft: number, orgSlug: string): s
 }
 
 function trialExpiredHtml(orgName: string, orgSlug: string): string {
-  const upgradeUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.althos.io'}/app/${orgSlug}/upgrade`
+  const upgradeUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/app/${orgSlug}/upgrade`
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
