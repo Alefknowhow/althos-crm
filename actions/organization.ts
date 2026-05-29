@@ -33,28 +33,66 @@ export async function generateUniqueSlug(name: string) {
 }
 
 export async function createOrganization(formData: FormData) {
-  await requireAuth()
-  const name = formData.get('name') as string
+  const user = await requireAuth()
+  const name = (formData.get('name') as string)?.trim()
 
   if (!name || name.length < 2) {
     return { ok: false, error: 'Nome da organização inválido' }
   }
 
   const slug = await generateUniqueSlug(name)
-  const supabase = createClient()
+  const admin = createAdminClient()
 
-  const { data, error } = await supabase
-    .rpc('create_organization_for_user', {
-      org_name: name,
-      org_slug: slug
+  // 1. Cria a organização
+  const { data: org, error: orgError } = await admin
+    .from('organizations')
+    .insert({
+      name,
+      slug,
+      plan: 'free_trial',
+      account_type: 'self_signup',
+      subscription_status: 'trialing',
+      trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      limit_leads: 100,
+      limit_whatsapp_monthly: 100,
+      limit_email_monthly: 100,
+      limit_users: 3,
     })
+    .select()
     .single()
 
-  if (error) {
-    return { ok: false, error: traduzirErro(error) }
+  if (orgError) {
+    return { ok: false, error: orgError.message }
   }
 
-  return { ok: true, data, redirectTo: `/app/${slug}/pipeline` }
+  // 2. Cria membership como owner
+  const { error: memberError } = await admin
+    .from('memberships')
+    .insert({ organization_id: org.id, user_id: user.id, role: 'owner' })
+
+  if (memberError) {
+    // Org criada mas membership falhou — tenta rollback
+    await admin.from('organizations').delete().eq('id', org.id)
+    return { ok: false, error: memberError.message }
+  }
+
+  // 3. Cria pipeline padrão + estágios
+  const { data: pipeline } = await admin
+    .from('pipelines')
+    .insert({ organization_id: org.id, name: 'Vendas', is_default: true })
+    .select()
+    .single()
+
+  if (pipeline) {
+    await admin.from('pipeline_stages').insert([
+      { pipeline_id: pipeline.id, name: 'Novo Lead',     position: 1, color: '#94a3b8' },
+      { pipeline_id: pipeline.id, name: 'Contato Feito', position: 2, color: '#3b82f6' },
+      { pipeline_id: pipeline.id, name: 'Negociação',    position: 3, color: '#eab308' },
+      { pipeline_id: pipeline.id, name: 'Fechado',       position: 4, color: '#22c55e' },
+    ])
+  }
+
+  return { ok: true as const, data: org, redirectTo: `/app/${slug}/pipeline` }
 }
 
 /**
