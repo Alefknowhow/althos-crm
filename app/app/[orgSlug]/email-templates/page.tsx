@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import NewTemplateButton from '@/components/features/email/NewTemplateButton'
+import CopyIdButton from '@/components/features/email/CopyIdButton'
 import { TEMPLATE_CATEGORIES } from '@/lib/email/template-seeds'
 
 const CATEGORY_LABEL = new Map(TEMPLATE_CATEGORIES.map(c => [c.id, c.label]))
@@ -34,6 +35,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
                 <TableHead>Nome Interno</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Assunto</TableHead>
+                <TableHead>ID (automações)</TableHead>
                 <TableHead>Última Edição</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -52,6 +54,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{t.subject || '(sem assunto)'}</TableCell>
+                  <TableCell><CopyIdButton id={t.id} /></TableCell>
                   <TableCell className="text-muted-foreground">{new Date(t.created_at).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell className="text-right">
                     <Link href={`/app/${params.orgSlug}/email-templates/${t.id}/edit`}>
