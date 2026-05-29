@@ -1,153 +1,236 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { getPlan, formatPrice } from '@/lib/billing/plans'
+import { getUsageStatus, getTrialDaysRemaining } from '@/lib/billing/limits'
+import { asaas } from '@/lib/asaas/client'
+import SubscriptionActions from './SubscriptionActions'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Check, Mail, MessageSquare, Users, Zap, ExternalLink } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
-export default async function SubscriptionPage({ params }: { params: { orgSlug: string } }) {
-  const org = await getCurrentOrganization(params.orgSlug)
+function statusLabel(status: string | null) {
+  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    active:    { label: 'Ativo',        variant: 'default' },
+    trialing:  { label: 'Trial',        variant: 'secondary' },
+    no_billing:{ label: 'Sem cobrança', variant: 'outline' },
+    past_due:  { label: 'Vencido',      variant: 'destructive' },
+    canceled:  { label: 'Cancelado',    variant: 'destructive' },
+  }
+  return map[status ?? 'no_billing'] ?? { label: status ?? '—', variant: 'outline' as const }
+}
 
-  if (org.account_type === 'internal') {
-    redirect(`/app/${params.orgSlug}`)
+export default async function SubscriptionPage({ params }: { params: { orgSlug: string } }) {
+  const org = await getCurrentOrganization(params.orgSlug) as any
+
+  if (org.account_type === 'internal') redirect(`/app/${params.orgSlug}`)
+
+  const plan        = getPlan(org.plan)
+  const usage       = await getUsageStatus(org.id)
+  const trialDays   = await getTrialDaysRemaining(org.id)
+  const status      = statusLabel(org.subscription_status)
+  const isTrial     = org.plan === 'trial' || org.plan === 'free_trial'
+  const isActive    = org.subscription_status === 'active'
+  const isManaged   = org.billing_managed_externally === true
+
+  // Fetch invoice history from Asaas (best-effort — no crash if API is down)
+  let invoices: any[] = []
+  if (org.asaas_customer_id && !isManaged) {
+    try {
+      const result = await asaas.getInvoices(org.asaas_customer_id)
+      invoices = (result?.data as any[]) ?? []
+    } catch { /* offline or no key */ }
   }
 
-  const isManaged = org.account_type === 'althos_managed'
-  const isTrial = org.subscription_status === 'trialing'
-  
-  // Calcular dias restantes de trial
-  const daysRemaining = org.trial_ends_at 
-    ? Math.max(0, Math.ceil((new Date(org.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0
-
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Assinatura e Plano</h1>
-        <p className="text-muted-foreground">Gerencie o plano da sua organização e veja seus limites.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Assinatura</h1>
+        <p className="text-muted-foreground text-sm">Gerencie seu plano, uso e pagamentos.</p>
       </div>
 
-      {isManaged && (
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex gap-4 items-start text-blue-900">
-              <Zap className="w-5 h-5 mt-1" />
-              <div className="space-y-2">
-                <p className="font-semibold">Plano Gerenciado pela Althos</p>
-                <p className="text-sm">
-                  Sua assinatura está inclusa no seu plano de serviços da Althos Performance. 
-                  Para alterações de plano ou limites, entre em contato com seu gestor.
-                </p>
-                <Button variant="outline" className="mt-2 bg-white text-blue-600 border-blue-200 hover:bg-blue-50" asChild>
-                  <a href="mailto:suporte@althos.io">Falar com Suporte</a>
-                </Button>
-              </div>
+      {/* ── Plan + Status card ─────────────────────────────────────────────── */}
+      <div className="rounded-xl border bg-card p-6 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              <span className="text-xl font-bold">{plan.label}</span>
+              <Badge variant={status.variant}>{status.label}</Badge>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <p className="text-sm text-muted-foreground">{plan.description}</p>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Plano Atual</CardTitle>
-            <CardDescription>Status e detalhes da sua conta</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Plano</span>
-              <Badge variant="secondary" className="uppercase">{org.plan}</Badge>
+          {plan.priceCents !== null && (
+            <div className="text-right shrink-0">
+              <div className="text-2xl font-bold">{formatPrice(plan.priceCents)}</div>
+              <div className="text-xs text-muted-foreground">/mês</div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Status</span>
-              <Badge variant={org.subscription_status === 'active' ? 'default' : 'secondary'}>
-                {org.subscription_status === 'active' ? 'Ativo' : isTrial ? 'Trialing' : org.subscription_status}
-              </Badge>
-            </div>
-            
-            {isTrial && (
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-xs">
-                  <span>Período de teste</span>
-                  <span>{daysRemaining} dias restantes</span>
-                </div>
-                <Progress value={(7 - daysRemaining) / 7 * 100} />
-              </div>
-            )}
+          )}
+        </div>
 
-            {!isManaged && org.subscription_status !== 'no_billing' && (
-              <div className="pt-4 border-t space-y-2">
-                <Button className="w-full" variant="default">
-                  {isTrial ? 'Assinar Agora' : 'Trocar Plano'}
-                </Button>
-                <Button className="w-full" variant="outline">
-                  Gerenciar no Asaas <ExternalLink className="w-3 h-3 ml-2" />
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Trial progress */}
+        {isTrial && trialDays !== null && (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Período de trial (7 dias)</span>
+              <span className={trialDays <= 2 ? 'text-destructive font-medium' : ''}>
+                {trialDays === 0 ? 'Expirado' : `${trialDays} dia${trialDays !== 1 ? 's' : ''} restante${trialDays !== 1 ? 's' : ''}`}
+              </span>
+            </div>
+            <Progress
+              value={trialDays === 0 ? 100 : ((7 - trialDays) / 7) * 100}
+              className={trialDays <= 2 ? '[&>div]:bg-destructive' : ''}
+            />
+          </div>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Limites de Uso</CardTitle>
-            <CardDescription>Capacidade mensal do seu plano</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Leads Totais</span>
-                  <span className="font-medium">{org.limit_leads || '∞'}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 text-sm">
-                <div className="flex justify-between">
-                  <span>WhatsApp /mês</span>
-                  <span className="font-medium">{org.limit_whatsapp_monthly || '∞'}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 text-sm">
-                <div className="flex justify-between">
-                  <span>E-mails /mês</span>
-                  <span className="font-medium">{org.limit_email_monthly || '∞'}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Zap className="w-4 h-4 text-muted-foreground" />
-              <div className="flex-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Usuários</span>
-                  <span className="font-medium">{org.limit_users || '∞'}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Renewal date */}
+        {isActive && org.current_period_end && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="w-4 h-4" />
+            <span>
+              Próxima cobrança: <strong className="text-foreground">
+                {new Date(org.current_period_end).toLocaleDateString('pt-BR')}
+              </strong>
+            </span>
+          </div>
+        )}
+
+        {/* Managed note */}
+        {isManaged && (
+          <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Sua assinatura é gerenciada pela Althos. Entre em contato para alterações.</span>
+          </div>
+        )}
+
+        {/* Actions: upgrade / cancel */}
+        {!isManaged && (
+          <SubscriptionActions
+            orgSlug={params.orgSlug}
+            currentPlan={org.plan as 'starter' | 'pro' | 'trial' | 'free_trial' | null}
+            subscriptionStatus={org.subscription_status}
+          />
+        )}
       </div>
 
+      {/* ── Usage card ────────────────────────────────────────────────────── */}
+      <div className="rounded-xl border bg-card p-6 space-y-4">
+        <h2 className="font-semibold text-sm">Uso atual</h2>
+
+        <UsageRow
+          icon={<Users className="w-4 h-4" />}
+          label="Leads cadastrados"
+          used={usage.leads.used}
+          limit={usage.leads.limit}
+          pct={usage.leads.pct}
+        />
+        <UsageRow
+          icon={<MessageSquare className="w-4 h-4" />}
+          label="WhatsApp este mês"
+          used={usage.whatsapp.used}
+          limit={usage.whatsapp.limit}
+          pct={usage.whatsapp.pct}
+        />
+        <UsageRow
+          icon={<Mail className="w-4 h-4" />}
+          label="E-mails este mês"
+          used={usage.email.used}
+          limit={usage.email.limit}
+          pct={usage.email.pct}
+        />
+        <UsageRow
+          icon={<Users className="w-4 h-4" />}
+          label="Usuários na conta"
+          used={usage.users.used}
+          limit={usage.users.limit}
+          pct={usage.users.pct}
+        />
+      </div>
+
+      {/* ── Invoice history ───────────────────────────────────────────────── */}
       {!isManaged && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Histórico de Faturas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-lg">
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="px-6 py-4 border-b">
+            <h2 className="font-semibold text-sm">Histórico de faturas</h2>
+          </div>
+          {invoices.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-muted-foreground">
               Nenhuma fatura encontrada.
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="divide-y">
+              {invoices.slice(0, 12).map((inv: any) => (
+                <div key={inv.id} className="flex items-center justify-between px-6 py-3 text-sm">
+                  <div className="space-y-0.5">
+                    <p className="font-medium">
+                      {new Date(inv.dueDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {inv.billingType?.toLowerCase()} · vence {new Date(inv.dueDate).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold">
+                      {Number(inv.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                    <Badge variant={inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'default' : inv.status === 'OVERDUE' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      {inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'Pago'
+                        : inv.status === 'OVERDUE'  ? 'Vencido'
+                        : inv.status === 'PENDING'  ? 'Pendente'
+                        : inv.status}
+                    </Badge>
+                    {inv.invoiceUrl && (
+                      <a
+                        href={inv.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Ver
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UsageRow({
+  icon, label, used, limit, pct,
+}: {
+  icon: React.ReactNode
+  label: string
+  used: number
+  limit: number
+  pct: number
+}) {
+  const isUnlimited = !isFinite(limit)
+  const isHigh = pct >= 80
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          {icon}
+          <span>{label}</span>
+        </div>
+        <span className={`font-medium tabular-nums ${isHigh ? 'text-destructive' : ''}`}>
+          {used.toLocaleString('pt-BR')}
+          {!isUnlimited && ` / ${limit.toLocaleString('pt-BR')}`}
+          {isUnlimited && ' / ∞'}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <Progress
+          value={Math.min(pct, 100)}
+          className={isHigh ? '[&>div]:bg-destructive' : ''}
+        />
       )}
     </div>
   )

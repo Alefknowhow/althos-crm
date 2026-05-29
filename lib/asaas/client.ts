@@ -71,6 +71,8 @@ export const asaas = {
         nextDueDate: nextDueDate(),
         cycle:       'MONTHLY',
         description: `Althos CRM — Plano ${planKey}`,
+        // externalReference lets us map the payment back in the webhook
+        externalReference: planKey,
       }),
     })
   },

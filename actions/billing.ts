@@ -19,6 +19,7 @@ import { revalidatePath } from 'next/cache'
 export async function createCheckoutSession(
   orgSlug: string,
   plan: 'starter' | 'pro',
+  billingType: 'BOLETO' | 'PIX' | 'CREDIT_CARD' = 'BOLETO',
 ): Promise<{ ok: true; checkoutUrl: string } | { ok: false; error: string }> {
   await requireAuth()
   const org     = await getCurrentOrganization(orgSlug)
@@ -47,8 +48,8 @@ export async function createCheckoutSession(
         .eq('id', org.id)
     }
 
-    // 2. Create monthly subscription (BOLETO — user pays within due date)
-    const subscription = await asaas.createSubscription(customerId, plan, 'BOLETO')
+    // 2. Create monthly subscription with the chosen billing method
+    const subscription = await asaas.createSubscription(customerId, plan, billingType)
 
     await supabase
       .from('organizations')
@@ -108,6 +109,38 @@ export async function activatePlanFromWebhook(
     return { ok: false as const }
   }
   return { ok: true as const }
+}
+
+/**
+ * Cancel the org's active Asaas subscription.
+ * Sets subscription_status = 'canceled' locally after calling Asaas.
+ */
+export async function cancelSubscription(
+  orgSlug: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAuth()
+  const org     = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const subscriptionId = (org as any).asaas_subscription_id as string | null | undefined
+  if (!subscriptionId) {
+    return { ok: false, error: 'Nenhuma assinatura ativa encontrada.' }
+  }
+
+  try {
+    await asaas.cancelSubscription(subscriptionId)
+  } catch (err: any) {
+    console.error('[cancelSubscription]', err?.message)
+    return { ok: false, error: err.message || 'Erro ao cancelar assinatura' }
+  }
+
+  await supabase
+    .from('organizations')
+    .update({ subscription_status: 'canceled' })
+    .eq('id', org.id)
+
+  revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+  return { ok: true }
 }
 
 export async function getOrgUsage(orgId: string) {

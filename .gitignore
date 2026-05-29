@@ -38,3 +38,5 @@ secrets.txt
 
 # typescript build cache
 tsconfig.tsbuildinfo
+
+.vercel

@@ -2,45 +2,41 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { createCheckoutSession } from '@/actions/billing'
-import { toast } from 'sonner'
+import CheckoutModal from './CheckoutModal'
 import { Loader2 } from 'lucide-react'
 
 type Props = {
-  orgSlug: string
-  plan:    'starter' | 'pro'
-  label:   string
+  orgSlug:   string
+  plan:      'starter' | 'pro'
+  label:     string
   disabled?: boolean
   highlight?: boolean
 }
 
+/**
+ * Button on the /upgrade page that opens the checkout modal
+ * (payment method selector: PIX / Boleto / Cartão).
+ */
 export default function UpgradeCheckoutButton({ orgSlug, plan, label, disabled, highlight }: Props) {
-  const [loading, setLoading] = useState(false)
-
-  async function handleClick() {
-    setLoading(true)
-    const res = await createCheckoutSession(orgSlug, plan)
-    setLoading(false)
-
-    if (!res.ok) {
-      toast.error(res.error)
-      return
-    }
-
-    // Redirect to Asaas payment page
-    window.location.href = res.checkoutUrl
-  }
+  const [open, setOpen] = useState(false)
 
   return (
-    <Button
-      onClick={handleClick}
-      disabled={disabled || loading}
-      variant={highlight ? 'default' : 'outline'}
-      className="w-full"
-    >
-      {loading ? (
-        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aguarde...</>
-      ) : label}
-    </Button>
+    <>
+      <Button
+        onClick={() => setOpen(true)}
+        disabled={disabled}
+        variant={highlight ? 'default' : 'outline'}
+        className="w-full"
+      >
+        {label}
+      </Button>
+
+      <CheckoutModal
+        orgSlug={orgSlug}
+        open={open}
+        onClose={() => setOpen(false)}
+        initialPlan={plan}
+      />
+    </>
   )
 }

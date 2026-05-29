@@ -11,6 +11,7 @@ import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import OrgSetupWizard from '@/components/features/OrgSetupWizard'
+import TrialBanner from '@/components/features/billing/TrialBanner'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -79,6 +80,7 @@ export default async function OrgLayout({
       {!onboardingCompleted && (
         <OrgSetupWizard orgSlug={params.orgSlug} initialName={org.name} />
       )}
+      <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
       <div className="flex flex-1">
