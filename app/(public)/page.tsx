@@ -105,6 +105,9 @@ export default function LandingPage() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <span className="text-base font-semibold tracking-tight text-[#1D1D1F]">Althos CRM</span>
           <div className="flex items-center gap-3">
+            <Link href="/pricing" className="text-sm font-medium text-[#6E6E73] hover:text-[#1D1D1F] transition-colors hidden sm:inline">
+              Preços
+            </Link>
             <Link href="/login" className="text-sm font-medium text-[#6E6E73] hover:text-[#1D1D1F] transition-colors">
               Entrar
             </Link>
@@ -508,7 +511,7 @@ export default function LandingPage() {
                 <p className="font-semibold text-[#1D1D1F] mb-3">Produto</p>
                 <ul className="space-y-2 text-[#6E6E73]">
                   <li><Link href="#funcionalidades" className="hover:text-[#1D1D1F] transition-colors">Funcionalidades</Link></li>
-                  <li><Link href="#planos" className="hover:text-[#1D1D1F] transition-colors">Planos</Link></li>
+                  <li><Link href="/pricing" className="hover:text-[#1D1D1F] transition-colors">Preços</Link></li>
                   <li><Link href="/signup" className="hover:text-[#1D1D1F] transition-colors">Começar grátis</Link></li>
                 </ul>
               </div>
