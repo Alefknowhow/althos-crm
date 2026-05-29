@@ -60,7 +60,8 @@ export const processAutomationEvent = inngest.createFunction(
             automation_id: auto.id,
             lead_id: leadId,
             status: 'running',
-            current_step: 0
+            current_step: 0,
+            started_at: new Date().toISOString(),
           }).select().single()
 
           if (run) {
