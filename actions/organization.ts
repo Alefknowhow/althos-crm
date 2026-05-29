@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils/slugify'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { traduzirErro } from '@/lib/utils/error-translator'
@@ -8,11 +8,17 @@ import { revalidatePath } from 'next/cache'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
 
 
-
-
+/**
+ * Generates a unique slug for a new organization.
+ * Uses the admin client (bypasses RLS) so it can see ALL existing slugs,
+ * not just the ones the calling user belongs to. Without this, new users
+ * with no orgs would always get the first try slug accepted, causing
+ * duplicate-slug errors when the RPC runs against the DB constraint.
+ */
 export async function generateUniqueSlug(name: string) {
   const baseSlug = slugify(name)
-  const supabase = createClient()
+  // Admin client bypasses RLS so we see all existing slugs globally
+  const supabase = createAdminClient()
   let slug = baseSlug
   let counter = 1
   while (true) {

@@ -22,10 +22,11 @@ export default function OnboardingForm() {
     const result = await createOrganization(formData)
 
     if (!result.ok) {
-      setError(result.error || 'Erro ao criar organização')
+      setError(result.error || 'Erro ao criar organização. Tente um nome diferente.')
       setLoading(false)
     } else {
-      router.push(result.redirectTo!)
+      // Hard navigate to guarantee the new session/cookie is picked up
+      window.location.href = result.redirectTo!
     }
   }
 
