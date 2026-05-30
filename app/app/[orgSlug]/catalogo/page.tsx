@@ -1,6 +1,6 @@
 import { listProducts, getCategories } from '@/actions/products'
 import CatalogFilters from '@/components/features/catalog/CatalogFilters'
-import CatalogTable from '@/components/features/catalog/CatalogTable'
+import CatalogSplit from '@/components/features/catalog/CatalogSplit'
 import ProductDialog from '@/components/features/catalog/ProductDialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EmptyState from '@/components/ui/empty-state'
@@ -72,8 +72,8 @@ export default async function CatalogPage({
         
         {products && products.length > 0 ? (
           <div className="space-y-4">
-            <CatalogTable products={products} orgSlug={orgSlug} categories={categories} />
-            
+            <CatalogSplit products={products} orgSlug={orgSlug} categories={categories} />
+
             {/* Simple Pagination */}
             {result.count && result.count > 25 && (
               <div className="flex justify-center gap-2 pt-4">

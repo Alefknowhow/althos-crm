@@ -74,11 +74,38 @@ export async function deleteTask(orgSlug: string, taskId: string) {
 export async function toggleTaskStatus(orgSlug: string, taskId: string, status: 'open' | 'done') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  
+
   const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false, error: error.message }
-  
+
   revalidatePath(`/app/${orgSlug}/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true }
+}
+
+/** Kanban-aware status setter: supports the three-state workflow
+ *  (A Fazer → Em Andamento → Concluído) used by the board view. */
+export async function setTaskStatus(orgSlug: string, taskId: string, status: 'open' | 'doing' | 'done') {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId).eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}`)
+  return { ok: true as const }
+}
+
+/** Quick priority change (used by the Kanban card menu). */
+export async function setTaskPriority(orgSlug: string, taskId: string, priority: 'low' | 'normal' | 'high') {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase.from('tasks').update({ priority }).eq('id', taskId).eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}`)
+  return { ok: true as const }
 }
