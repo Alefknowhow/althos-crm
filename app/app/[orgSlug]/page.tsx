@@ -6,7 +6,7 @@ import DashboardHeader from '@/components/features/dashboard/DashboardHeader'
 import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
 import MetricsWidget from '@/components/features/dashboard/MetricsWidget'
-import TimeSeriesWidget from '@/components/features/dashboard/TimeSeriesWidget'
+import MetricChartWidget from '@/components/features/dashboard/MetricChartWidget'
 import ConversionFunnelWidget from '@/components/features/dashboard/ConversionFunnelWidget'
 import PipelineAtRiskWidget from '@/components/features/dashboard/PipelineAtRiskWidget'
 import TimeInStageWidget from '@/components/features/dashboard/TimeInStageWidget'
@@ -23,12 +23,16 @@ export default async function OrgDashboard({
   searchParams,
 }: {
   params: { orgSlug: string }
-  searchParams: { period?: string; pipeline_id?: string }
+  searchParams: { period?: string; pipeline_id?: string; metric?: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const user = await requireAuth()
   const period = (searchParams.period as Period) || '30d'
   const pipelineId = searchParams.pipeline_id || null
+  const validMetrics = ['leads', 'revenue', 'sales', 'appointments'] as const
+  const metric = (validMetrics as readonly string[]).includes(searchParams.metric || '')
+    ? (searchParams.metric as (typeof validMetrics)[number])
+    : 'leads'
 
   const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário'
 
@@ -83,8 +87,13 @@ export default async function OrgDashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-            <TimeSeriesWidget orgId={org.id} period={period} pipelineId={validPipelineId} />
+          <Suspense key={`${metric}-${period}`} fallback={<Skeleton className="h-[400px] w-full" />}>
+            <MetricChartWidget
+              orgId={org.id}
+              period={period}
+              metric={metric}
+              pipelineId={validPipelineId}
+            />
           </Suspense>
         </div>
         <div>

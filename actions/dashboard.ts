@@ -1143,3 +1143,107 @@ export async function getSellersRanking(
     .sort((a, b) => b.total_value_cents - a.total_value_cents)
     .slice(0, 10)
 }
+
+// ── Configurable metric time-series ──────────────────────────────────────────
+// Powers the main dashboard chart where the user picks WHICH indicator to plot
+// (new leads, revenue, sales count, appointments). Returns a continuous,
+// zero-filled daily series so the line never has gaps.
+
+export type DashboardMetric = 'leads' | 'revenue' | 'sales' | 'appointments'
+
+export const DASHBOARD_METRICS: {
+  value: DashboardMetric
+  label: string
+  color: string
+  format: 'number' | 'currency'
+}[] = [
+  { value: 'leads',        label: 'Novos leads',  color: '#0071e3', format: 'number' },
+  { value: 'revenue',      label: 'Receita',      color: '#34c759', format: 'currency' },
+  { value: 'sales',        label: 'Vendas',       color: '#af52de', format: 'number' },
+  { value: 'appointments', label: 'Agendamentos', color: '#ff9500', format: 'number' },
+]
+
+export type MetricSeries = {
+  metric: DashboardMetric
+  label: string
+  color: string
+  format: 'number' | 'currency'
+  total: number
+  points: { date: string; value: number }[]
+}
+
+function dayKeyUTC(input: string | Date): string {
+  const d = typeof input === 'string'
+    ? new Date(input.length === 10 ? `${input}T00:00:00Z` : input)
+    : input
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })
+}
+
+export async function getMetricTimeSeries(
+  orgId: string,
+  period: Period = '30d',
+  metric: DashboardMetric = 'leads',
+  pipelineId?: string | null,
+): Promise<MetricSeries> {
+  const supabase = createClient()
+  const { start, now } = getDates(period)
+  const meta = DASHBOARD_METRICS.find(m => m.value === metric) ?? DASHBOARD_METRICS[0]
+
+  // Continuous, zero-filled day buckets (UTC) so the chart axis has no gaps.
+  const buckets: Record<string, number> = {}
+  const order: string[] = []
+  const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()))
+  const endUTC   = new Date(Date.UTC(now.getUTCFullYear(),   now.getUTCMonth(),   now.getUTCDate()))
+  for (let d = new Date(startUTC); d <= endUTC; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = dayKeyUTC(new Date(d))
+    if (!(key in buckets)) { buckets[key] = 0; order.push(key) }
+  }
+
+  function add(ts: string | null, amount: number) {
+    if (!ts) return
+    const key = dayKeyUTC(ts)
+    if (key in buckets) buckets[key] += amount
+  }
+
+  if (metric === 'leads') {
+    let q = supabase
+      .from('leads')
+      .select('created_at')
+      .eq('organization_id', orgId)
+      .gte('created_at', start.toISOString())
+    if (pipelineId) q = q.eq('pipeline_id', pipelineId)
+    const { data } = await q
+    ;(data ?? []).forEach((r: any) => add(r.created_at, 1))
+  } else if (metric === 'revenue' || metric === 'sales') {
+    const startDate = start.toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('sales')
+      .select('sale_date, amount_cents, status')
+      .eq('organization_id', orgId)
+      .neq('status', 'canceled')
+      .gte('sale_date', startDate)
+    ;(data ?? []).forEach((r: any) =>
+      add(r.sale_date, metric === 'revenue' ? (r.amount_cents || 0) / 100 : 1),
+    )
+  } else if (metric === 'appointments') {
+    const { data } = await supabase
+      .from('appointments')
+      .select('start_time, status')
+      .eq('organization_id', orgId)
+      .neq('status', 'canceled')
+      .gte('start_time', start.toISOString())
+    ;(data ?? []).forEach((r: any) => add(r.start_time, 1))
+  }
+
+  const points = order.map(date => ({ date, value: buckets[date] }))
+  const total  = points.reduce((acc, p) => acc + p.value, 0)
+
+  return {
+    metric,
+    label:  meta.label,
+    color:  meta.color,
+    format: meta.format,
+    total,
+    points,
+  }
+}
