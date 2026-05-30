@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
 
           // Derive the plan key from the org's current plan column
           // (set when checkout was initiated in createCheckoutSession)
-          const planKey = org.plan === 'starter' || org.plan === 'pro' ? org.plan : 'starter'
+          const planKey = (['starter', 'pro', 'scale'] as const).includes(org.plan)
+            ? (org.plan as 'starter' | 'pro' | 'scale')
+            : 'starter'
           const { activatePlanFromWebhook } = await import('@/actions/billing')
           await activatePlanFromWebhook(subscriptionId, planKey)
         } else if (ev === 'PAYMENT_OVERDUE') {

@@ -120,10 +120,12 @@ export async function updateSession(request: NextRequest) {
 
   // Super-admin routes require the super_admin flag on the user's metadata.
   // This is a belt-and-suspenders check — the layout also verifies server-side.
+  // SECURITY: trust ONLY app_metadata (privileged, service-role-only). The
+  // user_metadata branch was removed because users can self-set that field.
   if (routeClass === 'super_admin') {
+    const appMeta = user.app_metadata as { role?: string; is_super_admin?: boolean } | undefined
     const isSuperAdmin =
-      user.app_metadata?.role === 'super_admin' ||
-      user.user_metadata?.is_super_admin === true
+      appMeta?.role === 'super_admin' || appMeta?.is_super_admin === true
     if (!isSuperAdmin) {
       console.warn('[middleware] non-admin access to super-admin route:', pathname, 'user:', user.id)
       const dest = request.nextUrl.clone()

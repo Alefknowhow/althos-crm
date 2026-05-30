@@ -2,12 +2,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
+  // SECURITY: overwrite any client-supplied x-pathname on the *request* before
+  // it reaches updateSession (which forwards request headers to server
+  // components via NextResponse.next({ request })). This both makes the value
+  // readable by `headers()` in layouts AND prevents a client from spoofing the
+  // header to influence the billing gate.
+  request.headers.set('x-pathname', request.nextUrl.pathname)
+
   const response = await updateSession(request)
 
-  // Forward the pathname as a header so server layouts can read it
-  // without having to use hooks (which are client-only).
-  // Used by the billing gate in app/app/[orgSlug]/layout.tsx to skip
-  // the redirect when the user is already on the /upgrade page.
+  // Also expose it on the response for any edge consumers.
   response.headers.set('x-pathname', request.nextUrl.pathname)
 
   return response

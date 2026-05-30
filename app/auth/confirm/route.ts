@@ -13,7 +13,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const origin     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'
   const token_hash = searchParams.get('token_hash')
-  const type       = searchParams.get('type') ?? 'email'
+
+  // SECURITY: only accept a known set of OTP types instead of passing the raw
+  // query-string value into verifyOtp (avoids OTP-type confusion attacks).
+  const ALLOWED_OTP_TYPES = ['email', 'signup', 'recovery', 'invite', 'email_change'] as const
+  type OtpType = (typeof ALLOWED_OTP_TYPES)[number]
+  const rawType = searchParams.get('type') ?? 'email'
+  const type: OtpType = (ALLOWED_OTP_TYPES as readonly string[]).includes(rawType)
+    ? (rawType as OtpType)
+    : 'email'
 
   if (!token_hash) {
     return NextResponse.redirect(`${origin}/login?error=link_invalido`)
@@ -24,7 +32,7 @@ export async function GET(request: NextRequest) {
   // Exchange the token for a session
   const { data, error } = await supabase.auth.verifyOtp({
     token_hash,
-    type: type as any,
+    type,
   })
 
   if (error || !data.user) {

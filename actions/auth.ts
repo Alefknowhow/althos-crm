@@ -29,10 +29,17 @@ export async function login(formData: FormData) {
     .eq('user_id', data.user.id)
     .limit(1)
 
+  // The embedded `organizations` relation comes back as an object (or array,
+  // depending on the inferred FK cardinality) — normalise both shapes.
   let redirectTo = '/onboarding'
-  if (memberships && memberships.length > 0) {
-    // @ts-ignore
-    redirectTo = `/app/${memberships[0].organizations.slug}/pipeline`
+  const firstOrg = memberships?.[0]?.organizations as
+    | { slug: string }
+    | { slug: string }[]
+    | null
+    | undefined
+  const slug = Array.isArray(firstOrg) ? firstOrg[0]?.slug : firstOrg?.slug
+  if (slug) {
+    redirectTo = `/app/${slug}/pipeline`
   }
 
   return { ok: true, redirectTo }
