@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,6 +39,51 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   const [saving, setSaving] = useState(false)
   // Raw text in the options textarea — avoids trim/filter killing spaces & newlines on every keystroke.
   const [rawOptions, setRawOptions] = useState<string>('')
+
+  // ── Resizable editor/preview split ──────────────────────────────────────
+  // `leftPct` is the editor width as a % of the container. A draggable divider
+  // lets the user shrink the preview (which only needs ~a phone width) and
+  // reclaim the space for editing. Persisted so it sticks between sessions.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const draggingRef  = useRef(false)
+  const leftPctRef   = useRef(58)
+  const [leftPct, setLeftPctState] = useState(58)
+  function setLeft(pct: number) { leftPctRef.current = pct; setLeftPctState(pct) }
+
+  useEffect(() => {
+    try {
+      const saved = parseFloat(localStorage.getItem('formbuilder-split') || '')
+      if (!Number.isNaN(saved) && saved >= 25 && saved <= 85) setLeft(saved)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const pct  = ((e.clientX - rect.left) / rect.width) * 100
+      setLeft(Math.min(85, Math.max(25, pct)))
+    }
+    function onUp() {
+      if (!draggingRef.current) return
+      draggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      try { localStorage.setItem('formbuilder-split', String(leftPctRef.current)) } catch {}
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
+
+  function startDrag() {
+    draggingRef.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -95,8 +140,8 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   }
 
   return (
-    <div className="flex w-full h-full text-foreground bg-background">
-      <div className="w-1/2 border-r flex flex-col bg-muted/10">
+    <div ref={containerRef} className="flex w-full h-full text-foreground bg-background">
+      <div className="flex flex-col bg-muted/10 min-w-0 shrink-0" style={{ width: `${leftPct}%` }}>
         <div className="p-4 border-b bg-background flex justify-between items-center shadow-sm z-10 shrink-0">
           <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="font-bold border-transparent hover:border-input focus:border-input w-1/2 text-lg h-10" />
           <div className="flex items-center gap-2">
@@ -443,12 +488,22 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
         </div>
       </div>
 
-      <div className="w-1/2 bg-muted flex flex-col relative">
+      {/* Draggable divider — drag to resize, double-click to reset to 58/42. */}
+      <div
+        onMouseDown={startDrag}
+        onDoubleClick={() => { setLeft(58); try { localStorage.setItem('formbuilder-split', '58') } catch {} }}
+        role="separator"
+        aria-orientation="vertical"
+        title="Arraste para redimensionar · duplo-clique para resetar"
+        className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/40 active:bg-primary/60 transition-colors relative z-20"
+      />
+
+      <div className="flex-1 min-w-0 bg-muted flex flex-col relative">
         <div className="p-4 flex justify-between items-center border-b bg-background/50 backdrop-blur-sm z-10 shrink-0">
           <div className="text-sm font-medium text-muted-foreground">Preview</div>
           <Button variant="outline" size="sm" onClick={() => window.open(`/f/${form.slug}/preview`, '_blank')}>Ver em tela cheia ↗</Button>
         </div>
-        <div className="flex-1 flex justify-center items-start pt-12 pb-12 overflow-y-auto hide-scrollbar">
+        <div className="flex-1 flex justify-center items-start py-6 px-4 overflow-y-auto hide-scrollbar">
           <div className="w-full max-w-sm bg-background border rounded-3xl shadow-2xl overflow-hidden pointer-events-none relative ring-8 ring-muted/50">
              <div className="bg-muted px-4 py-3 flex justify-center items-center border-b gap-1 relative">
                 <div className="absolute left-4 w-12 h-4 bg-background/50 rounded-full" />
