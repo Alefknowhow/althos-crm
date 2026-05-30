@@ -30,9 +30,9 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/8 bg-[#070B14] py-12 sm:py-14">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr]">
+          <div className="grid gap-8 sm:gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr]">
             {/* Brand */}
-            <div>
+            <div className="md:col-span-1">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-black">A</span>
                 <span className="text-base font-semibold text-white">ALTHOS <span className="text-white/40 font-normal">CRM</span></span>
@@ -40,44 +40,40 @@ export default function LandingPage() {
               <p className="mt-3 text-sm text-white/45 max-w-xs leading-relaxed">
                 CRM completo com IA e automações para empresas que querem vender mais e escalar com eficiência.
               </p>
-              <div className="mt-4 flex items-center gap-3">
-                {['Instagram', 'Facebook', 'LinkedIn', 'YouTube'].map(s => (
-                  <span key={s} className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 text-[10px] hover:text-white/70 transition-colors">
-                    {s[0]}
-                  </span>
-                ))}
+            </div>
+
+            {/* Link columns — 3 cols on mobile, individual on desktop */}
+            <div className="grid grid-cols-3 gap-6 md:contents">
+              {/* Produto */}
+              <div>
+                <p className="text-sm font-semibold text-white mb-3">Produto</p>
+                <ul className="space-y-2 text-sm text-white/45">
+                  <li><Link href="#funcionalidades" className="hover:text-white transition-colors">Recursos</Link></li>
+                  <li><Link href="#planos" className="hover:text-white transition-colors">Planos</Link></li>
+                  <li><Link href="#integracoes" className="hover:text-white transition-colors">Integrações</Link></li>
+                  <li><Link href="/signup" className="hover:text-white transition-colors">Novidades</Link></li>
+                </ul>
               </div>
-            </div>
 
-            {/* Produto */}
-            <div>
-              <p className="text-sm font-semibold text-white mb-3">Produto</p>
-              <ul className="space-y-2 text-sm text-white/45">
-                <li><Link href="#funcionalidades" className="hover:text-white transition-colors">Recursos</Link></li>
-                <li><Link href="#planos" className="hover:text-white transition-colors">Planos</Link></li>
-                <li><Link href="#integracoes" className="hover:text-white transition-colors">Integrações</Link></li>
-                <li><Link href="/signup" className="hover:text-white transition-colors">Novidades</Link></li>
-              </ul>
-            </div>
+              {/* Empresa */}
+              <div>
+                <p className="text-sm font-semibold text-white mb-3">Empresa</p>
+                <ul className="space-y-2 text-sm text-white/45">
+                  <li><Link href="#depoimentos" className="hover:text-white transition-colors">Sobre nós</Link></li>
+                  <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Contato</a></li>
+                  <li><Link href="/pricing" className="hover:text-white transition-colors">Parceiros</Link></li>
+                </ul>
+              </div>
 
-            {/* Empresa */}
-            <div>
-              <p className="text-sm font-semibold text-white mb-3">Empresa</p>
-              <ul className="space-y-2 text-sm text-white/45">
-                <li><Link href="#depoimentos" className="hover:text-white transition-colors">Sobre nós</Link></li>
-                <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Contato</a></li>
-                <li><Link href="/pricing" className="hover:text-white transition-colors">Parceiros</Link></li>
-              </ul>
-            </div>
-
-            {/* Suporte */}
-            <div>
-              <p className="text-sm font-semibold text-white mb-3">Suporte</p>
-              <ul className="space-y-2 text-sm text-white/45">
-                <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Central de ajuda</a></li>
-                <li><Link href="/login" className="hover:text-white transition-colors">Entrar</Link></li>
-                <li><span>Atendimento 24h</span></li>
-              </ul>
+              {/* Suporte */}
+              <div>
+                <p className="text-sm font-semibold text-white mb-3">Suporte</p>
+                <ul className="space-y-2 text-sm text-white/45">
+                  <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Ajuda</a></li>
+                  <li><Link href="/login" className="hover:text-white transition-colors">Entrar</Link></li>
+                  <li><span>Atendimento 24h</span></li>
+                </ul>
+              </div>
             </div>
 
             {/* Trial card */}
