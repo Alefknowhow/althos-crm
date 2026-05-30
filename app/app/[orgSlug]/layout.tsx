@@ -87,7 +87,7 @@ export default async function OrgLayout({
           <header className="h-14 border-b border-border bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex items-center pl-14 pr-3 md:px-5 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3">
               <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
-                {org.name}
+                Organização
               </span>
               <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
             </div>
