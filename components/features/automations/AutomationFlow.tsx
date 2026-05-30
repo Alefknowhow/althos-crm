@@ -598,12 +598,12 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
     const cx = Math.max(20, (cw - NODE_W) / 2)
     setNodePos(prev => {
       const next = { ...prev }
-      // Trigger
-      if (!next['__trigger']) next['__trigger'] = { x: cx, y: 30 }
-      // Steps — only add missing ones
+      // Trigger — restore a previously saved position if present.
+      if (!next['__trigger']) next['__trigger'] = auto.trigger_config?.__pos ?? { x: cx, y: 30 }
+      // Steps — only add missing ones, restoring saved positions when available.
       steps.forEach((s, i) => {
         const id = s.id || `s${i}`
-        if (!next[id]) next[id] = { x: cx, y: 30 + (i + 1) * (NODE_H + V_GAP) }
+        if (!next[id]) next[id] = s.config?.__pos ?? { x: cx, y: 30 + (i + 1) * (NODE_H + V_GAP) }
       })
       // Remove positions for deleted steps
       const validIds = new Set(allIds)
@@ -643,7 +643,23 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
     setNodePos(prev => ({ ...prev, [nodeId]: { x: ox + dx, y: oy + dy } }))
   }
 
-  function onDragEnd() { dragRef.current = null }
+  function onDragEnd(nodeId?: string) {
+    const dragged = didDrag.current && !!dragRef.current
+    dragRef.current = null
+    // Only persist when an actual drag happened (not a plain click/select).
+    if (!dragged || !nodeId) return
+    const pos = nodePos[nodeId]
+    if (!pos) return
+    if (nodeId === '__trigger') {
+      setAuto({ ...auto, trigger_config: { ...(auto.trigger_config || {}), __pos: pos } })
+    } else {
+      const next = steps.map((s, i) => {
+        const id = s.id || `s${i}`
+        return id === nodeId ? { ...s, config: { ...(s.config || {}), __pos: pos } } : s
+      })
+      setAuto({ ...auto, steps: next })
+    }
+  }
 
   // Returns true if the last pointer interaction was a real drag (suppress click)
   function wasDrag() { return didDrag.current }
@@ -789,7 +805,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
                 onPointerDown={e => onDragStart(e, '__trigger', 0)}
                 onPointerMove={e => onDragMove(e, '__trigger')}
-                onPointerUp={onDragEnd}
+                onPointerUp={() => onDragEnd('__trigger')}
               >
                 {/* Drag handle hint */}
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
@@ -821,7 +837,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
                 onPointerDown={e => onDragStart(e, nodeId, i + 1)}
                 onPointerMove={e => onDragMove(e, nodeId)}
-                onPointerUp={onDragEnd}
+                onPointerUp={() => onDragEnd(nodeId)}
               >
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
                   <GripVertical className="w-4 h-4" />
