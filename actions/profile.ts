@@ -65,11 +65,29 @@ export async function requestEmailChange(newEmail: string) {
 
 // ── Change password ───────────────────────────────────────────────────────────
 
-export async function changePassword(newPassword: string) {
-  await requireAuth()
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const user = await requireAuth()
   if (newPassword.length < 8)
-    return { ok: false as const, error: 'A senha precisa ter pelo menos 8 caracteres.' }
+    return { ok: false as const, error: 'A nova senha precisa ter pelo menos 8 caracteres.' }
+  if (!currentPassword)
+    return { ok: false as const, error: 'Informe sua senha atual.' }
+  if (currentPassword === newPassword)
+    return { ok: false as const, error: 'A nova senha deve ser diferente da atual.' }
+
   const supabase = createClient()
+
+  // SECURITY: re-authenticate with the current password before allowing a
+  // password change. Supabase's updateUser({ password }) alone does NOT verify
+  // the old password, so without this an attacker with a hijacked session could
+  // lock the real owner out. signInWithPassword fails on a wrong password.
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email: user.email ?? '',
+    password: currentPassword,
+  })
+  if (reauthError) {
+    return { ok: false as const, error: 'Senha atual incorreta.' }
+  }
+
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) return { ok: false as const, error: error.message }
   return { ok: true as const }

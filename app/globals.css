@@ -164,3 +164,33 @@
     transform: translateY(-2px);
   }
 }
+
+/* ── Collapsed desktop sidebar (icons only) ──────────────────────────────── */
+/* Driven by the `.sidebar-collapsed` class toggled on the desktop <aside> in
+   SidebarShell. Hides text labels/badges and centers the icons so the rail
+   shrinks to w-16 while staying fully navigable. */
+.sidebar-collapsed .sidebar-brand { display: none; }
+.sidebar-collapsed nav p { display: none; }                 /* SectionLabel */
+
+/* Nav links + group trigger: hide text, badges, chevron; center the icon. */
+.sidebar-collapsed nav a,
+.sidebar-collapsed nav > div > button {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.sidebar-collapsed nav a > span,
+.sidebar-collapsed nav > div > button > span {
+  gap: 0;
+}
+.sidebar-collapsed nav a > span > :not(:first-child),
+.sidebar-collapsed nav > div > button > span > :not(:first-child),
+.sidebar-collapsed nav > div > button > svg {
+  display: none;
+}
+/* Hide expanded sub-items (e.g. Atendente IA group) when collapsed. */
+.sidebar-collapsed nav > div > div { display: none; }
+
+/* User menu: hide name/email + chevron, center the avatar. */
+.sidebar-collapsed [data-usermenu] > button { justify-content: center; }
+.sidebar-collapsed [data-usermenu] > button > :not(:first-child) { display: none; }

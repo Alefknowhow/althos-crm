@@ -75,7 +75,17 @@ export default async function RevenueForecastWidget({
               Por estágio
             </div>
             <div className="space-y-2">
-              {forecast.stages.map(row => (
+              {/* Bars are scaled to the expected (weighted) value so they
+                  visually track the R$ numbers — an empty stage shows no bar,
+                  the biggest contributor fills the track. */}
+              {(() => {
+                const maxExpected = Math.max(
+                  1,
+                  ...forecast.stages.map(s => s.expected_value_cents || 0),
+                )
+                return forecast.stages.map(row => {
+                  const barPct = ((row.expected_value_cents || 0) / maxExpected) * 100
+                  return (
                 <div key={row.stage_id} className="text-xs">
                   <div className="flex items-center justify-between mb-0.5">
                     <div className="flex items-center gap-2">
@@ -97,17 +107,19 @@ export default async function RevenueForecastWidget({
                       </span>
                     </div>
                   </div>
-                  <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-emerald-500/60 transition-all"
-                      style={{ width: `${row.probability * 100}%` }}
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${barPct}%` }}
                     />
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">
                     {row.lead_count} lead{row.lead_count !== 1 ? 's' : ''} no estágio
                   </div>
                 </div>
-              ))}
+                  )
+                })
+              })()}
             </div>
           </div>
         )}

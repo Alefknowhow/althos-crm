@@ -40,7 +40,7 @@ export default function SidebarUserMenu({ name, email }: Props) {
   const profileHref = orgSlug ? `/app/${orgSlug}/perfil` : '#'
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} data-usermenu className="relative">
       {/* Popup menu */}
       {open && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50">

@@ -2,19 +2,32 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function SidebarShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen]   = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const pathname          = usePathname()
   const closeRef          = useRef<HTMLButtonElement>(null)
 
   // Auto-close on route change
   useEffect(() => { setOpen(false) }, [pathname])
 
-  // Mount after hydration to avoid SSR mismatch
-  useEffect(() => { setMounted(true) }, [])
+  // Mount after hydration to avoid SSR mismatch + restore collapsed preference
+  useEffect(() => {
+    setMounted(true)
+    try { setCollapsed(localStorage.getItem('sidebar-collapsed') === '1') } catch {}
+  }, [])
+
+  function toggleCollapsed() {
+    setCollapsed(v => {
+      const next = !v
+      try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0') } catch {}
+      return next
+    })
+  }
 
   // Lock body scroll while drawer is open (iOS fix)
   useEffect(() => {
@@ -32,8 +45,27 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
   return (
     <>
       {/* Desktop aside */}
-      <aside className="hidden md:flex w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen">
+      <aside
+        data-collapsed={collapsed}
+        className={cn(
+          'hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen relative transition-[width] duration-200 ease-out',
+          collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
+        )}
+      >
         {children}
+
+        {/* Collapse / expand toggle — pinned to the header row (h-14). */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          title={collapsed ? 'Expandir' : 'Recolher'}
+          className="absolute top-3.5 right-2 w-7 h-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors z-10"
+        >
+          {collapsed
+            ? <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
+            : <PanelLeftClose className="w-4 h-4" strokeWidth={1.75} />}
+        </button>
       </aside>
 
       {/* Mobile hamburger — only after hydration to avoid flash */}

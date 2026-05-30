@@ -108,8 +108,8 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 px-6 py-8 overflow-y-auto bg-secondary/40">
-            <div className="mx-auto w-full max-w-[1400px]">
+          <main className="flex-1 px-3 sm:px-5 py-5 overflow-y-auto bg-secondary/40">
+            <div className="mx-auto w-full max-w-[1760px]">
               {children}
             </div>
           </main>

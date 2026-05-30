@@ -94,7 +94,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   return (
     <SidebarShell>
       <div className="h-14 border-b border-sidebar-border flex items-center px-5">
-        <span className="font-semibold tracking-apple-tighter text-base">Althos CRM</span>
+        <span className="sidebar-brand font-semibold tracking-apple-tighter text-base">Althos CRM</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">

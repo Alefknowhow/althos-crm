@@ -116,14 +116,19 @@ export default function ProfileClient({
   }
 
   // ── Troca de senha ───────────────────────────────────────────────────────
+  const [currentPass,   setCurrentPass]   = useState('')
   const [newPass,       setNewPass]       = useState('')
   const [confirmPass,   setConfirmPass]   = useState('')
   const [showPass,      setShowPass]      = useState(false)
   const [savingPass,    setSavingPass]    = useState(false)
 
   async function handleChangePassword() {
+    if (!currentPass) {
+      toast.error('Informe sua senha atual.')
+      return
+    }
     if (newPass.length < 8) {
-      toast.error('A senha precisa ter pelo menos 8 caracteres.')
+      toast.error('A nova senha precisa ter pelo menos 8 caracteres.')
       return
     }
     if (newPass !== confirmPass) {
@@ -131,9 +136,10 @@ export default function ProfileClient({
       return
     }
     setSavingPass(true)
-    const res = await changePassword(newPass)
+    const res = await changePassword(currentPass, newPass)
     if (res.ok) {
       toast.success('Senha alterada com sucesso!')
+      setCurrentPass('')
       setNewPass('')
       setConfirmPass('')
     } else {
@@ -252,6 +258,19 @@ export default function ProfileClient({
       <Section icon={Lock} title="Segurança">
         <div className="space-y-4">
           <div className="space-y-1.5">
+            <Label htmlFor="current-pass">Senha atual</Label>
+            <Input
+              id="current-pass"
+              type={showPass ? 'text' : 'password'}
+              value={currentPass}
+              onChange={e => setCurrentPass(e.target.value)}
+              placeholder="sua senha atual"
+              autoComplete="current-password"
+              className="h-10"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="new-pass">Nova senha</Label>
             <div className="relative">
               <Input
@@ -260,6 +279,7 @@ export default function ProfileClient({
                 value={newPass}
                 onChange={e => setNewPass(e.target.value)}
                 placeholder="mínimo 8 caracteres"
+                autoComplete="new-password"
                 className="h-10 pr-10"
               />
               <button
@@ -291,7 +311,7 @@ export default function ProfileClient({
           <div className="flex justify-end">
             <Button
               onClick={handleChangePassword}
-              disabled={savingPass || !newPass || !confirmPass}
+              disabled={savingPass || !currentPass || !newPass || !confirmPass}
               size="sm"
               variant="outline"
               className="min-w-[160px]"
