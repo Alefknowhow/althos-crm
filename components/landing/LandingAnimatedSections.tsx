@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { FadeIn, FadeInStagger, FadeInItem } from './FadeIn'
 
-// ── Spotlight card ────────────────────────────────────────────────────────────
+// ── Spotlight card (blue glow for dark theme) ─────────────────────────────────
 
 function SpotlightCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -28,61 +28,38 @@ function SpotlightCard({ children, className = '' }: { children: React.ReactNode
       style={{ '--sx': '50%', '--sy': '50%' } as React.CSSProperties}
     >
       <div className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: 'radial-gradient(280px circle at var(--sx) var(--sy), rgba(99,102,241,0.06), transparent 70%)' }} />
-      <div className="relative z-10">{children}</div>
+        style={{ background: 'radial-gradient(280px circle at var(--sx) var(--sy), rgba(59,130,246,0.12), transparent 70%)' }} />
+      <div className="relative z-10 h-full">{children}</div>
     </div>
   )
 }
 
-// ── Animated counter ──────────────────────────────────────────────────────────
+// ── Section heading helper ────────────────────────────────────────────────────
 
-function AnimatedCounter({ from = 0, to, suffix = '', prefix = '' }: { from?: number; to: number; suffix?: string; prefix?: string }) {
-  const [count, setCount] = useState(from)
-  const ref = useRef<HTMLSpanElement>(null)
-  const started = useRef(false)
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !started.current) {
-        started.current = true
-        const duration = 1400
-        const start = performance.now()
-        const step = (now: number) => {
-          const ease = 1 - Math.pow(1 - Math.min((now - start) / duration, 1), 3)
-          setCount(Math.round(from + (to - from) * ease))
-          if (ease < 1) requestAnimationFrame(step)
-        }
-        requestAnimationFrame(step)
-      }
-    }, { threshold: 0.5 })
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [from, to])
-  return <span ref={ref}>{prefix}{count.toLocaleString('pt-BR')}{suffix}</span>
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+      ✦ {children}
+    </span>
+  )
 }
 
-// ── Social proof strip ────────────────────────────────────────────────────────
+// ── Trust logos strip ─────────────────────────────────────────────────────────
 
-export function SocialProofStrip() {
-  const items = [
-    { icon: '💬', label: 'DMs do Instagram', sub: 'automáticos' },
-    { icon: '📊', label: 'Pipeline',          sub: 'visual' },
-    { icon: '🤖', label: 'IA nativa',         sub: '24/7' },
-    { icon: '🎯', label: 'Meta Ads',           sub: 'integrado' },
-    { icon: '🛟', label: 'Suporte 24h',        sub: 'incluído' },
-  ]
+export function TrustLogos() {
+  const logos = ['AGÊNCIA 360', 'VIAJAR+', 'CLÍNICA PRIME', 'IMOBILIÁRIA NOVOLAR', 'AGÊNCIA NEXT', 'INOVA DIGITAL']
   return (
     <FadeIn>
-      <section className="border-y border-black/5 bg-[#F5F5F7] py-4 overflow-x-auto">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="flex items-center justify-start sm:justify-center gap-x-4 sm:gap-x-6 gap-y-2 min-w-max sm:min-w-0 sm:flex-wrap">
-            {items.map((item, i) => (
-              <div key={item.label} className="flex items-center gap-x-4 sm:gap-x-6">
-                <span className="flex items-center gap-1.5 text-[13px] whitespace-nowrap">
-                  <span>{item.icon}</span>
-                  <span><strong className="text-[#1D1D1F]">{item.label}</strong> <span className="text-[#6E6E73]">{item.sub}</span></span>
-                </span>
-                {i < items.length - 1 && <span className="hidden sm:block text-black/15">·</span>}
-              </div>
+      <section id="integracoes" className="border-y border-white/8 py-8 sm:py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-6">
+            Empresas que confiam e crescem com a gente
+          </p>
+          <div className="flex items-center justify-start sm:justify-center gap-x-8 sm:gap-x-12 gap-y-4 overflow-x-auto sm:flex-wrap pb-1">
+            {logos.map(l => (
+              <span key={l} className="text-[13px] sm:text-sm font-bold tracking-tight text-white/35 hover:text-white/60 transition-colors whitespace-nowrap">
+                {l}
+              </span>
             ))}
           </div>
         </div>
@@ -91,253 +68,91 @@ export function SocialProofStrip() {
   )
 }
 
-// ── Platforms comparison ──────────────────────────────────────────────────────
+// ── Features grid (6 cards) ───────────────────────────────────────────────────
 
-export function PlatformsSection() {
-  const tools = [
-    { name: 'ManyChat',        category: 'DMs + comentários automáticos', price: 450, icon: '💬', gradient: 'from-orange-400 to-red-500' },
-    { name: 'RD Station CRM',  category: 'Pipeline + gestão de leads',    price: 497, icon: '📊', gradient: 'from-blue-400 to-cyan-500' },
-    { name: 'ActiveCampaign',  category: 'E-mail + automações',           price: 249, icon: '⚡', gradient: 'from-purple-400 to-violet-500' },
-    { name: 'Ferramenta de IA',category: 'Atendente virtual + insights',  price: 299, icon: '🤖', gradient: 'from-emerald-400 to-teal-500' },
-  ]
-  const total = tools.reduce((sum, t) => sum + t.price, 0)
-  const included = [
-    'Pipeline Kanban + gestão de leads',
-    'WhatsApp Business unificado',
-    'DMs e comentários do Instagram',
-    'Automações visuais (sem código)',
-    'Score IA + Atendente virtual 24/7',
-    'Meta Ads + Conversions API',
-    'Suporte 24h incluído',
-  ]
+const FEATURES = [
+  {
+    title: 'CRM Completo',
+    desc: 'Organize leads, oportunidades e clientes em um só lugar.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Atendimento com IA',
+    desc: 'Responda, qualifique e converta leads 24h por dia.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10.5h8M8 14h5m-9 7 3.5-2A9 9 0 1 1 21 12a9 9 0 0 1-13.5 7.794L4 21Z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Automações',
+    desc: 'Automatize follow-ups, mensagens e tarefas.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7Z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'WhatsApp Integrado',
+    desc: 'Centralize conversas e tenha mais controle.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.3 48.3 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.4 48.4 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Relatórios Inteligentes',
+    desc: 'Dashboards avançados para decisões melhores.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Integrações Nativas',
+    desc: 'Conecte com Meta Ads, Google Ads e muito mais.',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+      </svg>
+    ),
+  },
+]
 
+export function FeaturesGrid() {
   return (
-    <section className="py-14 sm:py-20 md:py-28 bg-white overflow-hidden">
+    <section id="funcionalidades" className="py-16 sm:py-24 md:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn className="text-center mb-10 sm:mb-14">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#1D1D1F]">
-            Por que Althos CRM
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
-            Você paga mais do que precisa.
-          </h2>
-          <p className="mt-3 text-base sm:text-lg text-[#6E6E73] max-w-xl mx-auto">
-            Somando as ferramentas comuns, o custo chega a{' '}
-            <strong className="text-[#1D1D1F]">R${total.toLocaleString('pt-BR')}/mês</strong>.
-            O Althos entrega tudo por muito menos.
-          </p>
-        </FadeIn>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start lg:items-center">
-
-          {/* Left: tools being replaced */}
-          <FadeIn>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#6E6E73] mb-4">Antes — ferramentas separadas</p>
-              {tools.map(tool => (
-                <div key={tool.name} className="flex items-center gap-3 rounded-xl bg-[#F5F5F7] border border-black/5 p-3 sm:p-4">
-                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center text-base sm:text-lg text-white shrink-0`}>
-                    {tool.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#6E6E73] line-through decoration-red-400 decoration-2">{tool.name}</p>
-                    <p className="text-xs text-[#9E9EA3] leading-tight">{tool.category}</p>
-                  </div>
-                  <p className="text-sm font-semibold text-red-500 shrink-0 line-through">
-                    R${tool.price.toLocaleString('pt-BR')}/mês
-                  </p>
-                </div>
-              ))}
-              <div className="flex items-center justify-between rounded-xl bg-red-50 border border-red-100 px-4 py-3 mt-2">
-                <p className="text-sm font-bold text-red-700">Total mensal</p>
-                <p className="text-xl font-bold text-red-600">R${total.toLocaleString('pt-BR')}<span className="text-sm font-normal">/mês</span></p>
-              </div>
-            </div>
-          </FadeIn>
-
-          {/* Right: Althos */}
-          <FadeIn delay={0.15}>
-            <div className="relative">
-              <div className="hidden lg:flex absolute -left-8 top-1/2 -translate-y-1/2 items-center text-[#6E6E73]">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </svg>
-              </div>
-              <div className="rounded-2xl sm:rounded-3xl bg-[#1D1D1F] p-6 sm:p-8 text-white relative overflow-hidden">
-                <div className="pointer-events-none absolute -top-16 -right-16 w-[250px] h-[250px] rounded-full bg-gradient-to-br from-blue-500/20 via-violet-500/10 to-transparent blur-3xl" />
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/40">Com Althos CRM</span>
-                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400 uppercase">Tudo incluído</span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight">Uma assinatura. Cinco ferramentas.</h3>
-                  <ul className="mt-5 space-y-2">
-                    {included.map(feature => (
-                      <li key={feature} className="flex items-center gap-2.5 text-sm text-white/80">
-                        <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-6 flex items-end gap-2 border-t border-white/10 pt-5">
-                    <div>
-                      <p className="text-xs text-white/40 mb-0.5">A partir de</p>
-                      <div className="flex items-end gap-1.5">
-                        <span className="text-3xl sm:text-4xl font-bold tracking-tight">R$197</span>
-                        <span className="mb-1 text-sm text-white/60">/mês</span>
-                      </div>
-                      <p className="text-xs text-white/30 mt-0.5">vs R${total.toLocaleString('pt-BR')}/mês separado</p>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-xs text-white/40 mb-0.5">Economia</p>
-                      <p className="text-xl sm:text-2xl font-bold text-emerald-400">R${(total - 197).toLocaleString('pt-BR')}</p>
-                      <p className="text-xs text-white/30">por mês</p>
-                    </div>
-                  </div>
-                  <Link href="/signup" className="mt-5 block rounded-full bg-white px-6 py-2.5 sm:py-3 text-center text-sm font-semibold text-[#1D1D1F] hover:bg-white/90 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                    Começar 7 dias grátis
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ── Stats section ─────────────────────────────────────────────────────────────
-
-export function StatsSection() {
-  const stats = [
-    { value: 5,    suffix: '',   prefix: '',   label: 'Ferramentas substituídas' },
-    { value: 1298, suffix: '+',  prefix: 'R$', label: 'Economizados/mês em média' },
-    { value: 47,   suffix: '%',  prefix: '',   label: 'Menos tempo de resposta' },
-    { value: 7,    suffix: 'd',  prefix: '',   label: 'Trial grátis · sem cartão' },
-  ]
-  return (
-    <section className="border-y border-black/5 bg-[#F5F5F7] py-10 sm:py-14">
-      <FadeInStagger className="mx-auto max-w-4xl px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
-        {stats.map(s => (
-          <FadeInItem key={s.label}>
-            <p className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1D1D1F]">
-              <AnimatedCounter to={s.value} suffix={s.suffix} prefix={s.prefix} />
-            </p>
-            <p className="mt-1 text-xs sm:text-sm text-[#6E6E73] leading-snug">{s.label}</p>
-          </FadeInItem>
-        ))}
-      </FadeInStagger>
-    </section>
-  )
-}
-
-// ── AI section ────────────────────────────────────────────────────────────────
-
-export function AISection() {
-  const items = [
-    { emoji: '🎯', title: 'Score IA',      badge: 'Pontuação 0–100',     desc: 'Qualifica cada lead automaticamente com uma nota e tier. Priorize seu tempo com quem realmente vai fechar.' },
-    { emoji: '🤝', title: 'Atendente IA',  badge: 'Responde como humano', desc: 'Responde WhatsApp, DMs e comentários do Instagram automaticamente. Qualifica leads a qualquer hora, sem você precisar estar online.' },
-    { emoji: '💡', title: 'Insights IA',   badge: 'Chat com seus dados',  desc: 'Pergunte qualquer coisa sobre seu negócio em linguagem natural. A IA analisa e responde com dados reais em segundos.' },
-    { emoji: '🛟', title: 'Suporte 24h',   badge: 'Sempre disponível',    desc: 'Equipe de suporte disponível 24h por dia, 7 dias por semana. Via chat, WhatsApp e e-mail. Você nunca fica travado.' },
-  ]
-  return (
-    <section className="bg-[#1D1D1F] py-14 sm:py-20 md:py-28 text-white overflow-hidden relative">
-      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-gradient-to-b from-blue-500/10 via-violet-500/5 to-transparent blur-3xl" />
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        <FadeIn className="text-center mb-10 sm:mb-14">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/60">
-            Inteligência Artificial
-          </span>
+          <SectionEyebrow>Recursos</SectionEyebrow>
           <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
-            IA que parece humana.
+            Tudo que sua empresa precisa para{' '}
+            <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">vender mais</span>{' '}
+            e crescer rápido
           </h2>
-          <p className="mt-3 text-base sm:text-lg text-white/60 max-w-xl mx-auto">
-            Responde clientes, qualifica leads e entrega insights — 24/7, automático.
-          </p>
         </FadeIn>
-        <FadeInStagger className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {items.map(item => (
-            <FadeInItem key={item.title}>
-              <SpotlightCard className="rounded-2xl sm:rounded-3xl bg-white/5 border border-white/10 p-5 sm:p-6 flex flex-col gap-3 h-full hover:border-white/20 transition-colors duration-300">
-                <div className="text-2xl sm:text-3xl">{item.emoji}</div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{item.title}</h3>
-                  <p className="text-[13px] sm:text-[15px] text-white/60 leading-relaxed">{item.desc}</p>
+
+        <FadeInStagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" stagger={0.08}>
+          {FEATURES.map(f => (
+            <FadeInItem key={f.title}>
+              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 h-full hover:border-blue-500/30 transition-colors duration-300">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 mb-4">
+                  {f.icon}
                 </div>
-                <div className="mt-auto pt-1">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-[11px] font-medium text-white/40">
-                    ✦ {item.badge}
-                  </span>
-                </div>
+                <h3 className="text-base font-semibold text-white mb-1.5">{f.title}</h3>
+                <p className="text-[14px] text-white/55 leading-relaxed">{f.desc}</p>
               </SpotlightCard>
             </FadeInItem>
           ))}
         </FadeInStagger>
-      </div>
-    </section>
-  )
-}
-
-// ── Meta section ──────────────────────────────────────────────────────────────
-
-export function MetaSection() {
-  const events = [
-    { event: 'PageView',     when: 'Visitante abre o formulário',    color: 'bg-blue-100 text-blue-700' },
-    { event: 'Lead',         when: 'Formulário enviado',             color: 'bg-violet-100 text-violet-700' },
-    { event: 'Purchase',     when: 'Lead marcado como Ganho',        color: 'bg-emerald-100 text-emerald-700' },
-    { event: 'NotQualified', when: 'Score IA → tier Frio',           color: 'bg-red-100 text-red-700' },
-  ]
-  const bullets = [
-    { icon: '📍', text: 'Evento Lead disparado via Pixel e CAPI ao enviar o formulário' },
-    { icon: '💰', text: 'Evento Purchase enviado quando o lead chega no estágio Ganho' },
-    { icon: '❌', text: 'Evento NotQualified quando a IA classifica o lead como Frio' },
-    { icon: '🔗', text: 'UTM source e campaign capturados automaticamente' },
-  ]
-  return (
-    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-14 sm:py-20 md:py-28">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12 items-center">
-        <FadeIn>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#1D1D1F]">
-            Tráfego pago
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-            Feito para quem investe em Meta Ads.
-          </h2>
-          <p className="mt-3 text-[15px] sm:text-lg text-[#6E6E73] leading-relaxed">
-            Integração nativa com Meta Pixel e Conversions API. Cada lead dispara os eventos certos para otimizar suas campanhas.
-          </p>
-          <FadeInStagger className="mt-6 flex flex-col gap-3">
-            {bullets.map(item => (
-              <FadeInItem key={item.text} className="flex items-start gap-3">
-                <span className="text-lg shrink-0">{item.icon}</span>
-                <span className="text-[14px] sm:text-[15px] text-[#3D3D3F] leading-relaxed">{item.text}</span>
-              </FadeInItem>
-            ))}
-          </FadeInStagger>
-        </FadeIn>
-        <FadeIn delay={0.15}>
-          <div className="rounded-2xl sm:rounded-3xl bg-[#F5F5F7] p-5 sm:p-8 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#6E6E73] mb-3">Fluxo de eventos</p>
-            {events.map((ev, i) => (
-              <motion.div
-                key={ev.event}
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: i * 0.08 }}
-                className="flex items-center gap-3 rounded-xl sm:rounded-2xl bg-white border border-black/5 p-3 sm:p-4"
-              >
-                <span className={`rounded-lg px-2 py-0.5 text-[11px] sm:text-xs font-semibold font-mono shrink-0 ${ev.color}`}>
-                  {ev.event}
-                </span>
-                <span className="text-[13px] sm:text-sm text-[#6E6E73]">{ev.when}</span>
-              </motion.div>
-            ))}
-          </div>
-        </FadeIn>
       </div>
     </section>
   )
@@ -361,65 +176,67 @@ function PricingCard({
   return (
     <motion.div
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className={`relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col gap-5 h-full ${
-        highlight
-          ? 'bg-[#1D1D1F] text-white shadow-2xl shadow-black/20 ring-2 ring-blue-500/30'
-          : 'bg-white border border-black/8 text-[#1D1D1F]'
+      className={`relative rounded-2xl sm:rounded-3xl p-6 sm:p-7 flex flex-col gap-5 h-full border ${
+        highlight ? 'border-blue-500/50' : 'border-white/10 bg-white/[0.02]'
       }`}
+      style={highlight ? {
+        background: 'linear-gradient(160deg, #1E3A5F 0%, #111827 60%)',
+        boxShadow: '0 0 40px rgba(37,99,235,0.2)',
+      } : undefined}
     >
       {badge && (
-        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-4 py-1 text-[10px] font-bold text-white shadow-lg whitespace-nowrap tracking-widest uppercase">
-          {badge}
+        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-blue-600 px-4 py-1 text-[10px] font-bold text-white shadow-lg whitespace-nowrap tracking-widest uppercase">
+          ★ {badge}
         </span>
       )}
       <div>
-        {tag && (
-          <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide mb-2 ${
-            highlight ? 'bg-white/10 text-white/50' : 'bg-[#F5F5F7] text-[#6E6E73]'
-          }`}>
-            {tag}
-          </span>
-        )}
-        <p className={`text-lg sm:text-xl font-bold mb-1 ${highlight ? 'text-white' : 'text-[#1D1D1F]'}`}>{name}</p>
-        <div className="flex items-end gap-1 mb-1.5">
-          <span className="text-3xl sm:text-4xl font-bold tracking-tight">{price}</span>
-          <span className={`mb-1 text-sm ${highlight ? 'text-white/60' : 'text-[#6E6E73]'}`}>/mês</span>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-lg sm:text-xl font-bold text-white">{name}</p>
+          {tag && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              highlight ? 'bg-blue-500/20 text-blue-300' : 'bg-white/8 text-white/50'
+            }`}>
+              {tag}
+            </span>
+          )}
         </div>
-        <p className={`text-[13px] sm:text-sm leading-relaxed ${highlight ? 'text-white/70' : 'text-[#6E6E73]'}`}>{desc}</p>
+        <div className="flex items-end gap-1 mb-1.5">
+          <span className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{price}</span>
+          <span className="mb-1 text-sm text-white/50">/mês</span>
+        </div>
+        <p className="text-[13px] text-white/55 leading-relaxed">{desc}</p>
+        <p className="mt-2 text-[11px] text-white/35">7 dias grátis · Sem cartão de crédito</p>
       </div>
 
       <ul className="flex flex-col gap-2 flex-1">
         {features.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm">
-            <svg className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-blue-400' : 'text-blue-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <li key={f} className="flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span className={`text-[13px] sm:text-sm ${highlight ? 'text-white/85' : 'text-[#3D3D3F]'}`}>{f}</span>
+            <span className="text-[13px] text-white/80">{f}</span>
           </li>
         ))}
         {disabledFeatures?.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm">
-            <svg className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-white/20' : 'text-black/20'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <li key={f} className="flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 shrink-0 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            <span className={`text-[13px] sm:text-sm line-through ${highlight ? 'text-white/30' : 'text-[#B0B0B5]'}`}>{f}</span>
+            <span className="text-[13px] line-through text-white/30">{f}</span>
           </li>
         ))}
       </ul>
 
-      <div className="space-y-2">
-        <Link
-          href="/signup"
-          className={`block rounded-full py-2.5 sm:py-3 text-center text-sm font-semibold transition-all hover:opacity-90 active:scale-95 ${
-            highlight ? 'bg-white text-[#1D1D1F]' : 'bg-[#1D1D1F] text-white'
-          }`}
-        >
-          {cta}
-        </Link>
-        <p className={`text-center text-[11px] ${highlight ? 'text-white/35' : 'text-[#9E9EA3]'}`}>
-          7 dias grátis · Sem cartão de crédito
-        </p>
-      </div>
+      <Link
+        href="/signup"
+        className={`block rounded-xl py-3 text-center text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0 ${
+          highlight
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500'
+            : 'bg-white/8 text-white border border-white/10 hover:bg-white/12'
+        }`}
+      >
+        {cta}
+      </Link>
     </motion.div>
   )
 }
@@ -433,19 +250,14 @@ export function PricingSection() {
       desc: 'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
       features: [
         'Leads e clientes ilimitados',
-        'Visualize todas as oportunidades em tempo real',
-        'Formulários inteligentes de captação',
-        'Centralize conversas no WhatsApp',
-        'Registre e acompanhe cada venda',
-        'Tarefas e atividades da equipe',
+        'Pipeline visual de oportunidades',
+        'Formulários de captação',
+        'WhatsApp integrado',
+        'Registro de vendas',
+        'Tarefas e atividades',
         'Histórico completo do cliente',
-        'Descubra quais ações geram mais vendas',
       ],
-      disabledFeatures: [
-        'IA para atendimento 24/7',
-        'Automações de follow-up',
-        'Multiusuário',
-      ],
+      disabledFeatures: ['Atendimento com IA 24/7', 'Automações', 'Multiusuário'],
       cta: 'Testar grátis por 7 dias',
     },
     {
@@ -456,13 +268,12 @@ export function PricingSection() {
       desc: 'Para empresas que querem automatizar processos e aumentar as vendas.',
       features: [
         'Tudo do plano Starter',
-        'Atenda, qualifique e converta leads 24h com IA',
-        'Automatize follow-ups sem esforço',
-        'Score IA para priorizar os melhores leads',
-        'Insights de vendas com inteligência artificial',
-        'Automação Instagram (DMs e comentários)',
-        'Meta Ads + Google Ads conectados',
-        'Pixel e CAPI para otimizar campanhas',
+        'IA 24/7 para atendimento',
+        'Automações ilimitadas',
+        'Follow-up automático',
+        'Score e insights de vendas por IA',
+        'Instagram (DMs e comentários)',
+        'Meta Ads + Google Ads + Pixel/CAPI',
         'E-mail marketing incluído',
         'Até 5 usuários · Suporte prioritário',
       ],
@@ -476,13 +287,12 @@ export function PricingSection() {
       desc: 'Para empresas que precisam de mais controle, dados e performance em escala.',
       features: [
         'Tudo do plano Pro',
-        'IA avançada para análises e previsões comerciais',
+        'IA avançada para análises e previsões',
         'Fluxos avançados de automação',
-        'Painéis personalizados de métricas',
-        'Relatórios comparativos e exportação',
+        'Painéis personalizados',
+        'API aberta e webhooks',
         'Usuários ilimitados',
-        'Times, departamentos e permissões avançadas',
-        'Webhooks, API aberta e integrações',
+        'Times, departamentos e permissões',
         'Onboarding personalizado',
         'Gerente de conta dedicado · Suporte VIP',
       ],
@@ -491,33 +301,28 @@ export function PricingSection() {
   ]
 
   return (
-    <section id="planos" className="bg-[#F5F5F7] py-14 sm:py-20 md:py-28">
+    <section id="planos" className="py-16 sm:py-24 md:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <FadeIn className="text-center mb-8 sm:mb-14">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#1D1D1F]">
-            Planos
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+        <FadeIn className="text-center mb-10 sm:mb-14">
+          <SectionEyebrow>Planos flexíveis</SectionEyebrow>
+          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
             Escolha o plano ideal para{' '}
-            <span className="bg-gradient-to-br from-blue-600 via-violet-500 to-blue-400 bg-clip-text text-transparent">
-              vender mais
-            </span>{' '}
-            e escalar seu negócio.
+            <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">o seu momento</span>
           </h2>
-          <p className="mt-3 text-base sm:text-lg text-[#6E6E73] max-w-xl mx-auto">
-            Central de crescimento completa com IA, automações e dados inteligentes em uma única plataforma.
+          <p className="mt-3 text-base sm:text-lg text-white/55 max-w-xl mx-auto">
+            Planos completos para atender desde pequenos negócios até empresas em escala.
           </p>
         </FadeIn>
 
         {/* Mobile: horizontal scroll. Desktop: grid */}
-        <div className="md:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4">
+        <div className="md:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4 pt-3">
           {plans.map(p => (
-            <div key={p.name} className="snap-center shrink-0 w-[85vw] max-w-[320px]">
+            <div key={p.name} className="snap-center shrink-0 w-[85vw] max-w-[330px]">
               <PricingCard {...p} />
             </div>
           ))}
         </div>
-        <FadeInStagger className="hidden md:grid grid-cols-3 gap-5 max-w-5xl mx-auto" stagger={0.12}>
+        <FadeInStagger className="hidden md:grid grid-cols-3 gap-5 max-w-5xl mx-auto pt-3" stagger={0.12}>
           {plans.map(p => (
             <FadeInItem key={p.name}>
               <PricingCard {...p} />
@@ -525,21 +330,105 @@ export function PricingSection() {
           ))}
         </FadeInStagger>
 
-        <p className="mt-5 text-center text-xs text-[#6E6E73] md:hidden">← Deslize para ver todos os planos →</p>
+        <p className="mt-5 text-center text-xs text-white/40 md:hidden">← Deslize para ver todos os planos →</p>
+      </div>
+    </section>
+  )
+}
 
-        {/* Trust seal */}
-        <FadeIn className="mt-10 sm:mt-14">
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm text-[#6E6E73]">
-            {['7 dias grátis para testar', 'Sem cartão de crédito', 'Sem compromisso', 'Cancele quando quiser'].map(item => (
-              <span key={item} className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+// ── Trust seals strip ─────────────────────────────────────────────────────────
+
+export function TrustSeals() {
+  const seals = [
+    {
+      title: 'Cancelamento fácil', sub: 'Cancele quando quiser.',
+      icon: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    },
+    {
+      title: 'Sem fidelidade', sub: 'Você tem total liberdade.',
+      icon: 'M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z',
+    },
+    {
+      title: 'Ambiente seguro', sub: 'Seus dados protegidos.',
+      icon: 'M9 12.75 11.25 15 15 9.75m-3-7.036A11.96 11.96 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z',
+    },
+    {
+      title: 'Suporte humanizado', sub: 'Time especializado.',
+      icon: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.9 17.9 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
+    },
+  ]
+  return (
+    <FadeIn>
+      <section className="border-y border-white/8 py-8 sm:py-10">
+        <FadeInStagger className="mx-auto max-w-5xl px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+          {seals.map(s => (
+            <FadeInItem key={s.title} className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-blue-400 shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
                 </svg>
-                {item}
-              </span>
-            ))}
-          </div>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-white leading-tight">{s.title}</p>
+                <p className="text-[11px] text-white/45 leading-tight">{s.sub}</p>
+              </div>
+            </FadeInItem>
+          ))}
+        </FadeInStagger>
+      </section>
+    </FadeIn>
+  )
+}
+
+// ── Testimonials ──────────────────────────────────────────────────────────────
+
+export function Testimonials() {
+  const items = [
+    {
+      quote: 'O Althos CRM organizou nosso comercial e a IA mudou completamente nosso atendimento. Vendas +35% em 60 dias.',
+      name: 'Rafael Martins', role: 'CEO – Agência 360', color: '#3B82F6',
+    },
+    {
+      quote: 'As automações e o WhatsApp integrado nos fizeram recuperar muitos leads que estavam sendo perdidos.',
+      name: 'Juliana Alves', role: 'Diretora – Viajar+', color: '#8B5CF6',
+    },
+    {
+      quote: 'Dashboard e relatórios nos deram clareza para investir certo e crescer com previsibilidade.',
+      name: 'Carlos Eduardo', role: 'Gestor – Imobiliária Novolar', color: '#06B6D4',
+    },
+  ]
+  return (
+    <section id="depoimentos" className="py-16 sm:py-24 md:py-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <FadeIn className="text-center mb-10 sm:mb-14">
+          <SectionEyebrow>Depoimentos</SectionEyebrow>
+          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+            Quem usa, recomenda
+          </h2>
+          <p className="mt-3 text-base sm:text-lg text-white/55 max-w-xl mx-auto">
+            Empresas que aumentaram vendas, ganharam tempo e escalaram com o Althos CRM.
+          </p>
         </FadeIn>
+
+        <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-5" stagger={0.12}>
+          {items.map(t => (
+            <FadeInItem key={t.name}>
+              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 h-full flex flex-col">
+                <div className="flex items-center gap-0.5 text-amber-400 text-sm mb-4">★★★★★</div>
+                <p className="text-[15px] text-white/80 leading-relaxed flex-1">"{t.quote}"</p>
+                <div className="flex items-center gap-3 mt-5 pt-5 border-t border-white/8">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0" style={{ background: t.color }}>
+                    {t.name[0]}
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-semibold text-white">{t.name}</p>
+                    <p className="text-[11px] text-white/45">{t.role}</p>
+                  </div>
+                </div>
+              </SpotlightCard>
+            </FadeInItem>
+          ))}
+        </FadeInStagger>
       </div>
     </section>
   )
@@ -551,36 +440,31 @@ export function FinalCTA() {
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 sm:pb-24">
       <FadeIn>
-        <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#1D1D1F] via-[#2D2D2F] to-[#1D1D1F] p-8 sm:p-12 md:p-16 text-center text-white relative overflow-hidden">
+        <div className="rounded-2xl sm:rounded-3xl border border-blue-500/20 p-8 sm:p-12 md:p-14 text-center relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #0F1B33 0%, #0A0E1A 100%)' }}
+        >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-[300px] sm:h-[400px] w-[500px] sm:w-[700px] rounded-full bg-gradient-to-br from-blue-500/20 via-violet-500/10 to-transparent blur-3xl" />
+            <div className="h-[300px] sm:h-[420px] w-[520px] sm:w-[760px] rounded-full bg-blue-600/15 blur-[120px]" />
           </div>
-          <div className="relative">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/60 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
-              Trial gratuito disponível agora
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-3">
-              Pare de pagar por 5 ferramentas separadas.
-            </h2>
-            <p className="text-[15px] sm:text-lg md:text-xl text-white/60 mb-8 max-w-xl mx-auto">
-              Teste 7 dias grátis e veja quanto você economiza com WhatsApp, Instagram, Meta Ads e IA — tudo junto.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 text-left">
+            <div className="text-center md:text-left">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
+                Pronto para{' '}
+                <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">transformar seus resultados?</span>
+              </h2>
+              <p className="mt-3 text-[15px] sm:text-lg text-white/60 max-w-xl">
+                Teste grátis por 7 dias e descubra como o Althos CRM pode acelerar o crescimento do seu negócio.
+              </p>
+            </div>
+            <div className="shrink-0 flex flex-col items-center gap-2">
               <Link
                 href="/signup"
-                className="w-full sm:w-auto rounded-full bg-white px-7 py-3 text-[15px] font-semibold text-[#1D1D1F] hover:bg-white/90 transition-all hover:shadow-lg hover:shadow-white/10 hover:-translate-y-0.5 active:translate-y-0 text-center"
+                className="rounded-xl bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
               >
-                Criar conta grátis — 7 dias
+                Testar grátis por 7 dias
               </Link>
-              <Link
-                href="/login"
-                className="w-full sm:w-auto rounded-full border border-white/20 px-7 py-3 text-[15px] font-semibold text-white hover:bg-white/5 transition-colors text-center"
-              >
-                Já tenho uma conta
-              </Link>
+              <p className="text-xs text-white/40">Sem cartão de crédito · Sem compromisso</p>
             </div>
-            <p className="mt-5 text-xs sm:text-sm text-white/30">Sem cartão de crédito · cancele quando quiser · suporte 24h</p>
           </div>
         </div>
       </FadeIn>

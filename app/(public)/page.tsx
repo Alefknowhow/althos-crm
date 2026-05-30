@@ -1,108 +1,115 @@
 import Link from 'next/link'
 import { LandingNav } from '@/components/landing/LandingNav'
 import { LandingHero } from '@/components/landing/LandingHero'
-import { LandingStickyFeatures } from '@/components/landing/LandingStickyFeatures'
 import {
-  SocialProofStrip,
-  PlatformsSection,
-  StatsSection,
-  AISection,
-  MetaSection,
+  TrustLogos,
+  FeaturesGrid,
   PricingSection,
+  TrustSeals,
+  Testimonials,
   FinalCTA,
 } from '@/components/landing/LandingAnimatedSections'
 
-function FaqItem({ q, a }: { q: string; a: string }) {
-  return (
-    <details className="group border-b border-black/8 py-4 sm:py-5">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 text-[15px] sm:text-[17px] font-medium text-[#1D1D1F] list-none">
-        {q}
-        <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-[#6E6E73] transition-transform group-open:rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      </summary>
-      <p className="mt-2 sm:mt-3 text-[13px] sm:text-[15px] text-[#6E6E73] leading-relaxed pr-4 sm:pr-8">{a}</p>
-    </details>
-  )
-}
-
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-[#1D1D1F] antialiased" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", sans-serif' }}>
-
+    <div
+      className="min-h-screen bg-[#0A0E1A] text-white antialiased"
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", sans-serif' }}
+    >
       <LandingNav />
       <div className="h-14" />
 
       <LandingHero />
-      <SocialProofStrip />
-      <LandingStickyFeatures />
-      <StatsSection />
-      <PlatformsSection />
-      <AISection />
-      <MetaSection />
+      <TrustLogos />
+      <FeaturesGrid />
       <PricingSection />
-
-      {/* FAQ */}
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 py-14 sm:py-20 md:py-28">
-        <div className="text-center mb-8 sm:mb-12">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#1D1D1F]">
-            Dúvidas
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight">Perguntas frequentes.</h2>
-        </div>
-        <div className="divide-y divide-black/5">
-          <FaqItem q="Preciso de cartão para testar?" a="Não. O trial de 7 dias é totalmente gratuito e não exige nenhuma forma de pagamento. Você só precisa criar uma conta com e-mail e senha." />
-          <FaqItem q="O Althos CRM realmente substitui o ManyChat?" a="Sim. O Althos inclui automação de DMs do Instagram e respostas a comentários com IA — a mesma funcionalidade principal do ManyChat. Quando alguém manda uma DM ou comenta em seu post, a IA responde automaticamente como um humano, capta o lead e registra tudo no CRM." />
-          <FaqItem q="Como funciona o WhatsApp?" a="O Althos CRM se conecta ao WhatsApp Business API. Você recebe e responde mensagens diretamente no painel, com histórico vinculado ao lead. Configuração em Configurações → WhatsApp em menos de 5 minutos." />
-          <FaqItem q="A IA responde como humano mesmo?" a="Sim. Você configura a persona com o nome, tom de voz e contexto do seu negócio. Ela responde DMs, comentários e WhatsApp de forma natural, sem parecer robótica. Quanto mais contexto você fornecer, melhor a qualidade." />
-          <FaqItem q="O que acontece quando o trial termina?" a="Após 7 dias você escolhe um plano. Seus dados ficam salvos por até 30 dias caso decida retornar. Nenhum lead é apagado automaticamente durante esse período." />
-          <FaqItem q="Posso cancelar quando quiser?" a="Sim. Não há fidelidade mínima. O cancelamento é feito em um clique e vale para o próximo ciclo de cobrança — você continua com acesso até o fim do mês pago." />
-          <FaqItem q="Tem suporte para clientes de agência?" a="Sim. Temos um plano Agency exclusivo para clientes da Althos Performance, com onboarding dedicado e acesso completo. Entre em contato para saber mais." />
-        </div>
-      </section>
-
+      <TrustSeals />
+      <Testimonials />
       <FinalCTA />
 
       {/* Footer */}
-      <footer className="border-t border-black/5 bg-[#F5F5F7] py-10 sm:py-12">
+      <footer className="border-t border-white/8 bg-[#070B14] py-12 sm:py-14">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex flex-col gap-6 sm:gap-8 md:flex-row md:items-start md:justify-between">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr]">
+            {/* Brand */}
             <div>
-              <span className="text-base font-semibold text-[#1D1D1F]">Althos CRM</span>
-              <p className="mt-1 text-sm text-[#6E6E73] max-w-xs">Um sistema. Cinco ferramentas. Por muito menos.</p>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-black">A</span>
+                <span className="text-base font-semibold text-white">ALTHOS <span className="text-white/40 font-normal">CRM</span></span>
+              </div>
+              <p className="mt-3 text-sm text-white/45 max-w-xs leading-relaxed">
+                CRM completo com IA e automações para empresas que querem vender mais e escalar com eficiência.
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                {['Instagram', 'Facebook', 'LinkedIn', 'YouTube'].map(s => (
+                  <span key={s} className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 text-[10px] hover:text-white/70 transition-colors">
+                    {s[0]}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-6 sm:gap-8 text-sm">
-              <div>
-                <p className="font-semibold text-[#1D1D1F] mb-2 sm:mb-3">Produto</p>
-                <ul className="space-y-1.5 sm:space-y-2 text-[#6E6E73]">
-                  <li><Link href="#funcionalidades" className="hover:text-[#1D1D1F] transition-colors">Funcionalidades</Link></li>
-                  <li><Link href="/pricing" className="hover:text-[#1D1D1F] transition-colors">Preços</Link></li>
-                  <li><Link href="/signup" className="hover:text-[#1D1D1F] transition-colors">Grátis</Link></li>
-                </ul>
+
+            {/* Produto */}
+            <div>
+              <p className="text-sm font-semibold text-white mb-3">Produto</p>
+              <ul className="space-y-2 text-sm text-white/45">
+                <li><Link href="#funcionalidades" className="hover:text-white transition-colors">Recursos</Link></li>
+                <li><Link href="#planos" className="hover:text-white transition-colors">Planos</Link></li>
+                <li><Link href="#integracoes" className="hover:text-white transition-colors">Integrações</Link></li>
+                <li><Link href="/signup" className="hover:text-white transition-colors">Novidades</Link></li>
+              </ul>
+            </div>
+
+            {/* Empresa */}
+            <div>
+              <p className="text-sm font-semibold text-white mb-3">Empresa</p>
+              <ul className="space-y-2 text-sm text-white/45">
+                <li><Link href="#depoimentos" className="hover:text-white transition-colors">Sobre nós</Link></li>
+                <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Contato</a></li>
+                <li><Link href="/pricing" className="hover:text-white transition-colors">Parceiros</Link></li>
+              </ul>
+            </div>
+
+            {/* Suporte */}
+            <div>
+              <p className="text-sm font-semibold text-white mb-3">Suporte</p>
+              <ul className="space-y-2 text-sm text-white/45">
+                <li><a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Central de ajuda</a></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">Entrar</Link></li>
+                <li><span>Atendimento 24h</span></li>
+              </ul>
+            </div>
+
+            {/* Trial card */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <p className="text-sm font-semibold text-white">7 dias grátis para testar</p>
               </div>
-              <div>
-                <p className="font-semibold text-[#1D1D1F] mb-2 sm:mb-3">Conta</p>
-                <ul className="space-y-1.5 sm:space-y-2 text-[#6E6E73]">
-                  <li><Link href="/login" className="hover:text-[#1D1D1F] transition-colors">Login</Link></li>
-                  <li><Link href="/signup" className="hover:text-[#1D1D1F] transition-colors">Cadastro</Link></li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-semibold text-[#1D1D1F] mb-2 sm:mb-3">Suporte</p>
-                <ul className="space-y-1.5 sm:space-y-2 text-[#6E6E73]">
-                  <li><a href="mailto:suporte@althos.io" className="hover:text-[#1D1D1F] transition-colors">E-mail</a></li>
-                  <li><span>Atendimento 24h</span></li>
-                </ul>
-              </div>
+              <ul className="space-y-1.5 text-[12px] text-white/55">
+                {['Sem cartão de crédito', 'Sem compromisso', 'Cancele quando quiser'].map(i => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {i}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup" className="mt-4 block rounded-lg bg-blue-600 py-2 text-center text-[13px] font-semibold text-white hover:bg-blue-500 transition-colors">
+                Começar agora
+              </Link>
             </div>
           </div>
-          <div className="mt-8 sm:mt-12 border-t border-black/5 pt-5 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-[#6E6E73]">© {new Date().getFullYear()} Althos Performance. Todos os direitos reservados.</p>
-            <p className="text-xs text-[#6E6E73]">Feito no Brasil 🇧🇷</p>
+
+          <div className="mt-10 border-t border-white/8 pt-6 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-white/35">© {new Date().getFullYear()} Althos CRM. Todos os direitos reservados.</p>
+            <p className="text-xs text-white/35">Feito no Brasil 🇧🇷</p>
           </div>
         </div>
       </footer>
-
     </div>
   )
 }
