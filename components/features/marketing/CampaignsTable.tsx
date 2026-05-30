@@ -16,6 +16,10 @@ import {
 } from '@/components/ui/table'
 import { Trash2, Pause, Play, Megaphone } from 'lucide-react'
 import { deleteCampaign, updateCampaign } from '@/actions/marketing'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type CampaignRow = {
   id: string
@@ -58,6 +62,7 @@ export default function CampaignsTable({
 }) {
   const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [rowToDelete, setRowToDelete] = useState<CampaignRow | null>(null)
 
   async function toggleStatus(row: CampaignRow) {
     setBusyId(row.id)
@@ -73,7 +78,6 @@ export default function CampaignsTable({
   }
 
   async function handleDelete(row: CampaignRow) {
-    if (!window.confirm(`Excluir "${row.name}"? Métricas registradas serão removidas.`)) return
     setBusyId(row.id)
     const res = await deleteCampaign(orgSlug, row.id)
     setBusyId(null)
@@ -185,7 +189,7 @@ export default function CampaignsTable({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleDelete(r)}
+                          onClick={() => setRowToDelete(r)}
                           disabled={busyId === r.id}
                           className="text-destructive hover:bg-destructive/10"
                         >
@@ -200,6 +204,26 @@ export default function CampaignsTable({
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={!!rowToDelete} onOpenChange={o => !o && setRowToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir campanha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {rowToDelete ? `Excluir "${rowToDelete.name}"? Métricas registradas serão removidas. ` : ''}Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(rowToDelete!); setRowToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

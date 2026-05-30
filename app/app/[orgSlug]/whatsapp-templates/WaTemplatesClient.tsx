@@ -16,6 +16,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Plus, Pencil, Trash2, ImageIcon, FileText, Video, X, Upload, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -402,6 +406,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   const [editing, setEditing]      = useState<WaTemplate | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [, startTransition]        = useTransition()
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
 
   function openNew()            { setEditing(null); setDialogOpen(true) }
   function openEdit(t: WaTemplate) { setEditing(t);   setDialogOpen(true) }
@@ -416,7 +421,6 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   }
 
   function handleDelete(id: string) {
-    if (!confirm('Remover este template?')) return
     setDeletingId(id)
     startTransition(async () => {
       try {
@@ -526,7 +530,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(t.id)} disabled={deletingId === t.id}>
+                    onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -543,6 +547,24 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
         onClose={closeDialog}
         onSaved={handleSaved}
       />
+
+      <AlertDialog open={!!templateToDelete} onOpenChange={o => !o && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover template?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(templateToDelete!); setTemplateToDelete(null) }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

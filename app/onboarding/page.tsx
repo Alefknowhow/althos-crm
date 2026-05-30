@@ -33,5 +33,5 @@ export default async function OnboardingPage({
     }
   }
 
-  return <OnboardingForm userEmail={user.email} />
+  return <OnboardingForm userEmail={user.email} isNewOrg={wantsNew} />
 }

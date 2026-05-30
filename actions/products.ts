@@ -2,17 +2,22 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions'
 import { productInputSchema } from '@/lib/validators/product'
 import { revalidatePath } from 'next/cache'
 
 export async function createProduct(orgSlug: string, input: any) {
   const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'catalog')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const validation = productInputSchema.safeParse(input)
   if (!validation.success) {
-    return { ok: false, error: validation.error.issues[0].message }
+    return { ok: false as const, error: validation.error.issues[0].message }
   }
 
   const { data, error } = await supabase.from('products').insert({
@@ -21,23 +26,25 @@ export async function createProduct(orgSlug: string, input: any) {
   }).select().single()
 
   if (error) {
-    // Bubble up the real DB error so the user can see what's wrong (e.g.,
-    // duplicate SKU, RLS denial) instead of a silent generic message.
-    return { ok: false, error: error.message || 'Erro ao criar item no catálogo' }
+    return { ok: false as const, error: error.message || 'Erro ao criar item no catálogo' }
   }
 
   revalidatePath(`/app/${orgSlug}/catalogo`)
-  return { ok: true, data }
+  return { ok: true as const, data }
 }
 
 export async function updateProduct(orgSlug: string, id: string, input: any) {
   const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'catalog')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const validation = productInputSchema.partial().safeParse(input)
   if (!validation.success) {
-    return { ok: false, error: validation.error.issues[0].message }
+    return { ok: false as const, error: validation.error.issues[0].message }
   }
 
   const { data, error } = await supabase.from('products')
@@ -47,18 +54,23 @@ export async function updateProduct(orgSlug: string, id: string, input: any) {
     .select()
     .single()
 
-  if (error) return { ok: false, error: error.message || 'Erro ao atualizar item' }
+  if (error) return { ok: false as const, error: error.message || 'Erro ao atualizar item' }
 
   revalidatePath(`/app/${orgSlug}/catalogo`)
   revalidatePath(`/app/${orgSlug}/catalogo/${id}`)
-  return { ok: true, data }
+  return { ok: true as const, data }
 }
 
 export async function deleteProduct(orgSlug: string, id: string) {
   if (isImpersonating()) {
-    return { ok: false, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
+    return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'catalog')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   // TODO: Em futuras missões, verificar se existem vendas ou agendamentos vinculados

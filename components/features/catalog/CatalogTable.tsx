@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,10 @@ import ProductDialog from './ProductDialog'
 import { deleteProduct, createProduct } from '@/actions/products'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface CatalogTableProps {
   products: any[]
@@ -18,15 +23,14 @@ interface CatalogTableProps {
 }
 
 export default function CatalogTable({ products, orgSlug, categories }: CatalogTableProps) {
-  
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+
   async function handleDelete(id: string) {
-    if (confirm('Tem certeza que deseja excluir este item?')) {
-      const result = await deleteProduct(orgSlug, id)
-      if (result.ok) {
-        toast.success('Item excluído com sucesso')
-      } else {
-        toast.error(result.error)
-      }
+    const result = await deleteProduct(orgSlug, id)
+    if (result.ok) {
+      toast.success('Item excluído com sucesso')
+    } else {
+      toast.error(result.error)
     }
   }
 
@@ -116,7 +120,7 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
                       <Copy className="w-4 h-4 mr-2" /> Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <DropdownMenuItem onClick={() => setDeleteId(product.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <Trash className="w-4 h-4 mr-2" /> Excluir
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -133,6 +137,23 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
           )}
         </TableBody>
       </Table>
+      <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(deleteId!); setDeleteId(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

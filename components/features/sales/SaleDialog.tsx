@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import LeadCombobox from '@/components/features/LeadCombobox'
 import { createSale, updateSale } from '@/actions/sales'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
+import { traduzirErro } from '@/lib/utils/error-translator'
 
 type Member = { id: string; name: string; email: string; role: string }
 type Product = { id: string; name: string; type: string; price_cents: number }
@@ -90,7 +91,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
         setOpen(false)
         router.refresh()
       } else {
-        toast.error(res.error || 'Erro ao salvar')
+        toast.error(traduzirErro(res.error, 'Erro ao salvar venda'))
       }
     })
   }

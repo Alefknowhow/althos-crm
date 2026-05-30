@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { createStage, updateStage, deleteStage } from '@/actions/pipeline'
 import { Trophy, ThumbsDown, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { traduzirErro } from '@/lib/utils/error-translator'
 
 export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any) {
   const [open, setOpen]           = useState(false)
@@ -94,7 +96,7 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   title="Excluir estágio"
                   onClick={async () => {
                     const res = await deleteStage(orgSlug, s.id)
-                    if (!res.ok) alert(res.error)
+                    if (!res.ok) toast.error(traduzirErro(res.error))
                   }}
                   className="text-muted-foreground hover:text-destructive transition-colors"
                 >

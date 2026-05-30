@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { queueEmailForLead } from '@/actions/emails'
 import { Mail } from 'lucide-react'
+import { toast } from 'sonner'
+import { traduzirErro } from '@/lib/utils/error-translator'
 
 function renderTemplate(templateStr: string, variables: any) {
   if (!templateStr) return ''
@@ -39,14 +41,14 @@ export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) 
   const previewHtml = renderTemplate(template?.body_html || '', variables)
 
   async function handleSend() {
-    if (!selectedTemplateId) return alert('Selecione um template')
-    if (!lead.email) return alert('Lead não tem e-mail. Adicione um e-mail antes de tentar enviar mensagens.')
-    
+    if (!selectedTemplateId) { toast.error('Selecione um template'); return }
+    if (!lead.email) { toast.error('Lead não tem e-mail. Adicione um e-mail antes de enviar.'); return }
+
     setLoading(true)
     const res = await queueEmailForLead(orgSlug, lead.id, selectedTemplateId, lead.email)
     setLoading(false)
     if (res.ok) setOpen(false)
-    else alert('Erro: ' + res.error)
+    else toast.error(traduzirErro(res.error))
   }
 
   return (

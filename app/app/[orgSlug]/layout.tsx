@@ -10,7 +10,6 @@ import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
-import OrgSetupWizard from '@/components/features/OrgSetupWizard'
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -62,23 +61,18 @@ export default async function OrgLayout({
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   // Inject saved primary color so it persists on every full page load.
-  // Also fetch onboarding_completed to conditionally show the setup wizard.
   const { data: orgStyle } = await supabase
     .from('organizations')
-    .select('primary_color, onboarding_completed')
+    .select('primary_color')
     .eq('id', org.id)
     .maybeSingle()
   const savedPreset = PRESET_COLORS.find(c => c.hex === orgStyle?.primary_color)
   const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
-  const onboardingCompleted = orgStyle?.onboarding_completed ?? false
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {primaryCSS && (
         <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
-      )}
-      {!onboardingCompleted && (
-        <OrgSetupWizard orgSlug={params.orgSlug} initialName={org.name} />
       )}
       <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
       <OnboardingTour userName={userName} />

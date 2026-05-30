@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { productInputSchema } from '@/lib/validators/product'
@@ -12,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { createProduct, updateProduct } from '@/actions/products'
 import { toast } from 'sonner'
+import { traduzirErro } from '@/lib/utils/error-translator'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { z } from 'zod'
 
@@ -25,10 +27,13 @@ interface ProductFormProps {
 }
 
 export default function ProductForm({ orgSlug, initialData, onSuccess, categories = [] }: ProductFormProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productInputSchema) as any,
+    // zodResolver cast: @hookform/resolvers v5 tem incompatibilidade de tipos com zod v4
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(productInputSchema as any),
     defaultValues: {
       name: initialData?.name || '',
       description: initialData?.description || '',
@@ -54,9 +59,10 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
 
       if (result.ok) {
         toast.success(initialData ? 'Item atualizado com sucesso!' : 'Item criado com sucesso!')
-        onSuccess?.(result.data)
+        router.refresh()
+        onSuccess?.((result as any).data)
       } else {
-        toast.error(result.error)
+        toast.error(traduzirErro(result.error))
       }
     } catch (error) {
       toast.error('Ocorreu um erro inesperado')

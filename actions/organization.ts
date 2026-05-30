@@ -57,6 +57,7 @@ export async function createOrganization(formData: FormData) {
       limit_whatsapp_monthly: 100,
       limit_email_monthly: 100,
       limit_users: 3,
+      onboarding_completed: true,   // wizard is replaced by the onboarding flow
     })
     .select()
     .single()

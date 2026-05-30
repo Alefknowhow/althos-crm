@@ -41,17 +41,19 @@ create table if not exists whatsapp_templates (
 
 alter table whatsapp_templates enable row level security;
 
+drop policy if exists "org members manage whatsapp_templates" on whatsapp_templates;
 create policy "org members manage whatsapp_templates"
   on whatsapp_templates for all
   using (
     organization_id in (
-      select organization_id from organization_members
+      select organization_id from memberships
       where user_id = auth.uid()
     )
   );
 
 create index if not exists idx_whatsapp_templates_org on whatsapp_templates (organization_id);
 
+drop trigger if exists trg_whatsapp_templates_updated_at on whatsapp_templates;
 create trigger trg_whatsapp_templates_updated_at
   before update on whatsapp_templates
   for each row execute function update_updated_at();

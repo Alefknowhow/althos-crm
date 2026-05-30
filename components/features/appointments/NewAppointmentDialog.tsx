@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus } from 'lucide-react'
 import { createManualAppointment } from '@/actions/appointments'
+import { traduzirErro } from '@/lib/utils/error-translator'
 
 type EventType = {
   id: string
@@ -100,7 +101,7 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
       setForm(f => ({ ...f, name: '', email: '', phone: '', notes: '' }))
       startTransition(() => router.refresh())
     } else {
-      toast.error(res.error)
+      toast.error(traduzirErro(res.error, 'Erro ao criar agendamento'))
     }
   }
 

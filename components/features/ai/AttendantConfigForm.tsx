@@ -17,6 +17,10 @@ import {
   DEFAULT_OUT_OF_HOURS_MESSAGE,
   DAY_LABELS,
 } from '@/lib/ai/attendant-defaults'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (rápido, barato — recomendado)' },
@@ -34,6 +38,7 @@ export default function AttendantConfigForm({
 }) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const [enabled, setEnabled] = useState(initial.is_enabled)
   const [persona, setPersona] = useState(initial.persona_prompt)
@@ -79,8 +84,7 @@ export default function AttendantConfigForm({
   }
 
   function resetPersona() {
-    if (!window.confirm('Restaurar a persona padrão? Suas alterações serão perdidas.')) return
-    setPersona(DEFAULT_PERSONA_PROMPT)
+    setShowResetConfirm(true)
   }
 
   function toggleDay(key: string) {
@@ -299,6 +303,23 @@ export default function AttendantConfigForm({
           {saving ? 'Salvando...' : 'Salvar configuração'}
         </Button>
       </div>
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar persona padrão?</AlertDialogTitle>
+            <AlertDialogDescription>Suas alterações serão perdidas.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setPersona(DEFAULT_PERSONA_PROMPT); setShowResetConfirm(false) }}
+            >
+              Restaurar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 
 // Used by the automations editor to populate the "form.submitted" trigger
@@ -52,8 +53,12 @@ async function generateUniqueSlug(name: string): Promise<string> {
 }
 
 export async function createForm(orgSlug: string, name: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'forms')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const slug = await generateUniqueSlug(name)
@@ -100,26 +105,36 @@ export async function createForm(orgSlug: string, name: string) {
 }
 
 export async function updateForm(orgSlug: string, formId: string, updates: any) {
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'forms')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
-  
+
   const { error } = await supabase.from('forms').update(updates).eq('id', formId).eq('organization_id', org.id)
-  
-  if (error) return { ok: false, error: error.message }
+
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/forms`)
   revalidatePath(`/app/${orgSlug}/forms/${formId}/edit`)
-  return { ok: true }
+  return { ok: true as const }
 }
 
 export async function deleteForm(orgSlug: string, formId: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'forms')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
-  
+
   const { error } = await supabase.from('forms').delete().eq('id', formId).eq('organization_id', org.id)
-  
-  if (error) return { ok: false, error: error.message }
+
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/forms`)
-  return { ok: true }
+  return { ok: true as const }
 }
 
 export async function toggleFormActive(orgSlug: string, formId: string, isActive: boolean) {

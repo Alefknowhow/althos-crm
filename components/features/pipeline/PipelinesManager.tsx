@@ -25,6 +25,10 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Star, Pencil, Trash2, ArrowRight } from 'lucide-react'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   createPipeline,
   renamePipeline,
   setDefaultPipeline,
@@ -52,6 +56,7 @@ export default function PipelinesManager({
   const [newName, setNewName] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [pipelineToDelete, setPipelineToDelete] = useState<Pipeline | null>(null)
 
   function refresh() {
     startTransition(() => router.refresh())
@@ -92,7 +97,6 @@ export default function PipelinesManager({
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Excluir o pipeline "${name}"? Esta ação é irreversível.`)) return
     const res = await deletePipeline(orgSlug, id)
     if (res.ok) {
       toast.success('Pipeline excluído')
@@ -217,7 +221,7 @@ export default function PipelinesManager({
                         size="sm"
                         title="Excluir"
                         className="text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(p.id, p.name)}
+                        onClick={() => setPipelineToDelete(p)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -237,6 +241,26 @@ export default function PipelinesManager({
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!pipelineToDelete} onOpenChange={o => !o && setPipelineToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pipeline?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pipelineToDelete ? `Excluir o pipeline "${pipelineToDelete.name}"? ` : ''}Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(pipelineToDelete!.id, pipelineToDelete!.name); setPipelineToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

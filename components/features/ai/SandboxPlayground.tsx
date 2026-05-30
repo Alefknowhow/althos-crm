@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Bot,
   Send,
   Plus,
@@ -83,6 +87,7 @@ export default function SandboxPlayground({
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
 
   // Auto-scroll to bottom when messages change.
   useEffect(() => {
@@ -159,7 +164,6 @@ export default function SandboxPlayground({
   }
 
   async function deleteSession(sessionId: string) {
-    if (!window.confirm('Apagar essa conversa de teste?')) return
     const res = await deleteSandboxSession(orgSlug, sessionId)
     if (res.ok) {
       toast.success('Removida')
@@ -227,7 +231,7 @@ export default function SandboxPlayground({
                   </Link>
                   <button
                     type="button"
-                    onClick={() => deleteSession(s.id)}
+                    onClick={() => setSessionToDelete(s.id)}
                     className="opacity-0 group-hover:opacity-100 hover:text-destructive p-2 transition-opacity"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -398,6 +402,24 @@ export default function SandboxPlayground({
           </form>
         </div>
       </main>
+
+      <AlertDialog open={!!sessionToDelete} onOpenChange={o => !o && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar conversa de teste?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { deleteSession(sessionToDelete!); setSessionToDelete(null) }}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

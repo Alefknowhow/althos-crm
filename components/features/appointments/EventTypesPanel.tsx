@@ -20,6 +20,10 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Copy, Trash2, Pencil, Calendar } from 'lucide-react'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   createEventType,
   updateEventType,
   toggleEventTypeActive,
@@ -70,6 +74,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState(DEFAULT_DRAFT)
   const [saving, setSaving] = useState(false)
+  const [etToDelete, setEtToDelete] = useState<EventType | null>(null)
 
   function refresh() {
     startTransition(() => router.refresh())
@@ -132,7 +137,6 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
   }
 
   async function handleDelete(et: EventType) {
-    if (!window.confirm(`Excluir "${et.name}"?`)) return
     const res = await deleteEventType(orgSlug, et.id)
     if (res.ok) {
       toast.success('Excluído')
@@ -370,7 +374,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(et)}
+                    onClick={() => setEtToDelete(et)}
                     className="text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -381,6 +385,26 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!etToDelete} onOpenChange={o => !o && setEtToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tipo de evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {etToDelete ? `Excluir "${etToDelete.name}"? ` : ''}Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(etToDelete!); setEtToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

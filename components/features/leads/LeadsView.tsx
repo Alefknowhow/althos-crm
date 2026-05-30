@@ -34,6 +34,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   ChevronLeft,
@@ -1032,6 +1036,7 @@ function BulkBar({
 }) {
   const ids = useMemo(() => Array.from(selected), [selected])
   const [loading, setLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   async function moveToStage(stageId: string) {
     setLoading(true)
@@ -1060,7 +1065,6 @@ function BulkBar({
   }
 
   async function deleteSelected() {
-    if (!window.confirm(`Excluir ${ids.length} lead(s)? Essa ação é irreversível.`)) return
     setLoading(true)
     const res = await bulkDeleteLeads(orgSlug, ids)
     setLoading(false)
@@ -1111,13 +1115,33 @@ function BulkBar({
         Exportar
       </Button>
 
-      <Button size="sm" variant="destructive" disabled={loading} onClick={deleteSelected}>
+      <Button size="sm" variant="destructive" disabled={loading} onClick={() => setShowDeleteConfirm(true)}>
         <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
       </Button>
 
       <Button size="sm" variant="ghost" onClick={onClear}>
         <X className="w-4 h-4" />
       </Button>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir leads?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Excluir {ids.length} lead(s)? Essa ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { deleteSelected(); setShowDeleteConfirm(false) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

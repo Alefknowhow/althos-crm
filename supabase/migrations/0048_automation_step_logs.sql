@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_step_logs_run
 -- RLS
 ALTER TABLE public.automation_step_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "org_members_read_step_logs" ON public.automation_step_logs;
 CREATE POLICY "org_members_read_step_logs"
   ON public.automation_step_logs FOR SELECT
   USING (

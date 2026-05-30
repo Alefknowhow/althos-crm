@@ -9,6 +9,10 @@ import { toast } from 'sonner'
 import { Copy, Trash2, Plus, CheckCircle2, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const PLAN_OPTIONS = [
   { value: 'agency',  label: 'Agency (cliente agência)' },
@@ -23,6 +27,7 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
   const [expiryDays, setExpiryDays] = useState('')
   const [creating, setCreating]   = useState(false)
   const [showForm, setShowForm]   = useState(false)
+  const [revokeId, setRevokeId]   = useState<string | null>(null)
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -48,7 +53,6 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
   }
 
   async function handleRevoke(id: string) {
-    if (!confirm('Revogar este convite?')) return
     const res = await revokeInvite(id)
     if (res.ok) {
       setInvites(prev => prev.filter(i => i.id !== id))
@@ -180,7 +184,7 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
                 )}
                 {!used && (
                   <button
-                    onClick={() => handleRevoke(inv.id)}
+                    onClick={() => setRevokeId(inv.id)}
                     title="Revogar"
                     className="text-muted-foreground hover:text-destructive transition-colors"
                   >
@@ -192,6 +196,24 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
           })}
         </div>
       )}
+
+      <AlertDialog open={!!revokeId} onOpenChange={o => !o && setRevokeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar convite?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleRevoke(revokeId!); setRevokeId(null) }}
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

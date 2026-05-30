@@ -21,6 +21,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createLead } from '@/actions/leads'
+import { toast } from 'sonner'
+import { traduzirErro } from '@/lib/utils/error-translator'
 
 export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { orgSlug: string, initialStages: any[], initialLeads: any[] }) {
   const [stages, setStages] = useState(initialStages)
@@ -98,7 +100,7 @@ export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { 
       const res = await moveLeadToStage(orgSlug, activeId, lead.stage_id, oldStageId)
       if (!res.ok) {
         setLeads(initialLeads)
-        alert('Erro ao mover lead: ' + res.error)
+        toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
       }
     }
   }
@@ -149,7 +151,7 @@ export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { 
             const res = await createLead(orgSlug, new FormData(e.currentTarget));
             setLoading(false);
             if(res.ok) setCreateStageId(null);
-            else alert(res.error);
+            else toast.error(traduzirErro(res.error));
           }}>
             <input type="hidden" name="stage_id" value={createStageId || ''} />
             <div className="space-y-4">

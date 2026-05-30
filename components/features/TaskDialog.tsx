@@ -1,69 +1,207 @@
 'use client'
 
-import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import { traduzirErro } from '@/lib/utils/error-translator'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { createTask } from '@/actions/tasks'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+import { createTask, type TaskInput } from '@/actions/tasks'
 import LeadCombobox from '@/components/features/LeadCombobox'
+import { taskSchema } from '@/lib/validators/task'
+import { useState } from 'react'
+import { Plus } from 'lucide-react'
 
-export default function TaskDialog({ orgSlug, defaultLead }: { orgSlug: string, defaultLead?: { id: string, name: string } | null }) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+type FormValues = z.infer<typeof taskSchema>
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    
-    await createTask(orgSlug, formData)
-    
-    setLoading(false)
-    setOpen(false)
+interface Props {
+  orgSlug:     string
+  defaultLead?: { id: string; name: string } | null
+  trigger?:    React.ReactNode
+}
+
+export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
+  const router = useRouter()
+  const [open, setOpen]         = useState(false)
+  const [isPending, startTrans] = useTransition()
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title:       '',
+      description: '',
+      due_date:    today,
+      priority:    'medium',
+      lead_id:     defaultLead?.id || '',
+    },
+  })
+
+  async function onSubmit(values: FormValues) {
+    startTrans(async () => {
+      const res = await createTask(orgSlug, values as TaskInput)
+      if (!res.ok) {
+        toast.error(traduzirErro(res.error, 'Erro ao criar tarefa'))
+        return
+      }
+      toast.success('Tarefa criada!')
+      form.reset({
+        title: '', description: '', due_date: today, priority: 'medium', lead_id: '',
+      })
+      setOpen(false)
+      router.refresh()
+    })
   }
-
-  const today = new Date()
-  const defaultDate = today.toISOString().split('T')[0]
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>+ Nova Tarefa</Button>
-
       <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger ?? <Button><Plus className="w-4 h-4 mr-1" /> Nova Tarefa</Button>}
+        </DialogTrigger>
+
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Tarefa</DialogTitle></DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Título *</Label>
-              <Input name="title" required />
-            </div>
-            <div className="space-y-2">
-              <Label>Descrição</Label>
-              <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data de Vencimento</Label>
-                <Input type="date" name="due_date" defaultValue={defaultDate} />
+          <DialogHeader>
+            <DialogTitle>Nova Tarefa</DialogTitle>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* Título */}
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Título *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="O que precisa ser feito?" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Descrição */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Detalhes opcionais..."
+                        className="resize-none"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Data */}
+                <FormField
+                  control={form.control}
+                  name="due_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vencimento</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Prioridade */}
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prioridade</FormLabel>
+                      <Select value={field.value ?? 'medium'} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Baixa</SelectItem>
+                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="high">Alta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <div className="space-y-2">
-                <Label>Prioridade</Label>
-                <select name="priority" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue="medium">
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                </select>
+
+              {/* Lead */}
+              <FormField
+                control={form.control}
+                name="lead_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vincular a Lead <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
+                    <FormControl>
+                      <LeadCombobox
+                        name="lead_id"
+                        orgSlug={orgSlug}
+                        defaultLead={defaultLead || null}
+                        onChange={(lead) => field.onChange(lead?.id || '')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? 'Salvando…' : 'Criar tarefa'}
+                </Button>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Vincular a Lead (opcional)</Label>
-              <LeadCombobox name="lead_id" orgSlug={orgSlug} defaultLead={defaultLead || null} />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>Salvar</Button>
-            </DialogFooter>
-          </form>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </>

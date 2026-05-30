@@ -9,6 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Trash2 } from 'lucide-react'
 import { deleteAdAccount } from '@/actions/marketing'
 import NewAdAccountDialog from './NewAdAccountDialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Account = {
   id: string
@@ -43,13 +47,13 @@ export default function AdAccountsManager({
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [busy, setBusy] = useState<string | null>(null)
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null)
 
   function refresh() {
     startTransition(() => router.refresh())
   }
 
   async function remove(a: Account) {
-    if (!window.confirm(`Excluir "${a.name}"?`)) return
     setBusy(a.id)
     const res = await deleteAdAccount(orgSlug, a.id)
     setBusy(null)
@@ -98,7 +102,7 @@ export default function AdAccountsManager({
                   size="sm"
                   variant="ghost"
                   className="text-destructive hover:bg-destructive/10"
-                  onClick={() => remove(a)}
+                  onClick={() => setAccountToDelete(a)}
                   disabled={busy === a.id}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -108,6 +112,26 @@ export default function AdAccountsManager({
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!accountToDelete} onOpenChange={o => !o && setAccountToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {accountToDelete ? `Excluir "${accountToDelete.name}"? ` : ''}Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { remove(accountToDelete!); setAccountToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

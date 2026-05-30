@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,10 @@ import { toast } from 'sonner'
 import { deleteSale } from '@/actions/sales'
 import { formatCurrency } from '@/lib/utils'
 import SaleDialog from './SaleDialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Sale = any
 type Member = { id: string; name: string; email: string; role: string }
@@ -32,6 +36,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 export default function SalesTable({ orgSlug, sales, members, products, currentUserId }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
 
   const memberName = (id: string | null) => {
     if (!id) return '—'
@@ -40,7 +45,6 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
   }
 
   const handleDelete = (id: string) => {
-    if (!confirm('Excluir esta venda? Essa ação não pode ser desfeita.')) return
     startTransition(async () => {
       const res = await deleteSale(orgSlug, id)
       if (res.ok) {
@@ -129,7 +133,7 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(s.id)}
+                      onClick={() => setSaleToDelete(s.id)}
                       disabled={isPending}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -142,6 +146,23 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
         </TableBody>
       </Table>
       </div>
+      <AlertDialog open={!!saleToDelete} onOpenChange={o => !o && setSaleToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(saleToDelete!); setSaleToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

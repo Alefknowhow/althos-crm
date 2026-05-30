@@ -22,11 +22,12 @@ create table if not exists social_connections (
 
 alter table social_connections enable row level security;
 
+drop policy if exists "org members can manage their social connections" on social_connections;
 create policy "org members can manage their social connections"
   on social_connections for all
   using (
     organization_id in (
-      select organization_id from organization_members
+      select organization_id from memberships
       where user_id = auth.uid()
     )
   );
@@ -56,11 +57,12 @@ create table if not exists social_automations (
 
 alter table social_automations enable row level security;
 
+drop policy if exists "org members can manage their social automations" on social_automations;
 create policy "org members can manage their social automations"
   on social_automations for all
   using (
     organization_id in (
-      select organization_id from organization_members
+      select organization_id from memberships
       where user_id = auth.uid()
     )
   );
@@ -95,11 +97,12 @@ create table if not exists social_interactions (
 
 alter table social_interactions enable row level security;
 
+drop policy if exists "org members can view their social interactions" on social_interactions;
 create policy "org members can view their social interactions"
   on social_interactions for all
   using (
     organization_id in (
-      select organization_id from organization_members
+      select organization_id from memberships
       where user_id = auth.uid()
     )
   );
@@ -118,10 +121,12 @@ returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end;
 $$;
 
+drop trigger if exists trg_social_connections_updated_at on social_connections;
 create trigger trg_social_connections_updated_at
   before update on social_connections
   for each row execute function update_updated_at();
 
+drop trigger if exists trg_social_automations_updated_at on social_automations;
 create trigger trg_social_automations_updated_at
   before update on social_automations
   for each row execute function update_updated_at();

@@ -20,6 +20,10 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Pencil, Trash2, Sparkles } from 'lucide-react'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   createKnowledge,
   updateKnowledge,
   deleteKnowledge,
@@ -48,6 +52,7 @@ export default function KnowledgeManager({
   const [items, setItems] = useState(initial)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<KnowledgeItem | null>(null)
   const [draft, setDraft] = useState({
     category: '',
     question: '',
@@ -100,7 +105,6 @@ export default function KnowledgeManager({
   }
 
   async function remove(item: KnowledgeItem) {
-    if (!window.confirm(`Remover "${item.question}"?`)) return
     const res = await deleteKnowledge(orgSlug, item.id)
     if (res.ok) {
       toast.success('Removido')
@@ -276,7 +280,7 @@ export default function KnowledgeManager({
                         size="sm"
                         variant="ghost"
                         className="text-destructive hover:bg-destructive/10"
-                        onClick={() => remove(item)}
+                        onClick={() => setItemToDelete(item)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -288,6 +292,26 @@ export default function KnowledgeManager({
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!itemToDelete} onOpenChange={o => !o && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover entrada?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemToDelete ? `Remover "${itemToDelete.question}"? ` : ''}Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { remove(itemToDelete!); setItemToDelete(null) }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

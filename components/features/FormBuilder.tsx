@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateForm } from '@/actions/forms'
+import { toast } from 'sonner'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -105,7 +106,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
             <Button variant="outline" size="sm" onClick={() => {
               navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`)
-              alert('URL Copiada!')
+              toast.success('URL copiada!')
             }}>Copiar URL</Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
           </div>

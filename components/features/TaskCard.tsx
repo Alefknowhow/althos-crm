@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
@@ -9,22 +10,52 @@ import { Button } from '@/components/ui/button'
 import { toggleTaskStatus, updateTask, deleteTask } from '@/actions/tasks'
 import Link from 'next/link'
 import LeadCombobox from '@/components/features/LeadCombobox'
+import { toast } from 'sonner'
 
 export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string }) {
+  const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState(task.status)
 
   async function handleToggle(e: React.ChangeEvent<HTMLInputElement>) {
     const newStatus = e.target.checked ? 'done' : 'open'
     setOptimisticStatus(newStatus)
-    await toggleTaskStatus(orgSlug, task.id, newStatus)
+    const res = await toggleTaskStatus(orgSlug, task.id, newStatus)
+    if (!res.ok) {
+      setOptimisticStatus(task.status) // reverte otimista
+      toast.error('Erro ao atualizar tarefa')
+    }
+    router.refresh()
   }
 
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    await updateTask(orgSlug, task.id, formData)
+    const fd = new FormData(e.currentTarget)
+    const input = {
+      title:       fd.get('title')       as string,
+      description: fd.get('description') as string,
+      due_date:    fd.get('due_date')    as string,
+      priority:    fd.get('priority')    as 'low' | 'medium' | 'high',
+      lead_id:     fd.get('lead_id')     as string,
+    }
+    const res = await updateTask(orgSlug, task.id, input)
+    if (!res.ok) {
+      toast.error(res.error || 'Erro ao salvar')
+      return
+    }
+    toast.success('Tarefa atualizada!')
     setSheetOpen(false)
+    router.refresh()
+  }
+
+  async function handleDelete() {
+    const res = await deleteTask(orgSlug, task.id)
+    if (!res.ok) {
+      toast.error('Erro ao excluir tarefa')
+      return
+    }
+    toast.success('Tarefa excluída')
+    router.refresh()
   }
 
   const today = new Date()
@@ -61,7 +92,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
               {task.leads.name}
             </Link>
           )}
-          <Button variant="ghost" size="sm" onClick={() => deleteTask(orgSlug, task.id)} className="text-destructive hover:bg-destructive/10 hidden md:flex">Excluir</Button>
+          <Button variant="ghost" size="sm" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 hidden md:flex">Excluir</Button>
         </div>
       </div>
 
@@ -99,8 +130,8 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
             </div>
             <SheetFooter>
               <Button type="button" variant="destructive" onClick={() => {
-                deleteTask(orgSlug, task.id)
                 setSheetOpen(false)
+                handleDelete()
               }}>Excluir</Button>
               <Button type="submit">Salvar</Button>
             </SheetFooter>

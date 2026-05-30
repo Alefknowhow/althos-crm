@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 import { saleInputSchema } from '@/lib/validators/sale'
 
@@ -39,12 +40,16 @@ export async function getSale(orgSlug: string, id: string) {
 
 export async function createSale(orgSlug: string, input: unknown) {
   const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const parsed = saleInputSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos' }
+    return { ok: false as const, error: parsed.error.issues[0]?.message || 'Dados inválidos' }
   }
 
   const v = parsed.data
@@ -72,7 +77,12 @@ export async function createSale(orgSlug: string, input: unknown) {
 }
 
 export async function updateSale(orgSlug: string, id: string, input: unknown) {
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const parsed = saleInputSchema.partial().safeParse(input)
@@ -92,7 +102,12 @@ export async function updateSale(orgSlug: string, id: string, input: unknown) {
 }
 
 export async function deleteSale(orgSlug: string, id: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org  = await getCurrentOrganization(orgSlug)
+
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
   const supabase = createClient()
 
   const { error } = await supabase
@@ -101,9 +116,9 @@ export async function deleteSale(orgSlug: string, id: string) {
     .eq('id', id)
     .eq('organization_id', org.id)
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/vendas`)
-  return { ok: true }
+  return { ok: true as const }
 }
 
 // Returns active products for the sale dialog selector.

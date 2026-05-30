@@ -22,6 +22,10 @@ import {
   createInsightsSession,
   deleteInsightsSession,
 } from '@/actions/ai_insights'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // recharts uses browser APIs during module initialisation — loading it
 // server-side causes a hydration crash. Use dynamic with ssr:false so the
@@ -108,6 +112,7 @@ export default function InsightsChat({
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -164,7 +169,6 @@ export default function InsightsChat({
   }
 
   async function deleteSession(sessionId: string) {
-    if (!window.confirm('Apagar essa conversa?')) return
     const res = await deleteInsightsSession(orgSlug, sessionId)
     if (res.ok) {
       toast.success('Removida')
@@ -179,6 +183,7 @@ export default function InsightsChat({
   }
 
   return (
+    <>
     <div className="-m-6 h-[calc(100vh-4rem)] flex">
       {/* Session list */}
       <aside className="w-72 border-r bg-muted/20 flex flex-col">
@@ -224,7 +229,7 @@ export default function InsightsChat({
                   </Link>
                   <button
                     type="button"
-                    onClick={() => deleteSession(s.id)}
+                    onClick={() => setSessionToDelete(s.id)}
                     className="opacity-0 group-hover:opacity-100 hover:text-destructive p-2 transition-opacity"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -410,5 +415,24 @@ export default function InsightsChat({
         </div>
       </main>
     </div>
+
+      <AlertDialog open={!!sessionToDelete} onOpenChange={o => !o && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar conversa?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { deleteSession(sessionToDelete!); setSessionToDelete(null) }}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

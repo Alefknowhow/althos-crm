@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/button'
 import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2 } from 'lucide-react'
 import { createAutomation, toggleAutomation, deleteAutomation } from '@/actions/automations'
 import { toast } from 'sonner'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const TRIGGER_LABELS: Record<string, string> = {
   'form.submitted':     'Formulário',
@@ -32,6 +36,7 @@ export default function AutomationsShell({
   const router   = useRouter()
   const [pending, startTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [autoToDelete, setAutoToDelete] = useState<any | null>(null)
 
   function handleNew() {
     startTransition(async () => {
@@ -63,7 +68,10 @@ export default function AutomationsShell({
 
   async function handleDelete(e: React.MouseEvent, auto: any) {
     e.preventDefault(); e.stopPropagation()
-    if (!confirm(`Excluir "${auto.name}"? Esta ação não pode ser desfeita.`)) return
+    setAutoToDelete(auto)
+  }
+
+  async function confirmDelete(auto: any) {
     setBusyId(auto.id)
     try {
       const res = await deleteAutomation(orgSlug, auto.id)
@@ -77,6 +85,8 @@ export default function AutomationsShell({
     } catch { toast.error('Erro ao excluir') }
     finally { setBusyId(null) }
   }
+
+
 
   return (
     <div className="-mx-6 -mt-8 -mb-8 flex flex-col" style={{ minHeight: 'calc(100vh - 56px)' }}>
@@ -198,6 +208,26 @@ export default function AutomationsShell({
         </div>
 
       </div>
+
+      <AlertDialog open={!!autoToDelete} onOpenChange={o => !o && setAutoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir automação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {autoToDelete ? `Excluir "${autoToDelete.name}"? ` : ''}Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { confirmDelete(autoToDelete!); setAutoToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

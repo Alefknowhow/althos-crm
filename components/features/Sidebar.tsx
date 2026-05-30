@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
@@ -6,6 +5,8 @@ import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarNavGroup from './SidebarNavGroup'
 import SidebarShell from './SidebarShell'
+import SidebarUserMenu from './SidebarUserMenu'
+import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import {
   LayoutDashboard,
   Kanban,
@@ -19,7 +20,6 @@ import {
   MessageSquare,
   Zap,
   Settings,
-  LogOut,
   Calendar,
   Megaphone,
   Bot,
@@ -28,6 +28,7 @@ import {
   Upload,
   Building2,
   CreditCard,
+  UsersRound,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -42,6 +43,35 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const userName  = (user?.user_metadata?.name  as string) ?? ''
+  const userEmail = user?.email ?? ''
+
+  // Fetch current user's membership to know their role + permissions
+  let userRole:        MemberRole  = 'member'
+  let userPermissions: Permissions = {}
+  let isOwnerOrAdmin = false
+
+  if (user) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('role, permissions')
+      .eq('organization_id', org.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (membership) {
+      userRole        = membership.role as MemberRole
+      userPermissions = (membership.permissions ?? {}) as Permissions
+      isOwnerOrAdmin  = userRole === 'owner' || userRole === 'admin'
+    }
+  }
+
+  // Helper to decide visibility
+  function can(key: Parameters<typeof canAccess>[2]) {
+    return canAccess(userRole, userPermissions, key)
+  }
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -77,92 +107,111 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </span>
         </SidebarNavLink>
 
-        <SidebarNavLink href={`${base}/insights`} dataTour="insights">
-          <span className="flex items-center gap-2.5">
-            <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Insights IA</span>
-          </span>
-        </SidebarNavLink>
+        {can('insights') && (
+          <SidebarNavLink href={`${base}/insights`} dataTour="insights">
+            <span className="flex items-center gap-2.5">
+              <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Insights IA</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         {/* ── Vendas ────────────────────────────────── */}
         <SectionLabel>Vendas</SectionLabel>
 
-        <SidebarNavLink href={`${base}/pipeline`} dataTour="pipeline">
-          <span className="flex items-center gap-2.5">
-            <Kanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Pipeline</span>
-          </span>
-        </SidebarNavLink>
+        {can('pipeline') && (
+          <SidebarNavLink href={`${base}/pipeline`} dataTour="pipeline">
+            <span className="flex items-center gap-2.5">
+              <Kanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Pipeline</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/leads`} dataTour="leads">
-          <span className="flex items-center gap-2.5">
-            <Users className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Leads</span>
-          </span>
-        </SidebarNavLink>
+        {can('leads') && (
+          <SidebarNavLink href={`${base}/leads`} dataTour="leads">
+            <span className="flex items-center gap-2.5">
+              <Users className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Leads</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/clientes`}>
-          <span className="flex items-center gap-2.5">
-            <UserCheck className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Clientes</span>
-          </span>
-        </SidebarNavLink>
+        {can('clients') && (
+          <SidebarNavLink href={`${base}/clientes`}>
+            <span className="flex items-center gap-2.5">
+              <UserCheck className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Clientes</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/tarefas`}>
-          <span className="flex items-center gap-2.5">
-            <CheckSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Tarefas</span>
-            {!!overdueCount && overdueCount > 0 && (
-              <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1.5 py-0 leading-none">
-                {overdueCount}
-              </Badge>
-            )}
-          </span>
-        </SidebarNavLink>
+        {can('tasks') && (
+          <SidebarNavLink href={`${base}/tarefas`}>
+            <span className="flex items-center gap-2.5">
+              <CheckSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Tarefas</span>
+              {!!overdueCount && overdueCount > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1.5 py-0 leading-none">
+                  {overdueCount}
+                </Badge>
+              )}
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/catalogo`}>
-          <span className="flex items-center gap-2.5">
-            <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Catálogo</span>
-          </span>
-        </SidebarNavLink>
+        {can('catalog') && (
+          <SidebarNavLink href={`${base}/catalogo`}>
+            <span className="flex items-center gap-2.5">
+              <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Catálogo</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/vendas`}>
-          <span className="flex items-center gap-2.5">
-            <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Vendas</span>
-          </span>
-        </SidebarNavLink>
+        {can('sales') && (
+          <SidebarNavLink href={`${base}/vendas`}>
+            <span className="flex items-center gap-2.5">
+              <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Vendas</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
-          <span className="flex items-center gap-2.5">
-            <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Agendamentos</span>
-          </span>
-        </SidebarNavLink>
+        {can('calendar') && (
+          <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
+            <span className="flex items-center gap-2.5">
+              <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Agendamentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         {/* ── Comunicação ───────────────────────────── */}
         <SectionLabel>Comunicação</SectionLabel>
 
-        <SidebarNavLink href={`${base}/conversas`}>
-          <span className="flex items-center gap-2.5">
-            <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Conversas</span>
-            <SidebarUnreadBadge orgId={org.id} initialCount={unreadWhatsapp} />
-          </span>
-        </SidebarNavLink>
+        {can('conversations') && (
+          <SidebarNavLink href={`${base}/conversas`}>
+            <span className="flex items-center gap-2.5">
+              <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Conversas</span>
+              <SidebarUnreadBadge orgId={org.id} initialCount={unreadWhatsapp} />
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/social`}>
-          <span className="flex items-center gap-2.5">
-            {/* Instagram icon (custom SVG — lucide doesn't export Instagram) */}
-            <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-              <circle cx="12" cy="12" r="4"/>
-              <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
-            </svg>
-            <span>Social · DMs</span>
-          </span>
-        </SidebarNavLink>
+        {can('social') && (
+          <SidebarNavLink href={`${base}/social`}>
+            <span className="flex items-center gap-2.5">
+              <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+              </svg>
+              <span>Social · DMs</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         <SidebarNavGroup
           label="Atendente IA"
@@ -176,100 +225,111 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         {/* ── Marketing ─────────────────────────────── */}
         <SectionLabel>Marketing</SectionLabel>
 
-        <SidebarNavLink href={`${base}/marketing`} exact dataTour="forms">
-          <span className="flex items-center gap-2.5">
-            <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Campanhas</span>
-          </span>
-        </SidebarNavLink>
+        {can('marketing') && (
+          <>
+            <SidebarNavLink href={`${base}/marketing`} exact dataTour="forms">
+              <span className="flex items-center gap-2.5">
+                <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Campanhas</span>
+              </span>
+            </SidebarNavLink>
 
-        <SidebarNavLink href={`${base}/marketing/contas`}>
-          <span className="flex items-center gap-2.5">
-            <Building2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Contas</span>
-          </span>
-        </SidebarNavLink>
+            <SidebarNavLink href={`${base}/marketing/contas`}>
+              <span className="flex items-center gap-2.5">
+                <Building2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Contas</span>
+              </span>
+            </SidebarNavLink>
 
-        <SidebarNavLink href={`${base}/marketing/importar`}>
-          <span className="flex items-center gap-2.5">
-            <Upload className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Importar</span>
-          </span>
-        </SidebarNavLink>
+            <SidebarNavLink href={`${base}/marketing/importar`}>
+              <span className="flex items-center gap-2.5">
+                <Upload className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Importar</span>
+              </span>
+            </SidebarNavLink>
+          </>
+        )}
 
-        <SidebarNavLink href={`${base}/forms`}>
-          <span className="flex items-center gap-2.5">
-            <FileText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Formulários</span>
-          </span>
-        </SidebarNavLink>
+        {can('forms') && (
+          <SidebarNavLink href={`${base}/forms`}>
+            <span className="flex items-center gap-2.5">
+              <FileText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Formulários</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/configuracoes/meta`}>
-          <span className="flex items-center gap-2.5">
-            <Share2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Meta / Pixel</span>
-          </span>
-        </SidebarNavLink>
+        {isOwnerOrAdmin && (
+          <SidebarNavLink href={`${base}/configuracoes/meta`}>
+            <span className="flex items-center gap-2.5">
+              <Share2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Meta / Pixel</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         {/* ── Operações ─────────────────────────────── */}
         <SectionLabel>Operações</SectionLabel>
 
-        <SidebarNavLink href={`${base}/automacoes`}>
-          <span className="flex items-center gap-2.5">
-            <Zap className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Automações</span>
-          </span>
-        </SidebarNavLink>
+        {can('automations') && (
+          <SidebarNavLink href={`${base}/automacoes`}>
+            <span className="flex items-center gap-2.5">
+              <Zap className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Automações</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
-        <SidebarNavLink href={`${base}/email-templates`}>
-          <span className="flex items-center gap-2.5">
-            <Mail className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Templates</span>
-          </span>
-        </SidebarNavLink>
+        {can('templates') && (
+          <>
+            <SidebarNavLink href={`${base}/email-templates`}>
+              <span className="flex items-center gap-2.5">
+                <Mail className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Templates</span>
+              </span>
+            </SidebarNavLink>
 
-        <SidebarNavLink href={`${base}/whatsapp-templates`}>
-          <span className="flex items-center gap-2.5">
-            <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Templates WA</span>
-          </span>
-        </SidebarNavLink>
+            <SidebarNavLink href={`${base}/whatsapp-templates`}>
+              <span className="flex items-center gap-2.5">
+                <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Templates WA</span>
+              </span>
+            </SidebarNavLink>
+          </>
+        )}
 
         {/* ── Configurações ─────────────────────────── */}
-        <SectionLabel>Configurações</SectionLabel>
+        {can('settings') && (
+          <>
+            <SectionLabel>Configurações</SectionLabel>
 
-        <SidebarNavLink href={`${base}/configuracoes`} exact>
-          <span className="flex items-center gap-2.5">
-            <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Geral</span>
-          </span>
-        </SidebarNavLink>
+            <SidebarNavLink href={`${base}/configuracoes`} exact>
+              <span className="flex items-center gap-2.5">
+                <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Geral</span>
+              </span>
+            </SidebarNavLink>
 
-        <SidebarNavLink href={`${base}/configuracoes/assinatura`}>
-          <span className="flex items-center gap-2.5">
-            <CreditCard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Assinatura</span>
-          </span>
-        </SidebarNavLink>
+            <SidebarNavLink href={`${base}/configuracoes/equipe`}>
+              <span className="flex items-center gap-2.5">
+                <UsersRound className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Equipe</span>
+              </span>
+            </SidebarNavLink>
+
+            <SidebarNavLink href={`${base}/configuracoes/assinatura`}>
+              <span className="flex items-center gap-2.5">
+                <CreditCard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Assinatura</span>
+              </span>
+            </SidebarNavLink>
+          </>
+        )}
 
       </nav>
 
       <div className="p-3 border-t border-sidebar-border">
-        <form
-          action={async () => {
-            'use server'
-            const { logout } = await import('@/actions/auth')
-            await logout()
-          }}
-        >
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 font-medium"
-          >
-            <LogOut className="w-4 h-4 mr-2" strokeWidth={1.75} />
-            Sair
-          </Button>
-        </form>
+        <SidebarUserMenu name={userName} email={userEmail} />
       </div>
     </SidebarShell>
   )

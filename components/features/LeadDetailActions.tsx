@@ -20,24 +20,41 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
     e.preventDefault()
     setLoading(true)
     const formData = new FormData(e.currentTarget)
-    await updateLead(orgSlug, lead.id, formData)
+    const res = await updateLead(orgSlug, lead.id, formData)
     setLoading(false)
+    if (!res.ok) {
+      const { toast } = await import('sonner')
+      toast.error(res.error || 'Erro ao salvar')
+      return
+    }
     setSheetOpen(false)
+    router.refresh()
   }
 
   async function handleAddNote(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     const formData = new FormData(e.currentTarget)
-    await addLeadNote(orgSlug, lead.id, formData)
+    const res = await addLeadNote(orgSlug, lead.id, formData)
     setLoading(false)
+    if (!res.ok) {
+      const { toast } = await import('sonner')
+      toast.error(res.error || 'Erro ao adicionar nota')
+      return
+    }
     setNoteOpen(false)
+    router.refresh()
   }
 
   async function handleDelete() {
     setLoading(true)
-    await deleteLead(orgSlug, lead.id)
-    // Redirecionamento já acontece no servidor/client ou podemos forçar
+    const res = await deleteLead(orgSlug, lead.id)
+    if (!res.ok) {
+      setLoading(false)
+      const { toast } = await import('sonner')
+      toast.error(res.error || 'Erro ao excluir lead')
+      return
+    }
     router.push(`/app/${orgSlug}/leads`)
   }
 

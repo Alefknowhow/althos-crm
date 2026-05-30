@@ -19,6 +19,10 @@ import {
   deleteCustomerDocument,
   getDocumentSignedUrl,
 } from '@/actions/customers'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Doc = {
   id: string
@@ -74,6 +78,7 @@ export default function CustomerDocuments({
   const [kind, setKind] = useState<string>('cpf_front')
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<{ url: string; mime: string } | null>(null)
+  const [docToDelete, setDocToDelete] = useState<string | null>(null)
 
   // If no profile exists yet (operator hasn't saved address fields), show a
   // gentle prompt — Storage upload requires the profile id as part of the
@@ -97,7 +102,6 @@ export default function CustomerDocuments({
   }
 
   async function handleDelete(docId: string) {
-    if (!window.confirm('Excluir esse documento? Esta ação é permanente.')) return
     const res = await deleteCustomerDocument(orgSlug, docId)
     if (res.ok) {
       toast.success('Documento removido')
@@ -231,7 +235,7 @@ export default function CustomerDocuments({
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleDelete(doc.id)}
+                            onClick={() => setDocToDelete(doc.id)}
                             className="text-destructive hover:bg-destructive/10 p-1 rounded"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -246,6 +250,24 @@ export default function CustomerDocuments({
           </>
         )}
       </CardContent>
+
+      <AlertDialog open={!!docToDelete} onOpenChange={o => !o && setDocToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir documento?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação é permanente e não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { handleDelete(docToDelete!); setDocToDelete(null) }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Preview overlay — signed URL renders inline (image) or in iframe (pdf) */}
       {previewUrl && (

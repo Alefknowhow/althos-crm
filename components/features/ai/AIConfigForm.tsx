@@ -12,6 +12,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Sparkles, RotateCcw, Eye, EyeOff } from 'lucide-react'
 import { updateOrgAI } from '@/actions/organization'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Initial = {
   ai_enabled: boolean
@@ -36,6 +40,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const [apiKey, setApiKey] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   async function save() {
     setSaving(true)
@@ -57,9 +62,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   }
 
   function resetPrompt() {
-    if (window.confirm('Restaurar o prompt padrão? Suas alterações serão perdidas.')) {
-      setPrompt(DEFAULT_QUALIFIER_PROMPT)
-    }
+    setShowResetConfirm(true)
   }
 
   return (
@@ -193,6 +196,23 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
           {saving ? 'Salvando...' : 'Salvar configuração'}
         </Button>
       </div>
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar prompt padrão?</AlertDialogTitle>
+            <AlertDialogDescription>Suas alterações serão perdidas.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setPrompt(DEFAULT_QUALIFIER_PROMPT); setShowResetConfirm(false) }}
+            >
+              Restaurar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

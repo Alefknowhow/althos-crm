@@ -4,65 +4,59 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { taskSchema } from '@/lib/validators/task'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-export async function createTask(orgSlug: string, formData: FormData) {
+export type TaskInput = z.infer<typeof taskSchema>
+
+export async function createTask(orgSlug: string, input: TaskInput) {
   const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const org  = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const rawData = {
-    title: formData.get('title') as string,
-    description: formData.get('description') as string,
-    due_date: formData.get('due_date') as string,
-    priority: formData.get('priority') as any,
-    lead_id: formData.get('lead_id') as string,
+  const validation = taskSchema.safeParse(input)
+  if (!validation.success) {
+    return { ok: false as const, error: validation.error.issues[0].message }
   }
 
-  const validation = taskSchema.safeParse(rawData)
-  if (!validation.success) {
-    return { ok: false, error: validation.error.issues[0].message }
-  }
+  const { data: v } = validation
 
   const { error } = await supabase.from('tasks').insert({
     organization_id: org.id,
-    title: rawData.title,
-    description: rawData.description || null,
-    due_date: rawData.due_date ? new Date(rawData.due_date).toISOString() : null,
-    priority: rawData.priority || 'medium',
-    lead_id: rawData.lead_id || null,
+    title:       v.title,
+    description: v.description || null,
+    due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
+    priority:    v.priority || 'medium',
+    lead_id:     v.lead_id  || null,
     assigned_to: user.id,
-    status: 'open'
+    status: 'open',
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/tarefas`)
-  if (rawData.lead_id) revalidatePath(`/app/${orgSlug}/leads/${rawData.lead_id}`)
+  if (v.lead_id) revalidatePath(`/app/${orgSlug}/leads/${v.lead_id}`)
   revalidatePath(`/app/${orgSlug}`)
-  return { ok: true }
+  return { ok: true as const }
 }
 
-export async function updateTask(orgSlug: string, taskId: string, formData: FormData) {
-  const org = await getCurrentOrganization(orgSlug)
+export type TaskUpdateInput = Partial<TaskInput>
+
+export async function updateTask(orgSlug: string, taskId: string, input: TaskUpdateInput) {
+  const org      = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const updates: any = {}
-  const title = formData.get('title')
-  if (title !== null) updates.title = title
-  const desc = formData.get('description')
-  if (desc !== null) updates.description = desc
-  const due_date = formData.get('due_date')
-  if (due_date !== null) updates.due_date = due_date ? new Date(due_date as string).toISOString() : null
-  const priority = formData.get('priority')
-  if (priority !== null) updates.priority = priority
-  const lead_id = formData.get('lead_id')
-  if (lead_id !== null) updates.lead_id = lead_id || null
+  const updates: Record<string, unknown> = {}
+  if (input.title       !== undefined) updates.title       = input.title
+  if (input.description !== undefined) updates.description = input.description || null
+  if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null
+  if (input.priority    !== undefined) updates.priority    = input.priority
+  if (input.lead_id     !== undefined) updates.lead_id     = input.lead_id || null
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
-  
-  if (error) return { ok: false, error: error.message }
+
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
-  return { ok: true }
+  return { ok: true as const }
 }
 
 export async function deleteTask(orgSlug: string, taskId: string) {
