@@ -35,7 +35,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
       due_date:    fd.get('due_date')    as string,
-      priority:    fd.get('priority')    as 'low' | 'medium' | 'high',
+      priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       lead_id:     fd.get('lead_id')     as string,
     }
     const res = await updateTask(orgSlug, task.id, input)
@@ -65,7 +65,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
   // just comparing ISO date portion
   const isOverdue = task.due_date && task.due_date.split('T')[0] < today.toISOString().split('T')[0] && optimisticStatus !== 'done'
 
-  const priorityColors: any = { low: 'bg-green-100 text-green-800 border-green-200', medium: 'bg-yellow-100 text-yellow-800 border-yellow-200', high: 'bg-red-100 text-red-800 border-red-200' }
+  const priorityColors: any = { low: 'bg-green-100 text-green-800 border-green-200', normal: 'bg-yellow-100 text-yellow-800 border-yellow-200', high: 'bg-red-100 text-red-800 border-red-200' }
   const defaultDate = task.due_date ? task.due_date.split('T')[0] : ''
 
   return (
@@ -81,7 +81,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
           <div className={`font-medium ${optimisticStatus === 'done' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</div>
           <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
             {task.due_date && <span className={isOverdue ? 'text-destructive font-medium' : ''}>{new Date(task.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>}
-            <Badge className={`text-[10px] px-1 h-4 ${priorityColors[task.priority]}`} variant="outline">{task.priority === 'low' ? 'Baixa' : task.priority === 'medium' ? 'Média' : 'Alta'}</Badge>
+            <Badge className={`text-[10px] px-1 h-4 ${priorityColors[task.priority]}`} variant="outline">{task.priority === 'low' ? 'Baixa' : task.priority === 'normal' ? 'Média' : 'Alta'}</Badge>
             {isOverdue && <Badge variant="destructive" className="text-[10px] px-1 h-4">Atrasada</Badge>}
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
               <Label>Prioridade</Label>
               <select name="priority" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={task.priority}>
                 <option value="low">Baixa</option>
-                <option value="medium">Média</option>
+                <option value="normal">Média</option>
                 <option value="high">Alta</option>
               </select>
             </div>

@@ -25,7 +25,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     title:       v.title,
     description: v.description || null,
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
-    priority:    v.priority || 'medium',
+    priority:    v.priority || 'normal',
     lead_id:     v.lead_id  || null,
     assigned_to: user.id,
     status: 'open',

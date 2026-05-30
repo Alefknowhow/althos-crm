@@ -61,7 +61,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
       title:       '',
       description: '',
       due_date:    today,
-      priority:    'medium',
+      priority:    'normal',
       lead_id:     defaultLead?.id || '',
     },
   })
@@ -75,7 +75,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
       }
       toast.success('Tarefa criada!')
       form.reset({
-        title: '', description: '', due_date: today, priority: 'medium', lead_id: '',
+        title: '', description: '', due_date: today, priority: 'normal', lead_id: '',
       })
       setOpen(false)
       router.refresh()
@@ -154,7 +154,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Prioridade</FormLabel>
-                      <Select value={field.value ?? 'medium'} onValueChange={field.onChange}>
+                      <Select value={field.value ?? 'normal'} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
@@ -162,7 +162,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="low">Baixa</SelectItem>
-                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="normal">Média</SelectItem>
                           <SelectItem value="high">Alta</SelectItem>
                         </SelectContent>
                       </Select>
