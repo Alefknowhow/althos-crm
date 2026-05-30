@@ -113,42 +113,5 @@ export function groupedModules(): Record<string, PermissionModule[]> {
   return out
 }
 
-// ── Server-side permission check (use inside Server Actions) ─────────────────
-
-/**
- * Verifica se o usuário autenticado tem permissão para acessar um módulo.
- * Deve ser chamado no início de Server Actions que modificam dados sensíveis.
- *
- * Exemplo de uso numa action:
- *   const check = await checkMemberPermission(org.id, user.id, 'catalog')
- *   if (!check.allowed) return { ok: false as const, error: check.reason }
- */
-export async function checkMemberPermission(
-  orgId: string,
-  userId: string,
-  key: PermissionKey,
-): Promise<{ allowed: true } | { allowed: false; reason: string }> {
-  // Dynamic import to avoid circular dependency (lib/supabase imports lib/types)
-  const { createClient } = await import('@/lib/supabase/server')
-  const supabase = createClient()
-
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('role, permissions')
-    .eq('organization_id', orgId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!membership) {
-    return { allowed: false, reason: 'Acesso não autorizado.' }
-  }
-
-  const role        = membership.role as MemberRole
-  const permissions = (membership.permissions ?? {}) as Permissions
-
-  if (!canAccess(role, permissions, key)) {
-    return { allowed: false, reason: `Você não tem permissão para acessar o módulo "${key}".` }
-  }
-
-  return { allowed: true }
-}
+// NOTE: checkMemberPermission (server-only, uses next/headers) lives in
+// lib/permissions.server.ts — import from there inside Server Actions only.

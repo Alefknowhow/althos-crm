@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
-import { checkMemberPermission } from '@/lib/permissions'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { productInputSchema } from '@/lib/validators/product'
 import { revalidatePath } from 'next/cache'
 

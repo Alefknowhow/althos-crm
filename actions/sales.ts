@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { checkMemberPermission } from '@/lib/permissions'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { saleInputSchema } from '@/lib/validators/sale'
 
