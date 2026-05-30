@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react'
 
 type Props = {
   orgSlug:   string
-  plan:      'starter' | 'pro'
+  plan:      'starter' | 'pro' | 'scale'
   label:     string
   disabled?: boolean
   highlight?: boolean

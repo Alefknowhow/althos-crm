@@ -108,7 +108,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         {!isManaged && (
           <SubscriptionActions
             orgSlug={params.orgSlug}
-            currentPlan={org.plan as 'starter' | 'pro' | 'trial' | 'free_trial' | null}
+            currentPlan={org.plan as 'starter' | 'pro' | 'scale' | 'trial' | 'free_trial' | null}
             subscriptionStatus={org.subscription_status}
           />
         )}

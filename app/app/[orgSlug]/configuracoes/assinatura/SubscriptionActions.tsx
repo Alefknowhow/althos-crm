@@ -21,7 +21,7 @@ import { Loader2, Zap } from 'lucide-react'
 
 interface Props {
   orgSlug:            string
-  currentPlan:        'starter' | 'pro' | 'trial' | 'free_trial' | null
+  currentPlan:        'starter' | 'pro' | 'scale' | 'trial' | 'free_trial' | null
   subscriptionStatus: string | null
 }
 
@@ -35,8 +35,11 @@ export default function SubscriptionActions({ orgSlug, currentPlan, subscription
   const isTrial    = currentPlan === 'trial' || currentPlan === 'free_trial'
 
   // Default the modal to the "next" plan
-  const suggestedPlan: 'starter' | 'pro' =
-    currentPlan === 'pro' ? 'pro' : 'starter'
+  const suggestedPlan: 'starter' | 'pro' | 'scale' =
+    currentPlan === 'scale' ? 'scale'
+    : currentPlan === 'pro'  ? 'scale'
+    : currentPlan === 'starter' ? 'pro'
+    : 'starter'
 
   async function handleCancel() {
     setCanceling(true)
@@ -64,9 +67,11 @@ export default function SubscriptionActions({ orgSlug, currentPlan, subscription
             ? 'Assinar agora'
             : currentPlan === 'starter'
               ? 'Fazer upgrade para Pro'
-              : isActive
-                ? 'Gerenciar plano'
-                : 'Assinar novamente'
+              : currentPlan === 'pro'
+                ? 'Fazer upgrade para Scale'
+                : isActive
+                  ? 'Gerenciar plano'
+                  : 'Assinar novamente'
           }
         </Button>
       )}

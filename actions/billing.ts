@@ -18,7 +18,7 @@ import { revalidatePath } from 'next/cache'
  */
 export async function createCheckoutSession(
   orgSlug: string,
-  plan: 'starter' | 'pro',
+  plan: 'starter' | 'pro' | 'scale',
   billingType: 'BOLETO' | 'PIX' | 'CREDIT_CARD' = 'BOLETO',
 ): Promise<{ ok: true; checkoutUrl: string } | { ok: false; error: string }> {
   await requireAuth()
@@ -88,9 +88,12 @@ export async function activatePlanFromWebhook(
   const { createAdminClient } = await import('@/lib/supabase/server')
   const admin = createAdminClient()
 
-  const limits: Record<string, number | null> = {
-    starter: 500,
-    pro:     null,
+  // All paid plans now have unlimited leads.
+  // Differentiation is on features (AI, automations, users, API), not lead count.
+  const userLimits: Record<string, number | null> = {
+    starter: 1,
+    pro:     5,
+    scale:   null, // unlimited
   }
 
   const { error } = await admin
@@ -99,7 +102,8 @@ export async function activatePlanFromWebhook(
       plan:                planKey,
       subscription_status: 'active',
       activated_at:        new Date().toISOString(),
-      limit_leads:         limits[planKey] ?? 500,
+      limit_leads:         null,                          // unlimited for all paid plans
+      limit_users:         userLimits[planKey] ?? 1,
       trial_ends_at:       null,
     })
     .eq('asaas_subscription_id', subscriptionId)
