@@ -32,9 +32,9 @@ export async function GET(req: Request) {
 
 /** Validate Meta's X-Hub-Signature-256 (fail-open when the secret is unset). */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
-  const appSecret = process.env.META_APP_SECRET
+  const appSecret = process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET
   if (!appSecret) {
-    console.warn('[instagram webhook] META_APP_SECRET not set — payloads are NOT verified')
+    console.warn('[instagram webhook] no app secret set — payloads are NOT verified')
     return true
   }
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false

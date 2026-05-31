@@ -177,8 +177,8 @@ function SetupGuide({ webhookUrl }: { webhookUrl: string }) {
     {
       title: '1. Conta Instagram Profissional',
       body: (
-        <>Transforme seu Instagram em conta <b>Profissional</b> (Business ou Creator) e vincule-a a uma{' '}
-        <b>Página do Facebook</b>. Isso é feito no app do Instagram: Configurações → Conta → Mudar para conta profissional.</>
+        <>Transforme seu Instagram em conta <b>Profissional</b> (Business ou Creator) no app do Instagram:
+        Configurações → Conta → Mudar para conta profissional. (Não é necessária Página do Facebook.)</>
       ),
     },
     {
@@ -188,21 +188,21 @@ function SetupGuide({ webhookUrl }: { webhookUrl: string }) {
           <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
             developers.facebook.com/apps <ExternalLink className="w-3 h-3" />
           </a>{' '}
-          → <b>Criar App</b> → tipo <b>Empresa (Business)</b>. Dentro do App, adicione os produtos{' '}
-          <b>Login do Facebook</b> e <b>Instagram</b> (API de Mensagens do Instagram).</>
+          → <b>Criar App</b> → tipo <b>Empresa (Business)</b>. Adicione o produto{' '}
+          <b>Instagram</b> e abra <b>“Configuração da API com login do Instagram”</b>.</>
       ),
     },
     {
       title: '3. Configure o redirecionamento OAuth',
       body: (
-        <>Em <b>Login do Facebook → Configurações</b>, adicione esta URL em “URIs de redirecionamento OAuth válidos”:
+        <>Em <b>Instagram → Configuração da API → Login do negócio</b>, adicione esta URL em “URIs de redirecionamento do OAuth”:
           <CopyRow value={`${webhookUrl.replace('/api/webhooks/instagram', '')}/api/social/instagram/callback`} onCopy={copy} /></>
       ),
     },
     {
       title: '4. Configure o Webhook',
       body: (
-        <>Em <b>Webhooks → Instagram</b>, use a URL de callback e o token de verificação:
+        <>Em <b>Instagram → Configuração da API → Webhooks</b>, use a URL de callback e o token de verificação:
           <CopyRow label="Callback URL" value={webhookUrl} onCopy={copy} />
           <CopyRow label="Verify token" value="(o valor de META_WEBHOOK_VERIFY_TOKEN do seu ambiente)" onCopy={copy} />
           <span className="block mt-2">Inscreva os campos: <b>messages</b>, <b>comments</b>, <b>mentions</b>.</span></>
@@ -211,21 +211,20 @@ function SetupGuide({ webhookUrl }: { webhookUrl: string }) {
     {
       title: '5. Permissões (App Review)',
       body: (
-        <>Solicite a aprovação destas permissões avançadas no <b>App Review</b>:
+        <>Solicite a aprovação destas permissões no <b>App Review</b> (para responder ao público geral):
           <code className="block mt-1 text-xs bg-muted rounded p-2 leading-relaxed">
-            instagram_basic · instagram_manage_messages · instagram_manage_comments ·
-            pages_show_list · pages_manage_metadata · pages_read_engagement · business_management
+            instagram_business_basic · instagram_business_manage_messages · instagram_business_manage_comments
           </code>
-          <span className="block mt-1 text-xs">Em modo de desenvolvimento você já pode testar com contas de teste/admins antes da aprovação.</span></>
+          <span className="block mt-1 text-xs">Em modo de desenvolvimento você já pode testar com a sua própria conta (admin/testador) antes da aprovação.</span></>
       ),
     },
     {
       title: '6. Defina as variáveis de ambiente',
       body: (
-        <>No painel da Vercel (Settings → Environment Variables), defina:
+        <>No painel da Vercel (Settings → Environment Variables), defina (estas são do <b>app do Instagram</b>, na tela “Configuração da API com login do Instagram”):
           <code className="block mt-1 text-xs bg-muted rounded p-2 leading-relaxed">
-            META_APP_ID = (App ID do seu App Meta)<br />
-            META_APP_SECRET = (App Secret){'  '}<br />
+            INSTAGRAM_APP_ID = (ID do app do Instagram)<br />
+            INSTAGRAM_APP_SECRET = (Chave secreta do app do Instagram){'  '}<br />
             META_WEBHOOK_VERIFY_TOKEN = (uma frase aleatória que você define)
           </code>
           <span className="block mt-1 text-xs">Faça um novo deploy após salvar. Depois é só clicar em “Conectar Instagram”.</span></>
