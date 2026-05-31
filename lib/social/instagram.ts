@@ -80,7 +80,10 @@ export function buildOAuthDialogUrl(state: string): string {
     scope: IG_SCOPES,
     response_type: 'code',
   })
-  return `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params.toString()}`
+  // NOTE: the user-facing OAuth dialog lives at www.facebook.com WITHOUT a
+  // version segment. Including /vXX.X/ here makes Facebook reject the request
+  // with PLATFORM__INVALID_APP_ID. (The version only applies to graph.facebook.com.)
+  return `https://www.facebook.com/dialog/oauth?${params.toString()}`
 }
 
 export async function exchangeCodeForToken(code: string): Promise<string> {
