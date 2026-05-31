@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building, Users, Palette, Share2, Sparkles, Bot } from 'lucide-react'
+import { Building, Users, Palette, Share2, Sparkles, Bot, AtSign } from 'lucide-react'
 import AppearanceTab from '@/components/features/AppearanceTab'
 
 interface Props {
@@ -158,6 +158,31 @@ export default function SettingsTabs({ orgSlug, orgId, initialLogoUrl, initialCo
             <CardFooter>
               <Button variant="outline" size="sm" className="w-full" asChild>
                 <a href={`/app/${orgSlug}/configuracoes/ia`}>Configurar</a>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-4 pb-2">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                style={{ background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)' }}
+              >
+                <AtSign className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Instagram · DMs & Comentários</CardTitle>
+                <CardDescription>Auto-resposta de DMs e comentários.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Conecte uma conta profissional e automatize respostas com IA.
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <a href={`/app/${orgSlug}/configuracoes/social`}>Configurar</a>
               </Button>
             </CardFooter>
           </Card>
