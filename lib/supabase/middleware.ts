@@ -18,6 +18,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/verify-email' ||   // post-signup "check your email" screen
     pathname === '/forgot-password' || // password reset request
     pathname === '/onboarding' ||
+    pathname === '/privacidade' ||    // public privacy policy (required by Meta)
+    pathname === '/termos' ||         // public terms of service
     pathname.startsWith('/auth/')    ||  // auth callbacks (email confirm, OAuth)
     pathname.startsWith('/f/')       ||  // public forms
     pathname.startsWith('/book/')    ||  // public booking pages
