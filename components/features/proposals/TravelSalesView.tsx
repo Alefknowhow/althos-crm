@@ -10,20 +10,25 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import EmptyState from '@/components/ui/empty-state'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatCurrency } from '@/lib/utils'
 import {
-  updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, type TravelSaleRow,
+  updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
 } from '@/actions/travel-sales'
 import { toast } from 'sonner'
 import {
-  Plane, MapPin, Hotel, CalendarRange, CheckCircle2, ListChecks, Trash2, Pencil, Receipt,
+  Plane, MapPin, Hotel, CalendarRange, CheckCircle2, ListChecks, Trash2, Pencil, Receipt, Plus, FileText,
 } from 'lucide-react'
+
+type ProposalOption = { id: string; title: string | null; client_name: string | null }
 
 const SERVICE_LABELS: Record<string, string> = {
   transfer: 'Traslado', insurance: 'Seguro viagem', car_rental: 'Locação de carro',
@@ -48,11 +53,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>
 }
 
-export default function TravelSalesView({ orgSlug, sales }: { orgSlug: string; sales: TravelSaleRow[] }) {
+export default function TravelSalesView({
+  orgSlug, sales, proposals = [],
+}: {
+  orgSlug: string
+  sales: TravelSaleRow[]
+  proposals?: ProposalOption[]
+}) {
   const router = useRouter()
   const [editing, setEditing] = useState<TravelSaleRow | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [newOpen, setNewOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [pickedProposal, setPickedProposal] = useState<string>('none')
 
   async function handleDelete(id: string) {
     const res = await deleteTravelSale(orgSlug, id)
@@ -60,18 +74,33 @@ export default function TravelSalesView({ orgSlug, sales }: { orgSlug: string; s
     else toast.error(res.error)
   }
 
-  if (sales.length === 0) {
-    return (
-      <EmptyState
-        icon={Receipt}
-        title="Nenhuma venda de viagem ainda"
-        description="As vendas aparecem aqui automaticamente quando você move um lead com proposta vinculada para uma etapa de 'ganho/fechado' no pipeline."
-      />
-    )
+  async function handleCreate() {
+    setCreating(true)
+    const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal)
+    setCreating(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setNewOpen(false)
+    setPickedProposal('none')
+    toast.success('Venda criada')
+    setEditing(res.data)        // open editor immediately to fill operational data
+    router.refresh()
   }
 
   return (
     <>
+      <div className="flex items-center justify-end">
+        <Button onClick={() => setNewOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" /> Nova venda
+        </Button>
+      </div>
+
+      {sales.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          title="Nenhuma venda de viagem ainda"
+          description="Crie uma venda manualmente com o botão 'Nova venda' (importando uma proposta), ou mova um lead com proposta vinculada para a etapa 'Fechado' no pipeline — a venda é gerada automaticamente."
+        />
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {sales.map(s => (
           <Card key={s.id} className="group relative">
@@ -111,6 +140,48 @@ export default function TravelSalesView({ orgSlug, sales }: { orgSlug: string; s
           </Card>
         ))}
       </div>
+      )}
+
+      {/* Nova venda — import from proposal or start blank */}
+      <Dialog open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Nova venda de viagem</DialogTitle>
+            <DialogDescription>
+              Importe uma proposta para preencher os dados automaticamente, ou comece em branco.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-2">
+            <Label className="text-xs">Importar de uma proposta</Label>
+            <Select value={pickedProposal} onValueChange={setPickedProposal}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma proposta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Começar em branco</SelectItem>
+                {proposals.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {(p.title || 'Proposta sem título')}{p.client_name ? ` · ${p.client_name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {proposals.length === 0 && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" /> Nenhuma proposta criada ainda — a venda começará em branco.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" disabled={creating} onClick={() => setNewOpen(false)}>Cancelar</Button>
+            <Button disabled={creating} onClick={handleCreate}>
+              {creating ? 'Criando…' : 'Criar venda'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Editor */}
       <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>

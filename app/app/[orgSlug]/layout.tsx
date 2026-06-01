@@ -71,17 +71,17 @@ export default async function OrgLayout({
   const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       {primaryCSS && (
         <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
       )}
       <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         <Sidebar orgSlug={params.orgSlug} />
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* pl-14 on mobile leaves space for the fixed sidebar hamburger
               rendered by SidebarShell. md+ uses normal padding since the
               desktop aside occupies its own column. */}

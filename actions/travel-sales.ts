@@ -124,6 +124,91 @@ export async function deleteTravelSale(orgSlug: string, id: string) {
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Map a proposal row into the pre-fillable fields of a travel sale.
+ * Shared by the auto-creation-on-won path and the manual "Nova venda" flow.
+ */
+function mapProposalToSaleFields(proposal: any): Record<string, any> {
+  const destination = (proposal.destinations || [])
+    .map((d: any) => d?.name).filter(Boolean).join(', ') || null
+  const hotelName = (proposal.hotels || [])
+    .map((h: any) => h?.name).filter(Boolean).join(', ') || null
+  const airlines = Array.from(new Set((proposal.flights || [])
+    .map((f: any) => f?.airline).filter(Boolean)))
+  const airline = airlines.length ? airlines.join(', ') : null
+  const services = Object.entries(proposal.services || {})
+    .filter(([, v]: any) => v?.enabled)
+    .map(([k]) => k)
+  const methods: string[] = proposal.payment?.methods || []
+
+  let negotiationDays: number | null = null
+  if (proposal.created_at) {
+    const ms = Date.now() - new Date(proposal.created_at).getTime()
+    negotiationDays = Math.max(0, Math.round(ms / 86400000))
+  }
+
+  return {
+    client_name: proposal.client_name,
+    destination,
+    departure_date: proposal.start_date,
+    return_date: proposal.end_date,
+    negotiation_days: negotiationDays,
+    total_cents: proposal.total_cents || 0,
+    hotel_name: hotelName,
+    airline,
+    services,
+    payment_method: methods.join(', ') || null,
+  }
+}
+
+/**
+ * Manually create a travel sale, optionally pre-filled from a proposal.
+ * Powers the "Nova venda" button — a robust fallback to the auto-creation
+ * that fires when a lead is moved to a won stage.
+ */
+export async function createTravelSale(orgSlug: string, proposalId?: string | null) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+
+  let prefill: Record<string, any> = {}
+  let leadId: string | null = null
+  let linkedProposalId: string | null = null
+
+  if (proposalId) {
+    const { data: proposal } = await supabase
+      .from('travel_proposals')
+      .select('*')
+      .eq('organization_id', org.id)
+      .eq('id', proposalId)
+      .maybeSingle()
+    if (!proposal) return { ok: false as const, error: 'Proposta não encontrada.' }
+    prefill = mapProposalToSaleFields(proposal)
+    leadId = (proposal as any).lead_id ?? null
+    linkedProposalId = (proposal as any).id
+  }
+
+  const { data, error } = await supabase
+    .from('travel_sales')
+    .insert({
+      organization_id: org.id,
+      lead_id: leadId,
+      proposal_id: linkedProposalId,
+      created_by: user.id,
+      status: 'open',
+      ...prefill,
+    })
+    .select()
+    .single()
+
+  if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
+  revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+  return { ok: true as const, data: data as TravelSaleRow }
+}
+
 function shiftDate(dateStr: string, deltaDays: number): string {
   const d = new Date(dateStr + 'T12:00:00')
   d.setDate(d.getDate() + deltaDays)
@@ -278,40 +363,13 @@ export async function maybeCreateTravelSaleOnWon(
       .maybeSingle()
     if (existing) return
 
-    const destination = (proposal.destinations || [])
-      .map((d: any) => d?.name).filter(Boolean).join(', ') || null
-    const hotelName = (proposal.hotels || [])
-      .map((h: any) => h?.name).filter(Boolean).join(', ') || null
-    const airlines = Array.from(new Set((proposal.flights || [])
-      .map((f: any) => f?.airline).filter(Boolean)))
-    const airline = airlines.length ? airlines.join(', ') : null
-    const services = Object.entries(proposal.services || {})
-      .filter(([, v]: any) => v?.enabled)
-      .map(([k]) => k)
-    const methods: string[] = proposal.payment?.methods || []
-
-    let negotiationDays: number | null = null
-    if (proposal.created_at) {
-      const ms = Date.now() - new Date(proposal.created_at).getTime()
-      negotiationDays = Math.max(0, Math.round(ms / 86400000))
-    }
-
     await supabase.from('travel_sales').insert({
       organization_id: org.id,
       lead_id: leadId,
       proposal_id: proposal.id,
       created_by: userId,
       status: 'open',
-      client_name: proposal.client_name,
-      destination,
-      departure_date: proposal.start_date,
-      return_date: proposal.end_date,
-      negotiation_days: negotiationDays,
-      total_cents: proposal.total_cents || 0,
-      hotel_name: hotelName,
-      airline,
-      services,
-      payment_method: methods.join(', ') || null,
+      ...mapProposalToSaleFields(proposal),
     })
   } catch (err: any) {
     console.error('[maybeCreateTravelSaleOnWon] error:', err?.message)

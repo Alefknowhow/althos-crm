@@ -119,11 +119,17 @@ export async function updateProposal(orgSlug: string, id: string, input: Record<
     .eq('id', id)
     .eq('organization_id', org.id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar proposta' }
+  // 0 rows → the proposal doesn't belong to this org or was removed. Surface a
+  // clear message rather than silently "succeeding" with stale public data.
+  if (!data) return { ok: false as const, error: 'Proposta não encontrada nesta organização.' }
+
   revalidatePath(`/app/${orgSlug}/proposta`)
   revalidatePath(`/app/${orgSlug}/proposta/${id}`)
+  // The public client link reads by token (force-dynamic, no cache) so it
+  // reflects this update on the next load — nothing else to revalidate.
   return { ok: true as const, data: data as ProposalRow }
 }
 

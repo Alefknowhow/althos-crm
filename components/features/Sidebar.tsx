@@ -174,7 +174,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('catalog') && (
+        {can('catalog') && !isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/catalogo`}>
             <span className="flex items-center gap-2.5">
               <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -183,7 +183,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && (
+        {can('sales') && !isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/vendas`}>
             <span className="flex items-center gap-2.5">
               <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -201,7 +201,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('calendar') && (
+        {can('calendar') && !isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
             <span className="flex items-center gap-2.5">
               <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />

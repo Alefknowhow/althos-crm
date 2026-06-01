@@ -48,7 +48,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
       <aside
         data-collapsed={collapsed}
         className={cn(
-          'group hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen relative transition-[width] duration-200 ease-out',
+          'group hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col h-full relative transition-[width] duration-200 ease-out',
           collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
         )}
       >

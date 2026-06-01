@@ -124,7 +124,7 @@ export async function createOrganization(formData: FormData) {
       { pipeline_id: pipeline.id, name: 'Novo Lead',     position: 1, color: '#94a3b8' },
       { pipeline_id: pipeline.id, name: 'Contato Feito', position: 2, color: '#3b82f6' },
       { pipeline_id: pipeline.id, name: 'Negociação',    position: 3, color: '#eab308' },
-      { pipeline_id: pipeline.id, name: 'Fechado',       position: 4, color: '#22c55e' },
+      { pipeline_id: pipeline.id, name: 'Fechado',       position: 4, color: '#22c55e', is_won: true },
     ])
   }
 
