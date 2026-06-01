@@ -26,7 +26,7 @@ export default function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col bg-muted/30 rounded-xl w-[320px] shrink-0 snap-center border overflow-hidden h-full transition-colors',
+        'flex flex-col bg-muted/30 rounded-xl w-full md:w-[320px] shrink-0 md:snap-center border overflow-hidden h-auto md:h-full max-h-[75vh] md:max-h-none transition-colors',
         isOver && 'ring-2 ring-brand-400 border-brand-300',
       )}
     >

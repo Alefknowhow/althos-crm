@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,15 +19,17 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn, formatCurrency } from '@/lib/utils'
+import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
 } from '@/actions/travel-sales'
 import { toast } from 'sonner'
 import {
-  MapPin, CalendarRange, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText,
+  MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null }
+type Member = { user_id: string; name: string; email: string }
 
 const SERVICE_LABELS: Record<string, string> = {
   transfer: 'Traslado', insurance: 'Seguro viagem', car_rental: 'Locação de carro',
@@ -38,7 +40,6 @@ function reaisToCents(s: string) {
   const n = parseFloat((s || '').replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) ? Math.round(n * 100) : 0
 }
-function fmtDate(d?: string | null) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—' }
 function fmtTimestamp(d?: string | null) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—' }
 
 function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) => void }) {
@@ -54,11 +55,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function TravelSalesView({
-  orgSlug, sales, proposals = [],
+  orgSlug, sales, proposals = [], members = [],
 }: {
   orgSlug: string
   sales: TravelSaleRow[]
   proposals?: ProposalOption[]
+  members?: Member[]
 }) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<string | null>(sales[0]?.id ?? null)
@@ -67,6 +69,29 @@ export default function TravelSalesView({
   const [newOpen, setNewOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
+
+  const [query, setQuery] = useState('')
+  const [seller, setSeller] = useState<string>('all')
+  const [dateBucket, setDateBucket] = useState<DateBucket>('all')
+
+  const sellerName = useMemo(
+    () => new Map(members.map(m => [m.user_id, m.name])),
+    [members],
+  )
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return sales.filter(s => {
+      if (seller !== 'all' && s.created_by !== seller) return false
+      if (!matchesDateBucket(s.created_at, dateBucket)) return false
+      if (q) {
+        const hay = [s.client_name, s.destination, s.hotel_name, s.airline]
+          .filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [sales, query, seller, dateBucket])
 
   const selected = sales.find(s => s.id === selectedId) ?? null
 
@@ -132,21 +157,69 @@ export default function TravelSalesView({
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-muted-foreground">{sales.length} venda(s)</p>
-        <Button onClick={() => setNewOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Nova venda
-        </Button>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Buscar por cliente, destino, hotel, cia…"
+              className="pl-8"
+            />
+          </div>
+          {members.length > 0 && (
+            <Select value={seller} onValueChange={setSeller}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os vendedores</SelectItem>
+                {members.map(m => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={() => setNewOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Nova venda
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {DATE_BUCKETS.map(b => (
+            <button
+              key={b.id}
+              onClick={() => setDateBucket(b.id)}
+              className={cn(
+                'px-3 h-7 rounded-full border text-xs font-medium transition-colors',
+                dateBucket === b.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
+              )}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-15rem)] min-h-[460px]">
+      <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {sales.length} venda(s)</p>
+
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
           'rounded-xl border bg-card overflow-y-auto divide-y',
           selected && 'hidden md:block',
         )}>
-          {sales.map(s => {
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Nenhuma venda encontrada com esses filtros.
+            </div>
+          ) : filtered.map(s => {
             const active = s.id === selectedId
+            const seller = s.created_by ? sellerName.get(s.created_by) : null
             return (
               <button
                 key={s.id}
@@ -165,16 +238,22 @@ export default function TravelSalesView({
                     ? <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas</Badge>
                     : <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
                 </div>
-                <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
-                  {s.destination && <div className="flex items-center gap-1.5"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span></div>}
-                  <div className="flex items-center gap-1.5"><CalendarRange className="w-3 h-3 shrink-0" /> <span className="truncate">{fmtDate(s.departure_date)} – {fmtDate(s.return_date)}</span></div>
+                {s.destination && (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span>
+                  </div>
+                )}
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatCurrency(s.total_cents || 0)}</span>
+                  <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>
                 </div>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-sm font-bold tabular-nums">{formatCurrency(s.total_cents || 0)}</span>
-                  {s.commission_cents
-                    ? <span className="text-[11px] text-emerald-700 font-medium">Com.: {formatCurrency(s.commission_cents)}</span>
-                    : <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>}
-                </div>
+                {seller && (
+                  <div className="mt-1.5">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
+                      <UserCircle2 className="w-3 h-3" /> {seller}
+                    </Badge>
+                  </div>
+                )}
               </button>
             )
           })}

@@ -1,23 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import EmptyState from '@/components/ui/empty-state'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
+import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
-  ArrowLeft, Share2, Copy, ExternalLink, CheckCircle2, Clock, Wallet,
+  ArrowLeft, Share2, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+
+type Member = { user_id: string; name: string; email: string }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Rascunho', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
@@ -39,14 +45,41 @@ function destOf(p: ProposalRow) {
 export default function ProposalsList({
   orgSlug,
   proposals,
+  members = [],
 }: {
   orgSlug: string
   proposals: ProposalRow[]
+  members?: Member[]
 }) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(proposals[0]?.id ?? null)
+
+  const [query, setQuery] = useState('')
+  const [seller, setSeller] = useState<string>('all')
+  const [dateBucket, setDateBucket] = useState<DateBucket>('all')
+
+  const sellerName = useMemo(
+    () => new Map(members.map(m => [m.user_id, m.name])),
+    [members],
+  )
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return proposals.filter(p => {
+      if (seller !== 'all' && p.created_by !== seller) return false
+      if (!matchesDateBucket(p.created_at, dateBucket)) return false
+      if (q) {
+        const hay = [
+          p.client_name, p.title, destOf(p),
+          ...(Array.isArray(p.travelers) ? p.travelers.map((t: any) => t?.name) : []),
+        ].filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [proposals, query, seller, dateBucket])
 
   const selected = proposals.find(p => p.id === selectedId) ?? null
 
@@ -85,23 +118,71 @@ export default function ProposalsList({
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-muted-foreground">{proposals.length} proposta(s)</p>
-        <Button onClick={handleCreate} disabled={creating}>
-          <Plus className="w-4 h-4 mr-2" /> {creating ? 'Criando…' : 'Nova proposta'}
-        </Button>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Buscar por cliente, destino, título…"
+              className="pl-8"
+            />
+          </div>
+          {members.length > 0 && (
+            <Select value={seller} onValueChange={setSeller}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os vendedores</SelectItem>
+                {members.map(m => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={handleCreate} disabled={creating}>
+            <Plus className="w-4 h-4 mr-2" /> {creating ? 'Criando…' : 'Nova proposta'}
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {DATE_BUCKETS.map(b => (
+            <button
+              key={b.id}
+              onClick={() => setDateBucket(b.id)}
+              className={cn(
+                'px-3 h-7 rounded-full border text-xs font-medium transition-colors',
+                dateBucket === b.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
+              )}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-15rem)] min-h-[460px]">
+      <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {proposals.length} proposta(s)</p>
+
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
           'rounded-xl border bg-card overflow-y-auto divide-y',
           selected && 'hidden md:block',
         )}>
-          {proposals.map(p => {
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Nenhuma proposta encontrada com esses filtros.
+            </div>
+          ) : filtered.map(p => {
             const st = STATUS[p.status] || STATUS.draft
             const dest = destOf(p)
             const active = p.id === selectedId
+            const seller = p.created_by ? sellerName.get(p.created_by) : null
             return (
               <button
                 key={p.id}
@@ -114,18 +195,26 @@ export default function ProposalsList({
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium text-sm leading-tight line-clamp-2">
-                    {p.title || 'Proposta sem título'}
+                    {p.client_name || p.title || 'Proposta sem título'}
                   </span>
                   <Badge variant="outline" className={cn('shrink-0 text-[10px] px-1.5 py-0', st.cls)}>{st.label}</Badge>
                 </div>
-                <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
-                  {p.client_name && <div className="flex items-center gap-1.5"><Users className="w-3 h-3 shrink-0" /> <span className="truncate">{p.client_name}</span></div>}
-                  {dest && <div className="flex items-center gap-1.5"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span></div>}
-                </div>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-sm font-bold tabular-nums">{formatCurrency(p.total_cents || 0)}</span>
+                {dest && (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
+                  </div>
+                )}
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatCurrency(p.total_cents || 0)}</span>
                   <span className="text-[11px] text-muted-foreground">{fmtTimestamp(p.created_at)}</span>
                 </div>
+                {seller && (
+                  <div className="mt-1.5">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
+                      <UserCircle2 className="w-3 h-3" /> {seller}
+                    </Badge>
+                  </div>
+                )}
               </button>
             )
           })}
@@ -141,6 +230,7 @@ export default function ProposalsList({
                 key={selected.id}
                 orgSlug={orgSlug}
                 p={selected}
+                sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
                 onBack={() => setSelectedId(null)}
                 onDelete={() => setDeleteId(selected.id)}
               />
@@ -187,10 +277,11 @@ function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; val
 }
 
 function ProposalDetail({
-  orgSlug, p, onBack, onDelete,
+  orgSlug, p, sellerName, onBack, onDelete,
 }: {
   orgSlug: string
   p: ProposalRow
+  sellerName: string | null
   onBack: () => void
   onDelete: () => void
 }) {
@@ -232,6 +323,7 @@ function ProposalDetail({
           <DetailRow icon={Users} label="Nº de pessoas" value={p.pax_count ?? '—'} />
           <DetailRow icon={Wallet} label="Valor por pessoa" value={p.price_per_person_cents ? formatCurrency(p.price_per_person_cents) : '—'} />
           <DetailRow icon={Clock} label="Criada em" value={fmtTimestamp(p.created_at)} />
+          {sellerName && <DetailRow icon={UserCircle2} label="Vendedor" value={sellerName} />}
         </div>
 
         {travelers.length > 0 && (

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
 import { listProposals } from '@/actions/travel-proposals'
+import { listOrgMembers } from '@/actions/team'
 import ProposalsList from '@/components/features/proposals/ProposalsList'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,10 @@ export default async function ProposalsPage({ params }: { params: { orgSlug: str
     redirect(`/app/${params.orgSlug}`)
   }
 
-  const proposals = await listProposals(params.orgSlug)
+  const [proposals, members] = await Promise.all([
+    listProposals(params.orgSlug),
+    listOrgMembers(params.orgSlug),
+  ])
 
   return (
     <div className="space-y-6">
@@ -26,7 +30,7 @@ export default async function ProposalsPage({ params }: { params: { orgSlug: str
         </p>
       </div>
 
-      <ProposalsList orgSlug={params.orgSlug} proposals={proposals} />
+      <ProposalsList orgSlug={params.orgSlug} proposals={proposals} members={members} />
     </div>
   )
 }

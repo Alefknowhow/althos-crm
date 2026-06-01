@@ -3,6 +3,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
 import { listTravelSales } from '@/actions/travel-sales'
 import { listProposals } from '@/actions/travel-proposals'
+import { listOrgMembers } from '@/actions/team'
 import TravelSalesView from '@/components/features/proposals/TravelSalesView'
 
 export const dynamic = 'force-dynamic'
@@ -12,9 +13,10 @@ export default async function TravelSalesPage({ params }: { params: { orgSlug: s
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
 
-  const [sales, proposals] = await Promise.all([
+  const [sales, proposals, members] = await Promise.all([
     listTravelSales(params.orgSlug),
     listProposals(params.orgSlug),
+    listOrgMembers(params.orgSlug),
   ])
   const proposalOptions = proposals.map(p => ({
     id: p.id,
@@ -31,7 +33,7 @@ export default async function TravelSalesPage({ params }: { params: { orgSlug: s
         </p>
       </div>
 
-      <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} />
+      <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} members={members} />
     </div>
   )
 }

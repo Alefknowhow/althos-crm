@@ -264,7 +264,7 @@ export default function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-2 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:snap-x hide-scrollbar">
           {stages.map(stage => {
             const stageLeads = visibleLeads.filter(l => l.stage_id === stage.id)
             return (
