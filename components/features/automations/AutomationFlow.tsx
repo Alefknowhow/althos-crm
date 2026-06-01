@@ -556,6 +556,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   const canvasRef  = useRef<HTMLDivElement>(null)
   const [nodePos, setNodePos] = useState<Record<string, { x: number; y: number }>>({})
   const dragRef    = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null)
   const didDrag    = useRef(false)
 
   // Drag-to-connect state (N8N-style). `conn` holds the in-progress connection
@@ -622,39 +623,44 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   }
   const posOf = (id: string) => getPos(id, Math.max(0, allIds.indexOf(id)))
 
-  // ── Node drag handlers ──────────────────────────────────────────────────────
+  // ── Node drag handlers (window-level for robustness) ─────────────────────────
+  // The card itself is a <button>, so we must NOT bail on generic buttons —
+  // only on form controls and the connection ports. Movement vs. click is
+  // distinguished via the didDrag threshold so a plain click still selects.
   function onDragStart(e: React.PointerEvent, nodeId: string, fallbackIndex: number) {
-    // Don't start drag when clicking interactive elements / ports inside the card
-    if ((e.target as HTMLElement).closest('button,select,input,a,[role="menuitem"],[data-port]')) return
-    e.preventDefault()
-    e.stopPropagation()
+    if ((e.target as HTMLElement).closest('select,input,textarea,a,[role="menuitem"],[data-port]')) return
+
     const p = getPos(nodeId, fallbackIndex)
     dragRef.current  = { id: nodeId, sx: e.clientX, sy: e.clientY, ox: p.x, oy: p.y }
+    lastPosRef.current = p
     didDrag.current  = false
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  }
 
-  function onDragMove(e: React.PointerEvent, nodeId: string) {
-    if (dragRef.current?.id !== nodeId) return
-    const { sx, sy, ox, oy } = dragRef.current
-    const dx = e.clientX - sx
-    const dy = e.clientY - sy
-    if (Math.abs(dx) + Math.abs(dy) > 3) didDrag.current = true
-    setNodePos(prev => ({ ...prev, [nodeId]: { x: ox + dx, y: oy + dy } }))
-  }
-
-  function onDragEnd(nodeId?: string) {
-    const dragged = didDrag.current && !!dragRef.current
-    dragRef.current = null
-    if (!dragged || !nodeId) return
-    const pos = nodePos[nodeId]
-    if (!pos) return
-    if (nodeId === TRIGGER_ID) {
-      setAuto({ ...auto, trigger_config: { ...(auto.trigger_config || {}), __pos: pos } })
-    } else {
-      const next = steps.map((s, i) => (stepId(s, i) === nodeId ? { ...s, config: { ...(s.config || {}), __pos: pos } } : s))
-      setAuto({ ...auto, steps: next })
+    const move = (ev: PointerEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      const dx = ev.clientX - d.sx
+      const dy = ev.clientY - d.sy
+      if (Math.abs(dx) + Math.abs(dy) > 3) didDrag.current = true
+      const pos = { x: d.ox + dx, y: d.oy + dy }
+      lastPosRef.current = pos
+      setNodePos(prev => ({ ...prev, [d.id]: pos }))
     }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const d = dragRef.current
+      dragRef.current = null
+      if (!d || !didDrag.current || !lastPosRef.current) return
+      const pos = lastPosRef.current
+      if (d.id === TRIGGER_ID) {
+        setAuto({ ...auto, trigger_config: { ...(auto.trigger_config || {}), __pos: pos } })
+      } else {
+        const next = steps.map((s, i) => (stepId(s, i) === d.id ? { ...s, config: { ...(s.config || {}), __pos: pos } } : s))
+        setAuto({ ...auto, steps: next })
+      }
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
 
   function wasDrag() { return didDrag.current }
@@ -904,8 +910,6 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
                 onPointerDown={e => onDragStart(e, TRIGGER_ID, 0)}
-                onPointerMove={e => onDragMove(e, TRIGGER_ID)}
-                onPointerUp={() => onDragEnd(TRIGGER_ID)}
               >
                 {/* Drag handle hint */}
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
@@ -947,8 +951,6 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
                 onPointerDown={e => onDragStart(e, nodeId, i + 1)}
-                onPointerMove={e => onDragMove(e, nodeId)}
-                onPointerUp={() => onDragEnd(nodeId)}
               >
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
                   <GripVertical className="w-4 h-4" />
