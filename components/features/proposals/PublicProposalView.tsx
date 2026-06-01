@@ -10,6 +10,8 @@ type Org = {
   cadastur: string | null
   contact_phone: string | null
   contact_email: string | null
+  instagram: string | null
+  website: string | null
   address_street: string | null
   address_city: string | null
   address_state: string | null
@@ -78,6 +80,8 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
   const cadastur = ov.cadastur || org.cadastur
   const phone = ov.contact_phone || org.contact_phone
   const email = ov.contact_email || org.contact_email
+  const instagram = ov.instagram || org.instagram
+  const website = ov.website || org.website
   const addrParts = [
     ov.address_street || org.address_street,
     [ov.address_city || org.address_city, ov.address_state || org.address_state].filter(Boolean).join(' - '),
@@ -326,6 +330,8 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             {cadastur && <span>CADASTUR: {cadastur}</span>}
             {phone && <span>Tel: {phone}</span>}
             {email && <span>{email}</span>}
+            {instagram && <span>Instagram: {instagram.startsWith('@') ? instagram : `@${instagram}`}</span>}
+            {website && <span>{website.replace(/^https?:\/\//, '')}</span>}
           </div>
           {addrParts.length > 0 && <p>{addrParts.join(', ')}</p>}
         </footer>

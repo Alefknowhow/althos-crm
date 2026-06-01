@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Users, Palette, Share2, Sparkles, Bot, AtSign } from 'lucide-react'
 import AppearanceTab from '@/components/features/AppearanceTab'
 import GeneralTab from '@/components/features/GeneralTab'
+import CompanyDataTab from '@/components/features/CompanyDataTab'
+import type { OrgCompanyData } from '@/actions/organization'
 
 interface Props {
   orgSlug:        string
@@ -14,9 +16,10 @@ interface Props {
   initialNiche:   string
   initialLogoUrl: string | null
   initialColor:   string | null
+  initialCompany: OrgCompanyData
 }
 
-export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, initialLogoUrl, initialColor }: Props) {
+export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, initialLogoUrl, initialColor, initialCompany }: Props) {
   return (
     <Tabs defaultValue="geral" className="space-y-4">
       <TabsList>
@@ -35,8 +38,9 @@ export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, in
       </TabsList>
 
       {/* ── Geral ──────────────────────────────────────────────────────────── */}
-      <TabsContent value="geral">
+      <TabsContent value="geral" className="space-y-4">
         <GeneralTab orgSlug={orgSlug} orgName={orgName} initialNiche={initialNiche} />
+        <CompanyDataTab orgSlug={orgSlug} initial={initialCompany} />
       </TabsContent>
 
       {/* ── Membros ────────────────────────────────────────────────────────── */}

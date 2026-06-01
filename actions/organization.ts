@@ -329,6 +329,51 @@ export async function updateOrgAppearance(
   return { ok: true as const }
 }
 
+// ─── Company data (shown in proposal header/footer) ──────────────────────────
+
+const COMPANY_FIELDS = [
+  'cnpj', 'cadastur', 'contact_phone', 'contact_email', 'instagram', 'website',
+  'address_street', 'address_city', 'address_state', 'address_zip',
+] as const
+
+export type OrgCompanyData = Record<(typeof COMPANY_FIELDS)[number], string>
+
+export async function getOrgCompany(orgSlug: string): Promise<OrgCompanyData> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select(COMPANY_FIELDS.join(', '))
+    .eq('id', org.id)
+    .maybeSingle()
+
+  const out = {} as OrgCompanyData
+  for (const f of COMPANY_FIELDS) out[f] = ((data as any)?.[f] as string) ?? ''
+  return out
+}
+
+export async function updateOrgCompany(orgSlug: string, payload: Partial<OrgCompanyData>) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const updates: Record<string, string | null> = {}
+  for (const f of COMPANY_FIELDS) {
+    if (f in payload) {
+      const v = (payload[f] ?? '').trim()
+      updates[f] = v || null
+    }
+  }
+  if (Object.keys(updates).length === 0) return { ok: true as const }
+
+  const { error } = await supabase.from('organizations').update(updates).eq('id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/configuracoes`)
+  return { ok: true as const }
+}
+
 // ─── Meta / Facebook integration ─────────────────────────────────────────────
 
 export async function getOrgMetaConfig(orgSlug: string) {

@@ -33,7 +33,7 @@ export default async function PublicProposalPage({ params }: { params: { token: 
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, logo_url, cnpj, cadastur, contact_phone, contact_email, address_street, address_city, address_state, address_zip')
+    .select('name, logo_url, cnpj, cadastur, contact_phone, contact_email, instagram, website, address_street, address_city, address_state, address_zip')
     .eq('id', proposal.organization_id)
     .maybeSingle()
 
