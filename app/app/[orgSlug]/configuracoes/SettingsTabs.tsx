@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building, Users, Palette, Share2, Sparkles, Bot, AtSign } from 'lucide-react'
+import { Building, Users, Palette, Share2, Sparkles, Bot, AtSign, Activity } from 'lucide-react'
 import AppearanceTab from '@/components/features/AppearanceTab'
 import GeneralTab from '@/components/features/GeneralTab'
 import CompanyDataTab from '@/components/features/CompanyDataTab'
@@ -81,7 +81,29 @@ export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, in
       </TabsContent>
 
       {/* ── Integrações ────────────────────────────────────────────────────── */}
-      <TabsContent value="integracoes">
+      <TabsContent value="integracoes" className="space-y-4">
+        <Card className="border-primary/30">
+          <CardHeader className="flex flex-row items-center gap-4 pb-2">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Saúde das Integrações</CardTitle>
+              <CardDescription>Diagnóstico em tempo real de todas as conexões.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              WhatsApp, Email, Automações e Banco de Dados — status, último erro e disponibilidade dos últimos 30 dias.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" size="sm" className="w-full" asChild>
+              <a href={`/app/${orgSlug}/configuracoes/integracoes/saude`}>Ver painel de saúde</a>
+            </Button>
+          </CardFooter>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center gap-4 pb-2">

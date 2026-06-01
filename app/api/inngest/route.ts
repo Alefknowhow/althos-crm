@@ -6,6 +6,7 @@ import { qualifyLeadFn } from '@/lib/inngest/qualifier'
 import { pushOverdueTasksFn, pushWhatsappMessageFn } from '@/lib/inngest/push'
 import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirthdayFn } from '@/lib/inngest/automation-crons'
 import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-emails'
+import { integrationHealthCheckFn, integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -22,5 +23,7 @@ export const { GET, POST, PUT } = serve({
     automationCustomerBirthdayFn,
     trialWarningEmailFn,
     trialExpiredEmailFn,
+    integrationHealthCheckFn,
+    integrationHealthPruneFn,
   ]
 })
