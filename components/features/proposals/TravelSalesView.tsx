@@ -269,6 +269,7 @@ export default function TravelSalesView({
                 key={selected.id}
                 sale={selected}
                 saving={saving}
+                sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
                 onBack={() => setSelectedId(null)}
                 onDelete={() => setDeleteId(selected.id)}
                 onSave={(patch, generate) => handleSave(selected.id, patch, generate)}
@@ -360,10 +361,11 @@ function NewSaleDialog({
 }
 
 function SaleEditor({
-  sale, saving, onSave, onBack, onDelete,
+  sale, saving, sellerName, onSave, onBack, onDelete,
 }: {
   sale: TravelSaleRow
   saving: boolean
+  sellerName: string | null
   onSave: (patch: Record<string, any>, generate: boolean) => void
   onBack: () => void
   onDelete: () => void
@@ -376,7 +378,8 @@ function SaleEditor({
     client_name: s.client_name, destination: s.destination,
     departure_date: s.departure_date || null, return_date: s.return_date || null,
     negotiation_days: s.negotiation_days, total_cents: s.total_cents,
-    hotel_name: s.hotel_name, airline: s.airline, payment_method: s.payment_method,
+    hotel_name: s.hotel_name, airline: s.airline, operator: s.operator,
+    payment_method: s.payment_method,
     package_locator: s.package_locator, air_locator: s.air_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
     notes: s.notes,
@@ -398,6 +401,11 @@ function SaleEditor({
               ? <Badge variant="outline" className="shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas geradas</Badge>
               : <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
           </div>
+          {sellerName && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <UserCircle2 className="w-3.5 h-3.5" /> Vendedor: <span className="font-medium text-foreground">{sellerName}</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -412,6 +420,7 @@ function SaleEditor({
             <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
             <Field label="Hotel"><Input value={s.hotel_name || ''} onChange={e => set('hotel_name', e.target.value)} /></Field>
             <Field label="Companhia aérea"><Input value={s.airline || ''} onChange={e => set('airline', e.target.value)} /></Field>
+            <Field label="Operadora"><Input value={s.operator || ''} onChange={e => set('operator', e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" /></Field>
             <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
             <Field label="Forma de pagamento"><Input value={s.payment_method || ''} onChange={e => set('payment_method', e.target.value)} /></Field>
             <Field label="Tempo de negociação (dias)"><Input type="number" min="0" value={s.negotiation_days ?? ''} onChange={e => set('negotiation_days', e.target.value ? parseInt(e.target.value) : null)} /></Field>

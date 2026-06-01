@@ -326,6 +326,10 @@ function ProposalDetail({
           {sellerName && <DetailRow icon={UserCircle2} label="Vendedor" value={sellerName} />}
         </div>
 
+        <p className="text-xs text-muted-foreground rounded-lg border bg-muted/30 px-3 py-2">
+          Cotação realizada em {fmtTimestamp(p.created_at)}. Preços e tarifas estão sujeitos a alterações sem aviso prévio.
+        </p>
+
         {travelers.length > 0 && (
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Viajantes</p>

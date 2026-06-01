@@ -36,6 +36,12 @@ type Proposal = {
   price_per_person_cents: number | null
   payment: Record<string, any>
   company_override: Record<string, any> | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+function fmtTimestamp(d?: string | null) {
+  return d ? new Date(d).toLocaleDateString('pt-BR') : null
 }
 
 function brl(cents?: number | null) {
@@ -303,6 +309,12 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             {proposal.payment?.conditions && (
               <p className="mt-3 text-sm text-slate-600 whitespace-pre-line">{proposal.payment.conditions}</p>
             )}
+            <p className="mt-4 text-xs text-slate-500 border-t border-slate-200 pt-3">
+              {fmtTimestamp(proposal.updated_at || proposal.created_at) && (
+                <>Cotação realizada em {fmtTimestamp(proposal.updated_at || proposal.created_at)}. </>
+              )}
+              Preços e tarifas estão sujeitos a alterações sem aviso prévio.
+            </p>
           </Section>
         </div>
 
