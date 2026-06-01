@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2 } from 'lucide-react'
+import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2, History } from 'lucide-react'
 import { createAutomation, toggleAutomation, deleteAutomation } from '@/actions/automations'
 import { toast } from 'sonner'
 import {
@@ -99,10 +99,18 @@ export default function AutomationsShell({
             Fluxos automáticos baseados em gatilhos e ações.
           </p>
         </div>
-        <Button onClick={handleNew} disabled={pending} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" />
-          {pending ? 'Criando...' : 'Nova Automação'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/app/${orgSlug}/automacoes/logs`}>
+              <History className="w-4 h-4 mr-1.5" />
+              Histórico
+            </Link>
+          </Button>
+          <Button onClick={handleNew} disabled={pending} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" />
+            {pending ? 'Criando...' : 'Nova Automação'}
+          </Button>
+        </div>
       </div>
 
       {/* ── Split panel ─────────────────────────────────────────────────────── */}

@@ -66,6 +66,7 @@ export const processAutomationEvent = inngest.createFunction(
             status: 'running',
             current_step: 0,
             started_at: new Date().toISOString(),
+            trigger_payload: event.data ?? {},
           }).select().single()
 
           if (run) {
@@ -114,6 +115,12 @@ export const executeAutomationRun = inngest.createFunction(
       stepType: string,
       status: 'success' | 'error' | 'skipped',
       message?: string,
+      timing?: {
+        startedAt?: string
+        completedAt?: string
+        durationMs?: number
+        metadata?: Record<string, any>
+      },
     ) {
       try {
         await supabase.from('automation_step_logs').insert({
@@ -123,7 +130,11 @@ export const executeAutomationRun = inngest.createFunction(
           step_index:      stepIndex,
           step_type:       stepType,
           status,
-          message: message ?? null,
+          message:         message ?? null,
+          started_at:      timing?.startedAt ?? null,
+          completed_at:    timing?.completedAt ?? null,
+          duration_ms:     timing?.durationMs ?? null,
+          metadata_json:   timing?.metadata ?? {},
         })
       } catch { /* ignore logging failures */ }
     }
@@ -131,148 +142,187 @@ export const executeAutomationRun = inngest.createFunction(
     try {
       while (currentStep < steps.length) {
         const stepDef = steps[currentStep]
-        let stepError: string | undefined
-
-        try { await step.run(`execute-step-${currentStep}`, async () => {
-          switch (stepDef.type) {
-            case 'wait':
-              // We don't sleep inside the run callback because run callbacks can't contain sleeps.
-              // Instead we break out, but Inngest step.sleep is a special step.
-              // Wait, if it's wait, we shouldn't do it inside `step.run`. We do it outside.
-              break;
-            case 'send_email':
-              if (stepDef.config.templateId) {
-                const { data: emailSend } = await supabase.from('email_sends').insert({
-                  organization_id: orgId,
-                  lead_id: lead.id,
-                  template_id: stepDef.config.templateId,
-                  to_email: lead.email,
-                  status: 'pending'
-                }).select().single()
-                
-                if (emailSend) {
-                  await inngest.send({
-                    name: 'email.send',
-                    data: { emailSendId: emailSend.id }
-                  })
-                }
-              }
-              break;
-            case 'send_whatsapp':
-              if (stepDef.config.templateName && lead.phone && orgConfig) {
-                await sendTemplateMessage(
-                  orgConfig,
-                  lead.phone,
-                  stepDef.config.templateName,
-                  stepDef.config.variables || [],
-                  stepDef.config.language || 'pt_BR',
-                  stepDef.config.headerType,
-                  stepDef.config.headerMediaUrl,
-                )
-              }
-              break;
-            case 'create_task':
-              if (stepDef.config.title) {
-                const dueDate = new Date()
-                dueDate.setDate(dueDate.getDate() + (stepDef.config.dueInDays || 1))
-                await supabase.from('tasks').insert({
-                  organization_id: orgId,
-                  lead_id: lead.id,
-                  title: stepDef.config.title.replace('{{lead.name}}', lead.name),
-                  status: 'todo',
-                  priority: stepDef.config.priority || 'normal',
-                  due_date: dueDate.toISOString()
-                })
-              }
-              break;
-            case 'move_stage':
-              if (stepDef.config.stageId) {
-                await supabase.from('leads').update({ stage_id: stepDef.config.stageId }).eq('id', lead.id)
-                await supabase.from('lead_activities').insert({
-                  lead_id: lead.id,
-                  organization_id: orgId,
-                  type: 'stage_changed',
-                  payload: { automation: auto.name }
-                })
-              }
-              break;
-            case 'add_tag':
-              if (stepDef.config.tag) {
-                const newTags = Array.from(new Set([...(lead.tags || []), stepDef.config.tag]))
-                await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
-              }
-              break;
-
-            case 'send_push': {
-              if (stepDef.config.title) {
-                // Interpolate {{lead.*}} variables in title + body
-                const interpolate = (template: string): string =>
-                  template
-                    .replace(/\{\{lead\.name\}\}/g,  lead.name  || '')
-                    .replace(/\{\{lead\.email\}\}/g, lead.email || '')
-                    .replace(/\{\{lead\.phone\}\}/g, lead.phone || '')
-
-                await sendPushToOrg(orgId, {
-                  title: interpolate(stepDef.config.title),
-                  body:  stepDef.config.body ? interpolate(stepDef.config.body) : lead.name || 'Lead atualizado',
-                  url:   orgConfig?.slug ? `/app/${orgConfig.slug}/pipeline` : '/',
-                  tag:   `automation-${auto.id}`,
-                  icon:  '/icon.svg',
-                })
-              }
-              break;
-            }
-
-            case 'webhook': {
-              if (stepDef.config.url) {
-                const payload = {
-                  event:   run.automations?.trigger_type,
-                  lead: {
-                    id:    lead.id,
-                    name:  lead.name,
-                    email: lead.email,
-                    phone: lead.phone,
-                    tags:  lead.tags,
-                  },
-                  automation: {
-                    id:   auto.id,
-                    name: auto.name,
-                  },
-                  fired_at: new Date().toISOString(),
-                }
-                let extraHeaders: Record<string, string> = {}
-                if (stepDef.config.headers) {
-                  try { extraHeaders = JSON.parse(stepDef.config.headers) } catch { /* ignore */ }
-                }
-                await fetch(stepDef.config.url, {
-                  method:  stepDef.config.method || 'POST',
-                  headers: { 'Content-Type': 'application/json', ...extraHeaders },
-                  body:    JSON.stringify(payload),
-                  signal:  AbortSignal.timeout(10_000),
-                })
-              }
-              break;
-            }
-          }
-        }) } catch (err: any) { stepError = err?.message || 'Unknown error' }
-
-        // Log step outcome (skipped for 'wait' — it's a timing step, not an action).
-        if (stepDef.type !== 'wait') {
-          await step.run(`log-step-${currentStep}`, async () => {
-            await logStep(currentStep, stepDef.type, stepError ? 'error' : 'success', stepError)
-          })
-        }
 
         if (stepDef.type === 'wait') {
+          // 'wait' is a timing step (not an action): never logged, just sleeps.
+          // step.sleep is a special Inngest step and cannot live inside step.run.
           const { amount, unit } = stepDef.config
           let sleepDuration = `${amount}m`
           if (unit === 'hours') sleepDuration = `${amount}h`
           if (unit === 'days') sleepDuration = `${amount}d`
           await step.sleep(`wait-step-${currentStep}`, sleepDuration)
+        } else {
+          // Execute the action. Timing + outcome are computed INSIDE the durable
+          // step so they're memoized deterministically across Inngest replays.
+          // `sent` captures the "payload enviado" for the logs timeline.
+          const result = await step.run(`execute-step-${currentStep}`, async () => {
+            const startedAt = new Date().toISOString()
+            let status: 'success' | 'error' = 'success'
+            let message: string | null = null
+            let stack: string | null = null
+            let sent: Record<string, any> | null = null
+
+            try {
+              switch (stepDef.type) {
+                case 'send_email':
+                  if (stepDef.config.templateId) {
+                    sent = { to: lead.email, templateId: stepDef.config.templateId }
+                    const { data: emailSend } = await supabase.from('email_sends').insert({
+                      organization_id: orgId,
+                      lead_id: lead.id,
+                      template_id: stepDef.config.templateId,
+                      to_email: lead.email,
+                      status: 'pending'
+                    }).select().single()
+
+                    if (emailSend) {
+                      await inngest.send({
+                        name: 'email.send',
+                        data: { emailSendId: emailSend.id }
+                      })
+                    }
+                  }
+                  break;
+                case 'send_whatsapp':
+                  if (stepDef.config.templateName && lead.phone && orgConfig) {
+                    sent = {
+                      to: lead.phone,
+                      template: stepDef.config.templateName,
+                      language: stepDef.config.language || 'pt_BR',
+                    }
+                    await sendTemplateMessage(
+                      orgConfig,
+                      lead.phone,
+                      stepDef.config.templateName,
+                      stepDef.config.variables || [],
+                      stepDef.config.language || 'pt_BR',
+                      stepDef.config.headerType,
+                      stepDef.config.headerMediaUrl,
+                    )
+                  }
+                  break;
+                case 'create_task':
+                  if (stepDef.config.title) {
+                    const dueDate = new Date()
+                    dueDate.setDate(dueDate.getDate() + (stepDef.config.dueInDays || 1))
+                    const title = stepDef.config.title.replace('{{lead.name}}', lead.name)
+                    sent = { title, dueDate: dueDate.toISOString(), priority: stepDef.config.priority || 'normal' }
+                    await supabase.from('tasks').insert({
+                      organization_id: orgId,
+                      lead_id: lead.id,
+                      title,
+                      status: 'todo',
+                      priority: stepDef.config.priority || 'normal',
+                      due_date: dueDate.toISOString()
+                    })
+                  }
+                  break;
+                case 'move_stage':
+                  if (stepDef.config.stageId) {
+                    sent = { stageId: stepDef.config.stageId }
+                    await supabase.from('leads').update({ stage_id: stepDef.config.stageId }).eq('id', lead.id)
+                    await supabase.from('lead_activities').insert({
+                      lead_id: lead.id,
+                      organization_id: orgId,
+                      type: 'stage_changed',
+                      payload: { automation: auto.name }
+                    })
+                  }
+                  break;
+                case 'add_tag':
+                  if (stepDef.config.tag) {
+                    sent = { tag: stepDef.config.tag }
+                    const newTags = Array.from(new Set([...(lead.tags || []), stepDef.config.tag]))
+                    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+                  }
+                  break;
+
+                case 'send_push': {
+                  if (stepDef.config.title) {
+                    // Interpolate {{lead.*}} variables in title + body
+                    const interpolate = (template: string): string =>
+                      template
+                        .replace(/\{\{lead\.name\}\}/g,  lead.name  || '')
+                        .replace(/\{\{lead\.email\}\}/g, lead.email || '')
+                        .replace(/\{\{lead\.phone\}\}/g, lead.phone || '')
+
+                    const pushTitle = interpolate(stepDef.config.title)
+                    sent = { title: pushTitle }
+                    await sendPushToOrg(orgId, {
+                      title: pushTitle,
+                      body:  stepDef.config.body ? interpolate(stepDef.config.body) : lead.name || 'Lead atualizado',
+                      url:   orgConfig?.slug ? `/app/${orgConfig.slug}/pipeline` : '/',
+                      tag:   `automation-${auto.id}`,
+                      icon:  '/icon.svg',
+                    })
+                  }
+                  break;
+                }
+
+                case 'webhook': {
+                  if (stepDef.config.url) {
+                    const payload = {
+                      event:   run.automations?.trigger_type,
+                      lead: {
+                        id:    lead.id,
+                        name:  lead.name,
+                        email: lead.email,
+                        phone: lead.phone,
+                        tags:  lead.tags,
+                      },
+                      automation: {
+                        id:   auto.id,
+                        name: auto.name,
+                      },
+                      fired_at: new Date().toISOString(),
+                    }
+                    sent = { url: stepDef.config.url, method: stepDef.config.method || 'POST' }
+                    let extraHeaders: Record<string, string> = {}
+                    if (stepDef.config.headers) {
+                      try { extraHeaders = JSON.parse(stepDef.config.headers) } catch { /* ignore */ }
+                    }
+                    const resp = await fetch(stepDef.config.url, {
+                      method:  stepDef.config.method || 'POST',
+                      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+                      body:    JSON.stringify(payload),
+                      signal:  AbortSignal.timeout(10_000),
+                    })
+                    sent = { ...sent, responseStatus: resp.status }
+                    if (!resp.ok) throw new Error(`Webhook respondeu ${resp.status}`)
+                  }
+                  break;
+                }
+              }
+            } catch (err: any) {
+              status = 'error'
+              message = err?.message || 'Unknown error'
+              stack = err?.stack || null
+            }
+
+            const completedAt = new Date().toISOString()
+            return {
+              startedAt,
+              completedAt,
+              durationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
+              status,
+              message,
+              stack,
+              sent,
+            }
+          })
+
+          await step.run(`log-step-${currentStep}`, async () => {
+            await logStep(currentStep, stepDef.type, result.status, result.message ?? undefined, {
+              startedAt:   result.startedAt,
+              completedAt: result.completedAt,
+              durationMs:  result.durationMs,
+              metadata:    { payload: result.sent, stack: result.stack },
+            })
+          })
         }
 
         currentStep++
-        
+
         await step.run(`update-run-${currentStep}`, async () => {
           await supabase.from('automation_runs').update({ current_step: currentStep }).eq('id', runId)
         })
