@@ -13,6 +13,17 @@ import {
   changePassword,
   type UserProfile,
 } from '@/actions/profile'
+import { deleteOrganization } from '@/actions/organization'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   User,
   Mail,
@@ -23,6 +34,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -146,6 +158,30 @@ export default function ProfileClient({
       toast.error(res.error)
     }
     setSavingPass(false)
+  }
+
+  // ── Excluir organização ───────────────────────────────────────────────────
+  const [orgToDelete, setOrgToDelete] = useState<{ slug: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const canDeleteOrgs = profile.memberships.filter(m => m.organizations).length > 1
+
+  async function handleDeleteOrg() {
+    if (!orgToDelete) return
+    setDeleting(true)
+    const res = await deleteOrganization(orgToDelete.slug)
+    setDeleting(false)
+    if (res.ok) {
+      toast.success('Organização excluída.')
+      const deletedActive = orgToDelete.slug === orgSlug
+      setOrgToDelete(null)
+      if (deletedActive && res.nextSlug) {
+        window.location.href = `/app/${res.nextSlug}/pipeline`
+      } else {
+        router.refresh()
+      }
+    } else {
+      toast.error(res.error)
+    }
   }
 
   const infoChanged = name !== profile.name || phone !== profile.phone
@@ -355,6 +391,16 @@ export default function ProfileClient({
                     </Button>
                   </Link>
                 )}
+                {canDeleteOrgs && ['owner', 'admin'].includes(m.role) && (
+                  <button
+                    type="button"
+                    title="Excluir organização"
+                    onClick={() => setOrgToDelete({ slug: org.slug, name: org.name })}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -369,6 +415,33 @@ export default function ProfileClient({
           </div>
         </div>
       </Section>
+
+      {/* ── Confirmação de exclusão ───────────────────────────────────────── */}
+      <AlertDialog open={!!orgToDelete} onOpenChange={op => !op && setOrgToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir organização?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a excluir <strong>{orgToDelete?.name}</strong>. Esta ação é
+              permanente e remove todos os leads, pipelines, formulários e demais dados dessa
+              organização. Não há como desfazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => {
+                e.preventDefault()
+                handleDeleteOrg()
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   )

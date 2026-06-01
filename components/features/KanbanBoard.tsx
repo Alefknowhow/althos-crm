@@ -274,6 +274,7 @@ export default function KanbanBoard({
                 leads={stageLeads}
                 orgSlug={orgSlug}
                 membersById={membersById}
+                members={members}
                 onLeadClick={id => setSelectedLeadId(id)}
                 onAddLead={id => setCreateStageId(id)}
               />

@@ -4,10 +4,11 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useState, useRef } from 'react'
-import { updateLeadValue } from '@/actions/leads'
+import { useState, useRef, useEffect } from 'react'
+import { updateLeadValue, assignLead } from '@/actions/leads'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Mail, UserCheck, Sparkles } from 'lucide-react'
+import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check } from 'lucide-react'
+import LeadFormResponsesButton from './LeadFormResponsesButton'
 
 export type CardMember = { id: string; name: string; email: string }
 
@@ -97,6 +98,101 @@ function onlyDigits(s?: string | null) {
   return (s || '').replace(/\D/g, '')
 }
 
+// ── Seller / responsável picker ─────────────────────────────────────────────────
+// Small avatar button on the card; clicking opens a dropdown to pick one of the
+// org members (admin or guests). Stops dnd propagation so it doesn't start a drag.
+function SellerPicker({
+  lead,
+  orgSlug,
+  members,
+}: {
+  lead: any
+  orgSlug: string
+  members: CardMember[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [assignedTo, setAssignedTo] = useState<string | null>(lead.assigned_to ?? null)
+  const [saving, setSaving] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  const current = assignedTo ? members.find(m => m.id === assignedTo) : null
+
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  async function pick(userId: string | null) {
+    setOpen(false)
+    setAssignedTo(userId)
+    setSaving(true)
+    await assignLead(orgSlug, lead.id, userId)
+    setSaving(false)
+  }
+
+  function stop(e: React.MouseEvent | React.PointerEvent) {
+    e.stopPropagation()
+  }
+
+  return (
+    <div ref={rootRef} className="relative" onPointerDown={stop} onClick={stop}>
+      <button
+        type="button"
+        title={current ? `Vendedor: ${current.name || current.email}` : 'Atribuir vendedor'}
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors',
+          current
+            ? 'bg-brand-100 text-brand-700 hover:ring-2 hover:ring-brand-200'
+            : 'border border-dashed border-border text-muted-foreground/60 hover:text-foreground hover:border-foreground/40',
+          saving && 'opacity-50',
+        )}
+      >
+        {current ? initials(current.name, current.email) : <UserPlus className="h-3 w-3" />}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-7 z-30 w-48 rounded-lg border bg-popover p-1 shadow-lg">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Vendedor
+          </div>
+          <button
+            type="button"
+            onClick={() => pick(null)}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+          >
+            <span className="text-muted-foreground">Sem responsável</span>
+            {!assignedTo && <Check className="h-3.5 w-3.5 text-brand-600" />}
+          </button>
+          {members.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => pick(m.id)}
+              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[9px] font-semibold text-brand-700">
+                  {initials(m.name, m.email)}
+                </span>
+                <span className="truncate">{m.name || m.email}</span>
+              </span>
+              {assignedTo === m.id && <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />}
+            </button>
+          ))}
+          {members.length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum membro encontrado</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main card ──────────────────────────────────────────────────────────────────
 export default function LeadCard({
   lead,
@@ -104,12 +200,14 @@ export default function LeadCard({
   isOverlay,
   onClick,
   owner,
+  members,
 }: {
   lead: any
   orgSlug: string
   isOverlay?: boolean
   onClick?: () => void
   owner?: CardMember | null
+  members?: CardMember[]
 }) {
   const {
     setNodeRef,
@@ -148,13 +246,13 @@ export default function LeadCard({
       style={isOverlay ? undefined : style}
       {...attributes}
       className={cn(
-        'group/card relative bg-background border rounded-xl shadow-sm select-none transition-all overflow-hidden',
+        'group/card relative bg-background border rounded-xl shadow-sm select-none transition-all',
         isOverlay ? 'shadow-xl rotate-1 scale-[1.02]' : 'hover:border-primary/40 hover:shadow-md',
         isDragging ? 'opacity-30' : '',
       )}
     >
       {/* Left accent for stalled deals */}
-      {isStalled && <span className="absolute left-0 top-0 h-full w-1 bg-amber-400" />}
+      {isStalled && <span className="absolute left-0 top-0 h-full w-1 rounded-l-xl bg-amber-400" />}
 
       {/* Drag handle area — title + value */}
       <div
@@ -166,14 +264,16 @@ export default function LeadCard({
           <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">
             {lead.name}
           </p>
-          {owner && (
+          {members && !isOverlay ? (
+            <SellerPicker lead={lead} orgSlug={orgSlug} members={members} />
+          ) : owner ? (
             <span
               title={owner.name || owner.email}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
             >
               {initials(owner.name, owner.email)}
             </span>
-          )}
+          ) : null}
         </div>
         <div className="mt-1">
           <ValueEditor lead={lead} orgSlug={orgSlug} />
@@ -214,6 +314,7 @@ export default function LeadCard({
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
+          {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
           {phoneDigits && (
             <a
               href={`https://wa.me/${phoneDigits}`}

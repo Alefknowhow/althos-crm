@@ -50,6 +50,18 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   const [leftPct, setLeftPctState] = useState(58)
   function setLeft(pct: number) { leftPctRef.current = pct; setLeftPctState(pct) }
 
+  // On phones the side-by-side preview is removed; the editor fills the screen
+  // and the preview opens fullscreen via a button instead.
+  const [isDesktop, setIsDesktop] = useState(true)
+  const [showMobilePreview, setShowMobilePreview] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const update = () => setIsDesktop(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   useEffect(() => {
     try {
       const saved = parseFloat(localStorage.getItem('formbuilder-split') || '')
@@ -141,7 +153,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
 
   return (
     <div ref={containerRef} className="flex w-full h-full text-foreground bg-background">
-      <div className="flex flex-col bg-muted/10 min-w-0 shrink-0" style={{ width: `${leftPct}%` }}>
+      <div className="flex flex-col bg-muted/10 min-w-0 shrink-0 w-full lg:w-auto" style={isDesktop ? { width: `${leftPct}%` } : undefined}>
         <div className="p-4 border-b bg-background flex justify-between items-center shadow-sm z-10 shrink-0">
           <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="font-bold border-transparent hover:border-input focus:border-input w-1/2 text-lg h-10" />
           <div className="flex items-center gap-2">
@@ -149,6 +161,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
                <Label className="text-xs text-muted-foreground">Ativo</Label>
                <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer" />
             </div>
+            <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setShowMobilePreview(true)}>Preview</Button>
             <Button variant="outline" size="sm" onClick={() => {
               navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`)
               toast.success('URL copiada!')
@@ -495,10 +508,10 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
         role="separator"
         aria-orientation="vertical"
         title="Arraste para redimensionar · duplo-clique para resetar"
-        className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/40 active:bg-primary/60 transition-colors relative z-20"
+        className="hidden lg:block w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-primary/40 active:bg-primary/60 transition-colors relative z-20"
       />
 
-      <div className="flex-1 min-w-0 bg-muted flex flex-col relative">
+      <div className="hidden lg:flex flex-1 min-w-0 bg-muted flex-col relative">
         <div className="p-4 flex justify-between items-center border-b bg-background/50 backdrop-blur-sm z-10 shrink-0">
           <div className="text-sm font-medium text-muted-foreground">Preview</div>
           <Button variant="outline" size="sm" onClick={() => window.open(`/f/${form.slug}/preview`, '_blank')}>Ver em tela cheia ↗</Button>
@@ -518,6 +531,29 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
           </div>
         </div>
       </div>
+
+      {/* Fullscreen preview overlay (mobile only) */}
+      {showMobilePreview && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-muted flex flex-col">
+          <div className="p-4 flex justify-between items-center border-b bg-background shrink-0">
+            <div className="text-sm font-medium text-muted-foreground">Preview</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.open(`/f/${form.slug}/preview`, '_blank')}>Tela cheia ↗</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowMobilePreview(false)}>Fechar ✕</Button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="bg-background border rounded-2xl shadow-lg overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-bold mb-6 text-center">{form.name}</h2>
+                {schema.mode === 'one_question'
+                  ? <OneQuestionForm schema={schema} isPreview />
+                  : <PublicFormPreview schema={schema} />}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

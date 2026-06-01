@@ -259,6 +259,28 @@ export async function getLead(orgSlug: string, leadId: string) {
 /**
  * Update a lead's value_cents — called inline from the Kanban card.
  */
+/**
+ * Assign (or unassign) a lead to a member. Pass null to clear the responsável.
+ * Scoped to the caller's org as defense-in-depth alongside RLS.
+ */
+export async function assignLead(orgSlug: string, leadId: string, userId: string | null) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('leads')
+    .update({ assigned_to: userId })
+    .eq('id', leadId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/pipeline`)
+  revalidatePath(`/app/${orgSlug}/leads/${leadId}`)
+  return { ok: true as const }
+}
+
 export async function updateLeadValue(orgSlug: string, leadId: string, valueCents: number) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

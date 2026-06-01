@@ -134,6 +134,61 @@ export async function getFormInsights(
   }
 }
 
+// ─── Single lead's form responses (for the pipeline card popup) ────────────────
+
+export type LeadFormResponse = {
+  submissionId: string
+  formName: string
+  createdAt: string
+  qa: { label: string; value: string }[]
+}
+
+/**
+ * All form submissions tied to a given lead, with each field resolved to its
+ * human label using the form's schema. Used by the "ver respostas" button on
+ * pipeline cards.
+ */
+export async function getLeadFormResponses(
+  orgSlug: string,
+  leadId: string,
+): Promise<LeadFormResponse[]> {
+  const supabase = createClient()
+  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
+  if (!org) return []
+
+  const { data: subs } = await supabase
+    .from('form_submissions')
+    .select('id, created_at, data, form_id, forms(name, schema, organization_id)')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false })
+
+  const out: LeadFormResponse[] = []
+  for (const s of subs ?? []) {
+    const form: any = Array.isArray((s as any).forms) ? (s as any).forms[0] : (s as any).forms
+    // Defense-in-depth: only surface forms from the caller's org.
+    if (!form || form.organization_id !== org.id) continue
+
+    const fields: any[] = form?.schema?.fields ?? []
+    const labelById: Record<string, string> = {}
+    for (const f of fields) labelById[f.id] = f.label || f.id
+
+    const raw = ((s as any).data ?? {}) as Record<string, any>
+    const qa = Object.entries(raw).map(([key, val]) => ({
+      label: labelById[key] || key,
+      value: Array.isArray(val) ? val.join(', ') : val == null ? '' : String(val),
+    }))
+
+    out.push({
+      submissionId: (s as any).id,
+      formName: form?.name || 'Formulário',
+      createdAt: (s as any).created_at,
+      qa,
+    })
+  }
+
+  return out
+}
+
 // ─── Submissions list ─────────────────────────────────────────────────────────
 
 export type SubmissionFilters = {

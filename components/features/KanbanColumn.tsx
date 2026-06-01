@@ -11,6 +11,7 @@ export default function KanbanColumn({
   onLeadClick,
   onAddLead,
   membersById,
+  members = [],
 }: {
   stage: any
   leads: any[]
@@ -18,6 +19,7 @@ export default function KanbanColumn({
   onLeadClick: (id: string) => void
   onAddLead: (stageId: string) => void
   membersById: Record<string, CardMember>
+  members?: CardMember[]
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { type: 'Column', stage } })
   const totalValue = leads.reduce((acc, lead) => acc + (lead.value_cents || 0), 0)
@@ -63,6 +65,7 @@ export default function KanbanColumn({
               lead={lead}
               orgSlug={orgSlug}
               owner={lead.assigned_to ? membersById[lead.assigned_to] : null}
+              members={members}
               onClick={() => onLeadClick(lead.id)}
             />
           ))}

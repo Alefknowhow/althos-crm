@@ -52,7 +52,7 @@ export default async function PipelinePage({
   const [{ data: stages }, { data: leads }] = await Promise.all([
     supabase
       .from('pipeline_stages')
-      .select('id, name, position, color, pipeline_id')
+      .select('id, name, position, color, pipeline_id, is_won, is_lost')
       .eq('pipeline_id', pipeline.id)
       .order('position'),
     supabase

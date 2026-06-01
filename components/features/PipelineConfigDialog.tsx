@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,10 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
   const [open, setOpen]           = useState(false)
   const [newStageName, setNewStageName] = useState('')
   const [loading, setLoading]     = useState<string | null>(null)
+  // Local mirror so toggles reflect instantly (optimistic), then reconcile
+  // with the server-revalidated props.
+  const [localStages, setLocalStages] = useState<any[]>(stages)
+  useEffect(() => { setLocalStages(stages) }, [stages])
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -23,9 +27,21 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
   }
 
   async function toggleFlag(stageId: string, flag: 'is_won' | 'is_lost', current: boolean) {
+    const next = !current
     setLoading(`${stageId}-${flag}`)
-    await updateStage(orgSlug, stageId, { [flag]: !current })
+    // Optimistic: flip the flag locally and clear the opposite one (mutually exclusive).
+    setLocalStages(prev => prev.map(s => {
+      if (s.id !== stageId) return s
+      const updated = { ...s, [flag]: next }
+      if (next) updated[flag === 'is_won' ? 'is_lost' : 'is_won'] = false
+      return updated
+    }))
+    const res = await updateStage(orgSlug, stageId, { [flag]: next })
     setLoading(null)
+    if (!res.ok) {
+      toast.error(traduzirErro(res.error, 'Não foi possível atualizar o estágio'))
+      setLocalStages(stages) // revert
+    }
   }
 
   return (
