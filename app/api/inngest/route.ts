@@ -4,7 +4,7 @@ import { sendEmail, importLeadsCsv } from '@/lib/inngest/functions'
 import { processAutomationEvent, executeAutomationRun } from '@/lib/inngest/automation'
 import { qualifyLeadFn } from '@/lib/inngest/qualifier'
 import { pushOverdueTasksFn, pushWhatsappMessageFn } from '@/lib/inngest/push'
-import { automationStaleLeadsFn, automationTaskOverdueFn } from '@/lib/inngest/automation-crons'
+import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirthdayFn } from '@/lib/inngest/automation-crons'
 import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-emails'
 
 export const { GET, POST, PUT } = serve({
@@ -19,6 +19,7 @@ export const { GET, POST, PUT } = serve({
     pushWhatsappMessageFn,
     automationStaleLeadsFn,
     automationTaskOverdueFn,
+    automationCustomerBirthdayFn,
     trialWarningEmailFn,
     trialExpiredEmailFn,
   ]

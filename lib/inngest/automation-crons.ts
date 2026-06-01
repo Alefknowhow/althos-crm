@@ -160,3 +160,72 @@ export const automationTaskOverdueFn = inngest.createFunction(
     return { fired: totalFired }
   }
 )
+
+// ---------------------------------------------------------------------------
+// 3. Customer birthday — daily at 07:00
+//    Fires `customer.birthday` for every customer whose date_of_birth matches
+//    today's month/day, in orgs that have an active customer.birthday automation.
+// ---------------------------------------------------------------------------
+
+export const automationCustomerBirthdayFn = inngest.createFunction(
+  {
+    id:      'automation-customer-birthday',
+    name:    'Automação: aniversário do cliente',
+    retries: 1,
+    triggers: [{ cron: '0 7 * * *' }],
+  },
+  async ({ step }: { step: any }) => {
+    const admin = createAdminClient()
+
+    // Orgs that have at least one active birthday automation.
+    const orgIds: string[] = await step.run('fetch-orgs-with-birthday-automations', async () => {
+      const { data } = await admin
+        .from('automations')
+        .select('organization_id')
+        .eq('trigger_type', 'customer.birthday')
+        .eq('is_active', true)
+      if (!data) return []
+      return Array.from(new Set(data.map((r: any) => r.organization_id)))
+    })
+
+    if (orgIds.length === 0) return { fired: 0 }
+
+    // Today's month/day in São Paulo time, so birthdays fire on the local date.
+    const dtParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date())
+    const mm = dtParts.find(p => p.type === 'month')?.value ?? '01'
+    const dd = dtParts.find(p => p.type === 'day')?.value ?? '01'
+
+    // Profiles whose birthday is today (ignoring year). We over-fetch by
+    // matching the MM-DD suffix via two range filters per org would be complex,
+    // so we pull profiles with a non-null DOB for these orgs and filter in JS.
+    const profiles: Array<{ lead_id: string; organization_id: string; date_of_birth: string }> =
+      await step.run('fetch-birthday-profiles', async () => {
+        const { data } = await admin
+          .from('customer_profiles')
+          .select('lead_id, organization_id, date_of_birth')
+          .in('organization_id', orgIds)
+          .not('date_of_birth', 'is', null)
+          .not('lead_id', 'is', null)
+          .limit(5000)
+        return (data || []).filter((p: any) => {
+          const d = String(p.date_of_birth) // 'YYYY-MM-DD'
+          return d.slice(5, 7) === mm && d.slice(8, 10) === dd
+        })
+      })
+
+    let totalFired = 0
+    for (const profile of profiles) {
+      await step.run(`fire-birthday-${profile.lead_id}`, async () => {
+        await inngest.send({
+          name: 'customer.birthday',
+          data: { orgId: profile.organization_id, leadId: profile.lead_id },
+        })
+        totalFired++
+      })
+    }
+
+    return { fired: totalFired }
+  }
+)

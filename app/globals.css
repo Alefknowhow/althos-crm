@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 3% 12%;
 
-    --primary: 211 100% 45%;            /* #0071e3 apple-blue */
+    --primary: 243 75% 59%;            /* #4f46e5 Althos indigo */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 9% 96%;            /* #f5f5f7 gray-light */
@@ -31,7 +31,7 @@
 
     --border: 240 6% 83%;               /* #d2d2d7 apple-line */
     --input: 240 6% 83%;
-    --ring: 211 100% 45%;               /* apple-blue focus ring */
+    --ring: 243 75% 59%;               /* Althos indigo focus ring */
 
     --radius: 0.75rem;                  /* 12px — Apple-ish */
 
@@ -51,7 +51,7 @@
     --card-foreground: 240 3% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 3% 12%;
-    --primary: 211 100% 45%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 9% 96%;
     --secondary-foreground: 240 3% 12%;
@@ -63,7 +63,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 240 6% 83%;
     --input: 240 6% 83%;
-    --ring: 211 100% 45%;
+    --ring: 243 75% 59%;
     color-scheme: light;
     /* Break dark-mode color inheritance from body */
     color: hsl(240 3% 12%);
@@ -81,8 +81,8 @@
     --popover: 240 3% 11%;
     --popover-foreground: 240 9% 96%;
 
-    --primary: 210 100% 58%;            /* #2997ff apple-blue-light */
-    --primary-foreground: 0 0% 100%;
+    --primary: 234 89% 74%;            /* #818cf8 Althos indigo-light */
+    --primary-foreground: 240 6% 10%;
 
     --secondary: 240 3% 11%;
     --secondary-foreground: 240 9% 96%;
@@ -98,7 +98,7 @@
 
     --border: 240 3% 17%;               /* #2a2a2c */
     --input: 240 3% 17%;
-    --ring: 210 100% 58%;
+    --ring: 234 89% 74%;
 
     --sidebar: 240 3% 6%;
     --sidebar-foreground: 240 9% 96%;
@@ -169,7 +169,16 @@
 /* Driven by the `.sidebar-collapsed` class toggled on the desktop <aside> in
    SidebarShell. Hides text labels/badges and centers the icons so the rail
    shrinks to w-16 while staying fully navigable. */
-.sidebar-collapsed .sidebar-brand { display: none; }
+/* Keep the logo mark visible when collapsed; hide only the wordmark text.
+   On hover the mark fades so the centered expand button can take its place
+   without overlapping. */
+.sidebar-collapsed .sidebar-brand > span { display: none; }
+.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  width: 100%;
+  transition: opacity 0.15s ease;
+}
+.sidebar-collapsed:hover .sidebar-brand { opacity: 0; }
 .sidebar-collapsed nav p { display: none; }                 /* SectionLabel */
 
 /* Nav links + group trigger: hide text, badges, chevron; center the icon. */

@@ -204,6 +204,12 @@ export async function moveLeadToStage(orgSlug: string, leadId: string, newStageI
     data: { orgId: org.id, leadId, stageId: newStageId }
   })
 
+  // ── Travel niche: auto-create a pre-filled sale when the lead is won ───────
+  if (stage?.is_won) {
+    const { maybeCreateTravelSaleOnWon } = await import('@/actions/travel-sales')
+    await maybeCreateTravelSaleOnWon(supabase, org as any, leadId, user.id)
+  }
+
   // ── Meta CAPI: Purchase (won) or NotQualified (lost) ──────────────────────
   if (stage && (stage.is_won || stage.is_lost) && lead) {
     try {

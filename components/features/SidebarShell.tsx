@@ -48,7 +48,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
       <aside
         data-collapsed={collapsed}
         className={cn(
-          'hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen relative transition-[width] duration-200 ease-out',
+          'group hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen relative transition-[width] duration-200 ease-out',
           collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
         )}
       >
@@ -60,7 +60,14 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
           title={collapsed ? 'Expandir' : 'Recolher'}
-          className="absolute top-3.5 right-2 w-7 h-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors z-10"
+          className={cn(
+            'absolute top-3.5 w-7 h-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all z-10',
+            collapsed
+              // Collapsed: center the toggle and reveal it only on hover so it
+              // never overlaps the centered logo mark (logo fades out on hover).
+              ? 'left-1/2 -translate-x-1/2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
+              : 'right-2',
+          )}
         >
           {collapsed
             ? <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />

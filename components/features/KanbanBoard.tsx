@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   DndContext,
   closestCorners,
@@ -13,73 +13,151 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import KanbanColumn from './KanbanColumn'
-import LeadCard from './LeadCard'
+import LeadCard, { type CardMember } from './LeadCard'
+import PipelineKpiBar from './pipeline/PipelineKpiBar'
+import CurrencyInput from './pipeline/CurrencyInput'
 import { moveLeadToStage } from '@/actions/leads'
 import LeadDetailDrawer from './LeadDetailDrawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { createLead } from '@/actions/leads'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
+import { Search, AlarmClock, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { orgSlug: string, initialStages: any[], initialLeads: any[] }) {
+type Member = { id: string; name: string; email: string }
+type SortKey = 'recent' | 'value_desc' | 'name'
+
+const STALL_MS = 7 * 24 * 60 * 60 * 1000
+
+function tierBucket(t?: string | null): 'hot' | 'warm' | 'cold' | null {
+  const v = (t || '').toLowerCase()
+  if (v === 'hot' || v === 'quente') return 'hot'
+  if (v === 'warm' || v === 'morno') return 'warm'
+  if (v === 'cold' || v === 'frio') return 'cold'
+  return null
+}
+
+export default function KanbanBoard({
+  orgSlug,
+  initialStages,
+  initialLeads,
+  members = [],
+}: {
+  orgSlug: string
+  initialStages: any[]
+  initialLeads: any[]
+  members?: Member[]
+}) {
   const [stages, setStages] = useState(initialStages)
   const [leads, setLeads] = useState(initialLeads)
   const [activeLead, setActiveLead] = useState<any | null>(null)
-  
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
-  
   const [createStageId, setCreateStageId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Filters / sort
+  const [search, setSearch] = useState('')
+  const [ownerFilter, setOwnerFilter] = useState<string>('all')
+  const [tierFilter, setTierFilter] = useState<string>('all')
+  const [stalledOnly, setStalledOnly] = useState(false)
+  const [sortKey, setSortKey] = useState<SortKey>('recent')
 
   useEffect(() => {
     setStages(initialStages)
     setLeads(initialLeads)
   }, [initialStages, initialLeads])
 
+  const membersById = useMemo<Record<string, CardMember>>(() => {
+    const map: Record<string, CardMember> = {}
+    for (const m of members) map[m.id] = m
+    return map
+  }, [members])
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  // ── Filtering + sorting (display only; dnd still uses full `leads`) ───────────
+  const filtersActive =
+    search.trim() !== '' || ownerFilter !== 'all' || tierFilter !== 'all' || stalledOnly
+
+  const visibleLeads = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let out = leads.filter(l => {
+      if (q) {
+        const hay = `${l.name || ''} ${l.email || ''} ${l.phone || ''} ${(l.tags || []).join(' ')}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (ownerFilter !== 'all') {
+        if (ownerFilter === 'unassigned' ? !!l.assigned_to : l.assigned_to !== ownerFilter) return false
+      }
+      if (tierFilter !== 'all' && tierBucket(l.ai_tier) !== tierFilter) return false
+      if (stalledOnly) {
+        const ref = l.last_activity_at || l.updated_at
+        if (!ref || Date.now() - new Date(ref).getTime() <= STALL_MS) return false
+      }
+      return true
+    })
+
+    out = [...out].sort((a, b) => {
+      if (sortKey === 'value_desc') return (b.value_cents || 0) - (a.value_cents || 0)
+      if (sortKey === 'name') return String(a.name).localeCompare(String(b.name))
+      // recent
+      const ra = new Date(a.last_activity_at || a.updated_at || 0).getTime()
+      const rb = new Date(b.last_activity_at || b.updated_at || 0).getTime()
+      return rb - ra
+    })
+    return out
+  }, [leads, search, ownerFilter, tierFilter, stalledOnly, sortKey])
+
+  function clearFilters() {
+    setSearch('')
+    setOwnerFilter('all')
+    setTierFilter('all')
+    setStalledOnly(false)
+  }
+
+  // ── DnD ───────────────────────────────────────────────────────────────────────
   function handleDragStart(event: any) {
-    const { active } = event
-    const id = active.id
-    const lead = leads.find(l => l.id === id)
+    const lead = leads.find(l => l.id === event.active.id)
     if (lead) setActiveLead(lead)
   }
 
   function handleDragOver(event: any) {
     const { active, over } = event
     if (!over) return
-
     const activeId = active.id
     const overId = over.id
-
     const isActiveLead = leads.some(l => l.id === activeId)
     const isOverColumn = stages.some(s => s.id === overId)
     const isOverLead = leads.some(l => l.id === overId)
-
     if (!isActiveLead) return
 
     if (isOverColumn || isOverLead) {
-      setLeads((prevLeads) => {
+      setLeads(prevLeads => {
         const activeIndex = prevLeads.findIndex(l => l.id === activeId)
         if (activeIndex === -1) return prevLeads
-        const activeLead = prevLeads[activeIndex]
-        
-        let newStageId = activeLead.stage_id
-        if (isOverColumn) {
-          newStageId = overId
-        } else if (isOverLead) {
+        const al = prevLeads[activeIndex]
+        let newStageId = al.stage_id
+        if (isOverColumn) newStageId = overId
+        else if (isOverLead) {
           const overIndex = prevLeads.findIndex(l => l.id === overId)
           newStageId = prevLeads[overIndex].stage_id
         }
-
-        if (activeLead.stage_id !== newStageId) {
-          return prevLeads.map(l => l.id === activeId ? { ...l, stage_id: newStageId } : l)
+        if (al.stage_id !== newStageId) {
+          return prevLeads.map(l => (l.id === activeId ? { ...l, stage_id: newStageId } : l))
         }
         return prevLeads
       })
@@ -90,11 +168,9 @@ export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { 
     const { active, over } = event
     setActiveLead(null)
     if (!over) return
-
     const activeId = active.id
     const lead = leads.find(l => l.id === activeId)
     if (!lead) return
-
     const oldStageId = initialLeads.find(l => l.id === activeId)?.stage_id
     if (lead.stage_id !== oldStageId && oldStageId) {
       const res = await moveLeadToStage(orgSlug, activeId, lead.stage_id, oldStageId)
@@ -106,7 +182,81 @@ export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { 
   }
 
   return (
-    <>
+    <div className="flex h-full flex-col gap-3">
+      {/* KPI strip */}
+      <PipelineKpiBar leads={visibleLeads} />
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[180px] flex-1 max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar negócios…"
+            className="h-9 pl-9"
+          />
+        </div>
+
+        {members.length > 0 && (
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos responsáveis</SelectItem>
+              <SelectItem value="unassigned">Sem responsável</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.name || m.email}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select value={tierFilter} onValueChange={setTierFilter}>
+          <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas IA</SelectItem>
+            <SelectItem value="hot">🔥 Quente</SelectItem>
+            <SelectItem value="warm">🟡 Morno</SelectItem>
+            <SelectItem value="cold">🔵 Frio</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sortKey} onValueChange={v => setSortKey(v as SortKey)}>
+          <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Mais recentes</SelectItem>
+            <SelectItem value="value_desc">Maior valor</SelectItem>
+            <SelectItem value="name">Nome (A-Z)</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <button
+          type="button"
+          onClick={() => setStalledOnly(v => !v)}
+          className={cn(
+            'inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors',
+            stalledOnly
+              ? 'border-amber-300 bg-amber-50 text-amber-700'
+              : 'border-border text-muted-foreground hover:bg-secondary',
+          )}
+        >
+          <AlarmClock className="h-4 w-4" />
+          Parados
+        </button>
+
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+            Limpar
+          </button>
+        )}
+      </div>
+
+      {/* Board */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -114,74 +264,82 @@ export default function KanbanBoard({ orgSlug, initialStages, initialLeads }: { 
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
+        <div className="flex flex-1 gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar">
           {stages.map(stage => {
-            const stageLeads = leads.filter(l => l.stage_id === stage.id)
+            const stageLeads = visibleLeads.filter(l => l.stage_id === stage.id)
             return (
-              <KanbanColumn 
-                key={stage.id} 
-                stage={stage} 
-                leads={stageLeads} 
-                orgSlug={orgSlug} 
+              <KanbanColumn
+                key={stage.id}
+                stage={stage}
+                leads={stageLeads}
+                orgSlug={orgSlug}
+                membersById={membersById}
                 onLeadClick={id => setSelectedLeadId(id)}
-                onAddLead={(id) => setCreateStageId(id)}
+                onAddLead={id => setCreateStageId(id)}
               />
             )
           })}
         </div>
-        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
+        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
           {activeLead ? <LeadCard lead={activeLead} orgSlug={orgSlug} isOverlay /> : null}
         </DragOverlay>
       </DndContext>
 
-      <LeadDetailDrawer 
-        open={!!selectedLeadId} 
-        onOpenChange={(op: boolean) => !op && setSelectedLeadId(null)} 
+      <LeadDetailDrawer
+        open={!!selectedLeadId}
+        onOpenChange={(op: boolean) => !op && setSelectedLeadId(null)}
         leadId={selectedLeadId}
         orgSlug={orgSlug}
         stages={stages}
       />
-      
+
+      {/* New lead dialog */}
       <Dialog open={!!createStageId} onOpenChange={(op: boolean) => !op && setCreateStageId(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Lead</DialogTitle></DialogHeader>
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            setLoading(true);
-            const res = await createLead(orgSlug, new FormData(e.currentTarget));
-            setLoading(false);
-            if(res.ok) setCreateStageId(null);
-            else toast.error(traduzirErro(res.error));
+          <form onSubmit={async e => {
+            e.preventDefault()
+            setLoading(true)
+            const res = await createLead(orgSlug, new FormData(e.currentTarget))
+            setLoading(false)
+            if (res.ok) {
+              setCreateStageId(null)
+              toast.success('Lead criado')
+            } else {
+              toast.error(traduzirErro(res.error))
+            }
           }}>
             <input type="hidden" name="stage_id" value={createStageId || ''} />
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Nome *</Label>
-                <Input name="name" required />
+                <Input name="name" required autoFocus />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>E-mail</Label>
+                  <Input name="email" type="email" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input name="phone" placeholder="(11) 99999-9999" />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>E-mail</Label>
-                <Input name="email" type="email" />
-              </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input name="phone" />
-              </div>
-              <div className="space-y-2">
-                <Label>Valor (em centavos)</Label>
-                <Input name="value_cents" type="number" min="0" />
+                <Label>Valor</Label>
+                <CurrencyInput name="value_cents" />
               </div>
               <div className="space-y-2">
                 <Label>Tags (separadas por vírgula)</Label>
-                <Input name="tags" placeholder="urgente, quente" />
+                <Input name="tags" placeholder="urgente, indicação" />
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={loading}>Salvar</Button>
+              <Button type="submit" disabled={loading}>{loading ? 'Salvando…' : 'Salvar'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }

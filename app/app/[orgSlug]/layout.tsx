@@ -11,6 +11,7 @@ import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
+import { SupportWidget } from '@/components/features/SupportWidget'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -95,12 +96,12 @@ export default async function OrgLayout({
             <div className="flex items-center gap-2">
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
               <Link
-                href="/docs/primeiro-form"
+                href={`/app/${params.orgSlug}/ajuda`}
                 className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"
               >
-                Documentação
+                Central de Ajuda
               </Link>
-              <HelpTooltip content="Precisa de ajuda? Confira nossos tutoriais ou entre em contato com suporte@althos.io" />
+              <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no canto inferior direito." />
               <div className="w-px h-4 bg-border mx-1" />
               <PushNotificationToggle orgSlug={params.orgSlug} />
               <NotificationBell orgId={org.id} userId={user.id} />
@@ -115,6 +116,8 @@ export default async function OrgLayout({
           </main>
         </div>
       </div>
+
+      <SupportWidget orgSlug={params.orgSlug} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { listCustomers } from '@/actions/customers'
-import CustomersTable from '@/components/features/customers/CustomersTable'
+import CustomersSplit from '@/components/features/customers/CustomersSplit'
 import EmptyState from '@/components/ui/empty-state'
 import { Users } from 'lucide-react'
 
@@ -30,7 +30,7 @@ export default async function CustomersPage({ params }: { params: { orgSlug: str
           actionHref={`/app/${params.orgSlug}/leads`}
         />
       ) : (
-        <CustomersTable orgSlug={params.orgSlug} customers={customers} />
+        <CustomersSplit orgSlug={params.orgSlug} customers={customers} />
       )}
     </div>
   )

@@ -193,6 +193,42 @@ export async function completeOrgSetup(
   return { ok: true as const }
 }
 
+// ─── General (name + niche) ──────────────────────────────────────────────────
+
+export async function getOrgGeneral(orgSlug: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select('name, niche')
+    .eq('id', org.id)
+    .maybeSingle()
+  return {
+    name:  data?.name  ?? '',
+    niche: data?.niche ?? '',
+  }
+}
+
+/**
+ * Updates the organization's niche (vertical). Switching to the travel niche
+ * unlocks the travel-agency tabs. Org membership is enforced by RLS via the
+ * authenticated client.
+ */
+export async function updateOrgNiche(orgSlug: string, niche: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('organizations')
+    .update({ niche })
+    .eq('id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  // Niche gates sidebar links + page access, so revalidate the whole app shell.
+  revalidatePath(`/app/${orgSlug}`, 'layout')
+  return { ok: true as const }
+}
+
 // ─── Appearance ───────────────────────────────────────────────────────────────
 
 export async function getOrgAppearance(orgSlug: string) {

@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { Logo } from '@/components/brand/Logo'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import SidebarUnreadBadge from './SidebarUnreadBadge'
@@ -7,6 +8,7 @@ import SidebarNavGroup from './SidebarNavGroup'
 import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
+import { isTravelNiche } from '@/lib/niche'
 import {
   LayoutDashboard,
   Kanban,
@@ -29,6 +31,9 @@ import {
   Building2,
   CreditCard,
   UsersRound,
+  LifeBuoy,
+  FileSignature,
+  PlaneTakeoff,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -94,7 +99,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   return (
     <SidebarShell>
       <div className="h-14 border-b border-sidebar-border flex items-center px-5">
-        <span className="sidebar-brand font-semibold tracking-apple-tighter text-base">Althos CRM</span>
+        <Logo className="sidebar-brand" />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -160,6 +165,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/proposta`}>
+            <span className="flex items-center gap-2.5">
+              <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Proposta</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
         {can('catalog') && (
           <SidebarNavLink href={`${base}/catalogo`}>
             <span className="flex items-center gap-2.5">
@@ -174,6 +188,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Vendas</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/vendas-viagem`}>
+            <span className="flex items-center gap-2.5">
+              <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Vendas Viagem</span>
             </span>
           </SidebarNavLink>
         )}
@@ -297,6 +320,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             </SidebarNavLink>
           </>
         )}
+
+        <SidebarNavLink href={`${base}/ajuda`}>
+          <span className="flex items-center gap-2.5">
+            <LifeBuoy className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+            <span>Central de Ajuda</span>
+          </span>
+        </SidebarNavLink>
 
         {/* ── Configurações ─────────────────────────── */}
         {can('settings') && (

@@ -13,6 +13,7 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'task.overdue' },
       { event: 'lead.stale' },
       { event: 'appointment.booked' },
+      { event: 'customer.birthday' },
     ]
   },
   async ({ event, step }: { event: any; step: any }) => {

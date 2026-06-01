@@ -46,6 +46,7 @@ const TRIGGER_TYPES = [
   { id: 'task.overdue',        label: 'Tarefa Vencida',           desc: 'Dispara diariamente para tarefas em atraso' },
   { id: 'lead.stale',          label: 'Lead sem Contato',         desc: 'Dispara após N dias sem atividade' },
   { id: 'appointment.booked',  label: 'Agendamento Realizado',    desc: 'Dispara quando um agendamento é criado' },
+  { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)' },
 ] as const
 
 const STEP_TYPES = [
@@ -104,6 +105,7 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'task.overdue')       return 'Verificação diária às 8h'
   if (type === 'lead.stale')         return `Sem contato há ${config?.staleDays ?? 7} dias`
   if (type === 'appointment.booked') return 'Novo agendamento recebido'
+  if (type === 'customer.birthday')  return 'No aniversário do cliente'
   return ''
 }
 

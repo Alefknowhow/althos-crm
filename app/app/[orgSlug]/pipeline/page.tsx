@@ -1,5 +1,5 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
 import PipelineConfigDialog from '@/components/features/PipelineConfigDialog'
@@ -57,15 +57,42 @@ export default async function PipelinePage({
       .order('position'),
     supabase
       .from('leads')
-      .select('id, name, stage_id, value_cents, tags, updated_at, email, phone')
+      .select(
+        'id, name, stage_id, value_cents, tags, updated_at, created_at, last_activity_at, email, phone, assigned_to, ai_score, ai_tier, is_customer, source',
+      )
       .eq('pipeline_id', pipeline.id)
       .eq('organization_id', org.id)
       .order('updated_at', { ascending: false }),
   ])
 
+  // Resolve members (id → name/email) for owner avatars + the responsável filter.
+  // Best-effort: never let it break the board.
+  let members: { id: string; name: string; email: string }[] = []
+  try {
+    const admin = createAdminClient()
+    const { data: memberships } = await admin
+      .from('memberships')
+      .select('user_id')
+      .eq('organization_id', org.id)
+    const ids = Array.from(new Set((memberships ?? []).map(m => m.user_id)))
+    members = await Promise.all(
+      ids.map(async id => {
+        const { data } = await admin.auth.admin.getUserById(id)
+        const u = data?.user
+        return {
+          id,
+          name: (u?.user_metadata?.name as string) || (u?.user_metadata?.full_name as string) || '',
+          email: u?.email || '',
+        }
+      }),
+    )
+  } catch {
+    members = []
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
-      <div className="flex justify-between items-center mb-6 shrink-0">
+      <div className="flex justify-between items-center mb-4 shrink-0">
         <PipelineSwitcher
           orgSlug={params.orgSlug}
           pipelines={pipelines}
@@ -83,6 +110,7 @@ export default async function PipelinePage({
           orgSlug={params.orgSlug}
           initialStages={stages || []}
           initialLeads={leads || []}
+          members={members}
         />
       </div>
     </div>

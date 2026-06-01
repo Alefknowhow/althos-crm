@@ -8,7 +8,7 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
 
   const { data } = await supabase
     .from('organizations')
-    .select('logo_url, primary_color')
+    .select('name, niche, logo_url, primary_color')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -22,6 +22,8 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
       <SettingsTabs
         orgSlug={params.orgSlug}
         orgId={org.id}
+        orgName={data?.name ?? org.name ?? ''}
+        initialNiche={data?.niche ?? ''}
         initialLogoUrl={data?.logo_url ?? null}
         initialColor={data?.primary_color ?? null}
       />

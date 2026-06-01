@@ -2,20 +2,21 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Users, Palette, Share2, Sparkles, Bot, AtSign } from 'lucide-react'
 import AppearanceTab from '@/components/features/AppearanceTab'
+import GeneralTab from '@/components/features/GeneralTab'
 
 interface Props {
   orgSlug:        string
   orgId:          string
+  orgName:        string
+  initialNiche:   string
   initialLogoUrl: string | null
   initialColor:   string | null
 }
 
-export default function SettingsTabs({ orgSlug, orgId, initialLogoUrl, initialColor }: Props) {
+export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, initialLogoUrl, initialColor }: Props) {
   return (
     <Tabs defaultValue="geral" className="space-y-4">
       <TabsList>
@@ -35,31 +36,7 @@ export default function SettingsTabs({ orgSlug, orgId, initialLogoUrl, initialCo
 
       {/* ── Geral ──────────────────────────────────────────────────────────── */}
       <TabsContent value="geral">
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações da Organização</CardTitle>
-            <CardDescription>Atualize os dados básicos da sua empresa.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome da Organização</Label>
-                <Input placeholder="Ex: Althos Performance" />
-              </div>
-              <div className="space-y-2">
-                <Label>Slug (URL)</Label>
-                <Input disabled value={orgSlug} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Setor</Label>
-              <Input placeholder="Marketing, Saúde, etc." />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button>Salvar Alterações</Button>
-          </CardFooter>
-        </Card>
+        <GeneralTab orgSlug={orgSlug} orgName={orgName} initialNiche={initialNiche} />
       </TabsContent>
 
       {/* ── Membros ────────────────────────────────────────────────────────── */}

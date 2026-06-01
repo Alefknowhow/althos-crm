@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { LogoMark } from '@/components/brand/Logo'
 
 /** Inline Google "G" logo SVG — no extra dependency needed. */
 function GoogleIcon() {
@@ -68,7 +69,7 @@ export default function LoginPage() {
         {/* Logo + heading */}
         <div className="flex flex-col items-center gap-1 text-center">
           <div className="flex items-center gap-2 mb-1">
-            {/* Simple text logo — swap for <Image> when brand logo is ready */}
+            <LogoMark className="h-9 w-9" />
             <span className="text-2xl font-black tracking-tighter text-foreground">Althos CRM</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight mt-1">Bem-vindo</h1>
