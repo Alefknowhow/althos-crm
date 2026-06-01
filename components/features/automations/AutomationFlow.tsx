@@ -8,7 +8,7 @@
  * that slides in when a node is clicked, richer node cards.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -232,40 +232,6 @@ function FlowNode({
           <X className="w-3 h-3" />
         </button>
       )}
-    </div>
-  )
-}
-
-// ── Connector (line + insert button) ─────────────────────────────────────────
-
-function Connector({ onSelect }: { onSelect: (type: string) => void }) {
-  return (
-    <div className="flex flex-col items-center py-0.5 group/conn">
-      <div className="w-px h-5 bg-border" />
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            title="Adicionar passo"
-            className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground opacity-30 group-hover/conn:opacity-100 hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm z-10"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" className="w-52">
-          <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {STEP_TYPES.map(t => (
-            <DropdownMenuItem key={t.id} onClick={() => onSelect(t.id)}>
-              <t.icon className="w-4 h-4 mr-2 shrink-0" style={{ color: t.color }} />
-              <span className="text-sm">{t.label}</span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <div className="w-px h-5 bg-border" />
     </div>
   )
 }
@@ -577,6 +543,9 @@ function StepConfig({
 const NODE_W  = 260
 const NODE_H  = 172  // approximate node height (strip+header+body+footer)
 const V_GAP   = 52   // vertical gap between nodes in default layout
+const TRIGGER_ID = '__trigger'
+
+type Edge = { source: string; target: string }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -589,10 +558,41 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   const dragRef    = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
   const didDrag    = useRef(false)
 
+  // Drag-to-connect state (N8N-style). `conn` holds the in-progress connection
+  // originating from a node's output port, following the cursor in canvas coords.
+  const [conn, setConn] = useState<{ source: string; x: number; y: number } | null>(null)
+
   const steps: Step[] = auto.steps || []
+  const stepId = (s: Step, i: number) => s.id || `s${i}`
+
+  // Ensure every step has a stable id (edges reference ids). Runs once on mount.
+  useEffect(() => {
+    if (steps.some(s => !s.id)) {
+      const base = Date.now()
+      const fixed = steps.map((s, i) => (s.id ? s : { ...s, id: `step_${base}_${i}` }))
+      setAuto({ ...auto, steps: fixed })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Build ordered node ID list: trigger first, then each step
-  const allIds = ['__trigger', ...steps.map(s => s.id || `s${steps.indexOf(s)}`)]
+  const allIds = [TRIGGER_ID, ...steps.map((s, i) => stepId(s, i))]
+
+  // Edges: source of truth lives in trigger_config.__edges. When absent we
+  // fall back to a linear chain derived from the current step order so existing
+  // automations keep working unchanged.
+  const edges: Edge[] = useMemo(() => {
+    const stored = auto.trigger_config?.__edges
+    if (Array.isArray(stored)) return stored as Edge[]
+    const ids = [TRIGGER_ID, ...steps.map((s, i) => stepId(s, i))]
+    const e: Edge[] = []
+    for (let i = 0; i < ids.length - 1; i++) e.push({ source: ids[i], target: ids[i + 1] })
+    return e
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto.trigger_config?.__edges, steps])
+
+  const nextOf = (id: string, es: Edge[] = edges) => es.find(e => e.source === id)?.target
+  const incomingOf = (id: string, es: Edge[] = edges) => es.find(e => e.target === id)?.source
 
   // Initialise positions once canvas is mounted or when steps change
   const initPositions = useCallback(() => {
@@ -600,14 +600,11 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
     const cx = Math.max(20, (cw - NODE_W) / 2)
     setNodePos(prev => {
       const next = { ...prev }
-      // Trigger — restore a previously saved position if present.
-      if (!next['__trigger']) next['__trigger'] = auto.trigger_config?.__pos ?? { x: cx, y: 30 }
-      // Steps — only add missing ones, restoring saved positions when available.
+      if (!next[TRIGGER_ID]) next[TRIGGER_ID] = auto.trigger_config?.__pos ?? { x: cx, y: 30 }
       steps.forEach((s, i) => {
-        const id = s.id || `s${i}`
+        const id = stepId(s, i)
         if (!next[id]) next[id] = s.config?.__pos ?? { x: cx, y: 30 + (i + 1) * (NODE_H + V_GAP) }
       })
-      // Remove positions for deleted steps
       const validIds = new Set(allIds)
       Object.keys(next).forEach(k => { if (!validIds.has(k)) delete next[k] })
       return next
@@ -623,11 +620,12 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
       y: 30 + fallbackIndex * (NODE_H + V_GAP),
     }
   }
+  const posOf = (id: string) => getPos(id, Math.max(0, allIds.indexOf(id)))
 
-  // Drag handlers
+  // ── Node drag handlers ──────────────────────────────────────────────────────
   function onDragStart(e: React.PointerEvent, nodeId: string, fallbackIndex: number) {
-    // Don't start drag when clicking interactive elements inside the card
-    if ((e.target as HTMLElement).closest('button,select,input,a,[role="menuitem"]')) return
+    // Don't start drag when clicking interactive elements / ports inside the card
+    if ((e.target as HTMLElement).closest('button,select,input,a,[role="menuitem"],[data-port]')) return
     e.preventDefault()
     e.stopPropagation()
     const p = getPos(nodeId, fallbackIndex)
@@ -648,48 +646,132 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   function onDragEnd(nodeId?: string) {
     const dragged = didDrag.current && !!dragRef.current
     dragRef.current = null
-    // Only persist when an actual drag happened (not a plain click/select).
     if (!dragged || !nodeId) return
     const pos = nodePos[nodeId]
     if (!pos) return
-    if (nodeId === '__trigger') {
+    if (nodeId === TRIGGER_ID) {
       setAuto({ ...auto, trigger_config: { ...(auto.trigger_config || {}), __pos: pos } })
     } else {
-      const next = steps.map((s, i) => {
-        const id = s.id || `s${i}`
-        return id === nodeId ? { ...s, config: { ...(s.config || {}), __pos: pos } } : s
-      })
+      const next = steps.map((s, i) => (stepId(s, i) === nodeId ? { ...s, config: { ...(s.config || {}), __pos: pos } } : s))
       setAuto({ ...auto, steps: next })
     }
   }
 
-  // Returns true if the last pointer interaction was a real drag (suppress click)
   function wasDrag() { return didDrag.current }
+
+  // ── Graph persistence ────────────────────────────────────────────────────────
+  // Persists edges into trigger_config.__edges AND reorders steps[] to match the
+  // chain (trigger → … → end) so the linear runtime executes in the drawn order.
+  // Orphan steps (not reachable from the trigger) are appended at the end.
+  function persistGraph(newEdges: Edge[], newSteps: Step[] = steps) {
+    const byId = new Map(newSteps.map((s, i) => [stepId(s, i), s]))
+    const ordered: Step[] = []
+    const visited = new Set<string>()
+    let cur = newEdges.find(e => e.source === TRIGGER_ID)?.target
+    let guard = 0
+    while (cur && byId.has(cur) && !visited.has(cur) && guard++ < 1000) {
+      visited.add(cur)
+      ordered.push(byId.get(cur)!)
+      cur = newEdges.find(e => e.source === cur)?.target
+    }
+    byId.forEach((s, id) => { if (!visited.has(id)) ordered.push(s) })
+    setAuto({
+      ...auto,
+      steps: ordered,
+      trigger_config: { ...(auto.trigger_config || {}), __edges: newEdges },
+    })
+  }
+
+  // True if following outgoing edges from `from` eventually reaches `goal`.
+  function reaches(es: Edge[], from: string | undefined, goal: string) {
+    let cur = from, guard = 0
+    while (cur && guard++ < 1000) {
+      if (cur === goal) return true
+      cur = es.find(e => e.source === cur)?.target
+    }
+    return false
+  }
+
+  // ── Connection actions ───────────────────────────────────────────────────────
+  function connect(source: string, target: string) {
+    if (!target || target === TRIGGER_ID || source === target) return
+    // Single-chain (Fase A): a node has at most one outgoing + one incoming edge.
+    const filtered = edges.filter(e => e.source !== source && e.target !== target)
+    if (reaches(filtered, target, source)) return // would create a cycle
+    persistGraph([...filtered, { source, target }])
+  }
+
+  function removeEdge(source: string, target: string) {
+    persistGraph(edges.filter(e => !(e.source === source && e.target === target)))
+  }
 
   function setSteps(next: Step[]) { setAuto({ ...auto, steps: next }) }
 
-  function insertStep(atIndex: number, type: string) {
-    const newStep: Step = { id: `step_${Date.now()}`, type, config: {} }
-    if (type === 'wait')        newStep.config = { amount: 1, unit: 'minutes' }
-    if (type === 'create_task') newStep.config = { title: 'Nova Tarefa', priority: 'normal', dueInDays: 1 }
-    const next = [...steps]
-    next.splice(atIndex, 0, newStep)
-    setSteps(next)
-    // Position new node below current lowest node
-    const maxY = Object.values(nodePos).reduce((m, p) => Math.max(m, p.y), 0)
-    setNodePos(prev => ({ ...prev, [newStep.id]: { x: getPos('__trigger', 0).x, y: maxY + NODE_H + V_GAP } }))
+  // Insert a new step right after `afterNodeId`, rewiring edges:
+  //   afterNode → T   becomes   afterNode → new → T
+  function insertStep(afterNodeId: string, type: string) {
+    const newId = `step_${Date.now()}`
+    const afterPos = posOf(afterNodeId)
+    const newStep: Step = { id: newId, type, config: { __pos: { x: afterPos.x, y: afterPos.y + NODE_H + V_GAP } } }
+    if (type === 'wait')        newStep.config = { ...newStep.config, amount: 1, unit: 'minutes' }
+    if (type === 'create_task') newStep.config = { ...newStep.config, title: 'Nova Tarefa', priority: 'normal', dueInDays: 1 }
+
+    const out = edges.find(e => e.source === afterNodeId)
+    const rewired = edges.filter(e => e.source !== afterNodeId)
+    rewired.push({ source: afterNodeId, target: newId })
+    if (out) rewired.push({ source: newId, target: out.target })
+
+    setNodePos(prev => ({ ...prev, [newId]: newStep.config!.__pos }))
+    persistGraph(rewired, [...steps, newStep])
   }
 
+  // Remove a step, healing the chain:  X → node → Y   becomes   X → Y
   function removeStep(index: number) {
-    const next = [...steps]
-    next.splice(index, 1)
-    setSteps(next)
+    const id = stepId(steps[index], index)
+    const inc = incomingOf(id)
+    const out = nextOf(id)
+    let rewired = edges.filter(e => e.source !== id && e.target !== id)
+    if (inc && out) rewired = [...rewired, { source: inc, target: out }]
+    persistGraph(rewired, steps.filter((_, i) => i !== index))
     if (selected?.kind === 'step' && selected.index === index) setSelected(null)
+  }
+
+  // ── Port (drag-to-connect) handlers ──────────────────────────────────────────
+  function canvasCoords(clientX: number, clientY: number) {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) }
+  }
+  function onPortDown(e: React.PointerEvent, sourceId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    const c = canvasCoords(e.clientX, e.clientY)
+    setConn({ source: sourceId, x: c.x, y: c.y })
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  function onPortMove(e: React.PointerEvent) {
+    if (!conn) return
+    const c = canvasCoords(e.clientX, e.clientY)
+    setConn(prev => (prev ? { ...prev, x: c.x, y: c.y } : prev))
+  }
+  function onPortUp(e: React.PointerEvent) {
+    if (!conn) return
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+    const targetEl = el?.closest('[data-node-id]') as HTMLElement | null
+    const targetId = targetEl?.getAttribute('data-node-id')
+    if (targetId) connect(conn.source, targetId)
+    setConn(null)
   }
 
   const selectedStep     = selected?.kind === 'step' && steps[selected.index] ? steps[selected.index] : null
   const selectedStepMeta = selectedStep ? stepMeta(selectedStep.type) : null
   const panelOpen        = !!selected
+
+  // Tail of the chain (last node reachable from the trigger) — gets the "+" below.
+  const chainTail = (() => {
+    let cur = TRIGGER_ID, guard = 0
+    while (guard++ < 1000) { const n = nextOf(cur); if (!n) break; cur = n }
+    return cur
+  })()
 
   // Canvas bounding box: large enough to contain all nodes
   const canvasMinH = Math.max(
@@ -770,44 +852,60 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
         {/* Inner canvas — grows to fit all nodes */}
         <div ref={canvasRef} className="relative w-full" style={{ minHeight: canvasMinH }}>
 
-          {/* ── SVG connector lines ──────────────────────────────────────── */}
+          {/* ── SVG connector lines (from the edge graph) ─────────────────── */}
           <svg className="absolute inset-0 w-full pointer-events-none overflow-visible" style={{ height: canvasMinH }}>
             <defs>
               <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
                 <path d="M0,0 L0,6 L7,3 z" fill="hsl(var(--border))" opacity="0.7" />
               </marker>
             </defs>
-            {allIds.map((id, idx) => {
-              if (idx === allIds.length - 1) return null
-              const from = getPos(id, idx)
-              const to   = getPos(allIds[idx + 1], idx + 1)
+            {edges.map(edge => {
+              const from = posOf(edge.source)
+              const to   = posOf(edge.target)
               const x1 = from.x + NODE_W / 2,  y1 = from.y + NODE_H
               const x2 = to.x   + NODE_W / 2,  y2 = to.y
               const cy = (y1 + y2) / 2
               return (
                 <path
-                  key={`edge-${id}`}
+                  key={`edge-${edge.source}-${edge.target}`}
                   d={`M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`}
-                  stroke="hsl(var(--border))"
-                  strokeWidth="1.5"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="2"
                   fill="none"
-                  opacity="0.7"
+                  opacity="0.55"
                   markerEnd="url(#arrowhead)"
                 />
               )
             })}
+            {/* In-progress connection following the cursor */}
+            {conn && (() => {
+              const from = posOf(conn.source)
+              const x1 = from.x + NODE_W / 2, y1 = from.y + NODE_H
+              const cy = (y1 + conn.y) / 2
+              return (
+                <path
+                  d={`M${x1},${y1} C${x1},${cy} ${conn.x},${cy} ${conn.x},${conn.y}`}
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="2"
+                  strokeDasharray="5 4"
+                  fill="none"
+                  opacity="0.8"
+                />
+              )
+            })()}
           </svg>
 
           {/* ── Trigger node ─────────────────────────────────────────────── */}
           {(() => {
-            const pos = getPos('__trigger', 0)
+            const pos = posOf(TRIGGER_ID)
             return (
               <div
+                data-node-id={TRIGGER_ID}
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
-                onPointerDown={e => onDragStart(e, '__trigger', 0)}
-                onPointerMove={e => onDragMove(e, '__trigger')}
-                onPointerUp={() => onDragEnd('__trigger')}
+                onPointerDown={e => onDragStart(e, TRIGGER_ID, 0)}
+                onPointerMove={e => onDragMove(e, TRIGGER_ID)}
+                onPointerUp={() => onDragEnd(TRIGGER_ID)}
               >
                 {/* Drag handle hint */}
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
@@ -823,18 +921,29 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   isSelected={selected?.kind === 'trigger'}
                   onClick={() => { if (!wasDrag()) setSelected({ kind: 'trigger' }) }}
                 />
+                {/* Output port */}
+                <button
+                  type="button"
+                  data-port
+                  title="Arraste para conectar"
+                  onPointerDown={e => onPortDown(e, TRIGGER_ID)}
+                  onPointerMove={onPortMove}
+                  onPointerUp={onPortUp}
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
+                />
               </div>
             )
           })()}
 
           {/* ── Step nodes ───────────────────────────────────────────────── */}
           {steps.map((step, i) => {
-            const nodeId = step.id || `s${i}`
-            const pos    = getPos(nodeId, i + 1)
+            const nodeId = stepId(step, i)
+            const pos    = posOf(nodeId)
             const meta   = stepMeta(step.type)
             return (
               <div
                 key={nodeId}
+                data-node-id={nodeId}
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
                 onPointerDown={e => onDragStart(e, nodeId, i + 1)}
@@ -844,6 +953,14 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
                   <GripVertical className="w-4 h-4" />
                 </div>
+                {/* Input port (visual drop target) */}
+                <div
+                  data-port
+                  className={cn(
+                    'absolute left-1/2 -translate-x-1/2 -top-2.5 w-4 h-4 rounded-full border-2 bg-background z-20 transition-colors',
+                    conn && conn.source !== nodeId ? 'border-primary' : 'border-muted-foreground/40',
+                  )}
+                />
                 <FlowNode
                   icon={meta.icon}
                   color={meta.color}
@@ -856,51 +973,70 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onDelete={() => removeStep(i)}
                   stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
                 />
+                {/* Output port */}
+                <button
+                  type="button"
+                  data-port
+                  title="Arraste para conectar"
+                  onPointerDown={e => onPortDown(e, nodeId)}
+                  onPointerMove={onPortMove}
+                  onPointerUp={onPortUp}
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
+                />
               </div>
             )
           })}
 
-          {/* ── "+" add-step buttons (midpoint of each edge) ─────────────── */}
-          {allIds.map((id, idx) => {
-            if (idx === allIds.length - 1) return null
-            const from  = getPos(id, idx)
-            const to    = getPos(allIds[idx + 1], idx + 1)
-            const bx    = (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2 - 14
-            const by    = (from.y + NODE_H + to.y) / 2 - 14
-            const insertAt = idx  // insert after node idx (trigger=0, step[i]=i+1)
+          {/* ── Per-edge midpoint controls: insert (+) and delete (✕) ──────── */}
+          {edges.map(edge => {
+            const from = posOf(edge.source)
+            const to   = posOf(edge.target)
+            const mx   = (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2
+            const my   = (from.y + NODE_H + to.y) / 2
             return (
-              <div key={`add-${id}`} className="absolute z-20" style={{ left: bx, top: by }}>
+              <div
+                key={`mid-${edge.source}-${edge.target}`}
+                className="absolute z-20 flex items-center gap-1 opacity-40 hover:opacity-100 transition-opacity"
+                style={{ left: mx - 22, top: my - 14 }}
+              >
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      title="Adicionar passo"
+                      title="Inserir passo aqui"
                       className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="right" className="w-52">
-                    <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs">Inserir passo</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {STEP_TYPES.map(t => (
-                      <DropdownMenuItem key={t.id} onClick={() => insertStep(insertAt, t.id)}>
+                      <DropdownMenuItem key={t.id} onClick={() => insertStep(edge.source, t.id)}>
                         <t.icon className="w-4 h-4 mr-2 shrink-0" style={{ color: t.color }} />
                         <span className="text-sm">{t.label}</span>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <button
+                  type="button"
+                  title="Remover conexão"
+                  onClick={() => removeEdge(edge.source, edge.target)}
+                  className="w-6 h-6 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-destructive hover:bg-destructive hover:text-destructive-foreground transition-all flex items-center justify-center shadow-sm"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </div>
             )
           })}
 
-          {/* ── "+" after last node ──────────────────────────────────────── */}
+          {/* ── "+" after the chain tail ─────────────────────────────────── */}
           {(() => {
-            const lastId  = allIds[allIds.length - 1]
-            const lastPos = getPos(lastId, allIds.length - 1)
-            const bx      = lastPos.x + NODE_W / 2 - 14
-            const by      = lastPos.y + NODE_H + 20
+            const tailPos = posOf(chainTail)
+            const bx      = tailPos.x + NODE_W / 2 - 14
+            const by      = tailPos.y + NODE_H + 22
             return (
               <div className="absolute z-20" style={{ left: bx, top: by }}>
                 <DropdownMenu>
@@ -917,7 +1053,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                     <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {STEP_TYPES.map(t => (
-                      <DropdownMenuItem key={t.id} onClick={() => insertStep(steps.length, t.id)}>
+                      <DropdownMenuItem key={t.id} onClick={() => insertStep(chainTail, t.id)}>
                         <t.icon className="w-4 h-4 mr-2 shrink-0" style={{ color: t.color }} />
                         <span className="text-sm">{t.label}</span>
                       </DropdownMenuItem>
