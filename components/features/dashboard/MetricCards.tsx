@@ -75,26 +75,26 @@ export default function MetricCards({ metrics }: MetricCardsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map(card => {
         const Icon = card.icon
         return (
           <Card key={card.title} className="reveal apple-hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-5">
-                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between mb-3 sm:mb-5">
+                <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   {card.title}
                 </p>
-                <div className="rounded-full bg-secondary p-2 text-muted-foreground">
+                <div className="rounded-full bg-secondary p-1.5 sm:p-2 text-muted-foreground shrink-0">
                   <Icon className="h-3.5 w-3.5" />
                 </div>
               </div>
-              <div className="text-[32px] font-semibold leading-none tracking-apple-tighter text-foreground">
+              <div className="text-2xl sm:text-[32px] font-semibold leading-none tracking-apple-tighter text-foreground">
                 {card.value}
               </div>
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 sm:mt-3">
                 {card.change !== undefined && <ChangeChip change={card.change} />}
-                <p className="text-xs text-muted-foreground tracking-apple-snug">{card.description}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground tracking-apple-snug">{card.description}</p>
               </div>
             </CardContent>
           </Card>
