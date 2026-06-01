@@ -6,6 +6,9 @@ import { sendPushToOrg } from '@/actions/push'
 export const processAutomationEvent = inngest.createFunction(
   {
     id: 'automation-process',
+    // Isola tenants: no máximo 5 processamentos simultâneos por organização,
+    // para que um cliente com muitos leads não engula a fila dos outros.
+    concurrency: { key: 'event.data.orgId', limit: 5 },
     triggers: [
       { event: 'form.submitted' },
       { event: 'lead.stage_changed' },
@@ -68,7 +71,7 @@ export const processAutomationEvent = inngest.createFunction(
           if (run) {
             await inngest.send({
               name: 'automation.run.execute',
-              data: { runId: run.id }
+              data: { runId: run.id, orgId }
             })
           }
         })
@@ -80,8 +83,11 @@ export const processAutomationEvent = inngest.createFunction(
 )
 
 export const executeAutomationRun = inngest.createFunction(
-  { 
+  {
     id: 'automation-run-execute',
+    // Mesmo isolamento por org na execução do run. Garante que envios de
+    // WhatsApp/Email de um tenant não estourem o ritmo dos demais.
+    concurrency: { key: 'event.data.orgId', limit: 5 },
     triggers: [{ event: 'automation.run.execute' }]
   },
   async ({ event, step }) => {
