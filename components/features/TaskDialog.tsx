@@ -42,13 +42,16 @@ import { Plus } from 'lucide-react'
 
 type FormValues = z.infer<typeof taskSchema>
 
+type Member = { user_id: string; name: string; email: string }
+
 interface Props {
   orgSlug:     string
   defaultLead?: { id: string; name: string } | null
   trigger?:    React.ReactNode
+  members?:    Member[]
 }
 
-export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
+export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [] }: Props) {
   const router = useRouter()
   const [open, setOpen]         = useState(false)
   const [isPending, startTrans] = useTransition()
@@ -63,6 +66,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
       due_date:    today,
       priority:    'normal',
       lead_id:     defaultLead?.id || '',
+      assigned_to: '',
     },
   })
 
@@ -75,7 +79,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
       }
       toast.success('Tarefa criada!')
       form.reset({
-        title: '', description: '', due_date: today, priority: 'normal', lead_id: '',
+        title: '', description: '', due_date: today, priority: 'normal', lead_id: '', assigned_to: '',
       })
       setOpen(false)
       router.refresh()
@@ -171,6 +175,33 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger }: Props) {
                   )}
                 />
               </div>
+
+              {/* Responsável */}
+              {members.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="assigned_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Responsável</FormLabel>
+                      <Select value={field.value || 'me'} onValueChange={v => field.onChange(v === 'me' ? '' : v)}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="me">Eu (quem cria)</SelectItem>
+                          {members.map(m => (
+                            <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Lead */}
               <FormField

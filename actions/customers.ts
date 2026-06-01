@@ -202,6 +202,63 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
   return { ok: true as const }
 }
 
+/* -------- Create customer directly -------- */
+
+const newCustomerSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório'),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+})
+
+/**
+ * Create a customer straight from the Clientes tab. Backed by a `leads` row
+ * flagged is_customer=true so it flows through the same listing/detail screens.
+ * Places it on the first stage of the default pipeline to satisfy NOT NULL FKs.
+ */
+export async function createCustomer(orgSlug: string, raw: unknown) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const parsed = newCustomerSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
+  const { name, email, phone } = parsed.data
+
+  // Resolve a stage on the default pipeline (leads require pipeline_id/stage_id).
+  let pipeline_id: string | undefined
+  let stage_id: string | undefined
+  const { data: pipeline } = await supabase
+    .from('pipelines').select('id').eq('organization_id', org.id).eq('is_default', true).maybeSingle()
+  if (pipeline) {
+    pipeline_id = pipeline.id
+    const { data: stage } = await supabase
+      .from('pipeline_stages').select('id').eq('pipeline_id', pipeline.id).order('position').limit(1).maybeSingle()
+    stage_id = stage?.id
+  }
+  if (!stage_id) return { ok: false as const, error: 'Configure um pipeline com pelo menos um estágio antes de criar clientes.' }
+
+  const { data: lead, error } = await supabase
+    .from('leads')
+    .insert({
+      organization_id: org.id,
+      pipeline_id,
+      stage_id,
+      name,
+      email: email || null,
+      phone: phone || null,
+      assigned_to: user.id,
+      is_customer: true,
+      became_customer_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (error || !lead) return { ok: false as const, error: error?.message || 'Erro ao criar cliente' }
+
+  revalidatePath(`/app/${orgSlug}/clientes`)
+  return { ok: true as const, id: lead.id }
+}
+
 /* -------- Customer flag (manual mark/unmark) -------- */
 
 export async function markAsCustomer(orgSlug: string, leadId: string) {

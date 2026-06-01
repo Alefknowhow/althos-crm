@@ -75,6 +75,32 @@ export async function getTeamData(orgSlug: string) {
   }
 }
 
+/** Lightweight member list for assignee pickers (tasks, leads, etc.). */
+export async function listOrgMembers(
+  orgSlug: string,
+): Promise<{ user_id: string; name: string; email: string }[]> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const admin = createAdminClient()
+
+  const { data: memberships } = await admin
+    .from('memberships')
+    .select('user_id, created_at')
+    .eq('organization_id', org.id)
+    .order('created_at', { ascending: true })
+
+  const out: { user_id: string; name: string; email: string }[] = []
+  for (const m of memberships ?? []) {
+    const { data: { user } } = await admin.auth.admin.getUserById(m.user_id)
+    out.push({
+      user_id: m.user_id,
+      email: user?.email ?? '',
+      name: (user?.user_metadata?.name as string) || user?.email?.split('@')[0] || 'Usuário',
+    })
+  }
+  return out
+}
+
 // ── Invite ────────────────────────────────────────────────────────────────────
 
 export async function inviteTeamMember(

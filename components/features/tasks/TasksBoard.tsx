@@ -13,9 +13,11 @@ import { setTaskStatus, updateTask, deleteTask, toggleTaskStatus } from '@/actio
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
-  LayoutGrid, List as ListIcon, Calendar, User2, CheckCircle2, Circle,
+  LayoutGrid, List as ListIcon, Calendar, User2, UserCheck, CheckCircle2, Circle,
   Clock, GripVertical, Trash2,
 } from 'lucide-react'
+
+type Member = { user_id: string; name: string; email: string }
 
 type Task = {
   id: string
@@ -24,11 +26,30 @@ type Task = {
   status: 'open' | 'doing' | 'done'
   priority: 'low' | 'normal' | 'high'
   due_date?: string | null
+  assigned_to?: string | null
+  assignee_name?: string | null
   leads?: { id: string; name: string } | null
 }
 
 type View = 'kanban' | 'list'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
+type DateFilter = 'all' | 'overdue' | 'today' | 'this_week' | 'next_week' | 'this_month'
+
+const DATE_FILTERS: { id: DateFilter; label: string }[] = [
+  { id: 'overdue',    label: 'Atrasadas' },
+  { id: 'today',      label: 'Hoje' },
+  { id: 'this_week',  label: 'Esta semana' },
+  { id: 'next_week',  label: 'Próxima semana' },
+  { id: 'this_month', label: 'Este mês' },
+  { id: 'all',        label: 'Todas' },
+]
+
+function dueDateOnly(t: Task): Date | null {
+  if (!t.due_date) return null
+  const [y, m, d] = t.due_date.split('T')[0].split('-').map(Number)
+  if (!y || !m || !d) return null
+  return new Date(y, m - 1, d)
+}
 
 const COLUMNS: { id: Task['status']; name: string; accent: string; dot: string }[] = [
   { id: 'open',  name: 'A Fazer',       accent: 'border-t-slate-400',  dot: 'bg-slate-400' },
@@ -60,14 +81,17 @@ function fmtDate(iso?: string | null) {
 export default function TasksBoard({
   initialTasks,
   orgSlug,
+  members = [],
 }: {
   initialTasks: Task[]
   orgSlug: string
+  members?: Member[]
 }) {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [view, setView] = useState<View>('kanban')
   const [priority, setPriority] = useState<PriorityFilter>('all')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [editing, setEditing] = useState<Task | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<Task['status'] | null>(null)
@@ -85,10 +109,47 @@ export default function TasksBoard({
     localStorage.setItem('tasks-view', v)
   }
 
+  // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
+  const bounds = useMemo(() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0)
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay())
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
+    const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(weekStart.getDate() + 7)
+    const nextWeekEnd = new Date(weekEnd); nextWeekEnd.setDate(weekEnd.getDate() + 7)
+    return { now, weekStart, weekEnd, nextWeekStart, nextWeekEnd }
+  }, [tasks])
+
+  function matchesDate(t: Task, f: DateFilter): boolean {
+    if (f === 'all') return true
+    const d = dueDateOnly(t)
+    if (!d) return false
+    const { now, weekStart, weekEnd, nextWeekStart, nextWeekEnd } = bounds
+    switch (f) {
+      case 'overdue':    return d < now && t.status !== 'done'
+      case 'today':      return d.getTime() === now.getTime()
+      case 'this_week':  return d >= weekStart && d <= weekEnd
+      case 'next_week':  return d >= nextWeekStart && d <= nextWeekEnd
+      case 'this_month': return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      default:           return true
+    }
+  }
+
   const filtered = useMemo(
-    () => (priority === 'all' ? tasks : tasks.filter(t => t.priority === priority)),
-    [tasks, priority],
+    () => tasks.filter(t =>
+      (priority === 'all' || t.priority === priority) && matchesDate(t, dateFilter),
+    ),
+    [tasks, priority, dateFilter, bounds],
   )
+
+  const dateCounts = useMemo(() => {
+    const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, this_week: 0, next_week: 0, this_month: 0 }
+    for (const t of tasks) {
+      for (const f of ['overdue', 'today', 'this_week', 'next_week', 'this_month'] as DateFilter[]) {
+        if (matchesDate(t, f)) c[f]++
+      }
+    }
+    return c
+  }, [tasks, bounds])
 
   const byColumn = useMemo(() => {
     const map: Record<Task['status'], Task[]> = { open: [], doing: [], done: [] }
@@ -139,6 +200,32 @@ export default function TasksBoard({
 
   return (
     <div className="space-y-4">
+      {/* Date filters */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {DATE_FILTERS.map(f => {
+          const active = dateFilter === f.id
+          const count = dateCounts[f.id]
+          const danger = f.id === 'overdue'
+          return (
+            <button
+              key={f.id}
+              onClick={() => setDateFilter(f.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                active
+                  ? (danger ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-primary text-primary-foreground border-primary')
+                  : (danger && count > 0
+                      ? 'bg-destructive/5 text-destructive border-destructive/30 hover:bg-destructive/10'
+                      : 'bg-background hover:bg-muted text-muted-foreground border-border'),
+              )}
+            >
+              {f.label}
+              <span className={cn('tabular-nums', active ? 'opacity-80' : 'opacity-60')}>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
@@ -240,6 +327,7 @@ export default function TasksBoard({
       <EditSheet
         task={editing}
         orgSlug={orgSlug}
+        members={members}
         onClose={() => setEditing(null)}
         onSaved={(updated) => {
           setTasks(prev => prev.map(t => (t.id === updated.id ? { ...t, ...updated } : t)))
@@ -314,6 +402,11 @@ function KanbanCard({
                 <User2 className="w-3 h-3" />{task.leads.name}
               </span>
             )}
+            {task.assignee_name && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-primary/80 truncate max-w-[120px]" title={`Responsável: ${task.assignee_name}`}>
+                <UserCheck className="w-3 h-3" />{task.assignee_name}
+              </span>
+            )}
           </div>
         </div>
         <GripVertical className="w-4 h-4 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -352,6 +445,11 @@ function TaskRow({
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{statusName}</span>
           {date && <span className={overdue ? 'text-destructive font-medium' : ''}>· {date}</span>}
+          {task.assignee_name && (
+            <span className="inline-flex items-center gap-1 text-primary/80">
+              <UserCheck className="w-3 h-3" />{task.assignee_name}
+            </span>
+          )}
         </div>
       </div>
       <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4 shrink-0', pm.cls)}>{pm.label}</Badge>
@@ -369,10 +467,11 @@ function TaskRow({
 }
 
 function EditSheet({
-  task, orgSlug, onClose, onSaved, onDelete,
+  task, orgSlug, members, onClose, onSaved, onDelete,
 }: {
   task: Task | null
   orgSlug: string
+  members: Member[]
   onClose: () => void
   onSaved: (t: Task) => void
   onDelete: (id: string) => void
@@ -390,6 +489,7 @@ function EditSheet({
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       lead_id:     fd.get('lead_id')     as string,
+      assigned_to: fd.get('assigned_to') as string,
     }
     setSaving(true)
     const res = await updateTask(orgSlug, task.id, input)
@@ -399,7 +499,10 @@ function EditSheet({
       return
     }
     toast.success('Tarefa atualizada!')
-    onSaved({ ...task, ...input, due_date: input.due_date || null })
+    const assignee_name = input.assigned_to
+      ? (members.find(m => m.user_id === input.assigned_to)?.name ?? null)
+      : null
+    onSaved({ ...task, ...input, due_date: input.due_date || null, assignee_name })
   }
 
   const defaultDate = task?.due_date ? task.due_date.split('T')[0] : ''
@@ -438,6 +541,17 @@ function EditSheet({
                 defaultLead={task.leads ? { id: task.leads.id, name: task.leads.name } : null}
               />
             </div>
+            {members.length > 0 && (
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                <select name="assigned_to" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={task.assigned_to || ''}>
+                  <option value="">Sem responsável</option>
+                  {members.map(m => (
+                    <option key={m.user_id} value={m.user_id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <SheetFooter>
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir

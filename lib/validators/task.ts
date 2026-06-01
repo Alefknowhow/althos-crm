@@ -6,4 +6,5 @@ export const taskSchema = z.object({
   due_date: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high']).optional(),
   lead_id: z.string().uuid().optional().or(z.literal('')),
+  assigned_to: z.string().uuid().optional().or(z.literal('')),
 })

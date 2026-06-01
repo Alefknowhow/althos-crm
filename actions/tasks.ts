@@ -27,7 +27,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
     priority:    v.priority || 'normal',
     lead_id:     v.lead_id  || null,
-    assigned_to: user.id,
+    assigned_to: v.assigned_to || user.id,
     status: 'open',
   })
 
@@ -50,6 +50,7 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null
   if (input.priority    !== undefined) updates.priority    = input.priority
   if (input.lead_id     !== undefined) updates.lead_id     = input.lead_id || null
+  if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to || null
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
 

@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import EmptyState from '@/components/ui/empty-state'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -19,13 +18,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
 } from '@/actions/travel-sales'
 import { toast } from 'sonner'
 import {
-  Plane, MapPin, Hotel, CalendarRange, CheckCircle2, ListChecks, Trash2, Pencil, Receipt, Plus, FileText,
+  MapPin, CalendarRange, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null }
@@ -40,6 +39,7 @@ function reaisToCents(s: string) {
   return Number.isFinite(n) ? Math.round(n * 100) : 0
 }
 function fmtDate(d?: string | null) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—' }
+function fmtTimestamp(d?: string | null) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—' }
 
 function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) => void }) {
   const [text, setText] = useState(centsToReais(value))
@@ -61,17 +61,22 @@ export default function TravelSalesView({
   proposals?: ProposalOption[]
 }) {
   const router = useRouter()
-  const [editing, setEditing] = useState<TravelSaleRow | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(sales[0]?.id ?? null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
 
+  const selected = sales.find(s => s.id === selectedId) ?? null
+
   async function handleDelete(id: string) {
     const res = await deleteTravelSale(orgSlug, id)
-    if (res.ok) { toast.success('Venda excluída'); router.refresh() }
-    else toast.error(res.error)
+    if (res.ok) {
+      toast.success('Venda excluída')
+      if (selectedId === id) setSelectedId(null)
+      router.refresh()
+    } else toast.error(res.error)
   }
 
   async function handleCreate() {
@@ -82,136 +87,127 @@ export default function TravelSalesView({
     setNewOpen(false)
     setPickedProposal('none')
     toast.success('Venda criada')
-    setEditing(res.data)        // open editor immediately to fill operational data
+    setSelectedId(res.data.id)
     router.refresh()
   }
 
-  return (
-    <>
-      <div className="flex items-center justify-end">
-        <Button onClick={() => setNewOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Nova venda
-        </Button>
-      </div>
+  async function handleSave(id: string, patch: Record<string, any>, generate: boolean) {
+    setSaving(true)
+    const res = generate
+      ? await saveTravelSaleAndGenerateTasks(orgSlug, id, patch)
+      : await updateTravelSale(orgSlug, id, patch)
+    setSaving(false)
+    if (!res.ok) { toast.error(res.error); return }
+    if (generate) {
+      const r = res as any
+      if (r.alreadyGenerated) toast.info('As tarefas dessa venda já haviam sido geradas.')
+      else toast.success(`Venda salva e ${r.tasksCreated} tarefa(s) criada(s).`)
+    } else {
+      toast.success('Venda salva')
+    }
+    router.refresh()
+  }
 
-      {sales.length === 0 ? (
+  if (sales.length === 0) {
+    return (
+      <>
+        <div className="flex items-center justify-end mb-4">
+          <Button onClick={() => setNewOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Nova venda
+          </Button>
+        </div>
         <EmptyState
           icon={Receipt}
           title="Nenhuma venda de viagem ainda"
           description="Crie uma venda manualmente com o botão 'Nova venda' (importando uma proposta), ou mova um lead com proposta vinculada para a etapa 'Fechado' no pipeline — a venda é gerada automaticamente."
         />
-      ) : (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {sales.map(s => (
-          <Card key={s.id} className="group relative">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-semibold leading-tight truncate">{s.client_name || 'Cliente'}</p>
-                  {s.destination && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" /> <span className="truncate">{s.destination}</span>
-                    </p>
-                  )}
-                </div>
-                {s.tasks_generated_at
-                  ? <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">Tarefas geradas</Badge>
-                  : <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 shrink-0">Pendente</Badge>}
-              </div>
+        <NewSaleDialog
+          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}
+          proposals={proposals} picked={pickedProposal} setPicked={setPickedProposal}
+          creating={creating} onCreate={handleCreate}
+        />
+      </>
+    )
+  }
 
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5"><CalendarRange className="w-3.5 h-3.5" /> {fmtDate(s.departure_date)} – {fmtDate(s.return_date)}</div>
-                {s.hotel_name && <div className="flex items-center gap-1.5"><Hotel className="w-3.5 h-3.5" /> <span className="truncate">{s.hotel_name}</span></div>}
-                {s.airline && <div className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5" /> <span className="truncate">{s.airline}</span></div>}
-              </div>
-
-              <div className="flex items-center justify-between border-t pt-3">
-                <span className="text-base font-bold tabular-nums">{formatCurrency(s.total_cents || 0)}</span>
-                <div className="flex items-center gap-1">
-                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(s)}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(s.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">{sales.length} venda(s)</p>
+        <Button onClick={() => setNewOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" /> Nova venda
+        </Button>
       </div>
-      )}
 
-      {/* Nova venda — import from proposal or start blank */}
-      <Dialog open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Nova venda de viagem</DialogTitle>
-            <DialogDescription>
-              Importe uma proposta para preencher os dados automaticamente, ou comece em branco.
-            </DialogDescription>
-          </DialogHeader>
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-15rem)] min-h-[460px]">
+        {/* ── List ─────────────────────────────────────────────── */}
+        <div className={cn(
+          'rounded-xl border bg-card overflow-y-auto divide-y',
+          selected && 'hidden md:block',
+        )}>
+          {sales.map(s => {
+            const active = s.id === selectedId
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedId(s.id)}
+                className={cn(
+                  'w-full text-left p-3 transition-colors',
+                  active ? 'bg-primary/5' : 'hover:bg-muted/50',
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-sm leading-tight truncate">
+                    {s.client_name || 'Cliente'}
+                  </span>
+                  {s.tasks_generated_at
+                    ? <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas</Badge>
+                    : <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
+                </div>
+                <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+                  {s.destination && <div className="flex items-center gap-1.5"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span></div>}
+                  <div className="flex items-center gap-1.5"><CalendarRange className="w-3 h-3 shrink-0" /> <span className="truncate">{fmtDate(s.departure_date)} – {fmtDate(s.return_date)}</span></div>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-sm font-bold tabular-nums">{formatCurrency(s.total_cents || 0)}</span>
+                  {s.commission_cents
+                    ? <span className="text-[11px] text-emerald-700 font-medium">Com.: {formatCurrency(s.commission_cents)}</span>
+                    : <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>}
+                </div>
+              </button>
+            )
+          })}
+        </div>
 
-          <div className="py-2 space-y-2">
-            <Label className="text-xs">Importar de uma proposta</Label>
-            <Select value={pickedProposal} onValueChange={setPickedProposal}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma proposta" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Começar em branco</SelectItem>
-                {proposals.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {(p.title || 'Proposta sem título')}{p.client_name ? ` · ${p.client_name}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {proposals.length === 0 && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" /> Nenhuma proposta criada ainda — a venda começará em branco.
-              </p>
+        {/* ── Detail ───────────────────────────────────────────── */}
+        <div className={cn(
+          'rounded-xl border bg-card overflow-y-auto',
+          !selected && 'hidden md:flex',
+        )}>
+          {selected
+            ? <SaleEditor
+                key={selected.id}
+                sale={selected}
+                saving={saving}
+                onBack={() => setSelectedId(null)}
+                onDelete={() => setDeleteId(selected.id)}
+                onSave={(patch, generate) => handleSave(selected.id, patch, generate)}
+              />
+            : (
+              <div className="m-auto text-center text-sm text-muted-foreground p-8">
+                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                Selecione uma venda para ver os detalhes.
+              </div>
             )}
-          </div>
+        </div>
+      </div>
 
-          <DialogFooter>
-            <Button variant="outline" disabled={creating} onClick={() => setNewOpen(false)}>Cancelar</Button>
-            <Button disabled={creating} onClick={handleCreate}>
-              {creating ? 'Criando…' : 'Criar venda'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Editor */}
-      <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {editing && (
-            <SaleEditor
-              key={editing.id}
-              sale={editing}
-              saving={saving}
-              onSave={async (patch, generate) => {
-                setSaving(true)
-                const res = generate
-                  ? await saveTravelSaleAndGenerateTasks(orgSlug, editing.id, patch)
-                  : await updateTravelSale(orgSlug, editing.id, patch)
-                setSaving(false)
-                if (!res.ok) { toast.error(res.error); return }
-                if (generate) {
-                  const r = res as any
-                  if (r.alreadyGenerated) toast.info('As tarefas dessa venda já haviam sido geradas.')
-                  else toast.success(`Venda salva e ${r.tasksCreated} tarefa(s) criada(s).`)
-                } else {
-                  toast.success('Venda salva')
-                }
-                setEditing(null)
-                router.refresh()
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <NewSaleDialog
+        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}
+        proposals={proposals} picked={pickedProposal} setPicked={setPickedProposal}
+        creating={creating} onCreate={handleCreate}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
         <AlertDialogContent>
@@ -230,12 +226,68 @@ export default function TravelSalesView({
   )
 }
 
+function NewSaleDialog({
+  open, onOpenChange, proposals, picked, setPicked, creating, onCreate,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  proposals: ProposalOption[]
+  picked: string
+  setPicked: (v: string) => void
+  creating: boolean
+  onCreate: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Nova venda de viagem</DialogTitle>
+          <DialogDescription>
+            Importe uma proposta para preencher os dados automaticamente, ou comece em branco.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-2 space-y-2">
+          <Label className="text-xs">Importar de uma proposta</Label>
+          <Select value={picked} onValueChange={setPicked}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma proposta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Começar em branco</SelectItem>
+              {proposals.map(p => (
+                <SelectItem key={p.id} value={p.id}>
+                  {(p.title || 'Proposta sem título')}{p.client_name ? ` · ${p.client_name}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {proposals.length === 0 && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Nenhuma proposta criada ainda — a venda começará em branco.
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" disabled={creating} onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button disabled={creating} onClick={onCreate}>
+            {creating ? 'Criando…' : 'Criar venda'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function SaleEditor({
-  sale, saving, onSave,
+  sale, saving, onSave, onBack, onDelete,
 }: {
   sale: TravelSaleRow
   saving: boolean
   onSave: (patch: Record<string, any>, generate: boolean) => void
+  onBack: () => void
+  onDelete: () => void
 }) {
   const [s, setS] = useState<TravelSaleRow>(sale)
   const set = (k: keyof TravelSaleRow, v: any) => setS(prev => ({ ...prev, [k]: v }))
@@ -252,12 +304,25 @@ function SaleEditor({
   })
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2"><Receipt className="w-4 h-4 text-primary" /> Venda de viagem</DialogTitle>
-      </DialogHeader>
+    <div className="flex flex-col w-full">
+      {/* header */}
+      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex items-center gap-3 z-10">
+        <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold truncate flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
+            </h2>
+            {s.tasks_generated_at
+              ? <Badge variant="outline" className="shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas geradas</Badge>
+              : <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
+          </div>
+        </div>
+      </div>
 
-      <div className="space-y-5 py-2">
+      <div className="p-4 space-y-5">
         {/* Auto-filled (editable) */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados da viagem (pré-preenchidos)</p>
@@ -297,16 +362,19 @@ function SaleEditor({
             <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
           </p>
         )}
-      </div>
 
-      <DialogFooter className="gap-2">
-        <Button variant="outline" disabled={saving} onClick={() => onSave(patch(), false)}>
-          {saving ? 'Salvando…' : 'Salvar'}
-        </Button>
-        <Button disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)}>
-          <ListChecks className="w-4 h-4 mr-1.5" /> {saving ? 'Processando…' : 'Salvar e gerar tarefas'}
-        </Button>
-      </DialogFooter>
-    </>
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+          <Button variant="outline" disabled={saving} onClick={() => onSave(patch(), false)}>
+            {saving ? 'Salvando…' : 'Salvar'}
+          </Button>
+          <Button disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)}>
+            <ListChecks className="w-4 h-4 mr-1.5" /> {saving ? 'Processando…' : 'Salvar e gerar tarefas'}
+          </Button>
+          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 ml-auto" onClick={onDelete}>
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
