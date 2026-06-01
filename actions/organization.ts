@@ -43,12 +43,47 @@ export async function createOrganization(formData: FormData) {
   const slug = await generateUniqueSlug(name)
   const admin = createAdminClient()
 
-  // 1. Cria a organização
+  // 0. Ensure the user has an account (top-level tenant grouping). Every org
+  //    belongs to exactly one account; the niche lives on the account and is
+  //    inherited by all its orgs. Reuse the user's existing account if any,
+  //    otherwise create one (the user becomes its admin).
+  let accountId: string | null = null
+  let accountNiche: string | null = null
+  {
+    const { data: existing } = await admin
+      .from('account_members')
+      .select('account_id, accounts(niche)')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .limit(1)
+      .maybeSingle()
+
+    if (existing?.account_id) {
+      accountId    = existing.account_id
+      accountNiche = (existing as any).accounts?.niche ?? null
+    } else {
+      const { data: newAccount, error: accErr } = await admin
+        .from('accounts')
+        .insert({ name, owner_user_id: user.id })
+        .select('id, niche')
+        .single()
+      if (accErr) return { ok: false, error: accErr.message }
+      accountId    = newAccount.id
+      accountNiche = newAccount.niche
+      await admin
+        .from('account_members')
+        .insert({ account_id: accountId, user_id: user.id, role: 'admin' })
+    }
+  }
+
+  // 1. Cria a organização (vinculada à conta + herdando o nicho da conta)
   const { data: org, error: orgError } = await admin
     .from('organizations')
     .insert({
       name,
       slug,
+      account_id: accountId,
+      niche: accountNiche,            // mirror of the account niche
       plan: 'free_trial',
       account_type: 'self_signup',
       subscription_status: 'trialing',
@@ -199,31 +234,63 @@ export async function getOrgGeneral(orgSlug: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  const { data } = await supabase
-    .from('organizations')
-    .select('name, niche')
-    .eq('id', org.id)
-    .maybeSingle()
+  // Niche now lives on the parent account. org.niche is kept as a mirror, but
+  // we read the account value when available to stay authoritative.
+  let niche = (org as any).niche ?? ''
+  if ((org as any).account_id) {
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('niche')
+      .eq('id', (org as any).account_id)
+      .maybeSingle()
+    if (account?.niche != null) niche = account.niche
+  }
   return {
-    name:  data?.name  ?? '',
-    niche: data?.niche ?? '',
+    name:  org.name ?? '',
+    niche,
   }
 }
 
 /**
- * Updates the organization's niche (vertical). Switching to the travel niche
- * unlocks the travel-agency tabs. Org membership is enforced by RLS via the
- * authenticated client.
+ * Updates the NICHE at the account level (vertical applies to every org in the
+ * account) and mirrors it onto all child organizations so the existing
+ * org.niche-based gating keeps working with zero churn.
+ *
+ * Switching to the travel niche unlocks the travel-agency tabs. Only account
+ * admins can change it — enforced by RLS on `accounts` (UPDATE requires
+ * get_user_admin_accounts()). The mirror write to organizations is also
+ * RLS-scoped to orgs the user can access.
  */
 export async function updateOrgNiche(orgSlug: string, niche: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  const { error } = await supabase
-    .from('organizations')
-    .update({ niche })
-    .eq('id', org.id)
-  if (error) return { ok: false as const, error: error.message }
+
+  const accountId = (org as any).account_id as string | null
+
+  if (accountId) {
+    // 1. Source of truth: the account.
+    const { error: accErr } = await supabase
+      .from('accounts')
+      .update({ niche })
+      .eq('id', accountId)
+    if (accErr) return { ok: false as const, error: accErr.message }
+
+    // 2. Mirror onto every org in the account (denormalized for gating).
+    const { error: mirrorErr } = await supabase
+      .from('organizations')
+      .update({ niche })
+      .eq('account_id', accountId)
+    if (mirrorErr) return { ok: false as const, error: mirrorErr.message }
+  } else {
+    // Legacy orgs without an account: fall back to org-level write.
+    const { error } = await supabase
+      .from('organizations')
+      .update({ niche })
+      .eq('id', org.id)
+    if (error) return { ok: false as const, error: error.message }
+  }
+
   // Niche gates sidebar links + page access, so revalidate the whole app shell.
   revalidatePath(`/app/${orgSlug}`, 'layout')
   return { ok: true as const }

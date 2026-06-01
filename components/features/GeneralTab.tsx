@@ -61,8 +61,8 @@ export default function GeneralTab({ orgSlug, orgName, initialNiche }: Props) {
           <div>
             <Label>Nicho</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Define quais recursos verticais aparecem. Escolher{' '}
-              <span className="font-medium">Agência de Viagens</span> libera as abas de Propostas e Vendas Viagem.
+              O nicho vale para <span className="font-medium">toda a Conta</span> — todas as organizações herdam o mesmo.
+              Escolher <span className="font-medium">Agência de Viagens</span> libera as abas de Propostas e Vendas Viagem.
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
