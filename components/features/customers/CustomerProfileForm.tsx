@@ -14,6 +14,9 @@ import { upsertCustomerProfile } from '@/actions/customers'
 type Profile = {
   cpf: string | null
   rg: string | null
+  passport_number: string | null
+  passport_expiry: string | null
+  has_us_visa: boolean | null
   date_of_birth: string | null
   postal_code: string | null
   street: string | null
@@ -59,6 +62,9 @@ export default function CustomerProfileForm({
   const [form, setForm] = useState({
     cpf: initial?.cpf || '',
     rg: initial?.rg || '',
+    passport_number: initial?.passport_number || '',
+    passport_expiry: initial?.passport_expiry || '',
+    has_us_visa: initial?.has_us_visa ?? false,
     date_of_birth: initial?.date_of_birth || '',
     postal_code: initial?.postal_code || '',
     street: initial?.street || '',
@@ -153,6 +159,43 @@ export default function CustomerProfileForm({
                 value={form.date_of_birth}
                 onChange={e => setForm({ ...form, date_of_birth: e.target.value })}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Passaporte e Visto */}
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+            Passaporte e Visto
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Número do passaporte</Label>
+              <Input
+                value={form.passport_number}
+                onChange={e => setForm({ ...form, passport_number: e.target.value.toUpperCase() })}
+                placeholder="AB123456"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Validade do passaporte</Label>
+              <Input
+                type="date"
+                value={form.passport_expiry}
+                onChange={e => setForm({ ...form, passport_expiry: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Visto americano</Label>
+              <label className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="accent-primary w-4 h-4"
+                  checked={form.has_us_visa}
+                  onChange={e => setForm({ ...form, has_us_visa: e.target.checked })}
+                />
+                <span className="text-sm">{form.has_us_visa ? 'Possui' : 'Não possui'}</span>
+              </label>
             </div>
           </div>
         </div>

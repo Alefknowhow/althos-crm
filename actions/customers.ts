@@ -150,6 +150,9 @@ export async function getCustomer(orgSlug: string, leadId: string) {
 const profileSchema = z.object({
   cpf: z.string().optional().nullable(),
   rg: z.string().optional().nullable(),
+  passport_number: z.string().optional().nullable(),
+  passport_expiry: z.string().optional().nullable(),
+  has_us_visa: z.boolean().optional(),
   date_of_birth: z.string().optional().nullable(),
   postal_code: z.string().optional().nullable(),
   street: z.string().optional().nullable(),
