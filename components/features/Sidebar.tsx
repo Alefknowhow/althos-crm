@@ -35,6 +35,8 @@ import {
   LifeBuoy,
   FileSignature,
   PlaneTakeoff,
+  Store,
+  CalendarClock,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -193,6 +195,24 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Proposta</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/vitrine`}>
+            <span className="flex items-center gap-2.5">
+              <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Vitrine</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/viagens-programadas`}>
+            <span className="flex items-center gap-2.5">
+              <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Viagens Programadas</span>
             </span>
           </SidebarNavLink>
         )}
