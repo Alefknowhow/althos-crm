@@ -18,8 +18,9 @@ import { revalidatePath } from 'next/cache'
  */
 export async function createCheckoutSession(
   orgSlug: string,
-  plan: 'starter' | 'pro' | 'scale',
-  billingType: 'BOLETO' | 'PIX' | 'CREDIT_CARD' = 'BOLETO',
+  plan: 'starter' | 'pro' | 'business',
+  billingType: 'PIX' | 'CREDIT_CARD' = 'PIX',
+  cycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
 ): Promise<{ ok: true; checkoutUrl: string } | { ok: false; error: string }> {
   await requireAuth()
   const org     = await getCurrentOrganization(orgSlug)
@@ -48,8 +49,8 @@ export async function createCheckoutSession(
         .eq('id', org.id)
     }
 
-    // 2. Create monthly subscription with the chosen billing method
-    const subscription = await asaas.createSubscription(customerId, plan, billingType)
+    // 2. Create subscription (monthly or yearly) with the chosen billing method
+    const subscription = await asaas.createSubscription(customerId, plan, billingType, cycle)
 
     await supabase
       .from('organizations')
@@ -91,9 +92,10 @@ export async function activatePlanFromWebhook(
   // All paid plans now have unlimited leads.
   // Differentiation is on features (AI, automations, users, API), not lead count.
   const userLimits: Record<string, number | null> = {
-    starter: 1,
-    pro:     5,
-    scale:   null, // unlimited
+    starter:  1,
+    pro:      5,
+    business: null, // unlimited
+    scale:    null, // legacy alias of business
   }
 
   const { error } = await admin

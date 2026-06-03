@@ -6,6 +6,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { revalidatePath } from 'next/cache'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
+import { defaultMemberPermissions } from '@/lib/permissions'
 
 
 /**
@@ -84,10 +85,12 @@ export async function createOrganization(formData: FormData) {
       slug,
       account_id: accountId,
       niche: accountNiche,            // mirror of the account niche
-      plan: 'free_trial',
+      // New signups start on the free-forever plan. The 7-day paid trial only
+      // begins at checkout (with a payment method). 'free' is never billing-blocked.
+      plan: 'free',
       account_type: 'self_signup',
-      subscription_status: 'trialing',
-      trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_status: 'active',
+      trial_ends_at: null,
       limit_leads: 100,
       limit_whatsapp_monthly: 100,
       limit_email_monthly: 100,
@@ -110,6 +113,45 @@ export async function createOrganization(formData: FormData) {
     // Org criada mas membership falhou — tenta rollback
     await admin.from('organizations').delete().eq('id', org.id)
     return { ok: false, error: memberError.message }
+  }
+
+  // 2a. Fan-out: todo usuário já presente na conta deve existir nesta nova org
+  //     também (regra: "todos os usuários presentes em todas as orgs da conta").
+  //     A visibilidade por org é controlada depois via memberships.hidden.
+  if (accountId) {
+    const { data: accUsers } = await admin
+      .from('account_members')
+      .select('user_id, role')
+      .eq('account_id', accountId)
+    for (const au of accUsers ?? []) {
+      if (au.user_id === user.id) continue // já é owner desta org
+      await admin.from('memberships').upsert(
+        {
+          organization_id: org.id,
+          user_id:         au.user_id,
+          role:            au.role === 'admin' ? 'admin' : 'member',
+          permissions:     au.role === 'admin' ? {} : defaultMemberPermissions(),
+          hidden:          false,
+        },
+        { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
+      )
+    }
+  }
+
+  // 2b. Referral capture (/signup?ref=CODE). The code is bridged via a cookie
+  //     set on the signup page (covers the Google OAuth flow, where the ref
+  //     param can't round-trip through the provider). Best-effort.
+  if (accountId) {
+    const { cookies } = await import('next/headers')
+    const refCode = cookies().get('althos_ref')?.value?.trim()
+    if (refCode) {
+      const { error: refError } = await admin.rpc('redeem_referral', {
+        p_referred_account_id: accountId,
+        p_code:                refCode,
+      })
+      if (refError) console.error('createOrganization redeem_referral error:', refError.message)
+      cookies().delete('althos_ref')
+    }
   }
 
   // 3. Cria pipeline padrão + estágios

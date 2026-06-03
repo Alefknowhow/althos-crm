@@ -62,7 +62,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 
   return (
     <div className="flex w-full h-full border-t">
-      <div className="w-1/3 max-w-[350px] border-r flex flex-col bg-muted/10">
+      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b bg-background font-semibold shrink-0 h-16 flex items-center">
           Inbox WhatsApp
         </div>
@@ -83,13 +83,23 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DckOUM5a.png')] bg-repeat">
+      <div className={`flex-1 flex-col bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DckOUM5a.png')] bg-repeat ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="px-6 py-3 border-b bg-background flex justify-between items-center h-16 shrink-0 shadow-sm z-10">
-              <div>
-                <div className="font-semibold">{selectedConversation.contact_name || selectedConversation.contact_phone}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{selectedConversation.contact_phone}</div>
+            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0 shadow-sm z-10">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/app/${orgSlug}/conversas`)}
+                  className="md:hidden shrink-0 -ml-1 p-1 rounded-md hover:bg-muted text-muted-foreground"
+                  aria-label="Voltar para a lista"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">{selectedConversation.contact_name || selectedConversation.contact_phone}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{selectedConversation.contact_phone}</div>
+                </div>
               </div>
               {selectedConversation.lead_id && (
                 <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>

@@ -43,26 +43,26 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="p-4 border-b flex justify-between items-center bg-card shadow-sm z-10 shrink-0">
-        <div className="flex items-center gap-4">
-          <Input 
-            value={auto.name} 
-            onChange={e => setAuto({...auto, name: e.target.value})} 
-            className="font-bold border-transparent hover:border-input focus:border-input text-lg h-10 w-80" 
+      <div className="p-3 sm:p-4 border-b flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center bg-card shadow-sm z-10 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <Input
+            value={auto.name}
+            onChange={e => setAuto({...auto, name: e.target.value})}
+            className="font-bold border-transparent hover:border-input focus:border-input text-base sm:text-lg h-10 flex-1 min-w-0 lg:w-80 lg:flex-none"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Switch checked={auto.is_active} onCheckedChange={c => setAuto({...auto, is_active: c})} />
-            <Label className="text-sm cursor-pointer">{auto.is_active ? 'Ativa' : 'Pausada'}</Label>
+            <Label className="text-sm cursor-pointer whitespace-nowrap">{auto.is_active ? 'Ativa' : 'Pausada'}</Label>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[300px]">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 lg:flex-none lg:w-[300px]">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="editor">Editor</TabsTrigger>
               <TabsTrigger value="runs">Execuções</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar Alterações'}</Button>
+          <Button onClick={handleSave} disabled={saving} className="shrink-0">{saving ? 'Salvando...' : <span><span className="hidden sm:inline">Salvar Alterações</span><span className="sm:hidden">Salvar</span></span>}</Button>
         </div>
       </div>
 

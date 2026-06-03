@@ -1,0 +1,75 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { SiteShell } from '@/components/site/SiteShell'
+import { POSTS_SORTED, formatPostDate } from '@/lib/blog/posts'
+
+export const metadata: Metadata = {
+  title: 'Blog — Althos CRM',
+  description:
+    'Conteúdo sobre Meta Ads, Google Ads, funil de vendas, gestão de equipe e treinamento de vendas (SDR, Closer, CS) para você vender mais.',
+}
+
+export default function BlogIndexPage() {
+  const [featured, ...rest] = POSTS_SORTED
+
+  return (
+    <SiteShell>
+      <section className="relative overflow-hidden pt-10 pb-6 sm:pt-24 sm:pb-8">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-blue-600/15 blur-[120px]" />
+        </div>
+        <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+            Blog
+          </span>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-5xl">
+            Aprenda a vender mais
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-white/55 sm:mt-4 sm:text-lg">
+            Estratégias práticas de tráfego, funil de vendas e gestão de equipe — direto ao ponto.
+          </p>
+        </div>
+      </section>
+
+      <section className="relative mx-auto max-w-5xl px-4 pb-16 sm:px-6 sm:pb-24">
+        {/* Destaque */}
+        <Link
+          href={`/blog/${featured.slug}`}
+          className="group block rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-5 transition-colors hover:border-blue-500/40 sm:p-9"
+        >
+          <div className="flex items-center gap-3 text-[12px] text-white/45">
+            <span className="rounded-full bg-blue-600/20 px-2.5 py-0.5 font-semibold text-blue-300">{featured.category}</span>
+            <span>{formatPostDate(featured.date)}</span>
+            <span>· {featured.readingMinutes} min de leitura</span>
+          </div>
+          <h2 className="mt-3 text-xl font-bold text-white group-hover:text-blue-200 transition-colors sm:mt-4 sm:text-3xl">
+            {featured.title}
+          </h2>
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-white/60 sm:mt-3 sm:text-[15px]">{featured.excerpt}</p>
+          <span className="mt-5 inline-flex text-[14px] font-semibold text-blue-400 group-hover:text-blue-300">
+            Ler artigo →
+          </span>
+        </Link>
+
+        {/* Grade */}
+        <div className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-2 sm:gap-5">
+          {rest.map(p => (
+            <Link
+              key={p.slug}
+              href={`/blog/${p.slug}`}
+              className="group flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-blue-500/40 hover:bg-white/[0.04] sm:p-6"
+            >
+              <div className="flex items-center gap-2 text-[11px] text-white/45">
+                <span className="rounded-full bg-blue-600/20 px-2 py-0.5 font-semibold text-blue-300">{p.category}</span>
+                <span>{p.readingMinutes} min</span>
+              </div>
+              <h3 className="mt-3 text-[17px] font-bold text-white group-hover:text-blue-200 transition-colors">{p.title}</h3>
+              <p className="mt-2 flex-1 text-[13px] leading-relaxed text-white/55">{p.excerpt}</p>
+              <span className="mt-4 text-[13px] font-semibold text-blue-400 group-hover:text-blue-300">Ler →</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </SiteShell>
+  )
+}

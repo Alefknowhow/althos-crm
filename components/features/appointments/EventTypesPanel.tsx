@@ -152,6 +152,12 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
     toast.success('Link copiado')
   }
 
+  function copyOrgBookingLink() {
+    const url = `${window.location.origin}/book/${orgSlug}`
+    navigator.clipboard.writeText(url)
+    toast.success('Link da página de agendamentos copiado')
+  }
+
   const stagesForPipeline = stages.filter(s => !draft.pipeline_id || s.pipeline_id === draft.pipeline_id)
 
   return (
@@ -163,7 +169,13 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
             : `${eventTypes.length} tipo(s) de evento`}
         </p>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2">
+          {eventTypes.some(et => et.is_active) && (
+            <Button variant="outline" onClick={copyOrgBookingLink} title="Copiar link da página com todos os agendamentos">
+              <Copy className="w-4 h-4 mr-1" /> Link da página
+            </Button>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-1" /> Novo tipo de evento
@@ -306,6 +318,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {eventTypes.length === 0 ? (

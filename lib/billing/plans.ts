@@ -1,24 +1,38 @@
 /**
  * Central plan definitions.
  *
- * plan column in organizations:
- *   'trial'      – 7-day free trial (new self-signup)
- *   'free_trial' – legacy name for trial (grandfathered orgs, no expiry)
- *   'starter'    – R$ 197/mo, unlimited leads, 1 user, no AI, no automations
- *   'pro'        – R$ 397/mo, unlimited, AI + automations, up to 5 users
- *   'scale'      – R$ 697/mo, unlimited, advanced AI + API, unlimited users
+ * plan column in organizations (NEW taxonomy — free/starter/pro/business):
+ *   'free'       – Gratuito para sempre, recursos básicos, sem cartão
+ *   'starter'    – R$ 197/mo, leads ilimitados, 1 user, catálogo + WhatsApp
+ *   'pro'        – R$ 297/mo, IA (atendente/score) + agendamentos + Meta Ads, até 5 users
+ *   'business'   – R$ 397/mo, tudo (insights IA, white-label, multi-tenant, API), users ilimitados
  *   'agency'     – invite-only, unlimited, all features, billing_managed_externally
  *   'internal'   – Althos own accounts
+ *
+ * Legacy (grandfathered) keys kept so existing org rows / webhooks still resolve:
+ *   'trial'      – 7-day free trial (old self-signup)
+ *   'free_trial' – old name for trial (no expiry)
+ *   'scale'      – old top tier, renamed to 'business' (hidden alias)
  */
 
-export type PlanKey = 'trial' | 'free_trial' | 'starter' | 'pro' | 'scale' | 'agency' | 'internal'
+export type PlanKey =
+  | 'free'
+  | 'trial'
+  | 'free_trial'
+  | 'starter'
+  | 'pro'
+  | 'business'
+  | 'scale'
+  | 'agency'
+  | 'internal'
 
 export interface PlanConfig {
   key:              PlanKey
   label:            string
   tagline:          string       // short positioning tag
   description:      string
-  priceCents:       number | null  // null = manual/external
+  priceCents:       number | null  // monthly price; null = manual/external
+  priceCentsAnnual: number | null  // total paid once per year (already ~18% off); null = n/a
   maxLeads:         number | null  // null = unlimited
   maxUsers:         number | null  // null = unlimited
   hasAI:            boolean
@@ -36,12 +50,35 @@ export interface PlanConfig {
 }
 
 export const PLANS: Record<PlanKey, PlanConfig> = {
+  free: {
+    key:               'free',
+    label:             'Free',
+    tagline:           'Para dar o primeiro passo',
+    description:       'Gratuito para sempre. Organize seus leads e o pipeline, sem cartão de crédito.',
+    priceCents:        0,
+    priceCentsAnnual:  0,
+    maxLeads:          50,
+    maxUsers:          1,
+    hasAI:             false,
+    hasAdvancedAI:     false,
+    hasAutomations:    false,
+    hasAdvancedAuto:   false,
+    hasWhatsApp:       false,
+    hasInstagram:      false,
+    hasMetaAds:        false,
+    hasEmailMarketing: false,
+    hasAPI:            false,
+    hasDedicatedManager: false,
+    isPublicPlan:      false, // shown as a separate Free card on the marketing site, not in checkout
+    asaasPlanKey:      null,
+  },
   trial: {
     key:               'trial',
     label:             'Trial Gratuito',
     tagline:           'Teste por 7 dias',
     description:       '7 dias para explorar tudo, sem compromisso.',
     priceCents:        0,
+    priceCentsAnnual:  null,
     maxLeads:          null,
     maxUsers:          1,
     hasAI:             false,
@@ -63,6 +100,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     tagline:           'Legado',
     description:       'Plano gratuito legado.',
     priceCents:        0,
+    priceCentsAnnual:  null,
     maxLeads:          null,
     maxUsers:          1,
     hasAI:             false,
@@ -84,6 +122,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     tagline:           'Ideal para começar',
     description:       'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
     priceCents:        19700,
+    priceCentsAnnual:  194000,  // R$ 1.940/ano (~18% off vs 12×197)
     maxLeads:          null,    // unlimited
     maxUsers:          1,
     hasAI:             false,
@@ -104,7 +143,8 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Pro',
     tagline:           'Para crescer',
     description:       'Para empresas que querem automatizar processos e aumentar as vendas.',
-    priceCents:        39700,
+    priceCents:        29700,
+    priceCentsAnnual:  290000,  // R$ 2.900/ano (~18% off vs 12×297)
     maxLeads:          null,
     maxUsers:          5,
     hasAI:             true,
@@ -120,12 +160,13 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     isPublicPlan:      true,
     asaasPlanKey:      'althos_pro',
   },
-  scale: {
-    key:               'scale',
-    label:             'Scale',
+  business: {
+    key:               'business',
+    label:             'Business',
     tagline:           'Para escalar sem limites',
     description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
-    priceCents:        69700,
+    priceCents:        39700,
+    priceCentsAnnual:  390000,  // R$ 3.900/ano (~18% off vs 12×397)
     maxLeads:          null,
     maxUsers:          null,    // unlimited
     hasAI:             true,
@@ -139,7 +180,31 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     hasAPI:            true,
     hasDedicatedManager: true,
     isPublicPlan:      true,
-    asaasPlanKey:      'althos_scale',
+    asaasPlanKey:      'althos_business',
+  },
+  // Legacy top tier (renamed to Business). Kept hidden so grandfathered org
+  // rows / old Asaas webhooks with plan='scale' still resolve to full access.
+  scale: {
+    key:               'scale',
+    label:             'Business',
+    tagline:           'Para escalar sem limites',
+    description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
+    priceCents:        39700,
+    priceCentsAnnual:  390000,
+    maxLeads:          null,
+    maxUsers:          null,
+    hasAI:             true,
+    hasAdvancedAI:     true,
+    hasAutomations:    true,
+    hasAdvancedAuto:   true,
+    hasWhatsApp:       true,
+    hasInstagram:      true,
+    hasMetaAds:        true,
+    hasEmailMarketing: true,
+    hasAPI:            true,
+    hasDedicatedManager: true,
+    isPublicPlan:      false,
+    asaasPlanKey:      'althos_business',
   },
   agency: {
     key:               'agency',
@@ -147,6 +212,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     tagline:           'Exclusivo',
     description:       'Plano exclusivo para clientes da agência Althos.',
     priceCents:        null,
+    priceCentsAnnual:  null,
     maxLeads:          null,
     maxUsers:          null,
     hasAI:             true,
@@ -168,6 +234,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     tagline:           'Interno',
     description:       'Conta interna Althos.',
     priceCents:        null,
+    priceCentsAnnual:  null,
     maxLeads:          null,
     maxUsers:          null,
     hasAI:             true,
@@ -191,11 +258,12 @@ export function getPlan(planName: string | null | undefined): PlanConfig {
   return PLANS[planName as PlanKey] ?? PLANS.trial
 }
 
-/** The three plans shown publicly in the checkout/upgrade page. */
-export const PUBLIC_PLANS: PlanConfig[] = [PLANS.starter, PLANS.pro, PLANS.scale]
+/** The three PAID plans shown in the checkout/upgrade flow. Free is shown as a
+ * separate card on the marketing site and is never part of checkout. */
+export const PUBLIC_PLANS: PlanConfig[] = [PLANS.starter, PLANS.pro, PLANS.business]
 
 /** Plans that should never be blocked by billing gates. */
-export const UNMANAGED_PLANS: PlanKey[] = ['agency', 'internal']
+export const UNMANAGED_PLANS: PlanKey[] = ['free', 'agency', 'internal']
 
 /**
  * Determines whether an org's subscription is effectively blocked (expired
@@ -225,4 +293,49 @@ export function isAccessBlocked(org: {
 /** Format price as BR currency string. */
 export function formatPrice(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/** Billing cycle selectable in the public pricing page and checkout. */
+export type BillingCycle = 'monthly' | 'annual'
+
+/**
+ * Discount applied to the annual (à vista) price vs. paying 12 monthly charges.
+ * Used for the "-18%" badge and the strikethrough comparison on the pricing UI.
+ */
+export const ANNUAL_DISCOUNT_PCT = 18
+
+/**
+ * Pricing breakdown for a plan + cycle, ready for UI.
+ *  - monthly: charged every month.
+ *  - annual:  charged once/year (priceCentsAnnual); we also expose the
+ *    per-month equivalent for the "equivale a R$ X/mês" line.
+ */
+export function getPlanPricing(plan: PlanConfig, cycle: BillingCycle) {
+  if (cycle === 'annual' && plan.priceCentsAnnual != null) {
+    const totalAnnual   = plan.priceCentsAnnual
+    const perMonthEquiv = Math.round(totalAnnual / 12)
+    const fullYear      = (plan.priceCents ?? 0) * 12
+    const savedCents    = Math.max(0, fullYear - totalAnnual)
+    return {
+      cycle:            'annual' as const,
+      totalCents:       totalAnnual,
+      perMonthCents:    perMonthEquiv,
+      fullYearCents:    fullYear,
+      savedCents,
+      perMonthLabel:    formatPrice(perMonthEquiv),
+      totalLabel:       formatPrice(totalAnnual),
+      savedLabel:       formatPrice(savedCents),
+    }
+  }
+  const monthly = plan.priceCents ?? 0
+  return {
+    cycle:            'monthly' as const,
+    totalCents:       monthly,
+    perMonthCents:    monthly,
+    fullYearCents:    monthly * 12,
+    savedCents:       0,
+    perMonthLabel:    formatPrice(monthly),
+    totalLabel:       formatPrice(monthly),
+    savedLabel:       formatPrice(0),
+  }
 }

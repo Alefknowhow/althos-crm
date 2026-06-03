@@ -77,7 +77,7 @@ function trialWarningHtml(orgName: string, daysLeft: number, orgSlug: string): s
           </table>
 
           <p style="margin:24px 0 0;font-size:13px;color:#6E6E73;line-height:1.5;">
-            Pagamento via <strong>Boleto, PIX ou Cartão</strong> · Sem fidelidade · Cancele quando quiser.
+            Pagamento via <strong>PIX ou Cartão</strong> · Sem fidelidade · Cancele quando quiser.
           </p>
         </td></tr>
 
@@ -141,7 +141,7 @@ function trialExpiredHtml(orgName: string, orgSlug: string): string {
 
           <p style="margin:0;font-size:13px;color:#6E6E73;line-height:1.5;">
             Os dados ficam disponíveis por <strong>30 dias</strong> após o fim do trial.
-            Pagamento via Boleto, PIX ou Cartão · Sem fidelidade.
+            Pagamento via PIX ou Cartão · Sem fidelidade.
           </p>
         </td></tr>
 

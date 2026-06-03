@@ -24,6 +24,8 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  PanelLeft,
+  X,
 } from 'lucide-react'
 import {
   sendSandboxMessage,
@@ -88,6 +90,9 @@ export default function SandboxPlayground({
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
+  // Mobile: one pane at a time. 'chat' is the default; the user opens the
+  // session list with the header button.
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('chat')
 
   // Auto-scroll to bottom when messages change.
   useEffect(() => {
@@ -181,16 +186,26 @@ export default function SandboxPlayground({
   return (
     <div className="-m-6 h-[calc(100vh-4rem)] flex">
       {/* Sidebar with sessions */}
-      <aside className="w-72 border-r bg-muted/20 flex flex-col">
+      <aside className={`w-full md:w-72 border-r bg-muted/20 flex-col ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`}>
         <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <h2 className="font-semibold text-sm">Playground IA</h2>
-            <Link
-              href={`/app/${orgSlug}/configuracoes/atendente-ia`}
-              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/app/${orgSlug}/configuracoes/atendente-ia`}
+                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 p-1"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileView('chat')}
+                className="md:hidden p-1 rounded-md hover:bg-muted text-muted-foreground"
+                aria-label="Fechar lista"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             Teste a persona antes de conectar WhatsApp.
@@ -217,6 +232,7 @@ export default function SandboxPlayground({
                 >
                   <Link
                     href={`/app/${orgSlug}/atendente-ia/teste?session=${s.id}`}
+                    onClick={() => setMobileView('chat')}
                     className="flex-1 px-2 py-2 min-w-0"
                   >
                     <div className="font-medium truncate">{s.title || 'Conversa'}</div>
@@ -263,10 +279,18 @@ export default function SandboxPlayground({
       </aside>
 
       {/* Chat area */}
-      <main className="flex-1 flex flex-col bg-background">
-        <header className="px-6 py-3 border-b flex items-center justify-between bg-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+      <main className={`flex-1 flex-col bg-background ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
+        <header className="px-4 md:px-6 py-3 border-b flex items-center justify-between gap-2 bg-card">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileView('list')}
+              className="md:hidden shrink-0 -ml-1 p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+              aria-label="Abrir lista de conversas"
+            >
+              <PanelLeft className="w-5 h-5" />
+            </button>
+            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
               <Bot className="w-4 h-4" />
             </div>
             <div>

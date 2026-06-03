@@ -1,4 +1,5 @@
 import { getAuditLogs } from '@/actions/super-admin'
+import AuditExportButton from './AuditExportButton'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -13,11 +14,14 @@ export default async function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Log de Auditoria</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Histórico de todas as ações executadas por super admins.
-        </p>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Log de Auditoria</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Histórico de todas as ações executadas por super admins.
+          </p>
+        </div>
+        <AuditExportButton logs={logs} />
       </div>
 
       <div className="rounded-xl border border-white/10 overflow-hidden">

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 import {
   DEFAULT_PERSONA_PROMPT,
   DEFAULT_OUT_OF_HOURS_MESSAGE,
@@ -276,6 +277,19 @@ export async function sendSandboxMessage(
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
+  // ── Plan gate: Atendente IA é um recurso pago (a partir do Pro) ──
+  const accountId = (org as any).account_id as string | null
+  if (accountId) {
+    const allowed = await checkFeatureAccess(accountId, 'ai_attendant')
+    if (!allowed) {
+      return {
+        ok: false as const,
+        error: 'Atendente IA não está disponível no seu plano. Faça upgrade para liberar.',
+        code: 'feature_locked' as const,
+      }
+    }
+  }
+
   const { data: orgData } = await supabase
     .from('organizations')
     .select('name, ai_api_key')
@@ -285,6 +299,25 @@ export async function sendSandboxMessage(
     return {
       ok: false as const,
       error: 'Chave da Anthropic não cadastrada em Configurações → IA.',
+    }
+  }
+
+  // ── Credit gate: debit one attendant reply (super-admins bypass in SQL) ──
+  if (accountId) {
+    const credit = await consumeAiCredits({
+      accountId,
+      action: 'ai_attendant_reply',
+      metadata: { feature: 'ai_attendant', sessionId, context: 'sandbox' },
+    })
+    if (!credit.success) {
+      return {
+        ok: false as const,
+        error:
+          credit.error === 'insufficient_credits'
+            ? 'Seus créditos de IA acabaram este mês. Faça upgrade ou aguarde a renovação.'
+            : 'Não foi possível validar seus créditos de IA. Tente novamente.',
+        code: 'insufficient_credits' as const,
+      }
     }
   }
 

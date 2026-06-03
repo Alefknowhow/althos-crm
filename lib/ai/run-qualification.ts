@@ -24,12 +24,43 @@ export async function runLeadQualification(
   // 1) Org config
   const { data: orgConfig } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_api_key, ai_qualifier_model, ai_qualifier_prompt, ai_business_context')
+    .select('ai_enabled, ai_api_key, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
     .eq('id', orgId)
     .maybeSingle()
 
   if (!orgConfig?.ai_enabled)  return { ok: false, reason: 'AI desabilitada para esta organização' }
   if (!orgConfig.ai_api_key)   return { ok: false, reason: 'Chave de API da IA não configurada. Acesse Configurações → IA.' }
+
+  // 1b) Plan gate (per account). This runs in a service-role/background context
+  //     (Inngest, webhooks) with no user JWT, so we call the gating RPCs through
+  //     the admin client directly. Lead scoring is included from the Pro plan.
+  //     Fail CLOSED on feature, but never block on a credit infra error.
+  const accountId = (orgConfig as any).account_id as string | null
+  if (accountId) {
+    const { data: allowed, error: featErr } = await supabase.rpc('account_has_feature', {
+      p_account_id: accountId,
+      p_feature: 'lead_scoring',
+    })
+    if (featErr) {
+      console.error('[runLeadQualification] account_has_feature error:', featErr.message)
+    } else if (allowed !== true) {
+      return { ok: false, reason: 'Lead scoring com IA não está disponível no plano desta conta.' }
+    }
+
+    // Debit 1 credit for the scoring action.
+    const { data: credit, error: creditErr } = await supabase.rpc('consume_ai_credits', {
+      p_account_id: accountId,
+      p_action: 'lead_scoring',
+      p_credits: 1,
+      p_lead_id: leadId,
+      p_metadata: { feature: 'lead_scoring', orgId },
+    })
+    if (creditErr) {
+      console.error('[runLeadQualification] consume_ai_credits error:', creditErr.message)
+    } else if (credit && (credit as any).success === false) {
+      return { ok: false, reason: 'Créditos de IA esgotados para esta conta neste mês.' }
+    }
+  }
 
   // 2) Lead
   const { data: lead } = await supabase

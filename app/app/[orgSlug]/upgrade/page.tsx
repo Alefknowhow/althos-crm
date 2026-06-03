@@ -4,33 +4,32 @@ import UpgradeCheckoutButton from '@/components/features/billing/UpgradeCheckout
 import { CheckCircle2, XCircle, Sparkles, Clock, AlertCircle, Zap, Users, Rocket } from 'lucide-react'
 import Link from 'next/link'
 
-const FEATURE_ROWS: { label: string; starter: boolean | string; pro: boolean | string; scale: boolean | string }[] = [
-  { label: 'Leads e clientes',             starter: 'Ilimitados',  pro: 'Ilimitados',  scale: 'Ilimitados'  },
-  { label: 'Oportunidades e pipeline',      starter: '✓',           pro: '✓',           scale: '✓'           },
-  { label: 'Formulários de captação',       starter: '✓',           pro: '✓',           scale: '✓'           },
-  { label: 'WhatsApp centralizado',         starter: '✓',           pro: '✓',           scale: '✓'           },
-  { label: 'Tarefas e agendamentos',        starter: '✓',           pro: '✓',           scale: '✓'           },
-  { label: 'Catálogo de produtos',          starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Atendimento com IA 24/7',       starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Score e qualificação por IA',   starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Insights de vendas com IA',     starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Follow-up automático',          starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Instagram (DMs + comentários)', starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Meta Ads + Google Ads',         starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'Pixel e CAPI',                  starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'E-mail marketing',              starter: '—',           pro: '✓',           scale: '✓'           },
-  { label: 'IA avançada e previsões',       starter: '—',           pro: '—',           scale: '✓'           },
-  { label: 'Painéis personalizados',        starter: '—',           pro: '—',           scale: '✓'           },
-  { label: 'API aberta e webhooks',         starter: '—',           pro: '—',           scale: '✓'           },
-  { label: 'Usuários',                      starter: '1 usuário',   pro: 'Até 5',       scale: 'Ilimitado'   },
-  { label: 'Gerente de conta dedicado',     starter: '—',           pro: '—',           scale: '✓'           },
-  { label: 'Suporte',                       starter: 'E-mail',      pro: 'Prioritário', scale: 'VIP'         },
+const FEATURE_ROWS: { label: string; starter: boolean | string; pro: boolean | string; business: boolean | string }[] = [
+  { label: 'Leads e clientes',             starter: 'Ilimitados',  pro: 'Ilimitados',  business: 'Ilimitados'  },
+  { label: 'Oportunidades e pipeline',      starter: '✓',           pro: '✓',           business: '✓'           },
+  { label: 'Formulários de captação',       starter: '✓',           pro: '✓',           business: '✓'           },
+  { label: 'WhatsApp centralizado',         starter: '✓',           pro: '✓',           business: '✓'           },
+  { label: 'Catálogo de produtos',          starter: '✓',           pro: '✓',           business: '✓'           },
+  { label: 'Tarefas e atividades',          starter: '✓',           pro: '✓',           business: '✓'           },
+  { label: 'Agendamentos online',           starter: '—',           pro: '✓',           business: '✓'           },
+  { label: 'Atendimento com IA 24/7',       starter: '—',           pro: '✓',           business: '✓'           },
+  { label: 'Score e qualificação por IA',   starter: '—',           pro: '✓',           business: '✓'           },
+  { label: 'Instagram (DMs + comentários)', starter: '—',           pro: '✓',           business: '✓'           },
+  { label: 'Meta Ads + Pixel/CAPI',         starter: '—',           pro: '✓',           business: '✓'           },
+  { label: 'Insights de vendas com IA',     starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'White-label',                   starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'Multi-tenant',                  starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'Exportar relatórios',           starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'API aberta e webhooks',         starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'Usuários',                      starter: '1 usuário',   pro: 'Até 5',       business: 'Ilimitado'   },
+  { label: 'Gerente de conta dedicado',     starter: '—',           pro: '—',           business: '✓'           },
+  { label: 'Suporte',                       starter: 'E-mail',      pro: 'Prioritário', business: 'VIP'         },
 ]
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
-  starter: Users,
-  pro:     Zap,
-  scale:   Rocket,
+  starter:  Users,
+  pro:      Zap,
+  business: Rocket,
 }
 
 function FeatureCell({ val }: { val: boolean | string }) {
@@ -72,20 +71,20 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
         </h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Sem fidelidade. Cancele quando quiser.
-          Boleto, PIX ou Cartão de Crédito.
+          PIX ou Cartão de Crédito.
         </p>
       </div>
 
       {/* ── Plan cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {PUBLIC_PLANS.map(plan => {
-          const isPro     = plan.key === 'pro'
-          const isScale   = plan.key === 'scale'
-          const isCurrent = org.plan === plan.key && org.subscription_status === 'active'
-          const Icon      = PLAN_ICONS[plan.key] ?? Zap
-          const features  = FEATURE_ROWS.map(r => ({
+          const isPro       = plan.key === 'pro'
+          const isBusiness  = plan.key === 'business'
+          const isCurrent   = org.plan === plan.key && org.subscription_status === 'active'
+          const Icon        = PLAN_ICONS[plan.key] ?? Zap
+          const features    = FEATURE_ROWS.map(r => ({
             label: r.label,
-            val: r[plan.key as 'starter' | 'pro' | 'scale'],
+            val: r[plan.key as 'starter' | 'pro' | 'business'],
           }))
 
           return (
@@ -105,7 +104,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
 
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon className={`w-5 h-5 ${isPro ? 'text-primary' : isScale ? 'text-violet-500' : 'text-muted-foreground'}`} />
+                  <Icon className={`w-5 h-5 ${isPro ? 'text-primary' : isBusiness ? 'text-violet-500' : 'text-muted-foreground'}`} />
                   <span className="font-bold text-lg">{plan.label}</span>
                   {isCurrent && (
                     <span className="ml-auto text-[10px] font-medium bg-muted text-muted-foreground rounded-full px-2 py-0.5">
@@ -117,11 +116,11 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
                 <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{plan.description}</p>
               </div>
 
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-bold tabular-nums">
+              <div className="flex items-end gap-1 min-w-0 flex-wrap">
+                <span className="text-3xl sm:text-4xl font-bold tabular-nums whitespace-nowrap">
                   {formatPrice(plan.priceCents!)}
                 </span>
-                <span className="text-muted-foreground mb-1">/mês</span>
+                <span className="text-muted-foreground mb-1 whitespace-nowrap">/mês</span>
               </div>
 
               <ul className="space-y-1.5 text-sm flex-1">
@@ -140,7 +139,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
 
               <UpgradeCheckoutButton
                 orgSlug={params.orgSlug}
-                plan={plan.key as 'starter' | 'pro' | 'scale'}
+                plan={plan.key as 'starter' | 'pro' | 'business'}
                 label={isCurrent ? 'Plano ativo' : `Assinar ${plan.label}`}
                 disabled={isCurrent}
                 highlight={isPro}
@@ -158,7 +157,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
             <span>Recurso</span>
             <span className="text-center">Starter</span>
             <span className="text-center text-primary">Pro</span>
-            <span className="text-center text-violet-500">Scale</span>
+            <span className="text-center text-violet-500">Business</span>
           </div>
           {FEATURE_ROWS.map((row, i) => (
             <div
@@ -168,7 +167,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
               <span className="font-medium text-foreground/80">{row.label}</span>
               <FeatureCell val={row.starter} />
               <FeatureCell val={row.pro} />
-              <FeatureCell val={row.scale} />
+              <FeatureCell val={row.business} />
             </div>
           ))}
         </div>
@@ -176,7 +175,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
 
       <div className="flex flex-col items-center gap-2">
         <p className="text-center text-xs text-muted-foreground">
-          Pagamento via Boleto, PIX ou Cartão de Crédito · Renovação mensal automática · Sem fidelidade
+          Pagamento via PIX ou Cartão de Crédito · Renovação mensal automática · Sem fidelidade
         </p>
         <Link
           href={`/app/${params.orgSlug}/configuracoes/assinatura`}

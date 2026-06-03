@@ -9,6 +9,7 @@ import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { isTravelNiche } from '@/lib/niche'
+import { checkFeatureAccess } from '@/lib/plans/server'
 import {
   LayoutDashboard,
   Kanban,
@@ -78,6 +79,19 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     return canAccess(userRole, userPermissions, key)
   }
 
+  // Plan entitlements (per account). Super-admins bypass in SQL, so the owner
+  // always sees everything. If the org has no account (legacy), don't hide —
+  // server actions still enforce the gate. Permission gating (can()) still
+  // applies on top of this.
+  const accountId = (org as any).account_id as string | null
+  const [planInsights, planAttendant, planReports] = accountId
+    ? await Promise.all([
+        checkFeatureAccess(accountId, 'ai_insights'),
+        checkFeatureAccess(accountId, 'ai_attendant'),
+        checkFeatureAccess(accountId, 'export_reports'),
+      ])
+    : [true, true, true]
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -112,11 +126,20 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </span>
         </SidebarNavLink>
 
-        {can('insights') && (
+        {can('insights') && planInsights && (
           <SidebarNavLink href={`${base}/insights`} dataTour="insights">
             <span className="flex items-center gap-2.5">
               <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Insights IA</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {isOwnerOrAdmin && planReports && (
+          <SidebarNavLink href={`${base}/relatorios`}>
+            <span className="flex items-center gap-2.5">
+              <FileText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Relatórios</span>
             </span>
           </SidebarNavLink>
         )}
@@ -236,14 +259,16 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        <SidebarNavGroup
-          label="Atendente IA"
-          icon={<Bot className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />}
-          items={[
-            { name: 'Playground', href: `${base}/atendente-ia/teste` },
-            { name: 'Configurar',  href: `${base}/configuracoes/atendente-ia` },
-          ]}
-        />
+        {planAttendant && (
+          <SidebarNavGroup
+            label="Atendente IA"
+            icon={<Bot className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />}
+            items={[
+              { name: 'Playground', href: `${base}/atendente-ia/teste` },
+              { name: 'Configurar',  href: `${base}/configuracoes/atendente-ia` },
+            ]}
+          />
+        )}
 
         {/* ── Marketing ─────────────────────────────── */}
         <SectionLabel>Marketing</SectionLabel>

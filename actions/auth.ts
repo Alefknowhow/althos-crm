@@ -50,6 +50,7 @@ export async function signup(formData: FormData) {
   const email      = formData.get('email') as string
   const password   = formData.get('password') as string
   const inviteToken = (formData.get('inviteToken') as string | null)?.trim() || null
+  const refCode     = (formData.get('refCode') as string | null)?.trim() || null
 
   const validation = signupSchema.safeParse({ name, email, password })
   if (!validation.success) {
@@ -76,7 +77,7 @@ export async function signup(formData: FormData) {
     options: {
       // Store name + inviteToken in metadata so the confirm route can
       // finish org setup after the user clicks the email link.
-      data: { name, inviteToken: inviteToken ?? null },
+      data: { name, inviteToken: inviteToken ?? null, refCode: refCode ?? null },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/confirm`,
     },
   })

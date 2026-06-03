@@ -129,26 +129,26 @@ const FEATURES = [
 
 export function FeaturesGrid() {
   return (
-    <section id="funcionalidades" className="py-16 sm:py-24 md:py-28">
+    <section id="funcionalidades" className="py-12 sm:py-24 md:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <FadeIn className="text-center mb-10 sm:mb-14">
+        <FadeIn className="text-center mb-8 sm:mb-14">
           <SectionEyebrow>Recursos</SectionEyebrow>
-          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+          <h2 className="mt-3 text-2xl sm:mt-4 sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
             Tudo que sua empresa precisa para{' '}
             <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">vender mais</span>{' '}
             e crescer rápido
           </h2>
         </FadeIn>
 
-        <FadeInStagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" stagger={0.08}>
+        <FadeInStagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" stagger={0.08}>
           {FEATURES.map(f => (
             <FadeInItem key={f.title}>
-              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 h-full hover:border-blue-500/30 transition-colors duration-300">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 mb-4">
+              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 h-full hover:border-blue-500/30 transition-colors duration-300 sm:p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 mb-3 sm:h-11 sm:w-11 sm:mb-4">
                   {f.icon}
                 </div>
-                <h3 className="text-base font-semibold text-white mb-1.5">{f.title}</h3>
-                <p className="text-[14px] text-white/55 leading-relaxed">{f.desc}</p>
+                <h3 className="text-[15px] sm:text-base font-semibold text-white mb-1.5">{f.title}</h3>
+                <p className="text-[13px] sm:text-[14px] text-white/55 leading-relaxed">{f.desc}</p>
               </SpotlightCard>
             </FadeInItem>
           ))}
@@ -205,7 +205,7 @@ function PricingCard({
           <span className="mb-1 text-sm text-white/50">/mês</span>
         </div>
         <p className="text-[13px] text-white/55 leading-relaxed">{desc}</p>
-        <p className="mt-2 text-[11px] text-white/35">7 dias grátis · Sem cartão de crédito</p>
+        <p className="mt-2 text-[11px] text-white/35">7 dias grátis · Pix ou cartão</p>
       </div>
 
       <ul className="flex flex-col gap-2 flex-1">
@@ -264,7 +264,7 @@ export function PricingSection() {
       name: 'Pro',
       tag: 'Para crescer',
       badge: 'MAIS ESCOLHIDO',
-      price: 'R$ 397',
+      price: 'R$ 297',
       desc: 'Para empresas que querem automatizar processos e aumentar as vendas.',
       features: [
         'Tudo do plano Starter',
@@ -281,9 +281,9 @@ export function PricingSection() {
       highlight: true,
     },
     {
-      name: 'Scale',
+      name: 'Business',
       tag: 'Para escalar sem limites',
-      price: 'R$ 697',
+      price: 'R$ 397',
       desc: 'Para empresas que precisam de mais controle, dados e performance em escala.',
       features: [
         'Tudo do plano Pro',
@@ -398,25 +398,25 @@ export function Testimonials() {
     },
   ]
   return (
-    <section id="depoimentos" className="py-16 sm:py-24 md:py-28">
+    <section id="depoimentos" className="py-12 sm:py-24 md:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <FadeIn className="text-center mb-10 sm:mb-14">
+        <FadeIn className="text-center mb-8 sm:mb-14">
           <SectionEyebrow>Depoimentos</SectionEyebrow>
-          <h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
+          <h2 className="mt-3 text-2xl sm:mt-4 sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
             Quem usa, recomenda
           </h2>
-          <p className="mt-3 text-base sm:text-lg text-white/55 max-w-xl mx-auto">
+          <p className="mt-2 text-[14px] sm:mt-3 sm:text-lg text-white/55 max-w-xl mx-auto">
             Empresas que aumentaram vendas, ganharam tempo e escalaram com o Althos CRM.
           </p>
         </FadeIn>
 
-        <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-5" stagger={0.12}>
+        <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5" stagger={0.12}>
           {items.map(t => (
             <FadeInItem key={t.name}>
-              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 h-full flex flex-col">
-                <div className="flex items-center gap-0.5 text-amber-400 text-sm mb-4">★★★★★</div>
-                <p className="text-[15px] text-white/80 leading-relaxed flex-1">"{t.quote}"</p>
-                <div className="flex items-center gap-3 mt-5 pt-5 border-t border-white/8">
+              <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 h-full flex flex-col sm:p-6">
+                <div className="flex items-center gap-0.5 text-amber-400 text-sm mb-3 sm:mb-4">★★★★★</div>
+                <p className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed flex-1">"{t.quote}"</p>
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/8 sm:mt-5 sm:pt-5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0" style={{ background: t.color }}>
                     {t.name[0]}
                   </span>
@@ -438,32 +438,32 @@ export function Testimonials() {
 
 export function FinalCTA() {
   return (
-    <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 sm:pb-24">
+    <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 sm:pb-24">
       <FadeIn>
-        <div className="rounded-2xl sm:rounded-3xl border border-blue-500/20 p-8 sm:p-12 md:p-14 text-center relative overflow-hidden"
+        <div className="rounded-2xl sm:rounded-3xl border border-blue-500/20 p-6 sm:p-12 md:p-14 text-center relative overflow-hidden"
           style={{ background: 'linear-gradient(135deg, #0F1B33 0%, #0A0E1A 100%)' }}
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="h-[300px] sm:h-[420px] w-[520px] sm:w-[760px] rounded-full bg-blue-600/15 blur-[120px]" />
           </div>
-          <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 text-left">
+          <div className="relative flex flex-col md:flex-row items-center justify-between gap-5 text-left sm:gap-6">
             <div className="text-center md:text-left">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
+              <h2 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
                 Pronto para{' '}
                 <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">transformar seus resultados?</span>
               </h2>
-              <p className="mt-3 text-[15px] sm:text-lg text-white/60 max-w-xl">
+              <p className="mt-2 text-[14px] sm:mt-3 sm:text-lg text-white/60 max-w-xl">
                 Teste grátis por 7 dias e descubra como o Althos CRM pode acelerar o crescimento do seu negócio.
               </p>
             </div>
-            <div className="shrink-0 flex flex-col items-center gap-2">
+            <div className="w-full shrink-0 flex flex-col items-center gap-2 sm:w-auto">
               <Link
                 href="/signup"
-                className="rounded-xl bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap"
+                className="w-full rounded-xl bg-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap text-center sm:w-auto sm:py-3.5 sm:text-[15px]"
               >
                 Testar grátis por 7 dias
               </Link>
-              <p className="text-xs text-white/40">Sem cartão de crédito · Sem compromisso</p>
+              <p className="text-xs text-white/40">Plano Free grátis · sem cartão</p>
             </div>
           </div>
         </div>

@@ -19,10 +19,21 @@ async function asaasFetch(endpoint: string, options: RequestInit = {}) {
   return data
 }
 
-function planValue(planKey: string): number {
-  if (planKey === 'starter' || planKey === 'althos_starter') return 197
-  if (planKey === 'pro'     || planKey === 'althos_pro')     return 397
-  return 197 // fallback
+type AsaasCycle = 'MONTHLY' | 'YEARLY'
+
+/**
+ * Value charged per Asaas billing cycle.
+ *  - MONTHLY: the plan's monthly price.
+ *  - YEARLY:  the annual à-vista price (already ~18% off), charged once/year.
+ * Single source of truth: lib/billing/plans.ts.
+ */
+function planValue(planKey: string, cycle: AsaasCycle = 'MONTHLY'): number {
+  const key = planKey.replace(/^althos_/, '') // 'althos_pro' -> 'pro'
+  // 'scale' kept as a legacy alias of 'business' (same price).
+  const monthly: Record<string, number> = { starter: 197, pro: 297, business: 397, scale: 397 }
+  const annual:  Record<string, number> = { starter: 1940, pro: 2900, business: 3900, scale: 3900 }
+  if (cycle === 'YEARLY') return annual[key] ?? annual.starter
+  return monthly[key] ?? monthly.starter
 }
 
 // First charge due 1 business day from now (gives time to process card)
@@ -54,23 +65,24 @@ export const asaas = {
 
   /**
    * Create a monthly subscription for a plan.
-   * billingType defaults to BOLETO — broadest compatibility without card tokenization.
+   * billingType defaults to PIX (boleto was removed — no technical advantage over Pix).
    * Returns the Asaas subscription object.
    */
   async createSubscription(
     customerId: string,
     planKey: string,
-    billingType: 'BOLETO' | 'CREDIT_CARD' | 'PIX' = 'BOLETO',
+    billingType: 'CREDIT_CARD' | 'PIX' = 'PIX',
+    cycle: AsaasCycle = 'MONTHLY',
   ) {
     return asaasFetch('/subscriptions', {
       method: 'POST',
       body: JSON.stringify({
         customer:    customerId,
         billingType,
-        value:       planValue(planKey),
+        value:       planValue(planKey, cycle),
         nextDueDate: nextDueDate(),
-        cycle:       'MONTHLY',
-        description: `Althos CRM — Plano ${planKey}`,
+        cycle,
+        description: `Althos CRM — Plano ${planKey} (${cycle === 'YEARLY' ? 'anual' : 'mensal'})`,
         // externalReference lets us map the payment back in the webhook
         externalReference: planKey,
       }),

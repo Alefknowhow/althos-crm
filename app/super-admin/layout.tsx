@@ -1,4 +1,5 @@
 import { isSuperAdmin } from '@/lib/supabase/types'
+import { getOpenAlertCount } from '@/actions/super-admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -9,13 +10,25 @@ import {
   ArrowLeft,
   ShieldCheck,
   Link2,
+  Bell,
+  Sparkles,
+  Package,
+  Users,
+  Gift,
+  Settings,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/super-admin',            label: 'Visão Geral',    icon: LayoutDashboard },
   { href: '/super-admin/orgs',       label: 'Organizações',   icon: Building2 },
+  { href: '/super-admin/users',      label: 'Usuários',       icon: Users },
+  { href: '/super-admin/plans',      label: 'Planos & Cupons',icon: Package },
+  { href: '/super-admin/ai-credits', label: 'Créditos IA',    icon: Sparkles },
+  { href: '/super-admin/referrals',  label: 'Indicações',     icon: Gift },
+  { href: '/super-admin/alertas',    label: 'Alertas',        icon: Bell, badge: true },
   { href: '/super-admin/convites',   label: 'Convites',       icon: Link2 },
   { href: '/super-admin/audit',      label: 'Auditoria',      icon: ScrollText },
+  { href: '/super-admin/settings',   label: 'Configurações',  icon: Settings },
   { href: '/super-admin/activate',   label: 'Novo Cliente',   icon: UserPlus },
 ]
 
@@ -26,6 +39,8 @@ export default async function SuperAdminLayout({
 }) {
   const superAdmin = await isSuperAdmin()
   if (!superAdmin) notFound()
+
+  const openAlerts = await getOpenAlertCount()
 
   return (
     <div className="flex min-h-screen bg-[#0f0f11]">
@@ -42,14 +57,19 @@ export default async function SuperAdminLayout({
 
         {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-0.5">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {NAV.map(({ href, label, icon: Icon, badge }) => (
             <Link
               key={href}
               href={href}
               className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {badge && openAlerts > 0 && (
+                <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+                  {openAlerts > 99 ? '99+' : openAlerts}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

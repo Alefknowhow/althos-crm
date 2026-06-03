@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react'
 
 type Props = {
   orgSlug:   string
-  plan:      'starter' | 'pro' | 'scale'
+  plan:      'starter' | 'pro' | 'business'
   label:     string
   disabled?: boolean
   highlight?: boolean
@@ -15,7 +15,7 @@ type Props = {
 
 /**
  * Button on the /upgrade page that opens the checkout modal
- * (payment method selector: PIX / Boleto / Cartão).
+ * (payment method selector: PIX / Cartão).
  */
 export default function UpgradeCheckoutButton({ orgSlug, plan, label, disabled, highlight }: Props) {
   const [open, setOpen] = useState(false)

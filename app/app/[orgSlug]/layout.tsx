@@ -8,6 +8,7 @@ import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
 import { HelpTooltip } from '@/components/ui/help-tooltip'
 import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
+import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
@@ -95,6 +96,7 @@ export default async function OrgLayout({
 
             <div className="flex items-center gap-2">
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
+              <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <Link
                 href={`/app/${params.orgSlug}/ajuda`}
                 className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"

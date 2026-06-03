@@ -3,12 +3,13 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Search, ExternalLink, Settings2, CheckCircle2, Clock } from 'lucide-react'
+import { Search, ExternalLink, Settings2, CheckCircle2, Clock, BarChart3 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { impersonateOrganization } from '@/actions/super-admin'
 import OrgLimitsDialog from './OrgLimitsDialog'
+import OrgUsageDialog from './OrgUsageDialog'
 import type { SuperAdminOrg } from '@/actions/super-admin'
 
 const STATUS_BADGE: Record<string, { label: string; class: string }> = {
@@ -30,6 +31,7 @@ type Props = { orgs: SuperAdminOrg[] }
 export default function OrgTable({ orgs }: Props) {
   const [query,     setQuery]     = useState('')
   const [editOrg,   setEditOrg]   = useState<SuperAdminOrg | null>(null)
+  const [usageOrg,  setUsageOrg]  = useState<SuperAdminOrg | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const filtered = useMemo(() => {
@@ -144,6 +146,15 @@ export default function OrgTable({ orgs }: Props) {
                       <Button
                         size="sm"
                         variant="ghost"
+                        onClick={() => setUsageOrg(org)}
+                        className="h-7 w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
+                        title="Ver uso e créditos"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => setEditOrg(org)}
                         className="h-7 w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
                         title="Editar limites"
@@ -183,6 +194,11 @@ export default function OrgTable({ orgs }: Props) {
           open={!!editOrg}
           onClose={() => setEditOrg(null)}
         />
+      )}
+
+      {/* Usage dialog */}
+      {usageOrg && (
+        <OrgUsageDialog org={usageOrg} onClose={() => setUsageOrg(null)} />
       )}
     </>
   )

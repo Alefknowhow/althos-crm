@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
+import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 
 /* -------- Sessions -------- */
 
@@ -74,6 +75,19 @@ export async function sendInsightMessage(
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
+  // ── Plan gate: Insights com IA é um recurso pago (a partir do Business) ──
+  const accountId = (org as any).account_id as string | null
+  if (accountId) {
+    const allowed = await checkFeatureAccess(accountId, 'ai_insights')
+    if (!allowed) {
+      return {
+        ok: false as const,
+        error: 'Insights com IA não está disponível no seu plano. Faça upgrade para liberar.',
+        code: 'feature_locked' as const,
+      }
+    }
+  }
+
   // Org-level Anthropic key (cadastrada em /configuracoes/ia).
   const { data: orgData } = await supabase
     .from('organizations')
@@ -84,6 +98,25 @@ export async function sendInsightMessage(
     return {
       ok: false as const,
       error: 'Chave da Anthropic não cadastrada em Configurações → IA.',
+    }
+  }
+
+  // ── Credit gate: debit one Insights query (super-admins bypass in SQL) ──
+  if (accountId) {
+    const credit = await consumeAiCredits({
+      accountId,
+      action: 'ai_insights_query',
+      metadata: { feature: 'ai_insights', sessionId },
+    })
+    if (!credit.success) {
+      return {
+        ok: false as const,
+        error:
+          credit.error === 'insufficient_credits'
+            ? 'Seus créditos de IA acabaram este mês. Faça upgrade ou aguarde a renovação.'
+            : 'Não foi possível validar seus créditos de IA. Tente novamente.',
+        code: 'insufficient_credits' as const,
+      }
     }
   }
 

@@ -22,17 +22,17 @@ interface Props {
 export default function SettingsTabs({ orgSlug, orgId, orgName, initialNiche, initialLogoUrl, initialColor, initialCompany }: Props) {
   return (
     <Tabs defaultValue="geral" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="geral" className="gap-2">
+      <TabsList className="w-full justify-start overflow-x-auto max-w-full">
+        <TabsTrigger value="geral" className="gap-2 shrink-0">
           <Building className="w-4 h-4" /> Geral
         </TabsTrigger>
-        <TabsTrigger value="membros" className="gap-2">
+        <TabsTrigger value="membros" className="gap-2 shrink-0">
           <Users className="w-4 h-4" /> Membros
         </TabsTrigger>
-        <TabsTrigger value="aparencia" className="gap-2">
+        <TabsTrigger value="aparencia" className="gap-2 shrink-0">
           <Palette className="w-4 h-4" /> Aparência
         </TabsTrigger>
-        <TabsTrigger value="integracoes" className="gap-2">
+        <TabsTrigger value="integracoes" className="gap-2 shrink-0">
           <Share2 className="w-4 h-4" /> Integrações
         </TabsTrigger>
       </TabsList>

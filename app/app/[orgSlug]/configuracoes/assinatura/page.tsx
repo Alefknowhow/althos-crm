@@ -3,6 +3,9 @@ import { getPlan, formatPrice } from '@/lib/billing/plans'
 import { getUsageStatus, getTrialDaysRemaining } from '@/lib/billing/limits'
 import { asaas } from '@/lib/asaas/client'
 import SubscriptionActions from './SubscriptionActions'
+import ReferralCouponsSection from '@/components/features/billing/ReferralCouponsSection'
+import { getReferralOverview, getAppliedCoupons } from '@/actions/referrals'
+import { getSubscriptionByOrgSlug } from '@/lib/plans/server'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
@@ -41,6 +44,23 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
     } catch { /* offline or no key */ }
   }
 
+  // Referrals + coupons (new per-account system).
+  const [referralOverview, appliedCoupons, subscription] = await Promise.all([
+    getReferralOverview(params.orgSlug),
+    getAppliedCoupons(params.orgSlug),
+    getSubscriptionByOrgSlug(params.orgSlug),
+  ])
+
+  // Referral program is paid-only: free-plan accounts can redeem coupons but
+  // cannot generate/share their own referral link. A customer counts as paying
+  // if they have an active/trialing paid subscription, a legacy paid plan, or
+  // billing managed externally by Althos.
+  const PAID_LEGACY = new Set(['starter', 'pro', 'business', 'scale', 'agency'])
+  const canRefer =
+    (subscription?.isActive === true && subscription.planId !== 'free') ||
+    PAID_LEGACY.has(org.plan ?? '') ||
+    isManaged
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -50,10 +70,10 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
 
       {/* ── Plan + Status card ─────────────────────────────────────────────── */}
       <div className="rounded-xl border bg-card p-6 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Zap className="w-5 h-5 shrink-0 text-primary" />
               <span className="text-xl font-bold">{plan.label}</span>
               <Badge variant={status.variant}>{status.label}</Badge>
             </div>
@@ -62,7 +82,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
 
           {plan.priceCents !== null && (
             <div className="text-right shrink-0">
-              <div className="text-2xl font-bold">{formatPrice(plan.priceCents)}</div>
+              <div className="text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap">{formatPrice(plan.priceCents)}</div>
               <div className="text-xs text-muted-foreground">/mês</div>
             </div>
           )}
@@ -108,7 +128,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         {!isManaged && (
           <SubscriptionActions
             orgSlug={params.orgSlug}
-            currentPlan={org.plan as 'starter' | 'pro' | 'scale' | 'trial' | 'free_trial' | null}
+            currentPlan={org.plan as 'starter' | 'pro' | 'business' | 'scale' | 'free' | 'trial' | 'free_trial' | null}
             subscriptionStatus={org.subscription_status}
           />
         )}
@@ -147,6 +167,14 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
           pct={usage.users.pct}
         />
       </div>
+
+      {/* ── Indicações + Cupons (sistema novo por Conta) ──────────────────── */}
+      <ReferralCouponsSection
+        orgSlug={params.orgSlug}
+        overview={referralOverview}
+        appliedCoupons={appliedCoupons}
+        canRefer={canRefer}
+      />
 
       {/* ── Invoice history ───────────────────────────────────────────────── */}
       {!isManaged && (

@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
   // Create org using name stored in metadata during signup
   const name        = (user.user_metadata?.name as string | undefined) || user.email?.split('@')[0] || 'Usuário'
   const inviteToken = (user.user_metadata?.inviteToken as string | null) ?? null
+  const refCode     = (user.user_metadata?.refCode as string | null) ?? null
   const firstName   = name.split(' ')[0]
   const orgName     = `Workspace de ${firstName}`
   const slug        = await generateUniqueSlug(orgName)
@@ -70,32 +71,45 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=erro_ao_criar_conta`)
   }
 
-  // Get the fresh org ID for billing setup
+  // Get the fresh org ID (+ account) for billing / referral setup
   const { data: membership } = await supabase
     .from('memberships')
-    .select('organization_id')
+    .select('organization_id, organizations(account_id)')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  const orgId = (membership as any)?.organization_id as string | undefined
+  const orgId     = (membership as any)?.organization_id as string | undefined
+  const accountId = (membership as any)?.organizations?.account_id as string | undefined
 
   if (orgId) {
     if (inviteToken) {
       const { redeemInvite } = await import('@/actions/invites')
       await redeemInvite(inviteToken, orgId)
     } else {
-      // Standard self-signup: 7-day trial, 50-lead limit
-      const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      // Standard self-signup: start on the free-forever plan (no payment
+      // required). The 7-day paid trial only begins when the user picks a
+      // paid plan at checkout (with a payment method). 'free' is an
+      // UNMANAGED_PLANS member, so access is never billing-blocked.
       await supabase
         .from('organizations')
         .update({
-          plan:                'trial',
-          subscription_status: 'trialing',
-          trial_ends_at:       trialEndsAt,
+          plan:                'free',
+          subscription_status: 'active',
+          trial_ends_at:       null,
           limit_leads:         50,
         })
         .eq('id', orgId)
     }
+  }
+
+  // If the user arrived via a referral link (/signup?ref=CODE), redeem it now
+  // that the referred account exists. Best-effort: never block signup on this.
+  if (refCode && accountId) {
+    const { error: refError } = await supabase.rpc('redeem_referral', {
+      p_referred_account_id: accountId,
+      p_code:                refCode,
+    })
+    if (refError) console.error('[auth/confirm] redeem_referral error:', refError.message)
   }
 
   return NextResponse.redirect(`${origin}/app/${slug}/pipeline`)

@@ -7,7 +7,7 @@ import { CheckCircle2, Minus, X } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Planos e Preços · Althos CRM — CRM com IA, WhatsApp e Automações',
   description:
-    'Transforme mais leads em clientes com IA, automações e dados inteligentes. Planos a partir de R$197/mês com 7 dias grátis, sem cartão de crédito. CRM completo com WhatsApp, Meta Ads, Instagram e IA 24/7.',
+    'Transforme mais leads em clientes com IA, automações e dados inteligentes. Comece de graça no plano Free ou teste qualquer plano pago por 7 dias. Planos a partir de R$197/mês. CRM completo com WhatsApp, Meta Ads, Instagram e IA 24/7.',
   keywords: [
     'CRM com IA',
     'CRM para WhatsApp',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Planos e Preços · Althos CRM',
     description:
-      'CRM completo com IA, WhatsApp, automações e Meta Ads. Comece grátis por 7 dias, sem cartão de crédito.',
+      'CRM completo com IA, WhatsApp, automações e Meta Ads. Comece de graça no plano Free, sem cartão.',
     type: 'website',
     url: 'https://althos.io/pricing',
     siteName: 'Althos CRM',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Althos CRM — Venda mais com IA e automações',
     description:
-      'Central de crescimento com CRM, WhatsApp, IA e Meta Ads em uma única plataforma. 7 dias grátis.',
+      'Central de crescimento com CRM, WhatsApp, IA e Meta Ads em uma única plataforma. Comece de graça.',
   },
   alternates: {
     canonical: 'https://althos.io/pricing',
@@ -45,65 +45,65 @@ export const metadata: Metadata = {
 type FeatureValue = true | false | string
 
 interface Feature {
-  label:   string
-  starter: FeatureValue
-  pro:     FeatureValue
-  scale:   FeatureValue
-  group?:  string
+  label:    string
+  starter:  FeatureValue
+  pro:      FeatureValue
+  business: FeatureValue
+  group?:   string
 }
 
 // ── Feature matrix ────────────────────────────────────────────────────────────
 
 const FEATURES: Feature[] = [
   // CRM & Vendas
-  { group: 'Gestão de Clientes & Vendas', label: 'Leads e clientes ilimitados',         starter: true,        pro: true,       scale: true       },
-  { label: 'Visualização de oportunidades',                                               starter: true,        pro: true,       scale: true       },
-  { label: 'Registro e histórico de vendas',                                              starter: true,        pro: true,       scale: true       },
-  { label: 'Tarefas e atividades',                                                        starter: true,        pro: true,       scale: true       },
-  { label: 'Agendamentos online',                                                         starter: true,        pro: true,       scale: true       },
-  { label: 'Catálogo de produtos e serviços',                                             starter: false,       pro: true,       scale: true       },
+  { group: 'Gestão de Clientes & Vendas', label: 'Leads e clientes ilimitados',         starter: true,        pro: true,       business:true       },
+  { label: 'Visualização de oportunidades',                                               starter: true,        pro: true,       business:true       },
+  { label: 'Registro e histórico de vendas',                                              starter: true,        pro: true,       business:true       },
+  { label: 'Tarefas e atividades',                                                        starter: true,        pro: true,       business:true       },
+  { label: 'Agendamentos online',                                                         starter: true,        pro: true,       business:true       },
+  { label: 'Catálogo de produtos e serviços',                                             starter: false,       pro: true,       business:true       },
   // Captação
-  { group: 'Captação de Leads',            label: 'Formulários inteligentes',            starter: true,        pro: true,       scale: true       },
-  { label: 'Páginas de captura',                                                          starter: true,        pro: true,       scale: true       },
+  { group: 'Captação de Leads',            label: 'Formulários inteligentes',            starter: true,        pro: true,       business:true       },
+  { label: 'Páginas de captura',                                                          starter: true,        pro: true,       business:true       },
   // Comunicação
-  { group: 'Comunicação',                  label: 'WhatsApp Business centralizado',      starter: true,        pro: true,       scale: true       },
-  { label: 'E-mail marketing',                                                            starter: false,       pro: true,       scale: true       },
-  { label: 'Automação Instagram (DMs + comentários)',                                     starter: false,       pro: true,       scale: true       },
+  { group: 'Comunicação',                  label: 'WhatsApp Business centralizado',      starter: true,        pro: true,       business:true       },
+  { label: 'E-mail marketing',                                                            starter: false,       pro: true,       business:true       },
+  { label: 'Automação Instagram (DMs + comentários)',                                     starter: false,       pro: true,       business:true       },
   // IA
-  { group: 'Inteligência Artificial',      label: 'Atendimento com IA 24/7',             starter: false,       pro: true,       scale: true       },
-  { label: 'Score e qualificação de leads por IA',                                        starter: false,       pro: true,       scale: true       },
-  { label: 'Insights de vendas por IA',                                                   starter: false,       pro: true,       scale: true       },
-  { label: 'Previsões comerciais com IA',                                                 starter: false,       pro: false,      scale: true       },
-  { label: 'Análises avançadas com IA',                                                   starter: false,       pro: false,      scale: true       },
+  { group: 'Inteligência Artificial',      label: 'Atendimento com IA 24/7',             starter: false,       pro: true,       business:true       },
+  { label: 'Score e qualificação de leads por IA',                                        starter: false,       pro: true,       business:true       },
+  { label: 'Insights de vendas por IA',                                                   starter: false,       pro: true,       business:true       },
+  { label: 'Previsões comerciais com IA',                                                 starter: false,       pro: false,      business:true       },
+  { label: 'Análises avançadas com IA',                                                   starter: false,       pro: false,      business:true       },
   // Automações
-  { group: 'Automações',                   label: 'Follow-up automático',                starter: false,       pro: true,       scale: true       },
-  { label: 'Fluxos de automação ilimitados',                                              starter: false,       pro: true,       scale: true       },
-  { label: 'Fluxos avançados e condicionais',                                             starter: false,       pro: false,      scale: true       },
+  { group: 'Automações',                   label: 'Follow-up automático',                starter: false,       pro: true,       business:true       },
+  { label: 'Fluxos de automação ilimitados',                                              starter: false,       pro: true,       business:true       },
+  { label: 'Fluxos avançados e condicionais',                                             starter: false,       pro: false,      business:true       },
   // Marketing & Ads
-  { group: 'Marketing & Ads',              label: 'Integração Meta Ads',                 starter: false,       pro: true,       scale: true       },
-  { label: 'Integração Google Ads',                                                       starter: false,       pro: true,       scale: true       },
-  { label: 'Pixel e CAPI para otimização',                                                starter: false,       pro: true,       scale: true       },
-  { label: 'Relatórios e métricas de ROI',                                                starter: false,       pro: true,       scale: true       },
+  { group: 'Marketing & Ads',              label: 'Integração Meta Ads',                 starter: false,       pro: true,       business:true       },
+  { label: 'Integração Google Ads',                                                       starter: false,       pro: true,       business:true       },
+  { label: 'Pixel e CAPI para otimização',                                                starter: false,       pro: true,       business:true       },
+  { label: 'Relatórios e métricas de ROI',                                                starter: false,       pro: true,       business:true       },
   // Analytics
-  { group: 'Dados & Relatórios',           label: 'Visão de métricas do negócio',        starter: true,        pro: true,       scale: true       },
-  { label: 'Painéis personalizados',                                                      starter: false,       pro: false,      scale: true       },
-  { label: 'Relatórios comparativos',                                                     starter: false,       pro: false,      scale: true       },
-  { label: 'Exportação avançada',                                                         starter: false,       pro: false,      scale: true       },
+  { group: 'Dados & Relatórios',           label: 'Visão de métricas do negócio',        starter: true,        pro: true,       business:true       },
+  { label: 'Painéis personalizados',                                                      starter: false,       pro: false,      business:true       },
+  { label: 'Relatórios comparativos',                                                     starter: false,       pro: false,      business:true       },
+  { label: 'Exportação avançada',                                                         starter: false,       pro: false,      business:true       },
   // Equipe
-  { group: 'Equipe & Acessos',             label: 'Usuários incluídos',                  starter: '1 usuário', pro: 'Até 5',    scale: 'Ilimitado' },
-  { label: 'Permissões por papel',                                                        starter: false,       pro: true,       scale: true       },
-  { label: 'Times e departamentos',                                                       starter: false,       pro: false,      scale: true       },
-  { label: 'Permissões granulares',                                                       starter: false,       pro: false,      scale: true       },
+  { group: 'Equipe & Acessos',             label: 'Usuários incluídos',                  starter: '1 usuário', pro: 'Até 5',    business: 'Ilimitado' },
+  { label: 'Permissões por papel',                                                        starter: false,       pro: true,       business:true       },
+  { label: 'Times e departamentos',                                                       starter: false,       pro: false,      business:true       },
+  { label: 'Permissões granulares',                                                       starter: false,       pro: false,      business:true       },
   // Integrações
-  { group: 'Integrações & API',            label: 'Webhooks',                            starter: false,       pro: false,      scale: true       },
-  { label: 'API aberta',                                                                  starter: false,       pro: false,      scale: true       },
-  { label: 'Integrações customizadas',                                                    starter: false,       pro: false,      scale: true       },
+  { group: 'Integrações & API',            label: 'Webhooks',                            starter: false,       pro: false,      business:true       },
+  { label: 'API aberta',                                                                  starter: false,       pro: false,      business:true       },
+  { label: 'Integrações customizadas',                                                    starter: false,       pro: false,      business:true       },
   // Suporte
-  { group: 'Suporte',                      label: 'Suporte por e-mail',                  starter: true,        pro: true,       scale: true       },
-  { label: 'Suporte prioritário',                                                         starter: false,       pro: true,       scale: true       },
-  { label: 'Onboarding personalizado',                                                    starter: false,       pro: false,      scale: true       },
-  { label: 'Gerente de conta dedicado',                                                   starter: false,       pro: false,      scale: true       },
-  { label: 'Suporte VIP',                                                                 starter: false,       pro: false,      scale: true       },
+  { group: 'Suporte',                      label: 'Suporte por e-mail',                  starter: true,        pro: true,       business:true       },
+  { label: 'Suporte prioritário',                                                         starter: false,       pro: true,       business:true       },
+  { label: 'Onboarding personalizado',                                                    starter: false,       pro: false,      business:true       },
+  { label: 'Gerente de conta dedicado',                                                   starter: false,       pro: false,      business:true       },
+  { label: 'Suporte VIP',                                                                 starter: false,       pro: false,      business:true       },
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -165,9 +165,10 @@ export default function PricingPage() {
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             offers: [
-              { '@type': 'Offer', name: 'Starter', price: '197.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
-              { '@type': 'Offer', name: 'Pro',     price: '397.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
-              { '@type': 'Offer', name: 'Scale',   price: '697.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
+              { '@type': 'Offer', name: 'Free',     price: '0.00',   priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
+              { '@type': 'Offer', name: 'Starter',  price: '197.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
+              { '@type': 'Offer', name: 'Pro',      price: '297.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
+              { '@type': 'Offer', name: 'Business', price: '397.00', priceCurrency: 'BRL', priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' } },
             ],
           }),
         }}
@@ -207,7 +208,7 @@ export default function PricingPage() {
             style={{ borderColor: 'rgba(37,99,235,0.4)', background: 'rgba(37,99,235,0.1)', color: '#93C5FD' }}
           >
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            7 dias grátis · Sem cartão de crédito
+            Plano Free grátis para sempre · sem cartão
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight mb-5">
@@ -293,7 +294,7 @@ export default function PricingPage() {
               >
                 Testar grátis por 7 dias
               </Link>
-              <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Sem cartão de crédito</p>
+              <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>7 dias grátis · Pix ou cartão</p>
             </div>
           </div>
 
@@ -322,7 +323,7 @@ export default function PricingPage() {
               </span>
               <h2 className="text-xl font-bold text-white mb-1">Pro</h2>
               <div className="flex items-end gap-1 mb-2">
-                <span className="text-4xl font-bold tracking-tight text-white">R$ 397</span>
+                <span className="text-4xl font-bold tracking-tight text-white">R$ 297</span>
                 <span className="mb-1 text-sm" style={{ color: '#93C5FD' }}>/mês</span>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: '#94A3B8' }}>
@@ -364,11 +365,11 @@ export default function PricingPage() {
               >
                 Testar grátis por 7 dias
               </Link>
-              <p className="text-center text-[11px]" style={{ color: 'rgba(147,197,253,0.4)' }}>Sem cartão de crédito</p>
+              <p className="text-center text-[11px]" style={{ color: 'rgba(147,197,253,0.4)' }}>7 dias grátis · Pix ou cartão</p>
             </div>
           </div>
 
-          {/* Scale */}
+          {/* Business */}
           <div
             className="rounded-2xl p-7 flex flex-col gap-5 border transition-transform duration-200 hover:-translate-y-1"
             style={{ background: '#111827', borderColor: 'rgba(255,255,255,0.08)' }}
@@ -380,9 +381,9 @@ export default function PricingPage() {
               >
                 Para escalar sem limites
               </span>
-              <h2 className="text-xl font-bold text-white mb-1">Scale</h2>
+              <h2 className="text-xl font-bold text-white mb-1">Business</h2>
               <div className="flex items-end gap-1 mb-2">
-                <span className="text-4xl font-bold tracking-tight text-white">R$ 697</span>
+                <span className="text-4xl font-bold tracking-tight text-white">R$ 397</span>
                 <span className="mb-1 text-sm" style={{ color: '#94A3B8' }}>/mês</span>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: '#64748B' }}>
@@ -422,7 +423,7 @@ export default function PricingPage() {
               >
                 Testar grátis por 7 dias
               </Link>
-              <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Sem cartão de crédito</p>
+              <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>7 dias grátis · Pix ou cartão</p>
             </div>
           </div>
         </div>
@@ -431,8 +432,8 @@ export default function PricingPage() {
         <div className="md:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4">
           {[
             { name: 'Starter', tag: 'Ideal para começar', price: 'R$ 197', desc: 'Para pequenos negócios que querem organizar o atendimento.', features: ['Leads e clientes ilimitados', 'Visualize todas as oportunidades', 'Formulários inteligentes', 'WhatsApp centralizado', 'Registre e acompanhe vendas', 'Tarefas e atividades'], disabled: ['IA 24/7', 'Automações', 'Multiusuário'], cta: 'Testar grátis', accent: '#3B82F6' },
-            { name: 'Pro', tag: 'MAIS ESCOLHIDO', price: 'R$ 397', desc: 'Para empresas que querem automatizar e vender mais.', features: ['Tudo do Starter', 'IA para atendimento 24/7', 'Automações ilimitadas', 'Score de leads por IA', 'Meta Ads + Google Ads', 'Até 5 usuários'], disabled: [], cta: 'Testar grátis', accent: '#2563EB', highlight: true },
-            { name: 'Scale', tag: 'Para escalar', price: 'R$ 697', desc: 'Para empresas que precisam de controle total em escala.', features: ['Tudo do Pro', 'IA avançada e previsões', 'Fluxos avançados', 'Usuários ilimitados', 'API aberta e webhooks', 'Gerente dedicado'], disabled: [], cta: 'Testar grátis', accent: '#7C3AED' },
+            { name: 'Pro', tag: 'MAIS ESCOLHIDO', price: 'R$ 297', desc: 'Para empresas que querem automatizar e vender mais.', features: ['Tudo do Starter', 'IA para atendimento 24/7', 'Automações ilimitadas', 'Score de leads por IA', 'Meta Ads + Google Ads', 'Até 5 usuários'], disabled: [], cta: 'Testar grátis', accent: '#2563EB', highlight: true },
+            { name: 'Business', tag: 'Para escalar', price: 'R$ 397', desc: 'Para empresas que precisam de controle total em escala.', features: ['Tudo do Pro', 'IA avançada e previsões', 'Fluxos avançados', 'Usuários ilimitados', 'API aberta e webhooks', 'Gerente dedicado'], disabled: [], cta: 'Testar grátis', accent: '#7C3AED' },
           ].map(plan => (
             <div
               key={plan.name}
@@ -473,7 +474,6 @@ export default function PricingPage() {
         {/* Payment info */}
         <p className="text-center text-sm mt-10" style={{ color: '#475569' }}>
           Pagamento via{' '}
-          <strong className="text-white/60">Boleto Bancário</strong>,{' '}
           <strong className="text-white/60">PIX</strong> ou{' '}
           <strong className="text-white/60">Cartão de Crédito</strong>{' '}
           · Renovação mensal · Sem fidelidade
@@ -500,7 +500,7 @@ export default function PricingPage() {
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#475569' }}>Recurso</span>
               <span className="text-center text-xs font-semibold uppercase tracking-wide" style={{ color: '#64748B' }}>Starter</span>
               <span className="text-center text-xs font-semibold uppercase tracking-wide text-blue-400">Pro</span>
-              <span className="text-center text-xs font-semibold uppercase tracking-wide" style={{ color: '#A78BFA' }}>Scale</span>
+              <span className="text-center text-xs font-semibold uppercase tracking-wide" style={{ color: '#A78BFA' }}>Business</span>
             </div>
 
             {FEATURES.map((feat, i) => (
@@ -522,7 +522,7 @@ export default function PricingPage() {
                   <span className="font-medium text-white/70 text-xs sm:text-sm">{feat.label}</span>
                   <div className="text-center"><FeatCell value={feat.starter} /></div>
                   <div className="text-center"><FeatCell value={feat.pro} /></div>
-                  <div className="text-center"><FeatCell value={feat.scale} /></div>
+                  <div className="text-center"><FeatCell value={feat.business} /></div>
                 </div>
               </div>
             ))}
@@ -608,10 +608,10 @@ export default function PricingPage() {
               <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-              <span className="text-sm font-semibold text-white">7 dias grátis para testar</span>
+              <span className="text-sm font-semibold text-white">Plano Free grátis para sempre</span>
             </div>
             <span className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />
-            <span className="text-sm" style={{ color: '#64748B' }}>Sem cartão de crédito.</span>
+            <span className="text-sm" style={{ color: '#64748B' }}>7 dias grátis nos planos pagos.</span>
             <span className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />
             <span className="text-sm" style={{ color: '#64748B' }}>Sem compromisso.</span>
             <span className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />
@@ -634,20 +634,20 @@ export default function PricingPage() {
           </div>
           <div>
             <FaqItem
-              q="Preciso de cartão de crédito para o teste gratuito?"
-              a="Não. O período de 7 dias é completamente gratuito e não exige nenhuma forma de pagamento. Basta criar uma conta com e-mail e senha."
+              q="Preciso de cartão de crédito para começar?"
+              a="Não para o plano Free, que é gratuito para sempre e não exige nenhuma forma de pagamento — basta criar uma conta com e-mail e senha. Já os planos pagos têm 7 dias de teste grátis, mas pedem uma forma de pagamento (PIX ou cartão) para iniciar o período."
             />
             <FaqItem
               q="Qual é a diferença entre os planos?"
-              a="O Starter organiza seu atendimento e vendas. O Pro adiciona IA 24/7, automações, Meta Ads e muito mais — ideal para crescer. O Scale entrega controle total com IA avançada, API aberta, usuários ilimitados e gerente dedicado para empresas em expansão acelerada."
+              a="O Free organiza seus leads e o pipeline, de graça para sempre. O Starter profissionaliza o atendimento e as vendas. O Pro adiciona IA 24/7, automações, Meta Ads e muito mais — ideal para crescer. O Business entrega controle total com IA avançada, API aberta, usuários ilimitados e gerente dedicado para empresas em expansão acelerada."
             />
             <FaqItem
               q="Quais formas de pagamento são aceitas?"
-              a="Aceitamos Boleto Bancário, PIX e Cartão de Crédito. O PIX tem aprovação instantânea. O cartão é cobrado automaticamente todo mês."
+              a="Aceitamos PIX e Cartão de Crédito. O PIX tem aprovação instantânea. O cartão é cobrado automaticamente todo mês."
             />
             <FaqItem
-              q="O que acontece quando o período de testes termina?"
-              a="Após 7 dias seu acesso fica bloqueado até você escolher um plano. Seus dados (leads, histórico, vendas) ficam preservados por 30 dias. Basta assinar para recuperar tudo imediatamente."
+              q="O que acontece quando o teste dos planos pagos termina?"
+              a="Após os 7 dias de teste, a assinatura do plano pago é cobrada automaticamente na forma de pagamento escolhida. Você pode cancelar antes disso a qualquer momento — e, mesmo assim, continua com acesso ao plano Free. Seus dados ficam sempre preservados."
             />
             <FaqItem
               q="Posso cancelar a qualquer momento?"
@@ -696,7 +696,7 @@ export default function PricingPage() {
                   className="w-full sm:w-auto rounded-full px-8 py-3.5 text-base font-bold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 shadow-lg text-center"
                   style={{ background: 'linear-gradient(135deg, #2563EB, #7C3AED)', boxShadow: '0 8px 30px rgba(37,99,235,0.3)' }}
                 >
-                  Começar 7 dias grátis
+                  Começar de graça
                 </Link>
                 <Link
                   href="/login"
@@ -707,7 +707,7 @@ export default function PricingPage() {
                 </Link>
               </div>
               <p className="mt-5 text-xs sm:text-sm" style={{ color: 'rgba(255,255,255,0.2)' }}>
-                Sem cartão de crédito · Cancele quando quiser · Suporte 24h
+Plano Free sem cartão · Cancele quando quiser · Suporte 24h
               </p>
             </div>
           </div>

@@ -420,6 +420,30 @@ export async function resolvePublicEventType(orgSlug: string, eventSlug: string)
 }
 
 /**
+ * Resolve an org + ALL of its active event types for the public org-level
+ * booking landing page (`/book/[orgSlug]`). Admin client because the booker is
+ * anonymous; only active event types are exposed.
+ */
+export async function resolvePublicOrgEventTypes(orgSlug: string) {
+  const admin = createAdminClient()
+  const { data: org } = await admin
+    .from('organizations')
+    .select('id, name')
+    .eq('slug', orgSlug)
+    .maybeSingle()
+  if (!org) return { org: null, eventTypes: [] }
+
+  const { data: eventTypes } = await admin
+    .from('event_types')
+    .select('id, name, slug, description, duration_minutes, location, color')
+    .eq('organization_id', org.id)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+
+  return { org, eventTypes: eventTypes ?? [] }
+}
+
+/**
  * Compute available slots for a given event type + date.
  *
  * Rules:

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signup } from '@/actions/auth'
 import { createClient } from '@/lib/supabase/client'
@@ -26,11 +26,21 @@ function SignupForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const inviteToken  = searchParams.get('invite') || ''
+  const refCode      = searchParams.get('ref') || ''
 
   const [error,         setError]         = useState('')
   const [loading,       setLoading]       = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [showPass,      setShowPass]      = useState(false)
+
+  // Bridge the referral code into a short-lived cookie so the org-creation
+  // server action can redeem it even through the Google OAuth flow (where the
+  // ?ref= param can't survive the provider round-trip).
+  useEffect(() => {
+    if (refCode) {
+      document.cookie = `althos_ref=${encodeURIComponent(refCode)}; max-age=1800; path=/; samesite=lax`
+    }
+  }, [refCode])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -39,6 +49,7 @@ function SignupForm() {
 
     const formData = new FormData(e.currentTarget)
     if (inviteToken) formData.set('inviteToken', inviteToken)
+    if (refCode)     formData.set('refCode', refCode)
 
     const result = await signup(formData)
 
@@ -62,7 +73,10 @@ function SignupForm() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: inviteToken ? { invite: inviteToken } : undefined,
+        queryParams: {
+          ...(inviteToken ? { invite: inviteToken } : {}),
+          ...(refCode ? { ref: refCode } : {}),
+        },
       },
     })
     if (oauthError) {
@@ -88,7 +102,7 @@ function SignupForm() {
           <p className="text-sm text-muted-foreground leading-snug">
             {inviteToken
               ? 'Você foi convidado. Crie sua conta para começar.'
-              : 'Teste grátis por 7 dias · sem cartão de crédito.'}
+              : 'Comece de graça no plano Free · sem cartão.'}
           </p>
         </div>
 

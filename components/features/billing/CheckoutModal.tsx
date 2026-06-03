@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createCheckoutSession } from '@/actions/billing'
+import { PLANS, getPlanPricing, ANNUAL_DISCOUNT_PCT, type BillingCycle } from '@/lib/billing/plans'
 import { toast } from 'sonner'
-import { Loader2, FileText, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket } from 'lucide-react'
+import { Loader2, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Plan    = 'starter' | 'pro' | 'scale'
-type Method  = 'BOLETO' | 'PIX' | 'CREDIT_CARD'
+type Plan    = 'starter' | 'pro' | 'business'
+type Method  = 'PIX' | 'CREDIT_CARD'
 
 interface Props {
   orgSlug:     string
@@ -22,31 +23,28 @@ interface Props {
 // ── Plan feature matrix ───────────────────────────────────────────────────────
 
 const PLAN_FEATURES: {
-  label:   string
-  starter: boolean | string
-  pro:     boolean | string
-  scale:   boolean | string
+  label:    string
+  starter:  boolean | string
+  pro:      boolean | string
+  business: boolean | string
 }[] = [
-  { label: 'Leads e clientes',                  starter: 'Ilimitados',   pro: 'Ilimitados',   scale: 'Ilimitados'   },
-  { label: 'Oportunidades e pipeline',           starter: true,           pro: true,           scale: true           },
-  { label: 'Formulários de captação',            starter: true,           pro: true,           scale: true           },
-  { label: 'WhatsApp centralizado',              starter: true,           pro: true,           scale: true           },
-  { label: 'Registro e histórico de vendas',     starter: true,           pro: true,           scale: true           },
-  { label: 'Tarefas e atividades',               starter: true,           pro: true,           scale: true           },
-  { label: 'Agendamentos online',                starter: true,           pro: true,           scale: true           },
-  { label: 'Atendimento com IA 24/7',            starter: false,          pro: true,           scale: true           },
-  { label: 'Score e qualificação por IA',        starter: false,          pro: true,           scale: true           },
-  { label: 'Insights de vendas com IA',          starter: false,          pro: true,           scale: true           },
-  { label: 'Follow-up automático',               starter: false,          pro: true,           scale: true           },
-  { label: 'Instagram (DMs e comentários)',      starter: false,          pro: true,           scale: true           },
-  { label: 'Meta Ads + Google Ads',              starter: false,          pro: true,           scale: true           },
-  { label: 'Pixel e CAPI',                       starter: false,          pro: true,           scale: true           },
-  { label: 'E-mail marketing',                   starter: false,          pro: true,           scale: true           },
-  { label: 'IA avançada e previsões',            starter: false,          pro: false,          scale: true           },
-  { label: 'Painéis personalizados',             starter: false,          pro: false,          scale: true           },
-  { label: 'API aberta e webhooks',              starter: false,          pro: false,          scale: true           },
-  { label: 'Usuários incluídos',                 starter: '1 usuário',    pro: 'Até 5',        scale: 'Ilimitado'    },
-  { label: 'Gerente de conta dedicado',          starter: false,          pro: false,          scale: true           },
+  { label: 'Leads e clientes',                  starter: 'Ilimitados',   pro: 'Ilimitados',   business: 'Ilimitados' },
+  { label: 'Oportunidades e pipeline',           starter: true,           pro: true,           business: true         },
+  { label: 'Formulários de captação',            starter: true,           pro: true,           business: true         },
+  { label: 'WhatsApp centralizado',              starter: true,           pro: true,           business: true         },
+  { label: 'Catálogo de produtos',               starter: true,           pro: true,           business: true         },
+  { label: 'Tarefas e atividades',               starter: true,           pro: true,           business: true         },
+  { label: 'Agendamentos online',                starter: false,          pro: true,           business: true         },
+  { label: 'Atendimento com IA 24/7',            starter: false,          pro: true,           business: true         },
+  { label: 'Score e qualificação por IA',        starter: false,          pro: true,           business: true         },
+  { label: 'Instagram (DMs e comentários)',      starter: false,          pro: true,           business: true         },
+  { label: 'Meta Ads + Pixel/CAPI',              starter: false,          pro: true,           business: true         },
+  { label: 'Insights de vendas com IA',          starter: false,          pro: false,          business: true         },
+  { label: 'White-label',                        starter: false,          pro: false,          business: true         },
+  { label: 'Multi-tenant',                       starter: false,          pro: false,          business: true         },
+  { label: 'Exportar relatórios',                starter: false,          pro: false,          business: true         },
+  { label: 'Usuários incluídos',                 starter: '1 usuário',    pro: 'Até 5',        business: 'Ilimitado'  },
+  { label: 'Gerente de conta dedicado',          starter: false,          pro: false,          business: true         },
 ]
 
 const PLAN_INFO: Record<Plan, {
@@ -67,38 +65,43 @@ const PLAN_INFO: Record<Plan, {
   pro: {
     label:    'Pro',
     tagline:  'Para crescer',
-    price:    'R$ 397/mês',
-    priceFmt: 'R$ 397',
+    price:    'R$ 297/mês',
+    priceFmt: 'R$ 297',
     icon:     Zap,
     popular:  true,
   },
-  scale: {
-    label:    'Scale',
+  business: {
+    label:    'Business',
     tagline:  'Para escalar sem limites',
-    price:    'R$ 697/mês',
-    priceFmt: 'R$ 697',
+    price:    'R$ 397/mês',
+    priceFmt: 'R$ 397',
     icon:     Rocket,
   },
 }
 
 const METHODS: { id: Method; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'PIX',         label: 'PIX',              desc: 'Aprovação instantânea.',       icon: QrCode     },
-  { id: 'BOLETO',      label: 'Boleto Bancário',   desc: 'Vencimento em 1 dia útil.',   icon: FileText   },
   { id: 'CREDIT_CARD', label: 'Cartão de Crédito', desc: 'Cobrança mensal automática.', icon: CreditCard },
 ]
 
-const ALL_PLANS: Plan[] = ['starter', 'pro', 'scale']
+const ALL_PLANS: Plan[] = ['starter', 'pro', 'business']
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: Props) {
   const [plan,    setPlan]    = useState<Plan>(initialPlan)
   const [method,  setMethod]  = useState<Method>('PIX')
+  const [cycle,   setCycle]   = useState<BillingCycle>('annual')
   const [loading, setLoading] = useState(false)
 
   async function handlePay() {
     setLoading(true)
-    const res = await createCheckoutSession(orgSlug, plan, method)
+    const res = await createCheckoutSession(
+      orgSlug,
+      plan,
+      method,
+      cycle === 'annual' ? 'YEARLY' : 'MONTHLY',
+    )
     setLoading(false)
 
     if (!res.ok) {
@@ -109,7 +112,8 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
     window.location.href = res.checkoutUrl
   }
 
-  const info = PLAN_INFO[plan]
+  const info     = PLAN_INFO[plan]
+  const pricing  = getPlanPricing(PLANS[plan], cycle)
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
@@ -117,50 +121,77 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
         <DialogHeader>
           <DialogTitle>Assinar plano</DialogTitle>
           <DialogDescription>
-            Escolha o plano e a forma de pagamento.
+            Escolha o plano, o ciclo e a forma de pagamento.
           </DialogDescription>
         </DialogHeader>
 
+        {/* ── Billing cycle toggle ── */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="inline-flex items-center rounded-full border bg-muted/40 p-1">
+            {(['monthly', 'annual'] as BillingCycle[]).map(c => (
+              <button
+                key={c}
+                onClick={() => setCycle(c)}
+                className={cn(
+                  'rounded-full px-4 py-1.5 text-xs font-semibold transition-all',
+                  cycle === c ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {c === 'monthly' ? 'Mensal' : 'Anual'}
+              </button>
+            ))}
+          </div>
+          <Badge variant="secondary" className="text-[10px]">
+            Economize {ANNUAL_DISCOUNT_PCT}% no anual
+          </Badge>
+        </div>
+
         {/* ── Plan selector ── */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
           {ALL_PLANS.map(p => {
-            const pi     = PLAN_INFO[p]
-            const Icon   = pi.icon
-            const active = plan === p
+            const pi      = PLAN_INFO[p]
+            const Icon    = pi.icon
+            const active  = plan === p
+            const pPrice  = getPlanPricing(PLANS[p], cycle)
 
             return (
               <button
                 key={p}
                 onClick={() => setPlan(p)}
                 className={cn(
-                  'relative rounded-xl border-2 p-4 text-left transition-all flex flex-col gap-2.5',
+                  'relative rounded-xl border-2 p-2.5 sm:p-4 text-left transition-all flex flex-col gap-2 sm:gap-2.5 min-w-0',
                   active
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/40'
                 )}
               >
                 {pi.popular && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary text-primary-foreground px-3 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary text-primary-foreground px-2 sm:px-3 py-0.5 text-[9px] sm:text-[10px] font-semibold whitespace-nowrap">
                     Mais popular
                   </span>
                 )}
 
                 <div className="flex items-start justify-between gap-1 mt-1">
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={cn('w-4 h-4', active ? 'text-primary' : 'text-muted-foreground')} />
-                    <span className="font-semibold text-sm">{pi.label}</span>
+                  <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                    <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+                    <span className="font-semibold text-xs sm:text-sm truncate">{pi.label}</span>
                   </div>
                   {active && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
                 </div>
 
-                <div className="flex items-end gap-1">
-                  <span className={cn('text-xl font-bold tabular-nums', active ? 'text-foreground' : 'text-muted-foreground')}>
-                    {pi.priceFmt}
+                <div className="flex items-end gap-0.5 sm:gap-1 min-w-0 flex-wrap">
+                  <span className={cn('text-base sm:text-xl font-bold tabular-nums whitespace-nowrap', active ? 'text-foreground' : 'text-muted-foreground')}>
+                    {pPrice.perMonthLabel}
                   </span>
-                  <span className="text-xs text-muted-foreground mb-0.5">/mês</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 whitespace-nowrap">/mês</span>
                 </div>
+                {cycle === 'annual' && (
+                  <p className="text-[10px] text-muted-foreground -mt-1.5 truncate">
+                    {pPrice.totalLabel}/ano
+                  </p>
+                )}
 
-                <p className="text-xs text-muted-foreground leading-snug">{pi.tagline}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug">{pi.tagline}</p>
               </button>
             )
           })}
@@ -172,7 +203,7 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
             <span className="col-span-1">Recurso</span>
             <span className="text-center">Starter</span>
             <span className="text-center text-primary">Pro</span>
-            <span className="text-center" style={{ color: '#7C3AED' }}>Scale</span>
+            <span className="text-center" style={{ color: '#7C3AED' }}>Business</span>
           </div>
           {PLAN_FEATURES.map((feat, i) => (
             <div
@@ -180,7 +211,7 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
               className={cn('grid grid-cols-4 items-center px-4 py-2 text-xs border-t', i % 2 !== 0 && 'bg-muted/20')}
             >
               <span className="font-medium text-foreground/80 col-span-1">{feat.label}</span>
-              {(['starter', 'pro', 'scale'] as Plan[]).map(p => {
+              {(['starter', 'pro', 'business'] as Plan[]).map(p => {
                 const val = feat[p]
                 const has = val !== false
                 const isSelected = p === plan
@@ -226,7 +257,13 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                       <Badge variant="secondary" className="text-[10px] py-0">Recomendado</Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">{m.desc}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cycle === 'annual'
+                      ? m.id === 'CREDIT_CARD'
+                        ? 'Parcele o valor anual no cartão.'
+                        : 'Pagamento anual à vista.'
+                      : m.desc}
+                  </p>
                 </div>
                 {method === m.id && (
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -238,8 +275,17 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
 
         {/* ── Summary + CTA ── */}
         <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Total mensal — {info.label}</span>
-          <span className="font-bold text-base">{info.price}</span>
+          <div>
+            <span className="text-muted-foreground">
+              {cycle === 'annual' ? 'Total anual' : 'Total mensal'} — {info.label}
+            </span>
+            {cycle === 'annual' && (
+              <p className="text-[11px] text-emerald-600">
+                Economia de {pricing.savedLabel} no ano · equivale a {pricing.perMonthLabel}/mês
+              </p>
+            )}
+          </div>
+          <span className="font-bold text-base shrink-0 tabular-nums whitespace-nowrap">{pricing.totalLabel}</span>
         </div>
 
         <Button

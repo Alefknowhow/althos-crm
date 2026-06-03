@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2, History } from 'lucide-react'
+import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2, History, ArrowLeft } from 'lucide-react'
 import { createAutomation, toggleAutomation, deleteAutomation } from '@/actions/automations'
 import { toast } from 'sonner'
 import {
@@ -88,18 +88,32 @@ export default function AutomationsShell({
 
 
 
+  // On mobile we show ONE pane at a time: the list when on the index route,
+  // or the selected automation (detail) otherwise. The back button returns to
+  // the list. On md+ both panes are always visible side by side.
+  const isDetail = pathname !== `/app/${orgSlug}/automacoes`
+
   return (
     <div className="-mx-6 -mt-8 -mb-8 flex flex-col" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-b bg-background flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight leading-tight">Automações</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Fluxos automáticos baseados em gatilhos e ações.
-          </p>
+      <div className="px-4 py-3 border-b bg-background flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {isDetail && (
+            <Button asChild variant="ghost" size="icon" className="md:hidden shrink-0 -ml-2">
+              <Link href={`/app/${orgSlug}/automacoes`} aria-label="Voltar para a lista">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+            </Button>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold tracking-tight leading-tight">Automações</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
+              Fluxos automáticos baseados em gatilhos e ações.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button asChild variant="outline" size="sm">
             <Link href={`/app/${orgSlug}/automacoes/logs`}>
               <History className="w-4 h-4 mr-1.5" />
@@ -116,8 +130,11 @@ export default function AutomationsShell({
       {/* ── Split panel ─────────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Left sidebar */}
-        <aside className="w-56 shrink-0 border-r bg-card flex flex-col overflow-hidden">
+        {/* Left sidebar — full width on mobile (hidden while viewing a detail) */}
+        <aside className={cn(
+          'w-full md:w-56 shrink-0 border-r bg-card flex-col overflow-hidden',
+          isDetail ? 'hidden md:flex' : 'flex',
+        )}>
           <div className="overflow-y-auto flex-1">
             {automations.length === 0 ? (
               <div className="p-5 text-center">
@@ -210,8 +227,11 @@ export default function AutomationsShell({
           </div>
         </aside>
 
-        {/* Right content */}
-        <div className="flex-1 min-w-0 overflow-auto bg-muted/20">
+        {/* Right content — full screen on mobile (hidden on the index route) */}
+        <div className={cn(
+          'flex-1 min-w-0 overflow-auto bg-muted/20',
+          isDetail ? 'block' : 'hidden md:block',
+        )}>
           {children}
         </div>
 

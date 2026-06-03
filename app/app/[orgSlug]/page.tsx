@@ -17,6 +17,8 @@ import RecentActivityWidget from '@/components/features/dashboard/RecentActivity
 import LeadSourcesWidget from '@/components/features/dashboard/LeadSourcesWidget'
 import TasksTodayWidget from '@/components/features/dashboard/TasksTodayWidget'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
+import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
+import UpgradeBanner from '@/components/features/onboarding/UpgradeBanner'
 
 export default async function OrgDashboard({
   params,
@@ -65,6 +67,12 @@ export default async function OrgDashboard({
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
+      <UpgradeBanner orgSlug={params.orgSlug} />
+
+      <Suspense fallback={null}>
+        <OnboardingChecklistCard orgId={org.id} orgSlug={params.orgSlug} />
+      </Suspense>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <DashboardHeader userName={userName} />
         <div className="flex items-center gap-3 flex-wrap">

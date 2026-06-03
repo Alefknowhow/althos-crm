@@ -20,6 +20,14 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/onboarding' ||
     pathname === '/privacidade' ||    // public privacy policy (required by Meta)
     pathname === '/termos' ||         // public terms of service
+    pathname === '/funcionalidades' || // marketing: features
+    pathname === '/para-quem-e' ||     // marketing: who it's for
+    pathname === '/por-que-nos' ||     // marketing: why us
+    pathname === '/como-funciona' ||   // marketing: how it works
+    pathname === '/planos' ||          // marketing: pricing
+    pathname === '/faq' ||             // marketing: FAQ
+    pathname === '/blog' ||            // marketing: blog index
+    pathname.startsWith('/blog/')   ||  // marketing: blog posts
     pathname.startsWith('/auth/')    ||  // auth callbacks (email confirm, OAuth)
     pathname.startsWith('/f/')       ||  // public forms
     pathname.startsWith('/book/')    ||  // public booking pages

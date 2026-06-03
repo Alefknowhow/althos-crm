@@ -33,6 +33,7 @@ type Task = {
 
 type View = 'kanban' | 'list'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
+type AssigneeFilter = 'all' | 'none' | string
 type DateFilter = 'all' | 'overdue' | 'today' | 'this_week' | 'next_week' | 'this_month'
 
 const DATE_FILTERS: { id: DateFilter; label: string }[] = [
@@ -91,6 +92,7 @@ export default function TasksBoard({
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [view, setView] = useState<View>('kanban')
   const [priority, setPriority] = useState<PriorityFilter>('all')
+  const [assignee, setAssignee] = useState<AssigneeFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [editing, setEditing] = useState<Task | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -134,11 +136,19 @@ export default function TasksBoard({
     }
   }
 
+  function matchesAssignee(t: Task, f: AssigneeFilter): boolean {
+    if (f === 'all') return true
+    if (f === 'none') return !t.assigned_to
+    return t.assigned_to === f
+  }
+
   const filtered = useMemo(
     () => tasks.filter(t =>
-      (priority === 'all' || t.priority === priority) && matchesDate(t, dateFilter),
+      (priority === 'all' || t.priority === priority) &&
+      matchesAssignee(t, assignee) &&
+      matchesDate(t, dateFilter),
     ),
-    [tasks, priority, dateFilter, bounds],
+    [tasks, priority, assignee, dateFilter, bounds],
   )
 
   const dateCounts = useMemo(() => {
@@ -198,6 +208,15 @@ export default function TasksBoard({
   const counts = { all: tasks.length, ...(['low', 'normal', 'high'] as const).reduce(
     (acc, p) => ({ ...acc, [p]: tasks.filter(t => t.priority === p).length }), {} as Record<string, number>) }
 
+  const assigneeCounts = useMemo(() => {
+    const c: Record<string, number> = { all: tasks.length, none: 0 }
+    for (const t of tasks) {
+      if (!t.assigned_to) c.none++
+      else c[t.assigned_to] = (c[t.assigned_to] ?? 0) + 1
+    }
+    return c
+  }, [tasks])
+
   return (
     <div className="space-y-4">
       {/* Date filters */}
@@ -233,23 +252,46 @@ export default function TasksBoard({
           <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground mr-1">Prioridade:</span>
-          {(['all', 'high', 'normal', 'low'] as PriorityFilter[]).map(p => (
-            <button
-              key={p}
-              onClick={() => setPriority(p)}
-              className={cn(
-                'px-2.5 h-7 rounded-md border transition-colors font-medium',
-                priority === p
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
-              )}
-            >
-              {p === 'all' ? 'Todas' : PRIORITY_META[p].label}
-              <span className="ml-1 opacity-60">{(counts as any)[p] ?? 0}</span>
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+          {members.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground mr-1 inline-flex items-center gap-1">
+                <UserCheck className="w-3.5 h-3.5" />Responsável:
+              </span>
+              <select
+                value={assignee}
+                onChange={e => setAssignee(e.target.value as AssigneeFilter)}
+                className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground"
+              >
+                <option value="all">Todos ({assigneeCounts.all})</option>
+                <option value="none">Sem responsável ({assigneeCounts.none})</option>
+                {members.map(m => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.name} ({assigneeCounts[m.user_id] ?? 0})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground mr-1">Prioridade:</span>
+            {(['all', 'high', 'normal', 'low'] as PriorityFilter[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPriority(p)}
+                className={cn(
+                  'px-2.5 h-7 rounded-md border transition-colors font-medium',
+                  priority === p
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                )}
+              >
+                {p === 'all' ? 'Todas' : PRIORITY_META[p].label}
+                <span className="ml-1 opacity-60">{(counts as any)[p] ?? 0}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

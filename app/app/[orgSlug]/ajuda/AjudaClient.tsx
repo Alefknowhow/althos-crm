@@ -238,6 +238,18 @@ export function AjudaClient({ categories }: { categories: HelpCategory[] }) {
                         >
                           {article.title}
                         </button>
+
+                        {/* Mobile only: render the article body inline, right
+                            below the selected item. On lg+ the body lives in the
+                            dedicated right-hand column instead. */}
+                        {active && (
+                          <div className="lg:hidden mt-2 mb-4 ml-2 space-y-4 border-l-2 border-brand-200 pl-4">
+                            <p className="text-sm text-muted-foreground">{article.summary}</p>
+                            {article.blocks.map((block, i) => (
+                              <Block key={i} block={block} />
+                            ))}
+                          </div>
+                        )}
                       </li>
                     )
                   })}
@@ -246,9 +258,10 @@ export function AjudaClient({ categories }: { categories: HelpCategory[] }) {
             ))}
           </nav>
 
-          {/* Article */}
+          {/* Article — desktop column only; on mobile the body renders inline
+              under the selected nav item above. */}
           {currentArticle && (
-            <article className="min-w-0">
+            <article className="min-w-0 hidden lg:block">
               <div className="mb-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <span>{currentCategory?.title}</span>
                 <ChevronRight className="h-3.5 w-3.5" />
