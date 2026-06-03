@@ -37,7 +37,7 @@ export function isInstagramConfigured(): boolean {
 
 /** Absolute base URL of the app (used to build OAuth redirect URIs). */
 export function appBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'
 }
 
 export function redirectUri(): string {

@@ -8,7 +8,7 @@ import {
   subscribeInstagramWebhooks,
 } from '@/lib/social/instagram'
 
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'
 
 function back(orgSlug: string, qs: string) {
   return NextResponse.redirect(`${BASE}/app/${orgSlug}/configuracoes/social?${qs}`)

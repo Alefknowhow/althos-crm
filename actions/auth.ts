@@ -78,7 +78,7 @@ export async function signup(formData: FormData) {
       // Store name + inviteToken in metadata so the confirm route can
       // finish org setup after the user clicks the email link.
       data: { name, inviteToken: inviteToken ?? null, refCode: refCode ?? null },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/confirm`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/auth/confirm`,
     },
   })
 
@@ -96,7 +96,7 @@ export async function resendConfirmationEmail(email: string) {
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/confirm`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/auth/confirm`,
     },
   })
   if (error) return { ok: false, error: error.message }
@@ -106,7 +106,7 @@ export async function resendConfirmationEmail(email: string) {
 export async function requestPasswordReset(email: string) {
   const supabase = createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/auth/reset-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/auth/reset-password`,
   })
   if (error) return { ok: false as const, error: error.message }
   return { ok: true as const }

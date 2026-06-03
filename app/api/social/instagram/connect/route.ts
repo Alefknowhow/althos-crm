@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     // No Meta App credentials yet — bounce back to settings with a flag so the
     // page can show the setup guide instead of a broken Facebook dialog.
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/app/${orgSlug}/configuracoes/social?error=not_configured`,
+      `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/app/${orgSlug}/configuracoes/social?error=not_configured`,
     )
   }
 

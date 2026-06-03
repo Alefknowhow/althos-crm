@@ -11,7 +11,7 @@ import { generateUniqueSlug } from '@/actions/organization'
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const origin     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'
+  const origin     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'
   const token_hash = searchParams.get('token_hash')
 
   // SECURITY: only accept a known set of OTP types instead of passing the raw

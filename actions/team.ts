@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { getResend } from '@/lib/resend'
 import { type Permissions, allPermissions, defaultMemberPermissions } from '@/lib/permissions'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://althos-crm.vercel.app'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://althoscrm.com.br'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

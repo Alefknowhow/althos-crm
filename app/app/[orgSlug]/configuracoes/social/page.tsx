@@ -16,7 +16,7 @@ export default async function SocialSettingsPage({
   // We can't read server-only env in the client component, so resolve the
   // "is the Meta App configured" flag here and pass it down.
   const configured = !!(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET)
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althos-crm.vercel.app'}/api/webhooks/instagram`
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/api/webhooks/instagram`
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
