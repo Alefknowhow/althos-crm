@@ -71,8 +71,8 @@ const ContentSecurityPolicy = [
     .filter(Boolean)
     .join(' '),
 
-  // Iframe embeds: only Turnstile challenge widget.
-  `frame-src 'self' https://challenges.cloudflare.com`,
+  // Iframe embeds: Turnstile challenge widget + YouTube (vídeos da Vitrine).
+  `frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com`,
 
   // Block <object>, <embed>, <applet> — vectors for plugin exploits.
   `object-src 'none'`,
