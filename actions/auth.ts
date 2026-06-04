@@ -46,13 +46,15 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-  const name       = formData.get('name')  as string
-  const email      = formData.get('email') as string
-  const password   = formData.get('password') as string
+  const name            = formData.get('name')  as string
+  const email           = formData.get('email') as string
+  const password        = formData.get('password') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+  const acceptTerms     = formData.get('acceptTerms') === 'on' || formData.get('acceptTerms') === 'true'
   const inviteToken = (formData.get('inviteToken') as string | null)?.trim() || null
   const refCode     = (formData.get('refCode') as string | null)?.trim() || null
 
-  const validation = signupSchema.safeParse({ name, email, password })
+  const validation = signupSchema.safeParse({ name, email, password, confirmPassword, acceptTerms })
   if (!validation.success) {
     return { ok: false, error: validation.error.issues[0].message }
   }

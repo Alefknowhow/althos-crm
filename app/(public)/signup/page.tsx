@@ -32,6 +32,8 @@ function SignupForm() {
   const [loading,       setLoading]       = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [showPass,      setShowPass]      = useState(false)
+  const [showConfirm,   setShowConfirm]   = useState(false)
+  const [accepted,      setAccepted]      = useState(false)
 
   // Bridge the referral code into a short-lived cookie so the org-creation
   // server action can redeem it even through the Google OAuth flow (where the
@@ -51,6 +53,18 @@ function SignupForm() {
     if (inviteToken) formData.set('inviteToken', inviteToken)
     if (refCode)     formData.set('refCode', refCode)
 
+    // Client-side guards (server re-validates these too)
+    if (formData.get('password') !== formData.get('confirmPassword')) {
+      setError('As senhas não coincidem')
+      setLoading(false)
+      return
+    }
+    if (!accepted) {
+      setError('Você precisa aceitar os Termos de Serviço e a Política de Privacidade')
+      setLoading(false)
+      return
+    }
+
     const result = await signup(formData)
 
     if (!result.ok) {
@@ -66,6 +80,10 @@ function SignupForm() {
   }
 
   async function handleGoogle() {
+    if (!accepted) {
+      setError('Você precisa aceitar os Termos de Serviço e a Política de Privacidade')
+      return
+    }
     setGoogleLoading(true)
     setError('')
     const supabase = createClient()
@@ -183,10 +201,57 @@ function SignupForm() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPassword">Confirmar senha</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirm ? 'text' : 'password'}
+                required
+                minLength={8}
+                placeholder="repita a senha"
+                className="h-11 pr-10"
+                disabled={loading || googleLoading}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <label htmlFor="acceptTerms" className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+            <input
+              id="acceptTerms"
+              name="acceptTerms"
+              type="checkbox"
+              checked={accepted}
+              onChange={e => setAccepted(e.target.checked)}
+              disabled={loading || googleLoading}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-primary focus:ring-primary"
+            />
+            <span>
+              Li e concordo com os{' '}
+              <Link href="/termos" target="_blank" className="text-primary hover:underline font-medium">
+                Termos de Serviço
+              </Link>{' '}
+              e a{' '}
+              <Link href="/privacidade" target="_blank" className="text-primary hover:underline font-medium">
+                Política de Privacidade
+              </Link>
+              .
+            </span>
+          </label>
+
           <Button
             type="submit"
             className="w-full h-11"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || !accepted}
           >
             {loading ? 'Criando conta...' : 'Criar conta gratuita'}
           </Button>

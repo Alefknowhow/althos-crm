@@ -447,7 +447,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
             <Button
               type="button"
               variant="outline"
-              className="h-11 px-5 gap-1.5"
+              className="h-11 px-5 gap-1.5 bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               onClick={back}
               disabled={loading}
             >
