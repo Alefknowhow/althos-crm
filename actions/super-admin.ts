@@ -5,7 +5,7 @@ import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/server'
-import { resend } from '@/lib/resend'
+import { resend, EMAIL_FROM } from '@/lib/resend'
 import { slugify } from '@/lib/utils'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
@@ -703,7 +703,7 @@ export async function activateManagedOrganization(formData: FormData) {
 
   if (linkData?.properties?.action_link) {
     await resend.emails.send({
-      from:    'Althos CRM <noreply@althos.io>',
+      from:    EMAIL_FROM,
       to:      email,
       subject: 'Bem-vindo ao seu novo CRM',
       html: `

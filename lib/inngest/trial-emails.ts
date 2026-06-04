@@ -17,7 +17,7 @@
 
 import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
-import { resend } from '@/lib/resend'
+import { resend, EMAIL_FROM } from '@/lib/resend'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -228,7 +228,7 @@ export const trialWarningEmailFn = inngest.createFunction(
       await step.run(`send-warning-${org.id}`, async () => {
         try {
           await resend.emails.send({
-            from:    'Althos CRM <noreply@althos.io>',
+            from:    EMAIL_FROM,
             to:      email,
             subject: `⏰ Seu trial expira em ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'} — ${org.name}`,
             html:    trialWarningHtml(org.name, daysLeft, org.slug),
@@ -297,7 +297,7 @@ export const trialExpiredEmailFn = inngest.createFunction(
       await step.run(`send-expired-${org.id}`, async () => {
         try {
           await resend.emails.send({
-            from:    'Althos CRM <noreply@althos.io>',
+            from:    EMAIL_FROM,
             to:      email,
             subject: `Seu trial expirou — reative o ${org.name} no Althos CRM`,
             html:    trialExpiredHtml(org.name, org.slug),

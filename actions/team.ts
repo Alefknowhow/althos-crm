@@ -3,7 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { getResend } from '@/lib/resend'
+import { getResend, EMAIL_FROM } from '@/lib/resend'
 import { type Permissions, allPermissions, defaultMemberPermissions } from '@/lib/permissions'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://althoscrm.com.br'
@@ -377,7 +377,7 @@ export async function inviteTeamMember(
     const inviteUrl = `${APP_URL}/convite/${inv.token}`
     const orgName   = (org as any).name ?? orgSlug
     await getResend().emails.send({
-      from:    'Althos CRM <noreply@althos.com.br>',
+      from:    EMAIL_FROM,
       to:      email,
       subject: `Você foi convidado para ${orgName} no Althos CRM`,
       html: `

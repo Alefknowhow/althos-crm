@@ -1,5 +1,14 @@
 import { Resend } from 'resend'
 
+/**
+ * Remetente padrão (campo "from") dos e-mails transacionais.
+ * Configurável por deploy via RESEND_FROM — assim o endereço pode ser
+ * trocado sem mexer no código. Use o formato "Nome <email@dominio>".
+ * O domínio precisa estar verificado no Resend.
+ */
+export const EMAIL_FROM =
+  process.env.RESEND_FROM || 'Althos CRM <noreply@send.althoscrm.com.br>'
+
 // Lazy singleton — only instantiated when first used (not at module load time).
 // This avoids build-time errors when RESEND_API_KEY is not set.
 let _resend: Resend | null = null
