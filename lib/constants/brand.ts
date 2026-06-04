@@ -34,7 +34,7 @@ export const BRAND = {
 
   /** Support channels. */
   support: {
-    email: 'suporte@althos.io',
+    email: 'suporte@althoscrm.com.br',
     /**
      * WhatsApp number for human handoff from the support chat widget.
      * Digits only, with country code (no +, spaces or symbols).

@@ -29,7 +29,7 @@ export function SiteFooter() {
               href="/signup"
               className="mt-5 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-500 transition-colors"
             >
-              Testar grátis por 7 dias
+              Começar grátis
             </Link>
           </div>
 
@@ -62,7 +62,7 @@ export function SiteFooter() {
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-wider text-white/40">Contato</p>
             <ul className="mt-4 space-y-2.5">
-              <li><a href="mailto:suporte@althos.io" className="text-[13px] text-white/60 hover:text-white transition-colors">suporte@althos.io</a></li>
+              <li><a href="mailto:suporte@althoscrm.com.br" className="text-[13px] text-white/60 hover:text-white transition-colors">suporte@althoscrm.com.br</a></li>
               <li><Link href="/faq" className="text-[13px] text-white/60 hover:text-white transition-colors">Central de ajuda</Link></li>
             </ul>
           </div>

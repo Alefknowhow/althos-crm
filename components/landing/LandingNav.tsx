@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: 'Planos',       href: '#planos' },
   { label: 'Integrações',  href: '#integracoes' },
   { label: 'Depoimentos',  href: '#depoimentos' },
-  { label: 'Contato',      href: 'mailto:suporte@althos.io' },
+  { label: 'Contato',      href: 'mailto:suporte@althoscrm.com.br' },
 ]
 
 export function LandingNav() {
@@ -56,7 +56,7 @@ export function LandingNav() {
             href="/signup"
             className="rounded-lg bg-blue-600 px-3.5 sm:px-4 py-1.5 text-[13px] sm:text-sm font-semibold text-white hover:bg-blue-500 transition-colors whitespace-nowrap shadow-lg shadow-blue-600/25"
           >
-            Testar grátis<span className="hidden sm:inline"> por 7 dias</span>
+Começar grátis
           </Link>
           {/* Mobile menu toggle */}
           <button

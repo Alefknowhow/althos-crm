@@ -84,7 +84,7 @@ function trialWarningHtml(orgName: string, daysLeft: number, orgSlug: string): s
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid rgba(0,0,0,0.06);background:#F5F5F7;">
           <p style="margin:0;font-size:12px;color:#6E6E73;line-height:1.6;">
-            Althos Performance · <a href="mailto:suporte@althos.io" style="color:#6E6E73;">suporte@althos.io</a>
+            Althos Performance · <a href="mailto:suporte@althoscrm.com.br" style="color:#6E6E73;">suporte@althoscrm.com.br</a>
           </p>
         </td></tr>
 
@@ -148,7 +148,7 @@ function trialExpiredHtml(orgName: string, orgSlug: string): string {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid rgba(0,0,0,0.06);background:#F5F5F7;">
           <p style="margin:0;font-size:12px;color:#6E6E73;line-height:1.6;">
-            Althos Performance · <a href="mailto:suporte@althos.io" style="color:#6E6E73;">suporte@althos.io</a>
+            Althos Performance · <a href="mailto:suporte@althoscrm.com.br" style="color:#6E6E73;">suporte@althoscrm.com.br</a>
           </p>
         </td></tr>
 

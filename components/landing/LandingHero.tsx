@@ -77,9 +77,9 @@ export function LandingHero() {
             href="/signup"
             className="w-full sm:w-auto rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all hover:shadow-xl hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 text-center"
           >
-            Testar grátis por 7 dias
+            Começar grátis
           </Link>
-          <span className="text-[13px] text-white/40">Sem cartão de crédito</span>
+          <span className="text-[13px] text-white/40">Plano Free · sem cartão de crédito</span>
         </motion.div>
 
         {/* Checks */}

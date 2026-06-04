@@ -36,9 +36,9 @@ export default function DocPage({ params }: { params: { slug: string } }) {
     'faq': {
       title: 'Perguntas Frequentes',
       content: `
-        - O CRM é gratuito? Oferecemos um trial de 7 dias com todas as funções.
+        - O CRM é gratuito? Sim — o plano Free é gratuito para sempre, sem cartão. Os planos pagos têm 7 dias de teste.
         - Posso importar leads? Sim, via arquivo CSV em Leads > Importar.
-        - Como falar com o suporte? Clique no botão de interrogação no cabeçalho ou envie um email para suporte@althos.io.
+        - Como falar com o suporte? Clique no botão de interrogação no cabeçalho ou envie um email para suporte@althoscrm.com.br.
       `
     }
   }

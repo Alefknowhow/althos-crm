@@ -453,7 +453,7 @@ export function FinalCTA() {
                 <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">transformar seus resultados?</span>
               </h2>
               <p className="mt-2 text-[14px] sm:mt-3 sm:text-lg text-white/60 max-w-xl">
-                Teste grátis por 7 dias e descubra como o Althos CRM pode acelerar o crescimento do seu negócio.
+                Comece de graça no plano Free e descubra como o Althos CRM pode acelerar o crescimento do seu negócio.
               </p>
             </div>
             <div className="w-full shrink-0 flex flex-col items-center gap-2 sm:w-auto">
@@ -461,7 +461,7 @@ export function FinalCTA() {
                 href="/signup"
                 className="w-full rounded-xl bg-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap text-center sm:w-auto sm:py-3.5 sm:text-[15px]"
               >
-                Testar grátis por 7 dias
+                Começar grátis
               </Link>
               <p className="text-xs text-white/40">Plano Free grátis · sem cartão</p>
             </div>

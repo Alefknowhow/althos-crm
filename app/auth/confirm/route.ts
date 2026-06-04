@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
 
   const existingSlug = (existingMembership?.organizations as any)?.slug as string | undefined
   if (existingSlug) {
-    return NextResponse.redirect(`${origin}/app/${existingSlug}/pipeline`)
+    // E-mail já confirmado / re-visita: encerra a sessão e manda para o login.
+    await supabase.auth.signOut()
+    return NextResponse.redirect(`${origin}/login?confirmed=1`)
   }
 
   // Create org using name stored in metadata during signup
@@ -112,5 +114,8 @@ export async function GET(request: NextRequest) {
     if (refError) console.error('[auth/confirm] redeem_referral error:', refError.message)
   }
 
-  return NextResponse.redirect(`${origin}/app/${slug}/pipeline`)
+  // Conta criada com sucesso. Encerra a sessão e leva o usuário para o login,
+  // onde ele entra com as credenciais que acabou de cadastrar.
+  await supabase.auth.signOut()
+  return NextResponse.redirect(`${origin}/login?confirmed=1`)
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { NICHE_OPTIONS } from '@/lib/niche'
 import { ChevronRight, ChevronLeft, Building2, User, MapPin, CheckCircle2, Plus } from 'lucide-react'
 
 // ── Step definitions ──────────────────────────────────────────────────────────
@@ -16,19 +17,6 @@ const STEPS = [
   { id: 2, title: 'Localização',   icon: MapPin,     desc: 'Onde fica seu negócio?' },
   { id: 3, title: 'Seu workspace', icon: Building2,  desc: 'Nomeie seu espaço de trabalho' },
 ] as const
-
-const NICHES = [
-  'Agência de Marketing',
-  'E-commerce',
-  'Prestação de Serviços',
-  'Saúde e Bem-estar',
-  'Educação e Cursos',
-  'Imóveis',
-  'Alimentação e Gastronomia',
-  'Tecnologia / SaaS',
-  'Consultoria',
-  'Outro',
-]
 
 const STATES_BR = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -64,13 +52,13 @@ function StepIndicator({ current }: { current: number }) {
                 'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 border-2',
                 done    && 'bg-primary border-primary text-primary-foreground',
                 active  && 'bg-primary border-primary text-primary-foreground shadow-md shadow-primary/25',
-                pending && 'bg-transparent border-border text-muted-foreground',
+                pending && 'bg-transparent border-slate-300 text-slate-400',
               )}
             >
               {done ? <CheckCircle2 className="w-4 h-4" /> : <span>{s.id}</span>}
             </div>
             {idx < STEPS.length - 1 && (
-              <div className={cn('w-16 h-0.5 mx-1 transition-all duration-300', done ? 'bg-primary' : 'bg-border')} />
+              <div className={cn('w-16 h-0.5 mx-1 transition-all duration-300', done ? 'bg-primary' : 'bg-slate-200')} />
             )}
           </div>
         )
@@ -86,12 +74,12 @@ function PageWrapper({ children, subtitle }: { children: React.ReactNode; subtit
     <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] p-4">
       <div className="w-full max-w-[460px]">
         <div className="text-center mb-8">
-          <span className="text-2xl font-black tracking-tighter text-foreground">Althos CRM</span>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+          <span className="text-2xl font-black tracking-tighter text-slate-900">Althos CRM</span>
+          {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
         </div>
         {children}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Teste grátis por 7 dias · Sem cartão de crédito
+        <p className="text-center text-xs text-slate-500 mt-6">
+          Plano Free para sempre · Sem cartão de crédito
         </p>
       </div>
     </div>
@@ -137,7 +125,7 @@ function NewOrgForm() {
 
   return (
     <PageWrapper subtitle="Crie um novo workspace para sua organização.">
-      <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+      <div className="bg-white text-slate-900 rounded-2xl shadow-lg p-8 space-y-6">
 
         {/* Icon + heading */}
         <div className="flex items-center gap-3">
@@ -145,7 +133,7 @@ function NewOrgForm() {
             <Building2 className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nova organização</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nova organização</p>
             <h2 className="text-lg font-bold leading-tight">Nome do workspace</h2>
           </div>
         </div>
@@ -167,7 +155,7 @@ function NewOrgForm() {
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-slate-500">
             Você pode alterar o nome depois nas configurações.
           </p>
         </div>
@@ -294,7 +282,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
 
   return (
     <PageWrapper subtitle="Estamos quase lá! Só precisamos de algumas informações.">
-      <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+      <div className="bg-white text-slate-900 rounded-2xl shadow-lg p-8 space-y-6">
 
         {/* Step indicator */}
         <StepIndicator current={step} />
@@ -305,7 +293,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
             <currentStep.icon className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Passo {step} de {STEPS.length}
             </p>
             <h2 className="text-lg font-bold leading-tight">{currentStep.title}</h2>
@@ -325,7 +313,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               <Input
                 id="full_name"
                 placeholder="João Silva"
-                className="h-11"
+                className="h-11 bg-white text-slate-900 border-slate-300 placeholder:text-slate-400"
                 value={form.full_name}
                 onChange={set('full_name')}
                 autoFocus
@@ -337,7 +325,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               <Input
                 id="phone"
                 placeholder="(11) 9 9999-9999"
-                className="h-11"
+                className="h-11 bg-white text-slate-900 border-slate-300 placeholder:text-slate-400"
                 value={form.phone}
                 onChange={set('phone')}
                 type="tel"
@@ -348,13 +336,13 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               <Label htmlFor="niche">Segmento do negócio</Label>
               <select
                 id="niche"
-                className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="flex h-11 w-full rounded-md border border-slate-300 bg-white text-slate-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={form.niche}
                 onChange={set('niche')}
               >
                 <option value="">Selecione seu segmento…</option>
-                {NICHES.map(n => (
-                  <option key={n} value={n}>{n}</option>
+                {NICHE_OPTIONS.map(n => (
+                  <option key={n.value} value={n.value}>{n.label}</option>
                 ))}
               </select>
             </div>
@@ -369,7 +357,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               <Input
                 id="address_city"
                 placeholder="São Paulo"
-                className="h-11"
+                className="h-11 bg-white text-slate-900 border-slate-300 placeholder:text-slate-400"
                 value={form.address_city}
                 onChange={set('address_city')}
                 autoFocus
@@ -381,7 +369,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
                 <Label htmlFor="address_state">Estado</Label>
                 <select
                   id="address_state"
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex h-11 w-full rounded-md border border-slate-300 bg-white text-slate-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   value={form.address_state}
                   onChange={set('address_state')}
                 >
@@ -393,11 +381,11 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="address_zip">CEP <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Label htmlFor="address_zip">CEP <span className="text-slate-500 font-normal">(opcional)</span></Label>
                 <Input
                   id="address_zip"
                   placeholder="00000-000"
-                  className="h-11"
+                  className="h-11 bg-white text-slate-900 border-slate-300 placeholder:text-slate-400"
                   value={form.address_zip}
                   onChange={set('address_zip')}
                   maxLength={9}
@@ -405,7 +393,7 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-500">
               Essas informações ajudam a personalizar o sistema para sua região.
             </p>
           </div>
@@ -419,34 +407,34 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
               <Input
                 id="org_name"
                 placeholder="Minha Agência, João Vendas…"
-                className="h-11"
+                className="h-11 bg-white text-slate-900 border-slate-300 placeholder:text-slate-400"
                 value={form.org_name}
                 onChange={set('org_name')}
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-500">
                 Este será o nome visível no seu CRM. Você pode alterar depois nas configurações.
               </p>
             </div>
 
             {/* Summary */}
-            <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2 text-sm">
-              <p className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-2">Resumo</p>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2 text-sm">
+              <p className="font-semibold text-xs uppercase tracking-wider text-slate-500 mb-2">Resumo</p>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Nome</span>
+                <span className="text-slate-500">Nome</span>
                 <span className="font-medium">{form.full_name || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">WhatsApp</span>
+                <span className="text-slate-500">WhatsApp</span>
                 <span className="font-medium">{form.phone || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Segmento</span>
+                <span className="text-slate-500">Segmento</span>
                 <span className="font-medium">{form.niche || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Cidade</span>
+                <span className="text-slate-500">Cidade</span>
                 <span className="font-medium">{form.address_city ? `${form.address_city} / ${form.address_state}` : '—'}</span>
               </div>
             </div>

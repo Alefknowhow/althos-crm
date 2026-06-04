@@ -659,7 +659,7 @@ export default function PricingPage() {
             />
             <FaqItem
               q="Tem suporte para agências e consultorias?"
-              a="Sim. Temos condições especiais para clientes da Althos Performance, com onboarding dedicado, acesso completo e multi-tenant. Entre em contato via suporte@althos.io."
+              a="Sim. Temos condições especiais para clientes da Althos Performance, com onboarding dedicado, acesso completo e multi-tenant. Entre em contato via suporte@althoscrm.com.br."
             />
           </div>
         </div>
@@ -722,7 +722,7 @@ Plano Free sem cartão · Cancele quando quiser · Suporte 24h
             <Link href="/" className="hover:text-white transition-colors">Início</Link>
             <Link href="/#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</Link>
             <Link href="/login" className="hover:text-white transition-colors">Login</Link>
-            <a href="mailto:suporte@althos.io" className="hover:text-white transition-colors">Suporte</a>
+            <a href="mailto:suporte@althoscrm.com.br" className="hover:text-white transition-colors">Suporte</a>
           </div>
           <p className="text-xs" style={{ color: '#334155' }}>© {new Date().getFullYear()} Althos Performance · Feito no Brasil 🇧🇷</p>
         </div>

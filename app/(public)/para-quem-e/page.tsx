@@ -113,7 +113,7 @@ export default function ParaQuemEPage() {
             Testar grátis
           </Link>
           <a
-            href="mailto:suporte@althos.io"
+            href="mailto:suporte@althoscrm.com.br"
             className="rounded-xl border border-white/15 px-7 py-3 text-[15px] font-semibold text-white hover:bg-white/5 transition-colors"
           >
             Falar com a gente

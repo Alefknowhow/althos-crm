@@ -50,7 +50,7 @@ export default function PlanosPage() {
               Ver FAQ
             </Link>
             <a
-              href="mailto:suporte@althos.io"
+              href="mailto:suporte@althoscrm.com.br"
               className="rounded-xl bg-blue-600 px-6 py-3 text-[14px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors"
             >
               Falar com a gente

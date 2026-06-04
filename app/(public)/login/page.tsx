@@ -29,6 +29,12 @@ export default function LoginPage() {
   const [loading, setLoading]     = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [showPass, setShowPass]   = useState(false)
+  // True quando o usuário chega após confirmar o e-mail (/login?confirmed=1).
+  const [confirmed] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('confirmed') === '1',
+  )
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -77,6 +83,13 @@ export default function LoginPage() {
             Acesse seu acelerador de vendas
           </p>
         </div>
+
+        {/* E-mail confirmado com sucesso */}
+        {confirmed && (
+          <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg text-center">
+            E-mail confirmado! Faça login para acessar sua conta.
+          </p>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

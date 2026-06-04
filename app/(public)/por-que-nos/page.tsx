@@ -81,7 +81,7 @@ export default function PorQueNosPage() {
           href="/signup"
           className="inline-flex rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors"
         >
-          Testar grátis por 7 dias
+          Começar grátis
         </Link>
       </section>
     </SiteShell>

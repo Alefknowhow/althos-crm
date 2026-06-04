@@ -85,7 +85,7 @@ export default function LandingPage() {
               href="/signup"
               className="mt-5 inline-flex rounded-xl bg-blue-600 px-6 py-2.5 text-[14px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors sm:mt-6 sm:px-7 sm:py-3 sm:text-[15px]"
             >
-              Testar grátis por 7 dias
+              Começar grátis
             </Link>
           </div>
         </div>

@@ -27,7 +27,7 @@ import { requireAuth } from '@/lib/supabase/types'
 function getWebPush() {
   const publicKey  = process.env.VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
-  const subject    = process.env.VAPID_SUBJECT || 'mailto:suporte@althos.io'
+  const subject    = process.env.VAPID_SUBJECT || 'mailto:suporte@althoscrm.com.br'
 
   if (!publicKey || !privateKey) {
     throw new Error(

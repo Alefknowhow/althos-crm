@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 }
 
 const UPDATED = '31 de maio de 2026'
-const CONTACT = 'suporte@althos.io'
+const CONTACT = 'suporte@althoscrm.com.br'
 
 export default function PrivacidadePage() {
   return (
