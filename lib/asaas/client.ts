@@ -19,21 +19,31 @@ async function asaasFetch(endpoint: string, options: RequestInit = {}) {
   return data
 }
 
-type AsaasCycle = 'MONTHLY' | 'YEARLY'
+type AsaasCycle = 'MONTHLY' | 'SEMIANNUALLY' | 'YEARLY'
 
 /**
- * Value charged per Asaas billing cycle.
- *  - MONTHLY: the plan's monthly price.
- *  - YEARLY:  the annual à-vista price (already ~18% off), charged once/year.
- * Single source of truth: lib/billing/plans.ts.
+ * Value charged per Asaas billing cycle (em reais).
+ *  - MONTHLY:      preço mensal do plano.
+ *  - SEMIANNUALLY: total semestral à vista (−10%), cobrado a cada 6 meses.
+ *  - YEARLY:       total anual à vista (−18%), cobrado 1×/ano.
+ * Fonte única: lib/billing/plans.ts (junho/2026: 137 / 397 / 697).
+ * 'scale' mantido como alias legado de 'business' (mesmo preço).
  */
 function planValue(planKey: string, cycle: AsaasCycle = 'MONTHLY'): number {
   const key = planKey.replace(/^althos_/, '') // 'althos_pro' -> 'pro'
-  // 'scale' kept as a legacy alias of 'business' (same price).
-  const monthly: Record<string, number> = { starter: 197, pro: 297, business: 397, scale: 397 }
-  const annual:  Record<string, number> = { starter: 1940, pro: 2900, business: 3900, scale: 3900 }
-  if (cycle === 'YEARLY') return annual[key] ?? annual.starter
+  const monthly:   Record<string, number> = { starter: 137,    pro: 397,    business: 697,    scale: 697 }
+  const semestral: Record<string, number> = { starter: 739.80, pro: 2143.80, business: 3763.80, scale: 3763.80 }
+  const annual:    Record<string, number> = { starter: 1348.08, pro: 3906.48, business: 6858.48, scale: 6858.48 }
+  if (cycle === 'YEARLY')       return annual[key]    ?? annual.starter
+  if (cycle === 'SEMIANNUALLY') return semestral[key] ?? semestral.starter
   return monthly[key] ?? monthly.starter
+}
+
+/** Rótulo pt-BR do ciclo, para a descrição da cobrança no Asaas. */
+function cycleLabel(cycle: AsaasCycle): string {
+  if (cycle === 'YEARLY') return 'anual'
+  if (cycle === 'SEMIANNUALLY') return 'semestral'
+  return 'mensal'
 }
 
 // First charge due 1 business day from now (gives time to process card)
@@ -82,7 +92,7 @@ export const asaas = {
         value:       planValue(planKey, cycle),
         nextDueDate: nextDueDate(),
         cycle,
-        description: `Althos CRM — Plano ${planKey} (${cycle === 'YEARLY' ? 'anual' : 'mensal'})`,
+        description: `Althos CRM — Plano ${planKey} (${cycleLabel(cycle)})`,
         // externalReference lets us map the payment back in the webhook
         externalReference: planKey,
       }),

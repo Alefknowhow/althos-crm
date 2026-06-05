@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { AI_CREDIT_COST, getPlanMeta, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
+import { AI_CREDIT_COST, getPlanMeta, modelCreditMultiplier, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
 
 export interface AccountSubscription {
   accountId: string
@@ -111,19 +111,23 @@ export type ConsumeResult =
  * Calls the race-safe SQL function `consume_ai_credits` (SELECT ... FOR UPDATE).
  *
  * `action` resolves its cost from AI_CREDIT_COST unless an explicit `credits`
- * override is given. Fractional costs are rounded UP (DB credits are integer).
+ * override is given. The base cost is multiplied by the AI model's multiplier
+ * (Haiku 1× · Sonnet/GPT-4o 3× · Opus 5×), since Althos pays the token bill —
+ * pricier models burn credits faster. Fractional costs round UP (DB integers).
  */
 export async function consumeAiCredits(opts: {
   accountId: string
   action: AiAction | string
   credits?: number
+  model?: string | null
   leadId?: string | null
   metadata?: Record<string, unknown>
 }): Promise<ConsumeResult> {
-  const { accountId, action, leadId = null, metadata = {} } = opts
+  const { accountId, action, model = null, leadId = null, metadata = {} } = opts
   const baseCost =
     opts.credits ?? AI_CREDIT_COST[action as AiAction] ?? 1
-  const cost = Math.max(1, Math.ceil(baseCost))
+  const multiplier = modelCreditMultiplier(model)
+  const cost = Math.max(1, Math.ceil(baseCost * multiplier))
 
   const supabase = createClient()
   const { data, error } = await supabase.rpc('consume_ai_credits', {
@@ -131,7 +135,7 @@ export async function consumeAiCredits(opts: {
     p_action: action,
     p_credits: cost,
     p_lead_id: leadId,
-    p_metadata: metadata,
+    p_metadata: { ...metadata, model: model ?? undefined, multiplier },
   })
 
   if (error) {

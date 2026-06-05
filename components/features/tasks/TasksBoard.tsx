@@ -494,16 +494,25 @@ function TaskRow({
           )}
         </div>
       </div>
-      <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4 shrink-0', pm.cls)}>{pm.label}</Badge>
-      {task.leads && (
-        <Link
-          href={`/app/${orgSlug}/leads/${task.leads.id}`}
-          onClick={e => e.stopPropagation()}
-          className="text-xs text-primary hover:underline shrink-0 hidden sm:inline truncate max-w-[140px]"
-        >
-          {task.leads.name}
-        </Link>
-      )}
+
+      {/* Lead name — fixed-width column, right-aligned, sits to the LEFT of the
+          priority badge so both line up consistently across every row. */}
+      <div className="hidden sm:flex w-[160px] shrink-0 justify-end">
+        {task.leads && (
+          <Link
+            href={`/app/${orgSlug}/leads/${task.leads.id}`}
+            onClick={e => e.stopPropagation()}
+            className="text-xs text-primary hover:underline truncate"
+          >
+            {task.leads.name}
+          </Link>
+        )}
+      </div>
+
+      {/* Priority badge — fixed-width slot keeps all badges aligned in a column. */}
+      <div className="w-[64px] shrink-0 flex justify-start">
+        <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4', pm.cls)}>{pm.label}</Badge>
+      </div>
     </div>
   )
 }

@@ -27,14 +27,15 @@ export type PlanKey =
   | 'internal'
 
 export interface PlanConfig {
-  key:              PlanKey
-  label:            string
-  tagline:          string       // short positioning tag
-  description:      string
-  priceCents:       number | null  // monthly price; null = manual/external
-  priceCentsAnnual: number | null  // total paid once per year (already ~18% off); null = n/a
-  maxLeads:         number | null  // null = unlimited
-  maxUsers:         number | null  // null = unlimited
+  key:                PlanKey
+  label:              string
+  tagline:            string       // short positioning tag
+  description:        string
+  priceCents:         number | null  // monthly price; null = manual/external
+  priceCentsSemestral:number | null  // total paid once per 6 months (~10% off); null = n/a
+  priceCentsAnnual:   number | null  // total paid once per year (~18% off); null = n/a
+  maxLeads:           number | null  // null = unlimited
+  maxUsers:           number | null  // null = unlimited
   hasAI:            boolean
   hasAdvancedAI:    boolean       // forecasts, advanced analysis
   hasAutomations:   boolean
@@ -55,10 +56,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Free',
     tagline:           'Para dar o primeiro passo',
     description:       'Gratuito para sempre. Organize seus leads e o pipeline, sem cartão de crédito.',
-    priceCents:        0,
-    priceCentsAnnual:  0,
-    maxLeads:          50,
-    maxUsers:          1,
+    priceCents:         0,
+    priceCentsSemestral:0,
+    priceCentsAnnual:   0,
+    maxLeads:           100,
+    maxUsers:           1,
     hasAI:             false,
     hasAdvancedAI:     false,
     hasAutomations:    false,
@@ -77,8 +79,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Trial Gratuito',
     tagline:           'Teste por 7 dias',
     description:       '7 dias para explorar tudo, sem compromisso.',
-    priceCents:        0,
-    priceCentsAnnual:  null,
+    priceCents:         0,
+    priceCentsSemestral:null,
+    priceCentsAnnual:   null,
     maxLeads:          null,
     maxUsers:          1,
     hasAI:             false,
@@ -99,10 +102,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Trial Gratuito',
     tagline:           'Legado',
     description:       'Plano gratuito legado.',
-    priceCents:        0,
-    priceCentsAnnual:  null,
-    maxLeads:          null,
-    maxUsers:          1,
+    priceCents:         0,
+    priceCentsSemestral:null,
+    priceCentsAnnual:   null,
+    maxLeads:           null,
+    maxUsers:           1,
     hasAI:             false,
     hasAdvancedAI:     false,
     hasAutomations:    false,
@@ -121,10 +125,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Starter',
     tagline:           'Ideal para começar',
     description:       'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
-    priceCents:        19700,
-    priceCentsAnnual:  194000,  // R$ 1.940/ano (~18% off vs 12×197)
-    maxLeads:          null,    // unlimited
-    maxUsers:          1,
+    priceCents:         13700,
+    priceCentsSemestral:73980,   // R$ 739,80/semestre (−10% vs 6×137)
+    priceCentsAnnual:   134808,  // R$ 1.348,08/ano (−18% vs 12×137)
+    maxLeads:           null,    // unlimited
+    maxUsers:           1,
     hasAI:             false,
     hasAdvancedAI:     false,
     hasAutomations:    false,
@@ -143,10 +148,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Pro',
     tagline:           'Para crescer',
     description:       'Para empresas que querem automatizar processos e aumentar as vendas.',
-    priceCents:        29700,
-    priceCentsAnnual:  290000,  // R$ 2.900/ano (~18% off vs 12×297)
-    maxLeads:          null,
-    maxUsers:          5,
+    priceCents:         39700,
+    priceCentsSemestral:214380,  // R$ 2.143,80/semestre (−10% vs 6×397)
+    priceCentsAnnual:   390648,  // R$ 3.906,48/ano (−18% vs 12×397)
+    maxLeads:           null,
+    maxUsers:           6,        // titular + 5 convidados
     hasAI:             true,
     hasAdvancedAI:     false,
     hasAutomations:    true,
@@ -165,10 +171,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Business',
     tagline:           'Para escalar sem limites',
     description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
-    priceCents:        39700,
-    priceCentsAnnual:  390000,  // R$ 3.900/ano (~18% off vs 12×397)
-    maxLeads:          null,
-    maxUsers:          null,    // unlimited
+    priceCents:         69700,
+    priceCentsSemestral:376380,  // R$ 3.763,80/semestre (−10% vs 6×697)
+    priceCentsAnnual:   685848,  // R$ 6.858,48/ano (−18% vs 12×697)
+    maxLeads:           null,
+    maxUsers:           null,    // unlimited
     hasAI:             true,
     hasAdvancedAI:     true,
     hasAutomations:    true,
@@ -189,10 +196,11 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Business',
     tagline:           'Para escalar sem limites',
     description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
-    priceCents:        39700,
-    priceCentsAnnual:  390000,
-    maxLeads:          null,
-    maxUsers:          null,
+    priceCents:         69700,
+    priceCentsSemestral:376380,
+    priceCentsAnnual:   685848,
+    maxLeads:           null,
+    maxUsers:           null,
     hasAI:             true,
     hasAdvancedAI:     true,
     hasAutomations:    true,
@@ -211,8 +219,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Agency',
     tagline:           'Exclusivo',
     description:       'Plano exclusivo para clientes da agência Althos.',
-    priceCents:        null,
-    priceCentsAnnual:  null,
+    priceCents:         null,
+    priceCentsSemestral:null,
+    priceCentsAnnual:   null,
     maxLeads:          null,
     maxUsers:          null,
     hasAI:             true,
@@ -233,8 +242,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Interno',
     tagline:           'Interno',
     description:       'Conta interna Althos.',
-    priceCents:        null,
-    priceCentsAnnual:  null,
+    priceCents:         null,
+    priceCentsSemestral:null,
+    priceCentsAnnual:   null,
     maxLeads:          null,
     maxUsers:          null,
     hasAI:             true,
@@ -296,34 +306,41 @@ export function formatPrice(cents: number): string {
 }
 
 /** Billing cycle selectable in the public pricing page and checkout. */
-export type BillingCycle = 'monthly' | 'annual'
+export type BillingCycle = 'monthly' | 'semestral' | 'annual'
 
-/**
- * Discount applied to the annual (à vista) price vs. paying 12 monthly charges.
- * Used for the "-18%" badge and the strikethrough comparison on the pricing UI.
- */
+/** Discount (%) of each cycle vs. paying N monthly charges. Used for badges. */
 export const ANNUAL_DISCOUNT_PCT = 18
+export const SEMESTRAL_DISCOUNT_PCT = 10
+
+/** Months covered by each cycle (for the "equivale a R$ X/mês" line). */
+const CYCLE_MONTHS: Record<BillingCycle, number> = { monthly: 1, semestral: 6, annual: 12 }
 
 /**
  * Pricing breakdown for a plan + cycle, ready for UI.
- *  - monthly: charged every month.
- *  - annual:  charged once/year (priceCentsAnnual); we also expose the
- *    per-month equivalent for the "equivale a R$ X/mês" line.
+ *  - monthly:   charged every month.
+ *  - semestral: charged once every 6 months (priceCentsSemestral, ~10% off).
+ *  - annual:    charged once/year (priceCentsAnnual, ~18% off).
+ * For semestral/annual we also expose the per-month equivalent.
  */
 export function getPlanPricing(plan: PlanConfig, cycle: BillingCycle) {
-  if (cycle === 'annual' && plan.priceCentsAnnual != null) {
-    const totalAnnual   = plan.priceCentsAnnual
-    const perMonthEquiv = Math.round(totalAnnual / 12)
-    const fullYear      = (plan.priceCents ?? 0) * 12
-    const savedCents    = Math.max(0, fullYear - totalAnnual)
+  const months = CYCLE_MONTHS[cycle]
+  const cycleTotal =
+    cycle === 'annual' ? plan.priceCentsAnnual
+    : cycle === 'semestral' ? plan.priceCentsSemestral
+    : plan.priceCents
+
+  if (cycle !== 'monthly' && cycleTotal != null) {
+    const perMonthEquiv = Math.round(cycleTotal / months)
+    const fullPrice     = (plan.priceCents ?? 0) * months
+    const savedCents    = Math.max(0, fullPrice - cycleTotal)
     return {
-      cycle:            'annual' as const,
-      totalCents:       totalAnnual,
+      cycle,
+      totalCents:       cycleTotal,
       perMonthCents:    perMonthEquiv,
-      fullYearCents:    fullYear,
+      fullYearCents:    fullPrice,
       savedCents,
       perMonthLabel:    formatPrice(perMonthEquiv),
-      totalLabel:       formatPrice(totalAnnual),
+      totalLabel:       formatPrice(cycleTotal),
       savedLabel:       formatPrice(savedCents),
     }
   }
