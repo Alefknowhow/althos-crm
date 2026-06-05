@@ -21,6 +21,8 @@
 import webpush from 'web-push'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/supabase/types'
+import { isNotificationEnabled, filterUsersByCategory } from '@/actions/notifications'
+import type { NotificationCategory } from '@/lib/notifications/categories'
 
 // Configure VAPID once — Node modules are cached so this runs once per
 // cold-start, not once per request.
@@ -53,6 +55,12 @@ export type PushPayload = {
   /** Icon shown in the notification (defaults to /icon.svg). */
   icon?: string
   tag?: string
+  /**
+   * Notification category. When set, the dispatcher honours the recipient's
+   * per-user preferences and skips delivery to anyone who opted the category
+   * out. When unset, the notification is always delivered (legacy behaviour).
+   */
+  category?: NotificationCategory
 }
 
 // ---------------------------------------------------------------------------
@@ -137,12 +145,27 @@ export async function sendPushToUser(
   const wp = getWebPush()
   const admin = createAdminClient()
 
-  const { data: subs } = await admin
+  const { data: allSubs } = await admin
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
+    .select('id, endpoint, p256dh, auth, organization_id')
     .eq('user_id', userId)
 
-  if (!subs || subs.length === 0) return { sent: 0, failed: 0 }
+  if (!allSubs || allSubs.length === 0) return { sent: 0, failed: 0 }
+
+  // Honour per-user category preferences (per org). A user may have subs in
+  // several orgs; keep only those where the category is enabled.
+  let subs = allSubs
+  if (payload.category) {
+    const orgIds = Array.from(new Set(allSubs.map(s => s.organization_id as string)))
+    const enabledOrgs = new Set<string>()
+    await Promise.all(
+      orgIds.map(async orgId => {
+        if (await isNotificationEnabled(userId, orgId, payload.category!)) enabledOrgs.add(orgId)
+      }),
+    )
+    subs = allSubs.filter(s => enabledOrgs.has(s.organization_id as string))
+    if (subs.length === 0) return { sent: 0, failed: 0 }
+  }
 
   const notification = JSON.stringify({
     title: payload.title,
@@ -196,12 +219,27 @@ export async function sendPushToOrg(
   const wp = getWebPush()
   const admin = createAdminClient()
 
-  const { data: subs } = await admin
+  const { data: allSubs } = await admin
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
+    .select('id, endpoint, p256dh, auth, user_id')
     .eq('organization_id', orgId)
 
-  if (!subs || subs.length === 0) return { sent: 0, failed: 0 }
+  if (!allSubs || allSubs.length === 0) return { sent: 0, failed: 0 }
+
+  // Honour per-user category preferences: keep only subscriptions whose owner
+  // is opted-in to this category.
+  let subs = allSubs
+  if (payload.category) {
+    const allowed = new Set(
+      await filterUsersByCategory(
+        allSubs.map(s => s.user_id as string),
+        orgId,
+        payload.category,
+      ),
+    )
+    subs = allSubs.filter(s => allowed.has(s.user_id as string))
+    if (subs.length === 0) return { sent: 0, failed: 0 }
+  }
 
   const notification = JSON.stringify({
     title: payload.title,

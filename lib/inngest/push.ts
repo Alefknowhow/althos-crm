@@ -80,6 +80,7 @@ export const pushOverdueTasksFn = inngest.createFunction(
           url:  org?.slug ? `/app/${org.slug}/tarefas` : '/',
           tag:  'overdue-tasks',
           icon: '/icon.svg',
+          category: 'task_due',
         })
         totalSent += sent
       }
@@ -143,6 +144,7 @@ export const pushWhatsappMessageFn = inngest.createFunction(
         url:   org?.slug ? `/app/${org.slug}/conversas` : '/',
         tag:   `whatsapp-${orgId}`,
         icon:  '/icon.svg',
+        category: 'whatsapp_message',
       })
     })
 

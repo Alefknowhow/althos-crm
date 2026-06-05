@@ -30,9 +30,6 @@ import {
   Share2,
   Upload,
   Building2,
-  CreditCard,
-  UsersRound,
-  LifeBuoy,
   FileSignature,
   PlaneTakeoff,
   Store,
@@ -366,13 +363,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </>
         )}
 
-        <SidebarNavLink href={`${base}/ajuda`}>
-          <span className="flex items-center gap-2.5">
-            <LifeBuoy className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Central de Ajuda</span>
-          </span>
-        </SidebarNavLink>
-
         {/* ── Configurações ─────────────────────────── */}
         {can('settings') && (
           <>
@@ -382,20 +372,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span className="flex items-center gap-2.5">
                 <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                 <span>Geral</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/configuracoes/equipe`}>
-              <span className="flex items-center gap-2.5">
-                <UsersRound className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Equipe</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/configuracoes/assinatura`}>
-              <span className="flex items-center gap-2.5">
-                <CreditCard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Assinatura</span>
               </span>
             </SidebarNavLink>
           </>

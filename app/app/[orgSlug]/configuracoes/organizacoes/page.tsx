@@ -1,20 +1,16 @@
-import { getTeamData } from '@/actions/team'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import TeamClient from './TeamClient'
+import { getAccountOrganizations } from '@/actions/organization'
+import { getTeamData } from '@/actions/team'
 import SettingsTabsNav from '../SettingsTabsNav'
+import OrganizationsClient from './OrganizationsClient'
 
-export default async function EquipePage({
-  params,
-}: {
-  params: { orgSlug: string }
-}) {
+export default async function OrganizacoesPage({ params }: { params: { orgSlug: string } }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Only owners and admins can manage the team
   const org = await getCurrentOrganization(params.orgSlug)
   const { data: membership } = await supabase
     .from('memberships')
@@ -27,7 +23,10 @@ export default async function EquipePage({
     redirect(`/app/${params.orgSlug}/pipeline`)
   }
 
-  const teamData = await getTeamData(params.orgSlug)
+  const [organizations, team] = await Promise.all([
+    getAccountOrganizations(params.orgSlug),
+    getTeamData(params.orgSlug),
+  ])
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -38,11 +37,11 @@ export default async function EquipePage({
 
       <SettingsTabsNav orgSlug={params.orgSlug} />
 
-      <TeamClient
+      <OrganizationsClient
         orgSlug={params.orgSlug}
-        currentUserId={user.id}
-        currentUserRole={membership.role as 'owner' | 'admin'}
-        {...teamData}
+        organizations={organizations}
+        members={team.members}
+        canManage={team.currentUserIsManager}
       />
     </div>
   )

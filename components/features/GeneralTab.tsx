@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { NICHE_OPTIONS, isTravelNiche } from '@/lib/niche'
@@ -12,11 +11,15 @@ import { Check, Loader2, PlaneTakeoff } from 'lucide-react'
 
 interface Props {
   orgSlug:      string
-  orgName:      string
   initialNiche: string
 }
 
-export default function GeneralTab({ orgSlug, orgName, initialNiche }: Props) {
+/**
+ * Geral tab — account-level settings. The niche is a property of the Conta and
+ * applies to every organization. Per-organization details (name, company data,
+ * member access) live in the Organizações tab.
+ */
+export default function GeneralTab({ orgSlug, initialNiche }: Props) {
   const [niche, setNiche]   = useState(initialNiche)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState<string | null>(null)
@@ -42,52 +45,36 @@ export default function GeneralTab({ orgSlug, orgName, initialNiche }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Informações da Organização</CardTitle>
-        <CardDescription>Atualize os dados básicos e o nicho da sua empresa.</CardDescription>
+        <CardTitle>Nicho da Conta</CardTitle>
+        <CardDescription>
+          O nicho vale para <span className="font-medium">toda a Conta</span> — todas as organizações herdam o mesmo.
+          Escolher <span className="font-medium">Agência de Viagens</span> libera as abas de Propostas e Vendas Viagem.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Nome da Organização</Label>
-            <Input disabled value={orgName} />
-          </div>
-          <div className="space-y-2">
-            <Label>Slug (URL)</Label>
-            <Input disabled value={orgSlug} />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <Label>Nicho</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              O nicho vale para <span className="font-medium">toda a Conta</span> — todas as organizações herdam o mesmo.
-              Escolher <span className="font-medium">Agência de Viagens</span> libera as abas de Propostas e Vendas Viagem.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {NICHE_OPTIONS.map(opt => {
-              const active = niche === opt.value
-              const travel = isTravelNiche(opt.value)
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setNiche(opt.value)}
-                  className={cn(
-                    'relative h-16 rounded-xl border-2 text-sm font-medium transition-all duration-150 px-3 flex items-center justify-center gap-2 text-center',
-                    active
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border hover:border-primary/40 hover:bg-muted/40 text-foreground',
-                  )}
-                >
-                  {travel && <PlaneTakeoff className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
-                  <span>{opt.label}</span>
-                  {active && <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5" />}
-                </button>
-              )
-            })}
-          </div>
+      <CardContent className="space-y-3">
+        <Label className="sr-only">Nicho</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {NICHE_OPTIONS.map(opt => {
+            const active = niche === opt.value
+            const travel = isTravelNiche(opt.value)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setNiche(opt.value)}
+                className={cn(
+                  'relative h-16 rounded-xl border-2 text-sm font-medium transition-all duration-150 px-3 flex items-center justify-center gap-2 text-center',
+                  active
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border hover:border-primary/40 hover:bg-muted/40 text-foreground',
+                )}
+              >
+                {travel && <PlaneTakeoff className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
+                <span>{opt.label}</span>
+                {active && <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5" />}
+              </button>
+            )
+          })}
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

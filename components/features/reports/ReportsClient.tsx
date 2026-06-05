@@ -2,19 +2,20 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays } from 'lucide-react'
+import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getReport, type ReportType, type ReportData } from '@/actions/reports'
 import { toCsv, downloadCsv } from '@/lib/reports/csv'
 
-type Props = { orgSlug: string }
+type Props = { orgSlug: string; isTravel?: boolean }
 
-const REPORTS: { type: ReportType; label: string; icon: React.ReactNode }[] = [
+const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean }[] = [
   { type: 'leads', label: 'Leads', icon: <FileBarChart className="h-4 w-4" /> },
   { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" /> },
   { type: 'appointments', label: 'Agendamentos', icon: <CalendarDays className="h-4 w-4" /> },
+  { type: 'commission', label: 'Comissões', icon: <Coins className="h-4 w-4" />, travelOnly: true },
 ]
 
 function ymd(d: Date): string {
@@ -38,7 +39,8 @@ const ERROR_MSG: Record<string, string> = {
   query_error: 'Erro ao buscar os dados. Tente novamente.',
 }
 
-export default function ReportsClient({ orgSlug }: Props) {
+export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
+  const reports = REPORTS.filter(r => !r.travelOnly || isTravel)
   const init = presetRange(30)
   const [type, setType] = useState<ReportType>('leads')
   const [from, setFrom] = useState(init.from)
@@ -96,7 +98,7 @@ export default function ReportsClient({ orgSlug }: Props) {
     <div className="space-y-6">
       {/* Report type selector */}
       <div className="flex flex-wrap gap-2">
-        {REPORTS.map(r => (
+        {reports.map(r => (
           <button
             key={r.type}
             type="button"

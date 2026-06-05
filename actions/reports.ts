@@ -15,7 +15,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 
-export type ReportType = 'leads' | 'sales' | 'appointments'
+export type ReportType = 'leads' | 'sales' | 'appointments' | 'commission'
 
 export interface ReportColumn {
   key: string
@@ -46,6 +46,7 @@ const TITLES: Record<ReportType, string> = {
   leads: 'Relatório de Leads',
   sales: 'Relatório de Vendas',
   appointments: 'Relatório de Agendamentos',
+  commission: 'Relatório de Comissões',
 }
 
 function brl(cents: number | null | undefined): string {
@@ -198,6 +199,68 @@ export async function getReport(
         ],
         rows,
         totals: { lead: `${rows.length} venda(s)`, amount: brl(totalValue) },
+      },
+    }
+  }
+
+  if (type === 'commission') {
+    // Commission is sourced from travel sales (commission_cents), grouped by the
+    // seller who registered the sale (created_by). One row per seller with the
+    // number of sales, gross sold value and total commission earned.
+    const { data, error } = await supabase
+      .from('travel_sales')
+      .select('created_by, total_cents, commission_cents, created_at')
+      .eq('organization_id', org.id)
+      .gte('created_at', startISO)
+      .lte('created_at', endISO)
+    if (error) return { ok: false, error: 'query_error' }
+
+    const sellerNames = await resolveSellerNames(
+      (data || []).map(s => s.created_by as string | null),
+    )
+
+    // Aggregate per seller.
+    type Agg = { count: number; gross: number; commission: number }
+    const bySeller = new Map<string, Agg>()
+    for (const s of data || []) {
+      const key = (s.created_by as string | null) ?? '__none__'
+      const agg = bySeller.get(key) || { count: 0, gross: 0, commission: 0 }
+      agg.count += 1
+      agg.gross += (s.total_cents as number) || 0
+      agg.commission += (s.commission_cents as number) || 0
+      bySeller.set(key, agg)
+    }
+
+    const rows = Array.from(bySeller.entries())
+      .map(([key, agg]) => ({
+        seller: key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor'),
+        count: agg.count,
+        gross: brl(agg.gross),
+        commission: brl(agg.commission),
+        _commission: agg.commission, // sort key, stripped before return
+      }))
+      .sort((a, b) => b._commission - a._commission)
+      .map(({ _commission, ...row }) => row)
+
+    const totalGross = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
+    const totalCommission = (data || []).reduce((a, s) => a + ((s.commission_cents as number) || 0), 0)
+
+    return {
+      ok: true,
+      data: {
+        ...base,
+        columns: [
+          { key: 'seller', label: 'Vendedor' },
+          { key: 'count', label: 'Vendas', align: 'right' },
+          { key: 'gross', label: 'Valor vendido', align: 'right' },
+          { key: 'commission', label: 'Comissão', align: 'right' },
+        ],
+        rows,
+        totals: {
+          seller: `${rows.length} vendedor(es)`,
+          gross: brl(totalGross),
+          commission: brl(totalCommission),
+        },
       },
     }
   }

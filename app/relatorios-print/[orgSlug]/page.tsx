@@ -5,7 +5,7 @@ import AutoPrint from '@/components/features/reports/AutoPrint'
 
 export const dynamic = 'force-dynamic'
 
-const VALID: ReportType[] = ['leads', 'sales', 'appointments']
+const VALID: ReportType[] = ['leads', 'sales', 'appointments', 'commission']
 
 /**
  * Printable report view. Lives OUTSIDE the /app/[orgSlug] subtree so it doesn't

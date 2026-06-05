@@ -141,6 +141,28 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
     } catch (e: any) {
       console.warn('[submitPublicForm] inngest lead.qualify_requested failed:', e?.message)
     }
+
+    // Push: notify opted-in members of the new inbound lead (best-effort).
+    // Honours each member's 'new_lead' notification preference.
+    try {
+      const { sendPushToOrg } = await import('@/actions/push')
+      const { data: orgRow } = await supabaseAdmin
+        .from('organizations')
+        .select('slug')
+        .eq('id', form.organization_id)
+        .maybeSingle()
+      await sendPushToOrg(form.organization_id, {
+        title: 'Novo lead recebido',
+        body: nameValue
+          ? `${nameValue} preencheu o formulário ${form.name}.`
+          : `Nova captura no formulário ${form.name}.`,
+        url: orgRow?.slug ? `/app/${orgRow.slug}/pipeline` : '/',
+        tag: `new-lead-${form.organization_id}`,
+        category: 'new_lead',
+      })
+    } catch (e: any) {
+      console.warn('[submitPublicForm] push new_lead failed:', e?.message)
+    }
   }
 
   // ── Meta CAPI — fire Lead event server-side ─────────────────────────────

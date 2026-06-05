@@ -72,6 +72,22 @@ export async function createSale(orgSlug: string, input: unknown) {
     return { ok: false, error: error.message || 'Erro ao registrar venda' }
   }
 
+  // Push: notify opted-in members of the new sale (best-effort, honours the
+  // 'new_sale' notification preference per member).
+  try {
+    const { sendPushToOrg } = await import('@/actions/push')
+    const value = ((v.amount_cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    await sendPushToOrg(org.id, {
+      title: 'Nova venda registrada',
+      body: `Venda de ${value} registrada.`,
+      url: `/app/${orgSlug}/vendas`,
+      tag: `new-sale-${org.id}`,
+      category: 'new_sale',
+    })
+  } catch (e: any) {
+    console.warn('[createSale] push new_sale failed:', e?.message)
+  }
+
   revalidatePath(`/app/${orgSlug}/vendas`)
   return { ok: true, data }
 }
