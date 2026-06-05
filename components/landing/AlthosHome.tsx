@@ -26,7 +26,13 @@ const HERO_TABS = [
   { key: 'insights', label: 'Insights IA', alt: 'Insights IA do Althos CRM' },
 ] as const
 
+type ZoomImg = { src: string; alt: string } | null
+type OnZoom = (src: string, alt: string) => void
+
 export default function AlthosHome() {
+  const [zoom, setZoom] = useState<ZoomImg>(null)
+  const onZoom: OnZoom = (src, alt) => setZoom({ src, alt })
+
   return (
     <div className="althos-home">
       <style dangerouslySetInnerHTML={{ __html: HOME_CSS }} />
@@ -45,23 +51,43 @@ export default function AlthosHome() {
       <div className="grain" aria-hidden="true" />
 
       <div className="shell">
-        <Hero />
+        <Hero onZoom={onZoom} />
         <Stats />
         <Proof />
-        <Features />
-        <AiBlock />
+        <Features onZoom={onZoom} />
+        <AiBlock onZoom={onZoom} />
         <Segments />
         <Pricing />
         <FinalCta />
       </div>
 
+      <Lightbox img={zoom} onClose={() => setZoom(null)} />
       <Behaviors />
     </div>
   )
 }
 
+/* ----------------------------- Lightbox ----------------------------- */
+function Lightbox({ img, onClose }: { img: ZoomImg; onClose: () => void }) {
+  useEffect(() => {
+    if (!img) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [img, onClose])
+
+  if (!img) return null
+  return (
+    <div className="ah-lightbox" role="dialog" aria-modal="true" aria-label={img.alt} onClick={onClose}>
+      <button className="ah-lb-close" aria-label="Fechar" onClick={onClose}>×</button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={img.src} alt={img.alt} onClick={(e) => e.stopPropagation()} />
+    </div>
+  )
+}
+
 /* ----------------------------- Hero ----------------------------- */
-function Hero() {
+function Hero({ onZoom }: { onZoom: OnZoom }) {
   const [tab, setTab] = useState<(typeof HERO_TABS)[number]['key']>('pipeline')
 
   return (
@@ -115,7 +141,7 @@ function Hero() {
             {HERO_TABS.map(t => (
               <div key={t.key} className={`panel${tab === t.key ? ' active' : ''}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SHOTS[t.key]} alt={t.alt} loading="eager" />
+                <img src={SHOTS[t.key]} alt={t.alt} loading="eager" onClick={() => onZoom(SHOTS[t.key], t.alt)} />
               </div>
             ))}
           </div>
@@ -216,7 +242,7 @@ const FEAT_STEPS = [
 ] as const
 
 /* ----------------------------- Features ----------------------------- */
-function Features() {
+function Features({ onZoom }: { onZoom: OnZoom }) {
   return (
     <section className="features" aria-label="Funcionalidades">
       <div className="features-head">
@@ -249,6 +275,7 @@ function Features() {
                   data-shot={s.shot}
                   className={i === 0 ? 'active' : ''}
                   alt={s.h}
+                  onClick={() => onZoom(SHOTS[s.shot], s.h)}
                 />
               ))}
             </div>
@@ -267,7 +294,7 @@ const AI_CAPS = [
 ]
 
 /* ----------------------------- AI block ----------------------------- */
-function AiBlock() {
+function AiBlock({ onZoom }: { onZoom: OnZoom }) {
   return (
     <section className="ai" aria-label="Inteligência artificial">
       <div className="ai-glow" aria-hidden="true" />
@@ -303,7 +330,7 @@ function AiBlock() {
               </div>
               <div className="ai-shot">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SHOTS.insights} alt="Insights gerados pela IA do Althos" />
+                <img src={SHOTS.insights} alt="Insights gerados pela IA do Althos" onClick={() => onZoom(SHOTS.insights, 'Insights gerados pela IA do Althos')} />
                 <div className="ai-scan" aria-hidden="true" />
                 <div className="ai-typingbar">
                   <span className="spark">✦</span>

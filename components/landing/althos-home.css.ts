@@ -49,7 +49,7 @@ export const HOME_CSS = `
 .althos-home .shell { position: relative; z-index: 5; }
 
 /* Hero */
-.althos-home .hero { max-width: 1280px; margin: 0 auto; padding: 40px 40px 110px; display: grid; grid-template-columns: minmax(0,0.92fr) minmax(0,1.28fr); align-items: center; gap: 48px; }
+.althos-home .hero { max-width: 1360px; margin: 0 auto; padding: 40px 40px 110px; display: grid; grid-template-columns: minmax(0,0.78fr) minmax(0,1.5fr); align-items: center; gap: 40px; }
 .althos-home .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, rgba(59,130,246,0.10), rgba(59,130,246,0.02)); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--ink); width: fit-content; box-shadow: 0 0 26px -8px var(--accent-glow); }
 .althos-home .eyebrow .star { color: var(--accent-bright); font-size: 12px; line-height: 1; }
 .althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,84px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); }
@@ -89,7 +89,7 @@ export const HOME_CSS = `
 .althos-home .browser-screen { position: relative; display: block; line-height: 0; background: #0d1018; aspect-ratio: 1820 / 862; }
 .althos-home .panel { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 0.28s var(--ease); }
 .althos-home .panel.active { opacity: 1; visibility: visible; }
-.althos-home .panel img { width: 100%; height: 100%; display: block; object-fit: contain; object-position: center; }
+.althos-home .panel img { width: 100%; height: 100%; display: block; object-fit: contain; object-position: center; cursor: zoom-in; }
 
 @media (max-width: 940px) {
   .althos-home .hero { grid-template-columns: 1fr; padding-top: 16px; gap: 48px; text-align: left; }
@@ -141,11 +141,11 @@ export const HOME_CSS = `
 }
 
 /* Features sticky */
-.althos-home .features { position: relative; max-width: 1280px; margin: 0 auto; padding: 40px 40px 120px; }
+.althos-home .features { position: relative; max-width: 1360px; margin: 0 auto; padding: 40px 40px 120px; }
 .althos-home .features-head { max-width: 720px; margin: 0 auto 20px; text-align: center; }
 .althos-home .features-head .eyebrow { margin: 0 auto 22px; }
 .althos-home .features-head h2 { font-weight: 800; font-size: clamp(36px,4.4vw,60px); line-height: 1.02; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
-.althos-home .features-grid { display: grid; grid-template-columns: 1fr 1.08fr; gap: 64px; align-items: start; margin-top: 30px; }
+.althos-home .features-grid { display: grid; grid-template-columns: 0.72fr 1.55fr; gap: 56px; align-items: start; margin-top: 30px; }
 .althos-home .feat-steps { display: flex; flex-direction: column; }
 .althos-home .feat-step { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; }
 .althos-home .feat-step .idx { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 18px; }
@@ -164,7 +164,7 @@ export const HOME_CSS = `
 .althos-home .feat-frame-bar { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; padding: 12px 15px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent); }
 .althos-home .feat-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #2c3242; }
 .althos-home .feat-shots { position: relative; z-index: 1; aspect-ratio: 1820 / 862; background: #0d1018; }
-.althos-home .feat-shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; opacity: 0; transition: opacity 0.5s var(--ease); }
+.althos-home .feat-shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; opacity: 0; transition: opacity 0.5s var(--ease); cursor: zoom-in; }
 .althos-home .feat-shots img.active { opacity: 1; }
 @media (max-width: 900px) {
   .althos-home .features-grid { grid-template-columns: 1fr; gap: 8px; }
@@ -201,7 +201,7 @@ export const HOME_CSS = `
 .althos-home .ai-frame-bar .tag .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 8px var(--accent-glow); animation: ah-pulse 1.4s ease-in-out infinite; }
 @keyframes ah-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .althos-home .ai-shot { position: relative; background: #0d1018; }
-.althos-home .ai-shot img { width: 100%; display: block; object-fit: contain; }
+.althos-home .ai-shot img { width: 100%; display: block; object-fit: contain; cursor: zoom-in; }
 .althos-home .ai-scan { position: absolute; left: 0; right: 0; top: 0; height: 40%; background: linear-gradient(180deg, transparent, rgba(59,130,246,0.10) 70%, rgba(59,130,246,0.18)); border-bottom: 1px solid rgba(59,130,246,0.35); box-shadow: 0 6px 24px rgba(59,130,246,0.25); animation: ah-scan 3.4s var(--ease) infinite; pointer-events: none; mix-blend-mode: screen; }
 @keyframes ah-scan { 0% { transform: translateY(-100%); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(250%); opacity: 0; } }
 .althos-home .ai-typingbar { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 11px; background: rgba(12,14,22,0.82); backdrop-filter: blur(8px); border: 1px solid rgba(59,130,246,0.28); box-shadow: 0 8px 30px -10px rgba(0,0,0,0.7); }
@@ -313,5 +313,16 @@ export const HOME_CSS = `
   .althos-home .reveal { opacity: 1 !important; transform: none !important; transition: none; }
   .althos-home .aurora span, .althos-home .grain, .althos-home .ai-glow, .althos-home .ai-scan, .althos-home .marquee-track, .althos-home .plan.popular::before { animation: none !important; }
   .althos-home .browser { transition: none !important; }
+}
+
+/* Lightbox (zoom ao clicar nas telas) */
+.althos-home .ah-lightbox { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 4vh 4vw; background: rgba(6,9,18,0.86); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: zoom-out; animation: ah-lb-fade 0.22s var(--ease); }
+@keyframes ah-lb-fade { from { opacity: 0; } to { opacity: 1; } }
+.althos-home .ah-lightbox img { max-width: 100%; max-height: 92vh; width: auto; height: auto; border-radius: 14px; border: 1px solid var(--line-strong); box-shadow: 0 50px 120px -30px rgba(0,0,0,0.9); animation: ah-lb-pop 0.26s var(--ease); }
+@keyframes ah-lb-pop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.althos-home .ah-lightbox .ah-lb-close { position: absolute; top: 18px; right: 22px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(255,255,255,0.06); color: #fff; font-size: 22px; line-height: 1; display: grid; place-items: center; cursor: pointer; transition: background 0.2s var(--ease), transform 0.2s var(--ease); }
+.althos-home .ah-lightbox .ah-lb-close:hover { background: rgba(255,255,255,0.14); transform: scale(1.06); }
+@media (prefers-reduced-motion: reduce) {
+  .althos-home .ah-lightbox, .althos-home .ah-lightbox img { animation: none; }
 }
 `
