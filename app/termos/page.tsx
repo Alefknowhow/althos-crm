@@ -14,7 +14,7 @@ export default function TermosPage() {
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">
         Termos de Uso e Política Antifraude
       </h1>
-      <p className="mt-2 text-slate-500">Última atualização: novembro de 2025</p>
+      <p className="mt-2 text-slate-500">Última atualização: junho de 2026</p>
 
       <div className="mt-6">
         <LegalMarkdown source={TERMOS_MD} />

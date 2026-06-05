@@ -73,6 +73,7 @@ export function SiteFooter() {
           <div className="flex items-center gap-5">
             <Link href="/termos" className="text-[12px] text-white/40 hover:text-white/70 transition-colors">Termos</Link>
             <Link href="/privacidade" className="text-[12px] text-white/40 hover:text-white/70 transition-colors">Privacidade</Link>
+            <Link href="/cookies" className="text-[12px] text-white/40 hover:text-white/70 transition-colors">Cookies</Link>
           </div>
         </div>
       </div>

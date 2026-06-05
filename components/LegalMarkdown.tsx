@@ -15,7 +15,7 @@ import React from 'react'
  */
 
 type Block =
-  | { type: 'h1' | 'h2' | 'h3' | 'p' | 'quote'; text: string }
+  | { type: 'h1' | 'h2' | 'h3' | 'p' | 'quote'; text: string; id?: string }
   | { type: 'ul'; items: string[] }
   | { type: 'hr' }
 
@@ -48,7 +48,12 @@ function parse(md: string): Block[] {
     if (h) {
       flushAll()
       const level = h[1].length
-      blocks.push({ type: level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3', text: h[2] })
+      // Optional explicit anchor: "## Título {#meu-id}"
+      let text = h[2]
+      let id: string | undefined
+      const anchor = /\s*\{#([A-Za-z0-9_-]+)\}\s*$/.exec(text)
+      if (anchor) { id = anchor[1]; text = text.slice(0, anchor.index).trim() }
+      blocks.push({ type: level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3', text, id })
       continue
     }
 
@@ -110,11 +115,11 @@ export default function LegalMarkdown({ source, skipH1 = true }: { source: strin
         switch (b.type) {
           case 'h1':
             if (skipH1 && !sawH1) { sawH1 = true; return null }
-            return <h1 key={key} className="mt-8 text-2xl font-bold text-slate-900">{inline(b.text, key)}</h1>
+            return <h1 key={key} id={b.id} className="mt-8 scroll-mt-24 text-2xl font-bold text-slate-900">{inline(b.text, key)}</h1>
           case 'h2':
-            return <h2 key={key} className="mt-8 text-lg font-semibold text-slate-900">{inline(b.text, key)}</h2>
+            return <h2 key={key} id={b.id} className="mt-8 scroll-mt-24 text-lg font-semibold text-slate-900">{inline(b.text, key)}</h2>
           case 'h3':
-            return <h3 key={key} className="mt-6 text-base font-semibold text-slate-900">{inline(b.text, key)}</h3>
+            return <h3 key={key} id={b.id} className="mt-6 scroll-mt-24 text-base font-semibold text-slate-900">{inline(b.text, key)}</h3>
           case 'p':
             return <p key={key} className="mt-2">{inline(b.text, key)}</p>
           case 'ul':

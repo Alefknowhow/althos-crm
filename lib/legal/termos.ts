@@ -1,12 +1,140 @@
-export const TERMOS_MD = String.raw`# Termos de Uso e Política Antifraude — Althos CRM
+export const TERMOS_MD = String.raw`# Termos de Serviço — Althos CRM
 
 A **Althos CRM** é uma plataforma de gestão de relacionamento com clientes (CRM) em modelo SaaS multi-tenant, voltada principalmente a clínicas de estética e harmonização. A plataforma integra recursos de pipeline de vendas, atendimento automatizado por inteligência artificial, mensageria via API oficial do WhatsApp (Meta), integrações com Instagram e Meta Ads, gestão de leads e armazenamento de dados de contatos.
 
-Por reunir mensageria, automação e dados pessoais de terceiros, a Althos CRM exige de seus usuários o compromisso com o uso lícito, ético e responsável da plataforma. Este documento estabelece as regras de uso aceitável, a Política Antifraude e as consequências em caso de violação. Ele constitui aditivo aos Termos de Uso gerais da Althos CRM.
+Estes Termos de Serviço ("Termos") regem o uso da plataforma e constituem um contrato entre você ("Usuário") e a empresa identificada abaixo. A **Política de Uso Aceitável e Antifraude** (Anexo I) integra estes Termos.
+
+> **Identificação do fornecedor / Controlador:** 47.612.284 ALEF TRENTIN POKOJESKI - ME, inscrita no CNPJ sob o nº 47.612.284/0001-30, com sede em [ENDEREÇO DA SEDE] ("Althos CRM", "Althos", "nós").
+> **Encarregado pelo Tratamento de Dados (DPO):** contato pelo e-mail privacidade@althoscrm.com.br. **Suporte:** suporte@althoscrm.com.br.
 
 ---
 
-## I. Atividades e Conteúdos Proibidos
+## 1. Aceitação dos termos
+
+Ao criar uma conta ou utilizar a Althos CRM, você declara ter lido e concordado com estes Termos e com a [Política de Privacidade](/privacidade), que os integra. Se você utiliza o serviço em nome de uma empresa, declara ter poderes para vinculá-la a estes Termos. Caso não concorde com qualquer ponto, abstenha-se de utilizar a plataforma.
+
+---
+
+## 2. Definições
+
+- **Plataforma / Serviço:** a aplicação Althos CRM e seus recursos.
+- **Conta:** o cadastro do Usuário que dá acesso à plataforma.
+- **Conteúdo do Cliente:** os dados que o Usuário insere ou importa sobre seus próprios contatos, leads e pacientes.
+- **Créditos de IA:** unidades de consumo dos recursos de inteligência artificial.
+- **Acordo:** o conjunto formado por estes Termos, seus Anexos e a Política de Privacidade.
+
+---
+
+## 3. Descrição do serviço
+
+A Althos CRM oferece funil de vendas, gestão de leads, tarefas, agendamentos, automações, integrações com canais de mensagem (como WhatsApp e Instagram) e recursos de inteligência artificial. Os recursos disponíveis variam conforme o plano contratado e podem evoluir ao longo do tempo.
+
+---
+
+## 4. Cadastro e conta
+
+- Você deve fornecer informações verdadeiras, completas e atualizadas no cadastro.
+- Você é responsável por manter a confidencialidade de suas credenciais e por toda atividade realizada em sua conta.
+- Você deve ter ao menos 18 anos ou a maioridade legal aplicável.
+- Notifique-nos imediatamente em caso de uso não autorizado da conta pelo e-mail suporte@althoscrm.com.br.
+
+---
+
+## 5. Planos, pagamentos, teste e reembolso
+
+- **Plano Free:** gratuito por tempo indeterminado, sem necessidade de cartão de crédito, sujeito aos limites de uso descritos na página de planos.
+- **Planos pagos (Starter, Pro e Business):** cobrados de forma recorrente (mensal, semestral ou anual) conforme o ciclo escolhido. Os preços vigentes são exibidos na página de planos. Impostos aplicáveis podem ser acrescidos conforme a legislação.
+- **Direito de arrependimento (CDC, art. 49):** nas contratações à distância, você pode desistir da contratação em até **7 (sete) dias** corridos a contar da confirmação da assinatura paga, com **reembolso integral** do valor pago no período, sem prejuízo de outros direitos previstos em lei.
+- **Créditos de IA:** pacotes de créditos avulsos consumidos no uso dos recursos de IA. Por se tratar de bem digital de fruição imediata, os créditos efetivamente consumidos não são reembolsáveis, ressalvado o direito de arrependimento sobre a parcela não utilizada quando aplicável.
+
+---
+
+## 6. Renovação e cancelamento
+
+A assinatura é renovada automaticamente até que seja cancelada. Você pode cancelar a qualquer momento; o acesso aos recursos pagos permanece até o fim do período já pago. Após o prazo de arrependimento de 7 dias, não há reembolso proporcional do período em curso, salvo disposição legal em contrário ou falha atribuível à Althos CRM.
+
+---
+
+## 7. Uso aceitável
+
+Você concorda em utilizar a Althos CRM apenas para fins lícitos e legítimos. As condutas proibidas, os deveres de proteção de dados e as consequências em caso de violação estão detalhados no **[Anexo I — Política de Uso Aceitável e Antifraude](#anexo-uso-aceitavel)**, que integra estes Termos.
+
+---
+
+## 8. Dados do cliente e privacidade
+
+Você mantém a titularidade do Conteúdo do Cliente que inserir na plataforma. Em relação a esses dados, você atua como **Controlador** e a Althos CRM como **Operadora**, tratando-os conforme suas instruções. Você é responsável por possuir base legal para tratar os dados de terceiros que adicionar à plataforma. O tratamento que realizamos é descrito na [Política de Privacidade](/privacidade), que integra estes Termos.
+
+---
+
+## 9. Integrações de terceiros
+
+A Althos CRM pode se integrar a serviços de terceiros (por exemplo, WhatsApp Cloud API, Instagram/Meta, provedores de pagamento e de IA). O uso dessas integrações está sujeito aos termos dos respectivos provedores. Não nos responsabilizamos por indisponibilidades, alterações ou descontinuações desses serviços externos.
+
+---
+
+## 10. Inteligência artificial e decisões automatizadas
+
+Os recursos de IA (incluindo o atendente automatizado e a classificação de leads) são fornecidos como apoio e podem gerar resultados imprecisos. Você é responsável por revisar e validar qualquer conteúdo gerado por IA antes de utilizá-lo, especialmente em comunicações com clientes. Nos termos do art. 20 da LGPD, o titular de dados submetido a decisões tomadas unicamente com base em tratamento automatizado tem direito a solicitar a revisão dessas decisões; tais solicitações devem ser encaminhadas ao Usuário Controlador e, no que couber, à Althos CRM pelo canal privacidade@althoscrm.com.br.
+
+---
+
+## 11. Disponibilidade, suporte e dependências de terceiros
+
+**11.1.** Empenhamo-nos para manter o serviço disponível, mas não garantimos operação ininterrupta ou livre de erros. Podemos realizar manutenções, atualizações e melhorias que afetem temporariamente o acesso.
+
+**11.2.** A Althos CRM integra e depende de serviços de terceiros, tais como provedores de *cloud* e infraestrutura (por exemplo, Supabase e Vercel), APIs de mensageria e redes sociais (WhatsApp, Instagram e Facebook/Meta), provedores de inteligência artificial, *gateways* de pagamento, autenticação, bancos de dados e processamento assíncrono (por exemplo, Inngest). Instabilidades, interrupções ou falhas originadas nesses serviços externos podem impactar parcial ou totalmente o funcionamento da plataforma.
+
+**11.3.** O Usuário reconhece que: (a) nenhum sistema online garante disponibilidade integral (100%); (b) instabilidades podem ocorrer como parte natural de serviços digitais; (c) a Althos CRM se compromete a agir de forma diligente para restabelecer o funcionamento sempre que necessário. A Althos CRM não responde por perdas decorrentes de instabilidades causadas por terceiros ou falhas externas, salvo culpa comprovada.
+
+---
+
+## 12. Propriedade intelectual
+
+O software, a marca, o design e os conteúdos da Althos CRM são de nossa propriedade ou de nossos licenciadores. Estes Termos não transferem direitos de propriedade intelectual sobre a plataforma a você, exceto a licença de uso limitada, não exclusiva e revogável para utilizar o serviço conforme o plano contratado.
+
+---
+
+## 13. Limitação de responsabilidade
+
+Na máxima extensão permitida pela lei, a Althos CRM não se responsabiliza por danos indiretos, lucros cessantes ou perda de dados decorrentes do uso ou da impossibilidade de uso do serviço. Nossa responsabilidade total, em qualquer hipótese, limita-se ao valor pago por você nos 12 (doze) meses anteriores ao evento que originou a reclamação. Nenhuma cláusula destes Termos exclui responsabilidades que não possam ser limitadas ou afastadas por força de lei, em especial nas relações de consumo.
+
+---
+
+## 14. Suspensão e encerramento
+
+- **Encerramento pelo Usuário:** você pode encerrar sua conta a qualquer momento.
+- **Suspensão/encerramento pela Althos CRM:** em caso de violação destes Termos ou do Anexo I, ou de inadimplência, podemos suspender ou encerrar o acesso. Em situações de **risco grave à segurança, ilícito evidente ou ordem de autoridade competente**, a suspensão pode ser **imediata, sem aviso prévio**. Nos demais casos, comunicaremos a violação e concederemos prazo razoável para correção, quando cabível.
+- **Efeitos financeiros:** o encerramento por violação não dá direito a reembolso dos valores referentes ao período já efetivamente usufruído. Ressalvam-se o **direito de arrependimento de 7 dias** (art. 49 do CDC) e os reembolsos exigidos por lei; valores correspondentes a período pago e não usufruído poderão ser restituídos quando assim determinar a legislação aplicável.
+- **Dados após o encerramento:** os dados podem ser excluídos ou anonimizados conforme descrito na [Política de Privacidade](/privacidade), ressalvadas as hipóteses de guarda obrigatória.
+
+---
+
+## 15. Alterações destes Termos
+
+Podemos atualizar estes Termos periodicamente. Comunicaremos alterações relevantes pelos canais da plataforma com antecedência razoável antes de sua vigência. Quando a legislação exigir, buscaremos seu consentimento para as mudanças. O uso continuado após a vigência representa concordância com a nova versão.
+
+---
+
+## 16. Lei aplicável e foro
+
+Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro do domicílio do Usuário consumidor para dirimir eventuais controvérsias, quando aplicável; nas demais hipóteses, o foro da comarca da sede da Althos CRM.
+
+---
+
+## 17. Contato
+
+Dúvidas sobre estes Termos: suporte@althoscrm.com.br. Assuntos de privacidade e proteção de dados: privacidade@althoscrm.com.br.
+
+---
+
+# Anexo I — Política de Uso Aceitável e Antifraude {#anexo-uso-aceitavel}
+
+Por reunir mensageria, automação e dados pessoais de terceiros, a Althos CRM exige de seus usuários o compromisso com o uso lícito, ético e responsável da plataforma. Este Anexo estabelece as regras de uso aceitável, a Política Antifraude e as consequências em caso de violação, integrando os Termos de Serviço acima.
+
+---
+
+## A.I. Atividades e Conteúdos Proibidos
 
 A Althos CRM proíbe expressamente o uso de sua plataforma — incluindo o envio de mensagens individuais ou em escala, automações e respostas geradas pelo atendente de IA — para qualquer finalidade ilícita, antiética ou que contrarie nossos valores. Em especial, não é permitido utilizar a Althos CRM para disseminar, automatizar ou disparar qualquer dos conteúdos a seguir:
 
@@ -20,7 +148,7 @@ A Althos CRM proíbe expressamente o uso de sua plataforma — incluindo o envio
 
 ---
 
-## II. Proteção de Dados, LGPD e Responsabilidade pelo Tratamento
+## A.II. Proteção de Dados, LGPD e Responsabilidade pelo Tratamento
 
 A Althos CRM armazena e processa dados pessoais de contatos, leads e clientes finais inseridos pelos usuários (por exemplo, pacientes de uma clínica). Em relação a esses dados:
 
@@ -31,71 +159,49 @@ A Althos CRM armazena e processa dados pessoais de contatos, leads e clientes fi
 
 ---
 
-## III. Monitoramento e Identificação de Abusos
+## A.III. Monitoramento e Identificação de Abusos
 
 A Althos CRM mantém uma postura rigorosa de *compliance* e possui ferramentas e procedimentos de monitoramento antifraude para identificar usos indevidos da plataforma. Todos os usuários devem estar cientes de que:
 
-- Qualquer indício de envio de mensagens proibidas conforme a seção I, ou de tratamento irregular de dados conforme a seção II, poderá gerar uma investigação interna imediata. A Althos CRM poderá coletar evidências (como logs de envio, conteúdo de mensagens, registros de automações e do atendente de IA, dados cadastrais, endereços IP etc.) para determinar se houve violação. Essas informações serão tratadas conforme nossa Política de Privacidade, mas poderão ser utilizadas para fins de cumprimento desta Política Antifraude e para embasar ações de bloqueio ou comunicação às autoridades.
+- Qualquer indício de envio de mensagens proibidas conforme a seção A.I, ou de tratamento irregular de dados conforme a seção A.II, poderá gerar uma investigação interna. A Althos CRM poderá coletar evidências (como logs de envio, conteúdo de mensagens, registros de automações e do atendente de IA, dados cadastrais, endereços IP etc.) para determinar se houve violação. Essas informações serão tratadas conforme nossa Política de Privacidade, mas poderão ser utilizadas para fins de cumprimento desta Política Antifraude e para embasar ações de bloqueio ou comunicação às autoridades.
 - **Proteção da plataforma:** tentativas de mascarar identidade, burlar mecanismos de segurança ou contornar nossos sistemas de detecção configuram violação gravíssima. A Althos CRM pode tomar medidas preventivas ao detectar padrões anômalos (por exemplo, altos volumes de mensagens com conteúdo suspeito, consumo atípico de créditos de IA ou disparos a bases não consentidas) a fim de resguardar a integridade da plataforma e dos demais usuários.
 
-> **Nota:** A Althos CRM não se responsabiliza pelo conteúdo das mensagens enviadas pelos usuários, mas não abdica do direito de agir quando tais mensagens violam estes Termos ou acarretam risco legal para a empresa ou terceiros. Nossa prioridade é assegurar que a plataforma não seja instrumento de atividades ilegais ou abusivas, mantendo um ambiente seguro e em conformidade com a lei.
+> **Nota:** A Althos CRM não se responsabiliza pelo conteúdo das mensagens enviadas pelos usuários, mas não abdica do direito de agir quando tais mensagens violam estes Termos ou acarretam risco legal para a empresa ou terceiros. Nossa prioridade é assegurar que a plataforma não seja instrumento de atividades ilegais ou abusivas.
 
 ---
 
-## IV. Bloqueio Imediato e Medidas Disciplinares
+## A.IV. Bloqueio e Medidas Disciplinares
 
-Usuários flagrados utilizando a plataforma para qualquer atividade proibida estarão sujeitos a bloqueio e sanções imediatas. As medidas adotadas pela Althos CRM em caso de violação incluem, mas não se limitam a:
+Usuários que utilizem a plataforma para atividade proibida estarão sujeitos a bloqueio e sanções. As medidas adotadas pela Althos CRM em caso de violação incluem, mas não se limitam a:
 
-- **Suspensão ou encerramento da conta sem aviso prévio:** a Althos CRM poderá, a seu exclusivo critério, suspender temporariamente ou bloquear em definitivo o acesso do Usuário infrator à plataforma, sem necessidade de aviso prévio. A gravidade da conduta (por exemplo, disparo de mensagens golpistas ou uso da IA para fraude) pode justificar o bloqueio imediato, dado o potencial dano envolvido. A conta poderá ser encerrada de forma permanente, impedindo o Usuário de utilizar nossos serviços no futuro.
-- **Perda de valores pagos, créditos e benefícios:** em casos de encerramento de conta por infração destes Termos, o Usuário não terá direito a reembolso de quaisquer valores já pagos — incluindo assinaturas dos planos (Free, Starter, Pro ou Business). Eventuais **créditos de IA**, saldos, bônus de indicação (programa de referência) ou benefícios vinculados à conta infratora serão perdidos em razão do descumprimento contratual. Além disso, a Althos CRM reserva-se o direito de cobrar indenização por danos causados à plataforma ou a terceiros decorrentes do uso indevido (danos à reputação, custos legais ou operacionais etc.).
-- **Recusa de nova adesão:** a Althos CRM poderá recusar novos cadastros ou contratos vindos do mesmo indivíduo ou organização relacionados a uma conta banida por mau uso. Empregar interpostas pessoas (*laranjas*), empresas de fachada ou outros artifícios para retornar à plataforma após um banimento constitui violação destes Termos e sujeita o responsável às mesmas penalidades.
-- **Sem obrigação de backup ou exportação:** a Althos CRM não tem obrigação de fornecer *backup*, exportação de dados ou qualquer assistência ao Usuário cuja conta for bloqueada em razão de atividade proibida. Todas as mensagens, contatos ou registros associados à conta infratora poderão ser retidos para análise forense e, se for o caso, repassados às autoridades competentes. Também poderemos notificar parceiros (por exemplo, a API do WhatsApp/Meta) sobre a rescisão do acesso, o que pode resultar em bloqueios em nível de plataforma do WhatsApp Business API (banimento do número ou empresa infratora). Em suma, as consequências do mau uso são graves e podem ser irreversíveis.
-
----
-
-## V. Cooperação com Autoridades e Consequências Legais
-
-Além das medidas administrativas internas, a Althos CRM adotará postura ativa de cooperação com as autoridades policiais e judiciais sempre que houver indícios de uso da plataforma para promover atividades potencialmente criminosas. Especificamente:
-
-- **Notificação às autoridades:** nos casos em que forem identificados golpes, fraudes, divulgação de jogos de azar ilegais, tratamento criminoso de dados ou qualquer conduta que configure crime ou violação legal, a Althos CRM poderá encaminhar denúncia formal às autoridades competentes (Ministério Público, polícias especializadas, ANPD quando cabível), fornecendo as informações pertinentes: dados cadastrais do Usuário (nome, CPF/CNPJ, contatos), endereços IP de acesso, cópia das mensagens e automações que caracterizam o ilícito, registros de data e hora, entre outros elementos.
-- **Consentimento para divulgação de dados:** ao aceitar este Termo, o Usuário concorda expressamente que a Althos CRM divulgue seus dados cadastrais e conteúdo de mensagens às autoridades caso seja suspeito de praticar condutas proibidas. O dever de sigilo contratual é excepcionado em situações de investigação criminal ou violação destes Termos, conforme permitido pela legislação.
-- **Consequências legais para o Usuário:** utilizar a Althos CRM para aplicar golpes, divulgar atividades ilegais ou tratar dados de forma criminosa pode implicar responsabilidade penal e civil. As informações fornecidas às autoridades poderão embasar inquéritos e processos por crimes como estelionato, falsidade ideológica, delitos informáticos, crimes contra a economia popular, contravenções penais de jogos de azar, além de infrações à LGPD, dentre outros previstos na legislação brasileira. O Usuário poderá ser investigado, processado e, em caso de condenação, sujeito a penas que podem incluir multa e reclusão, conforme a gravidade do delito.
-
-> **Importante:** A Althos CRM poderá investigar ativamente atividades suspeitas e cooperar com as autoridades para responsabilizar os infratores na máxima extensão permitida, incluindo o atendimento a ordens judiciais, ofícios do Ministério Público e solicitações formais de investigação, bem como o relato proativo de condutas criminosas detectadas.
+- **Suspensão ou encerramento da conta:** a Althos CRM poderá suspender temporariamente ou bloquear o acesso do Usuário infrator. Em casos de **risco grave, ilícito evidente ou ordem de autoridade**, a suspensão pode ser **imediata e sem aviso prévio**, dado o potencial dano envolvido. Nas demais hipóteses, comunicaremos a violação e concederemos prazo razoável para regularização, quando cabível.
+- **Efeitos sobre valores, créditos e benefícios:** em caso de encerramento por infração, o Usuário não terá direito a reembolso dos valores referentes ao período já efetivamente usufruído. Ressalvam-se o **direito de arrependimento de 7 dias** (art. 49 do CDC) e as restituições exigidas por lei. Eventuais créditos de IA, saldos e bônus de indicação vinculados à conta infratora poderão ser cancelados em razão do descumprimento contratual, observada a proporcionalidade. A Althos CRM reserva-se o direito de buscar indenização por danos comprovadamente causados à plataforma ou a terceiros.
+- **Recusa de nova adesão:** a Althos CRM poderá recusar novos cadastros vindos do mesmo indivíduo ou organização relacionados a uma conta banida por mau uso. Empregar interpostas pessoas (*laranjas*), empresas de fachada ou outros artifícios para retornar à plataforma após um banimento constitui violação destes Termos.
+- **Backup e exportação:** sempre que tecnicamente viável e respeitada a legislação, a Althos CRM disponibilizará ao Usuário meios razoáveis de exportação dos dados antes da exclusão definitiva. Registros associados a conta infratora poderão ser retidos pelo período necessário a análise forense e, quando exigido, repassados às autoridades competentes. Também poderemos notificar parceiros (por exemplo, a API do WhatsApp/Meta) sobre a rescisão do acesso, o que pode resultar em bloqueios em nível de plataforma.
 
 ---
 
-## VI. Concordância do Usuário e Disposições Finais
+## A.V. Cooperação com Autoridades e Consequências Legais
 
-Ao utilizar a Althos CRM, o Usuário declara estar ciente, de acordo e comprometido a cumprir integralmente esta Política de Uso Aceitável e Antifraude, bem como os Termos de Uso gerais da plataforma. As cláusulas acima servem como aditivo aos nossos Termos, e sua violação constitui falta grave, autorizando as medidas punitivas aqui descritas. Em resumo:
+A Althos CRM coopera com as autoridades policiais e judiciais quando houver indícios de uso da plataforma para atividades potencialmente criminosas. Especificamente:
 
-- **Responsabilidade individual:** o Usuário assume total responsabilidade pelo conteúdo que enviar e pelos dados que tratar por meio da Althos CRM, comprometendo-se a usar a plataforma somente para fins lícitos e legítimos.
-- **Direito de ação da Althos CRM:** o Usuário reconhece o direito da Althos CRM de impor punições, restringir tecnicamente o acesso à plataforma e comunicar-se com autoridades em caso de suspeita de atividade ilícita, sem que isso configure violação de sigilo ou dever contratual, dada a natureza excepcional das circunstâncias.
-- **Aceite dos Termos:** ao prosseguir com o cadastro ou uso dos serviços, o Usuário concorda eletronicamente com este Termo. Caso discorde de algum dos pontos, o Usuário deve abster-se de utilizar a plataforma.
-- **Atualizações e divulgação pública:** esta Política Antifraude poderá ser atualizada periodicamente, e as versões vigentes estarão sempre disponíveis em nosso site para consulta pública. Mudanças significativas serão comunicadas à comunidade de usuários.
-- **Suporte e dúvidas:** em caso de dúvidas, o Usuário pode contatar nossa equipe de suporte/compliance pelo canal oficial da Althos CRM. Reiteramos que não abriremos exceções nem toleraremos abusos: nosso compromisso com a ética e a lei é inegociável.
-
-A Althos CRM adota **tolerância zero** contra fraudes, golpes e atividades ilícitas. Nosso objetivo é proteger a comunidade, as clínicas e os consumidores finais contra práticas que causem dano ou estejam à margem da lei.
+- **Notificação às autoridades:** identificados golpes, fraudes, divulgação de jogos de azar ilegais, tratamento criminoso de dados ou conduta que configure crime, a Althos CRM poderá encaminhar denúncia às autoridades competentes (Ministério Público, polícias especializadas, ANPD quando cabível), fornecendo as informações pertinentes nos limites da lei.
+- **Divulgação de dados mediante requisição legal:** a Althos CRM divulgará dados cadastrais e conteúdo de mensagens a autoridades **mediante ordem judicial ou requisição de autoridade competente nos termos da lei**, ou quando estritamente necessário para apurar e cessar ilícito grave em curso. O dever de sigilo é preservado fora dessas hipóteses. Ao aceitar estes Termos, o Usuário reconhece que tais divulgações, quando amparadas em base legal válida, não configuram quebra indevida de sigilo.
+- **Consequências legais para o Usuário:** utilizar a Althos CRM para aplicar golpes, divulgar atividades ilegais ou tratar dados de forma criminosa pode implicar responsabilidade penal e civil, embasando inquéritos e processos por crimes como estelionato, falsidade ideológica, delitos informáticos, contravenções de jogos de azar e infrações à LGPD, entre outros.
 
 ---
 
-## VII. Estabilidade do Sistema, Atualizações e Dependências de Terceiros
+## A.VI. Disposições Finais do Anexo
 
-**7.1.** A Althos CRM é uma plataforma que integra e depende de serviços de terceiros, tais como provedores de *cloud* e infraestrutura (por exemplo, Supabase, Vercel), APIs de mensageria e redes sociais (incluindo WhatsApp, Instagram e Facebook/Meta), provedores de inteligência artificial, *gateways* de pagamento, serviços de autenticação, bancos de dados, filas e processamento assíncrono (por exemplo, Inngest) e demais infraestruturas externas. Dessa forma, eventuais instabilidades, interrupções, indisponibilidades ou falhas originadas nesses serviços externos podem impactar parcial ou totalmente o funcionamento da plataforma, ainda que temporariamente.
+Ao utilizar a Althos CRM, o Usuário declara estar ciente e comprometido a cumprir esta Política de Uso Aceitável e Antifraude, que integra os Termos de Serviço. Em resumo:
 
-**7.2.** O Usuário declara estar ciente de que tais instabilidades externas não são controladas diretamente pela Althos CRM, podendo ocorrer por motivos como: oscilações de rede, interrupções do provedor de *cloud*, limitações técnicas ou comerciais de APIs externas, alterações de políticas de parceiros, atualizações imprevistas, manutenção corretiva/emergencial, entre outros fatores alheios à vontade da empresa.
+- **Responsabilidade individual:** o Usuário assume responsabilidade pelo conteúdo que enviar e pelos dados que tratar por meio da Althos CRM, comprometendo-se a usar a plataforma somente para fins lícitos.
+- **Direito de ação da Althos CRM:** o Usuário reconhece o direito da Althos CRM de impor as medidas aqui descritas e de comunicar-se com autoridades em caso de atividade ilícita, nos limites da lei.
+- **Aceite:** ao prosseguir com o cadastro ou uso dos serviços, o Usuário concorda eletronicamente com estes Termos e seu Anexo. Caso discorde, deve abster-se de utilizar a plataforma.
 
-**7.3.** A Althos CRM realiza atualizações periódicas, corretivas e evolutivas com o objetivo de melhorar performance, segurança, recursos e experiência de uso. Durante ou após essas atualizações, podem ocorrer instabilidades temporárias, que serão tratadas com prioridade pela equipe técnica.
-
-**7.4.** O Usuário reconhece e concorda que: (a) nenhum sistema online é capaz de garantir disponibilidade integral (100%); (b) instabilidades podem ocorrer como parte natural de serviços digitais; (c) a Althos CRM se compromete a agir de forma diligente e rápida para restabelecer o funcionamento pleno sempre que necessário.
-
-**7.5.** Em razão do exposto, a Althos CRM não poderá ser responsabilizada por perdas, danos ou prejuízos decorrentes de instabilidades causadas por terceiros, falhas externas ou atualizações necessárias, exceto nos casos em que ficar comprovada culpa exclusiva da empresa.
-
-**7.6.** Ao utilizar a plataforma, o Usuário aceita integralmente esta condição operacional e compreende que a continuidade do serviço depende, em parte, de estruturas externas fora do controle direto da Althos CRM.
+A Althos CRM adota **tolerância zero** contra fraudes, golpes e atividades ilícitas, com o objetivo de proteger a comunidade, as clínicas e os consumidores finais.
 
 ---
 
-*Última atualização: novembro de 2025.*
-
-*Fontes & referências: políticas oficiais do WhatsApp Business/Meta e práticas de mercado de termos de uso de empresas de tecnologia foram consideradas na elaboração deste documento.*
+*Última atualização: junho de 2026.*
 `
