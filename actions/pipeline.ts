@@ -224,13 +224,14 @@ export async function createStage(orgSlug: string, pipelineId: string, name: str
 export async function updateStage(
   orgSlug: string,
   stageId: string,
-  patch: { name?: string; is_won?: boolean; is_lost?: boolean },
+  patch: { name?: string; is_won?: boolean; is_lost?: boolean; color?: string },
 ) {
   const supabase = createClient()
 
   // is_won and is_lost are mutually exclusive — enforce here too
   const update: Record<string, any> = {}
   if (patch.name !== undefined) update.name = patch.name
+  if (patch.color !== undefined) update.color = patch.color
   if (patch.is_won !== undefined) {
     update.is_won = patch.is_won
     if (patch.is_won) update.is_lost = false // can't be both

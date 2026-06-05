@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Plus,
-  Trash2,
   Clock,
   Mail,
   MessageSquare,
@@ -137,6 +136,7 @@ function FlowNode({
   onClick,
   onDelete,
   stats,
+  config,
 }: {
   icon: any
   color: string
@@ -148,11 +148,14 @@ function FlowNode({
   onClick: () => void
   onDelete?: () => void
   stats?: StepStat
+  /** Always-visible inline config fields rendered inside the card. */
+  config?: React.ReactNode
 }) {
   return (
     <div className="relative group/node">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
         className={cn(
           'w-[260px] bg-card border rounded-xl shadow-sm text-left transition-all duration-150',
@@ -188,15 +191,28 @@ function FlowNode({
           )}
         </div>
 
-        {/* Body */}
-        <div className="px-3 pb-1 border-t border-border/40 pt-2 space-y-1">
+        {/* Title */}
+        <div className="px-3 pb-2 border-t border-border/40 pt-2">
           <p className="text-sm font-semibold leading-tight">{nodeName}</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{detail}</p>
+          {!config && <p className="text-xs text-muted-foreground leading-relaxed mt-1">{detail}</p>}
         </div>
+
+        {/* Always-visible inline config fields */}
+        {config && (
+          <div
+            className="px-3 pb-3 pt-1 space-y-2.5"
+            // Stop drag from starting when interacting with the fields; the
+            // canvas drag handler already bails on inputs, but this keeps any
+            // stray pointer events inside the config from bubbling up.
+            onPointerDown={e => e.stopPropagation()}
+          >
+            {config}
+          </div>
+        )}
 
         {/* Footer — show step counters only when stats prop is present (i.e. not the trigger node) */}
         {stats !== undefined ? (
-          <div className="px-3 py-2 mt-1 border-t border-border/30 bg-muted/30 rounded-b-xl grid grid-cols-3 divide-x divide-border/40">
+          <div className="px-3 py-2 border-t border-border/30 bg-muted/30 rounded-b-xl grid grid-cols-3 divide-x divide-border/40">
             <div className="flex flex-col items-center gap-0.5 pr-1">
               <span className={cn('text-[11px] font-bold tabular-nums', stats.success > 0 ? 'text-emerald-500' : 'text-muted-foreground/40')}>
                 {stats.success}
@@ -215,11 +231,11 @@ function FlowNode({
             </div>
           </div>
         ) : (
-          <div className="px-3 py-2 mt-1 border-t border-border/30 bg-muted/30 rounded-b-xl">
+          <div className="px-3 py-2 border-t border-border/30 bg-muted/30 rounded-b-xl">
             <p className="text-[10px] text-muted-foreground/50 font-medium text-center">Início do fluxo</p>
           </div>
         )}
-      </button>
+      </div>
 
       {/* Delete button */}
       {onDelete && (
@@ -234,6 +250,31 @@ function FlowNode({
       )}
     </div>
   )
+}
+
+// ── Measure wrapper ────────────────────────────────────────────────────────────
+// Reports its rendered height up via ResizeObserver so the connector math can
+// follow variable node heights (inline config makes cards taller/shorter).
+function Measure({
+  id,
+  onMeasure,
+  children,
+  ...rest
+}: {
+  id: string
+  onMeasure: (id: string, h: number) => void
+} & React.HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const report = () => onMeasure(id, el.offsetHeight)
+    report()
+    const ro = new ResizeObserver(report)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [id, onMeasure])
+  return <div ref={ref} {...rest}>{children}</div>
 }
 
 // ── Config panel (left side) ──────────────────────────────────────────────────
@@ -541,8 +582,11 @@ function StepConfig({
 // ── Canvas constants ──────────────────────────────────────────────────────────
 
 const NODE_W  = 260
-const NODE_H  = 172  // approximate node height (strip+header+body+footer)
+const NODE_H  = 172  // fallback node height before a card is measured
 const V_GAP   = 52   // vertical gap between nodes in default layout
+// Default vertical step for the initial auto-layout (before heights are
+// measured). Larger than NODE_H because cards now carry inline config fields.
+const LAYOUT_V_STEP = 330
 const TRIGGER_ID = '__trigger'
 
 type Edge = { source: string; target: string }
@@ -555,6 +599,14 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   // Free-drag canvas state
   const canvasRef  = useRef<HTMLDivElement>(null)
   const [nodePos, setNodePos] = useState<Record<string, { x: number; y: number }>>({})
+
+  // Measured node heights (inline config makes cards variable-height). The
+  // connector/edge math reads these instead of the old fixed NODE_H constant.
+  const [nodeHeights, setNodeHeights] = useState<Record<string, number>>({})
+  const onMeasure = useCallback((id: string, h: number) => {
+    setNodeHeights(prev => (prev[id] === h ? prev : { ...prev, [id]: h }))
+  }, [])
+  const heightOf = (id: string) => nodeHeights[id] ?? NODE_H
   const dragRef    = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
   const lastPosRef = useRef<{ x: number; y: number } | null>(null)
   const didDrag    = useRef(false)
@@ -604,7 +656,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
       if (!next[TRIGGER_ID]) next[TRIGGER_ID] = auto.trigger_config?.__pos ?? { x: cx, y: 30 }
       steps.forEach((s, i) => {
         const id = stepId(s, i)
-        if (!next[id]) next[id] = s.config?.__pos ?? { x: cx, y: 30 + (i + 1) * (NODE_H + V_GAP) }
+        if (!next[id]) next[id] = s.config?.__pos ?? { x: cx, y: 30 + (i + 1) * LAYOUT_V_STEP }
       })
       const validIds = new Set(allIds)
       Object.keys(next).forEach(k => { if (!validIds.has(k)) delete next[k] })
@@ -618,7 +670,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   function getPos(id: string, fallbackIndex: number): { x: number; y: number } {
     return nodePos[id] ?? {
       x: Math.max(20, ((canvasRef.current?.clientWidth ?? 600) - NODE_W) / 2),
-      y: 30 + fallbackIndex * (NODE_H + V_GAP),
+      y: 30 + fallbackIndex * LAYOUT_V_STEP,
     }
   }
   const posOf = (id: string) => getPos(id, Math.max(0, allIds.indexOf(id)))
@@ -718,7 +770,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   function insertStep(afterNodeId: string, type: string) {
     const newId = `step_${Date.now()}`
     const afterPos = posOf(afterNodeId)
-    const newStep: Step = { id: newId, type, config: { __pos: { x: afterPos.x, y: afterPos.y + NODE_H + V_GAP } } }
+    const newStep: Step = { id: newId, type, config: { __pos: { x: afterPos.x, y: afterPos.y + heightOf(afterNodeId) + V_GAP } } }
     if (type === 'wait')        newStep.config = { ...newStep.config, amount: 1, unit: 'minutes' }
     if (type === 'create_task') newStep.config = { ...newStep.config, title: 'Nova Tarefa', priority: 'normal', dueInDays: 1 }
 
@@ -768,10 +820,6 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
     setConn(null)
   }
 
-  const selectedStep     = selected?.kind === 'step' && steps[selected.index] ? steps[selected.index] : null
-  const selectedStepMeta = selectedStep ? stepMeta(selectedStep.type) : null
-  const panelOpen        = !!selected
-
   // Tail of the chain (last node reachable from the trigger) — gets the "+" below.
   const chainTail = (() => {
     let cur = TRIGGER_ID, guard = 0
@@ -782,68 +830,13 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   // Canvas bounding box: large enough to contain all nodes
   const canvasMinH = Math.max(
     600,
-    ...Object.values(nodePos).map(p => p.y + NODE_H + 80),
+    ...allIds.map(id => posOf(id).y + heightOf(id) + 80),
   )
 
   return (
     <div className="flex h-full overflow-hidden bg-muted/20">
 
-      {/* ── Left config panel ─────────────────────────────────────────────── */}
-      <div
-        className={cn(
-          'shrink-0 border-r border-border bg-card overflow-y-auto transition-all duration-200 ease-out',
-          panelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 pointer-events-none',
-        )}
-      >
-        {panelOpen && (
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                {selected?.kind === 'trigger' ? (
-                  <>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${TRIGGER_COLOR}20`, color: TRIGGER_COLOR }}>
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: TRIGGER_COLOR }}>Gatilho</p>
-                      <p className="text-sm font-semibold leading-tight">{triggerMeta(auto.trigger_type).label}</p>
-                    </div>
-                  </>
-                ) : selectedStepMeta ? (
-                  <>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${selectedStepMeta.color}20`, color: selectedStepMeta.color }}>
-                      <selectedStepMeta.icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: selectedStepMeta.color }}>
-                        Passo {(selected as any).index + 1}
-                      </p>
-                      <p className="text-sm font-semibold leading-tight">{selectedStepMeta.label}</p>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-              <button type="button" onClick={() => setSelected(null)} className="w-7 h-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="border-b border-border mb-5" />
-            {selected?.kind === 'trigger' && <TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
-            {selected?.kind === 'step' && selectedStep && (
-              <>
-                <StepConfig step={selectedStep} index={(selected as any).index} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 w-full justify-start" onClick={() => removeStep((selected as any).index)}>
-                    <Trash2 className="w-4 h-4 mr-2" /> Remover passo
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Free-drag canvas ──────────────────────────────────────────────── */}
+      {/* ── Free-drag canvas (config now lives inline in each node) ────────── */}
       <div className="flex-1 overflow-auto relative select-none">
         {/* Dot-grid background */}
         <div
@@ -868,7 +861,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             {edges.map(edge => {
               const from = posOf(edge.source)
               const to   = posOf(edge.target)
-              const x1 = from.x + NODE_W / 2,  y1 = from.y + NODE_H
+              const x1 = from.x + NODE_W / 2,  y1 = from.y + heightOf(edge.source)
               const x2 = to.x   + NODE_W / 2,  y2 = to.y
               const cy = (y1 + y2) / 2
               return (
@@ -886,7 +879,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             {/* In-progress connection following the cursor */}
             {conn && (() => {
               const from = posOf(conn.source)
-              const x1 = from.x + NODE_W / 2, y1 = from.y + NODE_H
+              const x1 = from.x + NODE_W / 2, y1 = from.y + heightOf(conn.source)
               const cy = (y1 + conn.y) / 2
               return (
                 <path
@@ -905,7 +898,9 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
           {(() => {
             const pos = posOf(TRIGGER_ID)
             return (
-              <div
+              <Measure
+                id={TRIGGER_ID}
+                onMeasure={onMeasure}
                 data-node-id={TRIGGER_ID}
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
@@ -924,6 +919,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   badge="Início"
                   isSelected={selected?.kind === 'trigger'}
                   onClick={() => { if (!wasDrag()) setSelected({ kind: 'trigger' }) }}
+                  config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
                 />
                 {/* Output port */}
                 <button
@@ -935,7 +931,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onPointerUp={onPortUp}
                   className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
                 />
-              </div>
+              </Measure>
             )
           })()}
 
@@ -945,8 +941,10 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             const pos    = posOf(nodeId)
             const meta   = stepMeta(step.type)
             return (
-              <div
+              <Measure
                 key={nodeId}
+                id={nodeId}
+                onMeasure={onMeasure}
                 data-node-id={nodeId}
                 className="absolute cursor-grab active:cursor-grabbing"
                 style={{ left: pos.x, top: pos.y, width: NODE_W, touchAction: 'none' }}
@@ -974,6 +972,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onClick={() => { if (!wasDrag()) setSelected({ kind: 'step', index: i }) }}
                   onDelete={() => removeStep(i)}
                   stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
+                  config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />}
                 />
                 {/* Output port */}
                 <button
@@ -985,7 +984,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onPointerUp={onPortUp}
                   className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
                 />
-              </div>
+              </Measure>
             )
           })}
 
@@ -994,7 +993,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             const from = posOf(edge.source)
             const to   = posOf(edge.target)
             const mx   = (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2
-            const my   = (from.y + NODE_H + to.y) / 2
+            const my   = (from.y + heightOf(edge.source) + to.y) / 2
             return (
               <div
                 key={`mid-${edge.source}-${edge.target}`}
@@ -1011,7 +1010,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" className="w-52">
+                  <DropdownMenuContent side="bottom" align="start" collisionPadding={12} className="w-52 max-h-[60vh] overflow-y-auto">
                     <DropdownMenuLabel className="text-xs">Inserir passo</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {STEP_TYPES.map(t => (
@@ -1038,7 +1037,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
           {(() => {
             const tailPos = posOf(chainTail)
             const bx      = tailPos.x + NODE_W / 2 - 14
-            const by      = tailPos.y + NODE_H + 22
+            const by      = tailPos.y + heightOf(chainTail) + 22
             return (
               <div className="absolute z-20" style={{ left: bx, top: by }}>
                 <DropdownMenu>
@@ -1051,7 +1050,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" className="w-52">
+                  <DropdownMenuContent side="bottom" align="start" collisionPadding={12} className="w-52 max-h-[60vh] overflow-y-auto">
                     <DropdownMenuLabel className="text-xs">Adicionar passo</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {STEP_TYPES.map(t => (

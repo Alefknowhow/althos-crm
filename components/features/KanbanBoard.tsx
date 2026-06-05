@@ -32,8 +32,8 @@ import {
 import { createLead } from '@/actions/leads'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
-import { Search, AlarmClock, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Search, AlarmClock, X, BarChart3, LayoutGrid, List } from 'lucide-react'
+import { cn, formatCurrency } from '@/lib/utils'
 
 type Member = { id: string; name: string; email: string }
 type SortKey = 'recent' | 'value_desc' | 'name'
@@ -73,6 +73,10 @@ export default function KanbanBoard({
   const [stalledOnly, setStalledOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('recent')
 
+  // View mode + dashboard modal
+  const [view, setView] = useState<'board' | 'list'>('board')
+  const [dashOpen, setDashOpen] = useState(false)
+
   useEffect(() => {
     setStages(initialStages)
     setLeads(initialLeads)
@@ -83,6 +87,12 @@ export default function KanbanBoard({
     for (const m of members) map[m.id] = m
     return map
   }, [members])
+
+  const stagesById = useMemo<Record<string, any>>(() => {
+    const map: Record<string, any> = {}
+    for (const s of stages) map[s.id] = s
+    return map
+  }, [stages])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -183,11 +193,47 @@ export default function KanbanBoard({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* KPI strip */}
-      <PipelineKpiBar leads={visibleLeads} />
-
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Dashboard (KPIs) trigger — opens the metrics in a modal to free up
+            vertical space for the board itself. */}
+        <button
+          type="button"
+          onClick={() => setDashOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary"
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span className="hidden sm:inline">Dashboard</span>
+        </button>
+
+        {/* Board / list view toggle */}
+        <div className="inline-flex h-9 items-center rounded-md border border-border p-0.5">
+          <button
+            type="button"
+            onClick={() => setView('board')}
+            title="Visualizar em quadro"
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-sm transition-colors',
+              view === 'board' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Quadro</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            title="Visualizar em lista"
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-sm transition-colors',
+              view === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+        </div>
+
         <div className="relative min-w-[180px] flex-1 max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -257,34 +303,99 @@ export default function KanbanBoard({
       </div>
 
       {/* Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-2 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:snap-x hide-scrollbar">
-          {stages.map(stage => {
-            const stageLeads = visibleLeads.filter(l => l.stage_id === stage.id)
-            return (
-              <KanbanColumn
-                key={stage.id}
-                stage={stage}
-                leads={stageLeads}
-                orgSlug={orgSlug}
-                membersById={membersById}
-                members={members}
-                onLeadClick={id => setSelectedLeadId(id)}
-                onAddLead={id => setCreateStageId(id)}
-              />
-            )
-          })}
+      {view === 'board' ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-2 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:snap-x hide-scrollbar">
+            {stages.map(stage => {
+              const stageLeads = visibleLeads.filter(l => l.stage_id === stage.id)
+              return (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  leads={stageLeads}
+                  orgSlug={orgSlug}
+                  membersById={membersById}
+                  members={members}
+                  onLeadClick={id => setSelectedLeadId(id)}
+                  onAddLead={id => setCreateStageId(id)}
+                />
+              )
+            })}
+          </div>
+          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
+            {activeLead ? <LeadCard lead={activeLead} orgSlug={orgSlug} isOverlay /> : null}
+          </DragOverlay>
+        </DndContext>
+      ) : (
+        /* List view — each row tinted with its pipeline stage colour */
+        <div className="flex-1 overflow-y-auto rounded-xl border border-border bg-card hide-scrollbar">
+          {visibleLeads.length === 0 ? (
+            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+              Nenhum negócio encontrado.
+            </div>
+          ) : (
+            <table className="w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-10 bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Negócio</th>
+                  <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Estágio</th>
+                  <th className="hidden px-3 py-2 text-left font-medium md:table-cell">Responsável</th>
+                  <th className="px-3 py-2 text-right font-medium">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleLeads.map(lead => {
+                  const stage = stagesById[lead.stage_id]
+                  const color = stage?.color || '#94a3b8'
+                  const owner = lead.assigned_to ? membersById[lead.assigned_to] : null
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedLeadId(lead.id)}
+                      className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/40"
+                      style={{ backgroundColor: `${color}14`, boxShadow: `inset 4px 0 0 0 ${color}` }}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="font-medium text-foreground">{lead.name || 'Sem nome'}</div>
+                        <div className="truncate text-xs text-muted-foreground">{lead.email || lead.phone || ''}</div>
+                      </td>
+                      <td className="hidden px-3 py-2.5 sm:table-cell">
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: `${color}22`, color }}
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                          {stage?.name || '—'}
+                        </span>
+                      </td>
+                      <td className="hidden px-3 py-2.5 text-muted-foreground md:table-cell">
+                        {owner?.name || owner?.email || '—'}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-medium">
+                        {formatCurrency(lead.value_cents || 0)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
-          {activeLead ? <LeadCard lead={activeLead} orgSlug={orgSlug} isOverlay /> : null}
-        </DragOverlay>
-      </DndContext>
+      )}
+
+      {/* Dashboard (KPIs) modal */}
+      <Dialog open={dashOpen} onOpenChange={setDashOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Dashboard do Pipeline</DialogTitle></DialogHeader>
+          <PipelineKpiBar leads={visibleLeads} />
+        </DialogContent>
+      </Dialog>
 
       <LeadDetailDrawer
         open={!!selectedLeadId}

@@ -115,14 +115,48 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
 
   async function handleSave() {
     setSaving(true)
-    await updateForm(orgSlug, form.id, { 
-      name: form.name, 
-      schema, 
-      pipeline_id: form.pipeline_id, 
+    // Note: `name` is owned by the page header (FormPageHeader) now, so we
+    // intentionally don't send it here to avoid overwriting a fresh rename
+    // with a stale value from this component's local state.
+    await updateForm(orgSlug, form.id, {
+      schema,
+      pipeline_id: form.pipeline_id,
       stage_id: form.stage_id,
-      is_active: form.is_active 
+      is_active: form.is_active
     })
     setSaving(false)
+  }
+
+  // ── Slug (public URL) editor ────────────────────────────────────────────
+  const [editingUrl, setEditingUrl] = useState(false)
+  const [slugDraft, setSlugDraft] = useState(form.slug)
+  const [savingUrl, setSavingUrl] = useState(false)
+
+  function slugify(v: string) {
+    return v
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
+  async function handleSaveUrl() {
+    const clean = slugify(slugDraft)
+    if (!clean) {
+      toast.error('URL inválida')
+      return
+    }
+    setSavingUrl(true)
+    const res = await updateForm(orgSlug, form.id, { slug: clean })
+    setSavingUrl(false)
+    if ((res as any)?.ok === false) {
+      toast.error((res as any).error || 'Erro ao salvar URL')
+      return
+    }
+    setForm({ ...form, slug: clean })
+    setSlugDraft(clean)
+    setEditingUrl(false)
+    toast.success('URL atualizada!')
   }
 
   const addField = (type: string) => {
@@ -154,21 +188,48 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   return (
     <div ref={containerRef} className="flex w-full h-full text-foreground bg-background">
       <div className="flex flex-col bg-muted/10 min-w-0 shrink-0 w-full lg:w-auto" style={isDesktop ? { width: `${leftPct}%` } : undefined}>
-        <div className="p-4 border-b bg-background flex justify-between items-center shadow-sm z-10 shrink-0">
-          <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="font-bold border-transparent hover:border-input focus:border-input w-1/2 text-lg h-10" />
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 mr-2">
-               <Label className="text-xs text-muted-foreground">Ativo</Label>
-               <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer" />
-            </div>
-            <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setShowMobilePreview(true)}>Preview</Button>
-            <Button variant="outline" size="sm" onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`)
-              toast.success('URL copiada!')
-            }}>Copiar URL</Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+        <div className="p-3 sm:p-4 border-b bg-background flex flex-wrap justify-end sm:justify-between items-center gap-2 shadow-sm z-10 shrink-0">
+          <div className="flex items-center gap-2 mr-auto">
+            <Label className="text-xs text-muted-foreground">Ativo</Label>
+            <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer" />
           </div>
+          <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setShowMobilePreview(true)}>Preview</Button>
+          <Button variant="outline" size="sm" onClick={() => { setSlugDraft(form.slug); setEditingUrl(true) }}>Editar URL</Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`)
+            toast.success('URL copiada!')
+          }}>Copiar URL</Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
         </div>
+
+        {editingUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditingUrl(false)}>
+            <div className="bg-background rounded-xl shadow-xl border w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+              <div>
+                <h3 className="font-semibold text-base">Editar URL pública</h3>
+                <p className="text-xs text-muted-foreground mt-1">Esse é o endereço do seu formulário público.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Endereço</Label>
+                <div className="flex items-center gap-1 rounded-md border bg-muted/30 px-2 focus-within:ring-1 focus-within:ring-ring">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">/f/</span>
+                  <Input
+                    autoFocus
+                    value={slugDraft}
+                    onChange={e => setSlugDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveUrl() }}
+                    className="border-0 bg-transparent px-1 h-9 focus-visible:ring-0 shadow-none"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Ficará: <span className="font-mono">/f/{slugify(slugDraft) || '...'}</span></p>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={() => setEditingUrl(false)} disabled={savingUrl}>Cancelar</Button>
+                <Button size="sm" onClick={handleSaveUrl} disabled={savingUrl}>{savingUrl ? 'Salvando...' : 'Salvar URL'}</Button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="flex-1 overflow-y-auto p-6 flex gap-6">
           <div className="flex-1 space-y-8">
