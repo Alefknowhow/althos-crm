@@ -583,10 +583,12 @@ function StepConfig({
 
 const NODE_W  = 260
 const NODE_H  = 172  // fallback node height before a card is measured
-const V_GAP   = 52   // vertical gap between nodes in default layout
-// Default vertical step for the initial auto-layout (before heights are
-// measured). Larger than NODE_H because cards now carry inline config fields.
-const LAYOUT_V_STEP = 330
+const H_GAP   = 80   // horizontal gap between nodes in default layout
+// Default horizontal step for the initial auto-layout. Ports live on the node
+// sides, so the flow reads left → right.
+const LAYOUT_H_STEP = NODE_W + H_GAP
+const LAYOUT_BASE_X = 40
+const LAYOUT_BASE_Y = 60
 const TRIGGER_ID = '__trigger'
 
 type Edge = { source: string; target: string }
@@ -649,14 +651,12 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
 
   // Initialise positions once canvas is mounted or when steps change
   const initPositions = useCallback(() => {
-    const cw = canvasRef.current?.clientWidth ?? 600
-    const cx = Math.max(20, (cw - NODE_W) / 2)
     setNodePos(prev => {
       const next = { ...prev }
-      if (!next[TRIGGER_ID]) next[TRIGGER_ID] = auto.trigger_config?.__pos ?? { x: cx, y: 30 }
+      if (!next[TRIGGER_ID]) next[TRIGGER_ID] = auto.trigger_config?.__pos ?? { x: LAYOUT_BASE_X, y: LAYOUT_BASE_Y }
       steps.forEach((s, i) => {
         const id = stepId(s, i)
-        if (!next[id]) next[id] = s.config?.__pos ?? { x: cx, y: 30 + (i + 1) * LAYOUT_V_STEP }
+        if (!next[id]) next[id] = s.config?.__pos ?? { x: LAYOUT_BASE_X + (i + 1) * LAYOUT_H_STEP, y: LAYOUT_BASE_Y }
       })
       const validIds = new Set(allIds)
       Object.keys(next).forEach(k => { if (!validIds.has(k)) delete next[k] })
@@ -669,8 +669,8 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
 
   function getPos(id: string, fallbackIndex: number): { x: number; y: number } {
     return nodePos[id] ?? {
-      x: Math.max(20, ((canvasRef.current?.clientWidth ?? 600) - NODE_W) / 2),
-      y: 30 + fallbackIndex * LAYOUT_V_STEP,
+      x: LAYOUT_BASE_X + fallbackIndex * LAYOUT_H_STEP,
+      y: LAYOUT_BASE_Y,
     }
   }
   const posOf = (id: string) => getPos(id, Math.max(0, allIds.indexOf(id)))
@@ -770,7 +770,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   function insertStep(afterNodeId: string, type: string) {
     const newId = `step_${Date.now()}`
     const afterPos = posOf(afterNodeId)
-    const newStep: Step = { id: newId, type, config: { __pos: { x: afterPos.x, y: afterPos.y + heightOf(afterNodeId) + V_GAP } } }
+    const newStep: Step = { id: newId, type, config: { __pos: { x: afterPos.x + LAYOUT_H_STEP, y: afterPos.y } } }
     if (type === 'wait')        newStep.config = { ...newStep.config, amount: 1, unit: 'minutes' }
     if (type === 'create_task') newStep.config = { ...newStep.config, title: 'Nova Tarefa', priority: 'normal', dueInDays: 1 }
 
@@ -832,6 +832,12 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
     600,
     ...allIds.map(id => posOf(id).y + heightOf(id) + 80),
   )
+  // Nodes now flow horizontally, so the canvas must also grow wide enough to
+  // scroll to the rightmost node (plus room for its output port + the tail "+").
+  const canvasMinW = Math.max(
+    canvasRef.current?.clientWidth ?? 600,
+    ...allIds.map(id => posOf(id).x + NODE_W + 120),
+  )
 
   return (
     <div className="flex h-full overflow-hidden bg-muted/20">
@@ -849,10 +855,10 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
         />
 
         {/* Inner canvas — grows to fit all nodes */}
-        <div ref={canvasRef} className="relative w-full" style={{ minHeight: canvasMinH }}>
+        <div ref={canvasRef} className="relative w-full" style={{ minHeight: canvasMinH, minWidth: canvasMinW }}>
 
           {/* ── SVG connector lines (from the edge graph) ─────────────────── */}
-          <svg className="absolute inset-0 w-full pointer-events-none overflow-visible" style={{ height: canvasMinH }}>
+          <svg className="absolute inset-0 pointer-events-none overflow-visible" style={{ width: canvasMinW, height: canvasMinH }}>
             <defs>
               <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
                 <path d="M0,0 L0,6 L7,3 z" fill="hsl(var(--border))" opacity="0.7" />
@@ -861,13 +867,14 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             {edges.map(edge => {
               const from = posOf(edge.source)
               const to   = posOf(edge.target)
-              const x1 = from.x + NODE_W / 2,  y1 = from.y + heightOf(edge.source)
-              const x2 = to.x   + NODE_W / 2,  y2 = to.y
-              const cy = (y1 + y2) / 2
+              // Exit the right side of the source, enter the left side of the target.
+              const x1 = from.x + NODE_W,  y1 = from.y + heightOf(edge.source) / 2
+              const x2 = to.x,             y2 = to.y + heightOf(edge.target) / 2
+              const cx = (x1 + x2) / 2
               return (
                 <path
                   key={`edge-${edge.source}-${edge.target}`}
-                  d={`M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`}
+                  d={`M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`}
                   stroke="hsl(var(--primary))"
                   strokeWidth="2"
                   fill="none"
@@ -879,11 +886,11 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             {/* In-progress connection following the cursor */}
             {conn && (() => {
               const from = posOf(conn.source)
-              const x1 = from.x + NODE_W / 2, y1 = from.y + heightOf(conn.source)
-              const cy = (y1 + conn.y) / 2
+              const x1 = from.x + NODE_W, y1 = from.y + heightOf(conn.source) / 2
+              const cx = (x1 + conn.x) / 2
               return (
                 <path
-                  d={`M${x1},${y1} C${x1},${cy} ${conn.x},${cy} ${conn.x},${conn.y}`}
+                  d={`M${x1},${y1} C${cx},${y1} ${cx},${conn.y} ${conn.x},${conn.y}`}
                   stroke="hsl(var(--primary))"
                   strokeWidth="2"
                   strokeDasharray="5 4"
@@ -921,7 +928,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onClick={() => { if (!wasDrag()) setSelected({ kind: 'trigger' }) }}
                   config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
                 />
-                {/* Output port */}
+                {/* Output port (right side) */}
                 <button
                   type="button"
                   data-port
@@ -929,7 +936,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onPointerDown={e => onPortDown(e, TRIGGER_ID)}
                   onPointerMove={onPortMove}
                   onPointerUp={onPortUp}
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
+                  className="absolute top-1/2 -translate-y-1/2 -right-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
                 />
               </Measure>
             )
@@ -953,11 +960,11 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-muted-foreground/30 pointer-events-none">
                   <GripVertical className="w-4 h-4" />
                 </div>
-                {/* Input port (visual drop target) */}
+                {/* Input port (left side, visual drop target) */}
                 <div
                   data-port
                   className={cn(
-                    'absolute left-1/2 -translate-x-1/2 -top-2.5 w-4 h-4 rounded-full border-2 bg-background z-20 transition-colors',
+                    'absolute top-1/2 -translate-y-1/2 -left-2.5 w-4 h-4 rounded-full border-2 bg-background z-20 transition-colors',
                     conn && conn.source !== nodeId ? 'border-primary' : 'border-muted-foreground/40',
                   )}
                 />
@@ -974,7 +981,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
                   config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />}
                 />
-                {/* Output port */}
+                {/* Output port (right side) */}
                 <button
                   type="button"
                   data-port
@@ -982,7 +989,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   onPointerDown={e => onPortDown(e, nodeId)}
                   onPointerMove={onPortMove}
                   onPointerUp={onPortUp}
-                  className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
+                  className="absolute top-1/2 -translate-y-1/2 -right-2.5 w-4 h-4 rounded-full border-2 border-primary bg-background hover:bg-primary transition-colors z-20 cursor-crosshair"
                 />
               </Measure>
             )
@@ -992,8 +999,8 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
           {edges.map(edge => {
             const from = posOf(edge.source)
             const to   = posOf(edge.target)
-            const mx   = (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2
-            const my   = (from.y + heightOf(edge.source) + to.y) / 2
+            const mx   = (from.x + NODE_W + to.x) / 2
+            const my   = (from.y + heightOf(edge.source) / 2 + to.y + heightOf(edge.target) / 2) / 2
             return (
               <div
                 key={`mid-${edge.source}-${edge.target}`}
@@ -1036,8 +1043,8 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
           {/* ── "+" after the chain tail ─────────────────────────────────── */}
           {(() => {
             const tailPos = posOf(chainTail)
-            const bx      = tailPos.x + NODE_W / 2 - 14
-            const by      = tailPos.y + heightOf(chainTail) + 22
+            const bx      = tailPos.x + NODE_W + 22
+            const by      = tailPos.y + heightOf(chainTail) / 2 - 14
             return (
               <div className="absolute z-20" style={{ left: bx, top: by }}>
                 <DropdownMenu>

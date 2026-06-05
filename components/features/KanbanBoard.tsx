@@ -15,6 +15,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import KanbanColumn from './KanbanColumn'
 import LeadCard, { type CardMember } from './LeadCard'
 import PipelineKpiBar from './pipeline/PipelineKpiBar'
+import MobilePipelineList from './pipeline/MobilePipelineList'
 import CurrencyInput from './pipeline/CurrencyInput'
 import { moveLeadToStage } from '@/actions/leads'
 import LeadDetailDrawer from './LeadDetailDrawer'
@@ -206,8 +207,8 @@ export default function KanbanBoard({
           <span className="hidden sm:inline">Dashboard</span>
         </button>
 
-        {/* Board / list view toggle */}
-        <div className="inline-flex h-9 items-center rounded-md border border-border p-0.5">
+        {/* Board / list view toggle — desktop only (mobile uses the stage accordion) */}
+        <div className="hidden md:inline-flex h-9 items-center rounded-md border border-border p-0.5">
           <button
             type="button"
             onClick={() => setView('board')}
@@ -302,7 +303,20 @@ export default function KanbanBoard({
         )}
       </div>
 
-      {/* Board */}
+      {/* Mobile — stage accordion (replaces board/list on small screens) */}
+      <div className="flex md:hidden flex-1 min-h-0">
+        <MobilePipelineList
+          stages={stages}
+          leads={visibleLeads}
+          orgSlug={orgSlug}
+          membersById={membersById}
+          onLeadClick={id => setSelectedLeadId(id)}
+          onAddLead={id => setCreateStageId(id)}
+        />
+      </div>
+
+      {/* Desktop — board / list */}
+      <div className="hidden md:flex md:flex-1 md:flex-col md:min-h-0">
       {view === 'board' ? (
         <DndContext
           sensors={sensors}
@@ -388,6 +402,7 @@ export default function KanbanBoard({
           )}
         </div>
       )}
+      </div>
 
       {/* Dashboard (KPIs) modal */}
       <Dialog open={dashOpen} onOpenChange={setDashOpen}>
