@@ -2,7 +2,7 @@ export const PRIVACIDADE_MD = String.raw`# Política de Privacidade — Althos C
 
 A Althos CRM leva a sério a privacidade e a proteção dos dados pessoais. Esta Política descreve como coletamos, usamos, compartilhamos e protegemos os dados pessoais tratados por meio de nossa plataforma de CRM, em conformidade com a Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/2018) e demais normas aplicáveis.
 
-> **Controladora:** 47.612.284 ALEF TRENTIN POKOJESKI - ME, inscrita no CNPJ sob o nº 47.612.284/0001-30, com sede em [ENDEREÇO DA SEDE] ("Althos CRM", "Althos", "nós").
+> **Controladora:** 47.612.284 ALEF TRENTIN POKOJESKI - ME, inscrita no CNPJ sob o nº 47.612.284/0001-30, com sede na Rua Pioneiros, nº 30, Balneário Camboriú/SC, CEP 88330-120 ("Althos CRM", "Althos", "nós").
 > **Encarregado pelo Tratamento de Dados Pessoais (DPO):** contato pelo e-mail privacidade@althoscrm.com.br.
 
 **Papéis sob a LGPD:** em relação aos dados de **conta e cadastro** do próprio usuário (a clínica ou empresa titular da conta), a Althos CRM atua como **Controladora**. Já em relação ao **conteúdo importado pelo usuário sobre seus próprios clientes, leads e pacientes**, o usuário é o **Controlador** e a Althos CRM atua como **Operadora**, tratando esses dados em nome e segundo as instruções do usuário.

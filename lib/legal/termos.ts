@@ -4,7 +4,7 @@ A **Althos CRM** é uma plataforma de gestão de relacionamento com clientes (CR
 
 Estes Termos de Serviço ("Termos") regem o uso da plataforma e constituem um contrato entre você ("Usuário") e a empresa identificada abaixo. A **Política de Uso Aceitável e Antifraude** (Anexo I) integra estes Termos.
 
-> **Identificação do fornecedor / Controlador:** 47.612.284 ALEF TRENTIN POKOJESKI - ME, inscrita no CNPJ sob o nº 47.612.284/0001-30, com sede em [ENDEREÇO DA SEDE] ("Althos CRM", "Althos", "nós").
+> **Identificação do fornecedor / Controlador:** 47.612.284 ALEF TRENTIN POKOJESKI - ME, inscrita no CNPJ sob o nº 47.612.284/0001-30, com sede na Rua Pioneiros, nº 30, Balneário Camboriú/SC, CEP 88330-120 ("Althos CRM", "Althos", "nós").
 > **Encarregado pelo Tratamento de Dados (DPO):** contato pelo e-mail privacidade@althoscrm.com.br. **Suporte:** suporte@althoscrm.com.br.
 
 ---
