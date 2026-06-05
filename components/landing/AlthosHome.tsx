@@ -2,6 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { HOME_CSS } from './althos-home.css'
+import {
+  PUBLIC_PLANS,
+  getPlanPricing,
+  ANNUAL_DISCOUNT_PCT,
+  SEMESTRAL_DISCOUNT_PCT,
+  type BillingCycle,
+  type PlanConfig,
+} from '@/lib/billing/plans'
+import { PLAN_LIMITS, PLAN_META, type PlanId } from '@/lib/plans/config'
 
 /* ---------------------------------------------------------------------------
  * AlthosHome — recreação da landing "tech premium dark" do handoff,
@@ -380,87 +389,127 @@ function Segments() {
   )
 }
 
-type Plan = {
-  name: string; tag: string; m: string; a: string; mNote: string; aNote: string;
-  desc: string; cta: string; solid?: boolean; popular?: boolean; feats: [string, boolean][];
-}
-
-const PLANS: Plan[] = [
-  {
-    name: 'Free', tag: 'Para dar o primeiro passo', m: '0', a: '0',
-    mNote: 'Gratuito para sempre · sem cartão', aNote: 'Gratuito para sempre · sem cartão',
-    desc: 'Organize seus leads e o pipeline e comece a vender com método — sem pagar nada.',
-    cta: 'Começar grátis',
-    feats: [['Até 50 leads', true], ['Pipeline e oportunidades', true], ['Formulários de captação', true], ['WhatsApp e Instagram', false], ['Atendente de IA 24h', false], ['Automações de tarefas', false]],
-  },
-  {
-    name: 'Starter', tag: 'Ideal para começar', m: '197,00', a: '162,00',
-    mNote: 'cobrado mensalmente', aNote: 'cobrado anualmente',
-    desc: 'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
-    cta: 'Começar grátis',
-    feats: [['Leads ilimitados', true], ['1 usuário', true], ['WhatsApp e Instagram', true], ['Atendente de IA 24h', false], ['Automações de tarefas', false], ['Fluxos avançados condicionais', false], ['Insights e previsões com IA', false], ['Integração com Meta Ads', false], ['E-mail marketing', false], ['Acesso à API', false], ['Gerente de conta dedicado', false]],
-  },
-  {
-    name: 'Pro', tag: 'Para crescer', m: '297,00', a: '244,00',
-    mNote: 'cobrado mensalmente', aNote: 'cobrado anualmente',
-    desc: 'Para empresas que querem automatizar processos e aumentar as vendas.',
-    cta: 'Começar grátis', solid: true, popular: true,
-    feats: [['Leads ilimitados', true], ['5 usuários', true], ['WhatsApp e Instagram', true], ['Atendente de IA 24h', true], ['Automações de tarefas', true], ['Fluxos avançados condicionais', false], ['Insights e previsões com IA', false], ['Integração com Meta Ads', true], ['E-mail marketing', true], ['Acesso à API', false], ['Gerente de conta dedicado', false]],
-  },
-  {
-    name: 'Business', tag: 'Para escalar sem limites', m: '397,00', a: '326,00',
-    mNote: 'cobrado mensalmente', aNote: 'cobrado anualmente',
-    desc: 'Para empresas que precisam de mais controle, dados e performance em escala.',
-    cta: 'Começar grátis',
-    feats: [['Leads ilimitados', true], ['Usuários ilimitados', true], ['WhatsApp e Instagram', true], ['Atendente de IA 24h', true], ['Automações de tarefas', true], ['Fluxos avançados condicionais', true], ['Insights e previsões com IA', true], ['Integração com Meta Ads', true], ['E-mail marketing', true], ['Acesso à API', true], ['Gerente de conta dedicado', true]],
-  },
-]
-
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M20 6L9 17l-5-5" /></svg>
 const CROSS = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M18 6L6 18M6 6l12 12" /></svg>
 
+const nBR = (v: number) => v.toLocaleString('pt-BR')
+
+/**
+ * Lista de funcionalidades por plano pago — espelha exatamente
+ * components/site/PricingPlans.tsx (fonte: lib/plans/config). Starter/Pro/
+ * Business têm as MESMAS funcionalidades; muda a QUANTIDADE de uso e dois
+ * recursos premium (Insights IA + Exportar relatórios) ficam em Pro/Business.
+ */
+function planFeats(plan: PlanConfig): [string, boolean][] {
+  const id = plan.key as PlanId
+  const lim = PLAN_LIMITS[id] ?? PLAN_LIMITS.starter
+  const meta = PLAN_META[id] ?? PLAN_META.starter
+  const isPro = id === 'pro' || id === 'business'
+  return [
+    [lim.users === -1 ? 'Usuários ilimitados' : `${lim.users} usuário${lim.users > 1 ? 's' : ''}`, true],
+    [lim.orgs === -1 ? 'Empresas ilimitadas' : `${lim.orgs} empresa${lim.orgs > 1 ? 's' : ''}`, true],
+    ['Leads ilimitados', true],
+    [lim.customers === -1 ? 'Clientes ilimitados' : `${nBR(lim.customers)} clientes`, true],
+    [`${nBR(meta.aiCreditsMonthly)} créditos de IA/mês`, true],
+    [lim.automations === -1 ? 'Automações ilimitadas' : `${lim.automations} automações`, true],
+    ['WhatsApp, Instagram e Meta Ads', true],
+    ['Atendente de IA 24h + score', true],
+    ['Agendamentos online', true],
+    ['Insights de vendas com IA', isPro],
+    ['Exportar relatórios', isPro],
+  ]
+}
+
+const FREE_FEATS: [string, boolean][] = [
+  ['Até 100 leads', true],
+  ['Pipeline e oportunidades', true],
+  ['1 formulário de captação', true],
+  ['WhatsApp e Instagram', false],
+  ['Atendente de IA 24h', false],
+  ['Automações de tarefas', false],
+]
+
 /* ----------------------------- Pricing ----------------------------- */
 function Pricing() {
-  const [annual, setAnnual] = useState(false)
+  const [cycle, setCycle] = useState<BillingCycle>('annual')
+  const fmt = (cents: number) =>
+    (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
   return (
     <section className="pricing" aria-label="Planos e preços">
       <div className="pricing-head">
         <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Planos</div>
         <h2 className="reveal" data-d="1">Preço que cabe em qualquer fase</h2>
         <div className="billing-toggle reveal" data-d="2" role="group" aria-label="Ciclo de cobrança">
-          <button className={annual ? '' : 'active'} aria-pressed={!annual} onClick={() => setAnnual(false)}>Mensal</button>
-          <button className={annual ? 'active' : ''} aria-pressed={annual} onClick={() => setAnnual(true)}>Anual</button>
+          <button className={cycle === 'monthly' ? 'active' : ''} aria-pressed={cycle === 'monthly'} onClick={() => setCycle('monthly')}>Mensal</button>
+          <button className={cycle === 'semestral' ? 'active' : ''} aria-pressed={cycle === 'semestral'} onClick={() => setCycle('semestral')}>Semestral</button>
+          <button className={cycle === 'annual' ? 'active' : ''} aria-pressed={cycle === 'annual'} onClick={() => setCycle('annual')}>Anual</button>
         </div>
-        <p className="save-pill reveal" data-d="3">Economize 18% no plano anual</p>
+        <p className="save-pill reveal" data-d="3">
+          {cycle === 'monthly'
+            ? `Economize até ${ANNUAL_DISCOUNT_PCT}% nos planos anuais`
+            : cycle === 'annual'
+              ? `Economize ${ANNUAL_DISCOUNT_PCT}% no plano anual`
+              : `Economize ${SEMESTRAL_DISCOUNT_PCT}% no plano semestral`}
+        </p>
       </div>
 
       <div className="plans">
-        {PLANS.map(p => (
-          <article className={`plan reveal${p.popular ? ' popular spot' : ''}`} key={p.name}>
-            {p.popular && <span className="plan-badge">★ Mais popular</span>}
-            <h3>{p.name}</h3>
-            <p className="ptag">{p.tag}</p>
-            <div className="price">
-              <span className="cur">R$</span>
-              <span className="val">{annual ? p.a : p.m}</span>
-              <span className="per">/mês</span>
-            </div>
-            <p className="annual-note">{annual ? p.aNote : p.mNote}</p>
-            <p className="pdesc">{p.desc}</p>
-            <a href="/signup" className={`btn ${p.solid ? 'btn-solid' : 'btn-outline'}`}>{p.cta}</a>
-            <ul>
-              {p.feats.map(([label, on], i) => (
-                <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
-              ))}
-            </ul>
-          </article>
-        ))}
+        {/* Free — não entra no checkout, é o ponto de partida grátis */}
+        <article className="plan reveal">
+          <h3>Free</h3>
+          <p className="ptag">Para dar o primeiro passo</p>
+          <div className="price">
+            <span className="cur">R$</span>
+            <span className="val">0</span>
+            <span className="per">/mês</span>
+          </div>
+          <p className="annual-note">Gratuito para sempre · sem cartão</p>
+          <p className="pdesc">Organize seus leads e o pipeline e comece a vender com método — sem pagar nada.</p>
+          <a href="/signup" className="btn btn-outline">Começar grátis</a>
+          <ul>
+            {FREE_FEATS.map(([label, on], i) => (
+              <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
+            ))}
+          </ul>
+        </article>
+
+        {PUBLIC_PLANS.map(plan => {
+          const pricing = getPlanPricing(plan, cycle)
+          const popular = plan.key === 'pro'
+          return (
+            <article className={`plan reveal${popular ? ' popular spot' : ''}`} key={plan.key}>
+              {popular && <span className="plan-badge">★ Mais popular</span>}
+              <h3>{plan.label}</h3>
+              <p className="ptag">{plan.tagline}</p>
+              <div className="price">
+                <span className="cur">R$</span>
+                <span className="val">{fmt(pricing.perMonthCents)}</span>
+                <span className="per">/mês</span>
+              </div>
+              <p className="annual-note">
+                {cycle === 'monthly'
+                  ? 'cobrado mensalmente'
+                  : cycle === 'annual'
+                    ? `${pricing.totalLabel} por ano · economize ${pricing.savedLabel}`
+                    : `${pricing.totalLabel} a cada 6 meses · economize ${pricing.savedLabel}`}
+              </p>
+              <p className="pdesc">{plan.description}</p>
+              <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
+              <ul>
+                {planFeats(plan).map(([label, on], i) => (
+                  <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
+                ))}
+              </ul>
+            </article>
+          )
+        })}
       </div>
 
       <p className="price-note reveal" data-d="0">
         Comece no <b>Free</b>, sem cartão. Nos planos pagos, os <b>7 dias de teste grátis</b> pedem uma
-        forma de pagamento (Pix ou cartão) para iniciar. No anual, pague à vista no Pix ou parcele no
-        cartão de crédito. <b>Sem fidelidade</b> — cancele quando quiser.
+        forma de pagamento (Pix ou cartão) para iniciar. No semestral e no anual, pague à vista no Pix ou
+        parcele no cartão de crédito. <b>Sem fidelidade</b> — cancele quando quiser.
       </p>
 
       <div className="seals reveal" data-d="0">
