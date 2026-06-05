@@ -20,7 +20,7 @@ export async function createCheckoutSession(
   orgSlug: string,
   plan: 'starter' | 'pro' | 'business',
   billingType: 'PIX' | 'CREDIT_CARD' = 'PIX',
-  cycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
+  cycle: 'MONTHLY' | 'SEMIANNUALLY' | 'YEARLY' = 'MONTHLY',
 ): Promise<{ ok: true; checkoutUrl: string } | { ok: false; error: string }> {
   await requireAuth()
   const org     = await getCurrentOrganization(orgSlug)

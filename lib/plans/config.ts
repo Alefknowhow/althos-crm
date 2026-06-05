@@ -68,33 +68,37 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: false,
     instagram_automation: false,
   },
+  // Starter/Pro/Business compartilham praticamente as MESMAS funcionalidades;
+  // a diferença está na QUANTIDADE de uso (ver PLAN_LIMITS) e em dois recursos
+  // premium (ai_insights + export_reports) reservados a Pro/Business.
+  // white_label foi removido da oferta (false em todos os planos).
   starter: {
     tasks: true,
     catalogo: true,
     whatsapp: true,
-    capi_pixel: false,
-    ai_insights: false,
-    white_label: false,
-    agendamentos: false,
-    ai_attendant: false,
-    lead_scoring: false,
-    multi_tenant: false,
-    export_reports: false,
-    meta_ads_panel: false,
-    instagram_automation: false,
+    capi_pixel: true,
+    ai_insights: false,        // premium: só Pro/Business
+    white_label: false,        // removido da oferta
+    agendamentos: true,
+    ai_attendant: true,
+    lead_scoring: true,
+    multi_tenant: false,       // 1 org (ver PLAN_LIMITS.orgs)
+    export_reports: false,     // premium: só Pro/Business
+    meta_ads_panel: true,
+    instagram_automation: true,
   },
   pro: {
     tasks: true,
     catalogo: true,
     whatsapp: true,
     capi_pixel: true,
-    ai_insights: false,
-    white_label: false,
+    ai_insights: true,
+    white_label: false,        // removido da oferta
     agendamentos: true,
     ai_attendant: true,
     lead_scoring: true,
-    multi_tenant: false,
-    export_reports: false,
+    multi_tenant: true,        // até 5 orgs
+    export_reports: true,
     meta_ads_panel: true,
     instagram_automation: true,
   },
@@ -104,11 +108,11 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     whatsapp: true,
     capi_pixel: true,
     ai_insights: true,
-    white_label: true,
+    white_label: false,        // removido da oferta
     agendamentos: true,
     ai_attendant: true,
     lead_scoring: true,
-    multi_tenant: true,
+    multi_tenant: true,        // orgs ilimitadas
     export_reports: true,
     meta_ads_panel: true,
     instagram_automation: true,
@@ -178,13 +182,15 @@ export interface PlanLimits {
   customers: number        // registros de clientes
   users: number
   leads: number            // leads no pipeline (-1 = ilimitado)
+  orgs: number             // empresas/organizações por conta (multi-tenant)
+  forms: number            // formulários de captação ativos
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  free:     { pipelines: 1,  automations: 0,  automationRuns: 0,     socialAccounts: 0,  socialMessages: 0,    customers: 50,   users: 1,  leads: 100 },
-  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: 500,  users: 1,  leads: -1 },
-  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 5000, customers: 2000, users: 6,  leads: -1 },
-  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1,   users: -1, leads: -1 },
+  free:     { pipelines: 1,  automations: 0,  automationRuns: 0,     socialAccounts: 0,  socialMessages: 0,    customers: 50,   users: 1,  leads: 100, orgs: 1,  forms: 1  },
+  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: 500,  users: 1,  leads: -1,  orgs: 1,  forms: -1 },
+  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 5000, customers: 2000, users: 6,  leads: -1,  orgs: 5,  forms: -1 },
+  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1,   users: -1, leads: -1,  orgs: -1, forms: -1 },
 }
 
 /** Limite de um plano para um recurso (Infinity quando ilimitado). */

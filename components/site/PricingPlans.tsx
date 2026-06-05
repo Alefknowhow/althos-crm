@@ -8,24 +8,36 @@ import {
   PUBLIC_PLANS,
   getPlanPricing,
   ANNUAL_DISCOUNT_PCT,
+  SEMESTRAL_DISCOUNT_PCT,
   type BillingCycle,
   type PlanConfig,
 } from '@/lib/billing/plans'
+import { PLAN_LIMITS, PLAN_META, type PlanId } from '@/lib/plans/config'
 
-/** Linhas de comparação derivadas das flags de cada plano. */
+/**
+ * Linhas de comparação por plano. Starter/Pro/Business têm as MESMAS
+ * funcionalidades — o que muda é a QUANTIDADE de uso (usuários, empresas,
+ * clientes, créditos de IA, automações). Dois recursos premium (Insights IA e
+ * Exportar relatórios) ficam reservados a Pro/Business.
+ */
 function planFeatures(p: PlanConfig): { label: string; on: boolean }[] {
+  const id   = p.key as PlanId
+  const lim  = PLAN_LIMITS[id] ?? PLAN_LIMITS.starter
+  const meta = PLAN_META[id] ?? PLAN_META.starter
+  const isPro = id === 'pro' || id === 'business'
+  const n = (v: number) => v.toLocaleString('pt-BR')
   return [
-    { label: 'Leads ilimitados',                 on: p.maxLeads === null },
-    { label: p.maxUsers === null ? 'Usuários ilimitados' : `${p.maxUsers} usuário${p.maxUsers > 1 ? 's' : ''}`, on: true },
-    { label: 'WhatsApp e Instagram',             on: p.hasWhatsApp },
-    { label: 'Atendente de IA 24h',              on: p.hasAI },
-    { label: 'Automações de tarefas',            on: p.hasAutomations },
-    { label: 'Fluxos avançados condicionais',    on: p.hasAdvancedAuto },
-    { label: 'Insights e previsões com IA',      on: p.hasAdvancedAI },
-    { label: 'Integração com Meta Ads',          on: p.hasMetaAds },
-    { label: 'E-mail marketing',                 on: p.hasEmailMarketing },
-    { label: 'Acesso à API',                     on: p.hasAPI },
-    { label: 'Gerente de conta dedicado',        on: p.hasDedicatedManager },
+    { label: lim.users === -1 ? 'Usuários ilimitados' : `${lim.users} usuário${lim.users > 1 ? 's' : ''}`, on: true },
+    { label: lim.orgs === -1 ? 'Empresas ilimitadas' : `${lim.orgs} empresa${lim.orgs > 1 ? 's' : ''}`, on: true },
+    { label: 'Leads ilimitados', on: true },
+    { label: lim.customers === -1 ? 'Clientes ilimitados' : `${n(lim.customers)} clientes`, on: true },
+    { label: `${n(meta.aiCreditsMonthly)} créditos de IA/mês`, on: true },
+    { label: lim.automations === -1 ? 'Automações ilimitadas' : `${lim.automations} automações`, on: true },
+    { label: 'WhatsApp, Instagram e Meta Ads', on: true },
+    { label: 'Atendente de IA 24h + score', on: true },
+    { label: 'Agendamentos online', on: true },
+    { label: 'Insights de vendas com IA', on: isPro },
+    { label: 'Exportar relatórios', on: isPro },
   ]
 }
 
@@ -34,10 +46,10 @@ export function PricingPlans() {
 
   return (
     <div>
-      {/* Toggle mensal / anual */}
+      {/* Toggle mensal / semestral / anual */}
       <div className="flex flex-col items-center gap-3">
         <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
-          {(['monthly', 'annual'] as BillingCycle[]).map(c => (
+          {(['monthly', 'semestral', 'annual'] as BillingCycle[]).map(c => (
             <button
               key={c}
               onClick={() => setCycle(c)}
@@ -52,12 +64,14 @@ export function PricingPlans() {
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                 />
               )}
-              <span className="relative">{c === 'monthly' ? 'Mensal' : 'Anual'}</span>
+              <span className="relative">{c === 'monthly' ? 'Mensal' : c === 'semestral' ? 'Semestral' : 'Anual'}</span>
             </button>
           ))}
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
-          Economize {ANNUAL_DISCOUNT_PCT}% no plano anual
+          {cycle === 'monthly'
+            ? `Economize até ${ANNUAL_DISCOUNT_PCT}% nos planos anuais`
+            : `Economize ${cycle === 'annual' ? ANNUAL_DISCOUNT_PCT : SEMESTRAL_DISCOUNT_PCT}% no plano ${cycle === 'annual' ? 'anual' : 'semestral'}`}
         </span>
       </div>
 
@@ -95,9 +109,9 @@ export function PricingPlans() {
 
           <ul className="mt-5 space-y-2 border-t border-white/8 pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">
             {[
-              { label: 'Até 50 leads', on: true },
+              { label: 'Até 100 leads', on: true },
               { label: 'Pipeline e oportunidades', on: true },
-              { label: 'Formulários de captação', on: true },
+              { label: '1 formulário de captação', on: true },
               { label: 'WhatsApp e Instagram', on: false },
               { label: 'Atendente de IA 24h', on: false },
               { label: 'Automações de tarefas', on: false },
@@ -196,7 +210,7 @@ export function PricingPlans() {
       <p className="mt-8 text-center text-[13px] text-white/45 sm:mt-10">
         Comece no <strong className="text-white/70">Free</strong>, sem cartão. Nos planos pagos, os{' '}
         <strong className="text-white/70">7 dias de teste grátis</strong> pedem uma forma de pagamento (Pix ou cartão) para iniciar.
-        No anual, pague à vista no <strong className="text-white/70">Pix</strong> ou parcele no{' '}
+        No semestral e no anual, pague à vista no <strong className="text-white/70">Pix</strong> ou parcele no{' '}
         <strong className="text-white/70">cartão de crédito</strong>. Sem fidelidade — cancele quando quiser.
       </p>
     </div>

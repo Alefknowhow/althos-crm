@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createCheckoutSession } from '@/actions/billing'
-import { PLANS, getPlanPricing, ANNUAL_DISCOUNT_PCT, type BillingCycle } from '@/lib/billing/plans'
+import { PLANS, getPlanPricing, ANNUAL_DISCOUNT_PCT, SEMESTRAL_DISCOUNT_PCT, type BillingCycle } from '@/lib/billing/plans'
 import { toast } from 'sonner'
 import { Loader2, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,59 +22,62 @@ interface Props {
 
 // ── Plan feature matrix ───────────────────────────────────────────────────────
 
+// Starter, Pro e Business têm as MESMAS funcionalidades — a diferença está na
+// QUANTIDADE de uso de cada coisa. Dois recursos premium (Insights IA e
+// Exportar relatórios) ficam reservados a Pro/Business.
 const PLAN_FEATURES: {
   label:    string
   starter:  boolean | string
   pro:      boolean | string
   business: boolean | string
 }[] = [
-  { label: 'Leads e clientes',                  starter: 'Ilimitados',   pro: 'Ilimitados',   business: 'Ilimitados' },
-  { label: 'Oportunidades e pipeline',           starter: true,           pro: true,           business: true         },
+  // ── Quantidades ──
+  { label: 'Usuários incluídos',                 starter: '1',            pro: 'Até 6',        business: 'Ilimitados' },
+  { label: 'Empresas / orgs',                    starter: '1',            pro: 'Até 5',        business: 'Ilimitadas' },
+  { label: 'Pipelines',                          starter: '2',            pro: '5',            business: 'Ilimitados' },
+  { label: 'Leads no pipeline',                  starter: 'Ilimitados',   pro: 'Ilimitados',   business: 'Ilimitados' },
+  { label: 'Clientes cadastrados',               starter: '500',          pro: '2.000',        business: 'Ilimitados' },
+  { label: 'Créditos de IA / mês',               starter: '300',          pro: '1.200',        business: '3.000'      },
+  { label: 'Automações ativas',                  starter: '5',            pro: '20',           business: 'Ilimitadas' },
+  { label: 'Disparos de automação / mês',        starter: '1.000',        pro: '10.000',       business: 'Ilimitados' },
+  { label: 'Contas de social (DM)',              starter: '1',            pro: '3',            business: 'Ilimitadas' },
+  { label: 'Mensagens de social / mês',          starter: '500',          pro: '5.000',        business: 'Ilimitadas' },
+  // ── Funcionalidades (iguais em todos) ──
   { label: 'Formulários de captação',            starter: true,           pro: true,           business: true         },
   { label: 'WhatsApp centralizado',              starter: true,           pro: true,           business: true         },
   { label: 'Catálogo de produtos',               starter: true,           pro: true,           business: true         },
   { label: 'Tarefas e atividades',               starter: true,           pro: true,           business: true         },
-  { label: 'Agendamentos online',                starter: false,          pro: true,           business: true         },
-  { label: 'Atendimento com IA 24/7',            starter: false,          pro: true,           business: true         },
-  { label: 'Score e qualificação por IA',        starter: false,          pro: true,           business: true         },
-  { label: 'Instagram (DMs e comentários)',      starter: false,          pro: true,           business: true         },
-  { label: 'Meta Ads + Pixel/CAPI',              starter: false,          pro: true,           business: true         },
-  { label: 'Insights de vendas com IA',          starter: false,          pro: false,          business: true         },
-  { label: 'White-label',                        starter: false,          pro: false,          business: true         },
-  { label: 'Multi-tenant',                       starter: false,          pro: false,          business: true         },
-  { label: 'Exportar relatórios',                starter: false,          pro: false,          business: true         },
-  { label: 'Usuários incluídos',                 starter: '1 usuário',    pro: 'Até 5',        business: 'Ilimitado'  },
+  { label: 'Agendamentos online',                starter: true,           pro: true,           business: true         },
+  { label: 'Atendimento com IA 24/7',            starter: true,           pro: true,           business: true         },
+  { label: 'Score e qualificação por IA',        starter: true,           pro: true,           business: true         },
+  { label: 'Instagram (DMs e comentários)',      starter: true,           pro: true,           business: true         },
+  { label: 'Meta Ads + Pixel/CAPI',              starter: true,           pro: true,           business: true         },
+  // ── Premium (Pro/Business) ──
+  { label: 'Insights de vendas com IA',          starter: false,          pro: true,           business: true         },
+  { label: 'Exportar relatórios',                starter: false,          pro: true,           business: true         },
   { label: 'Gerente de conta dedicado',          starter: false,          pro: false,          business: true         },
 ]
 
 const PLAN_INFO: Record<Plan, {
   label:    string
   tagline:  string
-  price:    string
-  priceFmt: string
   icon:     React.ComponentType<{ className?: string }>
   popular?: boolean
 }> = {
   starter: {
     label:    'Starter',
     tagline:  'Ideal para começar',
-    price:    'R$ 197/mês',
-    priceFmt: 'R$ 197',
     icon:     Users,
   },
   pro: {
     label:    'Pro',
     tagline:  'Para crescer',
-    price:    'R$ 297/mês',
-    priceFmt: 'R$ 297',
     icon:     Zap,
     popular:  true,
   },
   business: {
     label:    'Business',
     tagline:  'Para escalar sem limites',
-    price:    'R$ 397/mês',
-    priceFmt: 'R$ 397',
     icon:     Rocket,
   },
 }
@@ -100,7 +103,7 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
       orgSlug,
       plan,
       method,
-      cycle === 'annual' ? 'YEARLY' : 'MONTHLY',
+      cycle === 'annual' ? 'YEARLY' : cycle === 'semestral' ? 'SEMIANNUALLY' : 'MONTHLY',
     )
     setLoading(false)
 
@@ -126,9 +129,9 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
         </DialogHeader>
 
         {/* ── Billing cycle toggle ── */}
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <div className="inline-flex items-center rounded-full border bg-muted/40 p-1">
-            {(['monthly', 'annual'] as BillingCycle[]).map(c => (
+            {(['monthly', 'semestral', 'annual'] as BillingCycle[]).map(c => (
               <button
                 key={c}
                 onClick={() => setCycle(c)}
@@ -137,13 +140,15 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                   cycle === c ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {c === 'monthly' ? 'Mensal' : 'Anual'}
+                {c === 'monthly' ? 'Mensal' : c === 'semestral' ? 'Semestral' : 'Anual'}
               </button>
             ))}
           </div>
-          <Badge variant="secondary" className="text-[10px]">
-            Economize {ANNUAL_DISCOUNT_PCT}% no anual
-          </Badge>
+          {cycle !== 'monthly' && (
+            <Badge variant="secondary" className="text-[10px]">
+              Economize {cycle === 'annual' ? ANNUAL_DISCOUNT_PCT : SEMESTRAL_DISCOUNT_PCT}% no {cycle === 'annual' ? 'anual' : 'semestral'}
+            </Badge>
+          )}
         </div>
 
         {/* ── Plan selector ── */}
@@ -185,9 +190,9 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                   </span>
                   <span className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 whitespace-nowrap">/mês</span>
                 </div>
-                {cycle === 'annual' && (
+                {cycle !== 'monthly' && (
                   <p className="text-[10px] text-muted-foreground -mt-1.5 truncate">
-                    {pPrice.totalLabel}/ano
+                    {pPrice.totalLabel}/{cycle === 'annual' ? 'ano' : 'semestre'}
                   </p>
                 )}
 
@@ -258,10 +263,10 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {cycle === 'annual'
+                    {cycle !== 'monthly'
                       ? m.id === 'CREDIT_CARD'
-                        ? 'Parcele o valor anual no cartão.'
-                        : 'Pagamento anual à vista.'
+                        ? `Parcele o valor ${cycle === 'annual' ? 'anual' : 'semestral'} no cartão.`
+                        : `Pagamento ${cycle === 'annual' ? 'anual' : 'semestral'} à vista.`
                       : m.desc}
                   </p>
                 </div>
@@ -277,11 +282,11 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
         <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between text-sm">
           <div>
             <span className="text-muted-foreground">
-              {cycle === 'annual' ? 'Total anual' : 'Total mensal'} — {info.label}
+              {cycle === 'annual' ? 'Total anual' : cycle === 'semestral' ? 'Total semestral' : 'Total mensal'} — {info.label}
             </span>
-            {cycle === 'annual' && (
+            {cycle !== 'monthly' && (
               <p className="text-[11px] text-emerald-600">
-                Economia de {pricing.savedLabel} no ano · equivale a {pricing.perMonthLabel}/mês
+                Economia de {pricing.savedLabel} no {cycle === 'annual' ? 'ano' : 'semestre'} · equivale a {pricing.perMonthLabel}/mês
               </p>
             )}
           </div>
