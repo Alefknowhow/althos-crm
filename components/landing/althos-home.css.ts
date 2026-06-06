@@ -325,4 +325,100 @@ export const HOME_CSS = `
 @media (prefers-reduced-motion: reduce) {
   .althos-home .ah-lightbox, .althos-home .ah-lightbox img { animation: none; }
 }
+
+/* ============================================================
+   MOBILE / TELEFONE  (<= 640px)
+   Compacta tudo: tipografia menor, paddings curtos, cards
+   enxutos, telas inteiras (sem corte) e ZERO scroll infinito.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* --- Hero: cabeçalho não cortado, letras menores --- */
+  .althos-home .hero { padding: 18px 20px 56px; gap: 30px; }
+  .althos-home .eyebrow { font-size: 12px; padding: 6px 12px 6px 10px; }
+  .althos-home h1.headline { font-size: clamp(30px, 9vw, 40px); line-height: 1.08; margin-top: 18px; }
+  .althos-home .subtitle { font-size: 15.5px; margin-top: 16px; line-height: 1.55; }
+  .althos-home .cta-row { margin-top: 24px; gap: 10px; }
+  .althos-home .cta-row .btn { flex: 1 1 auto; justify-content: center; padding: 13px 18px; font-size: 15px; }
+  .althos-home .microcopy { margin-top: 14px; font-size: 12.5px; }
+  .althos-home .chips { margin-top: 26px; gap: 8px; }
+  .althos-home .chip { font-size: 13px; padding: 8px 12px; }
+
+  /* --- Telas/screenshots: imagem INTEIRA (contain), nada cortado.
+         Frame mantém o ratio nativo 1820/862 => zero letterbox. --- */
+  .althos-home .panel img,
+  .althos-home .feat-shots img,
+  .althos-home .ai-shot img { object-fit: contain; }
+  .althos-home .tabs { padding: 0 6px; }
+  .althos-home .tab { font-size: 12px; padding: 11px 11px 12px; }
+
+  /* --- Stats --- */
+  .althos-home .stats-inner { padding: 40px 20px; gap: 34px; }
+  .althos-home .stat-num { font-size: clamp(40px, 13vw, 58px); }
+  .althos-home .stat-label { font-size: 14px; margin-top: 10px; }
+
+  /* --- Proof / depoimentos --- */
+  .althos-home .proof { padding: 56px 20px 60px; }
+  .althos-home .proof-eyebrow { margin-bottom: 28px; }
+  .althos-home .tcards { margin-top: 44px; gap: 14px; }
+  .althos-home .tcard { padding: 22px 20px 20px; }
+  .althos-home .tquote { font-size: 17px; margin-bottom: 18px; }
+  .althos-home .tresult { padding: 12px 14px; margin-bottom: 18px; }
+  .althos-home .tresult .big { font-size: 24px; }
+
+  /* --- Features: sem scroll infinito --- */
+  .althos-home .features { padding: 48px 20px 60px; }
+  .althos-home .features-head h2 { font-size: clamp(26px, 7.5vw, 34px); }
+  .althos-home .features-grid { gap: 6px; margin-top: 22px; }
+  .althos-home .feat-sticky { position: static; top: auto; height: auto; min-height: 0; margin-bottom: 18px; }
+  .althos-home .feat-step { min-height: 0; padding: 22px 0; }
+  .althos-home .feat-step h3 { font-size: clamp(23px, 6.5vw, 30px); }
+  .althos-home .feat-step p { font-size: 15.5px; margin-top: 12px; }
+
+  /* --- AI block --- */
+  .althos-home .ai { padding: 56px 0 60px; }
+  .althos-home .ai-inner { padding: 0 20px; }
+  .althos-home .ai-head { margin-bottom: 36px; }
+  .althos-home .ai-head h2 { font-size: clamp(28px, 8vw, 38px); }
+  .althos-home .ai-head p { font-size: 15.5px; margin-top: 14px; }
+  .althos-home .ai-grid { gap: 28px; }
+  .althos-home .ai-list { gap: 10px; }
+  .althos-home .ai-cap { padding: 16px 16px; gap: 13px; }
+  .althos-home .ai-cap .ctext h4 { font-size: 16px; }
+  .althos-home .ai-cap .ctext span { font-size: 14px; }
+
+  /* --- Segments bento --- */
+  .althos-home .seg { padding: 56px 20px 60px; }
+  .althos-home .seg-head { margin-bottom: 34px; }
+  .althos-home .seg-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
+  .althos-home .bento { gap: 12px; }
+  .althos-home .bento-card { padding: 22px; min-height: 0; }
+  .althos-home .bento-card h3 { font-size: 23px; }
+  .althos-home .bento-card.lead h3 { font-size: 27px; }
+  .althos-home .bento-card p,
+  .althos-home .bento-card.lead p { font-size: 15px; }
+
+  /* --- Pricing: cards compactos --- */
+  .althos-home .pricing { padding: 56px 20px 64px; }
+  .althos-home .pricing-head { margin-bottom: 28px; }
+  .althos-home .pricing-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
+  .althos-home .billing-toggle { margin-top: 24px; gap: 2px; padding: 4px; }
+  .althos-home .billing-toggle button { font-size: 13px; padding: 8px 13px; }
+  .althos-home .plans { gap: 14px; margin-top: 34px; }
+  .althos-home .plan { padding: 22px 20px; }
+  .althos-home .plan.popular { transform: none; }
+  .althos-home .plan .price .val { font-size: 36px; }
+  .althos-home .plan .pdesc { min-height: 0; }
+  .althos-home .plan .ptag { min-height: 0; }
+  .althos-home .plan .annual-note { min-height: 0; }
+  .althos-home .plan ul { gap: 11px; margin-top: 20px; padding-top: 20px; }
+  .althos-home .plan li { font-size: 14px; }
+  .althos-home .seals { margin-top: 36px; gap: 10px; }
+  .althos-home .seal { font-size: 12.5px; padding: 9px 14px; }
+
+  /* --- Final CTA --- */
+  .althos-home .final { padding: 72px 20px 84px; }
+  .althos-home .final h2 { font-size: clamp(32px, 9vw, 46px); }
+  .althos-home .final p { font-size: 16px; margin-top: 18px; }
+  .althos-home .final .btn { margin-top: 30px; font-size: 16px; padding: 15px 26px; }
+}
 `
