@@ -340,8 +340,9 @@ export const HOME_CSS = `
   .althos-home .cta-row { margin-top: 24px; gap: 10px; }
   .althos-home .cta-row .btn { flex: 1 1 auto; justify-content: center; padding: 13px 18px; font-size: 15px; }
   .althos-home .microcopy { margin-top: 14px; font-size: 12.5px; }
-  .althos-home .chips { margin-top: 26px; gap: 8px; }
-  .althos-home .chip { font-size: 13px; padding: 8px 12px; }
+  .althos-home .chips { margin-top: 22px; gap: 6px; }
+  .althos-home .chip { font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+  .althos-home .chip .dot { width: 5px; height: 5px; }
 
   /* --- Telas/screenshots: imagem INTEIRA (contain), nada cortado.
          Frame mantém o ratio nativo 1820/862 => zero letterbox. --- */
@@ -351,19 +352,28 @@ export const HOME_CSS = `
   .althos-home .tabs { padding: 0 6px; }
   .althos-home .tab { font-size: 12px; padding: 11px 11px 12px; }
 
-  /* --- Stats --- */
-  .althos-home .stats-inner { padding: 40px 20px; gap: 34px; }
-  .althos-home .stat-num { font-size: clamp(40px, 13vw, 58px); }
-  .althos-home .stat-label { font-size: 14px; margin-top: 10px; }
+  /* --- Stats: numeros compactos, 3 lado a lado --- */
+  .althos-home .stats-inner { grid-template-columns: repeat(3,1fr); gap: 0; padding: 28px 10px; }
+  .althos-home .stat { padding: 4px 6px; }
+  .althos-home .stat + .stat::before { left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 40px; background: linear-gradient(180deg, transparent, var(--line-strong), transparent); }
+  .althos-home .stat-num { font-size: clamp(22px, 7.5vw, 34px); }
+  .althos-home .stat-label { font-size: 11px; margin-top: 6px; line-height: 1.25; }
 
-  /* --- Proof / depoimentos --- */
-  .althos-home .proof { padding: 56px 20px 60px; }
-  .althos-home .proof-eyebrow { margin-bottom: 28px; }
-  .althos-home .tcards { margin-top: 44px; gap: 14px; }
-  .althos-home .tcard { padding: 22px 20px 20px; }
-  .althos-home .tquote { font-size: 17px; margin-bottom: 18px; }
-  .althos-home .tresult { padding: 12px 14px; margin-bottom: 18px; }
-  .althos-home .tresult .big { font-size: 24px; }
+  /* --- Proof / depoimentos: 2 lado a lado, cards compactos --- */
+  .althos-home .proof { padding: 52px 16px 56px; }
+  .althos-home .proof-eyebrow { margin-bottom: 26px; }
+  .althos-home .tcards { grid-template-columns: repeat(2,1fr); max-width: none; margin: 32px 0 0; gap: 10px; }
+  .althos-home .tcard { padding: 15px 13px; border-radius: 14px; }
+  .althos-home .stars { margin-bottom: 9px; }
+  .althos-home .stars svg { width: 13px; height: 13px; }
+  .althos-home .tquote { font-size: 13px; line-height: 1.4; margin-bottom: 12px; }
+  .althos-home .tresult { padding: 8px 10px; margin-bottom: 12px; flex-direction: column; align-items: flex-start; gap: 1px; }
+  .althos-home .tresult .big { font-size: 18px; }
+  .althos-home .tresult .rlabel { font-size: 11px; line-height: 1.25; }
+  .althos-home .tmeta { gap: 8px; }
+  .althos-home .tmeta .avatar { width: 32px; height: 32px; font-size: 11.5px; }
+  .althos-home .tmeta .name { font-size: 12px; }
+  .althos-home .tmeta .role { font-size: 10.5px; }
 
   /* --- Features: sem scroll infinito --- */
   .althos-home .features { padding: 48px 20px 60px; }
@@ -386,34 +396,47 @@ export const HOME_CSS = `
   .althos-home .ai-cap .ctext h4 { font-size: 16px; }
   .althos-home .ai-cap .ctext span { font-size: 14px; }
 
-  /* --- Segments bento --- */
-  .althos-home .seg { padding: 56px 20px 60px; }
-  .althos-home .seg-head { margin-bottom: 34px; }
+  /* --- Segments bento: 2 cards por linha, lado a lado --- */
+  .althos-home .seg { padding: 52px 16px 56px; }
+  .althos-home .seg-head { margin-bottom: 30px; }
   .althos-home .seg-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
-  .althos-home .bento { gap: 12px; }
-  .althos-home .bento-card { padding: 22px; min-height: 0; }
-  .althos-home .bento-card h3 { font-size: 23px; }
-  .althos-home .bento-card.lead h3 { font-size: 27px; }
+  .althos-home .bento { grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .althos-home .bento-card { padding: 16px 13px; min-height: 0; border-radius: 14px; }
+  .althos-home .bento-card.lead { grid-column: span 1; grid-row: span 1; }
+  .althos-home .seg-icon,
+  .althos-home .bento-card.lead .seg-icon { width: 36px; height: 36px; margin-bottom: 11px; border-radius: 10px; }
+  .althos-home .seg-icon svg,
+  .althos-home .bento-card.lead .seg-icon svg { width: 18px; height: 18px; }
+  .althos-home .seg-tag { font-size: 10.5px; margin-bottom: 7px; }
+  .althos-home .bento-card h3 { font-size: 16.5px; margin-bottom: 6px; }
+  .althos-home .bento-card.lead h3 { font-size: 18px; }
   .althos-home .bento-card p,
-  .althos-home .bento-card.lead p { font-size: 15px; }
+  .althos-home .bento-card.lead p { font-size: 12.5px; line-height: 1.45; max-width: none; }
 
-  /* --- Pricing: cards compactos --- */
-  .althos-home .pricing { padding: 56px 20px 64px; }
-  .althos-home .pricing-head { margin-bottom: 28px; }
+  /* --- Pricing: comparação 2 a 2 lado a lado, cards compactos --- */
+  .althos-home .pricing { padding: 52px 16px 60px; }
+  .althos-home .pricing-head { margin-bottom: 26px; }
   .althos-home .pricing-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
-  .althos-home .billing-toggle { margin-top: 24px; gap: 2px; padding: 4px; }
-  .althos-home .billing-toggle button { font-size: 13px; padding: 8px 13px; }
-  .althos-home .plans { gap: 14px; margin-top: 34px; }
-  .althos-home .plan { padding: 22px 20px; }
+  .althos-home .billing-toggle { margin-top: 22px; gap: 2px; padding: 4px; }
+  .althos-home .billing-toggle button { font-size: 12.5px; padding: 7px 11px; }
+  .althos-home .plans { grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 28px; }
+  .althos-home .plan { padding: 16px 13px; border-radius: 14px; }
   .althos-home .plan.popular { transform: none; }
-  .althos-home .plan .price .val { font-size: 36px; }
-  .althos-home .plan .pdesc { min-height: 0; }
-  .althos-home .plan .ptag { min-height: 0; }
-  .althos-home .plan .annual-note { min-height: 0; }
-  .althos-home .plan ul { gap: 11px; margin-top: 20px; padding-top: 20px; }
-  .althos-home .plan li { font-size: 14px; }
-  .althos-home .seals { margin-top: 36px; gap: 10px; }
-  .althos-home .seal { font-size: 12.5px; padding: 9px 14px; }
+  .althos-home .plan h3 { font-size: 15px; }
+  .althos-home .plan .ptag { font-size: 12px; min-height: 0; margin-top: 3px; }
+  .althos-home .plan .price { margin: 12px 0 2px; }
+  .althos-home .plan .price .cur { font-size: 16px; }
+  .althos-home .plan .price .val { font-size: 28px; }
+  .althos-home .plan .price .per { font-size: 12px; }
+  .althos-home .plan .annual-note { font-size: 11px; min-height: 0; }
+  .althos-home .plan .pdesc { font-size: 12.5px; min-height: 0; margin-top: 12px; }
+  .althos-home .plan .btn { margin-top: 14px; padding: 10px 12px; font-size: 13px; }
+  .althos-home .plan ul { gap: 8px; margin-top: 16px; padding-top: 16px; }
+  .althos-home .plan li { font-size: 12px; gap: 7px; line-height: 1.35; }
+  .althos-home .plan li svg { width: 14px; height: 14px; }
+  .althos-home .price-note { font-size: 12.5px; margin-top: 28px; }
+  .althos-home .seals { margin-top: 32px; gap: 8px; }
+  .althos-home .seal { font-size: 12px; padding: 8px 12px; }
 
   /* --- Final CTA --- */
   .althos-home .final { padding: 72px 20px 84px; }

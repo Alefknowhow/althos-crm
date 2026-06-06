@@ -10,13 +10,15 @@ export const metadata: Metadata = {
 
 export default function CookiesPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-slate-700">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Política de Cookies</h1>
-      <p className="mt-2 text-slate-500">Última atualização: junho de 2026</p>
+    <div className="light min-h-screen bg-white">
+      <main className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-slate-700">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Política de Cookies</h1>
+        <p className="mt-2 text-slate-500">Última atualização: junho de 2026</p>
 
-      <div className="mt-6">
-        <LegalMarkdown source={COOKIES_MD} />
-      </div>
-    </main>
+        <div className="mt-6">
+          <LegalMarkdown source={COOKIES_MD} />
+        </div>
+      </main>
+    </div>
   )
 }
