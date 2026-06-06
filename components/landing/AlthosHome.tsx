@@ -602,21 +602,40 @@ function Behaviors() {
       cleanups.push(() => io.disconnect())
     }
 
-    /* features sticky scroll */
+    /* features — mobile: accordion (tap abre + troca imagem);
+       desktop: sticky scroll-driven activation */
     {
       const steps = Array.from(root.querySelectorAll<HTMLElement>('.feat-step'))
       const shots = Array.from(root.querySelectorAll<HTMLImageElement>('#featShots img'))
       if (steps.length && shots.length) {
+        const isMobile = window.matchMedia('(max-width: 640px)').matches
         const activate = (shot: string | null) => {
           steps.forEach(s => s.classList.toggle('active', s.getAttribute('data-shot') === shot))
           shots.forEach(img => img.classList.toggle('active', img.getAttribute('data-shot') === shot))
         }
-        activate(steps[0].getAttribute('data-shot'))
-        const io = new IntersectionObserver((entries) => {
-          entries.forEach(e => { if (e.isIntersecting) activate((e.target as HTMLElement).getAttribute('data-shot')) })
-        }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 })
-        steps.forEach(s => io.observe(s))
-        cleanups.push(() => io.disconnect())
+        if (isMobile) {
+          const setOpen = (idx: number) => {
+            steps.forEach((s, i) => s.classList.toggle('open', i === idx))
+            activate(steps[idx].getAttribute('data-shot'))
+          }
+          steps.forEach((s, i) => {
+            const onClick = (e: Event) => {
+              // deixa o link "saiba mais" navegar sem reabrir
+              if ((e.target as HTMLElement).closest('.learn')) return
+              setOpen(i)
+            }
+            s.addEventListener('click', onClick)
+            cleanups.push(() => s.removeEventListener('click', onClick))
+          })
+          setOpen(0)
+        } else {
+          activate(steps[0].getAttribute('data-shot'))
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) activate((e.target as HTMLElement).getAttribute('data-shot')) })
+          }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 })
+          steps.forEach(s => io.observe(s))
+          cleanups.push(() => io.disconnect())
+        }
       }
     }
 

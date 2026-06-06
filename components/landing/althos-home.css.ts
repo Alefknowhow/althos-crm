@@ -359,9 +359,10 @@ export const HOME_CSS = `
   .althos-home .stat-num { font-size: clamp(22px, 7.5vw, 34px); }
   .althos-home .stat-label { font-size: 11px; margin-top: 6px; line-height: 1.25; }
 
-  /* --- Proof / depoimentos: 2 lado a lado, cards compactos --- */
-  .althos-home .proof { padding: 52px 16px 56px; }
-  .althos-home .proof-eyebrow { margin-bottom: 26px; }
+  /* --- Proof / depoimentos: sem marquee, so depoimentos em carrossel --- */
+  .althos-home .proof { padding: 48px 16px 52px; }
+  .althos-home .marquee { display: none; }
+  .althos-home .proof-eyebrow { margin-bottom: 22px; }
   .althos-home .tcards { display: flex; grid-template-columns: none; max-width: none; margin: 32px -16px 0; padding: 0 16px 10px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .althos-home .tcards::-webkit-scrollbar { display: none; }
   .althos-home .tcard { flex: 0 0 82%; max-width: 300px; padding: 16px 15px; border-radius: 14px; scroll-snap-align: start; }
@@ -376,26 +377,38 @@ export const HOME_CSS = `
   .althos-home .tmeta .name { font-size: 13.5px; }
   .althos-home .tmeta .role { font-size: 12px; }
 
-  /* --- Features: sem scroll infinito --- */
-  .althos-home .features { padding: 48px 20px 60px; }
+  /* --- Features: imagem fixa no topo + accordion compacto.
+         Tocar num titulo abre o texto E troca a imagem -> conecta a
+         informacao e corta varios "scrolls" de altura. --- */
+  .althos-home .features { padding: 48px 16px 56px; }
   .althos-home .features-head h2 { font-size: clamp(26px, 7.5vw, 34px); }
-  .althos-home .features-grid { gap: 6px; margin-top: 22px; }
-  .althos-home .feat-sticky { position: static; top: auto; height: auto; min-height: 0; margin-bottom: 18px; }
-  .althos-home .feat-step { min-height: 0; padding: 22px 0; }
-  .althos-home .feat-step h3 { font-size: clamp(23px, 6.5vw, 30px); }
-  .althos-home .feat-step p { font-size: 15.5px; margin-top: 12px; }
+  .althos-home .features-grid { gap: 4px; margin-top: 20px; }
+  .althos-home .feat-sticky { position: static; top: auto; height: auto; min-height: 0; margin-bottom: 16px; }
+  .althos-home .feat-steps { border-top: 1px solid var(--line); }
+  .althos-home .feat-step { min-height: 0; padding: 0; border-bottom: 1px solid var(--line); cursor: pointer; display: block; }
+  .althos-home .feat-step .idx { display: none; }
+  .althos-home .feat-step h3 { font-size: 16.5px; line-height: 1.3; color: var(--ink); margin: 0; padding: 15px 30px 15px 0; position: relative; }
+  .althos-home .feat-step h3::after { content: "+"; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; display: grid; place-items: center; font-size: 20px; font-weight: 300; line-height: 1; color: var(--accent-bright); }
+  .althos-home .feat-step.open h3::after { content: "\\2013"; }
+  .althos-home .feat-step p { font-size: 14.5px; line-height: 1.55; margin: 0; max-width: none; max-height: 0; opacity: 0; overflow: hidden; padding: 0; transition: max-height 0.3s var(--ease), opacity 0.25s var(--ease), padding 0.3s var(--ease); }
+  .althos-home .feat-step.open p { max-height: 320px; opacity: 1; padding: 0 0 14px; }
+  .althos-home .feat-step .learn { margin: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s var(--ease), opacity 0.25s var(--ease), margin 0.3s var(--ease); }
+  .althos-home .feat-step.open .learn { max-height: 40px; opacity: 1; transform: none; margin: 0 0 16px; }
 
-  /* --- AI block --- */
-  .althos-home .ai { padding: 56px 0 60px; }
-  .althos-home .ai-inner { padding: 0 20px; }
-  .althos-home .ai-head { margin-bottom: 36px; }
+  /* --- AI block: 1 destaque (imagem + texto) + lista curta.
+         Esconde as descricoes longas dos 4 caps -> vira checklist. --- */
+  .althos-home .ai { padding: 48px 0 52px; }
+  .althos-home .ai-inner { padding: 0 16px; }
+  .althos-home .ai-head { margin-bottom: 28px; }
   .althos-home .ai-head h2 { font-size: clamp(28px, 8vw, 38px); }
-  .althos-home .ai-head p { font-size: 15.5px; margin-top: 14px; }
-  .althos-home .ai-grid { gap: 28px; }
-  .althos-home .ai-list { gap: 10px; }
-  .althos-home .ai-cap { padding: 16px 16px; gap: 13px; }
-  .althos-home .ai-cap .ctext h4 { font-size: 16px; }
-  .althos-home .ai-cap .ctext span { font-size: 14px; }
+  .althos-home .ai-head p { font-size: 15px; margin-top: 12px; }
+  .althos-home .ai-grid { gap: 24px; }
+  .althos-home .ai-list { gap: 8px; }
+  .althos-home .ai-cap { padding: 11px 13px; gap: 11px; align-items: center; }
+  .althos-home .ai-cap .tick { width: 26px; height: 26px; border-radius: 7px; }
+  .althos-home .ai-cap .tick svg { width: 15px; height: 15px; }
+  .althos-home .ai-cap .ctext h4 { font-size: 14px; margin: 0; }
+  .althos-home .ai-cap .ctext span { display: none; }
 
   /* --- Segments bento: 2 cards por linha, lado a lado --- */
   .althos-home .seg { padding: 52px 16px 56px; }
