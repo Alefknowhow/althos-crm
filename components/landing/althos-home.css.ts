@@ -362,18 +362,19 @@ export const HOME_CSS = `
   /* --- Proof / depoimentos: 2 lado a lado, cards compactos --- */
   .althos-home .proof { padding: 52px 16px 56px; }
   .althos-home .proof-eyebrow { margin-bottom: 26px; }
-  .althos-home .tcards { grid-template-columns: repeat(2,1fr); max-width: none; margin: 32px 0 0; gap: 10px; }
-  .althos-home .tcard { padding: 15px 13px; border-radius: 14px; }
+  .althos-home .tcards { display: flex; grid-template-columns: none; max-width: none; margin: 32px -16px 0; padding: 0 16px 10px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .althos-home .tcards::-webkit-scrollbar { display: none; }
+  .althos-home .tcard { flex: 0 0 82%; max-width: 300px; padding: 16px 15px; border-radius: 14px; scroll-snap-align: start; }
   .althos-home .stars { margin-bottom: 9px; }
   .althos-home .stars svg { width: 13px; height: 13px; }
-  .althos-home .tquote { font-size: 13px; line-height: 1.4; margin-bottom: 12px; }
-  .althos-home .tresult { padding: 8px 10px; margin-bottom: 12px; flex-direction: column; align-items: flex-start; gap: 1px; }
-  .althos-home .tresult .big { font-size: 18px; }
-  .althos-home .tresult .rlabel { font-size: 11px; line-height: 1.25; }
-  .althos-home .tmeta { gap: 8px; }
-  .althos-home .tmeta .avatar { width: 32px; height: 32px; font-size: 11.5px; }
-  .althos-home .tmeta .name { font-size: 12px; }
-  .althos-home .tmeta .role { font-size: 10.5px; }
+  .althos-home .tquote { font-size: 15px; line-height: 1.45; margin-bottom: 14px; }
+  .althos-home .tresult { padding: 11px 13px; margin-bottom: 14px; }
+  .althos-home .tresult .big { font-size: 23px; }
+  .althos-home .tresult .rlabel { font-size: 12.5px; line-height: 1.3; }
+  .althos-home .tmeta { gap: 11px; }
+  .althos-home .tmeta .avatar { width: 40px; height: 40px; font-size: 13px; }
+  .althos-home .tmeta .name { font-size: 13.5px; }
+  .althos-home .tmeta .role { font-size: 12px; }
 
   /* --- Features: sem scroll infinito --- */
   .althos-home .features { padding: 48px 20px 60px; }
@@ -419,21 +420,22 @@ export const HOME_CSS = `
   .althos-home .pricing-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
   .althos-home .billing-toggle { margin-top: 22px; gap: 2px; padding: 4px; }
   .althos-home .billing-toggle button { font-size: 12.5px; padding: 7px 11px; }
-  .althos-home .plans { grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 28px; }
-  .althos-home .plan { padding: 16px 13px; border-radius: 14px; }
+  .althos-home .plans { display: flex; grid-template-columns: none; gap: 12px; margin: 28px -16px 0; padding: 16px 16px 10px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; align-items: stretch; }
+  .althos-home .plans::-webkit-scrollbar { display: none; }
+  .althos-home .plan { flex: 0 0 78%; max-width: 280px; padding: 18px 15px; border-radius: 14px; scroll-snap-align: start; }
   .althos-home .plan.popular { transform: none; }
-  .althos-home .plan h3 { font-size: 15px; }
-  .althos-home .plan .ptag { font-size: 12px; min-height: 0; margin-top: 3px; }
-  .althos-home .plan .price { margin: 12px 0 2px; }
-  .althos-home .plan .price .cur { font-size: 16px; }
-  .althos-home .plan .price .val { font-size: 28px; }
-  .althos-home .plan .price .per { font-size: 12px; }
-  .althos-home .plan .annual-note { font-size: 11px; min-height: 0; }
-  .althos-home .plan .pdesc { font-size: 12.5px; min-height: 0; margin-top: 12px; }
-  .althos-home .plan .btn { margin-top: 14px; padding: 10px 12px; font-size: 13px; }
-  .althos-home .plan ul { gap: 8px; margin-top: 16px; padding-top: 16px; }
-  .althos-home .plan li { font-size: 12px; gap: 7px; line-height: 1.35; }
-  .althos-home .plan li svg { width: 14px; height: 14px; }
+  .althos-home .plan h3 { font-size: 16px; }
+  .althos-home .plan .ptag { font-size: 13px; min-height: 0; margin-top: 4px; }
+  .althos-home .plan .price { margin: 14px 0 3px; }
+  .althos-home .plan .price .cur { font-size: 18px; }
+  .althos-home .plan .price .val { font-size: 34px; }
+  .althos-home .plan .price .per { font-size: 13px; }
+  .althos-home .plan .annual-note { font-size: 12px; min-height: 0; }
+  .althos-home .plan .pdesc { font-size: 13.5px; min-height: 0; margin-top: 14px; }
+  .althos-home .plan .btn { margin-top: 16px; padding: 11px 14px; font-size: 14px; }
+  .althos-home .plan ul { gap: 10px; margin-top: 18px; padding-top: 18px; }
+  .althos-home .plan li { font-size: 13.5px; gap: 9px; line-height: 1.4; }
+  .althos-home .plan li svg { width: 16px; height: 16px; }
   .althos-home .price-note { font-size: 12.5px; margin-top: 28px; }
   .althos-home .seals { margin-top: 32px; gap: 8px; }
   .althos-home .seal { font-size: 12px; padding: 8px 12px; }
