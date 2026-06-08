@@ -109,35 +109,36 @@ export const HOME_CSS = `
   .althos-home .stat + .stat::before { left: 50%; top: 0; transform: translateX(-50%); width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--line-strong), transparent); }
 }
 
-/* Social proof */
-.althos-home .proof { position: relative; max-width: 1280px; margin: 0 auto; padding: 96px 40px 110px; }
-.althos-home .proof-eyebrow { text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 40px; }
-.althos-home .marquee { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
-.althos-home .marquee-track { display: flex; width: max-content; gap: 64px; align-items: center; animation: ah-scroll 38s linear infinite; }
-.althos-home .marquee:hover .marquee-track { animation-play-state: paused; }
-@keyframes ah-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.althos-home .logo-item { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; color: var(--ink-faint); opacity: 0.62; transition: opacity 0.3s var(--ease), color 0.3s var(--ease); }
-.althos-home .marquee:hover .logo-item { opacity: 0.4; }
-.althos-home .marquee .logo-item:hover { opacity: 1; color: var(--ink-dim); }
-.althos-home .logo-item .glyph { width: 26px; height: 26px; flex: 0 0 auto; display: grid; place-items: center; }
-.althos-home .logo-item .glyph svg { width: 100%; height: 100%; display: block; }
-.althos-home .logo-item .lname { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
-.althos-home .tcards { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 80px; }
-.althos-home .tcard { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018)); border: 1px solid var(--line); border-radius: 18px; padding: 28px 26px 26px; display: flex; flex-direction: column; transition: border-color 0.3s var(--ease), transform 0.3s var(--ease); }
-.althos-home .tcard:hover { border-color: var(--line-strong); transform: translateY(-3px); }
-.althos-home .stars { display: flex; gap: 3px; color: var(--accent-bright); margin-bottom: 16px; }
-.althos-home .stars svg { width: 16px; height: 16px; }
-.althos-home .tquote { font-weight: 500; font-size: 20px; line-height: 1.42; letter-spacing: -0.01em; color: var(--ink); text-wrap: pretty; margin: 0 0 22px; }
-.althos-home .tresult { margin-bottom: 22px; padding: 14px 16px; border-radius: 12px; background: linear-gradient(180deg, rgba(59,130,246,0.10), rgba(59,130,246,0.03)); border: 1px solid rgba(59,130,246,0.22); display: flex; align-items: baseline; gap: 10px; }
-.althos-home .tresult .big { font-weight: 700; font-size: 28px; letter-spacing: -0.02em; color: var(--accent-bright); text-shadow: 0 0 24px var(--accent-glow); line-height: 1; }
-.althos-home .tresult .rlabel { font-size: 13.5px; color: var(--ink-dim); font-weight: 500; line-height: 1.3; }
-.althos-home .tmeta { display: flex; align-items: center; gap: 13px; margin-top: auto; }
-.althos-home .tmeta .avatar { width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto; border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 14px; font-weight: 700; color: var(--accent-bright); background: rgba(59,130,246,0.12); }
-.althos-home .tmeta .who { display: flex; flex-direction: column; gap: 2px; }
-.althos-home .tmeta .name { font-size: 14.5px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; }
-.althos-home .tmeta .role { font-size: 13px; color: var(--ink-faint); }
+/* Comparativo */
+.althos-home .compare { position: relative; max-width: 1080px; margin: 0 auto; padding: 96px 40px 110px; border-top: 1px solid var(--line); }
+.althos-home .compare-head { max-width: 760px; margin: 0 auto 48px; text-align: center; }
+.althos-home .compare-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .compare-head h2 { font-weight: 800; font-size: clamp(32px,4.2vw,56px); line-height: 1.04; letter-spacing: -0.025em; color: var(--ink); text-wrap: balance; }
+.althos-home .compare-head p { margin-top: 20px; font-size: clamp(16px,1.2vw,18px); line-height: 1.6; color: var(--ink-dim); }
+.althos-home .cmp-table { border: 1px solid var(--line-strong); border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012)); }
+.althos-home .cmp-row { display: grid; grid-template-columns: minmax(0,1.8fr) 1fr 1fr 1fr; align-items: center; border-top: 1px solid var(--line); }
+.althos-home .cmp-row:first-child { border-top: none; }
+.althos-home .cmp-header { background: rgba(255,255,255,0.03); }
+.althos-home .cmp-header .cmp-feat, .althos-home .cmp-header .cmp-col { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); padding-top: 18px; padding-bottom: 18px; }
+.althos-home .cmp-feat { padding: 16px 20px; font-size: 14.5px; font-weight: 500; color: var(--ink-dim); line-height: 1.35; }
+.althos-home .cmp-col { padding: 16px 12px; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 56px; }
+.althos-home .cmp-col.cmp-althos { background: linear-gradient(180deg, rgba(59,130,246,0.10), rgba(59,130,246,0.03)); position: relative; }
+.althos-home .cmp-header .cmp-col.cmp-althos { color: var(--accent-bright); font-weight: 800; }
+.althos-home .cmp-yes { color: var(--accent-bright); display: grid; place-items: center; }
+.althos-home .cmp-yes svg { width: 22px; height: 22px; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+.althos-home .cmp-no { color: rgba(255,255,255,0.22); display: grid; place-items: center; }
+.althos-home .cmp-no svg { width: 19px; height: 19px; }
+.althos-home .cmp-partial { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); line-height: 1.25; }
+/* Garantias / objeções */
+.althos-home .guarantees { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 28px; }
+.althos-home .guarantee { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; padding: 22px 20px; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012)); transition: border-color 0.3s var(--ease), transform 0.3s var(--ease); }
+.althos-home .guarantee:hover { border-color: var(--line-strong); transform: translateY(-3px); }
+.althos-home .g-tick { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; border: 1px solid var(--line-strong); background: rgba(59,130,246,0.10); color: var(--accent-bright); margin-bottom: 14px; }
+.althos-home .g-tick svg { width: 19px; height: 19px; }
+.althos-home .guarantee h4 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 7px; }
+.althos-home .guarantee p { font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
 @media (max-width: 860px) {
-  .althos-home .tcards { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; }
+  .althos-home .guarantees { grid-template-columns: repeat(2,1fr); }
 }
 
 /* Features sticky */
@@ -237,6 +238,12 @@ export const HOME_CSS = `
 .althos-home .bento-card p { font-size: 16px; line-height: 1.55; color: var(--ink-dim); max-width: 32em; }
 .althos-home .bento-card.lead p { font-size: 17.5px; color: var(--ink-dim); max-width: 24em; margin-top: auto; }
 .althos-home .bento-card .spacer { flex: 1; }
+.althos-home a.bento-card { text-decoration: none; cursor: pointer; }
+.althos-home .seg-link { margin-top: 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--accent-bright); opacity: 0; transform: translateY(4px); transition: opacity 0.3s var(--ease), transform 0.3s var(--ease); }
+.althos-home .bento-card:not(.lead) .seg-link { margin-top: auto; }
+.althos-home .bento-card:hover .seg-link { opacity: 1; transform: translateY(0); }
+.althos-home .seg-link span { transition: transform 0.25s var(--ease); }
+.althos-home .bento-card:hover .seg-link span { transform: translateX(3px); }
 @media (max-width: 900px) {
   .althos-home .bento { grid-template-columns: repeat(2,1fr); }
   .althos-home .bento-card.lead { grid-column: span 2; grid-row: span 1; }
@@ -359,23 +366,24 @@ export const HOME_CSS = `
   .althos-home .stat-num { font-size: clamp(22px, 7.5vw, 34px); }
   .althos-home .stat-label { font-size: 11px; margin-top: 6px; line-height: 1.25; }
 
-  /* --- Proof / depoimentos: sem marquee, so depoimentos em carrossel --- */
-  .althos-home .proof { padding: 48px 16px 52px; }
-  .althos-home .marquee { display: none; }
-  .althos-home .proof-eyebrow { margin-bottom: 22px; }
-  .althos-home .tcards { display: flex; grid-template-columns: none; max-width: none; margin: 32px -16px 0; padding: 0 16px 10px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .althos-home .tcards::-webkit-scrollbar { display: none; }
-  .althos-home .tcard { flex: 0 0 82%; max-width: 300px; padding: 16px 15px; border-radius: 14px; scroll-snap-align: start; }
-  .althos-home .stars { margin-bottom: 9px; }
-  .althos-home .stars svg { width: 13px; height: 13px; }
-  .althos-home .tquote { font-size: 15px; line-height: 1.45; margin-bottom: 14px; }
-  .althos-home .tresult { padding: 11px 13px; margin-bottom: 14px; }
-  .althos-home .tresult .big { font-size: 23px; }
-  .althos-home .tresult .rlabel { font-size: 12.5px; line-height: 1.3; }
-  .althos-home .tmeta { gap: 11px; }
-  .althos-home .tmeta .avatar { width: 40px; height: 40px; font-size: 13px; }
-  .althos-home .tmeta .name { font-size: 13.5px; }
-  .althos-home .tmeta .role { font-size: 12px; }
+  /* --- Comparativo: tabela compacta + garantias 2 a 2 --- */
+  .althos-home .compare { padding: 52px 14px 56px; }
+  .althos-home .compare-head { margin-bottom: 28px; }
+  .althos-home .compare-head h2 { font-size: clamp(24px, 7vw, 34px); }
+  .althos-home .compare-head p { font-size: 14.5px; margin-top: 14px; }
+  .althos-home .cmp-row { grid-template-columns: minmax(0,1.5fr) 1fr 1fr 1fr; }
+  .althos-home .cmp-header .cmp-feat, .althos-home .cmp-header .cmp-col { font-size: 11.5px; padding-top: 12px; padding-bottom: 12px; }
+  .althos-home .cmp-feat { padding: 11px 11px; font-size: 12px; line-height: 1.3; }
+  .althos-home .cmp-col { padding: 11px 4px; min-height: 48px; }
+  .althos-home .cmp-yes svg { width: 18px; height: 18px; }
+  .althos-home .cmp-no svg { width: 16px; height: 16px; }
+  .althos-home .cmp-partial { font-size: 10px; line-height: 1.2; }
+  .althos-home .guarantees { gap: 10px; margin-top: 18px; }
+  .althos-home .guarantee { padding: 16px 14px; border-radius: 13px; }
+  .althos-home .g-tick { width: 32px; height: 32px; margin-bottom: 10px; }
+  .althos-home .g-tick svg { width: 16px; height: 16px; }
+  .althos-home .guarantee h4 { font-size: 14.5px; }
+  .althos-home .guarantee p { font-size: 12.5px; }
 
   /* --- Features: imagem fixa no topo + accordion compacto.
          Tocar num titulo abre o texto E troca a imagem -> conecta a
@@ -422,6 +430,7 @@ export const HOME_CSS = `
   .althos-home .seg-icon svg,
   .althos-home .bento-card.lead .seg-icon svg { width: 18px; height: 18px; }
   .althos-home .seg-tag { font-size: 10.5px; margin-bottom: 7px; }
+  .althos-home .seg-link { opacity: 1; transform: none; margin-top: 10px; font-size: 12px; }
   .althos-home .bento-card h3 { font-size: 16.5px; margin-bottom: 6px; }
   .althos-home .bento-card.lead h3 { font-size: 18px; }
   .althos-home .bento-card p,

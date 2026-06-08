@@ -11,6 +11,16 @@ export const metadata: Metadata = {
     'Agências de viagens, imobiliárias, clínicas, lojas de veículos, agências de marketing e pequenas empresas. Veja como o Althos CRM se adapta ao seu nicho.',
 }
 
+/** Mapeia o slug do nicho (content.ts) para a landing page dedicada. */
+const NICHE_LANDING: Record<string, string> = {
+  'agencias-viagens': '/viagens',
+  imobiliarias: '/imobiliarias',
+  clinicas: '/clinicas',
+  veiculos: '/veiculos',
+  marketing: '/trafego',
+  'pequenas-empresas': '/pequenas-empresas',
+}
+
 export default function ParaQuemEPage() {
   return (
     <SiteShell>
@@ -94,6 +104,14 @@ export default function ParaQuemEPage() {
                     </li>
                   ))}
                 </ul>
+                {NICHE_LANDING[n.slug] && (
+                  <Link
+                    href={NICHE_LANDING[n.slug]}
+                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-300 hover:text-blue-200 transition-colors"
+                  >
+                    Ver página completa <span aria-hidden="true">→</span>
+                  </Link>
+                )}
               </div>
             </div>
           ))}

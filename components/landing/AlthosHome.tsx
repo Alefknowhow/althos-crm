@@ -62,10 +62,10 @@ export default function AlthosHome() {
       <div className="shell">
         <Hero onZoom={onZoom} />
         <Stats />
-        <Proof />
         <Features onZoom={onZoom} />
         <AiBlock onZoom={onZoom} />
         <Segments />
+        <Compare />
         <Pricing />
         <FinalCta />
       </div>
@@ -102,17 +102,17 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
   return (
     <header className="hero">
       <div className="hero-copy">
-        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> CRM com IA e automações</div>
-        <h1 className="headline reveal" data-d="1">Transforme mais <em>leads</em> em clientes</h1>
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Seu vendedor digital no WhatsApp</div>
+        <h1 className="headline reveal" data-d="1">Seu próximo vendedor <em>não dorme</em> e nunca esquece o follow-up</h1>
         <p className="subtitle reveal" data-d="2">
-          O CRM brasileiro que atende, qualifica e converte sozinho — com inteligência artificial e
-          automações sob medida para o seu nicho.
+          A Althos atende, qualifica e dá sequência em cada lead no WhatsApp — com IA e automações no
+          piloto automático. Você acorda com a venda encaminhada, não com o lead esfriando.
         </p>
         <div className="cta-row reveal" data-d="3">
-          <a href="/signup" className="btn btn-solid">Testar grátis por 7 dias <span className="arrow">→</span></a>
-          <a href="/como-funciona" className="btn btn-outline">Agendar diagnóstico</a>
+          <a href="/signup" className="btn btn-solid">Começar grátis <span className="arrow">→</span></a>
+          <a href="#ai" className="btn btn-outline">Ver a IA atendendo</a>
         </div>
-        <div className="microcopy reveal" data-d="4"><span className="check">✓</span> Sem cartão de crédito</div>
+        <div className="microcopy reveal" data-d="4"><span className="check">✓</span> Grátis para sempre · sem cartão</div>
         <div className="chips reveal" data-d="5">
           <span className="chip"><span className="dot" /> Atendimento 24h com IA</span>
           <span className="chip"><span className="dot" /> Automações ilimitadas</span>
@@ -167,74 +167,85 @@ function Stats() {
       <div className="stats-inner">
         <div className="stat">
           <div className="stat-num" data-target="24" data-unit="h">0<span className="unit">h</span></div>
-          <div className="stat-label">atendimento automático</div>
+          <div className="stat-label">atendimento com IA, sem pausa</div>
         </div>
         <div className="stat">
-          <div className="stat-num" data-target="30" data-prefix="+" data-unit="%">0<span className="unit">%</span></div>
-          <div className="stat-label">conversão média</div>
+          <div className="stat-num" data-target="100" data-unit="%">0<span className="unit">%</span></div>
+          <div className="stat-label">dos leads com follow-up automático</div>
         </div>
         <div className="stat">
           <div className="stat-num" data-target="5" data-unit="min">0<span className="unit">min</span></div>
-          <div className="stat-label">para configurar</div>
+          <div className="stat-label">para colocar no ar</div>
         </div>
       </div>
     </section>
   )
 }
 
-const STAR = (
-  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 20.5l1.4-6.8L2.2 9l6.9-.7z" /></svg>
-)
-
-const TESTIMONIALS = [
-  { quote: 'A IA responde os leads em segundos, a qualquer hora. Paramos de perder venda no fim de semana.', big: '+35%', rlabel: 'em vendas nos primeiros 60 dias', name: 'Marina Costa', role: 'Diretora · Clínica Vértice', initials: 'MC' },
-  { quote: 'Montei toda a automação de captação num fim de tarde. O time comercial finalmente foca em fechar.', big: '3×', rlabel: 'mais leads qualificados por mês', name: 'Rafael Andrade', role: 'Sócio · Andrade Imóveis', initials: 'RA' },
-  { quote: 'O atendimento no WhatsApp ficou instantâneo e com a nossa cara. O cliente nem percebe que é IA.', big: '−40%', rlabel: 'no tempo de resposta ao cliente', name: 'Juliana Reis', role: 'CEO · Reis Turismo', initials: 'JR' },
+/* Comparativo Althos × Kommo × HubSpot. `a/k/h`: true = incluído,
+ * false = não tem, string = texto curto (ex.: "Pago à parte"). */
+const CMP_ROWS: { feat: string; a: boolean | string; k: boolean | string; h: boolean | string }[] = [
+  { feat: 'Atendente de IA 24h no WhatsApp', a: true, k: 'Pago à parte', h: 'Pago à parte' },
+  { feat: 'Automações sem precisar programar', a: true, k: true, h: 'Plano avançado' },
+  { feat: 'Feito para nichos brasileiros', a: true, k: false, h: false },
+  { feat: 'Preço e cobrança em Real (R$)', a: true, k: false, h: false },
+  { feat: 'Suporte humano em português', a: true, k: 'Limitado', h: 'Limitado' },
+  { feat: 'Plano gratuito de verdade', a: true, k: false, h: 'Limitado' },
+  { feat: 'Pronto pra usar em minutos', a: true, k: 'Configuração longa', h: 'Implantação cara' },
+  { feat: 'Sem fidelidade — cancele quando quiser', a: true, k: true, h: false },
 ]
 
-const MARQUEE = [
-  { name: 'Nimbus' }, { name: 'Vértice' }, { name: 'Aurora' }, { name: 'Construta' },
-  { name: 'Meridiano' }, { name: 'Altura' }, { name: 'Conexo' },
+const GUARANTEES = [
+  { h: 'Sem fidelidade', p: 'Cancele quando quiser, direto pelo painel. Nada de multa ou letra miúda.' },
+  { h: 'Comece sem cartão', p: 'O plano Free é grátis para sempre. Você só paga quando decidir crescer.' },
+  { h: 'Suporte de gente', p: 'Atendimento humano em português, por quem conhece o seu tipo de negócio.' },
+  { h: 'Seus dados protegidos', p: 'Hospedagem segura e conformidade com a LGPD. Seus contatos são só seus.' },
 ]
 
-/* ----------------------------- Proof ----------------------------- */
-function Proof() {
-  const items = [...MARQUEE, ...MARQUEE]
+function cmpCell(v: boolean | string) {
+  if (v === true) return <span className="cmp-yes">{CHECK}</span>
+  if (v === false) return <span className="cmp-no">{CROSS}</span>
+  return <span className="cmp-partial">{v}</span>
+}
+
+/* ----------------------------- Compare ----------------------------- */
+function Compare() {
   return (
-    <section className="proof" aria-label="Prova social">
-      <p className="proof-eyebrow reveal" data-d="0">Empresas que crescem com a gente</p>
-
-      <div className="marquee reveal" data-d="1" aria-hidden="true">
-        <div className="marquee-track">
-          {items.map((l, i) => (
-            <span className="logo-item" key={i}>
-              <span className="glyph">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-                  <circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" />
-                </svg>
-              </span>
-              <span className="lname">{l.name}</span>
-            </span>
-          ))}
-        </div>
+    <section className="compare" aria-label="Comparativo">
+      <div className="compare-head">
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Por que a Althos</div>
+        <h2 className="reveal" data-d="1">O poder das grandes plataformas, sem a dor de cabeça</h2>
+        <p className="reveal" data-d="2">
+          Ferramentas gringas são caras, complexas e não falam a língua do seu negócio. A Althos
+          entrega IA, automações e WhatsApp prontos pra vender — feita para o Brasil.
+        </p>
       </div>
 
-      <div className="tcards">
-        {TESTIMONIALS.map((t, i) => (
-          <article className="tcard reveal" data-d={i} key={i}>
-            <div className="stars" aria-label="5 de 5 estrelas">{STAR}{STAR}{STAR}{STAR}{STAR}</div>
-            <p className="tquote">{t.quote}</p>
-            <div className="tresult">
-              <span className="big">{t.big}</span>
-              <span className="rlabel">{t.rlabel}</span>
-            </div>
-            <div className="tmeta">
-              <span className="avatar">{t.initials}</span>
-              <span className="who">
-                <span className="name">{t.name}</span>
-                <span className="role">{t.role}</span>
-              </span>
-            </div>
+      <div className="cmp-table reveal" data-d="0" role="table" aria-label="Althos comparado a Kommo e HubSpot">
+        <div className="cmp-row cmp-header" role="row">
+          <span className="cmp-feat" role="columnheader">Recurso</span>
+          <span className="cmp-col cmp-althos" role="columnheader">Althos</span>
+          <span className="cmp-col" role="columnheader">Kommo</span>
+          <span className="cmp-col" role="columnheader">HubSpot</span>
+        </div>
+        {CMP_ROWS.map((r, i) => (
+          <div className="cmp-row" role="row" key={i}>
+            <span className="cmp-feat" role="cell">{r.feat}</span>
+            <span className="cmp-col cmp-althos" role="cell">{cmpCell(r.a)}</span>
+            <span className="cmp-col" role="cell">{cmpCell(r.k)}</span>
+            <span className="cmp-col" role="cell">{cmpCell(r.h)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="guarantees">
+        {GUARANTEES.map((g, i) => (
+          <article className="guarantee reveal spot" data-d={i} key={i}>
+            <span className="g-tick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M20 6L9 17l-5-5" /></svg>
+            </span>
+            <h4>{g.h}</h4>
+            <p>{g.p}</p>
           </article>
         ))}
       </div>
@@ -305,7 +316,7 @@ const AI_CAPS = [
 /* ----------------------------- AI block ----------------------------- */
 function AiBlock({ onZoom }: { onZoom: OnZoom }) {
   return (
-    <section className="ai" aria-label="Inteligência artificial">
+    <section className="ai" id="ai" aria-label="Inteligência artificial">
       <div className="ai-glow" aria-hidden="true" />
       <canvas className="sparkles" id="aiSparkles" aria-hidden="true" />
       <div className="ai-inner">
@@ -355,12 +366,12 @@ function AiBlock({ onZoom }: { onZoom: OnZoom }) {
 }
 
 const SEGMENTS = [
-  { lead: true, tag: 'Nicho-âncora', h: 'Agências de viagens', p: 'Cotações, roteiros e follow-ups de viagem automatizados — do primeiro "quanto custa?" ao embarque, sem perder o timing de venda.', icon: <><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /><circle cx="12" cy="12" r="10" /></> },
-  { lead: false, h: 'Imobiliárias', p: 'Captação de leads e agendamento de visitas no piloto automático.', icon: <><path d="M3 21V9l9-6 9 6v12" /><path d="M9 21v-6h6v6" /></> },
-  { lead: false, h: 'Clínicas', p: 'Agendamentos, confirmações e retorno de pacientes sem fila no WhatsApp.', icon: <><path d="M12 3v18M3 12h18" /><rect x="4" y="4" width="16" height="16" rx="4" /></> },
-  { lead: false, h: 'Lojas de veículos', p: 'Do test-drive ao financiamento, cada lead acompanhado até fechar.', icon: <><path d="M3 13l2-5h14l2 5M5 13h14v5H5z" /><circle cx="7.5" cy="18" r="1.6" /><circle cx="16.5" cy="18" r="1.6" /></> },
-  { lead: false, h: 'Agências de tráfego', p: 'Leads de anúncios direto no funil, com ROI por campanha à vista.', icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
-  { lead: false, h: 'Pequenas empresas', p: 'Organize clientes e vendas num lugar só, sem complicação nem custo alto.', icon: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 4a3 3 0 010 6M22 20c0-2.5-1.5-4.7-3.7-5.6" /></> },
+  { lead: true, tag: 'Nicho-âncora', h: 'Agências de viagens', p: 'Cotações, roteiros e follow-ups de viagem automatizados — do primeiro "quanto custa?" ao embarque, sem perder o timing de venda.', href: '/viagens', icon: <><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /><circle cx="12" cy="12" r="10" /></> },
+  { lead: false, h: 'Imobiliárias', p: 'Captação de leads e agendamento de visitas no piloto automático.', href: '/imobiliarias', icon: <><path d="M3 21V9l9-6 9 6v12" /><path d="M9 21v-6h6v6" /></> },
+  { lead: false, h: 'Clínicas', p: 'Agendamentos, confirmações e retorno de pacientes sem fila no WhatsApp.', href: '/clinicas', icon: <><path d="M12 3v18M3 12h18" /><rect x="4" y="4" width="16" height="16" rx="4" /></> },
+  { lead: false, h: 'Lojas de veículos', p: 'Do test-drive ao financiamento, cada lead acompanhado até fechar.', href: '/veiculos', icon: <><path d="M3 13l2-5h14l2 5M5 13h14v5H5z" /><circle cx="7.5" cy="18" r="1.6" /><circle cx="16.5" cy="18" r="1.6" /></> },
+  { lead: false, h: 'Agências de tráfego', p: 'Leads de anúncios direto no funil, com ROI por campanha à vista.', href: '/trafego', icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
+  { lead: false, h: 'Pequenas empresas', p: 'Organize clientes e vendas num lugar só, sem complicação nem custo alto.', href: '/pequenas-empresas', icon: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 4a3 3 0 010 6M22 20c0-2.5-1.5-4.7-3.7-5.6" /></> },
 ]
 
 /* ----------------------------- Segments ----------------------------- */
@@ -374,7 +385,7 @@ function Segments() {
 
       <div className="bento">
         {SEGMENTS.map((s, i) => (
-          <article className={`bento-card reveal spot${s.lead ? ' lead' : ''}`} data-d={i} key={i}>
+          <a href={s.href} className={`bento-card reveal spot${s.lead ? ' lead' : ''}`} data-d={i} key={i}>
             <span className="seg-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>{s.icon}</svg>
             </span>
@@ -382,7 +393,8 @@ function Segments() {
             <h3>{s.h}</h3>
             {s.lead && <div className="spacer" />}
             <p>{s.p}</p>
-          </article>
+            <span className="seg-link">Ver solução <span aria-hidden="true">→</span></span>
+          </a>
         ))}
       </div>
     </section>

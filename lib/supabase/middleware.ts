@@ -26,6 +26,12 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/por-que-nos' ||     // marketing: why us
     pathname === '/como-funciona' ||   // marketing: how it works
     pathname === '/planos' ||          // marketing: pricing
+    pathname === '/viagens' ||         // niche LP: agências de viagens
+    pathname === '/imobiliarias' ||    // niche LP: imobiliárias
+    pathname === '/clinicas' ||        // niche LP: clínicas
+    pathname === '/veiculos' ||        // niche LP: lojas de veículos
+    pathname === '/trafego' ||         // niche LP: agências de tráfego
+    pathname === '/pequenas-empresas' || // niche LP: pequenas empresas
     pathname === '/faq' ||             // marketing: FAQ
     pathname === '/blog' ||            // marketing: blog index
     pathname.startsWith('/blog/')   ||  // marketing: blog posts
