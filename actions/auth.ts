@@ -42,7 +42,13 @@ export async function login(formData: FormData) {
     redirectTo = `/app/${slug}/pipeline`
   }
 
-  return { ok: true, redirectTo }
+  // If the account has a verified 2FA factor, the password sign-in only yields
+  // an aal1 session — the user must complete the TOTP challenge before reaching
+  // the app. Signal the client to route through the /mfa challenge screen.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const mfaRequired = aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2'
+
+  return { ok: true, redirectTo, mfaRequired }
 }
 
 export async function signup(formData: FormData) {

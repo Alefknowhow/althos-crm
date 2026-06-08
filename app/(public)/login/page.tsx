@@ -45,6 +45,9 @@ export default function LoginPage() {
     if (!result.ok) {
       setError(result.error || 'Credenciais inválidas')
       setLoading(false)
+    } else if (result.mfaRequired) {
+      // Account has 2FA — finish authentication on the challenge screen.
+      router.push(`/mfa?next=${encodeURIComponent(result.redirectTo || '/onboarding')}`)
     } else {
       router.push(result.redirectTo!)
     }

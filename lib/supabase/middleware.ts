@@ -47,6 +47,23 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
   return 'authenticated'
 }
 
+/**
+ * Read the `aal` (authenticator assurance level) claim from a JWT access token
+ * without any network call. Returns 'aal1' | 'aal2' | null. Edge-runtime safe
+ * (uses atob, not Buffer).
+ */
+function readAalClaim(token: string): string | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(b64)) as { aal?: string }
+    return payload.aal ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request: { headers: request.headers },
@@ -127,6 +144,30 @@ export async function updateSession(request: NextRequest) {
     const dest = request.nextUrl.clone()
     dest.pathname = '/verify-email'
     return NextResponse.redirect(dest)
+  }
+
+  // ---- Two-factor (MFA) enforcement ----
+  // If the user has a verified MFA factor but the current session is still at
+  // assurance level aal1 (password only), force them through the /mfa challenge
+  // before any authenticated route. The /mfa page itself is exempt to avoid a
+  // redirect loop. currentLevel is read locally from the access token's `aal`
+  // claim (no extra network round-trip); verified factors come from the already
+  // fetched user object.
+  if (
+    (routeClass === 'authenticated' || routeClass === 'super_admin') &&
+    pathname !== '/mfa'
+  ) {
+    const hasVerifiedFactor = (user.factors ?? []).some(f => f.status === 'verified')
+    if (hasVerifiedFactor) {
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentLevel = session?.access_token ? readAalClaim(session.access_token) : null
+      if (currentLevel !== 'aal2') {
+        const dest = request.nextUrl.clone()
+        dest.pathname = '/mfa'
+        if (pathname.startsWith('/app/')) dest.searchParams.set('next', pathname)
+        return NextResponse.redirect(dest)
+      }
+    }
   }
 
   // Super-admin routes require the super_admin flag on the user's metadata.
