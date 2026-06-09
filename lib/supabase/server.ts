@@ -51,6 +51,14 @@ export function createAdminClient() {
         set()    {},
         remove() {},
       },
+      global: {
+        // No App Router Data Cache: o SDK do Supabase usa fetch por baixo, e
+        // o Next cacheia respostas de fetch por padrão. Sem isto, páginas
+        // como a proposta pública (/p/[token]) serviam uma versão antiga
+        // mesmo após salvar. force-dynamic sozinho NÃO cobre fetches aninhados.
+        fetch: (input, init) =>
+          fetch(input, { ...init, cache: 'no-store' }),
+      },
     }
   )
 }

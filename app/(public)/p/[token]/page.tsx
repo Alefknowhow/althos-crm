@@ -4,6 +4,8 @@ import type { Metadata } from 'next'
 import PublicProposalView from '@/components/features/proposals/PublicProposalView'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
   const supabase = createAdminClient()
