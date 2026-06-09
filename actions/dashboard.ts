@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchNormalizedSales } from '@/lib/dashboard/sales-source'
 
 export type Period = 'today' | '7d' | '30d' | '90d'
 
@@ -969,14 +970,9 @@ export async function getRevenueForecast(
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
 
-  const { data: monthSales } = await supabase
-    .from('sales')
-    .select('amount_cents')
-    .eq('organization_id', orgId)
-    .eq('status', 'completed')
-    .gte('sale_date', monthStart.toISOString().slice(0, 10))
-
-  const alreadyWon = (monthSales || []).reduce((a, s) => a + (s.amount_cents || 0), 0)
+  // Niche-aware: travel orgs read already-won from travel_sales, others from sales.
+  const monthSales = await fetchNormalizedSales(supabase, orgId, { since: monthStart, onlyCompleted: true })
+  const alreadyWon = monthSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
 
   // Pipeline = sum of non-terminal stage values (terminal IS already won and
   // counted separately).
@@ -1115,18 +1111,14 @@ export async function getSellersRanking(
   const start = new Date()
   start.setDate(start.getDate() - (options.windowDays ?? 30))
 
-  const { data: sales } = await supabase
-    .from('sales')
-    .select('seller_id, amount_cents')
-    .eq('organization_id', orgId)
-    .eq('status', 'completed')
-    .gte('sale_date', start.toISOString().slice(0, 10))
-    .not('seller_id', 'is', null)
+  // Niche-aware: travel orgs rank by travel_sales (created_by), others by sales.
+  const sales = await fetchNormalizedSales(supabase, orgId, { since: start, onlyCompleted: true })
+  const withSeller = sales.filter(s => s.seller_id)
 
-  if (!sales || sales.length === 0) return []
+  if (withSeller.length === 0) return []
 
   const bySeller = new Map<string, { count: number; value: number }>()
-  for (const s of sales) {
+  for (const s of withSeller) {
     const k = s.seller_id as string
     const cur = bySeller.get(k) || { count: 0, value: 0 }
     cur.count += 1
@@ -1215,16 +1207,9 @@ export async function getMetricTimeSeries(
     const { data } = await q
     ;(data ?? []).forEach((r: any) => add(r.created_at, 1))
   } else if (metric === 'revenue' || metric === 'sales') {
-    const startDate = start.toISOString().split('T')[0]
-    const { data } = await supabase
-      .from('sales')
-      .select('sale_date, amount_cents, status')
-      .eq('organization_id', orgId)
-      .neq('status', 'canceled')
-      .gte('sale_date', startDate)
-    ;(data ?? []).forEach((r: any) =>
-      add(r.sale_date, metric === 'revenue' ? (r.amount_cents || 0) / 100 : 1),
-    )
+    // Niche-aware: travel orgs read from travel_sales, others from sales.
+    const rows = await fetchNormalizedSales(supabase, orgId, { since: start })
+    rows.forEach(r => add(r.date, metric === 'revenue' ? (r.amount_cents || 0) / 100 : 1))
   } else if (metric === 'appointments') {
     const { data } = await supabase
       .from('appointments')

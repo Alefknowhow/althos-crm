@@ -23,6 +23,8 @@ export type TravelSaleRow = {
   airline: string | null
   operator: string | null
   services: any[]
+  included_items: string[]
+  vouchers: any[]
   payment_method: string | null
   package_locator: string | null
   air_locator: string | null
@@ -37,6 +39,7 @@ export type TravelSaleRow = {
 const WRITABLE = [
   'status', 'client_name', 'destination', 'departure_date', 'return_date',
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
+  'included_items', 'vouchers',
   'payment_method', 'package_locator', 'air_locator', 'airline_checkin_url',
   'commission_cents', 'notes',
 ] as const

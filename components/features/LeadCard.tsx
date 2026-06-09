@@ -5,9 +5,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useRef, useEffect } from 'react'
-import { updateLeadValue, assignLead } from '@/actions/leads'
+import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/leads'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check } from 'lucide-react'
+import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X } from 'lucide-react'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
 
 export type CardMember = { id: string; name: string; email: string }
@@ -193,6 +193,123 @@ function SellerPicker({
   )
 }
 
+// ── Tag editor ───────────────────────────────────────────────────────────────────
+// Small "+ tag" button on the card; opens a popover to add/remove tags. Stops dnd
+// propagation so it doesn't start a drag. Optimistically updates local state.
+function TagEditor({
+  lead,
+  orgSlug,
+  tags,
+  onChange,
+}: {
+  lead: any
+  orgSlug: string
+  tags: string[]
+  onChange: (tags: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    setTimeout(() => inputRef.current?.focus(), 10)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  async function commit(next: string[]) {
+    onChange(next)
+    setSaving(true)
+    const res = await updateLeadTags(orgSlug, lead.id, next)
+    setSaving(false)
+    if (res.ok && res.tags) onChange(res.tags)
+  }
+
+  function addTag() {
+    const t = draft.trim()
+    if (!t) return
+    if (!tags.includes(t)) commit([...tags, t])
+    setDraft('')
+  }
+
+  function stop(e: React.MouseEvent | React.PointerEvent) {
+    e.stopPropagation()
+  }
+
+  return (
+    <div ref={rootRef} className="relative inline-flex" onPointerDown={stop} onClick={stop}>
+      <button
+        type="button"
+        title="Adicionar tags"
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'inline-flex items-center gap-0.5 rounded-full border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/70 transition-colors hover:border-foreground/40 hover:text-foreground',
+          saving && 'opacity-50',
+        )}
+      >
+        <Plus className="h-2.5 w-2.5" /> Tag
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-6 z-30 w-52 rounded-lg border bg-popover p-2 shadow-lg">
+          <div className="mb-1.5 flex items-center gap-1 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Tag className="h-3 w-3" /> Tags
+          </div>
+          {tags.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1">
+              {tags.map(t => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                >
+                  <span className="max-w-[90px] truncate" title={t}>{t}</span>
+                  <button
+                    type="button"
+                    onClick={() => commit(tags.filter(x => x !== t))}
+                    className="text-muted-foreground/60 hover:text-destructive"
+                    aria-label={`Remover ${t}`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => {
+                e.stopPropagation()
+                if (e.key === 'Enter') { e.preventDefault(); addTag() }
+                if (e.key === 'Escape') { e.preventDefault(); setOpen(false) }
+              }}
+              placeholder="Nova tag…"
+              maxLength={40}
+              className="h-7 flex-1 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+              aria-label="Adicionar tag"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main card ──────────────────────────────────────────────────────────────────
 export default function LeadCard({
   lead,
@@ -229,7 +346,7 @@ export default function LeadCard({
     ? Date.now() - new Date(refDate).getTime() > 7 * 24 * 60 * 60 * 1000
     : false
 
-  const tags: string[] = lead.tags || []
+  const [tags, setTags] = useState<string[]>(lead.tags || [])
   const visibleTags = tags.slice(0, 2)
   const extraTags = tags.length - visibleTags.length
 
@@ -281,7 +398,7 @@ export default function LeadCard({
       </div>
 
       {/* Badges row */}
-      {(tier || lead.is_customer || tags.length > 0) && (
+      {(tier || lead.is_customer || tags.length > 0 || !isOverlay) && (
         <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
@@ -305,6 +422,9 @@ export default function LeadCard({
             </span>
           ))}
           {extraTags > 0 && <span className="text-[10px] text-muted-foreground">+{extraTags}</span>}
+          {!isOverlay && (
+            <TagEditor lead={lead} orgSlug={orgSlug} tags={tags} onChange={setTags} />
+          )}
         </div>
       )}
 

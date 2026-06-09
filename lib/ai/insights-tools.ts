@@ -14,6 +14,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchNormalizedSales, isOrgTravelNiche } from '@/lib/dashboard/sales-source'
 
 export type AnalyticsContext = {
   orgId: string
@@ -234,12 +235,10 @@ async function queryKpis(input: Record<string, any>, ctx: AnalyticsContext): Pro
   const { start, prevStart, prevEnd, label } = periodWindow(input.periodo)
   const supabase = ctx.supabase
 
-  // New leads (current + previous period).
+  // New leads + appointments (current + previous period).
   const [
     { count: leadsCur },
     { count: leadsPrev },
-    { data: salesCur },
-    { data: salesPrev },
     { count: apptCur },
     { count: apptPrev },
   ] = await Promise.all([
@@ -255,19 +254,6 @@ async function queryKpis(input: Record<string, any>, ctx: AnalyticsContext): Pro
       .gte('created_at', prevStart.toISOString())
       .lt('created_at', prevEnd.toISOString()),
     supabase
-      .from('sales')
-      .select('amount_cents')
-      .eq('organization_id', ctx.orgId)
-      .eq('status', 'completed')
-      .gte('sale_date', start.toISOString().slice(0, 10)),
-    supabase
-      .from('sales')
-      .select('amount_cents')
-      .eq('organization_id', ctx.orgId)
-      .eq('status', 'completed')
-      .gte('sale_date', prevStart.toISOString().slice(0, 10))
-      .lt('sale_date', prevEnd.toISOString().slice(0, 10)),
-    supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', ctx.orgId)
@@ -282,9 +268,22 @@ async function queryKpis(input: Record<string, any>, ctx: AnalyticsContext): Pro
       .lt('start_time', prevEnd.toISOString()),
   ])
 
-  const revenueCur = (salesCur || []).reduce((a, s) => a + (s.amount_cents || 0), 0)
-  const revenuePrev = (salesPrev || []).reduce((a, s) => a + (s.amount_cents || 0), 0)
-  const salesCount = (salesCur || []).length
+  // Niche-aware sales (travel orgs → travel_sales). Fetch since prevStart and
+  // split into current/previous windows client-side.
+  const salesRows = await fetchNormalizedSales(supabase as any, ctx.orgId, {
+    since: prevStart,
+    onlyCompleted: true,
+  })
+  const inWindow = (d: string, s: Date, e?: Date) => {
+    const t = new Date(d).getTime()
+    return t >= s.getTime() && (!e || t < e.getTime())
+  }
+  const salesCur = salesRows.filter(r => inWindow(r.date, start))
+  const salesPrev = salesRows.filter(r => inWindow(r.date, prevStart, prevEnd))
+
+  const revenueCur = salesCur.reduce((a, s) => a + (s.amount_cents || 0), 0)
+  const revenuePrev = salesPrev.reduce((a, s) => a + (s.amount_cents || 0), 0)
+  const salesCount = salesCur.length
   const ticketMedio = salesCount > 0 ? revenueCur / salesCount : 0
   const conversao = leadsCur && leadsCur > 0 ? (salesCount / leadsCur) * 100 : 0
 
@@ -331,6 +330,55 @@ async function querySales(
 ): Promise<AnalyticsResult> {
   const { start, label } = periodWindow(input.periodo)
   const groupBy: string = input.agrupar_por || (((input.periodo as string) || '30d') === '7d' ? 'dia' : 'mes')
+
+  // Niche-aware: travel orgs record sales in travel_sales (no product dimension).
+  if (await isOrgTravelNiche(ctx.supabase as any, ctx.orgId)) {
+    const rows = await fetchNormalizedSales(ctx.supabase as any, ctx.orgId, { since: start })
+    if (rows.length === 0) {
+      return { summary: `Sem vendas registradas no período (${label}).`, view: { type: 'none' } }
+    }
+
+    if (groupBy === 'dia' || groupBy === 'mes') {
+      const bucketKey = (d: string) => (groupBy === 'dia' ? d.slice(0, 10) : d.slice(0, 7))
+      const bucketed = new Map<string, number>()
+      for (const r of rows) bucketed.set(bucketKey(r.date), (bucketed.get(bucketKey(r.date)) || 0) + (r.amount_cents || 0))
+      const seriesData = Array.from(bucketed.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, total]) => ({ date, total }))
+      const total = seriesData.reduce((a, p) => a + p.total, 0)
+      return {
+        summary: `${rows.length} vendas de viagem no período (${label}), totalizando ${fmtCurrency(total)}, agrupadas por ${groupBy}.`,
+        view: {
+          type: 'time_series',
+          data: seriesData,
+          series: [{ key: 'total', label: 'Vendas (R$)', color: '#3b82f6' }],
+        },
+      }
+    }
+
+    if (groupBy === 'produto') {
+      const total = rows.reduce((a, r) => a + (r.amount_cents || 0), 0)
+      return {
+        summary: `Vendas de viagem não são agrupadas por produto. Total no período (${label}): ${rows.length} vendas, ${fmtCurrency(total)}.`,
+        view: { type: 'none' },
+      }
+    }
+
+    // vendedor
+    const bucketed = new Map<string, number>()
+    for (const r of rows) {
+      const k = r.seller_id || 'Sem vendedor'
+      bucketed.set(k, (bucketed.get(k) || 0) + (r.amount_cents || 0))
+    }
+    const data = Array.from(bucketed.entries())
+      .map(([name, cents]) => ({ name, value: Math.round(cents / 100) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+    return {
+      summary: `Top ${data.length} vendedores por faturamento de viagens no período (${label}).`,
+      view: { type: 'bar', data, color: '#10b981' },
+    }
+  }
 
   const { data: sales } = await ctx.supabase
     .from('sales')

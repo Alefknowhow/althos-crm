@@ -33,6 +33,7 @@ type Proposal = {
   included: string[]
   not_included: string[]
   checklist: string[]
+  photos: string[]
   order_bumps: any[]
   total_cents: number
   pax_count: number | null
@@ -126,11 +127,12 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     .filter(([, v]: any) => v?.enabled)
   const methods: string[] = proposal.payment?.methods || []
 
-  // Galeria de capa: agrega as fotos de todas as hospedagens (a hospedagem em si
-  // não mostra mais imagens — elas aparecem em destaque no topo da proposta).
-  const heroPhotos: string[] = (proposal.hotels || [])
-    .flatMap((h: any) => (Array.isArray(h.photos) ? h.photos : []))
-    .filter((src: string) => src && !imgErr[`hero-${src}`])
+  // Galeria de capa: usa as fotos da viagem (campo dedicado). Para propostas
+  // antigas, recai sobre as fotos agregadas das hospedagens (compatibilidade).
+  const rawHero: string[] = Array.isArray(proposal.photos) && proposal.photos.length > 0
+    ? proposal.photos
+    : (proposal.hotels || []).flatMap((h: any) => (Array.isArray(h.photos) ? h.photos : []))
+  const heroPhotos: string[] = rawHero.filter((src: string) => src && !imgErr[`hero-${src}`])
 
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
@@ -245,7 +247,6 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                   if (legs.length === 0) return null
                   const first = legs[0]
                   const last = legs[legs.length - 1]
-                  const airMin = legs.reduce((s, l) => s + (Number(l.duration_min) || 0), 0)
                   const totalMin = flBetween(first.departure_utc, last.arrival_utc)
                   const stops = legs.length - 1
                   return (
@@ -298,10 +299,9 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                         })}
                       </div>
                       {/* Rodapé: bagagem + políticas da jornada */}
-                      {(j.baggage || j.policies || airMin > 0) && (
+                      {(j.baggage || j.policies) && (
                         <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 space-y-1">
                           {j.baggage && <p><strong>Bagagem:</strong> {j.baggage}</p>}
-                          {airMin > 0 && <p><strong>Tempo de voo:</strong> {flMins(airMin)}</p>}
                           {j.policies && <p className="text-slate-500 whitespace-pre-line">{j.policies}</p>}
                         </div>
                       )}
@@ -319,6 +319,13 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                 {proposal.hotels.map((h: any, i: number) => {
                   const checkin = h.checkin_time || '15:00'
                   const checkout = h.checkout_time || '12:00'
+                  const fmtDate = (d?: string) => {
+                    if (!d) return ''
+                    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d)
+                    return m ? `${m[3]}/${m[2]}/${m[1]}` : d
+                  }
+                  const checkinDate = fmtDate(h.checkin_date)
+                  const checkoutDate = fmtDate(h.checkout_date)
                   return (
                     <div key={i} className="rounded-lg border border-slate-200 p-4">
                       <div className="flex items-center justify-between">
@@ -328,8 +335,8 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                       <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600">
                         {h.room_category && <span><strong>Quarto:</strong> {h.room_category}</span>}
                         {h.meal_plan && <span><strong>Regime:</strong> {h.meal_plan}</span>}
-                        <span><strong>Check-in:</strong> a partir das {checkin}</span>
-                        <span><strong>Check-out:</strong> até {checkout}</span>
+                        <span><strong>Check-in:</strong> {checkinDate ? `${checkinDate} · ` : ''}a partir das {checkin}</span>
+                        <span><strong>Check-out:</strong> {checkoutDate ? `${checkoutDate} · ` : ''}até {checkout}</span>
                       </div>
                       {h.briefing && <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">{h.briefing}</p>}
                       {h.cancellation_policy && (
@@ -398,12 +405,18 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
           {/* Optionals */}
           {(proposal.order_bumps || []).length > 0 && (
             <Section title="Opcionais">
+              <p className="mb-2 text-xs text-slate-500">Itens opcionais — não inclusos no valor do pacote.</p>
               <div className="space-y-2">
                 {proposal.order_bumps.map((b: any, i: number) => (
                   <div key={i} className="flex items-start justify-between rounded-lg border border-slate-200 p-3">
                     <div>
-                      <p className="font-medium text-slate-800 text-sm">{b.name || 'Opcional'}</p>
-                      {b.description && <p className="text-xs text-slate-500">{b.description}</p>}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-slate-800 text-sm">{b.name || 'Opcional'}</p>
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                          Não incluso no pacote
+                        </span>
+                      </div>
+                      {b.description && <p className="text-xs text-slate-500 mt-0.5">{b.description}</p>}
                     </div>
                     <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">{brl(b.price_cents)}</span>
                   </div>

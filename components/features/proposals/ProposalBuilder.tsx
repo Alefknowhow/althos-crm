@@ -21,7 +21,7 @@ import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Share2, Copy, ExternalLink, Upload, Loader2, Search,
-  ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks,
+  ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -428,7 +428,6 @@ function JourneyCard({
   const removeLeg = (k: number) => onUpdate({ legs: legs.filter((_, i) => i !== k) })
   const addEmptyLeg = () => { onUpdate({ legs: [...legs, emptyLeg()] }); setShowDetails(true) }
 
-  const airMin = legs.reduce((s, l) => s + (Number(l.duration_min) || 0), 0)
   const totalMin = legs.length >= 1
     ? minsBetween(legs[0].departure_utc, legs[legs.length - 1].arrival_utc)
     : 0
@@ -514,10 +513,30 @@ function JourneyCard({
       {legs.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {totalMin > 0 && <span>Duração total: <strong className="text-foreground">{fmtMins(totalMin)}</strong></span>}
-          {airMin > 0 && <span>· Tempo de voo: {fmtMins(airMin)}</span>}
           <span>· {stops === 0 ? 'Voo direto' : `${stops} ${stops > 1 ? 'conexões' : 'conexão'}`}</span>
         </div>
       )}
+
+      {/* Bagagem (sempre visível, sem precisar abrir detalhes) */}
+      <Field label="Bagagem">
+        <div className="flex flex-wrap gap-1.5">
+          {BAGGAGE_OPTIONS.map(opt => {
+            const on = parseBaggage(j.baggage).some(x => x.toLowerCase() === opt.label.toLowerCase())
+            const Icon = opt.icon
+            return (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => onUpdate({ baggage: toggleBaggage(j.baggage || '', opt.label) })}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </Field>
 
       {/* Detalhes / ajuste manual (recolhido) */}
       <button type="button" onClick={() => setShowDetails(s => !s)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -547,25 +566,6 @@ function JourneyCard({
           <Button type="button" variant="outline" size="sm" onClick={addEmptyLeg}>
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Trecho manual
           </Button>
-          <Field label="Bagagem">
-            <div className="flex flex-wrap gap-1.5">
-              {BAGGAGE_OPTIONS.map(opt => {
-                const on = parseBaggage(j.baggage).some(x => x.toLowerCase() === opt.label.toLowerCase())
-                const Icon = opt.icon
-                return (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => onUpdate({ baggage: toggleBaggage(j.baggage || '', opt.label) })}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
           <Field label="Políticas / observações"><Textarea value={j.policies || ''} onChange={e => onUpdate({ policies: e.target.value })} placeholder="Regras de remarcação, no-show, etc." /></Field>
         </div>
       )}
@@ -595,6 +595,7 @@ export default function ProposalBuilder({
     checklist: initial.checklist || [],
     order_bumps: initial.order_bumps || [],
     payment: initial.payment || {},
+    photos: initial.photos || [],
   })
 
   const set = useCallback(<K extends keyof ProposalRow>(key: K, val: ProposalRow[K]) => {
@@ -614,7 +615,7 @@ export default function ProposalBuilder({
       client_name: p.client_name, travelers: p.travelers, travelers_note: p.travelers_note,
       destinations: p.destinations, flights: p.flights, hotels: p.hotels,
       services: p.services, included: p.included, not_included: p.not_included,
-      checklist: p.checklist,
+      checklist: p.checklist, photos: p.photos,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
     })
@@ -816,7 +817,7 @@ export default function ProposalBuilder({
         icon={Hotel} title="Hospedagem"
         action={
           <Button type="button" variant="outline" size="sm"
-            onClick={() => set('hotels', [...p.hotels, { name: '', kind: '', room_category: '', meal_plan: '', checkin_time: '15:00', checkout_time: '12:00', cancellation_policy: '', briefing: '', photos: [] }])}>
+            onClick={() => set('hotels', [...p.hotels, { name: '', kind: '', room_category: '', meal_plan: '', checkin_date: p.start_date || '', checkout_date: p.end_date || '', checkin_time: '15:00', checkout_time: '12:00', cancellation_policy: '', briefing: '' }])}>
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Hotel
           </Button>
         }
@@ -840,13 +841,19 @@ export default function ProposalBuilder({
                 <Field label="Regime de alimentação"><Input value={h.meal_plan || ''} onChange={e => upd({ meal_plan: e.target.value })} placeholder="Ex.: All inclusive" /></Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Check-in">
+                <Field label="Data do check-in">
+                  <Input type="date" value={h.checkin_date || ''} onChange={e => upd({ checkin_date: e.target.value })} />
+                </Field>
+                <Field label="Data do check-out">
+                  <Input type="date" value={h.checkout_date || ''} onChange={e => upd({ checkout_date: e.target.value })} />
+                </Field>
+                <Field label="Hora do check-in">
                   <Select value={h.checkin_time || '15:00'} onValueChange={v => upd({ checkin_time: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                   </Select>
                 </Field>
-                <Field label="Check-out">
+                <Field label="Hora do check-out">
                   <Select value={h.checkout_time || '12:00'} onValueChange={v => upd({ checkout_time: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
@@ -855,16 +862,23 @@ export default function ProposalBuilder({
               </div>
               <Field label="Política de cancelamento"><Textarea value={h.cancellation_policy || ''} onChange={e => upd({ cancellation_policy: e.target.value })} placeholder="Condições de cancelamento e reembolso" /></Field>
               <Field label="Experiência (mini briefing)"><Textarea value={h.briefing || ''} onChange={e => upd({ briefing: e.target.value })} placeholder="Descreva a experiência da hospedagem" /></Field>
-              <PhotoManager
-                orgSlug={orgSlug}
-                photos={Array.isArray(h.photos) ? h.photos : []}
-                onChange={(photos) => upd({ photos })}
-              />
             </div>
           )
         })}
       </SectionCard>
       </div>
+
+      {/* Fotos da viagem (galeria do topo no link público) */}
+      <SectionCard icon={ImageIcon} title="Fotos da viagem">
+        <p className="text-sm text-muted-foreground">
+          Imagens exibidas na galeria de destaque no topo da proposta (destinos, hotéis, experiências).
+        </p>
+        <PhotoManager
+          orgSlug={orgSlug}
+          photos={Array.isArray(p.photos) ? p.photos : []}
+          onChange={(photos) => set('photos', photos as any)}
+        />
+      </SectionCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Serviços adicionais */}
@@ -905,6 +919,9 @@ export default function ProposalBuilder({
             const upd = (patch: any) => { const n = [...p.order_bumps]; n[i] = { ...n[i], ...patch }; set('order_bumps', n) }
             return (
               <div key={i} className="rounded-lg border p-3 space-y-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                  <Sparkles className="w-3 h-3" /> Não incluso no valor do pacote
+                </span>
                 <div className="flex gap-2">
                   <Input className="flex-1" placeholder="Nome do opcional" value={b.name || ''} onChange={e => upd({ name: e.target.value })} />
                   <div className="w-32"><MoneyInput value={Number(b.price_cents) || 0} onChange={c => upd({ price_cents: c })} /></div>
@@ -933,6 +950,8 @@ export default function ProposalBuilder({
         </SectionCard>
       </div>
 
+      {/* Checklist (esquerda) + Pagamento (direita) lado a lado */}
+      <div className="grid gap-5 lg:grid-cols-2 items-start">
       {/* Checklist de documentos / exigências */}
       <SectionCard icon={ListChecks} title="Checklist do viajante (documentos e exigências)">
         <p className="text-xs text-muted-foreground">
@@ -993,6 +1012,7 @@ export default function ProposalBuilder({
           </div>
         </Field>
       </SectionCard>
+      </div>
 
       {/* Notas internas */}
       <SectionCard icon={CalendarRange} title="Notas internas (não aparecem na proposta)">

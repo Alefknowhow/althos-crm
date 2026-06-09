@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,17 +24,31 @@ import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/da
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
 } from '@/actions/travel-sales'
+import { uploadSaleVoucher } from '@/actions/upload'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
+  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null }
 type Member = { user_id: string; name: string; email: string }
+type Voucher = { url: string; name: string }
 
 const SERVICE_LABELS: Record<string, string> = {
   transfer: 'Traslado', insurance: 'Seguro viagem', car_rental: 'Locação de carro',
 }
+
+const PAYMENT_METHODS = ['Pix', 'Cartão de crédito', 'Boleto'] as const
+
+const INCLUDED_ITEMS: { key: string; label: string }[] = [
+  { key: 'voos', label: 'Voos' },
+  { key: 'hospedagem', label: 'Hospedagem' },
+  { key: 'transfer', label: 'Transfer' },
+  { key: 'seguro', label: 'Seguro viagem' },
+  { key: 'passeios', label: 'Passeios' },
+  { key: 'carros', label: 'Locação de carro' },
+]
 
 function centsToReais(c?: number | null) { return c ? String((c / 100).toFixed(2)).replace('.', ',') : '' }
 function reaisToCents(s: string) {
@@ -51,7 +66,7 @@ function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) 
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>
+  return <div className="space-y-1"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>
 }
 
 export default function TravelSalesView({
@@ -267,6 +282,7 @@ export default function TravelSalesView({
           {selected
             ? <SaleEditor
                 key={selected.id}
+                orgSlug={orgSlug}
                 sale={selected}
                 saving={saving}
                 sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
@@ -361,8 +377,9 @@ function NewSaleDialog({
 }
 
 function SaleEditor({
-  sale, saving, sellerName, onSave, onBack, onDelete,
+  orgSlug, sale, saving, sellerName, onSave, onBack, onDelete,
 }: {
+  orgSlug: string
   sale: TravelSaleRow
   saving: boolean
   sellerName: string | null
@@ -373,13 +390,40 @@ function SaleEditor({
   const [s, setS] = useState<TravelSaleRow>(sale)
   const set = (k: keyof TravelSaleRow, v: any) => setS(prev => ({ ...prev, [k]: v }))
   const services: string[] = Array.isArray(s.services) ? s.services : []
+  const included: string[] = Array.isArray(s.included_items) ? s.included_items : []
+  const vouchers: Voucher[] = Array.isArray(s.vouchers) ? s.vouchers : []
+
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  function toggleIncluded(key: string) {
+    set('included_items', included.includes(key)
+      ? included.filter(k => k !== key)
+      : [...included, key])
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    const next: Voucher[] = [...vouchers]
+    for (const file of Array.from(files)) {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadSaleVoucher(orgSlug, fd)
+      if (res.ok) next.push({ url: res.url, name: res.name })
+      else toast.error(`${file.name}: ${res.error}`)
+    }
+    setUploading(false)
+    set('vouchers', next)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
   const patch = () => ({
     client_name: s.client_name, destination: s.destination,
     departure_date: s.departure_date || null, return_date: s.return_date || null,
     negotiation_days: s.negotiation_days, total_cents: s.total_cents,
     hotel_name: s.hotel_name, airline: s.airline, operator: s.operator,
-    payment_method: s.payment_method,
+    payment_method: s.payment_method, included_items: included, vouchers,
     package_locator: s.package_locator, air_locator: s.air_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
     notes: s.notes,
@@ -393,13 +437,21 @@ function SaleEditor({
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="font-semibold truncate flex items-center gap-2">
               <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
             </h2>
             {s.tasks_generated_at
               ? <Badge variant="outline" className="shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas geradas</Badge>
               : <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
+            {s.proposal_id && (
+              <Link
+                href={`/app/${orgSlug}/proposta/${s.proposal_id}`}
+                className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Ver proposta
+              </Link>
+            )}
           </div>
           {sellerName && (
             <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -409,41 +461,141 @@ function SaleEditor({
         </div>
       </div>
 
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-4">
         {/* Auto-filled (editable) */}
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados da viagem (pré-preenchidos)</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Dados da viagem (pré-preenchidos)</p>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Cliente"><Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} /></Field>
             <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
+            <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
             <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
             <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
+            <Field label="Tempo de negociação (dias)"><Input type="number" min="0" value={s.negotiation_days ?? ''} onChange={e => set('negotiation_days', e.target.value ? parseInt(e.target.value) : null)} /></Field>
             <Field label="Hotel"><Input value={s.hotel_name || ''} onChange={e => set('hotel_name', e.target.value)} /></Field>
             <Field label="Companhia aérea"><Input value={s.airline || ''} onChange={e => set('airline', e.target.value)} /></Field>
             <Field label="Operadora"><Input value={s.operator || ''} onChange={e => set('operator', e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" /></Field>
-            <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
-            <Field label="Forma de pagamento"><Input value={s.payment_method || ''} onChange={e => set('payment_method', e.target.value)} /></Field>
-            <Field label="Tempo de negociação (dias)"><Input type="number" min="0" value={s.negotiation_days ?? ''} onChange={e => set('negotiation_days', e.target.value ? parseInt(e.target.value) : null)} /></Field>
           </div>
-          {services.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
-            </div>
-          )}
         </div>
+
+        {/* Forma de pagamento — 3 selectable buttons */}
+        <Field label="Forma de pagamento">
+          <div className="flex flex-wrap gap-1.5">
+            {PAYMENT_METHODS.map(m => {
+              const active = s.payment_method === m
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => set('payment_method', active ? null : m)}
+                  className={cn(
+                    'px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                  )}
+                >
+                  {m}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+
+        {/* Itens inclusos na negociação — checkboxes */}
+        <Field label="Itens inclusos na negociação">
+          <div className="flex flex-wrap gap-1.5">
+            {INCLUDED_ITEMS.map(item => {
+              const active = included.includes(item.key)
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => toggleIncluded(item.key)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                    active
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                  )}
+                >
+                  {active && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+
+        {/* Vouchers — multiple PDF/image upload */}
+        <Field label="Vouchers / comprovantes">
+          <div className="space-y-2">
+            {vouchers.length > 0 && (
+              <ul className="space-y-1.5">
+                {vouchers.map((v, i) => {
+                  const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
+                  return (
+                    <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                      {isPdf
+                        ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
+                        : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
+                      <a href={v.url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
+                        {v.name || `Voucher ${i + 1}`}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remover voucher"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={e => handleFiles(e.target.files)}
+            />
+            <Button
+              type="button" variant="outline" size="sm" disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+            >
+              {uploading
+                ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</>
+                : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Adicionar vouchers</>}
+            </Button>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. Vários arquivos permitidos.
+            </p>
+          </div>
+        </Field>
+
+        {services.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
+          </div>
+        )}
 
         {/* Manual fields */}
         <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
-          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Dados operacionais (preencha manualmente)</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">Dados operacionais (preencha manualmente)</p>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
             <Field label="Localizador aéreo"><Input value={s.air_locator || ''} onChange={e => set('air_locator', e.target.value)} placeholder="Ex.: ABC123" /></Field>
-            <Field label="Link de check-in da cia (opcional)"><Input value={s.airline_checkin_url || ''} onChange={e => set('airline_checkin_url', e.target.value)} placeholder="https://..." /></Field>
+            <Field label="Link de check-in da cia"><Input value={s.airline_checkin_url || ''} onChange={e => set('airline_checkin_url', e.target.value)} placeholder="https://..." /></Field>
             <Field label="Comissão"><MoneyInput value={s.commission_cents || 0} onChange={c => set('commission_cents', c)} /></Field>
           </div>
         </div>
 
-        <Field label="Observações"><Textarea value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
+        <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
 
         {s.tasks_generated_at && (
           <p className="text-xs text-emerald-700 flex items-center gap-1.5">

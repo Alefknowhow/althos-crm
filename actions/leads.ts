@@ -299,6 +299,35 @@ export async function updateLeadValue(orgSlug: string, leadId: string, valueCent
 }
 
 /**
+ * Replace a single lead's tag list. Powers the inline "add tags" button on the
+ * pipeline card. Tags are trimmed, de-duplicated and capped defensively.
+ */
+export async function updateLeadTags(orgSlug: string, leadId: string, tags: string[]) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const clean = Array.from(new Set(
+    (tags || [])
+      .map(t => String(t).trim())
+      .filter(Boolean)
+      .map(t => t.slice(0, 40)),
+  )).slice(0, 20)
+
+  const { error } = await supabase
+    .from('leads')
+    .update({ tags: clean })
+    .eq('id', leadId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/pipeline`)
+  revalidatePath(`/app/${orgSlug}/leads/${leadId}`)
+  return { ok: true as const, tags: clean }
+}
+
+/**
  * Run AI qualification directly for a single lead.
  * Executes synchronously (no Inngest required) so the button always works —
  * both in local dev and production. The Inngest trigger on form.submitted still
