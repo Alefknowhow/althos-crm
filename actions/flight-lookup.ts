@@ -29,6 +29,12 @@ export type FlightLookupResult = {
   departure_at: string
   arrival_at: string
   aircraft: string
+  /** Horário de partida em UTC (ISO) — usado para calcular escala e duração no cliente. */
+  departure_utc: string
+  /** Horário de chegada em UTC (ISO). */
+  arrival_utc: string
+  /** Duração do voo em minutos (chegada − partida). */
+  duration_min: number
   /** Preenchido só na busca em lote: escala até o próximo trecho. */
   connections?: string
 }
@@ -141,6 +147,11 @@ async function fetchOneFlight(
   const entry = arr.find(e => (e?.departure?.scheduledTime?.local || '').startsWith(date)) || arr[0]
   const dep = entry.departure || {}
   const arr2 = entry.arrival || {}
+  const depUtc = parseUtc(dep.scheduledTime?.utc)
+  const arrUtc = parseUtc(arr2.scheduledTime?.utc)
+  const duration_min = depUtc && arrUtc
+    ? Math.max(0, Math.round((arrUtc.getTime() - depUtc.getTime()) / 60000))
+    : 0
   const flight: FlightLookupResult = {
     airline: entry.airline?.name || '',
     flight_number: (entry.number || designator).replace(/\s+/g, ''),
@@ -153,9 +164,12 @@ async function fetchOneFlight(
     departure_at: fmtLocal(dep.scheduledTime?.local),
     arrival_at: fmtLocal(arr2.scheduledTime?.local),
     aircraft: entry.aircraft?.model || '',
+    departure_utc: depUtc?.toISOString() || '',
+    arrival_utc: arrUtc?.toISOString() || '',
+    duration_min,
   }
 
-  return { ok: true, flight, depUtc: parseUtc(dep.scheduledTime?.utc), arrUtc: parseUtc(arr2.scheduledTime?.utc) }
+  return { ok: true, flight, depUtc, arrUtc }
 }
 
 export async function lookupFlight(

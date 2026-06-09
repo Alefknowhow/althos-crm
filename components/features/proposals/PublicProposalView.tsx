@@ -53,6 +53,39 @@ function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
 }
 
+// ── Voos: agrupa por "jornada" (ida / trecho interno / volta) ───────────────
+function flMins(min: number): string {
+  if (!min || min <= 0) return ''
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h && m) return `${h}h ${m}min`
+  if (h) return `${h}h`
+  return `${m}min`
+}
+function flBetween(aIso?: string, bIso?: string): number {
+  if (!aIso || !bIso) return 0
+  const a = new Date(aIso).getTime()
+  const b = new Date(bIso).getTime()
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0
+  return Math.round((b - a) / 60000)
+}
+// Aceita formato antigo (voo plano) e novo (jornada com legs).
+function flNormalize(flights: any[]): any[] {
+  return (Array.isArray(flights) ? flights : []).map((f, i) => {
+    if (f && Array.isArray(f.legs)) {
+      return { label: f.label || (i === 0 ? 'Voo de ida' : 'Voo de volta'), cabin_class: f.cabin_class || '', legs: f.legs, baggage: f.baggage || '', policies: f.policies || '' }
+    }
+    const hasData = f && (f.origin || f.destination || f.flight_number || f.airline)
+    return {
+      label: f?.label || (i === 0 ? 'Voo de ida' : 'Voo de volta'),
+      cabin_class: f?.cabin_class || '',
+      legs: hasData ? [f] : [],
+      baggage: f?.baggage || '',
+      policies: f?.policies || '',
+    }
+  })
+}
+
 const SERVICE_LABELS: Record<string, string> = {
   transfer: 'Traslado',
   insurance: 'Seguro viagem',
@@ -92,12 +125,19 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     .filter(([, v]: any) => v?.enabled)
   const methods: string[] = proposal.payment?.methods || []
 
+  // Galeria de capa: agrega as fotos de todas as hospedagens (a hospedagem em si
+  // não mostra mais imagens — elas aparecem em destaque no topo da proposta).
+  const heroPhotos: string[] = (proposal.hotels || [])
+    .flatMap((h: any) => (Array.isArray(h.photos) ? h.photos : []))
+    .filter((src: string) => src && !imgErr[`hero-${src}`])
+
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white">
       <style>{`
         @media print {
           .no-print { display: none !important; }
           .proposal-paper { box-shadow: none !important; margin: 0 !important; max-width: none !important; border-radius: 0 !important; }
+          .proposal-paper, .proposal-paper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .proposal-section { break-inside: avoid; }
           @page { margin: 14mm; }
         }
@@ -133,6 +173,28 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             <p className="text-sm text-slate-500">Proposta de viagem personalizada</p>
           </div>
         </header>
+
+        {/* Galeria de capa (imagens em destaque, acima do título) */}
+        {heroPhotos.length > 0 && (
+          <div className="px-8 pt-6">
+            {heroPhotos.length === 1 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={heroPhotos[0]} alt="" className="w-full h-72 object-cover rounded-xl border border-slate-200"
+                onError={() => setImgErr(e => ({ ...e, [`hero-${heroPhotos[0]}`]: true }))} />
+            ) : (
+              <div className="grid grid-cols-4 grid-rows-2 gap-2 h-72">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroPhotos[0]} alt="" className="col-span-2 row-span-2 w-full h-full object-cover rounded-xl border border-slate-200"
+                  onError={() => setImgErr(e => ({ ...e, [`hero-${heroPhotos[0]}`]: true }))} />
+                {heroPhotos.slice(1, 5).map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={src} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200"
+                    onError={() => setImgErr(e => ({ ...e, [`hero-${src}`]: true }))} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="px-8 py-6 space-y-8">
           {/* Title + period */}
@@ -176,28 +238,75 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
           {/* Flights */}
           {(proposal.flights || []).length > 0 && (
             <Section title="Voos">
-              <div className="space-y-3">
-                {proposal.flights.map((f: any, i: number) => (
-                  <div key={i} className="rounded-lg border border-slate-200 p-4 text-sm">
-                    <div className="flex items-center justify-between font-semibold text-slate-800">
-                      <span>{[f.origin, f.destination].filter(Boolean).join(' → ') || 'Trecho'}</span>
-                      <span className="text-slate-500 font-normal">{[f.airline, f.flight_number].filter(Boolean).join(' · ')}</span>
-                    </div>
-                    {(f.origin_name || f.destination_name) && (
-                      <div className="mt-0.5 text-xs text-slate-400">
-                        {[f.origin_name, f.destination_name].filter(Boolean).join(' → ')}
+              <div className="space-y-4">
+                {flNormalize(proposal.flights).map((j: any, i: number) => {
+                  const legs: any[] = Array.isArray(j.legs) ? j.legs : []
+                  if (legs.length === 0) return null
+                  const first = legs[0]
+                  const last = legs[legs.length - 1]
+                  const airMin = legs.reduce((s, l) => s + (Number(l.duration_min) || 0), 0)
+                  const totalMin = flBetween(first.departure_utc, last.arrival_utc)
+                  const stops = legs.length - 1
+                  return (
+                    <div key={i} className="rounded-lg border border-slate-200 overflow-hidden text-sm">
+                      {/* Cabeçalho da jornada */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-4 py-2 border-b border-slate-200">
+                        <span className="font-semibold text-slate-800">
+                          ✈ {j.label || 'Voo'}
+                          <span className="ml-2 font-normal text-slate-500">{first.origin} → {last.destination}</span>
+                        </span>
+                        <span className="flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                          {j.cabin_class && <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">{j.cabin_class}</span>}
+                          {totalMin > 0 && <span>Duração total {flMins(totalMin)}</span>}
+                          <span>{stops === 0 ? 'Direto' : `${stops} ${stops > 1 ? 'conexões' : 'conexão'}`}</span>
+                        </span>
                       </div>
-                    )}
-                    <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-slate-600">
-                      {f.departure_at && <span><strong>Embarque:</strong> {f.departure_at}{f.origin_terminal ? ` · Terminal ${f.origin_terminal}` : ''}</span>}
-                      {f.arrival_at && <span><strong>Chegada:</strong> {f.arrival_at}{f.destination_terminal ? ` · Terminal ${f.destination_terminal}` : ''}</span>}
-                      {f.aircraft && <span><strong>Aeronave:</strong> {f.aircraft}</span>}
-                      {f.connections && <span><strong>Conexões:</strong> {f.connections}</span>}
-                      {f.baggage && <span><strong>Bagagem:</strong> {f.baggage}</span>}
+                      {/* Trechos */}
+                      <div className="divide-y divide-slate-100">
+                        {legs.map((l: any, k: number) => {
+                          const layover = k > 0 ? flBetween(legs[k - 1].arrival_utc, l.departure_utc) : 0
+                          const connAirport = k > 0 ? (legs[k - 1].destination || l.origin) : ''
+                          return (
+                            <div key={k}>
+                              {k > 0 && (
+                                <div className="bg-amber-50 px-4 py-1.5 text-xs text-amber-700">
+                                  ↳ Conexão em {connAirport || '—'}{layover > 0 ? ` · ${flMins(layover)} de espera` : ''}
+                                </div>
+                              )}
+                              <div className="px-4 py-3">
+                                <div className="flex items-center justify-between font-semibold text-slate-800">
+                                  <span>{[l.origin, l.destination].filter(Boolean).join(' → ') || 'Trecho'}</span>
+                                  <span className="text-slate-500 font-normal">{[l.airline, l.flight_number].filter(Boolean).join(' · ')}</span>
+                                </div>
+                                {(l.origin_name || l.destination_name) && (
+                                  <div className="mt-0.5 text-xs text-slate-400">
+                                    {[l.origin_name, l.destination_name].filter(Boolean).join(' → ')}
+                                  </div>
+                                )}
+                                <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-slate-600">
+                                  {l.departure_at && <span><strong>Embarque:</strong> {l.departure_at}{l.origin_terminal ? ` · Terminal ${l.origin_terminal}` : ''}</span>}
+                                  {l.arrival_at && <span><strong>Chegada:</strong> {l.arrival_at}{l.destination_terminal ? ` · Terminal ${l.destination_terminal}` : ''}</span>}
+                                  {Number(l.duration_min) > 0 && <span><strong>Duração:</strong> {flMins(l.duration_min)}</span>}
+                                  {l.aircraft && <span><strong>Aeronave:</strong> {l.aircraft}</span>}
+                                  {/* compat: voo antigo podia ter texto livre em connections */}
+                                  {l.connections && <span><strong>Conexões:</strong> {l.connections}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {/* Rodapé: bagagem + políticas da jornada */}
+                      {(j.baggage || j.policies || airMin > 0) && (
+                        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 space-y-1">
+                          {j.baggage && <p><strong>Bagagem:</strong> {j.baggage}</p>}
+                          {airMin > 0 && <p><strong>Tempo de voo:</strong> {flMins(airMin)}</p>}
+                          {j.policies && <p className="text-slate-500 whitespace-pre-line">{j.policies}</p>}
+                        </div>
+                      )}
                     </div>
-                    {f.policies && <p className="mt-2 text-slate-500 whitespace-pre-line">{f.policies}</p>}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </Section>
           )}
@@ -207,7 +316,8 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             <Section title="Hospedagem">
               <div className="space-y-4">
                 {proposal.hotels.map((h: any, i: number) => {
-                  const photos: string[] = Array.isArray(h.photos) ? h.photos : []
+                  const checkin = h.checkin_time || '15:00'
+                  const checkout = h.checkout_time || '12:00'
                   return (
                     <div key={i} className="rounded-lg border border-slate-200 p-4">
                       <div className="flex items-center justify-between">
@@ -217,19 +327,12 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                       <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600">
                         {h.room_category && <span><strong>Quarto:</strong> {h.room_category}</span>}
                         {h.meal_plan && <span><strong>Regime:</strong> {h.meal_plan}</span>}
+                        <span><strong>Check-in:</strong> a partir das {checkin}</span>
+                        <span><strong>Check-out:</strong> até {checkout}</span>
                       </div>
                       {h.briefing && <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">{h.briefing}</p>}
                       {h.cancellation_policy && (
                         <p className="mt-2 text-xs text-slate-500"><strong>Cancelamento:</strong> {h.cancellation_policy}</p>
-                      )}
-                      {photos.length > 0 && (
-                        <div className="mt-3 grid grid-cols-3 gap-2">
-                          {photos.map((src, j) => imgErr[`${i}-${j}`] ? null : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img key={j} src={src} alt="" className="h-24 w-full object-cover rounded-md border"
-                              onError={() => setImgErr(e => ({ ...e, [`${i}-${j}`]: true }))} />
-                          ))}
-                        </div>
                       )}
                     </div>
                   )
@@ -240,7 +343,7 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
 
           {/* Additional services */}
           {activeServices.length > 0 && (
-            <Section title="Serviços adicionais">
+            <Section title="Serviços inclusos">
               <ul className="space-y-2">
                 {activeServices.map(([key, v]: any) => (
                   <li key={key} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">

@@ -14,13 +14,14 @@ import {
 } from '@/components/ui/select'
 import { updateProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
-import { lookupFlight, lookupFlightRoute } from '@/actions/flight-lookup'
+import { lookupFlight } from '@/actions/flight-lookup'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Share2, Copy, ExternalLink, Upload, Loader2, Search,
+  ChevronDown, Clock, ArrowRight, Backpack, Luggage,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -148,6 +149,9 @@ const NOT_INCLUDED_SUGGESTIONS = [
   'Vistos e documentação',
 ]
 
+// Horários de check-in/check-out (selects). Pré-definidos em 15:00 / 12:00.
+const TIME_OPTIONS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`)
+
 const PAYMENT_METHODS = [
   { key: 'pix', label: 'Pix' },
   { key: 'boleto', label: 'Boleto' },
@@ -160,12 +164,14 @@ function PhotoManager({
 }: { orgSlug: string; photos: string[]; onChange: (v: string[]) => void }) {
   const [uploading, setUploading] = useState(false)
   const [url, setUrl] = useState('')
+  const [dragOver, setDragOver] = useState(false)
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return
+  async function handleFiles(files: FileList | File[] | null) {
+    const list = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : []
+    if (list.length === 0) return
     setUploading(true)
     const added: string[] = []
-    for (const file of Array.from(files)) {
+    for (const file of list) {
       const fd = new FormData()
       fd.append('file', file)
       const res = await uploadFormAsset(orgSlug, fd)
@@ -176,8 +182,25 @@ function PhotoManager({
     if (added.length) onChange([...photos, ...added])
   }
 
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setDragOver(false)
+    const files = e.dataTransfer?.files
+    if (files && files.length) { handleFiles(files); return }
+    // Arrastar uma imagem de outra aba normalmente entrega uma URL.
+    const dropped = e.dataTransfer?.getData('text')?.trim()
+    if (dropped && /^https?:\/\//.test(dropped)) onChange([...photos, dropped])
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const items = e.clipboardData?.items ? Array.from(e.clipboardData.items) : []
+    const imgs = items.filter(it => it.type.startsWith('image/')).map(it => it.getAsFile()).filter(Boolean) as File[]
+    if (imgs.length) { e.preventDefault(); handleFiles(imgs) }
+    // Se não houver imagem, deixa o paste de texto seguir normal (campo URL).
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" onPaste={handlePaste}>
       <Label className="text-xs">Fotos da hospedagem</Label>
       {photos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -196,28 +219,100 @@ function PhotoManager({
           ))}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-          {uploading ? 'Enviando…' : 'Enviar fotos'}
-          <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
-            onChange={e => { handleFiles(e.target.files); e.target.value = '' }} />
-        </label>
-        <div className="flex gap-2 flex-1 min-w-[200px]">
-          <Input placeholder="ou cole uma URL de imagem" value={url} onChange={e => setUrl(e.target.value)} />
-          <Button type="button" variant="outline" size="sm"
-            onClick={() => { const u = url.trim(); if (u) { onChange([...photos, u]); setUrl('') } }}>
-            Adicionar
-          </Button>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        className={`rounded-lg border-2 border-dashed p-3 transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}`}
+      >
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-[11px] text-muted-foreground">
+            Arraste imagens para cá, cole (Ctrl+V) ou envie do computador.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-muted">
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {uploading ? 'Enviando…' : 'Enviar fotos'}
+              <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
+                onChange={e => { handleFiles(e.target.files); e.target.value = '' }} />
+            </label>
+          </div>
+          <div className="flex gap-2 w-full max-w-sm">
+            <Input placeholder="ou cole uma URL de imagem" value={url} onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const u = url.trim(); if (u) { onChange([...photos, u]); setUrl('') } } }} />
+            <Button type="button" variant="outline" size="sm"
+              onClick={() => { const u = url.trim(); if (u) { onChange([...photos, u]); setUrl('') } }}>
+              Adicionar
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// Converte um trecho retornado pela API no objeto de voo persistido.
-function flightFromLookup(fl: any) {
+// ── Voos: modelo de "jornada" ───────────────────────────────────────────────
+// 1 card = 1 jornada (Voo de ida / Trecho interno / Voo de volta), com 1+
+// trechos (legs). Conexões viram trechos do MESMO card; a escala e os tempos
+// são calculados a partir dos horários UTC devolvidos pela API.
+const CABIN_CLASSES = ['Econômica', 'Econômica Premium', 'Executiva', 'Primeira']
+
+// Bagagem: chips de seleção (multi) com ícones. O texto salvo em j.baggage é a
+// junção dos rótulos selecionados (compatível com a visualização pública, que
+// só lê a string).
+const BAGGAGE_OPTIONS: { label: string; icon: any }[] = [
+  { label: 'Item pessoal', icon: Backpack },
+  { label: 'Mala de mão (10kg)', icon: Briefcase },
+  { label: '1 mala de 23kg', icon: Luggage },
+]
+function parseBaggage(s?: string): string[] {
+  return (s || '').split('+').map(x => x.trim()).filter(Boolean)
+}
+function toggleBaggage(current: string, label: string): string {
+  const set = parseBaggage(current)
+  const has = set.some(x => x.toLowerCase() === label.toLowerCase())
+  const next = has ? set.filter(x => x.toLowerCase() !== label.toLowerCase()) : [...set, label]
+  // mantém a ordem canônica das opções; itens livres antigos vão ao fim
+  const ordered = [
+    ...BAGGAGE_OPTIONS.map(o => o.label).filter(l => next.some(n => n.toLowerCase() === l.toLowerCase())),
+    ...next.filter(n => !BAGGAGE_OPTIONS.some(o => o.label.toLowerCase() === n.toLowerCase())),
+  ]
+  return ordered.join(' + ')
+}
+
+function fmtMins(min: number): string {
+  if (!min || min <= 0) return ''
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h && m) return `${h}h ${m}min`
+  if (h) return `${h}h`
+  return `${m}min`
+}
+
+function minsBetween(aIso?: string, bIso?: string): number {
+  if (!aIso || !bIso) return 0
+  const a = new Date(aIso).getTime()
+  const b = new Date(bIso).getTime()
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0
+  return Math.round((b - a) / 60000)
+}
+
+function defaultJourneyLabel(index: number): string {
+  return index === 0 ? 'Voo de ida' : 'Voo de volta'
+}
+
+function emptyLeg() {
   return {
+    airline: '', flight_number: '', origin: '', origin_name: '', origin_terminal: '',
+    destination: '', destination_name: '', destination_terminal: '',
+    departure_at: '', arrival_at: '', departure_utc: '', arrival_utc: '',
+    duration_min: 0, aircraft: '',
+  }
+}
+
+// Trecho (leg) a partir do resultado da API.
+function legFromLookup(fl: any) {
+  return { ...emptyLeg(), ...{
     airline: fl.airline || '',
     flight_number: fl.flight_number || '',
     origin: fl.origin || '',
@@ -228,111 +323,77 @@ function flightFromLookup(fl: any) {
     destination_terminal: fl.destination_terminal || '',
     departure_at: fl.departure_at || '',
     arrival_at: fl.arrival_at || '',
+    departure_utc: fl.departure_utc || '',
+    arrival_utc: fl.arrival_utc || '',
+    duration_min: fl.duration_min || 0,
     aircraft: fl.aircraft || '',
-    connections: fl.connections || '',
-    baggage: '',
-    policies: '',
+  } }
+}
+
+// Aceita o formato antigo (voo plano) OU o novo (jornada com legs) e devolve
+// sempre uma jornada — assim builder e visualização tratam de um jeito só.
+function toJourney(f: any, index: number) {
+  if (f && Array.isArray(f.legs)) {
+    return {
+      label: f.label || defaultJourneyLabel(index),
+      cabin_class: f.cabin_class || '',
+      legs: f.legs.map((l: any) => ({ ...emptyLeg(), ...l })),
+      baggage: f.baggage || '',
+      policies: f.policies || '',
+    }
+  }
+  const hasData = f && (f.origin || f.destination || f.flight_number || f.airline)
+  return {
+    label: f?.label || defaultJourneyLabel(index),
+    cabin_class: f?.cabin_class || '',
+    legs: hasData ? [{
+      ...emptyLeg(),
+      airline: f.airline || '', flight_number: f.flight_number || '',
+      origin: f.origin || '', origin_name: f.origin_name || '', origin_terminal: f.origin_terminal || '',
+      destination: f.destination || '', destination_name: f.destination_name || '', destination_terminal: f.destination_terminal || '',
+      departure_at: f.departure_at || '', arrival_at: f.arrival_at || '', aircraft: f.aircraft || '',
+    }] : [],
+    baggage: f?.baggage || '',
+    policies: f?.policies || '',
   }
 }
 
-// Busca em lote de uma rota com conexões: vários números de voo + data →
-// gera um card por trecho, já com a escala calculada. Fica no topo da seção.
-function RouteSearch({ orgSlug, onAdd }: { orgSlug: string; onAdd: (flights: any[]) => void }) {
-  const [cia, setCia] = useState('')
-  const [numbers, setNumbers] = useState('')
-  const [date, setDate] = useState('')
-  const [searching, setSearching] = useState(false)
-
-  async function handleSearch() {
-    const segments = numbers.split(/[,\n;]+|\s{2,}/).map(s => s.trim()).filter(Boolean)
-    // fallback: separa por espaço simples se o usuário digitou "LA3302 LA8084"
-    const segs = segments.length > 1 ? segments : numbers.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
-    if (segs.length === 0 || !date.trim()) {
-      toast.error('Informe os números dos voos e a data.')
-      return
-    }
-    setSearching(true)
-    try {
-      const res = await lookupFlightRoute(orgSlug, segs, date, cia)
-      if (!res.ok) { toast.error(res.error); return }
-      onAdd(res.flights.map(flightFromLookup))
-      toast.success(`${res.flights.length} trecho(s) adicionado(s)!`)
-      setNumbers('')
-    } catch (e: any) {
-      toast.error(e?.message || 'Erro ao buscar a rota.')
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-3 space-y-2">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-400">
-        <Plane className="w-3.5 h-3.5" /> Rota com conexões — busque vários voos de uma vez
-      </div>
-      <div className="grid gap-2 sm:grid-cols-[140px_1fr_150px_auto] sm:items-end">
-        <Field label="Companhia (opcional)"><Input value={cia} onChange={e => setCia(e.target.value)} placeholder="LATAM" /></Field>
-        <Field label="Números dos voos"><Input value={numbers} onChange={e => setNumbers(e.target.value)} placeholder="Ex.: LA3302, LA8084" /></Field>
-        <Field label="Data"><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
-        <Button type="button" onClick={handleSearch} disabled={searching} className="w-full sm:w-auto">
-          {searching ? <Loader2 className="w-4 h-4 animate-spin sm:mr-1.5" /> : <Search className="w-4 h-4 sm:mr-1.5" />}
-          <span className="hidden sm:inline">Buscar rota</span>
-        </Button>
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        Liste os voos na ordem da viagem (ida ou volta), separados por vírgula. A escala entre eles é calculada automaticamente. Se a companhia for a mesma, preencha em "Companhia" e digite só os números.
-      </p>
-    </div>
-  )
+function normalizeFlights(flights: any[]): any[] {
+  return (Array.isArray(flights) ? flights : []).map((f, i) => toJourney(f, i))
 }
 
-// Flight card: "Busca rápida" (Cia + Número + Data) on top → autofill via
-// AeroDataBox; manual detail fields below. The search inputs are local state;
-// only the resolved facts are persisted onto the flight object.
-function FlightCard({
-  orgSlug, f, index, onUpdate, onRemove,
+// Card de jornada: rótulo editável (Voo de ida / Trecho interno / Voo de volta)
+// + classe. Você adiciona trechos digitando só "número do voo + data"; conexões
+// entram no mesmo card e a escala/tempo total saem calculados. Detalhes ficam
+// recolhidos por padrão para a tela respirar.
+function JourneyCard({
+  orgSlug, j, index, onUpdate, onRemove,
 }: {
   orgSlug: string
-  f: any
+  j: any
   index: number
   onUpdate: (patch: any) => void
   onRemove: () => void
 }) {
-  const upd = onUpdate
-  const [cia, setCia] = useState(f.airline || '')
-  const [num, setNum] = useState(f.flight_number || '')
+  const legs: any[] = Array.isArray(j.legs) ? j.legs : []
+  const [num, setNum] = useState('')
   const [date, setDate] = useState('')
   const [searching, setSearching] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
-  async function handleSearch() {
-    if (!cia.trim() || !num.trim() || !date.trim()) {
-      toast.error('Informe companhia, número do voo e data para buscar.')
+  async function addLeg() {
+    if (!num.trim() || !date.trim()) {
+      toast.error('Informe o número do voo (ex.: LA3302) e a data.')
       return
     }
     setSearching(true)
     try {
-      const res = await lookupFlight(orgSlug, cia, num, date)
-      if (!res.ok) {
-        toast.error(res.error)
-        return
-      }
-      const fl = res.flight
-      upd({
-        airline: fl.airline || cia,
-        flight_number: fl.flight_number || num,
-        origin: fl.origin,
-        origin_name: fl.origin_name,
-        origin_terminal: fl.origin_terminal,
-        destination: fl.destination,
-        destination_name: fl.destination_name,
-        destination_terminal: fl.destination_terminal,
-        departure_at: fl.departure_at,
-        arrival_at: fl.arrival_at,
-        aircraft: fl.aircraft,
-      })
-      if (fl.airline) setCia(fl.airline)
-      if (fl.flight_number) setNum(fl.flight_number)
-      toast.success(`Voo ${fl.flight_number || num} preenchido!`)
+      // A companhia já vem no número (LA3302 → LATAM); por isso passamos ''.
+      const res = await lookupFlight(orgSlug, '', num, date)
+      if (!res.ok) { toast.error(res.error); return }
+      onUpdate({ legs: [...legs, legFromLookup(res.flight)] })
+      setNum('')
+      toast.success(`Trecho ${res.flight.flight_number || ''} adicionado!`)
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao buscar voo.')
     } finally {
@@ -340,50 +401,152 @@ function FlightCard({
     }
   }
 
+  const updateLeg = (k: number, patch: any) =>
+    onUpdate({ legs: legs.map((l, i) => (i === k ? { ...l, ...patch } : l)) })
+  const removeLeg = (k: number) => onUpdate({ legs: legs.filter((_, i) => i !== k) })
+  const addEmptyLeg = () => { onUpdate({ legs: [...legs, emptyLeg()] }); setShowDetails(true) }
+
+  const airMin = legs.reduce((s, l) => s + (Number(l.duration_min) || 0), 0)
+  const totalMin = legs.length >= 1
+    ? minsBetween(legs[0].departure_utc, legs[legs.length - 1].arrival_utc)
+    : 0
+  const stops = Math.max(0, legs.length - 1)
+
   return (
     <div className="rounded-lg border p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground">Voo {index + 1}</span>
-        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
-          onClick={onRemove}>
+      {/* Cabeçalho: rótulo editável + classe + remover */}
+      <div className="flex items-center gap-2">
+        <Plane className="w-4 h-4 text-primary shrink-0" />
+        <Input
+          value={j.label || ''}
+          onChange={e => onUpdate({ label: e.target.value })}
+          placeholder={defaultJourneyLabel(index)}
+          className="h-8 flex-1 min-w-0 font-semibold border-0 shadow-none px-0 focus-visible:ring-0"
+        />
+        <Select value={j.cabin_class || ''} onValueChange={v => onUpdate({ cabin_class: v })}>
+          <SelectTrigger className="h-8 w-[148px] shrink-0"><SelectValue placeholder="Classe" /></SelectTrigger>
+          <SelectContent>
+            {CABIN_CLASSES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={onRemove}>
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* ── Busca rápida: preencha só isto ─────────────────────────────── */}
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <Search className="w-3.5 h-3.5" /> Busca rápida — preencha e clique em Buscar
+      {/* Trechos adicionados (com chip de conexão entre eles) */}
+      {legs.length > 0 && (
+        <div className="space-y-1.5">
+          {legs.map((l, k) => {
+            const layover = k > 0 ? minsBetween(legs[k - 1].arrival_utc, l.departure_utc) : 0
+            const connAirport = k > 0 ? (legs[k - 1].destination || l.origin) : ''
+            return (
+              <div key={k} className="space-y-1.5">
+                {k > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-500 pl-1">
+                    <Clock className="w-3 h-3" />
+                    Conexão em {connAirport || '—'}{layover > 0 ? ` · ${fmtMins(layover)} de espera` : ''}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-sm">
+                  <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold">{l.origin || '—'}</span>
+                    {l.departure_at && <span className="text-xs text-muted-foreground">{l.departure_at}</span>}
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="font-semibold">{l.destination || '—'}</span>
+                    {l.arrival_at && <span className="text-xs text-muted-foreground">{l.arrival_at}</span>}
+                    {(l.airline || l.flight_number) && (
+                      <span className="text-xs text-muted-foreground">· {[l.airline, l.flight_number].filter(Boolean).join(' ')}</span>
+                    )}
+                    {Number(l.duration_min) > 0 && <span className="text-xs text-muted-foreground">· {fmtMins(l.duration_min)}</span>}
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => removeLeg(k)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
         </div>
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
-          <Field label="Companhia"><Input value={cia} onChange={e => setCia(e.target.value)} placeholder="LATAM" /></Field>
-          <Field label="Número do voo"><Input value={num} onChange={e => setNum(e.target.value)} placeholder="LA1234" /></Field>
+      )}
+
+      {/* Adicionar trecho via busca (só número + data) */}
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <Field label="Número do voo">
+            <Input value={num} onChange={e => setNum(e.target.value)} placeholder="LA3302"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addLeg() } }} />
+          </Field>
           <Field label="Data"><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
-          <Button type="button" onClick={handleSearch} disabled={searching} className="w-full sm:w-auto">
-            {searching ? <Loader2 className="w-4 h-4 animate-spin sm:mr-1.5" /> : <Search className="w-4 h-4 sm:mr-1.5" />}
-            <span className="hidden sm:inline">Buscar</span>
+          <Button type="button" onClick={addLeg} disabled={searching} className="w-full sm:w-auto">
+            {searching ? <Loader2 className="w-4 h-4 animate-spin sm:mr-1.5" /> : <Plus className="w-4 h-4 sm:mr-1.5" />}
+            <span className="hidden sm:inline">{legs.length === 0 ? 'Buscar voo' : 'Add trecho'}</span>
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Origem, destino, horários, aeronave e terminais são preenchidos automaticamente. Ajuste o que precisar abaixo.
+          Digite o número com a sigla da companhia (ex.: <strong>LA3302</strong>) e a data. Para conexões, adicione um trecho de cada vez — a escala é calculada sozinha.
         </p>
       </div>
 
-      {/* ── Detalhes (auto-preenchidos / editáveis) ───────────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Companhia aérea"><Input value={f.airline || ''} onChange={e => upd({ airline: e.target.value })} placeholder="Ex.: LATAM" /></Field>
-        <Field label="Número do voo"><Input value={f.flight_number || ''} onChange={e => upd({ flight_number: e.target.value })} placeholder="Ex.: LA1234" /></Field>
-        <Field label="Origem"><Input value={f.origin || ''} onChange={e => upd({ origin: e.target.value })} placeholder="GRU" /></Field>
-        <Field label="Destino"><Input value={f.destination || ''} onChange={e => upd({ destination: e.target.value })} placeholder="CUN" /></Field>
-        <Field label="Terminal de embarque"><Input value={f.origin_terminal || ''} onChange={e => upd({ origin_terminal: e.target.value })} placeholder="Ex.: 3" /></Field>
-        <Field label="Terminal de desembarque"><Input value={f.destination_terminal || ''} onChange={e => upd({ destination_terminal: e.target.value })} placeholder="Ex.: 2" /></Field>
-        <Field label="Embarque"><Input value={f.departure_at || ''} onChange={e => upd({ departure_at: e.target.value })} placeholder="01/12 08:30" /></Field>
-        <Field label="Chegada"><Input value={f.arrival_at || ''} onChange={e => upd({ arrival_at: e.target.value })} placeholder="01/12 14:10" /></Field>
-        <Field label="Aeronave"><Input value={f.aircraft || ''} onChange={e => upd({ aircraft: e.target.value })} placeholder="Ex.: Airbus A320" /></Field>
-        <Field label="Conexões"><Input value={f.connections || ''} onChange={e => upd({ connections: e.target.value })} placeholder="Ex.: 1 parada em PTY" /></Field>
-        <Field label="Bagagem"><Input value={f.baggage || ''} onChange={e => upd({ baggage: e.target.value })} placeholder="Ex.: 1 mala 23kg" /></Field>
-      </div>
-      <Field label="Políticas / observações"><Textarea value={f.policies || ''} onChange={e => upd({ policies: e.target.value })} placeholder="Regras de remarcação, no-show, etc." /></Field>
+      {/* Resumo da jornada */}
+      {legs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {totalMin > 0 && <span>Duração total: <strong className="text-foreground">{fmtMins(totalMin)}</strong></span>}
+          {airMin > 0 && <span>· Tempo de voo: {fmtMins(airMin)}</span>}
+          <span>· {stops === 0 ? 'Voo direto' : `${stops} ${stops > 1 ? 'conexões' : 'conexão'}`}</span>
+        </div>
+      )}
+
+      {/* Detalhes / ajuste manual (recolhido) */}
+      <button type="button" onClick={() => setShowDetails(s => !s)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+        {showDetails ? 'Ocultar detalhes' : 'Ajustar detalhes / bagagem'}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+          {legs.map((l, k) => (
+            <div key={k} className="space-y-2">
+              <div className="text-[11px] font-semibold text-muted-foreground">Trecho {k + 1}</div>
+              {/* Campos curtos ficam estreitos; nomes/descritivos ocupam mais. */}
+              <div className="flex flex-wrap gap-2">
+                <Field label="Companhia"><Input value={l.airline || ''} onChange={e => updateLeg(k, { airline: e.target.value })} placeholder="LATAM" className="w-32" /></Field>
+                <Field label="Nº do voo"><Input value={l.flight_number || ''} onChange={e => updateLeg(k, { flight_number: e.target.value })} placeholder="LA3302" className="w-24" /></Field>
+                <Field label="Origem"><Input value={l.origin || ''} onChange={e => updateLeg(k, { origin: e.target.value.toUpperCase() })} placeholder="GRU" maxLength={4} className="w-16 uppercase" /></Field>
+                <Field label="Destino"><Input value={l.destination || ''} onChange={e => updateLeg(k, { destination: e.target.value.toUpperCase() })} placeholder="JFK" maxLength={4} className="w-16 uppercase" /></Field>
+                <Field label="Term. emb."><Input value={l.origin_terminal || ''} onChange={e => updateLeg(k, { origin_terminal: e.target.value })} placeholder="3" className="w-16" /></Field>
+                <Field label="Term. des."><Input value={l.destination_terminal || ''} onChange={e => updateLeg(k, { destination_terminal: e.target.value })} placeholder="4" className="w-16" /></Field>
+                <Field label="Embarque"><Input value={l.departure_at || ''} onChange={e => updateLeg(k, { departure_at: e.target.value })} placeholder="01/12 22:10" className="w-28" /></Field>
+                <Field label="Chegada"><Input value={l.arrival_at || ''} onChange={e => updateLeg(k, { arrival_at: e.target.value })} placeholder="02/12 06:30" className="w-28" /></Field>
+                <Field label="Aeronave"><Input value={l.aircraft || ''} onChange={e => updateLeg(k, { aircraft: e.target.value })} placeholder="Boeing 777" className="w-32" /></Field>
+              </div>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={addEmptyLeg}>
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Trecho manual
+          </Button>
+          <Field label="Bagagem">
+            <div className="flex flex-wrap gap-1.5">
+              {BAGGAGE_OPTIONS.map(opt => {
+                const on = parseBaggage(j.baggage).some(x => x.toLowerCase() === opt.label.toLowerCase())
+                const Icon = opt.icon
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => onUpdate({ baggage: toggleBaggage(j.baggage || '', opt.label) })}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+          <Field label="Políticas / observações"><Textarea value={j.policies || ''} onChange={e => onUpdate({ policies: e.target.value })} placeholder="Regras de remarcação, no-show, etc." /></Field>
+        </div>
+      )}
     </div>
   )
 }
@@ -402,7 +565,7 @@ export default function ProposalBuilder({
     ...initial,
     travelers: initial.travelers || [],
     destinations: initial.destinations || [],
-    flights: initial.flights || [],
+    flights: normalizeFlights(initial.flights as any),
     hotels: initial.hotels || [],
     services: initial.services || {},
     included: initial.included || [],
@@ -437,6 +600,15 @@ export default function ProposalBuilder({
   }
 
   const bumpsTotal = (p.order_bumps || []).reduce((a: number, b: any) => a + (Number(b.price_cents) || 0), 0)
+
+  // Valor por pessoa é derivado: valor total ÷ nº de pessoas. Mantemos o campo
+  // persistido em sincronia para o link público (que lê price_per_person_cents).
+  const perPersonCents = p.pax_count && p.pax_count > 0
+    ? Math.round((p.total_cents || 0) / p.pax_count)
+    : 0
+  useEffect(() => {
+    setP(prev => (prev.price_per_person_cents === perPersonCents ? prev : { ...prev, price_per_person_cents: perPersonCents }))
+  }, [perPersonCents])
   const [publicUrl, setPublicUrl] = useState('')
   useEffect(() => {
     if (p.public_token) setPublicUrl(`${window.location.origin}/p/${p.public_token}`)
@@ -583,27 +755,34 @@ export default function ProposalBuilder({
       </div>
 
       {/* Voos */}
-      <SectionCard
-        icon={Plane} title="Voos"
-        action={
-          <Button type="button" variant="outline" size="sm"
-            onClick={() => set('flights', [...p.flights, { airline: '', flight_number: '', origin: '', origin_name: '', origin_terminal: '', destination: '', destination_name: '', destination_terminal: '', departure_at: '', arrival_at: '', aircraft: '', connections: '', baggage: '', policies: '' }])}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Voo
-          </Button>
-        }
-      >
-        <RouteSearch orgSlug={orgSlug} onAdd={flights => set('flights', [...(p.flights || []), ...flights])} />
-        {(p.flights || []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum voo adicionado.</p>}
+      <SectionCard icon={Plane} title="Voos">
+        {(p.flights || []).length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Nenhum voo adicionado. Crie uma jornada (ida, volta ou trecho interno) e adicione os voos pelo número.
+          </p>
+        )}
         {(p.flights || []).map((f: any, i: number) => (
-          <FlightCard
+          <JourneyCard
             key={i}
             orgSlug={orgSlug}
-            f={f}
+            j={f}
             index={i}
             onUpdate={(patch: any) => { const n = [...p.flights]; n[i] = { ...n[i], ...patch }; set('flights', n) }}
             onRemove={() => set('flights', p.flights.filter((_: any, j: number) => j !== i))}
           />
         ))}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {[
+            { label: 'Voo de ida', icon: '✈' },
+            { label: 'Trecho interno', icon: '⇄' },
+            { label: 'Voo de volta', icon: '✈' },
+          ].map(opt => (
+            <Button key={opt.label} type="button" variant="outline" size="sm"
+              onClick={() => set('flights', [...(p.flights || []), { label: opt.label, cabin_class: '', legs: [], baggage: '', policies: '' }])}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> {opt.label}
+            </Button>
+          ))}
+        </div>
       </SectionCard>
 
       {/* Hotéis */}
@@ -611,7 +790,7 @@ export default function ProposalBuilder({
         icon={Hotel} title="Hospedagem"
         action={
           <Button type="button" variant="outline" size="sm"
-            onClick={() => set('hotels', [...p.hotels, { name: '', kind: '', room_category: '', meal_plan: '', cancellation_policy: '', briefing: '', photos: [] }])}>
+            onClick={() => set('hotels', [...p.hotels, { name: '', kind: '', room_category: '', meal_plan: '', checkin_time: '15:00', checkout_time: '12:00', cancellation_policy: '', briefing: '', photos: [] }])}>
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Hotel
           </Button>
         }
@@ -634,6 +813,20 @@ export default function ProposalBuilder({
                 <Field label="Categoria do quarto"><Input value={h.room_category || ''} onChange={e => upd({ room_category: e.target.value })} placeholder="Ex.: Vista mar, casal" /></Field>
                 <Field label="Regime de alimentação"><Input value={h.meal_plan || ''} onChange={e => upd({ meal_plan: e.target.value })} placeholder="Ex.: All inclusive" /></Field>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Check-in">
+                  <Select value={h.checkin_time || '15:00'} onValueChange={v => upd({ checkin_time: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Check-out">
+                  <Select value={h.checkout_time || '12:00'} onValueChange={v => upd({ checkout_time: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIME_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+              </div>
               <Field label="Política de cancelamento"><Textarea value={h.cancellation_policy || ''} onChange={e => upd({ cancellation_policy: e.target.value })} placeholder="Condições de cancelamento e reembolso" /></Field>
               <Field label="Experiência (mini briefing)"><Textarea value={h.briefing || ''} onChange={e => upd({ briefing: e.target.value })} placeholder="Descreva a experiência da hospedagem" /></Field>
               <PhotoManager
@@ -648,7 +841,7 @@ export default function ProposalBuilder({
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Serviços adicionais */}
-        <SectionCard icon={Briefcase} title="Serviços adicionais">
+        <SectionCard icon={Briefcase} title="Serviços inclusos">
           {[
             { key: 'transfer', label: 'Traslado' },
             { key: 'insurance', label: 'Seguro viagem' },
@@ -723,7 +916,10 @@ export default function ProposalBuilder({
             <Input type="number" min="0" value={p.pax_count ?? ''} onChange={e => set('pax_count', e.target.value ? parseInt(e.target.value) : null)} placeholder="Ex.: 3" />
           </Field>
           <Field label="Valor por pessoa">
-            <MoneyInput value={p.price_per_person_cents || 0} onChange={c => set('price_per_person_cents', c)} />
+            <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm">
+              {p.pax_count && p.pax_count > 0 ? formatCurrency(perPersonCents) : '—'}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Calculado: valor total ÷ nº de pessoas.</p>
           </Field>
         </div>
 
