@@ -25,6 +25,8 @@ export type TravelSaleRow = {
   services: any[]
   included_items: string[]
   vouchers: any[]
+  travelers: any[]
+  travelers_note: string | null
   payment_method: string | null
   package_locator: string | null
   air_locator: string | null
@@ -39,7 +41,7 @@ export type TravelSaleRow = {
 const WRITABLE = [
   'status', 'client_name', 'destination', 'departure_date', 'return_date',
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
-  'included_items', 'vouchers',
+  'included_items', 'vouchers', 'travelers', 'travelers_note',
   'payment_method', 'package_locator', 'air_locator', 'airline_checkin_url',
   'commission_cents', 'notes',
 ] as const
@@ -162,6 +164,8 @@ function mapProposalToSaleFields(proposal: any): Record<string, any> {
     airline,
     services,
     payment_method: methods.join(', ') || null,
+    travelers: Array.isArray(proposal.travelers) ? proposal.travelers : [],
+    travelers_note: proposal.travelers_note ?? null,
   }
 }
 

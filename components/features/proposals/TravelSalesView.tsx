@@ -28,7 +28,7 @@ import { uploadSaleVoucher } from '@/actions/upload'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
-  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon,
+  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null }
@@ -392,6 +392,7 @@ function SaleEditor({
   const services: string[] = Array.isArray(s.services) ? s.services : []
   const included: string[] = Array.isArray(s.included_items) ? s.included_items : []
   const vouchers: Voucher[] = Array.isArray(s.vouchers) ? s.vouchers : []
+  const travelers: { name?: string; age?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -424,6 +425,7 @@ function SaleEditor({
     negotiation_days: s.negotiation_days, total_cents: s.total_cents,
     hotel_name: s.hotel_name, airline: s.airline, operator: s.operator,
     payment_method: s.payment_method, included_items: included, vouchers,
+    travelers, travelers_note: s.travelers_note,
     package_locator: s.package_locator, air_locator: s.air_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
     notes: s.notes,
@@ -475,6 +477,35 @@ function SaleEditor({
             <Field label="Hotel"><Input value={s.hotel_name || ''} onChange={e => set('hotel_name', e.target.value)} /></Field>
             <Field label="Companhia aérea"><Input value={s.airline || ''} onChange={e => set('airline', e.target.value)} /></Field>
             <Field label="Operadora"><Input value={s.operator || ''} onChange={e => set('operator', e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" /></Field>
+          </div>
+        </div>
+
+        {/* Viajantes */}
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-primary" />
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
+          </div>
+          <Field label="Observação sobre os viajantes">
+            <Input value={s.travelers_note || ''} onChange={e => set('travelers_note', e.target.value)} placeholder="Ex.: 2 adultos e 1 criança" />
+          </Field>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Viajantes (nome e idade)</Label>
+            {travelers.map((t, i) => (
+              <div key={i} className="flex gap-2">
+                <Input className="flex-1" placeholder="Nome" value={t.name || ''}
+                  onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
+                <Input className="w-24" placeholder="Idade" inputMode="numeric" value={t.age ?? ''}
+                  onChange={e => { const n = [...travelers]; n[i] = { ...n[i], age: e.target.value }; set('travelers', n) }} />
+                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                  onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', age: '' }])}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
+            </Button>
           </div>
         </div>
 

@@ -206,23 +206,8 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600">
               {proposal.client_name && <span><strong>Cliente:</strong> {proposal.client_name}</span>}
               <span><strong>Período:</strong> {fmtDate(proposal.start_date)} – {fmtDate(proposal.end_date)}</span>
-              {proposal.travelers_note && <span><strong>Viajantes:</strong> {proposal.travelers_note}</span>}
             </div>
           </div>
-
-          {/* Travelers */}
-          {(proposal.travelers || []).length > 0 && (
-            <Section title="Viajantes">
-              <ul className="grid sm:grid-cols-2 gap-2">
-                {proposal.travelers.map((t: any, i: number) => (
-                  <li key={i} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                    <span className="text-slate-800">{t.name || 'Viajante'}</span>
-                    {t.age && <span className="text-slate-500">{t.age} anos</span>}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
 
           {/* Destinations */}
           {(proposal.destinations || []).length > 0 && (

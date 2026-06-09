@@ -612,7 +612,7 @@ export default function ProposalBuilder({
     const res = await updateProposal(orgSlug, p.id, {
       title: p.title, status: p.status, lead_id: p.lead_id,
       start_date: p.start_date || null, end_date: p.end_date || null,
-      client_name: p.client_name, travelers: p.travelers, travelers_note: p.travelers_note,
+      client_name: p.client_name,
       destinations: p.destinations, flights: p.flights, hotels: p.hotels,
       services: p.services, included: p.included, not_included: p.not_included,
       checklist: p.checklist, photos: p.photos,
@@ -725,29 +725,6 @@ export default function ProposalBuilder({
             <Field label="Data de fim">
               <Input type="date" value={p.end_date || ''} onChange={e => set('end_date', e.target.value)} />
             </Field>
-          </div>
-          <Field label="Observação sobre os viajantes">
-            <Input value={p.travelers_note || ''} onChange={e => set('travelers_note', e.target.value)} placeholder="Ex.: 2 adultos e 1 criança" />
-          </Field>
-
-          {/* travelers list */}
-          <div className="space-y-2">
-            <Label className="text-xs">Viajantes (nome e idade)</Label>
-            {(p.travelers || []).map((t: any, i: number) => (
-              <div key={i} className="flex gap-2">
-                <Input className="flex-1" placeholder="Nome" value={t.name || ''}
-                  onChange={e => { const n = [...p.travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
-                <Input className="w-24" placeholder="Idade" inputMode="numeric" value={t.age ?? ''}
-                  onChange={e => { const n = [...p.travelers]; n[i] = { ...n[i], age: e.target.value }; set('travelers', n) }} />
-                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => set('travelers', p.travelers.filter((_: any, j: number) => j !== i))}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...p.travelers, { name: '', age: '' }])}>
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
-            </Button>
           </div>
         </SectionCard>
 
