@@ -726,6 +726,9 @@ export default function ProposalBuilder({
               <Input type="date" value={p.end_date || ''} onChange={e => set('end_date', e.target.value)} />
             </Field>
           </div>
+          <Field label="Observação sobre os viajantes">
+            <Input value={p.travelers_note || ''} onChange={e => set('travelers_note', e.target.value)} placeholder="Ex.: 2 adultos e 1 criança" />
+          </Field>
         </SectionCard>
 
         {/* Destinos */}

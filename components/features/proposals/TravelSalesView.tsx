@@ -392,7 +392,7 @@ function SaleEditor({
   const services: string[] = Array.isArray(s.services) ? s.services : []
   const included: string[] = Array.isArray(s.included_items) ? s.included_items : []
   const vouchers: Voucher[] = Array.isArray(s.vouchers) ? s.vouchers : []
-  const travelers: { name?: string; age?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
+  const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -486,24 +486,32 @@ function SaleEditor({
             <Users className="w-3.5 h-3.5 text-primary" />
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
           </div>
-          <Field label="Observação sobre os viajantes">
-            <Input value={s.travelers_note || ''} onChange={e => set('travelers_note', e.target.value)} placeholder="Ex.: 2 adultos e 1 criança" />
-          </Field>
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Viajantes (nome e idade)</Label>
+            <Label className="text-xs text-muted-foreground">Viajantes</Label>
             {travelers.map((t, i) => (
-              <div key={i} className="flex gap-2">
-                <Input className="flex-1" placeholder="Nome" value={t.name || ''}
-                  onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
-                <Input className="w-24" placeholder="Idade" inputMode="numeric" value={t.age ?? ''}
-                  onChange={e => { const n = [...travelers]; n[i] = { ...n[i], age: e.target.value }; set('travelers', n) }} />
+              <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
+                <div className="flex-1 min-w-[180px] space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Nome completo</Label>
+                  <Input placeholder="Nome completo" value={t.name || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
+                </div>
+                <div className="w-36 space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Data de nascimento</Label>
+                  <Input type="date" value={t.birth_date || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
+                </div>
+                <div className="w-40 space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">CPF</Label>
+                  <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
+                </div>
                 <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
                   onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', age: '' }])}>
+            <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
               <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
             </Button>
           </div>
