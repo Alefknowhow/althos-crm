@@ -164,9 +164,10 @@ export async function checkEmail(org: EmailConfig): Promise<HealthResult> {
     }
   }
 
-  // Domain the org actually sends from (falls back to the shared sandbox).
-  const fromAddr = org.email_from_address || 'onboarding@resend.dev'
-  const domain = fromAddr.includes('@') ? fromAddr.split('@')[1] : fromAddr
+  // Estratégia A: todos os e-mails em nome dos clientes saem pelo domínio
+  // compartilhado verificado, então é ele que verificamos aqui (não o
+  // email_from_address por org, que deixou de ser usado no envio).
+  const domain = process.env.RESEND_CLIENT_DOMAIN || 'send.althoscrm.com.br'
   const usesSharedSandbox = domain === 'resend.dev'
 
   try {

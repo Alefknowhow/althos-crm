@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { inngest } from '@/lib/inngest/client'
-import { resend } from '@/lib/resend'
+import { resend, clientEmailFrom } from '@/lib/resend'
 import { renderTemplate } from '@/lib/inngest/functions'
 import { getTemplateSeed } from '@/lib/email/template-seeds'
 
@@ -89,7 +89,7 @@ export async function sendTestEmail(orgSlug: string, templateId: string) {
 
   try {
     const { error } = await resend.emails.send({
-      from: `Test Althos CRM <onboarding@resend.dev>`,
+      from: clientEmailFrom(org.name),
       to: user.email,
       subject: `[TESTE] ${subject}`,
       html: htmlBody

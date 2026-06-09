@@ -119,7 +119,7 @@ export default function EmailTemplateEditor({ orgSlug, initialTemplate, sampleLe
         <div className="lg:flex-1 p-4 sm:p-8 lg:overflow-y-auto flex justify-center items-start hide-scrollbar">
           <div className="w-full max-w-2xl bg-white border rounded-xl shadow-xl overflow-hidden text-black ring-1 ring-black/5">
              <div className="p-4 border-b bg-gray-50/80 flex flex-col gap-1.5 backdrop-blur-sm">
-               <div className="text-sm flex"><span className="text-gray-400 w-16 shrink-0 inline-block font-medium">De:</span> <span className="truncate">{org.email_from_address || 'onboarding@resend.dev'}</span></div>
+               <div className="text-sm flex"><span className="text-gray-400 w-16 shrink-0 inline-block font-medium">De:</span> <span className="truncate">{org.name} &lt;noreply@send.althoscrm.com.br&gt;</span></div>
                <div className="text-sm flex"><span className="text-gray-400 w-16 shrink-0 inline-block font-medium">Para:</span> <span className="truncate">{variables.lead.email}</span></div>
                <div className="text-sm mt-3 pt-3 border-t border-gray-200 font-semibold text-gray-900">{previewSubject || '(sem assunto)'}</div>
              </div>

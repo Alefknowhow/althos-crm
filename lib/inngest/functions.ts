@@ -1,6 +1,6 @@
 import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
-import { resend } from '../resend'
+import { resend, clientEmailFrom } from '../resend'
 
 export function renderTemplate(templateStr: string, variables: any) {
   if (!templateStr) return ''
@@ -43,12 +43,14 @@ export const sendEmail = inngest.createFunction(
 
     const subject = renderTemplate(template.subject || '', variables)
     const htmlBody = renderTemplate(template.body_html || '', variables)
-    const fromEmail =
-      lead.organizations?.email_from_address || 'onboarding@resend.dev'
+    // Estratégia A: envia pelo domínio compartilhado verificado, usando o
+    // NOME da organização como remetente (não o e-mail do cliente, que não
+    // está verificado no Resend). Garante entregabilidade e marca branca.
+    const fromEmail = clientEmailFrom(lead.organizations?.name)
 
     try {
       const { data: resendResponse, error } = await resend.emails.send({
-        from: `Althos CRM <${fromEmail}>`,
+        from: fromEmail,
         to: emailSend.to_email,
         subject,
         html: htmlBody,
