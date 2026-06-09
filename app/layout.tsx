@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import PWARegister from "@/components/features/PWARegister";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -58,6 +59,7 @@ export default function RootLayout({
           <Toaster position="top-right" richColors />
           <PWARegister />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

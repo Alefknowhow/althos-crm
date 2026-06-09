@@ -14,12 +14,13 @@ import {
 } from '@/components/ui/select'
 import { updateProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
+import { lookupFlight } from '@/actions/flight-lookup'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
-  Share2, Copy, ExternalLink, Upload, Loader2,
+  Share2, Copy, ExternalLink, Upload, Loader2, Search,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -74,10 +75,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // editable string list (incluso / não incluso)
 function StringList({
-  items, onChange, placeholder,
-}: { items: string[]; onChange: (v: string[]) => void; placeholder: string }) {
+  items, onChange, placeholder, suggestions = [],
+}: { items: string[]; onChange: (v: string[]) => void; placeholder: string; suggestions?: string[] }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {suggestions.map(s => {
+            const on = items.some(it => it.trim().toLowerCase() === s.toLowerCase())
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  onChange(on
+                    ? items.filter(it => it.trim().toLowerCase() !== s.toLowerCase())
+                    : [...items, s])
+                }}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+              >
+                {on ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                {s}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {items.map((it, i) => (
         <div key={i} className="flex gap-2">
           <Input
@@ -98,10 +121,37 @@ function StringList({
   )
 }
 
+// Quick-add chips para acelerar o preenchimento de incluso / não incluso.
+const INCLUDED_SUGGESTIONS = [
+  'Aéreo ida e volta',
+  'Bagagem (23kg)',
+  'Bagagem de mão (10kg)',
+  'Marcação de assentos',
+  'Taxas e impostos',
+  'Transfer aeroporto ⇄ hotel',
+  'Café da manhã',
+  'Seguro viagem',
+  'Hospedagem',
+  'Passeios mencionados',
+  'Assistência 24h',
+]
+const NOT_INCLUDED_SUGGESTIONS = [
+  'Bagagem despachada',
+  'Marcação de assentos',
+  'Taxas e impostos locais',
+  'Transfer',
+  'Passeios não citados',
+  'Refeições não mencionadas',
+  'Despesas pessoais',
+  'Seguro viagem',
+  'Gorjetas',
+  'Vistos e documentação',
+]
+
 const PAYMENT_METHODS = [
   { key: 'pix', label: 'Pix' },
   { key: 'boleto', label: 'Boleto' },
-  { key: 'cartao', label: 'Cartão' },
+  { key: 'cartao', label: 'Cartão de crédito' },
 ]
 
 // Hotel photo manager: upload to storage + URL list with thumbnails
@@ -161,6 +211,108 @@ function PhotoManager({
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Flight card: "Busca rápida" (Cia + Número + Data) on top → autofill via
+// AeroDataBox; manual detail fields below. The search inputs are local state;
+// only the resolved facts are persisted onto the flight object.
+function FlightCard({
+  orgSlug, f, index, onUpdate, onRemove,
+}: {
+  orgSlug: string
+  f: any
+  index: number
+  onUpdate: (patch: any) => void
+  onRemove: () => void
+}) {
+  const upd = onUpdate
+  const [cia, setCia] = useState(f.airline || '')
+  const [num, setNum] = useState(f.flight_number || '')
+  const [date, setDate] = useState('')
+  const [searching, setSearching] = useState(false)
+
+  async function handleSearch() {
+    if (!cia.trim() || !num.trim() || !date.trim()) {
+      toast.error('Informe companhia, número do voo e data para buscar.')
+      return
+    }
+    setSearching(true)
+    try {
+      const res = await lookupFlight(orgSlug, cia, num, date)
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      const fl = res.flight
+      upd({
+        airline: fl.airline || cia,
+        flight_number: fl.flight_number || num,
+        origin: fl.origin,
+        origin_name: fl.origin_name,
+        origin_terminal: fl.origin_terminal,
+        destination: fl.destination,
+        destination_name: fl.destination_name,
+        destination_terminal: fl.destination_terminal,
+        departure_at: fl.departure_at,
+        arrival_at: fl.arrival_at,
+        aircraft: fl.aircraft,
+      })
+      if (fl.airline) setCia(fl.airline)
+      if (fl.flight_number) setNum(fl.flight_number)
+      toast.success(`Voo ${fl.flight_number || num} preenchido!`)
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao buscar voo.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground">Voo {index + 1}</span>
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
+          onClick={onRemove}>
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* ── Busca rápida: preencha só isto ─────────────────────────────── */}
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+          <Search className="w-3.5 h-3.5" /> Busca rápida — preencha e clique em Buscar
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+          <Field label="Companhia"><Input value={cia} onChange={e => setCia(e.target.value)} placeholder="LATAM" /></Field>
+          <Field label="Número do voo"><Input value={num} onChange={e => setNum(e.target.value)} placeholder="LA1234" /></Field>
+          <Field label="Data"><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
+          <Button type="button" onClick={handleSearch} disabled={searching} className="w-full sm:w-auto">
+            {searching ? <Loader2 className="w-4 h-4 animate-spin sm:mr-1.5" /> : <Search className="w-4 h-4 sm:mr-1.5" />}
+            <span className="hidden sm:inline">Buscar</span>
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Origem, destino, horários, aeronave e terminais são preenchidos automaticamente. Ajuste o que precisar abaixo.
+        </p>
+      </div>
+
+      {/* ── Detalhes (auto-preenchidos / editáveis) ───────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Companhia aérea"><Input value={f.airline || ''} onChange={e => upd({ airline: e.target.value })} placeholder="Ex.: LATAM" /></Field>
+        <Field label="Número do voo"><Input value={f.flight_number || ''} onChange={e => upd({ flight_number: e.target.value })} placeholder="Ex.: LA1234" /></Field>
+        <Field label="Origem"><Input value={f.origin || ''} onChange={e => upd({ origin: e.target.value })} placeholder="GRU" /></Field>
+        <Field label="Destino"><Input value={f.destination || ''} onChange={e => upd({ destination: e.target.value })} placeholder="CUN" /></Field>
+        <Field label="Terminal de embarque"><Input value={f.origin_terminal || ''} onChange={e => upd({ origin_terminal: e.target.value })} placeholder="Ex.: 3" /></Field>
+        <Field label="Terminal de desembarque"><Input value={f.destination_terminal || ''} onChange={e => upd({ destination_terminal: e.target.value })} placeholder="Ex.: 2" /></Field>
+        <Field label="Embarque"><Input value={f.departure_at || ''} onChange={e => upd({ departure_at: e.target.value })} placeholder="01/12 08:30" /></Field>
+        <Field label="Chegada"><Input value={f.arrival_at || ''} onChange={e => upd({ arrival_at: e.target.value })} placeholder="01/12 14:10" /></Field>
+        <Field label="Aeronave"><Input value={f.aircraft || ''} onChange={e => upd({ aircraft: e.target.value })} placeholder="Ex.: Airbus A320" /></Field>
+        <Field label="Conexões"><Input value={f.connections || ''} onChange={e => upd({ connections: e.target.value })} placeholder="Ex.: 1 parada em PTY" /></Field>
+        <Field label="Bagagem"><Input value={f.baggage || ''} onChange={e => upd({ baggage: e.target.value })} placeholder="Ex.: 1 mala 23kg" /></Field>
+      </div>
+      <Field label="Políticas / observações"><Textarea value={f.policies || ''} onChange={e => upd({ policies: e.target.value })} placeholder="Regras de remarcação, no-show, etc." /></Field>
     </div>
   )
 }
@@ -364,37 +516,22 @@ export default function ProposalBuilder({
         icon={Plane} title="Voos"
         action={
           <Button type="button" variant="outline" size="sm"
-            onClick={() => set('flights', [...p.flights, { airline: '', flight_number: '', origin: '', destination: '', departure_at: '', arrival_at: '', connections: '', baggage: '', policies: '' }])}>
+            onClick={() => set('flights', [...p.flights, { airline: '', flight_number: '', origin: '', origin_name: '', origin_terminal: '', destination: '', destination_name: '', destination_terminal: '', departure_at: '', arrival_at: '', aircraft: '', connections: '', baggage: '', policies: '' }])}>
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Voo
           </Button>
         }
       >
         {(p.flights || []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum voo adicionado.</p>}
-        {(p.flights || []).map((f: any, i: number) => {
-          const upd = (patch: any) => { const n = [...p.flights]; n[i] = { ...n[i], ...patch }; set('flights', n) }
-          return (
-            <div key={i} className="rounded-lg border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">Voo {i + 1}</span>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                  onClick={() => set('flights', p.flights.filter((_: any, j: number) => j !== i))}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Companhia aérea"><Input value={f.airline || ''} onChange={e => upd({ airline: e.target.value })} placeholder="Ex.: LATAM" /></Field>
-                <Field label="Número do voo"><Input value={f.flight_number || ''} onChange={e => upd({ flight_number: e.target.value })} placeholder="Ex.: LA1234" /></Field>
-                <Field label="Origem"><Input value={f.origin || ''} onChange={e => upd({ origin: e.target.value })} placeholder="GRU" /></Field>
-                <Field label="Destino"><Input value={f.destination || ''} onChange={e => upd({ destination: e.target.value })} placeholder="CUN" /></Field>
-                <Field label="Embarque"><Input value={f.departure_at || ''} onChange={e => upd({ departure_at: e.target.value })} placeholder="01/12 08:30" /></Field>
-                <Field label="Chegada"><Input value={f.arrival_at || ''} onChange={e => upd({ arrival_at: e.target.value })} placeholder="01/12 14:10" /></Field>
-                <Field label="Conexões"><Input value={f.connections || ''} onChange={e => upd({ connections: e.target.value })} placeholder="Ex.: 1 parada em PTY" /></Field>
-                <Field label="Bagagem"><Input value={f.baggage || ''} onChange={e => upd({ baggage: e.target.value })} placeholder="Ex.: 1 mala 23kg" /></Field>
-              </div>
-              <Field label="Políticas / observações"><Textarea value={f.policies || ''} onChange={e => upd({ policies: e.target.value })} placeholder="Regras de remarcação, no-show, etc." /></Field>
-            </div>
-          )
-        })}
+        {(p.flights || []).map((f: any, i: number) => (
+          <FlightCard
+            key={i}
+            orgSlug={orgSlug}
+            f={f}
+            index={i}
+            onUpdate={(patch: any) => { const n = [...p.flights]; n[i] = { ...n[i], ...patch }; set('flights', n) }}
+            onRemove={() => set('flights', p.flights.filter((_: any, j: number) => j !== i))}
+          />
+        ))}
       </SectionCard>
 
       {/* Hotéis */}
@@ -495,12 +632,12 @@ export default function ProposalBuilder({
 
         {/* Incluso */}
         <SectionCard icon={CheckCircle2} title="O que está incluso">
-          <StringList items={p.included || []} onChange={v => set('included', v)} placeholder="Ex.: Aéreo ida e volta" />
+          <StringList items={p.included || []} onChange={v => set('included', v)} placeholder="Ex.: Aéreo ida e volta" suggestions={INCLUDED_SUGGESTIONS} />
         </SectionCard>
 
         {/* Não incluso */}
         <SectionCard icon={XCircle} title="O que não está incluso">
-          <StringList items={p.not_included || []} onChange={v => set('not_included', v)} placeholder="Ex.: Passeios não citados" />
+          <StringList items={p.not_included || []} onChange={v => set('not_included', v)} placeholder="Ex.: Passeios não citados" suggestions={NOT_INCLUDED_SUGGESTIONS} />
         </SectionCard>
       </div>
 
@@ -519,33 +656,38 @@ export default function ProposalBuilder({
         </div>
 
         <Field label="Formas de pagamento aceitas">
-          <div className="flex flex-wrap gap-2">
+          <p className="text-xs text-muted-foreground mb-2">
+            Ative a forma de pagamento e descreva as condições ao lado.
+          </p>
+          <div className="space-y-2">
             {PAYMENT_METHODS.map(m => {
               const list: string[] = p.payment?.methods || []
               const on = list.includes(m.key)
+              const conds: Record<string, string> = p.payment?.method_conditions || {}
               return (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => {
-                    const next = on ? list.filter(x => x !== m.key) : [...list, m.key]
-                    set('payment', { ...p.payment, methods: next })
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
-                >
-                  {m.label}
-                </button>
+                <div key={m.key} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = on ? list.filter(x => x !== m.key) : [...list, m.key]
+                      set('payment', { ...p.payment, methods: next })
+                    }}
+                    className={`shrink-0 w-40 px-3 py-2 rounded-md text-sm border transition-colors text-left flex items-center gap-2 ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'}`}
+                  >
+                    {on ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0 opacity-50" />}
+                    {m.label}
+                  </button>
+                  <Input
+                    value={conds[m.key] || ''}
+                    disabled={!on}
+                    onChange={e => set('payment', { ...p.payment, method_conditions: { ...conds, [m.key]: e.target.value } })}
+                    placeholder={on ? 'Ex.: até 10x sem juros · 5% de desconto' : 'Ative para descrever as condições'}
+                    className="flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
               )
             })}
           </div>
-        </Field>
-
-        <Field label="Condições e parcelamento">
-          <Textarea
-            value={p.payment?.conditions || ''}
-            onChange={e => set('payment', { ...p.payment, conditions: e.target.value })}
-            placeholder="Ex.: Entrada de 30% + saldo em até 10x no cartão. Pix com 5% de desconto."
-          />
         </Field>
       </SectionCard>
 

@@ -59,7 +59,7 @@ const SERVICE_LABELS: Record<string, string> = {
   car_rental: 'Locação de carro',
 }
 const METHOD_LABELS: Record<string, string> = {
-  pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão',
+  pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de crédito',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -183,9 +183,15 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                       <span>{[f.origin, f.destination].filter(Boolean).join(' → ') || 'Trecho'}</span>
                       <span className="text-slate-500 font-normal">{[f.airline, f.flight_number].filter(Boolean).join(' · ')}</span>
                     </div>
+                    {(f.origin_name || f.destination_name) && (
+                      <div className="mt-0.5 text-xs text-slate-400">
+                        {[f.origin_name, f.destination_name].filter(Boolean).join(' → ')}
+                      </div>
+                    )}
                     <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-slate-600">
-                      {f.departure_at && <span><strong>Embarque:</strong> {f.departure_at}</span>}
-                      {f.arrival_at && <span><strong>Chegada:</strong> {f.arrival_at}</span>}
+                      {f.departure_at && <span><strong>Embarque:</strong> {f.departure_at}{f.origin_terminal ? ` · Terminal ${f.origin_terminal}` : ''}</span>}
+                      {f.arrival_at && <span><strong>Chegada:</strong> {f.arrival_at}{f.destination_terminal ? ` · Terminal ${f.destination_terminal}` : ''}</span>}
+                      {f.aircraft && <span><strong>Aeronave:</strong> {f.aircraft}</span>}
                       {f.connections && <span><strong>Conexões:</strong> {f.connections}</span>}
                       {f.baggage && <span><strong>Bagagem:</strong> {f.baggage}</span>}
                     </div>
@@ -302,12 +308,18 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
               )}
             </div>
             {methods.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {methods.map(m => (
-                  <span key={m} className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                    {METHOD_LABELS[m] || m}
-                  </span>
-                ))}
+              <div className="mt-3 space-y-2">
+                {methods.map(m => {
+                  const cond = proposal.payment?.method_conditions?.[m]
+                  return (
+                    <div key={m} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+                      <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+                        {METHOD_LABELS[m] || m}
+                      </span>
+                      {cond && <span className="text-slate-600">{cond}</span>}
+                    </div>
+                  )
+                })}
               </div>
             )}
             {proposal.payment?.conditions && (
