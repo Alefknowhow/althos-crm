@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { updateProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
-import { lookupFlight } from '@/actions/flight-lookup'
+import { lookupFlight, lookupFlightRoute } from '@/actions/flight-lookup'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -397,14 +397,25 @@ function JourneyCard({
       toast.error('Informe o número do voo (ex.: LA3302) e a data.')
       return
     }
+    // Permite voos com conexão num só campo: "LA3305, LA3380" (vírgula ou espaço).
+    const tokens = num.split(/[,\s]+/).map(t => t.trim()).filter(Boolean)
     setSearching(true)
     try {
-      // A companhia já vem no número (LA3302 → LATAM); por isso passamos ''.
-      const res = await lookupFlight(orgSlug, '', num, date)
-      if (!res.ok) { toast.error(res.error); return }
-      onUpdate({ legs: [...legs, legFromLookup(res.flight)] })
-      setNum('')
-      toast.success(`Trecho ${res.flight.flight_number || ''} adicionado!`)
+      if (tokens.length > 1) {
+        // Busca em lote: cada número vira um trecho; a escala é calculada no servidor.
+        const res = await lookupFlightRoute(orgSlug, tokens, date)
+        if (!res.ok) { toast.error(res.error); return }
+        onUpdate({ legs: [...legs, ...res.flights.map(legFromLookup)] })
+        setNum('')
+        toast.success(`${res.flights.length} trechos adicionados!`)
+      } else {
+        // A companhia já vem no número (LA3302 → LATAM); por isso passamos ''.
+        const res = await lookupFlight(orgSlug, '', tokens[0], date)
+        if (!res.ok) { toast.error(res.error); return }
+        onUpdate({ legs: [...legs, legFromLookup(res.flight)] })
+        setNum('')
+        toast.success(`Trecho ${res.flight.flight_number || ''} adicionado!`)
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao buscar voo.')
     } finally {
