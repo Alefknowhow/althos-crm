@@ -621,7 +621,6 @@ function SaleEditor({
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
             <Field label="Localizador aéreo"><Input value={s.air_locator || ''} onChange={e => set('air_locator', e.target.value)} placeholder="Ex.: ABC123" /></Field>
-            <Field label="Link de check-in da cia"><Input value={s.airline_checkin_url || ''} onChange={e => set('airline_checkin_url', e.target.value)} placeholder="https://..." /></Field>
             <Field label="Comissão"><MoneyInput value={s.commission_cents || 0} onChange={c => set('commission_cents', c)} /></Field>
           </div>
         </div>

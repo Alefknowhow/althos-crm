@@ -260,7 +260,6 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
     const checkinInfo = [
       s.air_locator ? `Localizador aéreo: ${s.air_locator}` : null,
       s.airline ? `Cia aérea: ${s.airline}` : null,
-      s.airline_checkin_url ? `Check-in online: ${s.airline_checkin_url}` : null,
     ].filter(Boolean).join('\n')
 
     tasks.push({
@@ -294,7 +293,6 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
     const checkinInfo = [
       s.air_locator ? `Localizador aéreo: ${s.air_locator}` : null,
       s.airline ? `Cia aérea: ${s.airline}` : null,
-      s.airline_checkin_url ? `Check-in online: ${s.airline_checkin_url}` : null,
     ].filter(Boolean).join('\n')
     tasks.push({
       title: `✈️ Check-in do voo (volta) — ${client}`,
