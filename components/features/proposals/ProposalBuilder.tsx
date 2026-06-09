@@ -21,7 +21,7 @@ import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Share2, Copy, ExternalLink, Upload, Loader2, Search,
-  ChevronDown, Clock, ArrowRight, Backpack, Luggage,
+  ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -151,6 +151,17 @@ const NOT_INCLUDED_SUGGESTIONS = [
 
 // Horários de check-in/check-out (selects). Pré-definidos em 15:00 / 12:00.
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`)
+
+// Checklist de documentos/exigências do viajante (visto, vacinas, autorizações
+// de entrada). Mesma mecânica de "O que está incluso": chips + itens livres.
+const CHECKLIST_SUGGESTIONS = [
+  'Passaporte com validade mínima de 6 meses',
+  'Visto',
+  'RG atualizado',
+  'Comprovante de Vacina - Febre Amarela',
+  'ETA - London',
+  'ETIAS - Europa (Espaço Schengen)',
+]
 
 const PAYMENT_METHODS = [
   { key: 'pix', label: 'Pix' },
@@ -570,6 +581,7 @@ export default function ProposalBuilder({
     services: initial.services || {},
     included: initial.included || [],
     not_included: initial.not_included || [],
+    checklist: initial.checklist || [],
     order_bumps: initial.order_bumps || [],
     payment: initial.payment || {},
   })
@@ -591,6 +603,7 @@ export default function ProposalBuilder({
       client_name: p.client_name, travelers: p.travelers, travelers_note: p.travelers_note,
       destinations: p.destinations, flights: p.flights, hotels: p.hotels,
       services: p.services, included: p.included, not_included: p.not_included,
+      checklist: p.checklist,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
     })
@@ -905,6 +918,14 @@ export default function ProposalBuilder({
           <StringList items={p.not_included || []} onChange={v => set('not_included', v)} placeholder="Ex.: Passeios não citados" suggestions={NOT_INCLUDED_SUGGESTIONS} />
         </SectionCard>
       </div>
+
+      {/* Checklist de documentos / exigências */}
+      <SectionCard icon={ListChecks} title="Checklist do viajante (documentos e exigências)">
+        <p className="text-xs text-muted-foreground">
+          Itens que o viajante precisa providenciar antes da viagem (documentos, vistos, vacinas). Clique nas sugestões ou adicione os seus.
+        </p>
+        <StringList items={p.checklist || []} onChange={v => set('checklist', v)} placeholder="Ex.: Visto americano (B1/B2)" suggestions={CHECKLIST_SUGGESTIONS} />
+      </SectionCard>
 
       {/* Pagamento */}
       <SectionCard icon={CreditCard} title="Pagamento">

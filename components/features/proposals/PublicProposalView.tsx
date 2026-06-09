@@ -32,6 +32,7 @@ type Proposal = {
   services: Record<string, any>
   included: string[]
   not_included: string[]
+  checklist: string[]
   order_bumps: any[]
   total_cents: number
   pax_count: number | null
@@ -376,6 +377,21 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                   </div>
                 )}
               </div>
+            </Section>
+          )}
+
+          {/* Checklist do viajante */}
+          {(proposal.checklist || []).length > 0 && (
+            <Section title="Checklist do viajante">
+              <p className="text-sm text-slate-500 mb-3">Providencie estes itens antes da viagem:</p>
+              <ul className="grid sm:grid-cols-2 gap-2">
+                {proposal.checklist.map((it, i) => (
+                  <li key={i} className="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                    <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-400">☐</span>
+                    {it}
+                  </li>
+                ))}
+              </ul>
             </Section>
           )}
 

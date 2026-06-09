@@ -24,6 +24,7 @@ export type ProposalRow = {
   services: Record<string, any>
   included: string[]
   not_included: string[]
+  checklist: string[]
   order_bumps: any[]
   total_cents: number
   pax_count: number | null
@@ -39,7 +40,7 @@ export type ProposalRow = {
 const WRITABLE = [
   'title', 'status', 'lead_id', 'start_date', 'end_date', 'client_name',
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
-  'services', 'included', 'not_included', 'order_bumps',
+  'services', 'included', 'not_included', 'checklist', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
   'company_override', 'notes',
 ] as const
