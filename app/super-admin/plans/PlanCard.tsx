@@ -18,12 +18,16 @@ export default function PlanCard({ plan }: { plan: AdminPlan }) {
   const [monthly, setMonthly] = useState(String(plan.price_monthly_cents))
   const [annual, setAnnual]   = useState(String(plan.price_annual_cents))
   const [credits, setCredits] = useState(String(plan.ai_credits_monthly))
+  const [leads, setLeads]     = useState(String(plan.max_leads_per_month))
+  const [users, setUsers]     = useState(String(plan.max_users))
   const [active, setActive]   = useState(plan.is_active)
 
   function reset() {
     setMonthly(String(plan.price_monthly_cents))
     setAnnual(String(plan.price_annual_cents))
     setCredits(String(plan.ai_credits_monthly))
+    setLeads(String(plan.max_leads_per_month))
+    setUsers(String(plan.max_users))
     setActive(plan.is_active)
     setError(null)
   }
@@ -35,6 +39,8 @@ export default function PlanCard({ plan }: { plan: AdminPlan }) {
         price_monthly_cents: monthly,
         price_annual_cents:  annual,
         ai_credits_monthly:  credits,
+        max_leads_per_month: leads,
+        max_users:           users,
         is_active:           active,
       })
       if (!res.ok) { setError(res.error); return }
@@ -66,6 +72,8 @@ export default function PlanCard({ plan }: { plan: AdminPlan }) {
           <Field label="Mensal (centavos)" value={monthly} onChange={setMonthly} />
           <Field label="Anual (centavos)"  value={annual}  onChange={setAnnual} />
           <Field label="Créditos IA / mês"  value={credits} onChange={setCredits} />
+          <Field label="Limite de Leads (-1 = ∞)" value={leads} onChange={setLeads} />
+          <Field label="Limite de Usuários (-1 = ∞)" value={users} onChange={setUsers} />
           <label className="flex items-center gap-2 text-xs text-slate-300">
             <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} className="accent-violet-600" />
             Plano ativo

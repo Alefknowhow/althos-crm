@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard,
-  Building2,
   ScrollText,
   UserPlus,
   ArrowLeft,
@@ -20,7 +19,6 @@ import {
 
 const NAV = [
   { href: '/super-admin',            label: 'Visão Geral',    icon: LayoutDashboard },
-  { href: '/super-admin/orgs',       label: 'Organizações',   icon: Building2 },
   { href: '/super-admin/users',      label: 'Usuários',       icon: Users },
   { href: '/super-admin/plans',      label: 'Planos & Cupons',icon: Package },
   { href: '/super-admin/ai-credits', label: 'Créditos IA',    icon: Sparkles },
