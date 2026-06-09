@@ -767,6 +767,8 @@ export default function ProposalBuilder({
         </SectionCard>
       </div>
 
+      {/* Voos + Hospedagem lado a lado (cada um em meia tela) */}
+      <div className="grid gap-5 lg:grid-cols-2 items-start">
       {/* Voos */}
       <SectionCard icon={Plane} title="Voos">
         {(p.flights || []).length === 0 && (
@@ -851,6 +853,7 @@ export default function ProposalBuilder({
           )
         })}
       </SectionCard>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Serviços adicionais */}
