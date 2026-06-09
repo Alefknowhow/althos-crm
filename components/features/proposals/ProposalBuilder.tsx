@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { updateProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
-import { lookupFlight } from '@/actions/flight-lookup'
+import { lookupFlight, lookupFlightRoute } from '@/actions/flight-lookup'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -211,6 +211,77 @@ function PhotoManager({
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Converte um trecho retornado pela API no objeto de voo persistido.
+function flightFromLookup(fl: any) {
+  return {
+    airline: fl.airline || '',
+    flight_number: fl.flight_number || '',
+    origin: fl.origin || '',
+    origin_name: fl.origin_name || '',
+    origin_terminal: fl.origin_terminal || '',
+    destination: fl.destination || '',
+    destination_name: fl.destination_name || '',
+    destination_terminal: fl.destination_terminal || '',
+    departure_at: fl.departure_at || '',
+    arrival_at: fl.arrival_at || '',
+    aircraft: fl.aircraft || '',
+    connections: fl.connections || '',
+    baggage: '',
+    policies: '',
+  }
+}
+
+// Busca em lote de uma rota com conexões: vários números de voo + data →
+// gera um card por trecho, já com a escala calculada. Fica no topo da seção.
+function RouteSearch({ orgSlug, onAdd }: { orgSlug: string; onAdd: (flights: any[]) => void }) {
+  const [cia, setCia] = useState('')
+  const [numbers, setNumbers] = useState('')
+  const [date, setDate] = useState('')
+  const [searching, setSearching] = useState(false)
+
+  async function handleSearch() {
+    const segments = numbers.split(/[,\n;]+|\s{2,}/).map(s => s.trim()).filter(Boolean)
+    // fallback: separa por espaço simples se o usuário digitou "LA3302 LA8084"
+    const segs = segments.length > 1 ? segments : numbers.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
+    if (segs.length === 0 || !date.trim()) {
+      toast.error('Informe os números dos voos e a data.')
+      return
+    }
+    setSearching(true)
+    try {
+      const res = await lookupFlightRoute(orgSlug, segs, date, cia)
+      if (!res.ok) { toast.error(res.error); return }
+      onAdd(res.flights.map(flightFromLookup))
+      toast.success(`${res.flights.length} trecho(s) adicionado(s)!`)
+      setNumbers('')
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao buscar a rota.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-3 space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-400">
+        <Plane className="w-3.5 h-3.5" /> Rota com conexões — busque vários voos de uma vez
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[140px_1fr_150px_auto] sm:items-end">
+        <Field label="Companhia (opcional)"><Input value={cia} onChange={e => setCia(e.target.value)} placeholder="LATAM" /></Field>
+        <Field label="Números dos voos"><Input value={numbers} onChange={e => setNumbers(e.target.value)} placeholder="Ex.: LA3302, LA8084" /></Field>
+        <Field label="Data"><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
+        <Button type="button" onClick={handleSearch} disabled={searching} className="w-full sm:w-auto">
+          {searching ? <Loader2 className="w-4 h-4 animate-spin sm:mr-1.5" /> : <Search className="w-4 h-4 sm:mr-1.5" />}
+          <span className="hidden sm:inline">Buscar rota</span>
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Liste os voos na ordem da viagem (ida ou volta), separados por vírgula. A escala entre eles é calculada automaticamente. Se a companhia for a mesma, preencha em "Companhia" e digite só os números.
+      </p>
     </div>
   )
 }
@@ -521,6 +592,7 @@ export default function ProposalBuilder({
           </Button>
         }
       >
+        <RouteSearch orgSlug={orgSlug} onAdd={flights => set('flights', [...(p.flights || []), ...flights])} />
         {(p.flights || []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum voo adicionado.</p>}
         {(p.flights || []).map((f: any, i: number) => (
           <FlightCard
