@@ -188,8 +188,9 @@ export async function lookupFlight(
     return { ok: false, error: 'Busca de voos não configurada (defina AERODATABOX_KEY no servidor).' }
   }
 
-  if (!airline.trim() || !number.trim() || !date.trim()) {
-    return { ok: false, error: 'Informe companhia, número do voo e data.' }
+  // A companhia é opcional: normalmente vem embutida no número (ex.: "LA3302").
+  if (!number.trim() || !date.trim()) {
+    return { ok: false, error: 'Informe o número do voo (ex.: LA3302) e a data.' }
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { ok: false, error: 'Data inválida.' }
