@@ -40,3 +40,6 @@ secrets.txt
 tsconfig.tsbuildinfo
 
 .vercel
+
+# design handoff scratch (not part of the app)
+/design_handoff_home/
