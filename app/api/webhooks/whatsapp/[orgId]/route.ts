@@ -109,6 +109,12 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
               if (newLead) leadId = newLead.id
             }
 
+            // Prévia textual da última mensagem para o inbox (modelo WhatsApp Business).
+            const preview: string = msg.text?.body || ({
+              image: '📷 Foto', audio: '🎤 Áudio', video: '🎬 Vídeo',
+              document: '📄 Documento', sticker: 'Figurinha', location: '📍 Localização',
+            } as Record<string, string>)[msg.type] || '[Mídia]'
+
             if (!conv) {
               const { data: newConv } = await supabase.from('whatsapp_conversations').insert({
                 organization_id: params.orgId,
@@ -116,12 +122,16 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
                 contact_name: contactName,
                 lead_id: leadId,
                 last_message_at: new Date(msg.timestamp * 1000).toISOString(),
+                last_message_preview: preview,
+                last_message_direction: 'inbound',
                 unread_count: 1
               }).select().single()
               conv = newConv
             } else {
               await supabase.from('whatsapp_conversations').update({
                 last_message_at: new Date(msg.timestamp * 1000).toISOString(),
+                last_message_preview: preview,
+                last_message_direction: 'inbound',
                 unread_count: (conv.unread_count || 0) + 1,
                 lead_id: leadId
               }).eq('id', conv.id)

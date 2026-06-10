@@ -144,6 +144,14 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
 
   if (insertError) return { ok: false, error: insertError.message }
 
+  // Atualiza a prévia/horário no inbox (modelo WhatsApp Business). Também
+  // corrige o reordenamento: antes o envio não bumpava last_message_at.
+  await supabase.from('whatsapp_conversations').update({
+    last_message_at:        new Date().toISOString(),
+    last_message_preview:   content,
+    last_message_direction: 'outbound',
+  }).eq('id', conv.id).eq('organization_id', org.id)
+
   try {
     const metaRes = await sendTextMessage(org, conv.contact_phone, content)
     
@@ -245,15 +253,18 @@ export async function seedMockConversations(orgSlug: string) {
   let created = 0
   for (const s of scripts) {
     const lastMins = Math.min(...s.msgs.map(m => m.minsAgo))
+    const lastMsg = s.msgs.find(m => m.minsAgo === lastMins) ?? s.msgs[s.msgs.length - 1]
     const { data: conv, error: convErr } = await supabase
       .from('whatsapp_conversations')
       .insert({
-        organization_id: org.id,
-        contact_phone:   s.contact_phone,
-        contact_name:    s.contact_name,
-        last_message_at: new Date(now - lastMins * 60_000).toISOString(),
-        unread_count:    s.unread,
-        status:          'open',
+        organization_id:        org.id,
+        contact_phone:          s.contact_phone,
+        contact_name:           s.contact_name,
+        last_message_at:        new Date(now - lastMins * 60_000).toISOString(),
+        last_message_preview:   lastMsg.body,
+        last_message_direction: lastMsg.dir,
+        unread_count:           s.unread,
+        status:                 'open',
       })
       .select('id')
       .single()
@@ -312,8 +323,10 @@ export async function simulateInboundMessage(orgSlug: string, conversationId: st
   await supabase
     .from('whatsapp_conversations')
     .update({
-      unread_count:    (conv.unread_count ?? 0) + 1,
-      last_message_at: new Date().toISOString(),
+      unread_count:           (conv.unread_count ?? 0) + 1,
+      last_message_at:        new Date().toISOString(),
+      last_message_preview:   body,
+      last_message_direction: 'inbound',
     })
     .eq('id', conv.id)
 

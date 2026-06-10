@@ -134,10 +134,15 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
             <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</div>
-                <div className="text-xs text-muted-foreground mt-1 truncate">{c.contact_phone}</div>
+                <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
+                  {c.last_message_direction === 'outbound' && (
+                    <svg width="15" height="10" viewBox="0 0 18 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/70"><path d="M1 5.5 4.5 9 11 1.5"/><path d="M6 5.5 9.5 9 16 1.5"/></svg>
+                  )}
+                  <span className="truncate">{c.last_message_preview || c.contact_phone}</span>
+                </div>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className="text-[10px] text-muted-foreground font-medium">{new Date(c.last_message_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
                 <div className="flex items-center gap-1.5">
                   {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
                   {(() => {
@@ -349,6 +354,21 @@ function MessageTicks({ status }: { status?: string }) {
       {isDouble && <path d="M6 5.5 9.5 9 16 1.5" />}
     </svg>
   )
+}
+
+// Horário do inbox no estilo WhatsApp: hoje → HH:MM, ontem → "Ontem",
+// últimos 7 dias → dia da semana, mais antigo → DD/MM/AAAA.
+function formatInboxTime(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const now = new Date()
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000)
+  if (days <= 0) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  if (days === 1) return 'Ontem'
+  if (days < 7) return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 // Conjunto enxuto de emojis comuns para atendimento (sem libs externas).
