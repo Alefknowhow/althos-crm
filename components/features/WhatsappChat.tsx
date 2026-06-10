@@ -133,7 +133,15 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
           {conversations.map((c: any) => (
             <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
               <div className="overflow-hidden flex-1 pr-2">
-                <div className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
+                  {c.leads?.pipeline_stages?.name && (
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px]" title={`Etapa: ${c.leads.pipeline_stages.name}`}>
+                      <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
+                      <span className="truncate">{c.leads.pipeline_stages.name}</span>
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
                   {c.last_message_direction === 'outbound' && (
                     <svg width="15" height="10" viewBox="0 0 18 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/70"><path d="M1 5.5 4.5 9 11 1.5"/><path d="M6 5.5 9.5 9 16 1.5"/></svg>

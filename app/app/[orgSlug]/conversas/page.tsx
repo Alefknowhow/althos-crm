@@ -10,7 +10,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
 
   const { data: conversations } = await supabase
     .from('whatsapp_conversations')
-    .select('*, leads(id, name, assigned_to)')
+    .select('*, leads(id, name, assigned_to, pipeline_stages(name))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
 
