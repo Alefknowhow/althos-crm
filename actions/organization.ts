@@ -2,7 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils/slugify'
-import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization, isSuperAdmin } from '@/lib/supabase/types'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { revalidatePath } from 'next/cache'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
@@ -62,6 +62,23 @@ export async function createOrganization(formData: FormData) {
     if (existing?.account_id) {
       accountId    = existing.account_id
       accountNiche = (existing as any).accounts?.niche ?? null
+
+      // Hard cap: 1 organização por conta em TODOS os planos. A conta já
+      // existe, então se já houver qualquer org vinculada, bloqueia a criação
+      // de mais uma. Super-admins (operadores da plataforma) ficam isentos.
+      const superAdmin = await isSuperAdmin()
+      if (!superAdmin) {
+        const { count } = await admin
+          .from('organizations')
+          .select('id', { count: 'exact', head: true })
+          .eq('account_id', accountId)
+        if ((count ?? 0) >= 1) {
+          return {
+            ok: false,
+            error: 'Seu plano permite apenas uma organização. Você já possui uma organização ativa.',
+          }
+        }
+      }
     } else {
       const { data: newAccount, error: accErr } = await admin
         .from('accounts')

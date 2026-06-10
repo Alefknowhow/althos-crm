@@ -16,17 +16,12 @@ export default function OrganizationSwitcher({
       className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       value={currentSlug}
       onChange={(e) => {
-        if (e.target.value === 'new') {
-          router.push('/onboarding?new=1')
-        } else {
-          router.push(`/app/${e.target.value}/pipeline`)
-        }
+        router.push(`/app/${e.target.value}/pipeline`)
       }}
     >
       {organizations.map(org => (
         <option key={org.id} value={org.slug}>{org.name}</option>
       ))}
-      <option value="new">+ Nova Organização</option>
     </select>
   )
 }
