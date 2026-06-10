@@ -21,12 +21,13 @@ export default async function ConversasPage({ params, searchParams }: { params: 
 
   return (
     <div className="h-[calc(100vh-4rem)] -m-6 flex bg-background overflow-hidden">
-      <WhatsappChat 
-        orgSlug={params.orgSlug} 
-        orgId={org.id} 
-        conversations={conversations || []} 
-        selectedConversation={selectedConversation} 
-        initialMessages={messages} 
+      <WhatsappChat
+        orgSlug={params.orgSlug}
+        orgId={org.id}
+        conversations={conversations || []}
+        selectedConversation={selectedConversation}
+        initialMessages={messages}
+        isMock={!org.whatsapp_access_token || org.whatsapp_access_token === 'mock'}
       />
     </div>
   )

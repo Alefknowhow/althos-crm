@@ -4,16 +4,18 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { sendWhatsappMessage, markConversationAsRead } from '@/actions/whatsapp'
+import { sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, isMock }: any) {
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [simulating, setSimulating] = useState(false)
+  const [seeding, setSeeding] = useState(false)
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // Stable client across renders so the realtime effect below doesn't re-subscribe on every render
@@ -60,11 +62,48 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
     setSending(false)
   }
 
+  async function handleSeed() {
+    setSeeding(true)
+    const res = await seedMockConversations(orgSlug)
+    if (res.ok) {
+      toast.success(`${res.created} conversas de teste criadas.`)
+      router.refresh()
+    } else {
+      toast.error('Não foi possível gerar as conversas', { description: res.error })
+    }
+    setSeeding(false)
+  }
+
+  async function handleSimulateInbound() {
+    if (!selectedConversation) return
+    setSimulating(true)
+    const text = input.trim() || 'Mensagem de teste do cliente 👋'
+    if (input.trim()) setInput('')
+    const res = await simulateInboundMessage(orgSlug, selectedConversation.id, text)
+    if (!res.ok) {
+      toast.error('Não foi possível simular a resposta', { description: res.error })
+    }
+    setSimulating(false)
+  }
+
   return (
     <div className="flex w-full h-full border-t">
       <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b bg-background font-semibold shrink-0 h-16 flex items-center">
-          Inbox WhatsApp
+        <div className="p-4 border-b bg-background font-semibold shrink-0 h-16 flex items-center justify-between gap-2">
+          <span>Inbox WhatsApp</span>
+          {isMock && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleSeed}
+              disabled={seeding}
+              className="text-xs h-7"
+              title="Modo de teste — gera conversas fictícias (WhatsApp não conectado)"
+            >
+              {seeding ? '...' : '🧪 Gerar conversas'}
+            </Button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto">
           {conversations.map((c: any) => (
@@ -124,7 +163,19 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               <div ref={messagesEndRef} className="h-1" />
             </div>
 
-            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-3 items-end shrink-0 z-10">
+            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 z-10">
+              {isMock && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleSimulateInbound}
+                  disabled={simulating}
+                  className="rounded-full min-h-[44px] px-3 text-muted-foreground shrink-0"
+                  title="Modo de teste — insere uma mensagem como se o cliente tivesse respondido"
+                >
+                  {simulating ? '...' : '🧪 Simular resposta'}
+                </Button>
+              )}
               <Input className="flex-1 bg-muted/50 rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
               <Button type="submit" disabled={sending || !input.trim()} className="rounded-full px-6 min-h-[44px]">{sending ? '...' : 'Enviar'}</Button>
             </form>
