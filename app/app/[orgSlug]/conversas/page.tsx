@@ -1,21 +1,32 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
+import { listOrgMembers } from '@/actions/team'
+import { getConversationContext } from '@/actions/whatsapp'
 import WhatsappChat from '@/components/features/WhatsappChat'
 
 export default async function ConversasPage({ params, searchParams }: { params: { orgSlug: string }, searchParams: { id?: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
-  
-  const { data: conversations } = await supabase.from('whatsapp_conversations').select('*, leads(id, name)').eq('organization_id', org.id).order('last_message_at', { ascending: false })
+
+  const { data: conversations } = await supabase
+    .from('whatsapp_conversations')
+    .select('*, leads(id, name, assigned_to)')
+    .eq('organization_id', org.id)
+    .order('last_message_at', { ascending: false })
+
+  // Team members power both the inbox agent-color tags and the side panel selectors.
+  const members = await listOrgMembers(params.orgSlug)
 
   let selectedConversation = null
   let messages: any[] = []
-  
+  let panelContext: any = null
+
   if (searchParams.id) {
     selectedConversation = conversations?.find(c => c.id === searchParams.id) || null
     if (selectedConversation) {
       const { data: msgs } = await supabase.from('whatsapp_messages').select('*').eq('conversation_id', selectedConversation.id).order('created_at', { ascending: true })
       messages = msgs || []
+      panelContext = await getConversationContext(params.orgSlug, selectedConversation.id)
     }
   }
 
@@ -27,6 +38,8 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         conversations={conversations || []}
         selectedConversation={selectedConversation}
         initialMessages={messages}
+        members={members}
+        panelContext={panelContext}
         isMock={!org.whatsapp_access_token || org.whatsapp_access_token === 'mock'}
       />
     </div>

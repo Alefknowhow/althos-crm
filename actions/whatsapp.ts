@@ -1,9 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating, isSuperAdmin } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { sendTextMessage } from '@/lib/whatsapp/meta-client'
+import { listOrgMembers } from '@/actions/team'
 
 export async function saveWhatsappConfig(orgSlug: string, phone_id: string, token: string) {
   if (isImpersonating()) {
@@ -318,4 +319,145 @@ export async function simulateInboundMessage(orgSlug: string, conversationId: st
 
   revalidatePath(`/app/${orgSlug}/conversas`)
   return { ok: true }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PAINEL LATERAL DO LEAD + RESPONSÁVEL DO ATENDIMENTO
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Define (ou limpa) o responsável PELO ATENDIMENTO desta conversa. É um conceito
+ * separado do dono do lead no funil; a UI usa o dono do lead como fallback
+ * quando este campo está vazio (modelo híbrido).
+ */
+export async function assignConversation(
+  orgSlug: string,
+  conversationId: string,
+  userId: string | null,
+) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('whatsapp_conversations')
+    .update({ assigned_to: userId })
+    .eq('id', conversationId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/conversas`)
+  return { ok: true as const }
+}
+
+/**
+ * Carrega o contexto que o painel lateral precisa para uma conversa: o lead
+ * vinculado (se houver), os estágios do pipeline padrão (para mover) e os
+ * membros da org (para os seletores de responsável). Centraliza num único
+ * round-trip chamado quando a conversa é selecionada.
+ */
+export async function getConversationContext(orgSlug: string, conversationId: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: conversation } = await supabase
+    .from('whatsapp_conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+
+  let lead: any = null
+  if (conversation?.lead_id) {
+    const { data } = await supabase
+      .from('leads')
+      .select('*, pipeline_stages(id, name)')
+      .eq('id', conversation.lead_id)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    lead = data
+  }
+
+  // Estágios do pipeline padrão da org (para o seletor "mover de etapa").
+  const { data: pipeline } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('is_default', true)
+    .maybeSingle()
+
+  let stages: { id: string; name: string }[] = []
+  if (pipeline) {
+    const { data: st } = await supabase
+      .from('pipeline_stages')
+      .select('id, name, position')
+      .eq('pipeline_id', pipeline.id)
+      .order('position', { ascending: true })
+    stages = (st ?? []).map(s => ({ id: s.id, name: s.name }))
+  }
+
+  const members = await listOrgMembers(orgSlug)
+
+  return { conversation, lead, stages, members, defaultPipelineId: pipeline?.id ?? null }
+}
+
+/**
+ * Cria um lead a partir do contato do WhatsApp e vincula à conversa. Usado
+ * quando a conversa ainda não tem lead. Cai no primeiro estágio do pipeline
+ * padrão.
+ */
+export async function createLeadFromConversation(orgSlug: string, conversationId: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: conv } = await supabase
+    .from('whatsapp_conversations')
+    .select('id, lead_id, contact_name, contact_phone')
+    .eq('id', conversationId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!conv) return { ok: false as const, error: 'Conversa não encontrada.' }
+  if (conv.lead_id) return { ok: false as const, error: 'Esta conversa já tem um lead vinculado.' }
+
+  const { data: pipeline } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('is_default', true)
+    .maybeSingle()
+  if (!pipeline) return { ok: false as const, error: 'Nenhum pipeline padrão configurado.' }
+
+  const { data: firstStage } = await supabase
+    .from('pipeline_stages')
+    .select('id')
+    .eq('pipeline_id', pipeline.id)
+    .order('position', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (!firstStage) return { ok: false as const, error: 'Pipeline sem estágios.' }
+
+  const { data: lead, error: leadErr } = await supabase
+    .from('leads')
+    .insert({
+      organization_id: org.id,
+      pipeline_id:     pipeline.id,
+      stage_id:        firstStage.id,
+      name:            conv.contact_name || conv.contact_phone,
+      phone:           conv.contact_phone,
+      source:          'whatsapp',
+    })
+    .select('id')
+    .single()
+  if (leadErr || !lead) return { ok: false as const, error: leadErr?.message || 'Falha ao criar lead.' }
+
+  await supabase
+    .from('whatsapp_conversations')
+    .update({ lead_id: lead.id })
+    .eq('id', conv.id)
+    .eq('organization_id', org.id)
+
+  revalidatePath(`/app/${orgSlug}/conversas`)
+  return { ok: true as const, leadId: lead.id }
 }

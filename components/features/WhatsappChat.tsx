@@ -9,14 +9,22 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, isMock }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, isMock }: any) {
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [seeding, setSeeding] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
   const router = useRouter()
+
+  const memberById = useMemo(() => {
+    const map: Record<string, any> = {}
+    for (const m of members) map[m.user_id] = m
+    return map
+  }, [members])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // Stable client across renders so the realtime effect below doesn't re-subscribe on every render
   const supabase = useMemo(() => createClient(), [])
@@ -114,7 +122,23 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className="text-[10px] text-muted-foreground font-medium">{new Date(c.last_message_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
+                <div className="flex items-center gap-1.5">
+                  {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
+                  {(() => {
+                    // Híbrido: responsável do atendimento, com fallback no dono do lead.
+                    const ownerId = c.assigned_to ?? c.leads?.assigned_to ?? null
+                    if (!ownerId) return null
+                    const m = memberById[ownerId]
+                    return (
+                      <div
+                        className={`h-5 w-5 rounded-full ${agentColor(ownerId)} text-white text-[9px] font-semibold flex items-center justify-center`}
+                        title={`Atendendo: ${m?.name || m?.email || 'membro'}`}
+                      >
+                        {memberInitials(m?.name, m?.email)}
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
             </div>
           ))}
@@ -189,6 +213,17 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
           </div>
         )}
       </div>
+
+      {selectedConversation && (
+        <ConversationDetailPanel
+          orgSlug={orgSlug}
+          conversation={selectedConversation}
+          context={panelContext}
+          members={members}
+          open={panelOpen}
+          onToggle={() => setPanelOpen(o => !o)}
+        />
+      )}
     </div>
   )
 }
