@@ -487,7 +487,6 @@ function SaleEditor({
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Viajantes</Label>
             {travelers.map((t, i) => (
               <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
                 <div className="flex-1 min-w-[180px] space-y-1">

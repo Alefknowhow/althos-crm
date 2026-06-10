@@ -175,6 +175,19 @@ export default function KanbanBoard({
     }
   }
 
+  // ── Direct stage change from a card's stage picker ─────────────────────────────
+  async function handleStageChange(leadId: string, newStageId: string) {
+    const lead = leads.find(l => l.id === leadId)
+    if (!lead || lead.stage_id === newStageId) return
+    const oldStageId = lead.stage_id
+    setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: newStageId } : l)))
+    const res = await moveLeadToStage(orgSlug, leadId, newStageId, oldStageId)
+    if (!res.ok) {
+      setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: oldStageId } : l)))
+      toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
+    }
+  }
+
   async function handleDragEnd(event: any) {
     const { active, over } = event
     setActiveLead(null)
@@ -336,6 +349,8 @@ export default function KanbanBoard({
                   orgSlug={orgSlug}
                   membersById={membersById}
                   members={members}
+                  stages={stages}
+                  onStageChange={handleStageChange}
                   onLeadClick={id => setSelectedLeadId(id)}
                   onAddLead={id => setCreateStageId(id)}
                 />

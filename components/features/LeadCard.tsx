@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale'
 import { useState, useRef, useEffect } from 'react'
 import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/leads'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X } from 'lucide-react'
+import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X, ChevronsUpDown } from 'lucide-react'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
 
 export type CardMember = { id: string; name: string; email: string }
@@ -310,6 +310,74 @@ function TagEditor({
   )
 }
 
+// ── Stage picker ───────────────────────────────────────────────────────────────
+// Small pill on the card showing the current pipeline stage; clicking opens a
+// dropdown to move the lead to another stage directly. Stops dnd propagation.
+function StagePicker({
+  lead,
+  stages,
+  onPick,
+}: {
+  lead: any
+  stages: any[]
+  onPick: (stageId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const current = stages.find(s => s.id === lead.stage_id)
+  const accent = current?.color || '#6366f1'
+
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  function stop(e: React.MouseEvent | React.PointerEvent) {
+    e.stopPropagation()
+  }
+
+  return (
+    <div ref={rootRef} className="relative" onPointerDown={stop} onClick={stop}>
+      <button
+        type="button"
+        title="Mover para outro estágio"
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+      >
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
+        <span className="max-w-[110px] truncate">{current?.name || 'Estágio'}</span>
+        <ChevronsUpDown className="h-2.5 w-2.5 shrink-0 opacity-60" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-6 z-30 w-48 rounded-lg border bg-popover p-1 shadow-lg">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Mover para
+          </div>
+          {stages.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => { setOpen(false); if (s.id !== lead.stage_id) onPick(s.id) }}
+              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color || '#94a3b8' }} />
+                <span className="truncate">{s.name}</span>
+              </span>
+              {s.id === lead.stage_id && <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main card ──────────────────────────────────────────────────────────────────
 export default function LeadCard({
   lead,
@@ -318,6 +386,8 @@ export default function LeadCard({
   onClick,
   owner,
   members,
+  stages,
+  onStageChange,
 }: {
   lead: any
   orgSlug: string
@@ -325,6 +395,8 @@ export default function LeadCard({
   onClick?: () => void
   owner?: CardMember | null
   members?: CardMember[]
+  stages?: any[]
+  onStageChange?: (stageId: string) => void
 }) {
   const {
     setNodeRef,
@@ -400,6 +472,9 @@ export default function LeadCard({
       {/* Badges row */}
       {(tier || lead.is_customer || tags.length > 0 || !isOverlay) && (
         <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
+          {!isOverlay && stages && onStageChange && (
+            <StagePicker lead={lead} stages={stages} onPick={onStageChange} />
+          )}
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
               <Sparkles className="h-2.5 w-2.5" />
