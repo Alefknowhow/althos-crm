@@ -18,7 +18,23 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   const [simulating, setSimulating] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
+  const [showEmoji, setShowEmoji] = useState(false)
   const router = useRouter()
+
+  // "Visto por último": derivado da última mensagem recebida do contato.
+  // Em modo mock não há presença real, então usamos o último inbound como proxy.
+  const lastSeen = useMemo(() => {
+    const inbound = [...messages].reverse().find((m: any) => m.direction === 'inbound')
+    if (!inbound) return null
+    const d = new Date(inbound.created_at)
+    const today = new Date()
+    const sameDay = d.toDateString() === today.toDateString()
+    const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    return sameDay ? `visto por último hoje às ${time}` : `visto por último ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${time}`
+  }, [messages])
+
+  // Etapa do funil do lead vinculado (para a tag compacta no cabeçalho).
+  const stageName: string | null = panelContext?.lead?.pipeline_stages?.name ?? null
 
   const memberById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -160,12 +176,20 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{selectedConversation.contact_name || selectedConversation.contact_phone}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{selectedConversation.contact_phone}</div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold truncate">{selectedConversation.contact_name || selectedConversation.contact_phone}</span>
+                    {stageName && (
+                      <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        {stageName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{lastSeen || selectedConversation.contact_phone}</div>
                 </div>
               </div>
               {selectedConversation.lead_id && (
-                <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>
+                <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors shrink-0">Abrir Lead</Link>
               )}
             </div>
 
@@ -178,7 +202,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.content?.text?.body || m.content?.body || '[Mídia recebida]'}</div>
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-black/40`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        {!isInbound && <span className="ml-0.5 font-medium uppercase text-[8px] tracking-wider">{m.status === 'read' ? '✓✓' : m.status === 'delivered' ? '✓✓' : m.status === 'sent' ? '✓' : m.status}</span>}
+                        {!isInbound && <MessageTicks status={m.status} />}
                       </div>
                     </div>
                   </div>
@@ -187,7 +211,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               <div ref={messagesEndRef} className="h-1" />
             </div>
 
-            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 z-10">
+            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 z-10 relative">
               {isMock && (
                 <Button
                   type="button"
@@ -197,11 +221,70 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                   className="rounded-full min-h-[44px] px-3 text-muted-foreground shrink-0"
                   title="Modo de teste — insere uma mensagem como se o cliente tivesse respondido"
                 >
-                  {simulating ? '...' : '🧪 Simular resposta'}
+                  {simulating ? '...' : '🧪'}
                 </Button>
               )}
+
+              {/* Emojis */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowEmoji(v => !v)}
+                  className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${showEmoji ? 'bg-muted text-primary' : ''}`}
+                  title="Emojis e figurinhas"
+                  aria-label="Emojis e figurinhas"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                </button>
+                {showEmoji && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
+                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
+                      {EMOJIS.map(e => (
+                        <button
+                          key={e}
+                          type="button"
+                          onClick={() => { setInput(prev => prev + e); setShowEmoji(false) }}
+                          className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-lg leading-none"
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Imagem / anexo */}
+              <button
+                type="button"
+                onClick={() => toast.info('Envio de imagens', { description: 'Disponível ao conectar a API oficial do WhatsApp.' })}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0"
+                title="Inserir imagem"
+                aria-label="Inserir imagem"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              </button>
+
               <Input className="flex-1 bg-muted/50 rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
-              <Button type="submit" disabled={sending || !input.trim()} className="rounded-full px-6 min-h-[44px]">{sending ? '...' : 'Enviar'}</Button>
+
+              {input.trim() ? (
+                <Button type="submit" disabled={sending} className="rounded-full min-h-[44px] min-w-[44px] px-0 flex items-center justify-center" title="Enviar">
+                  {sending ? '...' : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  )}
+                </Button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toast.info('Gravação de áudio', { description: 'Disponível ao conectar a API oficial do WhatsApp.' })}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0"
+                  title="Gravar áudio"
+                  aria-label="Gravar áudio"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+              )}
             </form>
           </>
         ) : (
@@ -227,3 +310,51 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
     </div>
   )
 }
+
+// Marcadores de status estilo WhatsApp:
+//  • relógio  → pendente/enviando
+//  • 1 tique cinza → enviado (sent)
+//  • 2 tiques cinza → entregue (delivered)
+//  • 2 tiques azuis → lido (read)
+//  • triângulo vermelho → falha
+function MessageTicks({ status }: { status?: string }) {
+  if (status === 'failed') {
+    return <span title="Falha no envio" className="text-red-500 text-[11px] leading-none">⚠</span>
+  }
+  if (!status || status === 'pending' || status === 'sending') {
+    return (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black/40" aria-label="Enviando">
+        <circle cx="12" cy="12" r="9" /><path d="M12 8v4l2.5 2.5" />
+      </svg>
+    )
+  }
+  const isRead = status === 'read'
+  const isDouble = status === 'delivered' || status === 'read'
+  const cls = isRead ? 'text-sky-500' : 'text-black/40'
+  const label = isRead ? 'Lida' : isDouble ? 'Entregue' : 'Enviada'
+  return (
+    <svg
+      width={isDouble ? 18 : 13}
+      height="11"
+      viewBox={isDouble ? '0 0 18 11' : '0 0 12 11'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cls}
+      aria-label={label}
+    >
+      <path d="M1 5.5 4.5 9 11 1.5" />
+      {isDouble && <path d="M6 5.5 9.5 9 16 1.5" />}
+    </svg>
+  )
+}
+
+// Conjunto enxuto de emojis comuns para atendimento (sem libs externas).
+const EMOJIS = [
+  '😀','😁','😂','🤣','😊','😍','😘','😎','🤗','🤔','😅','😉','🙂','😇','🥳','😏',
+  '👍','👎','👏','🙏','💪','🤝','👋','✌️','🤙','👌','🫶','💯','🔥','✨','⭐','🎉',
+  '❤️','🧡','💛','💚','💙','💜','🤍','💔','😢','😭','😅','😡','😱','🤯','🥺','😴',
+  '✅','❌','⚠️','📌','📎','📷','🎁','💰','💳','🛫','🏨','🌴','🗺️','📅','⏰','📞',
+]
