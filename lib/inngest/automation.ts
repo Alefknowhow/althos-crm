@@ -247,13 +247,23 @@ export const executeAutomationRun = inngest.createFunction(
                         .replace(/\{\{lead\.phone\}\}/g, lead.phone || '')
 
                     const pushTitle = interpolate(stepDef.config.title)
+                    const pushBody = stepDef.config.body ? interpolate(stepDef.config.body) : lead.name || 'Lead atualizado'
+                    const pushUrl = orgConfig?.slug ? `/app/${orgConfig.slug}/pipeline` : '/'
                     sent = { title: pushTitle }
                     await sendPushToOrg(orgId, {
                       title: pushTitle,
-                      body:  stepDef.config.body ? interpolate(stepDef.config.body) : lead.name || 'Lead atualizado',
-                      url:   orgConfig?.slug ? `/app/${orgConfig.slug}/pipeline` : '/',
+                      body:  pushBody,
+                      url:   pushUrl,
                       tag:   `automation-${auto.id}`,
                       icon:  '/icon.svg',
+                    })
+                    const { createNotification } = await import('@/actions/notifications')
+                    await createNotification({
+                      organizationId: orgId,
+                      type: 'automation',
+                      title: pushTitle,
+                      content: pushBody,
+                      link: pushUrl,
                     })
                   }
                   break;

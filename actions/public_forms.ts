@@ -146,19 +146,30 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
     // Honours each member's 'new_lead' notification preference.
     try {
       const { sendPushToOrg } = await import('@/actions/push')
+      const { createNotification } = await import('@/actions/notifications')
       const { data: orgRow } = await supabaseAdmin
         .from('organizations')
         .select('slug')
         .eq('id', form.organization_id)
         .maybeSingle()
+      const title = 'Novo lead recebido'
+      const body = nameValue
+        ? `${nameValue} preencheu o formulário ${form.name}.`
+        : `Nova captura no formulário ${form.name}.`
+      const url = orgRow?.slug ? `/app/${orgRow.slug}/pipeline` : '/'
       await sendPushToOrg(form.organization_id, {
-        title: 'Novo lead recebido',
-        body: nameValue
-          ? `${nameValue} preencheu o formulário ${form.name}.`
-          : `Nova captura no formulário ${form.name}.`,
-        url: orgRow?.slug ? `/app/${orgRow.slug}/pipeline` : '/',
+        title,
+        body,
+        url,
         tag: `new-lead-${form.organization_id}`,
         category: 'new_lead',
+      })
+      await createNotification({
+        organizationId: form.organization_id,
+        type: 'new_lead',
+        title,
+        content: body,
+        link: url,
       })
     } catch (e: any) {
       console.warn('[submitPublicForm] push new_lead failed:', e?.message)

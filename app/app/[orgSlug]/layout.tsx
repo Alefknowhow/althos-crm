@@ -106,7 +106,7 @@ export default async function OrgLayout({
               <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no canto inferior direito." />
               <div className="w-px h-4 bg-border mx-1" />
               <PushNotificationToggle orgSlug={params.orgSlug} />
-              <NotificationBell orgId={org.id} userId={user.id} />
+              <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
               <ModeToggle />
             </div>
           </header>

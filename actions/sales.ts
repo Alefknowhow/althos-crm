@@ -76,13 +76,22 @@ export async function createSale(orgSlug: string, input: unknown) {
   // 'new_sale' notification preference per member).
   try {
     const { sendPushToOrg } = await import('@/actions/push')
+    const { createNotification } = await import('@/actions/notifications')
     const value = ((v.amount_cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    const url = `/app/${orgSlug}/vendas`
     await sendPushToOrg(org.id, {
       title: 'Nova venda registrada',
       body: `Venda de ${value} registrada.`,
-      url: `/app/${orgSlug}/vendas`,
+      url,
       tag: `new-sale-${org.id}`,
       category: 'new_sale',
+    })
+    await createNotification({
+      organizationId: org.id,
+      type: 'new_sale',
+      title: 'Nova venda registrada',
+      content: `Venda de ${value} registrada.`,
+      link: url,
     })
   } catch (e: any) {
     console.warn('[createSale] push new_sale failed:', e?.message)

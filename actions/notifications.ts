@@ -137,3 +137,108 @@ export async function filterUsersByCategory(
     return unique
   }
 }
+
+// ---------------------------------------------------------------------------
+// In-app notification center (the bell dropdown)
+// ---------------------------------------------------------------------------
+
+export type NotificationRow = {
+  id: string
+  type: string
+  title: string
+  content: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
+/**
+ * List the current user's notifications for an org. Includes org-wide rows
+ * (user_id IS NULL) plus rows addressed to this user. Newest first.
+ */
+export async function listNotifications(
+  orgSlug: string,
+  limit = 30,
+): Promise<NotificationRow[]> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('notifications')
+    .select('id, type, title, content, link, read_at, created_at')
+    .eq('organization_id', org.id)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  return (data as NotificationRow[]) || []
+}
+
+/** Mark a single notification as read. */
+export async function markNotificationRead(
+  orgSlug: string,
+  id: string,
+): Promise<{ ok: boolean }> {
+  await requireAuth()
+  await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('read_at', null)
+
+  return { ok: true }
+}
+
+/** Mark every unread notification visible to the user (in this org) as read. */
+export async function markAllNotificationsRead(
+  orgSlug: string,
+): Promise<{ ok: boolean }> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('organization_id', org.id)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .is('read_at', null)
+
+  return { ok: true }
+}
+
+/**
+ * Server-side helper to create an in-app notification. Used by triggers
+ * (Inngest functions, server actions) alongside push delivery. Uses the admin
+ * client so it can write for any user/org. Never throws — notification creation
+ * must not break the action that triggered it.
+ *
+ * Pass `userId: null` (or omit) for an org-wide notification visible to all
+ * members; pass a `userId` to address one person (e.g. an assigned task).
+ */
+export async function createNotification(params: {
+  organizationId: string
+  userId?: string | null
+  type: string
+  title: string
+  content?: string | null
+  link?: string | null
+}): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    await admin.from('notifications').insert({
+      organization_id: params.organizationId,
+      user_id: params.userId ?? null,
+      type: params.type,
+      title: params.title,
+      content: params.content ?? null,
+      link: params.link ?? null,
+    })
+  } catch (e) {
+    console.error('[notifications] createNotification error:', e)
+  }
+}

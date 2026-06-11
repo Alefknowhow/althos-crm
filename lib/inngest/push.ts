@@ -11,6 +11,7 @@
 import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendPushToUser, sendPushToOrg } from '@/actions/push'
+import { createNotification } from '@/actions/notifications'
 
 // ---------------------------------------------------------------------------
 // 1. Hourly overdue-task push
@@ -74,13 +75,22 @@ export const pushOverdueTasksFn = inngest.createFunction(
           .eq('id', userTasks[0].organization_id)
           .single()
 
+        const url = org?.slug ? `/app/${org.slug}/tarefas` : '/'
         const { sent } = await sendPushToUser(userId, {
           title,
           body,
-          url:  org?.slug ? `/app/${org.slug}/tarefas` : '/',
+          url,
           tag:  'overdue-tasks',
           icon: '/icon.svg',
           category: 'task_due',
+        })
+        await createNotification({
+          organizationId: userTasks[0].organization_id,
+          userId,
+          type: 'task_due',
+          title,
+          content: body,
+          link: url,
         })
         totalSent += sent
       }
@@ -138,13 +148,22 @@ export const pushWhatsappMessageFn = inngest.createFunction(
         ? messageBody.length > 80 ? messageBody.slice(0, 80) + '…' : messageBody
         : 'Mensagem recebida no WhatsApp'
 
+      const url = org?.slug ? `/app/${org.slug}/conversas` : '/'
+      const title = `Nova mensagem de ${contactName || 'contato'}`
       await sendPushToOrg(orgId, {
-        title: `Nova mensagem de ${contactName || 'contato'}`,
+        title,
         body,
-        url:   org?.slug ? `/app/${org.slug}/conversas` : '/',
+        url,
         tag:   `whatsapp-${orgId}`,
         icon:  '/icon.svg',
         category: 'whatsapp_message',
+      })
+      await createNotification({
+        organizationId: orgId,
+        type: 'whatsapp_message',
+        title,
+        content: body,
+        link: url,
       })
     })
 
