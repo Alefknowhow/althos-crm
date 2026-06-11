@@ -35,6 +35,7 @@ export type BlogCategory =
   | 'Funil de Vendas'
   | 'Gestão de Equipe'
   | 'Treinamento de Vendas'
+  | 'WhatsApp API'
 
 export const BLOG_CATEGORIES: BlogCategory[] = [
   'Meta Ads',
@@ -42,6 +43,7 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
   'Funil de Vendas',
   'Gestão de Equipe',
   'Treinamento de Vendas',
+  'WhatsApp API',
 ]
 
 export const POSTS: BlogPost[] = [
@@ -1006,6 +1008,130 @@ export const POSTS: BlogPost[] = [
       { type: 'quote', text: 'Fechar é a consequência natural de uma venda bem conduzida, não um truque do final.' },
       { type: 'p', text: 'No Althos CRM, o vendedor enxerga em que etapa cada negociação está e recebe lembretes para avançar no momento certo. Menos venda perdida por timing, mais fechamentos no ponto.' },
       { type: 'cta', text: 'Conduza cada negociação ao fechamento no momento certo.' },
+    ],
+  },
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    slug: 'whatsapp-api-utility-vs-marketing',
+    title: 'WhatsApp API: Utility vs Marketing e como economizar até 70%',
+    description:
+      'Entenda as categorias de template da API oficial do WhatsApp (Utility, Marketing, Authentication, Service), a diferença de custo entre elas e como classificar certo para economizar até 70% na sua conta da Meta.',
+    category: 'WhatsApp API',
+    author: 'Equipe Althos',
+    date: '2026-06-10',
+    readingMinutes: 8,
+    excerpt:
+      'Na API oficial do WhatsApp, cada template tem uma categoria — e a categoria define o preço. Classificar uma mensagem como Marketing quando ela poderia ser Utility pode multiplicar seu custo. Veja como acertar.',
+    blocks: [
+      { type: 'p', text: 'A API oficial do WhatsApp (WhatsApp Business Platform) deixou de ser um canal gratuito há tempos. A Meta cobra por conversa iniciada, e o valor depende da categoria do template que você usa. É aqui que muitas empresas perdem dinheiro sem perceber: enviam como Marketing mensagens que poderiam ser Utility — e pagam várias vezes mais pela mesma comunicação.' },
+      { type: 'h2', text: 'As categorias de template do WhatsApp' },
+      { type: 'p', text: 'Todo template precisa ser submetido à Meta com uma categoria. São quatro, mas duas concentram a maior parte do uso e da diferença de custo:' },
+      { type: 'ul', items: [
+        'Utility (Utilidade): mensagens transacionais, disparadas por uma ação do cliente — confirmação de pedido, atualização de status, cobrança, lembrete de agendamento. É a categoria mais barata.',
+        'Marketing: comunicações promocionais que incentivam a compra — ofertas, descontos, lançamentos, reengajamento. É a categoria mais cara.',
+        'Authentication (Autenticação): códigos de verificação e login (OTP). Faixa de preço própria, geralmente baixa.',
+        'Service (Atendimento): respostas dentro de uma conversa iniciada pelo cliente. Em boa parte dos casos, essas mensagens são gratuitas dentro da janela de 24h.',
+      ] },
+      { type: 'h2', text: 'A diferença de preço que muda o jogo' },
+      { type: 'p', text: 'Os valores variam por país e são reajustados pela Meta de tempos em tempos, então trate os números como referência, não como tabela fixa. Mas a ordem de grandeza é o que importa: uma conversa de Utility costuma sair por uma fração do que custa uma de Marketing — a economia ao classificar corretamente pode chegar a 70%.' },
+      { type: 'quote', text: 'A mesma mensagem, classificada como Utility em vez de Marketing, pode custar a metade ou menos. Em escala, isso são milhares de reais por mês.' },
+      { type: 'p', text: 'Um exemplo simples: 5.000 mensagens mensais classificadas como Marketing quando deveriam ser Utility podem representar mais de R$ 1.500 de custo extra todo mês — só por uma categoria errada.' },
+      { type: 'h2', text: 'Como a Meta decide a categoria' },
+      { type: 'p', text: 'A classificação é baseada na intenção do conteúdo, não no nome que você dá ao template. Qualquer elemento promocional — mesmo sutil, como "aproveite", "confira nossas ofertas" ou um cupom — faz a Meta reclassificar a mensagem como Marketing. E a reclassificação é automática: se você submeter como Utility uma mensagem com cara de promoção, a Meta corrige e ainda pode cobrar a diferença retroativamente.' },
+      { type: 'h2', text: 'Exemplos práticos de classificação' },
+      { type: 'p', text: 'Use esta régua mental ao escrever um template:' },
+      { type: 'ul', items: [
+        'Utility: "Seu pedido #1234 foi enviado e chega até sexta." / "Lembrete: sua consulta é amanhã às 14h." / "Sua fatura de junho está disponível."',
+        'Marketing: "20% OFF só hoje!" / "Conheça nossa nova coleção." / "Sentimos sua falta — volte com frete grátis."',
+        'Authentication: "Seu código de verificação é 482190."',
+      ] },
+      { type: 'h2', text: 'O caso de fronteira que mais custa caro' },
+      { type: 'p', text: 'O erro clássico é misturar transacional com promocional na mesma mensagem: "Obrigado pela compra! Seu pedido está confirmado. Aproveite e veja nossos lançamentos: [link]". A primeira parte seria Utility, mas o convite no final contamina a mensagem inteira — ela passa a ser cobrada como Marketing. A regra é simples: separe. Confirmação é uma mensagem; oferta é outra.' },
+      { type: 'h2', text: 'Como economizar de verdade' },
+      { type: 'ol', items: [
+        'Mapeie seus templates e marque quais são puramente transacionais — eles devem ser Utility.',
+        'Remova qualquer gancho promocional dos templates de Utility (nada de "aproveite", cupom ou link de oferta).',
+        'Concentre o conteúdo de venda em templates de Marketing assumidos, disparados com estratégia, não no automático.',
+        'Audite periodicamente: a Meta pode reclassificar com o tempo, então não confie só na aprovação inicial.',
+      ] },
+      { type: 'p', text: 'No Althos CRM, a integração com a API oficial do WhatsApp organiza seus templates por categoria e dispara as mensagens transacionais (confirmações, lembretes, cobranças) de forma automática a partir do funil — mantendo o conteúdo limpo, sem ganchos promocionais que encareceriam o envio. Você comunica mais e paga menos.' },
+      { type: 'cta', text: 'Automatize suas mensagens transacionais no WhatsApp e corte custo de template.' },
+    ],
+  },
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    slug: 'whatsapp-api-janela-24h-como-funciona-cobranca',
+    title: 'Janela de 24h do WhatsApp: como funciona a cobrança por conversa',
+    description:
+      'A API oficial do WhatsApp cobra por conversa, não por mensagem — e a janela de atendimento de 24h muda tudo. Entenda como funciona, quando você precisa de template e como usar a janela a seu favor.',
+    category: 'WhatsApp API',
+    author: 'Equipe Althos',
+    date: '2026-06-04',
+    readingMinutes: 7,
+    excerpt:
+      'Muita gente acha que paga por mensagem no WhatsApp oficial. Não é bem assim: você paga por conversa, e a janela de 24h define quando o envio é livre e quando exige um template pago. Entenda o modelo.',
+    blocks: [
+      { type: 'p', text: 'Para usar bem a API oficial do WhatsApp — e não estourar o orçamento — você precisa entender duas coisas que andam juntas: a cobrança por conversa e a janela de atendimento de 24 horas. Quem domina esses dois conceitos paga menos e atende melhor.' },
+      { type: 'h2', text: 'Você paga por conversa, não por mensagem' },
+      { type: 'p', text: 'A Meta não cobra mensagem a mensagem. Ela abre uma "conversa" — uma sessão que dura 24 horas — e cobra por ela conforme a categoria (Utility, Marketing, Authentication). Dentro dessa janela aberta, as mensagens trocadas no mesmo contexto não geram cobrança adicional. Ou seja: o custo está em iniciar a conversa, não em cada balão enviado.' },
+      { type: 'h2', text: 'A janela de atendimento de 24h' },
+      { type: 'p', text: 'Toda vez que o cliente te envia uma mensagem, abre-se uma janela de 24 horas. Dentro dela, você pode responder com mensagens livres (texto, imagem, áudio — sem template pré-aprovado), de forma muito mais natural. Essa janela é renovada a cada nova mensagem do cliente.' },
+      { type: 'ul', items: [
+        'Dentro da janela de 24h: você responde livremente, sem precisar de template aprovado.',
+        'Fora da janela: para reabrir o contato, você precisa enviar um template pré-aprovado pela Meta — e isso inicia (e cobra) uma nova conversa.',
+        'A janela reinicia toda vez que o cliente responde.',
+      ] },
+      { type: 'h2', text: 'Quando você é obrigado a usar template' },
+      { type: 'p', text: 'O template existe justamente para iniciar a conversa ou reabri-la fora da janela. Se passaram mais de 24h desde a última mensagem do cliente, você não pode simplesmente mandar um texto solto — precisa de um template aprovado, e a categoria dele define o preço. Por isso a escolha entre Utility e Marketing pesa tanto no custo total.' },
+      { type: 'quote', text: 'A mensagem mais barata é a que acontece dentro da janela de 24h. Responder rápido não é só bom atendimento — é economia.' },
+      { type: 'h2', text: 'Como usar a janela de 24h a seu favor' },
+      { type: 'ol', items: [
+        'Responda rápido: quanto antes você atende dentro da janela, mais você resolve sem custo de novo template.',
+        'Concentre o atendimento: resolva o assunto enquanto a conversa está aberta, em vez de fragmentar contatos ao longo de dias.',
+        'Planeje reaberturas: se precisa retomar fora da janela, escolha a categoria de template certa (Utility para transacional, Marketing só quando for promoção de fato).',
+        'Evite reabrir sem necessidade: cada template fora da janela é uma nova conversa cobrada.',
+      ] },
+      { type: 'h2', text: 'Por que a velocidade de resposta vira dinheiro' },
+      { type: 'p', text: 'Além de converter mais (lead respondido em minutos fecha muito mais que lead respondido em horas), atender dentro da janela reduz o número de templates pagos que você precisa disparar para reabrir conversas. Atendimento ágil é, ao mesmo tempo, mais venda e menos custo de plataforma.' },
+      { type: 'p', text: 'No Althos CRM, o atendimento por IA responde os clientes 24h dentro da janela, mantém a conversa aberta e só recorre a templates quando realmente necessário. Você aproveita ao máximo cada janela de 24h — convertendo mais e gastando menos com a Meta.' },
+      { type: 'cta', text: 'Atenda dentro da janela de 24h com IA e reduza o custo de templates.' },
+    ],
+  },
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    slug: 'whatsapp-api-erros-de-template-que-aumentam-custo',
+    title: '5 erros de template que inflam seu custo no WhatsApp (e como auditar)',
+    description:
+      'Erros de classificação e uso de templates na API oficial do WhatsApp que aumentam o custo, derrubam seu quality rating e podem restringir sua conta. Veja os 5 mais comuns e uma rotina de auditoria.',
+    category: 'WhatsApp API',
+    author: 'Equipe Althos',
+    date: '2026-05-28',
+    readingMinutes: 7,
+    excerpt:
+      'Na API oficial do WhatsApp, um template mal classificado não só custa mais caro — ele pode derrubar seu quality rating e travar seus envios. Veja os 5 erros que mais drenam orçamento e como auditá-los.',
+    blocks: [
+      { type: 'p', text: 'Depois de configurada, a API oficial do WhatsApp tende a virar "piloto automático" — e é justamente aí que o custo escapa do controle. Templates mal classificados, conteúdo misturado e disparos desnecessários inflam a fatura da Meta mês após mês. Veja os cinco erros mais comuns e como auditar seus templates antes que eles custem caro.' },
+      { type: 'h2', text: '1. Classificar promoção como Utility' },
+      { type: 'p', text: 'Tentar "economizar" marcando uma mensagem promocional como Utility não funciona — e sai pela culatra. A Meta avalia a intenção do conteúdo, reclassifica automaticamente para Marketing e ainda pode cobrar a diferença retroativamente. Você paga o valor cheio e ainda arranha a reputação da conta.' },
+      { type: 'h2', text: '2. Misturar transacional com promocional' },
+      { type: 'p', text: 'Aquele "obrigado pela compra, e aproveite nossa promoção" parece eficiente, mas transforma uma mensagem que seria barata (Utility) em uma cara (Marketing). Qualquer gancho de venda no template puxa a mensagem inteira para a categoria mais cara. Regra de ouro: uma mensagem, uma intenção.' },
+      { type: 'h2', text: '3. Disparar template quando a janela de 24h está aberta' },
+      { type: 'p', text: 'Se o cliente te respondeu há menos de 24h, você pode mandar mensagem livre — de graça, dentro da janela. Disparar um template nesse momento é abrir (e pagar por) uma conversa que não precisava existir. Automação mal configurada costuma cometer esse erro em volume.' },
+      { type: 'h2', text: '4. Ignorar o quality rating da conta' },
+      { type: 'p', text: 'A Meta atribui uma nota de qualidade ao seu número, baseada em como os clientes reagem (bloqueios, denúncias, marcação de spam). Nota baixa significa limites de envio menores e, no limite, suspensão. Templates mal classificados e disparos irrelevantes derrubam essa nota — e o estrago é difícil de reverter.' },
+      { type: 'h2', text: '5. Não revisar templates após a aprovação' },
+      { type: 'p', text: 'A aprovação inicial não é definitiva. A Meta pode reclassificar um template ao longo do tempo conforme ajusta seus critérios. Quem nunca revisa descobre o aumento de custo só na fatura — sem entender de onde veio.' },
+      { type: 'quote', text: 'Template aprovado não é template esquecido. O que era Utility ontem pode ser cobrado como Marketing amanhã.' },
+      { type: 'h2', text: 'Uma rotina simples de auditoria' },
+      { type: 'ol', items: [
+        'Liste todos os templates ativos e a categoria atual de cada um.',
+        'Releia o conteúdo procurando ganchos promocionais escondidos em templates de Utility.',
+        'Cruze o uso com a janela de 24h: você está disparando templates quando poderia responder de graça?',
+        'Monitore o quality rating mensalmente e investigue qualquer queda.',
+        'Defina um padrão interno: exemplos do que é aceitável em cada categoria, revisados por mais de uma pessoa antes de submeter.',
+      ] },
+      { type: 'p', text: 'No Althos CRM, os disparos de WhatsApp saem do funil de forma controlada: mensagens transacionais como Utility, sem ganchos promocionais, e respeitando a janela de 24h para evitar templates desnecessários. Menos custo com a Meta, melhor quality rating e nenhuma surpresa na fatura.' },
+      { type: 'cta', text: 'Organize seus templates de WhatsApp e pare de pagar mais do que precisa.' },
     ],
   },
 ]
