@@ -191,7 +191,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           <SidebarNavLink href={`${base}/proposta`}>
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Proposta</span>
+              <span>Cotações</span>
             </span>
           </SidebarNavLink>
         )}
@@ -214,7 +214,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           <SidebarNavLink href={`${base}/vitrine`}>
             <span className="flex items-center gap-2.5">
               <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Vitrine</span>
+              <span>Ofertas</span>
             </span>
           </SidebarNavLink>
         )}
@@ -223,7 +223,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           <SidebarNavLink href={`${base}/viagens-programadas`}>
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Viagens Programadas</span>
+              <span>Embarques</span>
             </span>
           </SidebarNavLink>
         )}
@@ -250,7 +250,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           <SidebarNavLink href={`${base}/vendas-viagem`}>
             <span className="flex items-center gap-2.5">
               <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Vendas Viagem</span>
+              <span>Reservas</span>
             </span>
           </SidebarNavLink>
         )}

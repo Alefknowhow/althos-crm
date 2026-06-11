@@ -23,7 +23,7 @@ export default async function VitrinePage({ params }: { params: { orgSlug: strin
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Vitrine</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Ofertas</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Monte pacotes prontos de viagem e compartilhe a vitrine pública com seus clientes. Cada pacote pode virar uma proposta com um clique.
         </p>

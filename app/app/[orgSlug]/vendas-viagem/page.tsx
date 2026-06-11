@@ -27,7 +27,7 @@ export default async function TravelSalesPage({ params }: { params: { orgSlug: s
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Vendas de Viagem</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Reservas</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Crie uma venda com "Nova venda" (importando uma proposta) ou deixe que ela seja gerada automaticamente quando um lead com proposta é movido para "Fechado". Complete os localizadores e a comissão, depois gere as tarefas operacionais.
         </p>

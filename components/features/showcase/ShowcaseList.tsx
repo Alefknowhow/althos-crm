@@ -124,8 +124,8 @@ export default function ShowcaseList({
       {packages.length === 0 ? (
         <EmptyState
           icon={Store}
-          title="Vitrine vazia"
-          description="Crie pacotes prontos de viagem para exibir publicamente. Cada pacote pode virar uma proposta com um clique."
+          title="Nenhuma oferta ainda"
+          description="Crie pacotes prontos de viagem para exibir publicamente. Cada pacote pode virar uma cotação com um clique."
         >
           <Button size="lg" className="mt-4" onClick={handleCreate} disabled={creating}>
             <Plus className="w-4 h-4 mr-2" /> {creating ? 'Criando…' : 'Adicionar novo pacote'}

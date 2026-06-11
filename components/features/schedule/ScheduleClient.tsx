@@ -135,11 +135,11 @@ export default function ScheduleClient({
     return (
       <EmptyState
         icon={CalendarClock}
-        title="Nenhuma viagem programada"
-        description="As viagens vendidas com data de partida aparecem aqui em um painel visual. Registre uma venda em Vendas Viagem para começar."
+        title="Nenhum embarque programado"
+        description="As viagens vendidas com data de partida aparecem aqui em um painel visual. Registre uma reserva em Reservas para começar."
       >
         <Button className="mt-4" asChild>
-          <Link href={`/app/${orgSlug}/vendas-viagem`}>Ir para Vendas Viagem</Link>
+          <Link href={`/app/${orgSlug}/vendas-viagem`}>Ir para Reservas</Link>
         </Button>
       </EmptyState>
     )

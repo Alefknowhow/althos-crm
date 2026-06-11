@@ -48,7 +48,7 @@ export default function GeneralTab({ orgSlug, initialNiche }: Props) {
         <CardTitle>Nicho da Conta</CardTitle>
         <CardDescription>
           O nicho vale para <span className="font-medium">toda a Conta</span> — todas as organizações herdam o mesmo.
-          Escolher <span className="font-medium">Agência de Viagens</span> libera as abas de Propostas e Vendas Viagem.
+          Escolher <span className="font-medium">Agência de Viagens</span> libera as abas de Cotações e Reservas.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

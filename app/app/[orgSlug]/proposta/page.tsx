@@ -24,7 +24,7 @@ export default async function ProposalsPage({ params }: { params: { orgSlug: str
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Propostas de Viagem</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Cotações</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Monte propostas completas, vincule a um lead do pipeline e compartilhe por link ou PDF.
         </p>

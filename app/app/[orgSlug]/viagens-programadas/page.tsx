@@ -20,7 +20,7 @@ export default async function ViagensProgramadasPage({ params }: { params: { org
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Viagens Programadas</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Embarques</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Acompanhe visualmente as viagens vendidas — datas de partida e retorno, tarefas relacionadas e atalho direto para o WhatsApp do cliente.
         </p>
