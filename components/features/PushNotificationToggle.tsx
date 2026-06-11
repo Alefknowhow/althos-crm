@@ -41,9 +41,15 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
       return
     }
 
-    // Check if we already have an active subscription.
-    navigator.serviceWorker.ready.then(reg => {
-      reg.pushManager.getSubscription().then(sub => {
+    // Check if we already have an active subscription. Don't rely on
+    // navigator.serviceWorker.ready here (it hangs forever when no SW is
+    // active) — register/await with a timeout and fall back to 'unsubscribed'
+    // so the bell always becomes actionable.
+    let cancelled = false
+    getRegistration()
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => {
+        if (cancelled) return
         if (sub) {
           setState('subscribed')
           setCurrentEndpoint(sub.endpoint)
@@ -51,7 +57,13 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
           setState('unsubscribed')
         }
       })
-    })
+      .catch(() => {
+        if (!cancelled) setState('unsubscribed')
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [vapidPublicKey])
 
   if (state === 'unsupported' || !vapidPublicKey) return null
@@ -65,7 +77,7 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
         return
       }
 
-      const reg = await navigator.serviceWorker.ready
+      const reg = await getRegistration()
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         // Cast needed: TS PushSubscriptionOptionsInit expects BufferSource but
@@ -103,7 +115,7 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
     if (!currentEndpoint) return
     setState('loading')
     try {
-      const reg = await navigator.serviceWorker.ready
+      const reg = await getRegistration()
       const sub = await reg.pushManager.getSubscription()
       if (sub) await sub.unsubscribe()
       await unsubscribeFromPush(currentEndpoint)
@@ -172,6 +184,39 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve an active ServiceWorkerRegistration without ever hanging.
+ *
+ * `navigator.serviceWorker.ready` only resolves once a worker is *active*. If
+ * the SW was never registered (PWARegister only runs in production and swallows
+ * errors) it never resolves, which is what froze the bell in "loading" forever.
+ *
+ * Strategy: explicitly register /sw.js (idempotent — returns the existing
+ * registration if already registered), then race `.ready` against a timeout so
+ * a stuck activation can't block the UI. On timeout we fall back to whatever
+ * registration we already have so subscribe() can still proceed.
+ */
+async function getRegistration(): Promise<ServiceWorkerRegistration> {
+  const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+
+  // If a worker is already active we're done immediately.
+  if (reg.active) return reg
+
+  // Otherwise wait for readiness, but never longer than 10s.
+  const ready = navigator.serviceWorker.ready
+  const timeout = new Promise<ServiceWorkerRegistration>((_, reject) =>
+    setTimeout(() => reject(new Error('service worker activation timed out')), 10_000),
+  )
+  try {
+    return await Promise.race([ready, timeout])
+  } catch {
+    // Fall back to the registration we have — subscribe() can still work once
+    // the worker activates, and at worst the caller surfaces a real error
+    // instead of hanging.
+    return reg
+  }
+}
 
 /** Convert VAPID public key from URL-safe base64 to Uint8Array. */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
