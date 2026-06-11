@@ -27,13 +27,16 @@ import type { NotificationCategory } from '@/lib/notifications/categories'
 // Configure VAPID once — Node modules are cached so this runs once per
 // cold-start, not once per request.
 function getWebPush() {
-  const publicKey  = process.env.VAPID_PUBLIC_KEY
+  // The public key is the same value the browser uses to subscribe. Accept the
+  // server-only name first, but fall back to the NEXT_PUBLIC_ one so a deploy
+  // that only set the public-facing variable still works (common misconfig).
+  const publicKey  = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
   const subject    = process.env.VAPID_SUBJECT || 'mailto:suporte@althoscrm.com.br'
 
   if (!publicKey || !privateKey) {
     throw new Error(
-      'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set to use push notifications.',
+      'VAPID keys must be set to use push notifications (NEXT_PUBLIC_VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY).',
     )
   }
 
