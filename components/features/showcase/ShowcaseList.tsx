@@ -69,7 +69,7 @@ export default function ShowcaseList({
     const res = await createPackage(orgSlug, {})
     setCreating(false)
     if (!res.ok) { toast.error(res.error || 'Erro ao criar pacote'); return }
-    router.push(`/app/${orgSlug}/vitrine/${res.data.id}`)
+    router.push(`/app/${orgSlug}/ofertas/${res.data.id}`)
   }
 
   async function handleDelete(id: string) {
@@ -84,7 +84,7 @@ export default function ShowcaseList({
     setGenId(null)
     if (!res.ok) { toast.error(res.error || 'Erro ao gerar proposta'); return }
     toast.success('Proposta gerada — complete com o cliente')
-    router.push(`/app/${orgSlug}/proposta/${res.data.id}`)
+    router.push(`/app/${orgSlug}/cotacoes/${res.data.id}`)
   }
 
   return (
@@ -175,7 +175,7 @@ export default function ShowcaseList({
 
                         <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-1.5">
                           <Button asChild size="sm" variant="outline">
-                            <Link href={`/app/${orgSlug}/vitrine/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1" /> Editar</Link>
+                            <Link href={`/app/${orgSlug}/ofertas/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1" /> Editar</Link>
                           </Button>
                           <Button size="sm" variant="outline" disabled={genId === p.id} onClick={() => handleGenerate(p.id)}>
                             {genId === p.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FileSignature className="w-3.5 h-3.5 mr-1" />}

@@ -110,7 +110,7 @@ export async function createPackage(orgSlug: string, input: Record<string, any> 
     .single()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao criar pacote' }
-  revalidatePath(`/app/${orgSlug}/vitrine`)
+  revalidatePath(`/app/${orgSlug}/ofertas`)
   return { ok: true as const, data: data as ShowcaseRow }
 }
 
@@ -132,8 +132,8 @@ export async function updatePackage(orgSlug: string, id: string, input: Record<s
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar pacote' }
   if (!data) return { ok: false as const, error: 'Pacote não encontrado nesta organização.' }
 
-  revalidatePath(`/app/${orgSlug}/vitrine`)
-  revalidatePath(`/app/${orgSlug}/vitrine/${id}`)
+  revalidatePath(`/app/${orgSlug}/ofertas`)
+  revalidatePath(`/app/${orgSlug}/ofertas/${id}`)
   return { ok: true as const, data: data as ShowcaseRow }
 }
 
@@ -154,7 +154,7 @@ export async function deletePackage(orgSlug: string, id: string) {
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao excluir pacote' }
-  revalidatePath(`/app/${orgSlug}/vitrine`)
+  revalidatePath(`/app/${orgSlug}/ofertas`)
   return { ok: true as const }
 }
 
@@ -207,6 +207,6 @@ export async function generateProposalFromPackage(orgSlug: string, packageId: st
     .single()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao gerar proposta' }
-  revalidatePath(`/app/${orgSlug}/proposta`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
   return { ok: true as const, data: data as { id: string } }
 }

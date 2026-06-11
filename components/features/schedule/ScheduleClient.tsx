@@ -139,7 +139,7 @@ export default function ScheduleClient({
         description="As viagens vendidas com data de partida aparecem aqui em um painel visual. Registre uma reserva em Reservas para começar."
       >
         <Button className="mt-4" asChild>
-          <Link href={`/app/${orgSlug}/vendas-viagem`}>Ir para Reservas</Link>
+          <Link href={`/app/${orgSlug}/reservas`}>Ir para Reservas</Link>
         </Button>
       </EmptyState>
     )
@@ -372,7 +372,7 @@ function TripDetail({
             </Button>
           )}
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/app/${orgSlug}/vendas-viagem`}>
+            <Link href={`/app/${orgSlug}/reservas`}>
               <ExternalLink className="w-4 h-4 mr-1.5" /> Abrir venda
             </Link>
           </Button>

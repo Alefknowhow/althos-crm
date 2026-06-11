@@ -88,7 +88,7 @@ export default function ProposalsList({
     const res = await createProposal(orgSlug, {})
     setCreating(false)
     if (!res.ok) { toast.error(res.error || 'Erro ao criar proposta'); return }
-    router.push(`/app/${orgSlug}/proposta/${res.data.id}`)
+    router.push(`/app/${orgSlug}/cotacoes/${res.data.id}`)
   }
 
   async function handleDelete(id: string) {
@@ -309,7 +309,7 @@ function ProposalDetail({
           </div>
         </div>
         <Button asChild size="sm">
-          <Link href={`/app/${orgSlug}/proposta/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Abrir editor</Link>
+          <Link href={`/app/${orgSlug}/cotacoes/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Abrir editor</Link>
         </Button>
       </div>
 

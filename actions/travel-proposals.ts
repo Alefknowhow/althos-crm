@@ -104,7 +104,7 @@ export async function createProposal(orgSlug: string, input: Record<string, any>
     .single()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao criar proposta' }
-  revalidatePath(`/app/${orgSlug}/proposta`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
   return { ok: true as const, data: data as ProposalRow }
 }
 
@@ -128,8 +128,8 @@ export async function updateProposal(orgSlug: string, id: string, input: Record<
   // clear message rather than silently "succeeding" with stale public data.
   if (!data) return { ok: false as const, error: 'Proposta não encontrada nesta organização.' }
 
-  revalidatePath(`/app/${orgSlug}/proposta`)
-  revalidatePath(`/app/${orgSlug}/proposta/${id}`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  revalidatePath(`/app/${orgSlug}/cotacoes/${id}`)
   // The public client link reads by token (force-dynamic, no cache) so it
   // reflects this update on the next load — nothing else to revalidate.
   return { ok: true as const, data: data as ProposalRow }
@@ -152,7 +152,7 @@ export async function deleteProposal(orgSlug: string, id: string) {
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao excluir proposta' }
-  revalidatePath(`/app/${orgSlug}/proposta`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
   return { ok: true as const }
 }
 

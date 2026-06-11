@@ -103,7 +103,7 @@ export async function updateTravelSale(orgSlug: string, id: string, input: Recor
     .single()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar venda' }
-  revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+  revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, data: data as TravelSaleRow }
 }
 
@@ -124,7 +124,7 @@ export async function deleteTravelSale(orgSlug: string, id: string) {
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao excluir venda' }
-  revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+  revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const }
 }
 
@@ -213,7 +213,7 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
-  revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+  revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, data: data as TravelSaleRow }
 }
 
@@ -249,7 +249,7 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
   const s = sale as TravelSaleRow
 
   if (s.tasks_generated_at) {
-    revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+    revalidatePath(`/app/${orgSlug}/reservas`)
     return { ok: true as const, data: s, tasksCreated: 0, alreadyGenerated: true }
   }
 
@@ -327,7 +327,7 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
       .eq('organization_id', org.id)
   }
 
-  revalidatePath(`/app/${orgSlug}/vendas-viagem`)
+  revalidatePath(`/app/${orgSlug}/reservas`)
   revalidatePath(`/app/${orgSlug}/tarefas`)
   return { ok: true as const, data: s, tasksCreated, alreadyGenerated: false }
 }

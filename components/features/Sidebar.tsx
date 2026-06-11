@@ -188,7 +188,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('sales') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/proposta`}>
+          <SidebarNavLink href={`${base}/cotacoes`}>
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Cotações</span>
@@ -211,7 +211,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('sales') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/vitrine`}>
+          <SidebarNavLink href={`${base}/ofertas`}>
             <span className="flex items-center gap-2.5">
               <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Ofertas</span>
@@ -220,7 +220,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('sales') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/viagens-programadas`}>
+          <SidebarNavLink href={`${base}/embarques`}>
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Embarques</span>
@@ -247,7 +247,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('sales') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/vendas-viagem`}>
+          <SidebarNavLink href={`${base}/reservas`}>
             <span className="flex items-center gap-2.5">
               <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Reservas</span>

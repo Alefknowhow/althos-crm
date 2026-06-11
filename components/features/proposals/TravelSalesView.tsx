@@ -448,7 +448,7 @@ function SaleEditor({
               : <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
             {s.proposal_id && (
               <Link
-                href={`/app/${orgSlug}/proposta/${s.proposal_id}`}
+                href={`/app/${orgSlug}/cotacoes/${s.proposal_id}`}
                 className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Ver proposta
