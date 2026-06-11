@@ -213,6 +213,18 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
+
+  // In-app notification (org-wide) so the team sees the new sale in the bell.
+  const { createNotification } = await import('@/actions/notifications')
+  const clientName = (data as TravelSaleRow).client_name
+  await createNotification({
+    organizationId: org.id,
+    type: 'new_sale',
+    title: 'Nova venda viagem criada',
+    content: clientName ? `Venda iniciada para ${clientName}.` : 'Uma nova venda viagem foi iniciada.',
+    link: `/app/${orgSlug}/reservas`,
+  })
+
   revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, data: data as TravelSaleRow }
 }
