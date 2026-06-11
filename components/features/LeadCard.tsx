@@ -23,7 +23,7 @@ function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
 
   const display = localCents
     ? `R$ ${(localCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-    : 'Adicionar valor'
+    : '+ valor'
 
   function open(e: React.MouseEvent) {
     e.stopPropagation()
@@ -58,7 +58,7 @@ function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
         }}
         onPointerDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
-        className="w-full text-sm font-semibold border border-primary rounded px-1.5 py-0.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary tabular-nums"
+        className="w-20 text-xs font-semibold border border-primary rounded px-1.5 py-0.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary tabular-nums"
         placeholder="0"
       />
     )
@@ -70,7 +70,7 @@ function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
       onPointerDown={e => e.stopPropagation()}
       onClick={open}
       className={cn(
-        'text-sm font-semibold tabular-nums transition-colors',
+        'whitespace-nowrap text-xs font-semibold tabular-nums transition-colors',
         localCents ? 'text-foreground hover:text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground',
       )}
     >
@@ -461,6 +461,9 @@ export default function LeadCard({
           <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
             {lead.name}
           </p>
+          <div className="shrink-0 pt-0.5">
+            <ValueEditor lead={lead} orgSlug={orgSlug} />
+          </div>
           {members && !isOverlay ? (
             <SellerPicker lead={lead} orgSlug={orgSlug} members={members} />
           ) : owner ? (
@@ -471,9 +474,6 @@ export default function LeadCard({
               {initials(owner.name, owner.email)}
             </span>
           ) : null}
-        </div>
-        <div className="mt-0.5 pl-[26px]">
-          <ValueEditor lead={lead} orgSlug={orgSlug} />
         </div>
       </div>
 
