@@ -26,6 +26,11 @@ export default function PrefetchRoutes({ orgSlug }: { orgSlug: string }) {
       `${base}/embarques`,
       `${base}/tarefas`,
       `${base}/conversas`,
+      `${base}/reservas`,
+      `${base}/leads`,
+      `${base}/insights`,
+      `${base}/automacoes`,
+      `${base}/configuracoes`,
     ]
 
     const timer = setTimeout(() => {
