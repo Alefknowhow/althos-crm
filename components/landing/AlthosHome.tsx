@@ -45,6 +45,10 @@ export default function AlthosHome() {
   return (
     <div className="althos-home">
       <style dangerouslySetInnerHTML={{ __html: HOME_CSS }} />
+      {/* Abre cedo as conexões com o Google Fonts para reduzir a latência da
+          fonte (o stylesheet abaixo, com display=swap, não bloqueia o texto). */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,800&display=swap"
@@ -147,10 +151,18 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
             ))}
           </div>
           <div className="browser-screen">
-            {HERO_TABS.map(t => (
+            {HERO_TABS.map((t, i) => (
               <div key={t.key} className={`panel${tab === t.key ? ' active' : ''}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SHOTS[t.key]} alt={t.alt} loading="eager" onClick={() => onZoom(SHOTS[t.key], t.alt)} />
+                <img
+                  src={SHOTS[t.key]}
+                  alt={t.alt}
+                  /* Só a 1ª aba (pipeline, o LCP) carrega com prioridade; as demais
+                     ficam lazy para não competirem pela banda do hero. */
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={i === 0 ? 'high' : 'auto'}
+                  onClick={() => onZoom(SHOTS[t.key], t.alt)}
+                />
               </div>
             ))}
           </div>

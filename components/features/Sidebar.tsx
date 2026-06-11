@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Logo } from '@/components/brand/Logo'
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization, getUser } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
@@ -46,31 +46,66 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
-  const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // org (memoizada) + user (memoizado) em paralelo — sem cascata.
+  const [org, user] = await Promise.all([
+    getCurrentOrganization(orgSlug),
+    getUser(),
+  ])
+
   const userName  = (user?.user_metadata?.name  as string) ?? ''
   const userEmail = user?.email ?? ''
 
-  // Fetch current user's membership to know their role + permissions
+  const accountId = (org as any).account_id as string | null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Todas as queries do sidebar dependem só de org/user (já resolvidos), então
+  // disparam JUNTAS em vez de em cascata: membership, tarefas vencidas,
+  // conversas não lidas e os 3 checks de plano. Colapsa ~5 round-trips em 1 fase.
+  const [membershipRes, overdueRes, convsRes, planChecks] = await Promise.all([
+    user
+      ? supabase
+          .from('memberships')
+          .select('role, permissions')
+          .eq('organization_id', org.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', org.id)
+      .eq('status', 'open')
+      .lt('due_date', today.toISOString()),
+    supabase
+      .from('whatsapp_conversations')
+      .select('unread_count')
+      .eq('organization_id', org.id),
+    // Plan entitlements (per account). Super-admins bypass in SQL, so the owner
+    // always sees everything. If the org has no account (legacy), don't hide —
+    // server actions still enforce the gate. Permission gating (can()) still
+    // applies on top of this.
+    accountId
+      ? Promise.all([
+          checkFeatureAccess(accountId, 'ai_insights'),
+          checkFeatureAccess(accountId, 'ai_attendant'),
+          checkFeatureAccess(accountId, 'export_reports'),
+        ])
+      : Promise.resolve<[boolean, boolean, boolean]>([true, true, true]),
+  ])
+
+  // Membership → role + permissions
   let userRole:        MemberRole  = 'member'
   let userPermissions: Permissions = {}
   let isOwnerOrAdmin = false
-
-  if (user) {
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('role, permissions')
-      .eq('organization_id', org.id)
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (membership) {
-      userRole        = membership.role as MemberRole
-      userPermissions = (membership.permissions ?? {}) as Permissions
-      isOwnerOrAdmin  = userRole === 'owner' || userRole === 'admin'
-    }
+  const membership = (membershipRes as { data: { role: string; permissions: Permissions } | null }).data
+  if (membership) {
+    userRole        = membership.role as MemberRole
+    userPermissions = (membership.permissions ?? {}) as Permissions
+    isOwnerOrAdmin  = userRole === 'owner' || userRole === 'admin'
   }
 
   // Helper to decide visibility
@@ -78,33 +113,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     return canAccess(userRole, userPermissions, key)
   }
 
-  // Plan entitlements (per account). Super-admins bypass in SQL, so the owner
-  // always sees everything. If the org has no account (legacy), don't hide —
-  // server actions still enforce the gate. Permission gating (can()) still
-  // applies on top of this.
-  const accountId = (org as any).account_id as string | null
-  const [planInsights, planAttendant, planReports] = accountId
-    ? await Promise.all([
-        checkFeatureAccess(accountId, 'ai_insights'),
-        checkFeatureAccess(accountId, 'ai_attendant'),
-        checkFeatureAccess(accountId, 'export_reports'),
-      ])
-    : [true, true, true]
+  const [planInsights, planAttendant, planReports] = planChecks as [boolean, boolean, boolean]
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const { count: overdueCount } = await supabase
-    .from('tasks')
-    .select('id', { count: 'exact', head: true })
-    .eq('organization_id', org.id)
-    .eq('status', 'open')
-    .lt('due_date', today.toISOString())
-
-  const { data: convs } = await supabase
-    .from('whatsapp_conversations')
-    .select('unread_count')
-    .eq('organization_id', org.id)
+  const overdueCount = (overdueRes as { count: number | null }).count
+  const convs = (convsRes as { data: { unread_count: number }[] | null }).data
   const unreadWhatsapp = convs?.reduce((a, b) => a + (b.unread_count || 0), 0) || 0
 
   const base = `/app/${orgSlug}`

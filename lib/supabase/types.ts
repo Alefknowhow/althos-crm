@@ -1,12 +1,17 @@
+import { cache } from 'react'
 import { createClient } from './server'
 import { redirect, notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 
-export async function getUser() {
+// Memoizado por requisição (React cache): layout, Sidebar e a page chamam
+// requireAuth/getUser cada um por conta própria. Sem o cache, cada chamada
+// fazia uma ida-e-volta de rede ao Auth do Supabase para validar o JWT
+// (auth.getUser não lê cookie local). Com o cache, é 1 validação por request.
+export const getUser = cache(async () => {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user
-}
+})
 
 export async function requireAuth() {
   const user = await getUser()
@@ -16,7 +21,10 @@ export async function requireAuth() {
   return user
 }
 
-export async function getCurrentOrganization(slug: string) {
+// Memoizado por requisição e por slug: layout + Sidebar + page buscavam a mesma
+// org 3x (SELECT * em organizations) na mesma renderização. cache() colapsa
+// para 1 query por slug/request.
+export const getCurrentOrganization = cache(async (slug: string) => {
   const supabase = createClient()
   // requireAuth() already redirects unauthenticated users to /login.
   await requireAuth()
@@ -36,7 +44,7 @@ export async function getCurrentOrganization(slug: string) {
   }
 
   return org
-}
+})
 
 export async function isSuperAdmin() {
   const user = await getUser()
