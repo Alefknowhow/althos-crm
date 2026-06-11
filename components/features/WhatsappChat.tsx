@@ -19,6 +19,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showEmoji, setShowEmoji] = useState(false)
+  // Busca + filtros do inbox
+  const [query, setQuery] = useState('')
+  const [filterSeller, setFilterSeller] = useState('')
+  const [filterStage, setFilterStage] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  // Busca de palavras dentro da conversa aberta
+  const [msgQuery, setMsgQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
   const router = useRouter()
 
   // "Visto por último": derivado da última mensagem recebida do contato.
@@ -41,12 +49,62 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
     for (const m of members) map[m.user_id] = m
     return map
   }, [members])
+
+  // Estágios disponíveis (derivados das conversas atuais).
+  const stageOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of conversations) {
+      const n = c.leads?.pipeline_stages?.name
+      if (n) set.add(n)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [conversations])
+
+  // Vendedores que aparecem como responsáveis em alguma conversa.
+  const sellerOptions = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of conversations) {
+      const owner = c.assigned_to ?? c.leads?.assigned_to
+      if (owner) ids.add(owner)
+    }
+    return Array.from(ids).map(id => ({ id, member: memberById[id] }))
+  }, [conversations, memberById])
+
+  const activeFilters = (filterSeller ? 1 : 0) + (filterStage ? 1 : 0)
+
+  // Inbox filtrado por busca de texto + vendedor + estágio.
+  const filteredConversations = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return conversations.filter((c: any) => {
+      if (q) {
+        const hay = `${c.contact_name || ''} ${c.contact_phone || ''} ${c.last_message_preview || ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (filterSeller) {
+        const owner = c.assigned_to ?? c.leads?.assigned_to ?? null
+        if (filterSeller === '__none' ? !!owner : owner !== filterSeller) return false
+      }
+      if (filterStage) {
+        if ((c.leads?.pipeline_stages?.name || '') !== filterStage) return false
+      }
+      return true
+    })
+  }, [conversations, query, filterSeller, filterStage])
+
+  // Mensagens visíveis: filtradas pela busca dentro da conversa.
+  const visibleMessages = useMemo(() => {
+    const q = msgQuery.trim().toLowerCase()
+    if (!q) return messages
+    return messages.filter((m: any) => msgBody(m).toLowerCase().includes(q))
+  }, [messages, msgQuery])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // Stable client across renders so the realtime effect below doesn't re-subscribe on every render
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     setMessages(initialMessages)
+    setMsgQuery('')
+    setShowSearch(false)
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     if (selectedConversation && selectedConversation.unread_count > 0) {
       markConversationAsRead(orgSlug, selectedConversation.id)
@@ -129,8 +187,77 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
             </Button>
           )}
         </div>
+        {/* Busca + filtros do inbox */}
+        <div className="px-3 py-2 border-b bg-background shrink-0 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <Input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Pesquisar conversas..."
+                className="h-9 pl-8 pr-7 text-sm rounded-full bg-muted/50"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Limpar busca">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFilters(v => !v)}
+              className={`relative h-9 w-9 shrink-0 flex items-center justify-center rounded-full border hover:bg-muted ${showFilters || activeFilters ? 'bg-primary/10 text-primary border-primary/30' : 'text-muted-foreground'}`}
+              title="Filtros"
+              aria-label="Filtros"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              {activeFilters > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilters}</span>
+              )}
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <select
+                value={filterSeller}
+                onChange={e => setFilterSeller(e.target.value)}
+                className="h-8 text-xs rounded-md border bg-background px-2 text-foreground"
+                aria-label="Filtrar por vendedor"
+              >
+                <option value="">Todos os vendedores</option>
+                <option value="__none">Sem responsável</option>
+                {sellerOptions.map(({ id, member }) => (
+                  <option key={id} value={id}>{member?.name || member?.email || 'Membro'}</option>
+                ))}
+              </select>
+              <select
+                value={filterStage}
+                onChange={e => setFilterStage(e.target.value)}
+                className="h-8 text-xs rounded-md border bg-background px-2 text-foreground"
+                aria-label="Filtrar por estágio"
+              >
+                <option value="">Todos os estágios</option>
+                {stageOptions.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              {activeFilters > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterSeller(''); setFilterStage('') }}
+                  className="col-span-2 text-[11px] text-muted-foreground hover:text-foreground text-left"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((c: any) => (
+          {filteredConversations.map((c: any) => (
             <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -171,7 +298,13 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
             </div>
           ))}
-          {conversations.length === 0 && <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma conversa encontrada.</div>}
+          {filteredConversations.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground text-sm">
+              {conversations.length === 0
+                ? 'Nenhuma conversa encontrada.'
+                : 'Nenhuma conversa corresponde à busca ou aos filtros.'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -201,18 +334,56 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                   <div className="text-xs text-muted-foreground mt-0.5 truncate">{lastSeen || selectedConversation.contact_phone}</div>
                 </div>
               </div>
-              {selectedConversation.lead_id && (
-                <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors shrink-0">Abrir Lead</Link>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowSearch(v => { if (v) setMsgQuery(''); return !v })}
+                  className={`h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                  title="Pesquisar nesta conversa"
+                  aria-label="Pesquisar nesta conversa"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </button>
+                {selectedConversation.lead_id && (
+                  <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>
+                )}
+              </div>
             </div>
 
+            {showSearch && (
+              <div className="px-4 md:px-6 py-2 border-b bg-background flex items-center gap-2 shrink-0">
+                <div className="relative flex-1">
+                  <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <Input
+                    autoFocus
+                    value={msgQuery}
+                    onChange={e => setMsgQuery(e.target.value)}
+                    placeholder="Pesquisar palavras nesta conversa..."
+                    className="h-9 pl-8 text-sm rounded-full bg-muted/50"
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                  {msgQuery.trim() ? `${visibleMessages.length} resultado${visibleMessages.length === 1 ? '' : 's'}` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setShowSearch(false); setMsgQuery('') }}
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0"
+                  aria-label="Fechar busca"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white/60 backdrop-blur-[2px]">
-              {messages.map((m: any) => {
+              {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
+                const body = msgBody(m) || '[Mídia recebida]'
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <div className={`max-w-[75%] rounded-2xl px-4 py-2 shadow-sm relative ${isInbound ? 'bg-white border text-black rounded-tl-none' : 'bg-[#dcf8c6] text-black border border-[#dcf8c6] rounded-tr-none'}`}>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.content?.text?.body || m.content?.body || '[Mídia recebida]'}</div>
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">{highlightText(body, msgQuery)}</div>
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-black/40`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && <MessageTicks status={m.status} />}
@@ -221,6 +392,9 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                   </div>
                 )
               })}
+              {msgQuery.trim() && visibleMessages.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground py-8">Nenhuma mensagem com “{msgQuery.trim()}”.</div>
+              )}
               <div ref={messagesEndRef} className="h-1" />
             </div>
 
@@ -322,6 +496,30 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
       )}
     </div>
   )
+}
+
+// Extrai o texto de uma mensagem (cobre os dois formatos de content).
+function msgBody(m: any): string {
+  return m?.content?.text?.body || m?.content?.body || ''
+}
+
+// Destaca todas as ocorrências do termo de busca dentro de um texto.
+function highlightText(text: string, q: string): React.ReactNode {
+  const term = q.trim()
+  if (!term) return text
+  const lower = text.toLowerCase()
+  const needle = term.toLowerCase()
+  const parts: React.ReactNode[] = []
+  let i = 0
+  let key = 0
+  while (i < text.length) {
+    const idx = lower.indexOf(needle, i)
+    if (idx === -1) { parts.push(text.slice(i)); break }
+    if (idx > i) parts.push(text.slice(i, idx))
+    parts.push(<mark key={key++} className="bg-yellow-300/70 rounded-sm px-0.5 text-black">{text.slice(idx, idx + needle.length)}</mark>)
+    i = idx + needle.length
+  }
+  return parts
 }
 
 // Marcadores de status estilo WhatsApp:
