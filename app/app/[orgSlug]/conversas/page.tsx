@@ -4,7 +4,7 @@ import { listOrgMembers } from '@/actions/team'
 import { getConversationContext } from '@/actions/whatsapp'
 import WhatsappChat from '@/components/features/WhatsappChat'
 
-export default async function ConversasPage({ params, searchParams }: { params: { orgSlug: string }, searchParams: { id?: string } }) {
+export default async function ConversasPage({ params, searchParams }: { params: { orgSlug: string }, searchParams: { id?: string, lead?: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
 
@@ -21,8 +21,15 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   let messages: any[] = []
   let panelContext: any = null
 
+  // Resolve the conversation: by explicit conversation id, or by lead id (deep-link
+  // from a pipeline lead card → opens that lead's most recent conversation).
   if (searchParams.id) {
     selectedConversation = conversations?.find(c => c.id === searchParams.id) || null
+  } else if (searchParams.lead) {
+    selectedConversation = conversations?.find(c => c.lead_id === searchParams.lead) || null
+  }
+
+  {
     if (selectedConversation) {
       const { data: msgs } = await supabase.from('whatsapp_messages').select('*').eq('conversation_id', selectedConversation.id).order('created_at', { ascending: true })
       messages = msgs || []

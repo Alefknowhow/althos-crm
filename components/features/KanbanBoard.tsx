@@ -214,7 +214,7 @@ export default function KanbanBoard({
         <button
           type="button"
           onClick={() => setDashOpen(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary md:hidden"
         >
           <BarChart3 className="h-4 w-4" />
           <span className="hidden sm:inline">Dashboard</span>

@@ -156,6 +156,31 @@ export async function deleteProposal(orgSlug: string, id: string) {
   return { ok: true as const }
 }
 
+// Cotações (proposals) linked to a specific lead — for the pipeline card popup.
+export type LeadProposalRow = {
+  id: string
+  title: string | null
+  status: string
+  total_cents: number
+  start_date: string | null
+  end_date: string | null
+  public_token: string | null
+  updated_at: string
+}
+
+export async function listProposalsForLead(orgSlug: string, leadId: string): Promise<LeadProposalRow[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('travel_proposals')
+    .select('id, title, status, total_cents, start_date, end_date, public_token, updated_at')
+    .eq('organization_id', org.id)
+    .eq('lead_id', leadId)
+    .order('updated_at', { ascending: false })
+    .limit(100)
+  return (data as LeadProposalRow[]) ?? []
+}
+
 // Lightweight lead list for the proposal → pipeline link picker.
 export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string; name: string }[]> {
   const org = await getCurrentOrganization(orgSlug)

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
 import PipelineConfigDialog from '@/components/features/PipelineConfigDialog'
 import PipelineSwitcher from '@/components/features/pipeline/PipelineSwitcher'
+import PipelineKpiBar from '@/components/features/pipeline/PipelineKpiBar'
 
 export default async function PipelinePage({
   params,
@@ -103,6 +104,11 @@ export default async function PipelinePage({
           pipeline={pipeline}
           stages={stages || []}
         />
+      </div>
+
+      {/* Dashboard (KPIs) — desktop/web only */}
+      <div className="hidden md:block mb-4 shrink-0">
+        <PipelineKpiBar leads={leads || []} />
       </div>
 
       <div className="flex-1 overflow-hidden">

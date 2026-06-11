@@ -7,8 +7,10 @@ import { ptBR } from 'date-fns/locale'
 import { useState, useRef, useEffect } from 'react'
 import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/leads'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X, ChevronsUpDown } from 'lucide-react'
+import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X, MessagesSquare } from 'lucide-react'
+import Link from 'next/link'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
+import LeadProposalsButton from './LeadProposalsButton'
 
 export type CardMember = { id: string; name: string; email: string }
 
@@ -344,13 +346,14 @@ function StagePicker({
     <div ref={rootRef} className="relative" onPointerDown={stop} onClick={stop}>
       <button
         type="button"
-        title="Mover para outro estágio"
+        title={current ? `Estágio: ${current.name} — clique para mover` : 'Mover para outro estágio'}
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
       >
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
-        <span className="max-w-[110px] truncate">{current?.name || 'Estágio'}</span>
-        <ChevronsUpDown className="h-2.5 w-2.5 shrink-0 opacity-60" />
+        <span
+          className="h-3 w-3 rounded-full ring-2 ring-background"
+          style={{ backgroundColor: accent, boxShadow: `0 0 0 1px ${accent}55` }}
+        />
       </button>
 
       {open && (
@@ -443,14 +446,19 @@ export default function LeadCard({
       {/* Left accent for stalled deals */}
       {isStalled && <span className="absolute left-0 top-0 h-full w-1 rounded-l-xl bg-amber-400" />}
 
-      {/* Drag handle area — title + value */}
+      {/* Drag handle area — stage dot + title + seller + value */}
       <div
         {...listeners}
         onClick={() => onClick?.()}
-        className="px-3 pt-3 pb-2 cursor-grab active:cursor-grabbing"
+        className="px-2.5 pt-2 pb-1.5 cursor-grab active:cursor-grabbing"
       >
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold leading-snug text-foreground line-clamp-2">
+        <div className="flex items-start gap-1.5">
+          {!isOverlay && stages && onStageChange ? (
+            <div className="pt-0.5">
+              <StagePicker lead={lead} stages={stages} onPick={onStageChange} />
+            </div>
+          ) : null}
+          <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
             {lead.name}
           </p>
           {members && !isOverlay ? (
@@ -464,17 +472,14 @@ export default function LeadCard({
             </span>
           ) : null}
         </div>
-        <div className="mt-1">
+        <div className="mt-0.5 pl-[26px]">
           <ValueEditor lead={lead} orgSlug={orgSlug} />
         </div>
       </div>
 
-      {/* Badges row */}
+      {/* Badges + tags row */}
       {(tier || lead.is_customer || tags.length > 0 || !isOverlay) && (
-        <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
-          {!isOverlay && stages && onStageChange && (
-            <StagePicker lead={lead} stages={stages} onPick={onStageChange} />
-          )}
+        <div className="flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
               <Sparkles className="h-2.5 w-2.5" />
@@ -490,10 +495,21 @@ export default function LeadCard({
           {visibleTags.map(t => (
             <span
               key={t}
-              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground max-w-[80px] truncate"
+              className="group/tag relative inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground max-w-[90px]"
               title={t}
             >
-              {t}
+              <span className="truncate">{t}</span>
+              {!isOverlay && (
+                <button
+                  type="button"
+                  onPointerDown={stop}
+                  onClick={(e) => { stop(e); setTags(prev => { const next = prev.filter(x => x !== t); updateLeadTags(orgSlug, lead.id, next); return next }) }}
+                  aria-label={`Remover ${t}`}
+                  className="absolute -right-1 -top-1 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover/tag:flex"
+                >
+                  <X className="h-2 w-2" />
+                </button>
+              )}
             </span>
           ))}
           {extraTags > 0 && <span className="text-[10px] text-muted-foreground">+{extraTags}</span>}
@@ -504,12 +520,24 @@ export default function LeadCard({
       )}
 
       {/* Footer: timestamp + quick actions */}
-      <div className="flex items-center justify-between border-t border-border/60 px-3 py-1.5">
+      <div className="flex items-center justify-between border-t border-border/60 px-2.5 py-1">
         <p className={cn('text-[10px]', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100">
           {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
+          {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
+          {!isOverlay && (
+            <Link
+              href={`/app/${orgSlug}/conversas?lead=${lead.id}`}
+              onPointerDown={stop}
+              onClick={stop}
+              title="Abrir conversa"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-indigo-600 hover:bg-indigo-50"
+            >
+              <MessagesSquare className="h-3.5 w-3.5" />
+            </Link>
+          )}
           {phoneDigits && (
             <a
               href={`https://wa.me/${phoneDigits}`}
