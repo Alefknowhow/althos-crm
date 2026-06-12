@@ -33,7 +33,6 @@ const PLAN_FEATURES: {
 }[] = [
   // ── Quantidades ──
   { label: 'Usuários incluídos',                 starter: '1',            pro: 'Até 6',        business: 'Ilimitados' },
-  { label: 'Empresas / orgs',                    starter: '1',            pro: 'Até 5',        business: 'Ilimitadas' },
   { label: 'Pipelines',                          starter: '2',            pro: '5',            business: 'Ilimitados' },
   { label: 'Leads no pipeline',                  starter: 'Ilimitados',   pro: 'Ilimitados',   business: 'Ilimitados' },
   { label: 'Clientes cadastrados',               starter: '500',          pro: '2.000',        business: 'Ilimitados' },
