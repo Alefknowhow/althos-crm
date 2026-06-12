@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { getProfilesMap } from '@/lib/profiles'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
@@ -172,17 +173,14 @@ export async function listOrgMembers(orgSlug: string) {
 
   if (!memberships || memberships.length === 0) return []
 
-  const admin = createAdminClient()
-  const members = await Promise.all(
-    memberships.map(async (m) => {
-      const { data } = await admin.auth.admin.getUserById(m.user_id)
-      return {
-        id: m.user_id,
-        role: m.role,
-        email: data?.user?.email || '',
-        name: (data?.user?.user_metadata as any)?.name || data?.user?.email || 'Usuário',
-      }
-    })
-  )
-  return members
+  const profiles = await getProfilesMap(memberships.map(m => m.user_id))
+  return memberships.map(m => {
+    const p = profiles.get(m.user_id)
+    return {
+      id: m.user_id,
+      role: m.role,
+      email: p?.email || '',
+      name: p?.full_name || p?.email || 'Usuário',
+    }
+  })
 }

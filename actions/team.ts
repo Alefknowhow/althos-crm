@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
 import { type Permissions, allPermissions, defaultMemberPermissions } from '@/lib/permissions'
+import { getProfilesMap } from '@/lib/profiles'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://althoscrm.com.br'
 
@@ -91,13 +92,14 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
       .eq('organization_id', org.id)
       .order('created_at', { ascending: true })
 
+    const legacyProfiles = await getProfilesMap((memberships ?? []).map(m => m.user_id))
     const members: TeamMember[] = []
     for (const m of memberships ?? []) {
-      const { data: { user: u } } = await admin.auth.admin.getUserById(m.user_id)
+      const p = legacyProfiles.get(m.user_id)
       members.push({
         user_id:      m.user_id,
-        email:        u?.email ?? '',
-        name:         (u?.user_metadata?.name as string) ?? '',
+        email:        p?.email ?? '',
+        name:         p?.full_name ?? '',
         account_role: m.role === 'member' ? 'member' : 'admin',
         is_owner:     m.role === 'owner',
         joined_at:    m.created_at,
@@ -167,16 +169,17 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
     }
   }
 
+  const acctProfiles = await getProfilesMap(Array.from(roleByUser.keys()))
   const members: TeamMember[] = []
   for (const userId of Array.from(roleByUser.keys())) {
-    const { data: { user: u } } = await admin.auth.admin.getUserById(userId)
+    const p = acctProfiles.get(userId)
     const mine = (allMemberships ?? []).filter(m => m.user_id === userId)
     const cur = mine.find(m => m.organization_id === org.id)
     const accRole = roleByUser.get(userId) === 'admin' ? 'admin' : 'member'
     members.push({
       user_id:      userId,
-      email:        u?.email ?? '',
-      name:         (u?.user_metadata?.name as string) ?? (u?.user_metadata?.full_name as string) ?? '',
+      email:        p?.email ?? '',
+      name:         p?.full_name ?? '',
       account_role: accRole,
       is_owner:     userId === ownerId,
       joined_at:    joinedByUser.get(userId) ?? new Date(0).toISOString(),
@@ -240,16 +243,15 @@ export async function listOrgMembers(
     .eq('organization_id', org.id)
     .order('created_at', { ascending: true })
 
-  const out: { user_id: string; name: string; email: string }[] = []
-  for (const m of memberships ?? []) {
-    const { data: { user } } = await admin.auth.admin.getUserById(m.user_id)
-    out.push({
+  const profiles = await getProfilesMap((memberships ?? []).map(m => m.user_id))
+  return (memberships ?? []).map(m => {
+    const p = profiles.get(m.user_id)
+    return {
       user_id: m.user_id,
-      email: user?.email ?? '',
-      name: (user?.user_metadata?.name as string) || user?.email?.split('@')[0] || 'Usuário',
-    })
-  }
-  return out
+      email: p?.email ?? '',
+      name: p?.full_name || p?.email?.split('@')[0] || 'Usuário',
+    }
+  })
 }
 
 // ── Invite ────────────────────────────────────────────────────────────────────

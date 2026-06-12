@@ -11,7 +11,8 @@
  * admin client for the sales report.
  */
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { getProfilesMap } from '@/lib/profiles'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 
@@ -314,18 +315,11 @@ async function resolveSellerNames(ids: (string | null)[]): Promise<Map<string, s
   const unique = Array.from(new Set(ids.filter((x): x is string => !!x)))
   if (unique.length === 0) return out
 
-  const admin = createAdminClient()
-  await Promise.all(
-    unique.map(async id => {
-      try {
-        const { data } = await admin.auth.admin.getUserById(id)
-        const u = data?.user
-        const name = (u?.user_metadata?.name as string) || (u?.user_metadata?.full_name as string) || u?.email || null
-        if (name) out.set(id, name)
-      } catch {
-        /* ignore — falls back to '—' */
-      }
-    }),
-  )
+  const profiles = await getProfilesMap(unique)
+  for (const id of unique) {
+    const p = profiles.get(id)
+    const name = p?.full_name || p?.email || null
+    if (name) out.set(id, name)
+  }
   return out
 }

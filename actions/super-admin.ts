@@ -5,6 +5,7 @@ import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getProfilesMap } from '@/lib/profiles'
 import { resend, EMAIL_FROM } from '@/lib/resend'
 import { slugify } from '@/lib/utils'
 import { z } from 'zod'
@@ -329,14 +330,13 @@ export async function getAuditLogs(limit = 100): Promise<AuditLogEntry[]> {
 
   if (!logs) return []
 
-  // Resolve super admin emails via admin Auth API
+  // Resolve super admin emails via the profiles mirror (one batched query).
   const uniqueAdminIds = Array.from(new Set(logs.map((l: any) => l.super_admin_user_id)))
+  const profiles = await getProfilesMap(uniqueAdminIds)
   const emailMap = new Map<string, string>()
   for (const uid of uniqueAdminIds) {
-    try {
-      const { data: { user } } = await admin.auth.admin.getUserById(uid)
-      if (user?.email) emailMap.set(uid, user.email)
-    } catch { /* ignore */ }
+    const email = profiles.get(uid)?.email
+    if (email) emailMap.set(uid, email)
   }
 
   return logs.map((log: any) => ({

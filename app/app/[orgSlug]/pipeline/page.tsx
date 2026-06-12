@@ -1,5 +1,6 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getProfilesMap } from '@/lib/profiles'
 import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
 import PipelineConfigDialog from '@/components/features/PipelineConfigDialog'
@@ -76,17 +77,11 @@ export default async function PipelinePage({
       .select('user_id')
       .eq('organization_id', org.id)
     const ids = Array.from(new Set((memberships ?? []).map(m => m.user_id)))
-    members = await Promise.all(
-      ids.map(async id => {
-        const { data } = await admin.auth.admin.getUserById(id)
-        const u = data?.user
-        return {
-          id,
-          name: (u?.user_metadata?.name as string) || (u?.user_metadata?.full_name as string) || '',
-          email: u?.email || '',
-        }
-      }),
-    )
+    const profiles = await getProfilesMap(ids)
+    members = ids.map(id => {
+      const p = profiles.get(id)
+      return { id, name: p?.full_name || '', email: p?.email || '' }
+    })
   } catch {
     members = []
   }
