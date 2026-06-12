@@ -571,6 +571,15 @@ function Behaviors() {
     if (ran.current) return
     ran.current = true
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // `lite`: aparelhos onde os efeitos pesados de GPU/canvas devem ser
+    // pulados para não estourar o renderer (crash "Ah, não!" no mobile).
+    // Inclui touch, telas pequenas, pouca RAM e reduced-motion. O spotlight
+    // e o tilt 3D são movidos por mouse — inúteis no touch de qualquer forma.
+    const coarse = window.matchMedia('(hover: none), (pointer: coarse)').matches
+    const smallScreen = window.matchMedia('(max-width: 640px)').matches
+    const deviceMem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
+    const lowMem = typeof deviceMem === 'number' && deviceMem <= 4
+    const lite = reduce || coarse || smallScreen || lowMem
     const root = document.querySelector('.althos-home')
     if (!root) return
     const cleanups: Array<() => void> = []
@@ -664,7 +673,7 @@ function Behaviors() {
     }
 
     /* cursor spotlight */
-    if (!reduce) {
+    if (!lite) {
       const cards = Array.from(root.querySelectorAll<HTMLElement>('.spot'))
       cards.forEach(card => {
         const onMove = (e: MouseEvent) => {
@@ -678,7 +687,7 @@ function Behaviors() {
     }
 
     /* 3D tilt on hero mockup */
-    if (!reduce) {
+    if (!lite) {
       const wrap = root.querySelector<HTMLElement>('.mock-wrap')
       const card = root.querySelector<HTMLElement>('#browser')
       if (wrap && card) {
@@ -734,7 +743,7 @@ function Behaviors() {
     }
 
     /* AI sparkles canvas */
-    if (!reduce) {
+    if (!lite) {
       const canvas = root.querySelector<HTMLCanvasElement>('#aiSparkles')
       const section = canvas?.closest<HTMLElement>('.ai')
       const ctx = canvas?.getContext('2d')

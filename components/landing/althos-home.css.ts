@@ -334,6 +334,33 @@ export const HOME_CSS = `
 }
 
 /* ============================================================
+   MOBILE GPU RELIEF — previne crash de renderer (OOM/GPU)
+   no celular. O fundo .aurora é position:fixed cobrindo ~150%
+   da viewport com filter: blur(60px) + mix-blend-mode: screen
+   em blobs animados em loop; somado ao .grain (overlay) e aos
+   vários glows com blur(44–60px), isso gera texturas
+   intermediárias gigantes recompostas a cada frame e estoura a
+   GPU de aparelhos modestos (desktop aguenta, mobile não).
+   Em telas pequenas / touch desligamos só as camadas
+   DECORATIVAS mais caras — o layout e o conteúdo continuam
+   idênticos, apenas sem o brilho de fundo.
+   ============================================================ */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  .althos-home .aurora,
+  .althos-home .grain,
+  .althos-home .final .aurora-strong,
+  .althos-home .mock-glow,
+  .althos-home .feat-frame .glow,
+  .althos-home .ai .ai-glow,
+  .althos-home .ai-mock .glow { display: none !important; }
+
+  .althos-home .ai-scan { animation: none !important; }
+  .althos-home .ai-typingbar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  /* sem tilt 3D no touch (também desligado no JS) */
+  .althos-home .browser { will-change: auto; transform: none !important; }
+}
+
+/* ============================================================
    MOBILE / TELEFONE  (<= 640px)
    Compacta tudo: tipografia menor, paddings curtos, cards
    enxutos, telas inteiras (sem corte) e ZERO scroll infinito.
