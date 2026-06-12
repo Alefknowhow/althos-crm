@@ -161,6 +161,33 @@ const securityHeaders = async () => [
 const nextConfig = {
   headers: securityHeaders,
   eslint: { ignoreDuringBuilds: true },
+
+  experimental: {
+    // Client-side Router Cache retention. This keeps already-visited pages
+    // "warm" in the browser so navigating back to them is instant — WITHOUT
+    // any new server render or database query. It is pure client-side reuse,
+    // so it can only reduce DB load, never increase it.
+    //
+    // This is what makes bouncing between the heavy work screens (Conversas,
+    // Pipeline, Reservas, Cotações) feel fluid: the first visit loads normally
+    // (the sidebar <Link> prefetches gently, one at a time on hover/viewport),
+    // and every return visit within the window reuses the cached screen.
+    //
+    // NOTE: deliberately NOT reintroducing an eager multi-route prefetcher —
+    // a previous one (components/prefetch-routes.tsx) fired 11 concurrent
+    // full-render prefetches and caused a production outage (removed in
+    // 007f256). staleTimes is the safe, DB-free way to achieve warmth.
+    //
+    //   dynamic — pages with dynamic data (our authed /app/* screens). 120s
+    //             means a return visit within 2 min reuses the cached render.
+    //             Live data still updates via Realtime subscriptions on the
+    //             client; this only governs the navigation snapshot.
+    //   static  — fully static segments; safe to hold longer.
+    staleTimes: {
+      dynamic: 120,
+      static: 300,
+    },
+  },
 }
 
 export default nextConfig
