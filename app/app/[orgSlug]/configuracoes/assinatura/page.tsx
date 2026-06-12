@@ -36,6 +36,15 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
   const isActive    = org.subscription_status === 'active'
   const isManaged   = org.billing_managed_externally === true
 
+  // Seat limit shown in the usage chart comes from the canonical plan config
+  // (plan.maxUsers), NOT the org.limit_users column — that column can be stale
+  // (e.g. an old default of 3) while the real seat enforcement uses the plan.
+  // Free = 1, Pro = 6, Business = ∞. Display-only; does not touch enforcement.
+  const usersLimit = plan.maxUsers ?? Infinity
+  const usersPct   = isFinite(usersLimit) && usersLimit > 0
+    ? (usage.users.used / usersLimit) * 100
+    : 0
+
   // Fetch invoice history from Asaas (best-effort — no crash if API is down)
   let invoices: any[] = []
   if (org.asaas_customer_id && !isManaged) {
@@ -167,8 +176,8 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
           icon={<Users className="w-4 h-4" />}
           label="Usuários na conta"
           used={usage.users.used}
-          limit={usage.users.limit}
-          pct={usage.users.pct}
+          limit={usersLimit}
+          pct={usersPct}
         />
       </div>
 
