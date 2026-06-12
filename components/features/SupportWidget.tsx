@@ -29,6 +29,10 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  // Mobile-only: tuck the launcher away while the user scrolls the page down
+  // (so it never sits on top of action buttons/bars), reveal on scroll up.
+  // Desktop keeps it always visible.
+  const [tucked, setTucked] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       id: uid(),
@@ -49,6 +53,28 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }
   }, [messages, open, loading])
+
+  // Hide-on-scroll-down behaviour. The app shell scrolls inside <main>
+  // (h-screen + overflow-hidden), not the window — so we listen on that
+  // element. Falls back to window if not found. Cheap, passive listener.
+  useEffect(() => {
+    const scroller: HTMLElement | Window =
+      document.querySelector('main') ?? window
+    const getY = () =>
+      scroller instanceof Window ? scroller.scrollY : scroller.scrollTop
+    let lastY = getY()
+
+    function onScroll() {
+      const y = getY()
+      if (Math.abs(y - lastY) < 8) return // ignore jitter
+      // Hide when scrolling down past a small threshold; show when scrolling up.
+      setTucked(y > lastY && y > 80)
+      lastY = y
+    }
+
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [])
 
   async function send(text: string) {
     const content = text.trim()
@@ -98,8 +124,12 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Fechar suporte' : 'Abrir suporte'}
         className={cn(
-          'fixed bottom-5 right-5 z-[60] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95',
+          'fixed bottom-5 right-5 z-[60] flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:scale-105 active:scale-95',
           'bg-gradient-to-br from-brand-500 to-brand-700',
+          // Mobile: slide out of the way while scrolling down. Desktop (md+)
+          // always stays put regardless of scroll.
+          tucked && !open &&
+            'translate-y-24 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto',
         )}
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
