@@ -8,7 +8,7 @@
  * Bump CACHE_VERSION when shipping a strategy change.
  */
 
-const CACHE_VERSION = 'althos-v1'
+const CACHE_VERSION = 'althos-v2'
 const STATIC_CACHE  = `${CACHE_VERSION}-static`
 
 // ---------------------------------------------------------------------------
