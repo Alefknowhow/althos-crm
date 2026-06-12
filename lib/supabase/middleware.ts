@@ -33,6 +33,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/trafego' ||         // niche LP: agências de tráfego
     pathname === '/pequenas-empresas' || // niche LP: pequenas empresas
     pathname === '/faq' ||             // marketing: FAQ
+    pathname === '/robots.txt' ||      // SEO: crawler directives (must not 307→login)
+    pathname === '/sitemap.xml' ||     // SEO: sitemap
     pathname === '/blog' ||            // marketing: blog index
     pathname.startsWith('/blog/')   ||  // marketing: blog posts
     pathname.startsWith('/auth/')    ||  // auth callbacks (email confirm, OAuth)
@@ -71,6 +73,21 @@ function readAalClaim(token: string): string | null {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const routeClass = classifyRoute(pathname)
+
+  // PERF: genuinely public routes (landing, marketing, blog, public forms,
+  // webhooks, etc.) don't need an auth decision, so skip the Supabase
+  // `auth.getUser()` network round-trip entirely — that call was running on
+  // EVERY request, including anonymous/bot/prefetch traffic. Only /login and
+  // /signup are "public" yet still need the session (to bounce already
+  // logged-in users), so they fall through to the full path below.
+  const needsSession =
+    routeClass !== 'public' || pathname === '/login' || pathname === '/signup'
+  if (!needsSession) {
+    return NextResponse.next({ request: { headers: request.headers } })
+  }
+
   let supabaseResponse = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -113,9 +130,6 @@ export async function updateSession(request: NextRequest) {
   if (authError && authError.status && authError.status >= 500) {
     console.error('[middleware] Supabase auth error:', authError.message)
   }
-
-  const { pathname } = request.nextUrl
-  const routeClass = classifyRoute(pathname)
 
   // ---- Not authenticated ----
   if (!user) {
