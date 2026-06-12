@@ -13,7 +13,6 @@ import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget } from '@/components/features/SupportWidget'
-import PrefetchRoutes from '@/components/prefetch-routes'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -77,7 +76,6 @@ export default async function OrgLayout({
       {primaryCSS && (
         <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
       )}
-      <PrefetchRoutes orgSlug={params.orgSlug} />
       <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
