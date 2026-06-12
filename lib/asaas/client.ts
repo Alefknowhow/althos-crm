@@ -2,19 +2,44 @@ const ASAAS_API_KEY = process.env.ASAAS_API_KEY
 const ASAAS_API_URL = process.env.ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3'
 
 async function asaasFetch(endpoint: string, options: RequestInit = {}) {
+  // Fail fast with a readable message instead of firing an unauthenticated
+  // request that comes back with an empty body (which would otherwise blow up
+  // as "Unexpected end of JSON input" on res.json()).
+  if (!ASAAS_API_KEY) {
+    throw new Error('Integração Asaas não configurada (ASAAS_API_KEY ausente).')
+  }
+
   const res = await fetch(`${ASAAS_API_URL}${endpoint}`, {
     ...options,
     headers: {
-      'access_token': ASAAS_API_KEY || '',
+      'access_token': ASAAS_API_KEY,
       'Content-Type': 'application/json',
       ...options.headers,
     },
   })
 
-  const data = await res.json()
+  // Read the body as text first: some Asaas responses (204 No Content, DELETE,
+  // or upstream errors) come back empty, and res.json() on an empty body throws
+  // "Unexpected end of JSON input". Only parse when there's actually content.
+  const raw = await res.text()
+  let data: any = null
+  if (raw) {
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      // Non-JSON body (e.g. an HTML error page or plain-text gateway error).
+      if (!res.ok) {
+        console.error('Asaas API Error (non-JSON body):', res.status, raw.slice(0, 300))
+        throw new Error(`Erro na API do Asaas (HTTP ${res.status}).`)
+      }
+      // OK status but unparseable body — return the raw text to the caller.
+      return raw
+    }
+  }
+
   if (!res.ok) {
-    console.error('Asaas API Error:', data)
-    throw new Error(data.errors?.[0]?.description || 'Erro na API do Asaas')
+    console.error('Asaas API Error:', res.status, data)
+    throw new Error(data?.errors?.[0]?.description || `Erro na API do Asaas (HTTP ${res.status}).`)
   }
   return data
 }
