@@ -63,12 +63,9 @@ export default async function OrgLayout({
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   // Inject saved primary color so it persists on every full page load.
-  const { data: orgStyle } = await supabase
-    .from('organizations')
-    .select('primary_color')
-    .eq('id', org.id)
-    .maybeSingle()
-  const savedPreset = PRESET_COLORS.find(c => c.hex === orgStyle?.primary_color)
+  // getCurrentOrganization already returns primary_color (SELECT *), so we read
+  // it off the org object directly instead of firing a second round-trip.
+  const savedPreset = PRESET_COLORS.find(c => c.hex === (org as any).primary_color)
   const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
 
   return (
