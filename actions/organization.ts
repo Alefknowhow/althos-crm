@@ -36,6 +36,9 @@ export async function generateUniqueSlug(name: string) {
 export async function createOrganization(formData: FormData) {
   const user = await requireAuth()
   const name = (formData.get('name') as string)?.trim()
+  // Niche chosen during onboarding. Persisted on the account (source of truth)
+  // and mirrored onto the org so it shows up in Configurações › Geral.
+  const onboardingNiche = (formData.get('niche') as string)?.trim() || null
 
   if (!name || name.length < 2) {
     return { ok: false, error: 'Nome da organização inválido' }
@@ -63,6 +66,13 @@ export async function createOrganization(formData: FormData) {
       accountId    = existing.account_id
       accountNiche = (existing as any).accounts?.niche ?? null
 
+      // Se a conta ainda não tem nicho definido e o onboarding informou um,
+      // grava agora (1ª org da conta define o nicho herdado).
+      if (!accountNiche && onboardingNiche) {
+        await admin.from('accounts').update({ niche: onboardingNiche }).eq('id', accountId)
+        accountNiche = onboardingNiche
+      }
+
       // Hard cap: 1 organização por conta em TODOS os planos. A conta já
       // existe, então se já houver qualquer org vinculada, bloqueia a criação
       // de mais uma. Super-admins (operadores da plataforma) ficam isentos.
@@ -82,7 +92,7 @@ export async function createOrganization(formData: FormData) {
     } else {
       const { data: newAccount, error: accErr } = await admin
         .from('accounts')
-        .insert({ name, owner_user_id: user.id })
+        .insert({ name, owner_user_id: user.id, niche: onboardingNiche })
         .select('id, niche')
         .single()
       if (accErr) return { ok: false, error: accErr.message }

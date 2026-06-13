@@ -1,12 +1,13 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import LeadsView from '@/components/features/leads/LeadsView'
+import ContatosView from '@/components/features/contatos/ContatosView'
 import EmptyState from '@/components/ui/empty-state'
 import { Users } from 'lucide-react'
 import { listSavedFilters } from '@/actions/saved_filters'
+import { listRelationships } from '@/actions/relationships'
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 50
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: '', label: 'Todos' },
@@ -20,6 +21,7 @@ type SP = {
   pipeline_id?: string
   stage?: string
   tag?: string
+  source?: string
   has_email?: string
   has_phone?: string
   no_contact_days?: string
@@ -29,6 +31,7 @@ type SP = {
   value_max?: string
   tier?: string
   status?: string
+  sel?: string
   page?: string
 }
 
@@ -47,6 +50,7 @@ export default async function ContatosPage({
   const pipelineFilter = searchParams.pipeline_id || ''
   const stage = searchParams.stage || ''
   const tag = searchParams.tag || ''
+  const sourceFilter = searchParams.source || ''
   const hasEmail = searchParams.has_email === '1'
   const hasPhone = searchParams.has_phone === '1'
   const noContactDays = Number(searchParams.no_contact_days) || 0
@@ -65,7 +69,7 @@ export default async function ContatosPage({
   let q = supabase
     .from('contatos')
     .select(
-      'id, name, email, phone, status, stage_id, pipeline_id, tags, value_cents, created_at, updated_at, source, ai_score, ai_tier, ai_summary, pipeline_stages(id, name)',
+      'id, name, email, phone, status, source, avatar_url, city, state, tags, value_cents, became_customer_at, last_activity_at, created_at, updated_at, ai_tier',
       { count: 'exact' },
     )
     .eq('organization_id', org.id)
@@ -78,6 +82,7 @@ export default async function ContatosPage({
   if (pipelineFilter) q = q.eq('pipeline_id', pipelineFilter)
   if (stage) q = q.eq('stage_id', stage)
   if (tag) q = q.contains('tags', [tag])
+  if (sourceFilter) q = q.eq('source', sourceFilter)
   if (hasEmail) q = q.not('email', 'is', null)
   if (hasPhone) q = q.not('phone', 'is', null)
   if (createdFrom) q = q.gte('created_at', createdFrom)
@@ -94,63 +99,109 @@ export default async function ContatosPage({
   const from = page * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
-  const [
-    { data: leads, count },
-    { data: pipelines },
-    savedFilters,
-    { data: distinctTags },
-  ] = await Promise.all([
-    q.order('updated_at', { ascending: false }).range(from, to),
-    supabase
-      .from('pipelines')
-      .select('id, name, is_default')
-      .eq('organization_id', org.id)
-      .order('is_default', { ascending: false })
-      .order('created_at', { ascending: true }),
-    listSavedFilters(params.orgSlug, 'leads'),
-    supabase.from('contatos').select('tags').eq('organization_id', org.id).limit(1000),
-  ])
+  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }] =
+    await Promise.all([
+      q.order('updated_at', { ascending: false }).range(from, to),
+      supabase
+        .from('pipelines')
+        .select('id, name, is_default')
+        .eq('organization_id', org.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true }),
+      listSavedFilters(params.orgSlug, 'leads'),
+      supabase.from('contatos').select('tags, source').eq('organization_id', org.id).limit(1000),
+    ])
 
-  // Stages shown in the filter UI: scoped to the selected pipeline, or all stages
-  // across all pipelines if no pipeline is filtered.
-  let stages: any[] = []
-  const stagesScope = pipelineFilter || (pipelines || []).find(p => p.is_default)?.id
-  if (stagesScope) {
-    const { data } = await supabase
-      .from('pipeline_stages')
-      .select('id, name, pipeline_id')
-      .eq('pipeline_id', stagesScope)
-      .order('position')
-    stages = data || []
-  } else if (pipelines && pipelines.length > 0) {
-    const { data } = await supabase
-      .from('pipeline_stages')
-      .select('id, name, pipeline_id')
-      .in(
-        'pipeline_id',
-        pipelines.map(p => p.id),
-      )
-      .order('position')
-    stages = data || []
-  }
-
+  // Distinct tags + sources for the filter UI.
   const tagSet = new Set<string>()
-  for (const row of distinctTags || []) {
+  const sourceSet = new Set<string>()
+  for (const row of distinctMeta || []) {
     for (const t of (row as any).tags || []) tagSet.add(t)
+    if ((row as any).source) sourceSet.add((row as any).source)
   }
   const allTags = Array.from(tagSet).sort()
+  const allSources = Array.from(sourceSet).sort()
 
-  // Preserve all non-status filters when switching status tabs.
+  // Mark which rows have documents (small icon in the list).
+  const rows = contatos || []
+  let docIds = new Set<string>()
+  if (rows.length > 0) {
+    const { data: docs } = await supabase
+      .from('contato_documents')
+      .select('contato_id')
+      .eq('organization_id', org.id)
+      .in(
+        'contato_id',
+        rows.map(r => r.id),
+      )
+    docIds = new Set((docs || []).map(d => d.contato_id))
+  }
+  const listRows = rows.map(r => ({ ...r, has_documents: docIds.has(r.id) }))
+
+  // Selected contato (right panel) — fetched server-side so the embedded
+  // edit forms' router.refresh() keeps the panel in sync.
+  const selId = searchParams.sel || ''
+  let selected: any = null
+  if (selId) {
+    const [{ data: contato }, { data: documents }, { data: sales }, relationships] =
+      await Promise.all([
+        supabase
+          .from('contatos')
+          .select('*, pipeline_stages(name)')
+          .eq('id', selId)
+          .eq('organization_id', org.id)
+          .maybeSingle(),
+        supabase
+          .from('contato_documents')
+          .select('id, kind, file_path, file_name, file_size_bytes, mime_type, created_at')
+          .eq('contato_id', selId)
+          .eq('organization_id', org.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('sales')
+          .select('id, sale_date, amount_cents, status, payment_method, installments, products(name)')
+          .eq('contato_id', selId)
+          .eq('organization_id', org.id)
+          .order('sale_date', { ascending: false }),
+        listRelationships(params.orgSlug, selId),
+      ])
+    if (contato) {
+      selected = {
+        contato,
+        documents: documents || [],
+        sales: sales || [],
+        relationships,
+      }
+    }
+  }
+
   const buildStatusHref = (value: string) => {
     const sp = new URLSearchParams()
     for (const [k, v] of Object.entries(searchParams)) {
-      if (k === 'status' || k === 'page' || !v) continue
+      if (k === 'status' || k === 'page' || k === 'sel' || !v) continue
       sp.set(k, String(v))
     }
     if (value) sp.set('status', value)
     const qs = sp.toString()
     return `/app/${params.orgSlug}/contatos${qs ? `?${qs}` : ''}`
   }
+
+  const isFiltered = !!(
+    search ||
+    pipelineFilter ||
+    stage ||
+    tag ||
+    sourceFilter ||
+    hasEmail ||
+    hasPhone ||
+    createdFrom ||
+    createdTo ||
+    valueMin ||
+    valueMax ||
+    noContactDays ||
+    tier ||
+    status
+  )
 
   const header = (
     <div className="space-y-4">
@@ -178,52 +229,30 @@ export default async function ContatosPage({
     </div>
   )
 
-  if (!leads || leads.length === 0) {
-    const isFiltered =
-      !!(search || pipelineFilter || stage || tag || hasEmail || hasPhone || createdFrom || createdTo || valueMin || valueMax || noContactDays || tier || status)
-    return (
-      <div className="space-y-6">
-        {header}
-        <LeadsView
-          orgSlug={params.orgSlug}
-          leads={[]}
-          total={0}
-          page={page}
-          pageSize={PAGE_SIZE}
-          stages={stages}
-          pipelines={pipelines || []}
-          allTags={allTags}
-          savedFilters={savedFilters}
-          filters={searchParams}
-        />
-        {!isFiltered && (
-          <EmptyState
-            icon={Users}
-            title="Nenhum contato encontrado"
-            description="Comece capturando contatos através de formulários ou crie um manualmente."
-            actionLabel="Criar Primeiro Contato"
-            actionHref={`/app/${params.orgSlug}/pipeline`}
-          />
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       {header}
-      <LeadsView
+      <ContatosView
         orgSlug={params.orgSlug}
-        leads={leads as any[]}
+        contatos={listRows as any[]}
+        selected={selected}
+        selectedId={selId}
         total={count || 0}
         page={page}
         pageSize={PAGE_SIZE}
-        stages={stages}
         pipelines={pipelines || []}
         allTags={allTags}
+        allSources={allSources}
         savedFilters={savedFilters}
         filters={searchParams}
       />
+      {listRows.length === 0 && !isFiltered && (
+        <EmptyState
+          icon={Users}
+          title="Nenhum contato ainda"
+          description="Crie um contato manualmente com o botão +Contato ou capture através de formulários."
+        />
+      )}
     </div>
   )
 }

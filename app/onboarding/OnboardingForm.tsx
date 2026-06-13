@@ -259,9 +259,11 @@ function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
       // 1. Save personal data to user auth metadata
       await updateProfileInfo(form.full_name.trim(), form.phone.trim())
 
-      // 2. Create the org
+      // 2. Create the org (niche chosen in step 1 is saved on the account so it
+      //    shows up pre-selected in Configurações › Geral).
       const fd = new FormData()
       fd.set('name', form.org_name.trim())
+      if (form.niche) fd.set('niche', form.niche)
       const res = await createOrganization(fd)
 
       if (!res.ok) {

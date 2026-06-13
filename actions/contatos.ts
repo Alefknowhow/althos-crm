@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { leadSchema } from '@/lib/validators/lead'
 import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
+import { CONTATO_STATUSES } from '@/lib/contatos'
 import { z } from 'zod'
 
 // =====================================================================
@@ -692,6 +693,254 @@ export async function createCustomer(orgSlug: string, raw: unknown) {
 
   revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const, id: lead.id }
+}
+
+/* -------- Criar contato (sem exigir pipeline) -------- */
+
+const newContatoSchema = z.object({
+  name: z.string().trim().min(1, 'Nome é obrigatório'),
+  email: z.string().trim().email('E-mail inválido').optional().or(z.literal('')),
+  phone: z.string().trim().optional().or(z.literal('')),
+  status: z.enum(CONTATO_STATUSES).default('lead'),
+  source: z.string().trim().max(120).optional().or(z.literal('')),
+})
+
+/**
+ * Cria um contato direto na tela de Contatos — não passa pelo funil, então
+ * pipeline_id/stage_id ficam nulos. A classificação (lead/cliente/inativo) e a
+ * origem são definidas no cadastro. Dados de endereço/documentos/foto são
+ * completados depois, no painel de detalhe.
+ */
+export async function createContato(orgSlug: string, raw: unknown) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+
+  if (!(await canCreateLead(org.id))) {
+    return { ok: false as const, error: 'Limite de contatos atingido para o seu plano.' }
+  }
+
+  const parsed = newContatoSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
+  const { name, email, phone, status, source } = parsed.data
+
+  const supabase = createClient()
+  const { data: contato, error } = await supabase
+    .from('contatos')
+    .insert({
+      organization_id: org.id,
+      name,
+      email: email || null,
+      phone: phone || null,
+      status,
+      source: source || 'manual',
+      assigned_to: user.id,
+      became_customer_at: status === 'cliente' ? new Date().toISOString() : null,
+    })
+    .select('id')
+    .single()
+
+  if (error || !contato) {
+    return { ok: false as const, error: error?.message || 'Erro ao criar contato' }
+  }
+
+  await supabase.from('contato_activities').insert({
+    contato_id: contato.id,
+    organization_id: org.id,
+    type: 'manual_created',
+    payload: {},
+    created_by: user.id,
+  })
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const, id: contato.id }
+}
+
+/* -------- Detalhe completo para o painel master-detail -------- */
+
+export async function getContatoPanel(orgSlug: string, contatoId: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const [{ data: contato }, { data: documents }, { data: sales }] = await Promise.all([
+    supabase
+      .from('contatos')
+      .select('*, pipeline_stages(name)')
+      .eq('id', contatoId)
+      .eq('organization_id', org.id)
+      .maybeSingle(),
+    supabase
+      .from('contato_documents')
+      .select('id, kind, file_path, file_name, file_size_bytes, mime_type, created_at')
+      .eq('contato_id', contatoId)
+      .eq('organization_id', org.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('sales')
+      .select('id, sale_date, amount_cents, status, payment_method, installments, products(name)')
+      .eq('contato_id', contatoId)
+      .eq('organization_id', org.id)
+      .order('sale_date', { ascending: false }),
+  ])
+
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado' }
+
+  const { listRelationships } = await import('@/actions/relationships')
+  const relationships = await listRelationships(orgSlug, contatoId)
+
+  return {
+    ok: true as const,
+    contato,
+    documents: documents || [],
+    sales: sales || [],
+    relationships,
+  }
+}
+
+/* -------- Classificação (status) -------- */
+
+const setStatusSchema = z.object({ status: z.enum(CONTATO_STATUSES) })
+
+/**
+ * Define a classificação do contato (lead | cliente | inativo). Marca o
+ * became_customer_at na primeira vez que vira cliente; limpa ao sair de cliente.
+ */
+export async function setContatoStatus(orgSlug: string, contatoId: string, rawStatus: unknown) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const parsed = setStatusSchema.safeParse({ status: rawStatus })
+  if (!parsed.success) return { ok: false as const, error: 'Classificação inválida.' }
+  const { status } = parsed.data
+
+  const { data: current } = await supabase
+    .from('contatos')
+    .select('became_customer_at')
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+
+  const updates: Record<string, any> = { status }
+  if (status === 'cliente') {
+    updates.became_customer_at = current?.became_customer_at || new Date().toISOString()
+  } else {
+    updates.became_customer_at = null
+  }
+
+  const { error } = await supabase
+    .from('contatos')
+    .update(updates)
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
+  return { ok: true as const }
+}
+
+/* -------- Foto do contato (avatar) -------- */
+
+const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+
+export async function uploadContatoAvatar(
+  orgSlug: string,
+  contatoId: string,
+  formData: FormData,
+) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const file = formData.get('file') as File | null
+  if (!file || typeof file !== 'object') return { ok: false as const, error: 'Arquivo ausente' }
+  if (!ALLOWED_AVATAR_MIME.has(file.type)) {
+    return { ok: false as const, error: 'Use uma imagem PNG, JPG ou WebP.' }
+  }
+  if (file.size > MAX_AVATAR_SIZE) {
+    return { ok: false as const, error: 'Imagem muito grande (máx. 5MB).' }
+  }
+
+  const { data: contato } = await supabase
+    .from('contatos')
+    .select('id, avatar_url')
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado' }
+
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  const path = `${org.id}/${contatoId}/${Date.now()}.${ext}`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const { error: uploadError } = await supabase.storage
+    .from('contato-avatars')
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: false })
+  if (uploadError) return { ok: false as const, error: uploadError.message }
+
+  const { data: pub } = supabase.storage.from('contato-avatars').getPublicUrl(path)
+  const publicUrl = pub.publicUrl
+
+  const { error: updateError } = await supabase
+    .from('contatos')
+    .update({ avatar_url: publicUrl })
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+  if (updateError) {
+    await supabase.storage.from('contato-avatars').remove([path])
+    return { ok: false as const, error: updateError.message }
+  }
+
+  // Remove a foto anterior (best-effort) para não acumular lixo no bucket.
+  if (contato.avatar_url) {
+    const marker = '/contato-avatars/'
+    const idx = contato.avatar_url.indexOf(marker)
+    if (idx >= 0) {
+      const oldPath = contato.avatar_url.slice(idx + marker.length)
+      if (oldPath && oldPath !== path) {
+        await supabase.storage.from('contato-avatars').remove([oldPath])
+      }
+    }
+  }
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
+  return { ok: true as const, url: publicUrl }
+}
+
+export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: contato } = await supabase
+    .from('contatos')
+    .select('avatar_url')
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado' }
+
+  const { error } = await supabase
+    .from('contatos')
+    .update({ avatar_url: null })
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  if (contato.avatar_url) {
+    const marker = '/contato-avatars/'
+    const idx = contato.avatar_url.indexOf(marker)
+    if (idx >= 0) {
+      const oldPath = contato.avatar_url.slice(idx + marker.length)
+      if (oldPath) await supabase.storage.from('contato-avatars').remove([oldPath])
+    }
+  }
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
+  return { ok: true as const }
 }
 
 /* -------- Status de cliente (marcar / desmarcar) -------- */
