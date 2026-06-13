@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useRef, useEffect } from 'react'
-import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/leads'
+import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/contatos'
 import { cn } from '@/lib/utils'
 import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X, MessagesSquare } from 'lucide-react'
 import Link from 'next/link'
@@ -478,7 +478,7 @@ export default function LeadCard({
       </div>
 
       {/* Badges + tags row */}
-      {(tier || lead.is_customer || tags.length > 0 || !isOverlay) && (
+      {(tier || lead.status === 'cliente' || tags.length > 0 || !isOverlay) && (
         <div className="flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
@@ -486,7 +486,7 @@ export default function LeadCard({
               {tier.label}
             </span>
           )}
-          {lead.is_customer && (
+          {lead.status === 'cliente' && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
               <UserCheck className="h-2.5 w-2.5" />
               Cliente

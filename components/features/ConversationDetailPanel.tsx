@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
-import { updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage } from '@/actions/leads'
+import { updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage } from '@/actions/contatos'
 import { assignConversation, createLeadFromConversation } from '@/actions/whatsapp'
 
 type Member = { user_id: string; name: string; email: string }
@@ -209,7 +209,7 @@ export default function ConversationDetailPanel({
             <section className="space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de contato</h4>
-                <Link href={`/app/${orgSlug}/leads/${lead.id}`} className="text-[11px] text-primary hover:underline">Abrir lead</Link>
+                <Link href={`/app/${orgSlug}/contatos/${lead.id}`} className="text-[11px] text-primary hover:underline">Abrir lead</Link>
               </div>
               <label className="block text-xs text-muted-foreground">Nome</label>
               <Input value={name} onChange={e => setName(e.target.value)} className="h-9" />

@@ -66,10 +66,10 @@ export const automationStaleLeadsFn = inngest.createFunction(
         `fetch-stale-leads-${orgId}`,
         async () => {
           const { data } = await admin
-            .from('leads')
+            .from('contatos')
             .select('id')
             .eq('organization_id', orgId)
-            .not('status', 'in', '("won","lost")')
+            .eq('status', 'lead')
             .or(`last_activity_at.is.null,last_activity_at.lt.${cutoffISO}`)
             .limit(100)
           return data || []
@@ -106,7 +106,7 @@ export const automationTaskOverdueFn = inngest.createFunction(
     const admin = createAdminClient()
     const now   = new Date().toISOString()
 
-    // Only fire for tasks that have a lead_id (so the automation can act on the lead)
+    // Only fire for tasks that have a contato_id (so the automation can act on the lead)
     // and only for orgs that have at least one active task.overdue automation.
     const orgIds: string[] = await step.run('fetch-orgs-with-task-overdue-automations', async () => {
       const { data } = await admin
@@ -127,14 +127,14 @@ export const automationTaskOverdueFn = inngest.createFunction(
       id:              string
       title:           string
       organization_id: string
-      lead_id:         string
+      contato_id:         string
     }> = await step.run('fetch-overdue-tasks-for-automations', async () => {
       const { data } = await admin
         .from('tasks')
-        .select('id, title, organization_id, lead_id')
+        .select('id, title, organization_id, contato_id')
         .eq('status', 'open')
         .lt('due_date', now)
-        .not('lead_id', 'is', null)
+        .not('contato_id', 'is', null)
         .in('organization_id', orgIds)
         .limit(200)
       return data || []
@@ -148,7 +148,7 @@ export const automationTaskOverdueFn = inngest.createFunction(
           name: 'task.overdue',
           data: {
             orgId:  task.organization_id,
-            leadId: task.lead_id,
+            leadId: task.contato_id,
             taskId: task.id,
             title:  task.title,
           },
@@ -200,27 +200,32 @@ export const automationCustomerBirthdayFn = inngest.createFunction(
     // Profiles whose birthday is today (ignoring year). We over-fetch by
     // matching the MM-DD suffix via two range filters per org would be complex,
     // so we pull profiles with a non-null DOB for these orgs and filter in JS.
-    const profiles: Array<{ lead_id: string; organization_id: string; date_of_birth: string }> =
+    const profiles: Array<{ contato_id: string; organization_id: string; date_of_birth: string }> =
       await step.run('fetch-birthday-profiles', async () => {
         const { data } = await admin
-          .from('customer_profiles')
-          .select('lead_id, organization_id, date_of_birth')
+          .from('contatos')
+          .select('id, organization_id, date_of_birth')
           .in('organization_id', orgIds)
           .not('date_of_birth', 'is', null)
-          .not('lead_id', 'is', null)
           .limit(5000)
-        return (data || []).filter((p: any) => {
-          const d = String(p.date_of_birth) // 'YYYY-MM-DD'
-          return d.slice(5, 7) === mm && d.slice(8, 10) === dd
-        })
+        return (data || [])
+          .map((p: any) => ({
+            contato_id: p.id,
+            organization_id: p.organization_id,
+            date_of_birth: p.date_of_birth,
+          }))
+          .filter((p: any) => {
+            const d = String(p.date_of_birth) // 'YYYY-MM-DD'
+            return d.slice(5, 7) === mm && d.slice(8, 10) === dd
+          })
       })
 
     let totalFired = 0
     for (const profile of profiles) {
-      await step.run(`fire-birthday-${profile.lead_id}`, async () => {
+      await step.run(`fire-birthday-${profile.contato_id}`, async () => {
         await inngest.send({
           name: 'customer.birthday',
-          data: { orgId: profile.organization_id, leadId: profile.lead_id },
+          data: { orgId: profile.organization_id, leadId: profile.contato_id },
         })
         totalFired++
       })

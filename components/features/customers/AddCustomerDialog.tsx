@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createCustomer } from '@/actions/customers'
+import { createCustomer } from '@/actions/contatos'
 import { toast } from 'sonner'
 import { UserPlus } from 'lucide-react'
 
@@ -29,7 +29,7 @@ export default function AddCustomerDialog({ orgSlug }: { orgSlug: string }) {
     toast.success('Cliente adicionado')
     setOpen(false)
     setName(''); setEmail(''); setPhone('')
-    router.push(`/app/${orgSlug}/clientes/${res.id}`)
+    router.push(`/app/${orgSlug}/contatos/${res.id}`)
   }
 
   return (

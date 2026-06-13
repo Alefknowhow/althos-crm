@@ -160,9 +160,9 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
       status: 'sent'
     }).eq('id', msg.id)
     
-    if (conv.lead_id) {
-       await supabase.from('lead_activities').insert({
-          lead_id: conv.lead_id,
+    if (conv.contato_id) {
+       await supabase.from('contato_activities').insert({
+          contato_id: conv.contato_id,
           organization_id: org.id,
           type: 'whatsapp_sent',
           payload: { body: content }
@@ -382,11 +382,11 @@ export async function getConversationContext(orgSlug: string, conversationId: st
     .maybeSingle()
 
   let lead: any = null
-  if (conversation?.lead_id) {
+  if (conversation?.contato_id) {
     const { data } = await supabase
-      .from('leads')
+      .from('contatos')
       .select('*, pipeline_stages(id, name)')
-      .eq('id', conversation.lead_id)
+      .eq('id', conversation.contato_id)
       .eq('organization_id', org.id)
       .maybeSingle()
     lead = data
@@ -427,12 +427,12 @@ export async function createLeadFromConversation(orgSlug: string, conversationId
 
   const { data: conv } = await supabase
     .from('whatsapp_conversations')
-    .select('id, lead_id, contact_name, contact_phone')
+    .select('id, contato_id, contact_name, contact_phone')
     .eq('id', conversationId)
     .eq('organization_id', org.id)
     .maybeSingle()
   if (!conv) return { ok: false as const, error: 'Conversa não encontrada.' }
-  if (conv.lead_id) return { ok: false as const, error: 'Esta conversa já tem um lead vinculado.' }
+  if (conv.contato_id) return { ok: false as const, error: 'Esta conversa já tem um lead vinculado.' }
 
   const { data: pipeline } = await supabase
     .from('pipelines')
@@ -452,7 +452,7 @@ export async function createLeadFromConversation(orgSlug: string, conversationId
   if (!firstStage) return { ok: false as const, error: 'Pipeline sem estágios.' }
 
   const { data: lead, error: leadErr } = await supabase
-    .from('leads')
+    .from('contatos')
     .insert({
       organization_id: org.id,
       pipeline_id:     pipeline.id,
@@ -467,7 +467,7 @@ export async function createLeadFromConversation(orgSlug: string, conversationId
 
   await supabase
     .from('whatsapp_conversations')
-    .update({ lead_id: lead.id })
+    .update({ contato_id: lead.id })
     .eq('id', conv.id)
     .eq('organization_id', org.id)
 

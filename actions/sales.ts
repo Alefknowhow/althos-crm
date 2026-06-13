@@ -56,7 +56,7 @@ export async function createSale(orgSlug: string, input: unknown) {
   const v = parsed.data
   const { data, error } = await supabase.from('sales').insert({
     organization_id: org.id,
-    lead_id: v.lead_id || null,
+    contato_id: v.contato_id || null,
     product_id: v.product_id || null,
     seller_id: v.seller_id || user.id,
     sale_date: v.sale_date,

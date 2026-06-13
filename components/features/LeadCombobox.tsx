@@ -13,7 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { searchLeads } from '@/actions/leads'
+import { searchLeads } from '@/actions/contatos'
 
 type Lead = { id: string; name: string; email?: string | null; phone?: string | null }
 

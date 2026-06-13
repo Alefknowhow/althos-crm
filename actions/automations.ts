@@ -81,7 +81,7 @@ export async function getLeadAutomationRuns(orgSlug: string, leadId: string) {
   const { data } = await supabase
     .from('automation_runs')
     .select('*, automations(name)')
-    .eq('lead_id', leadId)
+    .eq('contato_id', leadId)
     .eq('organization_id', org.id)
     .order('started_at', { ascending: false })
 

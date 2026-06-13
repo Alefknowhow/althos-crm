@@ -5,7 +5,7 @@ import { getCurrentOrganization } from '@/lib/supabase/types'
 
 export type ScheduledTrip = {
   id: string
-  lead_id: string | null
+  contato_id: string | null
   status: string
   client_name: string | null
   destination: string | null
@@ -41,19 +41,19 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
   const { data: sales } = await supabase
     .from('travel_sales')
-    .select('id, lead_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes')
+    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes')
     .eq('organization_id', org.id)
     .not('departure_date', 'is', null)
     .order('departure_date', { ascending: true })
     .limit(500)
 
   const rows = (sales as any[]) ?? []
-  const leadIds = Array.from(new Set(rows.map(r => r.lead_id).filter(Boolean)))
+  const leadIds = Array.from(new Set(rows.map(r => r.contato_id).filter(Boolean)))
 
   const leadById = new Map<string, { name: string | null; phone: string | null }>()
   if (leadIds.length > 0) {
     const { data: leads } = await supabase
-      .from('leads')
+      .from('contatos')
       .select('id, name, phone')
       .eq('organization_id', org.id)
       .in('id', leadIds)
@@ -63,7 +63,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   }
 
   return rows.map(r => {
-    const lead = r.lead_id ? leadById.get(r.lead_id) : null
+    const lead = r.contato_id ? leadById.get(r.contato_id) : null
     return {
       ...r,
       lead_name: lead?.name ?? null,
@@ -80,7 +80,7 @@ export async function getTripTasks(orgSlug: string, leadId: string): Promise<Tri
     .from('tasks')
     .select('id, title, status, priority, due_date')
     .eq('organization_id', org.id)
-    .eq('lead_id', leadId)
+    .eq('contato_id', leadId)
     .order('due_date', { ascending: true })
     .limit(200)
   return (data as TripTask[]) ?? []

@@ -120,7 +120,7 @@ export async function getReport(
 
   if (type === 'leads') {
     const { data, error } = await supabase
-      .from('leads')
+      .from('contatos')
       .select('name, email, phone, source, value_cents, created_at, stage:stage_id(name)')
       .eq('organization_id', org.id)
       .gte('created_at', startISO)
@@ -161,7 +161,7 @@ export async function getReport(
   if (type === 'sales') {
     const { data, error } = await supabase
       .from('sales')
-      .select('sale_date, amount_cents, quantity, payment_method, installments, status, seller_id, lead:lead_id(name)')
+      .select('sale_date, amount_cents, quantity, payment_method, installments, status, seller_id, lead:contato_id(name)')
       .eq('organization_id', org.id)
       .gte('sale_date', from)
       .lte('sale_date', to)
@@ -269,7 +269,7 @@ export async function getReport(
   // appointments
   const { data, error } = await supabase
     .from('appointments')
-    .select('start_time, end_time, status, guest_name, guest_email, guest_phone, location, event_type:event_type_id(name), lead:lead_id(name)')
+    .select('start_time, end_time, status, guest_name, guest_email, guest_phone, location, event_type:event_type_id(name), lead:contato_id(name)')
     .eq('organization_id', org.id)
     .gte('start_time', startISO)
     .lte('start_time', endISO)

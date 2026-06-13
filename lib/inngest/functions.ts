@@ -67,8 +67,8 @@ export const sendEmail = inngest.createFunction(
         })
         .eq('id', emailSendId)
 
-      await supabase.from('lead_activities').insert({
-        lead_id: lead.id,
+      await supabase.from('contato_activities').insert({
+        contato_id: lead.id,
         organization_id: lead.organization_id,
         type: 'email_sent',
         payload: {
@@ -134,7 +134,7 @@ export const importLeadsCsv = inngest.createFunction(
           assigned_to: userId
         }
 
-        const { error } = await supabase.from('leads').insert(leadData)
+        const { error } = await supabase.from('contatos').insert(leadData)
         if (error) throw error
         successCount++
       } catch (err) {

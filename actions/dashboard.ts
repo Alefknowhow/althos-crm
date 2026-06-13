@@ -47,7 +47,7 @@ export async function getDashboardMetrics(
 
   // 1. Leads novos no período
   let leadsQ = supabase
-    .from('leads')
+    .from('contatos')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
     .gte('created_at', start.toISOString())
@@ -55,7 +55,7 @@ export async function getDashboardMetrics(
   const { count: currentLeads } = await leadsQ
 
   let prevLeadsQ = supabase
-    .from('leads')
+    .from('contatos')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
     .gte('created_at', previousStart.toISOString())
@@ -81,7 +81,7 @@ export async function getDashboardMetrics(
 
   if (closedStage) {
     let convQ = supabase
-      .from('leads')
+      .from('contatos')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', orgId)
       .eq('stage_id', closedStage.id)
@@ -92,7 +92,7 @@ export async function getDashboardMetrics(
     currentConversions = convCount || 0
 
     let prevConvQ = supabase
-      .from('leads')
+      .from('contatos')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', orgId)
       .eq('stage_id', closedStage.id)
@@ -219,7 +219,7 @@ export async function getRecentActivities(orgId: string) {
   const supabase = createClient()
 
   const { data: activities } = await supabase
-    .from('lead_activities')
+    .from('contato_activities')
     .select(`
       id,
       type,
@@ -364,7 +364,7 @@ export async function getAdvancedFunnel(
 
   // Build the leads query with filters applied.
   let q = supabase
-    .from('leads')
+    .from('contatos')
     .select('stage_id, value_cents, source, utm')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
@@ -476,7 +476,7 @@ export async function getFunnelSourceOptions(orgId: string) {
       .not('utm_campaign', 'is', null)
       .order('name', { ascending: true }),
     supabase
-      .from('leads')
+      .from('contatos')
       .select('utm')
       .eq('organization_id', orgId)
       .not('utm', 'is', null)
@@ -572,7 +572,7 @@ export async function getAtRiskLeads(
 
   // Pull open leads + their last stage change date (via lead_activities).
   const { data: openLeads } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id, name, stage_id, value_cents, created_at, updated_at')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
@@ -585,16 +585,16 @@ export async function getAtRiskLeads(
   // compute "time since entered current stage". Could be done with a window
   // function via RPC; for simplicity we pull and reduce in JS.
   const { data: stageChanges } = await supabase
-    .from('lead_activities')
-    .select('lead_id, created_at, payload')
-    .in('lead_id', leadIds)
+    .from('contato_activities')
+    .select('contato_id, created_at, payload')
+    .in('contato_id', leadIds)
     .eq('type', 'stage_changed')
     .order('created_at', { ascending: false })
 
   const latestChangeByLead = new Map<string, string>()
   for (const a of stageChanges || []) {
-    if (!latestChangeByLead.has(a.lead_id)) {
-      latestChangeByLead.set(a.lead_id, a.created_at)
+    if (!latestChangeByLead.has(a.contato_id)) {
+      latestChangeByLead.set(a.contato_id, a.created_at)
     }
   }
 
@@ -696,7 +696,7 @@ export async function getAverageTimePerStage(
   const stageMap = new Map(stages.map(s => [s.id, s]))
 
   const { data: leads } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id, stage_id, created_at')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
@@ -706,9 +706,9 @@ export async function getAverageTimePerStage(
   const leadIds = leads.map(l => l.id)
 
   const { data: changes } = await supabase
-    .from('lead_activities')
-    .select('lead_id, created_at, payload')
-    .in('lead_id', leadIds)
+    .from('contato_activities')
+    .select('contato_id, created_at, payload')
+    .in('contato_id', leadIds)
     .eq('type', 'stage_changed')
     .order('created_at', { ascending: true })
 
@@ -726,7 +726,7 @@ export async function getAverageTimePerStage(
   // when first created may differ from the "from" of the first stage_changed
   // event. We trust the first stage_changed's `from` if present.
   for (const c of changes || []) {
-    const t = timelineByLead.get(c.lead_id)
+    const t = timelineByLead.get(c.contato_id)
     if (!t) continue
     const payload = (c.payload as any) || {}
     const to = payload.to as string | undefined
@@ -874,7 +874,7 @@ export async function getRevenueForecast(
 
   // Current pipeline value per stage.
   const { data: openLeads } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('stage_id, value_cents')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
@@ -897,8 +897,8 @@ export async function getRevenueForecast(
 
   const stageIds = stages.map(s => s.id)
   const { data: histChanges } = await supabase
-    .from('lead_activities')
-    .select('lead_id, payload, created_at')
+    .from('contato_activities')
+    .select('contato_id, payload, created_at')
     .eq('type', 'stage_changed')
     .gte('created_at', histStart.toISOString())
     .limit(5000)
@@ -908,9 +908,9 @@ export async function getRevenueForecast(
   for (const a of histChanges || []) {
     const to = (a.payload as any)?.to as string | undefined
     if (!to) continue
-    const set = visitedByLead.get(a.lead_id) || new Set<string>()
+    const set = visitedByLead.get(a.contato_id) || new Set<string>()
     set.add(to)
-    visitedByLead.set(a.lead_id, set)
+    visitedByLead.set(a.contato_id, set)
   }
 
   // For each non-terminal stage, count "passed through" and "reached terminal".
@@ -1051,7 +1051,7 @@ export async function getSourcePerformance(
 
   // Pull all leads in window with source + stage + value.
   const { data: leads } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('source, stage_id, value_cents')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
@@ -1199,7 +1199,7 @@ export async function getMetricTimeSeries(
 
   if (metric === 'leads') {
     let q = supabase
-      .from('leads')
+      .from('contatos')
       .select('created_at')
       .eq('organization_id', orgId)
       .gte('created_at', start.toISOString())

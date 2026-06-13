@@ -202,7 +202,7 @@ export default function AutomationRunsPanel({ orgSlug, runs, steps }: Props) {
                     <Badge className={status.cls + ' border'}>{status.label}</Badge>
                     {lead ? (
                       <Link
-                        href={`/app/${orgSlug}/leads/${lead.id}`}
+                        href={`/app/${orgSlug}/contatos/${lead.id}`}
                         onClick={e => e.stopPropagation()}
                         className="text-sm font-medium hover:underline inline-flex items-center gap-1"
                       >

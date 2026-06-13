@@ -163,7 +163,7 @@ export default function OnboardingPage({ params }: { params: { orgSlug: string }
                 Você pode importar um arquivo .csv com nome, email e telefone.
               </p>
               <Button variant="outline" asChild>
-                <a href={`/app/${params.orgSlug}/leads/importar`}>Importar CSV</a>
+                <a href={`/app/${params.orgSlug}/contatos/importar`}>Importar CSV</a>
               </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">

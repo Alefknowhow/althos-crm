@@ -103,7 +103,7 @@ function AppointmentRow({
       <TableCell>
         {lead?.id ? (
           <Link
-            href={`/app/${orgSlug}/leads/${lead.id}`}
+            href={`/app/${orgSlug}/contatos/${lead.id}`}
             className="text-xs text-primary hover:underline inline-flex items-center gap-1"
           >
             {lead.name} <ExternalLink className="w-3 h-3" />

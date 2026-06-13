@@ -500,7 +500,7 @@ function TaskRow({
       <div className="hidden sm:flex w-[160px] shrink-0 justify-end">
         {task.leads && (
           <Link
-            href={`/app/${orgSlug}/leads/${task.leads.id}`}
+            href={`/app/${orgSlug}/contatos/${task.leads.id}`}
             onClick={e => e.stopPropagation()}
             className="text-xs text-primary hover:underline truncate"
           >
@@ -539,7 +539,7 @@ function EditSheet({
       description: fd.get('description') as string,
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
-      lead_id:     fd.get('lead_id')     as string,
+      contato_id:     fd.get('contato_id')     as string,
       assigned_to: fd.get('assigned_to') as string,
     }
     setSaving(true)
@@ -587,7 +587,7 @@ function EditSheet({
             <div className="space-y-2">
               <Label>Lead</Label>
               <LeadCombobox
-                name="lead_id"
+                name="contato_id"
                 orgSlug={orgSlug}
                 defaultLead={task.leads ? { id: task.leads.id, name: task.leads.name } : null}
               />

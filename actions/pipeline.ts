@@ -25,7 +25,7 @@ export async function listPipelines(orgSlug: string) {
   // Count stages and leads per pipeline in two grouped queries (avoid N+1).
   const [{ data: stageCounts }, { data: leadCounts }] = await Promise.all([
     supabase.from('pipeline_stages').select('pipeline_id').in('pipeline_id', ids),
-    supabase.from('leads').select('pipeline_id').in('pipeline_id', ids).eq('organization_id', org.id),
+    supabase.from('contatos').select('pipeline_id').in('pipeline_id', ids).eq('organization_id', org.id),
   ])
 
   const stageMap = new Map<string, number>()
@@ -153,7 +153,7 @@ export async function deletePipeline(orgSlug: string, pipelineId: string) {
 
   // Refuse if there are leads — user has to migrate them first to avoid silent data loss.
   const { count } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id', { count: 'exact', head: true })
     .eq('pipeline_id', pipelineId)
     .eq('organization_id', org.id)
@@ -260,7 +260,7 @@ export async function reorderStages(orgSlug: string, stageIds: string[]) {
 export async function deleteStage(orgSlug: string, stageId: string) {
   const supabase = createClient()
   
-  const { count } = await supabase.from('leads').select('id', { count: 'exact' }).eq('stage_id', stageId)
+  const { count } = await supabase.from('contatos').select('id', { count: 'exact' }).eq('stage_id', stageId)
   if (count && count > 0) {
     return { ok: false, error: 'Não é possível excluir um estágio que possui leads.' }
   }

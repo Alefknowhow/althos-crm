@@ -9,7 +9,7 @@ import { revalidatePath } from 'next/cache'
 export type TravelSaleRow = {
   id: string
   organization_id: string
-  lead_id: string | null
+  contato_id: string | null
   proposal_id: string | null
   created_by: string | null
   status: string
@@ -195,7 +195,7 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
       .maybeSingle()
     if (!proposal) return { ok: false as const, error: 'Proposta não encontrada.' }
     prefill = mapProposalToSaleFields(proposal)
-    leadId = (proposal as any).lead_id ?? null
+    leadId = (proposal as any).contato_id ?? null
     linkedProposalId = (proposal as any).id
   }
 
@@ -203,7 +203,7 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
     .from('travel_sales')
     .insert({
       organization_id: org.id,
-      lead_id: leadId,
+      contato_id: leadId,
       proposal_id: linkedProposalId,
       created_by: user.id,
       status: 'open',
@@ -319,7 +319,7 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
     const { error: tErr } = await supabase.from('tasks').insert(
       tasks.map(t => ({
         organization_id: org.id,
-        lead_id: s.lead_id,
+        contato_id: s.contato_id,
         title: t.title,
         description: t.description,
         due_date: t.due_date,
@@ -365,7 +365,7 @@ export async function maybeCreateTravelSaleOnWon(
       .from('travel_proposals')
       .select('*')
       .eq('organization_id', org.id)
-      .eq('lead_id', leadId)
+      .eq('contato_id', leadId)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -383,7 +383,7 @@ export async function maybeCreateTravelSaleOnWon(
 
     await supabase.from('travel_sales').insert({
       organization_id: org.id,
-      lead_id: leadId,
+      contato_id: leadId,
       proposal_id: proposal.id,
       created_by: userId,
       status: 'open',

@@ -243,12 +243,12 @@ async function queryKpis(input: Record<string, any>, ctx: AnalyticsContext): Pro
     { count: apptPrev },
   ] = await Promise.all([
     supabase
-      .from('leads')
+      .from('contatos')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', ctx.orgId)
       .gte('created_at', start.toISOString()),
     supabase
-      .from('leads')
+      .from('contatos')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', ctx.orgId)
       .gte('created_at', prevStart.toISOString())
@@ -465,7 +465,7 @@ async function queryPipeline(
     .order('position', { ascending: true })
 
   const { data: leads } = await ctx.supabase
-    .from('leads')
+    .from('contatos')
     .select('stage_id, value_cents')
     .eq('organization_id', ctx.orgId)
     .eq('pipeline_id', pipelineId)
@@ -617,7 +617,7 @@ async function queryTopLeads(
   const n = Math.min(20, Math.max(1, Number(input.n) || 10))
 
   let q = ctx.supabase
-    .from('leads')
+    .from('contatos')
     .select('id, name, email, phone, value_cents, ai_score, ai_tier, source, updated_at, created_at')
     .eq('organization_id', ctx.orgId)
     .limit(n)

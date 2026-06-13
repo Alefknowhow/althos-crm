@@ -90,7 +90,7 @@ function MobileLeadCard({
       </p>
 
       {/* Badges / tags */}
-      {(tier || lead.is_customer || tags.length > 0) && (
+      {(tier || lead.status === 'cliente' || tags.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-1">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
@@ -98,7 +98,7 @@ function MobileLeadCard({
               {tier.label}
             </span>
           )}
-          {lead.is_customer && (
+          {lead.status === 'cliente' && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
               <UserCheck className="h-2.5 w-2.5" />
               Cliente

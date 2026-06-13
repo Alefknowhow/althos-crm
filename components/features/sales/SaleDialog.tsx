@@ -31,7 +31,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
   const [isPending, startTransition] = useTransition()
 
   const [productId, setProductId] = useState<string>(initial?.product_id || '')
-  const [leadId, setLeadId] = useState<string>(initial?.lead_id || '')
+  const [leadId, setLeadId] = useState<string>(initial?.contato_id || '')
   const [sellerId, setSellerId] = useState<string>(initial?.seller_id || currentUserId)
   const [saleDate, setSaleDate] = useState<string>(initial?.sale_date || new Date().toISOString().slice(0, 10))
   const [quantity, setQuantity] = useState<number>(initial?.quantity || 1)
@@ -72,7 +72,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
     e.preventDefault()
     startTransition(async () => {
       const payload = {
-        lead_id: leadId || null,
+        contato_id: leadId || null,
         product_id: productId || null,
         seller_id: sellerId || null,
         sale_date: saleDate,
@@ -109,7 +109,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
             <div className="space-y-1.5">
               <Label>Lead</Label>
               <LeadCombobox
-                name="lead_id"
+                name="contato_id"
                 orgSlug={orgSlug}
                 defaultLead={initial?.leads ? { id: initial.leads.id, name: initial.leads.name } : null}
                 onChange={(l) => setLeadId(l?.id || '')}

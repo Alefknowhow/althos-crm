@@ -107,7 +107,7 @@ export async function queueEmailForLead(orgSlug: string, leadId: string, templat
   
   const { data: emailSend, error } = await supabase.from('email_sends').insert({
     organization_id: org.id,
-    lead_id: leadId,
+    contato_id: leadId,
     template_id: templateId,
     to_email: toEmail,
     status: 'queued'
@@ -117,6 +117,6 @@ export async function queueEmailForLead(orgSlug: string, leadId: string, templat
 
   await inngest.send({ name: 'email.send', data: { emailSendId: emailSend.id } })
 
-  revalidatePath(`/app/${orgSlug}/leads/${leadId}`)
+  revalidatePath(`/app/${orgSlug}/contatos/${leadId}`)
   return { ok: true }
 }

@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   Kanban,
   Users,
-  UserCheck,
   CheckSquare,
   FileText,
   Package,
@@ -167,20 +166,11 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('leads') && (
-          <SidebarNavLink href={`${base}/leads`} dataTour="leads">
+        {(can('leads') || can('clients')) && (
+          <SidebarNavLink href={`${base}/contatos`} dataTour="leads">
             <span className="flex items-center gap-2.5">
               <Users className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Leads</span>
-            </span>
-          </SidebarNavLink>
-        )}
-
-        {can('clients') && (
-          <SidebarNavLink href={`${base}/clientes`}>
-            <span className="flex items-center gap-2.5">
-              <UserCheck className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Clientes</span>
+              <span>Contatos</span>
             </span>
           </SidebarNavLink>
         )}

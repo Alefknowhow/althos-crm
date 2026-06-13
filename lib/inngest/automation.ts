@@ -62,7 +62,7 @@ export const processAutomationEvent = inngest.createFunction(
           const { data: run } = await supabase.from('automation_runs').insert({
             organization_id: orgId,
             automation_id: auto.id,
-            lead_id: leadId,
+            contato_id: leadId,
             status: 'running',
             current_step: 0,
             started_at: new Date().toISOString(),
@@ -169,7 +169,7 @@ export const executeAutomationRun = inngest.createFunction(
                     sent = { to: lead.email, templateId: stepDef.config.templateId }
                     const { data: emailSend } = await supabase.from('email_sends').insert({
                       organization_id: orgId,
-                      lead_id: lead.id,
+                      contato_id: lead.id,
                       template_id: stepDef.config.templateId,
                       to_email: lead.email,
                       status: 'pending'
@@ -209,7 +209,7 @@ export const executeAutomationRun = inngest.createFunction(
                     sent = { title, dueDate: dueDate.toISOString(), priority: stepDef.config.priority || 'normal' }
                     await supabase.from('tasks').insert({
                       organization_id: orgId,
-                      lead_id: lead.id,
+                      contato_id: lead.id,
                       title,
                       status: 'todo',
                       priority: stepDef.config.priority || 'normal',
@@ -220,9 +220,9 @@ export const executeAutomationRun = inngest.createFunction(
                 case 'move_stage':
                   if (stepDef.config.stageId) {
                     sent = { stageId: stepDef.config.stageId }
-                    await supabase.from('leads').update({ stage_id: stepDef.config.stageId }).eq('id', lead.id)
-                    await supabase.from('lead_activities').insert({
-                      lead_id: lead.id,
+                    await supabase.from('contatos').update({ stage_id: stepDef.config.stageId }).eq('id', lead.id)
+                    await supabase.from('contato_activities').insert({
+                      contato_id: lead.id,
                       organization_id: orgId,
                       type: 'stage_changed',
                       payload: { automation: auto.name }
@@ -233,7 +233,7 @@ export const executeAutomationRun = inngest.createFunction(
                   if (stepDef.config.tag) {
                     sent = { tag: stepDef.config.tag }
                     const newTags = Array.from(new Set([...(lead.tags || []), stepDef.config.tag]))
-                    await supabase.from('leads').update({ tags: newTags }).eq('id', lead.id)
+                    await supabase.from('contatos').update({ tags: newTags }).eq('id', lead.id)
                   }
                   break;
 

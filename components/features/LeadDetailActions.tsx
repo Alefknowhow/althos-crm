@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { updateLead, deleteLead, addLeadNote } from '@/actions/leads'
+import { updateLead, deleteLead, addLeadNote } from '@/actions/contatos'
 
 export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any, orgSlug: string, stages: any[] }) {
   const router = useRouter()
@@ -55,7 +55,7 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
       toast.error(res.error || 'Erro ao excluir lead')
       return
     }
-    router.push(`/app/${orgSlug}/leads`)
+    router.push(`/app/${orgSlug}/contatos`)
   }
 
   return (

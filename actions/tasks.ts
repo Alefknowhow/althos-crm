@@ -26,14 +26,14 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     description: v.description || null,
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
     priority:    v.priority || 'normal',
-    lead_id:     v.lead_id  || null,
+    contato_id:     v.contato_id  || null,
     assigned_to: v.assigned_to || user.id,
     status: 'open',
   })
 
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/tarefas`)
-  if (v.lead_id) revalidatePath(`/app/${orgSlug}/leads/${v.lead_id}`)
+  if (v.contato_id) revalidatePath(`/app/${orgSlug}/contatos/${v.contato_id}`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
@@ -49,7 +49,7 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.description !== undefined) updates.description = input.description || null
   if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null
   if (input.priority    !== undefined) updates.priority    = input.priority
-  if (input.lead_id     !== undefined) updates.lead_id     = input.lead_id || null
+  if (input.contato_id     !== undefined) updates.contato_id     = input.contato_id || null
   if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to || null
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)

@@ -21,13 +21,12 @@ export default function PrefetchRoutes({ orgSlug }: { orgSlug: string }) {
     const base = `/app/${orgSlug}`
     const routes = [
       `${base}/pipeline`,
-      `${base}/clientes`,
+      `${base}/contatos`,
       `${base}/cotacoes`,
       `${base}/embarques`,
       `${base}/tarefas`,
       `${base}/conversas`,
       `${base}/reservas`,
-      `${base}/leads`,
       `${base}/insights`,
       `${base}/automacoes`,
       `${base}/configuracoes`,

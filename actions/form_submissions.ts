@@ -159,7 +159,7 @@ export async function getLeadFormResponses(
   const { data: subs } = await supabase
     .from('form_submissions')
     .select('id, created_at, data, form_id, forms(name, schema, organization_id)')
-    .eq('lead_id', leadId)
+    .eq('contato_id', leadId)
     .order('created_at', { ascending: false })
 
   const out: LeadFormResponse[] = []
@@ -225,7 +225,7 @@ export async function getFormWithSubmissions(
   let q = supabase
     .from('form_submissions')
     .select(
-      'id, created_at, data, meta, lead_id, utm_source, utm_medium, utm_campaign, leads(id, name, email, phone)',
+      'id, created_at, data, meta, contato_id, utm_source, utm_medium, utm_campaign, leads(id, name, email, phone)',
       { count: 'exact' },
     )
     .eq('form_id', formId)

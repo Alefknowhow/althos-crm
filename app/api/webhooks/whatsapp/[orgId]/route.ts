@@ -83,10 +83,10 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
 
             let { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('organization_id', params.orgId).eq('contact_phone', phone).single()
 
-            let leadId = conv?.lead_id
+            let leadId = conv?.contato_id
 
             if (!leadId) {
-              const { data: leads } = await supabase.from('leads').select('id').eq('organization_id', params.orgId).eq('phone', phone).limit(1)
+              const { data: leads } = await supabase.from('contatos').select('id').eq('organization_id', params.orgId).eq('phone', phone).limit(1)
               if (leads && leads.length > 0) leadId = leads[0].id
             }
 
@@ -98,7 +98,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
                 stageId = stage?.id
               }
 
-              const { data: newLead } = await supabase.from('leads').insert({
+              const { data: newLead } = await supabase.from('contatos').insert({
                 organization_id: params.orgId,
                 name: contactName,
                 phone: phone,
@@ -120,7 +120,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
                 organization_id: params.orgId,
                 contact_phone: phone,
                 contact_name: contactName,
-                lead_id: leadId,
+                contato_id: leadId,
                 last_message_at: new Date(msg.timestamp * 1000).toISOString(),
                 last_message_preview: preview,
                 last_message_direction: 'inbound',
@@ -133,7 +133,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
                 last_message_preview: preview,
                 last_message_direction: 'inbound',
                 unread_count: (conv.unread_count || 0) + 1,
-                lead_id: leadId
+                contato_id: leadId
               }).eq('id', conv.id)
             }
 
@@ -148,8 +148,8 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
             })
 
             if (leadId) {
-              await supabase.from('lead_activities').insert({
-                lead_id: leadId,
+              await supabase.from('contato_activities').insert({
+                contato_id: leadId,
                 organization_id: params.orgId,
                 type: 'whatsapp_received',
                 payload: { body: msg.text?.body || '[Mídia]', message_id: msg.id }

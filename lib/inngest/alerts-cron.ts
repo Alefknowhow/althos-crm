@@ -117,7 +117,7 @@ export const generateSystemAlertsFn = inngest.createFunction(
       const activeOrgs = (orgs ?? []).filter((o: any) => o.subscription_status === 'active')
       for (const o of activeOrgs as any[]) {
         const { count: recent } = await admin
-          .from('leads')
+          .from('contatos')
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', o.id)
           .gte('last_activity_at', churnCutoff)
@@ -125,7 +125,7 @@ export const generateSystemAlertsFn = inngest.createFunction(
         if ((recent ?? 0) === 0) {
           // Only flag orgs that actually have leads (skip brand-new empty orgs).
           const { count: total } = await admin
-            .from('leads')
+            .from('contatos')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', o.id)
           if ((total ?? 0) > 0) {

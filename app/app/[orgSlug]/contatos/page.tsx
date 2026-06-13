@@ -1,11 +1,19 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import LeadsView from '@/components/features/leads/LeadsView'
 import EmptyState from '@/components/ui/empty-state'
 import { Users } from 'lucide-react'
 import { listSavedFilters } from '@/actions/saved_filters'
 
 const PAGE_SIZE = 25
+
+const STATUS_TABS: { value: string; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'lead', label: 'Leads' },
+  { value: 'cliente', label: 'Clientes' },
+  { value: 'inativo', label: 'Inativos' },
+]
 
 type SP = {
   q?: string
@@ -20,10 +28,11 @@ type SP = {
   value_min?: string
   value_max?: string
   tier?: string
+  status?: string
   page?: string
 }
 
-export default async function LeadsPage({
+export default async function ContatosPage({
   params,
   searchParams,
 }: {
@@ -46,15 +55,22 @@ export default async function LeadsPage({
   const valueMin = Number(searchParams.value_min) || 0
   const valueMax = Number(searchParams.value_max) || 0
   const tier = searchParams.tier || ''
+  const status =
+    searchParams.status === 'lead' ||
+    searchParams.status === 'cliente' ||
+    searchParams.status === 'inativo'
+      ? searchParams.status
+      : ''
 
   let q = supabase
-    .from('leads')
+    .from('contatos')
     .select(
-      'id, name, email, phone, stage_id, pipeline_id, tags, value_cents, created_at, updated_at, source, ai_score, ai_tier, ai_summary, pipeline_stages(id, name)',
+      'id, name, email, phone, status, stage_id, pipeline_id, tags, value_cents, created_at, updated_at, source, ai_score, ai_tier, ai_summary, pipeline_stages(id, name)',
       { count: 'exact' },
     )
     .eq('organization_id', org.id)
 
+  if (status) q = q.eq('status', status)
   if (search) {
     const safe = search.replace(/[%_]/g, '\\$&')
     q = q.or(`name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${safe}%`)
@@ -92,7 +108,7 @@ export default async function LeadsPage({
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: true }),
     listSavedFilters(params.orgSlug, 'leads'),
-    supabase.from('leads').select('tags').eq('organization_id', org.id).limit(1000),
+    supabase.from('contatos').select('tags').eq('organization_id', org.id).limit(1000),
   ])
 
   // Stages shown in the filter UI: scoped to the selected pipeline, or all stages
@@ -124,14 +140,50 @@ export default async function LeadsPage({
   }
   const allTags = Array.from(tagSet).sort()
 
+  // Preserve all non-status filters when switching status tabs.
+  const buildStatusHref = (value: string) => {
+    const sp = new URLSearchParams()
+    for (const [k, v] of Object.entries(searchParams)) {
+      if (k === 'status' || k === 'page' || !v) continue
+      sp.set(k, String(v))
+    }
+    if (value) sp.set('status', value)
+    const qs = sp.toString()
+    return `/app/${params.orgSlug}/contatos${qs ? `?${qs}` : ''}`
+  }
+
+  const header = (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Contatos</h1>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {STATUS_TABS.map(tab => {
+          const active = status === tab.value
+          return (
+            <Link
+              key={tab.value || 'all'}
+              href={buildStatusHref(tab.value)}
+              className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   if (!leads || leads.length === 0) {
     const isFiltered =
-      !!(search || pipelineFilter || stage || tag || hasEmail || hasPhone || createdFrom || createdTo || valueMin || valueMax || noContactDays || tier)
+      !!(search || pipelineFilter || stage || tag || hasEmail || hasPhone || createdFrom || createdTo || valueMin || valueMax || noContactDays || tier || status)
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Leads</h1>
-        </div>
+        {header}
         <LeadsView
           orgSlug={params.orgSlug}
           leads={[]}
@@ -147,9 +199,9 @@ export default async function LeadsPage({
         {!isFiltered && (
           <EmptyState
             icon={Users}
-            title="Nenhum lead encontrado"
-            description="Comece capturando leads através de formulários ou crie um manualmente."
-            actionLabel="Criar Primeiro Lead"
+            title="Nenhum contato encontrado"
+            description="Comece capturando contatos através de formulários ou crie um manualmente."
+            actionLabel="Criar Primeiro Contato"
             actionHref={`/app/${params.orgSlug}/pipeline`}
           />
         )}
@@ -159,9 +211,7 @@ export default async function LeadsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Leads</h1>
-      </div>
+      {header}
       <LeadsView
         orgSlug={params.orgSlug}
         leads={leads as any[]}

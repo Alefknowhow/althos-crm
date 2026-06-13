@@ -153,7 +153,7 @@ export async function getOrgUsage(orgId: string) {
   const supabase = createClient()
 
   const { count: leadCount } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
 

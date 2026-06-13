@@ -43,7 +43,7 @@ export type SocialInteraction = {
   response_type: string | null
   lead_created: boolean
   created_at: string
-  lead_id: string | null
+  contato_id: string | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ export async function getSocialInteractions(
   const orgId = await getOrgId(orgSlug)
   const { data, error } = await supabase
     .from('social_interactions')
-    .select('id, platform, interaction_type, sender_username, sender_name, inbound_text, response_text, response_type, lead_created, created_at, lead_id')
+    .select('id, platform, interaction_type, sender_username, sender_name, inbound_text, response_text, response_type, lead_created, created_at, contato_id')
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false })
     .limit(limit)

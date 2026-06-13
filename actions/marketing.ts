@@ -403,7 +403,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const startIso = new Date(start).toISOString()
   const { data: subs } = await supabase
     .from('form_submissions')
-    .select('utm_campaign, lead_id')
+    .select('utm_campaign, contato_id')
     .gte('created_at', startIso)
     .not('utm_campaign', 'is', null)
 

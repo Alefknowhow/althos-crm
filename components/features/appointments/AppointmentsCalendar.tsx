@@ -25,7 +25,7 @@ export type CalendarAppointment = {
   notes?: string | null
   canceled_reason: string | null
   event_type_id: string
-  lead_id: string | null
+  contato_id: string | null
   event_types: { name: string; color: string | null; duration_minutes: number } | { name: string; color: string | null; duration_minutes: number }[] | null
   leads: { id: string; name: string } | { id: string; name: string }[] | null
 }
@@ -536,7 +536,7 @@ export default function AppointmentsCalendar({
 
                 {selectedLead?.id && (
                   <Link
-                    href={`/app/${orgSlug}/leads/${selectedLead.id}`}
+                    href={`/app/${orgSlug}/contatos/${selectedLead.id}`}
                     className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
                   >
                     Abrir lead ({selectedLead.name}) <ExternalLink className="w-3 h-3" />

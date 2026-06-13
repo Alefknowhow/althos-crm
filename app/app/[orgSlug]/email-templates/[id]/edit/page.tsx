@@ -10,7 +10,7 @@ export default async function EditTemplatePage({ params }: { params: { orgSlug: 
   const { data: template } = await supabase.from('email_templates').select('*').eq('id', params.id).eq('organization_id', org.id).single()
   if (!template) notFound()
 
-  const { data: lead } = await supabase.from('leads').select('*').eq('organization_id', org.id).limit(1).single()
+  const { data: lead } = await supabase.from('contatos').select('*').eq('organization_id', org.id).limit(1).single()
 
   return (
     <div className="h-[calc(100vh-4rem)] -m-6 flex flex-col">

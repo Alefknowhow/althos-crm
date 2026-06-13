@@ -36,8 +36,8 @@ export async function searchEverything(
   // Leads search across name/email/phone. RLS gates by org_id but we add
   // explicit .eq for query-plan clarity.
   const leadsP = supabase
-    .from('leads')
-    .select('id, name, email, phone, is_customer')
+    .from('contatos')
+    .select('id, name, email, phone, status')
     .eq('organization_id', org.id)
     .or(`name.ilike.${like},email.ilike.${like},phone.ilike.${like}`)
     .limit(8)
@@ -46,16 +46,16 @@ export async function searchEverything(
 
   const hits: SearchHit[] = []
 
-  // Customers (lead rows flagged is_customer) get their own bucket + a
-  // /clientes/{id} link to the customer view.
+  // Contatos com status 'cliente' ganham um bucket próprio; os demais
+  // entram como 'lead'. Ambos linkam para a página unificada /contatos/{id}.
   for (const l of leads || []) {
-    if ((l as any).is_customer) {
+    if ((l as any).status === 'cliente') {
       hits.push({
         kind: 'customer',
         id: l.id,
         title: l.name,
         subtitle: l.email || l.phone || null,
-        href: `/app/${orgSlug}/clientes/${l.id}`,
+        href: `/app/${orgSlug}/contatos/${l.id}`,
       })
     } else {
       hits.push({
@@ -63,7 +63,7 @@ export async function searchEverything(
         id: l.id,
         title: l.name,
         subtitle: l.email || l.phone || null,
-        href: `/app/${orgSlug}/leads/${l.id}`,
+        href: `/app/${orgSlug}/contatos/${l.id}`,
       })
     }
   }

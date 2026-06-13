@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Search, MapPin, FileCheck2, ExternalLink, Mail, Phone } from 'lucide-react'
-import type { CustomerListRow } from '@/actions/customers'
+import type { CustomerListRow } from '@/actions/contatos'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -126,7 +126,7 @@ export default function CustomersTable({
                     <TableRow key={c.id}>
                       <TableCell>
                         <Link
-                          href={`/app/${orgSlug}/clientes/${c.id}`}
+                          href={`/app/${orgSlug}/contatos/${c.id}`}
                           className="text-sm font-medium hover:underline"
                         >
                           {c.name}
@@ -181,7 +181,7 @@ export default function CustomersTable({
                       </TableCell>
                       <TableCell className="text-right">
                         <Link
-                          href={`/app/${orgSlug}/clientes/${c.id}`}
+                          href={`/app/${orgSlug}/contatos/${c.id}`}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                         >
                           Abrir <ExternalLink className="w-3 h-3" />

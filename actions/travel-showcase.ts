@@ -189,7 +189,7 @@ export async function generateProposalFromPackage(orgSlug: string, packageId: st
       end_date: p.end_date,
       // campos de cliente ficam em branco — serão preenchidos depois
       client_name: null,
-      lead_id: null,
+      contato_id: null,
       destinations: p.destinations ?? [],
       flights: p.flights ?? [],
       hotels: p.hotels ?? [],

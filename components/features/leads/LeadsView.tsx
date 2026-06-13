@@ -59,7 +59,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { createLead, bulkUpdateLeads, bulkDeleteLeads, findDuplicateLead } from '@/actions/leads'
+import { createLead, bulkUpdateLeads, bulkDeleteLeads, findDuplicateLead } from '@/actions/contatos'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
 
@@ -386,7 +386,7 @@ export default function LeadsView({
                       </TableCell>
                       <TableCell>
                         <Link
-                          href={`/app/${orgSlug}/leads/${lead.id}`}
+                          href={`/app/${orgSlug}/contatos/${lead.id}`}
                           className="font-medium hover:underline"
                         >
                           {lead.name}
@@ -976,7 +976,7 @@ function NewLeadDialog({ orgSlug, stages }: { orgSlug: string; stages: Stage[] }
                 <strong>Lead já existe:</strong> {duplicate.name}.
                 <br />
                 <Link
-                  href={`/app/${orgSlug}/leads/${duplicate.id}`}
+                  href={`/app/${orgSlug}/contatos/${duplicate.id}`}
                   className="underline text-amber-800 dark:text-amber-300"
                 >
                   Abrir lead existente
@@ -1079,7 +1079,7 @@ function BulkBar({
   function exportCsv() {
     // Simple client-side export of selected ids — server action with full data
     // is the next iteration; for now we hand the IDs to the user as CSV.
-    const blob = new Blob([['lead_id', ...ids].join('\n')], { type: 'text/csv' })
+    const blob = new Blob([['contato_id', ...ids].join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

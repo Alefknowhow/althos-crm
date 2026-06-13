@@ -18,7 +18,7 @@ import {
   uploadCustomerDocument,
   deleteCustomerDocument,
   getDocumentSignedUrl,
-} from '@/actions/customers'
+} from '@/actions/contatos'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

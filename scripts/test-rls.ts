@@ -68,7 +68,7 @@ async function runRlsTests() {
   const { data: ps2 } = await adminClient.from('pipeline_stages').insert({ pipeline_id: p2.id, name: 'S2', position: 1 }).select().single();
   
   // Create a lead in each org
-  await adminClient.from('leads').insert([
+  await adminClient.from('contatos').insert([
     { organization_id: org1.id, pipeline_id: p1.id, stage_id: ps1.id, name: 'Lead Org 1' },
     { organization_id: org2.id, pipeline_id: p2.id, stage_id: ps2.id, name: 'Lead Org 2' }
   ]);
@@ -81,7 +81,7 @@ async function runRlsTests() {
   const client1 = createClient(supabaseUrl, supabaseAnonKey);
   await client1.auth.signInWithPassword({ email: email1, password });
   
-  const { data: leads1 } = await client1.from('leads').select('*');
+  const { data: leads1 } = await client1.from('contatos').select('*');
   if (leads1 && leads1.length === 1 && leads1[0].name === 'Lead Org 1') {
     console.log("✅ PASS: User 1 can only read their own leads.");
   } else {
@@ -93,7 +93,7 @@ async function runRlsTests() {
   const client2 = createClient(supabaseUrl, supabaseAnonKey);
   await client2.auth.signInWithPassword({ email: email2, password });
   
-  const { data: leads2 } = await client2.from('leads').select('*');
+  const { data: leads2 } = await client2.from('contatos').select('*');
   if (leads2 && leads2.length === 1 && leads2[0].name === 'Lead Org 2') {
     console.log("✅ PASS: User 2 can only read their own leads.");
   } else {
@@ -102,7 +102,7 @@ async function runRlsTests() {
   }
   
   // Attempt to read cross-tenant
-  const { data: crossRead } = await client1.from('leads').select('*').eq('organization_id', org2.id);
+  const { data: crossRead } = await client1.from('contatos').select('*').eq('organization_id', org2.id);
   if (crossRead && crossRead.length === 0) {
     console.log("✅ PASS: User 1 cannot read User 2's leads.");
   } else {
@@ -111,7 +111,7 @@ async function runRlsTests() {
   }
   
   // Attempt to insert cross-tenant
-  const { error: crossInsertError } = await client1.from('leads').insert({
+  const { error: crossInsertError } = await client1.from('contatos').insert({
     organization_id: org2.id, pipeline_id: p2.id, stage_id: ps2.id, name: 'Hacked Lead'
   });
   

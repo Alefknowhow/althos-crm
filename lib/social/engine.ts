@@ -103,7 +103,7 @@ async function maybeCreateLead(
   const externalRef = inbound.senderUsername ? `@${inbound.senderUsername}` : inbound.senderId
   // De-dupe: don't create a second lead for the same Instagram sender.
   const { data: existing } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id')
     .eq('organization_id', orgId)
     .eq('source', `instagram:${externalRef}`)
@@ -127,7 +127,7 @@ async function maybeCreateLead(
     : { data: null }
 
   const { data: lead } = await supabase
-    .from('leads')
+    .from('contatos')
     .insert({
       organization_id: orgId,
       pipeline_id: defaultStage?.pipeline_id ?? null,
@@ -249,7 +249,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     organization_id: orgId,
     social_connection_id: connection.id,
     social_automation_id: auto.id,
-    lead_id: leadId,
+    contato_id: leadId,
     platform: 'instagram',
     interaction_type: inbound.kind,
     sender_external_id: inbound.senderId,

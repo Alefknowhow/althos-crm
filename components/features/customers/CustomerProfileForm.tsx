@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Search, Save, Loader2 } from 'lucide-react'
-import { upsertCustomerProfile } from '@/actions/customers'
+import { upsertCustomerProfile } from '@/actions/contatos'
 
 type Profile = {
   cpf: string | null
@@ -26,7 +26,7 @@ type Profile = {
   city: string | null
   state: string | null
   country: string | null
-  notes: string | null
+  address_notes: string | null
 } | null
 
 function maskCpf(v: string): string {
@@ -74,7 +74,7 @@ export default function CustomerProfileForm({
     city: initial?.city || '',
     state: initial?.state || '',
     country: initial?.country || 'BR',
-    notes: initial?.notes || '',
+    address_notes: initial?.address_notes || '',
   })
 
   /**
@@ -301,8 +301,8 @@ export default function CustomerProfileForm({
           </div>
           <Textarea
             rows={3}
-            value={form.notes}
-            onChange={e => setForm({ ...form, notes: e.target.value })}
+            value={form.address_notes}
+            onChange={e => setForm({ ...form, address_notes: e.target.value })}
             placeholder="Preferências, restrições, contexto pra futuro contato..."
           />
         </div>

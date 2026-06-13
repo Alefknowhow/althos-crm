@@ -31,7 +31,7 @@ export default async function OnboardingChecklistCard({
       .eq('id', orgId)
       .maybeSingle(),
     supabase
-      .from('leads')
+      .from('contatos')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', orgId),
     supabase
@@ -60,7 +60,7 @@ export default async function OnboardingChecklistCard({
       id: 'lead',
       label: 'Cadastre seu primeiro lead',
       description: 'Importe ou crie um lead para começar a vender.',
-      href: `${base}/leads`,
+      href: `${base}/contatos`,
       done: hasLeads,
     },
     {

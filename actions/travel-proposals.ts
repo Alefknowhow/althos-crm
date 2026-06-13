@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache'
 export type ProposalRow = {
   id: string
   organization_id: string
-  lead_id: string | null
+  contato_id: string | null
   created_by: string | null
   title: string | null
   status: string
@@ -39,7 +39,7 @@ export type ProposalRow = {
 
 // Whitelist of body fields a client may write. Keeps the jsonb shape predictable.
 const WRITABLE = [
-  'title', 'status', 'lead_id', 'start_date', 'end_date', 'client_name',
+  'title', 'status', 'contato_id', 'start_date', 'end_date', 'client_name',
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
   'services', 'included', 'not_included', 'checklist', 'photos', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
@@ -175,7 +175,7 @@ export async function listProposalsForLead(orgSlug: string, leadId: string): Pro
     .from('travel_proposals')
     .select('id, title, status, total_cents, start_date, end_date, public_token, updated_at')
     .eq('organization_id', org.id)
-    .eq('lead_id', leadId)
+    .eq('contato_id', leadId)
     .order('updated_at', { ascending: false })
     .limit(100)
   return (data as LeadProposalRow[]) ?? []
@@ -186,7 +186,7 @@ export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string;
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id, name')
     .eq('organization_id', org.id)
     .order('updated_at', { ascending: false })

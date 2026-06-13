@@ -10,7 +10,7 @@ import {
   Search, MapPin, FileCheck2, ExternalLink, Mail, Phone, ChevronLeft,
   Users, Wallet, CalendarClock, UserCheck,
 } from 'lucide-react'
-import type { CustomerListRow } from '@/actions/customers'
+import type { CustomerListRow } from '@/actions/contatos'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -233,7 +233,7 @@ function CustomerPreview({
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" asChild>
-          <Link href={`/app/${orgSlug}/clientes/${c.id}`}>
+          <Link href={`/app/${orgSlug}/contatos/${c.id}`}>
             <ExternalLink className="w-4 h-4 mr-1.5" /> Página completa
           </Link>
         </Button>

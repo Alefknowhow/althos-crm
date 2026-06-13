@@ -28,7 +28,7 @@ export async function getUsageStatus(orgId: string) {
   }
 
   const { count: currentLeads } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
 

@@ -344,8 +344,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </button>
-                {selectedConversation.lead_id && (
-                  <Link href={`/app/${orgSlug}/leads/${selectedConversation.lead_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>
+                {selectedConversation.contato_id && (
+                  <Link href={`/app/${orgSlug}/contatos/${selectedConversation.contato_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>
                 )}
               </div>
             </div>

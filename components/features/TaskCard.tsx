@@ -36,7 +36,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       description: fd.get('description') as string,
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
-      lead_id:     fd.get('lead_id')     as string,
+      contato_id:     fd.get('contato_id')     as string,
     }
     const res = await updateTask(orgSlug, task.id, input)
     if (!res.ok) {
@@ -88,7 +88,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
         
         <div className="flex items-center gap-4">
           {task.leads && (
-            <Link href={`/app/${orgSlug}/leads/${task.leads.id}`} className="text-sm text-primary hover:underline" onClick={e => e.stopPropagation()}>
+            <Link href={`/app/${orgSlug}/contatos/${task.leads.id}`} className="text-sm text-primary hover:underline" onClick={e => e.stopPropagation()}>
               {task.leads.name}
             </Link>
           )}
@@ -123,7 +123,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
             <div className="space-y-2">
               <Label>Lead</Label>
               <LeadCombobox
-                name="lead_id"
+                name="contato_id"
                 orgSlug={orgSlug}
                 defaultLead={task.leads ? { id: task.leads.id, name: task.leads.name } : null}
               />

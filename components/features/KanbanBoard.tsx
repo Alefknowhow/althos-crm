@@ -17,7 +17,7 @@ import LeadCard, { type CardMember } from './LeadCard'
 import PipelineKpiBar from './pipeline/PipelineKpiBar'
 import MobilePipelineList from './pipeline/MobilePipelineList'
 import CurrencyInput from './pipeline/CurrencyInput'
-import { moveLeadToStage } from '@/actions/leads'
+import { moveLeadToStage } from '@/actions/contatos'
 import LeadDetailDrawer from './LeadDetailDrawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { createLead } from '@/actions/leads'
+import { createLead } from '@/actions/contatos'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { Search, AlarmClock, X, BarChart3, LayoutGrid, List } from 'lucide-react'

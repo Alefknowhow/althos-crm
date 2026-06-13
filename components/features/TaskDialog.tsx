@@ -65,7 +65,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
       description: '',
       due_date:    today,
       priority:    'normal',
-      lead_id:     defaultLead?.id || '',
+      contato_id:     defaultLead?.id || '',
       assigned_to: '',
     },
   })
@@ -79,7 +79,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
       }
       toast.success('Tarefa criada!')
       form.reset({
-        title: '', description: '', due_date: today, priority: 'normal', lead_id: '', assigned_to: '',
+        title: '', description: '', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
       })
       setOpen(false)
       router.refresh()
@@ -206,13 +206,13 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
               {/* Lead */}
               <FormField
                 control={form.control}
-                name="lead_id"
+                name="contato_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vincular a Lead <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
                     <FormControl>
                       <LeadCombobox
-                        name="lead_id"
+                        name="contato_id"
                         orgSlug={orgSlug}
                         defaultLead={defaultLead || null}
                         onChange={(lead) => field.onChange(lead?.id || '')}

@@ -58,9 +58,9 @@ export default async function PipelinePage({
       .eq('pipeline_id', pipeline.id)
       .order('position'),
     supabase
-      .from('leads')
+      .from('contatos')
       .select(
-        'id, name, stage_id, value_cents, tags, updated_at, created_at, last_activity_at, email, phone, assigned_to, ai_score, ai_tier, is_customer, source',
+        'id, name, stage_id, value_cents, tags, updated_at, created_at, last_activity_at, email, phone, assigned_to, ai_score, ai_tier, status, source',
       )
       .eq('pipeline_id', pipeline.id)
       .eq('organization_id', org.id)

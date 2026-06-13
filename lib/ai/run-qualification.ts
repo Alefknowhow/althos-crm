@@ -52,7 +52,7 @@ export async function runLeadQualification(
       p_account_id: accountId,
       p_action: 'lead_scoring',
       p_credits: 1,
-      p_lead_id: leadId,
+      p_contato_id: leadId,
       p_metadata: { feature: 'lead_scoring', orgId },
     })
     if (creditErr) {
@@ -64,7 +64,7 @@ export async function runLeadQualification(
 
   // 2) Lead
   const { data: lead } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('id, name, email, phone, source, tags, value_cents, custom_fields, organization_id')
     .eq('id', leadId)
     .eq('organization_id', orgId)
@@ -86,7 +86,7 @@ export async function runLeadQualification(
     const { data: sub } = await supabase
       .from('form_submissions')
       .select('form_id, forms(schema)')
-      .eq('lead_id', leadId)
+      .eq('contato_id', leadId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -132,7 +132,7 @@ export async function runLeadQualification(
   const mergedTags = Array.from(new Set([...(lead.tags || []), ...result.tags]))
 
   const { error: updateErr } = await supabase
-    .from('leads')
+    .from('contatos')
     .update({
       ai_score:        result.score,
       ai_tier:         result.tier,
@@ -149,8 +149,8 @@ export async function runLeadQualification(
   }
 
   // Activity log — best effort
-  await supabase.from('lead_activities').insert({
-    lead_id:         leadId,
+  await supabase.from('contato_activities').insert({
+    contato_id:         leadId,
     organization_id: orgId,
     type:            'ai_qualified',
     payload: {

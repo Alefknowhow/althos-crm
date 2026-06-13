@@ -61,7 +61,7 @@ export async function createSavedFilter(
     return { ok: false as const, error: error?.message || 'Erro ao salvar filtro' }
   }
 
-  revalidatePath(`/app/${orgSlug}/leads`)
+  revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const, filter: data as SavedFilter }
 }
 
@@ -76,6 +76,6 @@ export async function deleteSavedFilter(orgSlug: string, id: string) {
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/leads`)
+  revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const }
 }

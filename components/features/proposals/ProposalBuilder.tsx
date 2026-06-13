@@ -610,7 +610,7 @@ export default function ProposalBuilder({
   async function handleSave() {
     setSaving(true)
     const res = await updateProposal(orgSlug, p.id, {
-      title: p.title, status: p.status, lead_id: p.lead_id,
+      title: p.title, status: p.status, contato_id: p.contato_id,
       start_date: p.start_date || null, end_date: p.end_date || null,
       client_name: p.client_name,
       destinations: p.destinations, flights: p.flights, hotels: p.hotels,
@@ -705,8 +705,8 @@ export default function ProposalBuilder({
         <SectionCard icon={Users} title="Cliente e período">
           <Field label="Vincular a um lead do pipeline">
             <Select
-              value={p.lead_id || 'none'}
-              onValueChange={v => set('lead_id', v === 'none' ? null : v)}
+              value={p.contato_id || 'none'}
+              onValueChange={v => set('contato_id', v === 'none' ? null : v)}
             >
               <SelectTrigger><SelectValue placeholder="Selecione um lead" /></SelectTrigger>
               <SelectContent>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
-import { getLead } from '@/actions/leads'
+import { getLead } from '@/actions/contatos'
 import LeadDetailActions from './LeadDetailActions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 

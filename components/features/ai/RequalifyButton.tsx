@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Sparkles, Loader2 } from 'lucide-react'
-import { requestLeadQualification } from '@/actions/leads'
+import { requestLeadQualification } from '@/actions/contatos'
 
 export default function RequalifyButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
   const router = useRouter()

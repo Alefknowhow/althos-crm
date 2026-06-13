@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { createLead } from '@/actions/leads'
+import { createLead } from '@/actions/contatos'
 
 export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: { orgSlug: string, stages: any[], isCreateOnly?: boolean }) {
   const router = useRouter()
@@ -21,7 +21,7 @@ export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: {
       const params = new URLSearchParams(searchParams.toString())
       if (search) params.set('q', search)
       else params.delete('q')
-      router.push(`/app/${orgSlug}/leads?${params.toString()}`)
+      router.push(`/app/${orgSlug}/contatos?${params.toString()}`)
     }, 300)
     return () => clearTimeout(timer)
   }, [search, router, orgSlug, searchParams])

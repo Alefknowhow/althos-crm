@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const saleInputSchema = z.object({
-  lead_id: z.string().uuid().nullable().optional(),
+  contato_id: z.string().uuid().nullable().optional(),
   product_id: z.string().uuid().nullable().optional(),
   seller_id: z.string().uuid().nullable().optional(),
   sale_date: z.string().min(1, 'Informe a data'),

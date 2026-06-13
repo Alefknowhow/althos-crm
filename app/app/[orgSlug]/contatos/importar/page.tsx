@@ -49,7 +49,7 @@ export default function ImportLeadsPage({ params }: { params: { orgSlug: string 
     try {
       await triggerCsvImport(params.orgSlug, data, mapping)
       toast.success('Importação iniciada em segundo plano! Você receberá uma notificação em breve.')
-      router.push(`/app/${params.orgSlug}/leads`)
+      router.push(`/app/${params.orgSlug}/contatos`)
     } catch (error) {
       toast.error('Erro ao iniciar importação')
     } finally {
@@ -60,7 +60,7 @@ export default function ImportLeadsPage({ params }: { params: { orgSlug: string 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Importar Leads</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Importar Contatos</h1>
         <p className="text-muted-foreground">Siga os passos abaixo para importar seus contatos.</p>
       </div>
 

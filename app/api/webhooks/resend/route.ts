@@ -57,8 +57,8 @@ export async function POST(req: Request) {
       }
 
       if (activityType) {
-        await supabase.from('lead_activities').insert({
-          lead_id: emailSend.lead_id,
+        await supabase.from('contato_activities').insert({
+          contato_id: emailSend.contato_id,
           organization_id: emailSend.organization_id,
           type: activityType,
           payload: { resend_id: emailId, event: payload.type },

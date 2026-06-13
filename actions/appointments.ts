@@ -218,7 +218,7 @@ export async function listAppointments(
   let q = supabase
     .from('appointments')
     .select(
-      'id, start_time, end_time, status, guest_name, guest_email, guest_phone, notes, location, canceled_at, canceled_reason, event_type_id, lead_id, event_types(name, color, duration_minutes), leads(id, name)',
+      'id, start_time, end_time, status, guest_name, guest_email, guest_phone, notes, location, canceled_at, canceled_reason, event_type_id, contato_id, event_types(name, color, duration_minutes), leads(id, name)',
     )
     .eq('organization_id', org.id)
 
@@ -315,7 +315,7 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
   let leadId: string | null = parsed.data.leadId || null
   if (!leadId) {
     const { data: existing } = await supabase
-      .from('leads')
+      .from('contatos')
       .select('id')
       .eq('organization_id', org.id)
       .eq('email', parsed.data.guestEmail)
@@ -323,7 +323,7 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
     if (existing) {
       leadId = existing.id
       await supabase
-        .from('leads')
+        .from('contatos')
         .update({
           name: parsed.data.guestName,
           phone: parsed.data.guestPhone || undefined,
@@ -332,7 +332,7 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
         .eq('id', leadId)
     } else {
       const { data: newLead } = await supabase
-        .from('leads')
+        .from('contatos')
         .insert({
           organization_id: org.id,
           pipeline_id: eventType.pipeline_id,
@@ -354,7 +354,7 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
     .insert({
       organization_id: org.id,
       event_type_id: eventType.id,
-      lead_id: leadId,
+      contato_id: leadId,
       start_time: parsed.data.startTime,
       end_time: endIso,
       guest_name: parsed.data.guestName,
@@ -373,8 +373,8 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
   }
 
   if (leadId) {
-    await supabase.from('lead_activities').insert({
-      lead_id: leadId,
+    await supabase.from('contato_activities').insert({
+      contato_id: leadId,
       organization_id: org.id,
       type: 'appointment_scheduled',
       payload: {
@@ -597,7 +597,7 @@ export async function createPublicAppointment(input: z.infer<typeof publicBookin
   // Find or create lead by email.
   let leadId: string | null = null
   const { data: existing } = await admin
-    .from('leads')
+    .from('contatos')
     .select('id')
     .eq('organization_id', org.id)
     .eq('email', parsed.data.guestEmail)
@@ -606,7 +606,7 @@ export async function createPublicAppointment(input: z.infer<typeof publicBookin
   if (existing) {
     leadId = existing.id
     await admin
-      .from('leads')
+      .from('contatos')
       .update({
         name: parsed.data.guestName,
         phone: parsed.data.guestPhone || undefined,
@@ -615,7 +615,7 @@ export async function createPublicAppointment(input: z.infer<typeof publicBookin
       .eq('id', leadId)
   } else {
     const { data: newLead } = await admin
-      .from('leads')
+      .from('contatos')
       .insert({
         organization_id: org.id,
         pipeline_id: eventType.pipeline_id,
@@ -635,7 +635,7 @@ export async function createPublicAppointment(input: z.infer<typeof publicBookin
     .insert({
       organization_id: org.id,
       event_type_id: eventType.id,
-      lead_id: leadId,
+      contato_id: leadId,
       start_time: parsed.data.startTime,
       end_time: endIso,
       guest_name: parsed.data.guestName,
@@ -654,8 +654,8 @@ export async function createPublicAppointment(input: z.infer<typeof publicBookin
   }
 
   if (leadId) {
-    await admin.from('lead_activities').insert({
-      lead_id: leadId,
+    await admin.from('contato_activities').insert({
+      contato_id: leadId,
       organization_id: org.id,
       type: 'appointment_scheduled',
       payload: {

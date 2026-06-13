@@ -77,7 +77,7 @@ export default async function PipelineAtRiskWidget({
                   {stage.leads.map(lead => (
                     <Link
                       key={lead.id}
-                      href={`/app/${orgSlug}/leads/${lead.id}`}
+                      href={`/app/${orgSlug}/contatos/${lead.id}`}
                       className="flex items-center justify-between px-3 py-2 rounded-md border hover:bg-muted hover:border-primary/40 transition-all group text-sm"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -107,7 +107,7 @@ export default async function PipelineAtRiskWidget({
                   ))}
                   {stage.at_risk_count > stage.leads.length && (
                     <Link
-                      href={`/app/${orgSlug}/leads?no_contact_days=7&stage=${stage.stage_id}`}
+                      href={`/app/${orgSlug}/contatos?no_contact_days=7&stage=${stage.stage_id}`}
                       className="block text-center text-[11px] text-primary hover:underline py-1"
                     >
                       Ver todos ({stage.at_risk_count}) →

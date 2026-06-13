@@ -117,9 +117,9 @@ export default function ScheduleClient({
   function openTrip(t: ScheduledTrip) {
     setSelected(t)
     setTasks([])
-    if (t.lead_id) {
+    if (t.contato_id) {
       startTasks(async () => {
-        const res = await getTripTasks(orgSlug, t.lead_id!)
+        const res = await getTripTasks(orgSlug, t.contato_id!)
         setTasks(res)
       })
     }
@@ -384,7 +384,7 @@ function TripDetail({
             <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
             {loadingTasks && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
           </div>
-          {!trip.lead_id ? (
+          {!trip.contato_id ? (
             <p className="text-sm text-muted-foreground">Viagem sem lead vinculado — sem tarefas.</p>
           ) : !loadingTasks && tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma tarefa para este cliente.</p>

@@ -134,7 +134,7 @@ export async function consumeAiCredits(opts: {
     p_account_id: accountId,
     p_action: action,
     p_credits: cost,
-    p_lead_id: leadId,
+    p_contato_id: leadId,
     p_metadata: { ...metadata, model: model ?? undefined, multiplier },
   })
 

@@ -86,7 +86,7 @@ export async function getGlobalMetrics(): Promise<GlobalMetrics> {
 
   const [orgsRes, leadsRes, usersRes, newOrgsRes] = await Promise.all([
     admin.from('organizations').select('id, subscription_status'),
-    admin.from('leads').select('id', { count: 'exact', head: true }),
+    admin.from('contatos').select('id', { count: 'exact', head: true }),
     admin.from('memberships').select('user_id'),
     admin.from('organizations').select('id', { count: 'exact', head: true }).gte('created_at', ago30),
   ])
@@ -234,7 +234,7 @@ export async function getAllOrganizations(): Promise<SuperAdminOrg[]> {
   // Fetch lead counts + member counts in parallel per org
   const withStats = await Promise.all(orgs.map(async (org) => {
     const [leadsRes, membersRes] = await Promise.all([
-      admin.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
+      admin.from('contatos').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
       admin.from('memberships').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
     ])
     return {
@@ -886,7 +886,7 @@ export async function getPlatformAccounts(): Promise<AdminAccountRow[]> {
   // Lead counts per org (small N — handful of orgs).
   const leadCountByOrg = new Map<string, number>()
   await Promise.all(orgs.map(async (o) => {
-    const { count } = await admin.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', o.id)
+    const { count } = await admin.from('contatos').select('id', { count: 'exact', head: true }).eq('organization_id', o.id)
     leadCountByOrg.set(o.id, count ?? 0)
   }))
 

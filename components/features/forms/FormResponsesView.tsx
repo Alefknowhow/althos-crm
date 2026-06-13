@@ -25,7 +25,7 @@ type Submission = {
   created_at: string
   data: Record<string, any> | null
   meta: Record<string, any> | null
-  lead_id: string | null
+  contato_id: string | null
   utm_source?: string | null
   utm_medium?: string | null
   utm_campaign?: string | null
@@ -350,7 +350,7 @@ export default function FormResponsesView({
                       </div>
                       {selectedLead.id && (
                         <Link
-                          href={`/app/${orgSlug}/leads/${selectedLead.id}`}
+                          href={`/app/${orgSlug}/contatos/${selectedLead.id}`}
                           className="inline-flex items-center gap-1 text-primary hover:underline text-xs mt-1"
                         >
                           Abrir lead <ExternalLink className="w-3 h-3" />

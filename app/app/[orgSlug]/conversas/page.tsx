@@ -26,7 +26,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   if (searchParams.id) {
     selectedConversation = conversations?.find(c => c.id === searchParams.id) || null
   } else if (searchParams.lead) {
-    selectedConversation = conversations?.find(c => c.lead_id === searchParams.lead) || null
+    selectedConversation = conversations?.find(c => c.contato_id === searchParams.lead) || null
   }
 
   {

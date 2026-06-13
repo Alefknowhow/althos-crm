@@ -19,7 +19,7 @@ export default function LeadTable({ leads, orgSlug }: { leads: any[], orgSlug: s
         {leads.map(lead => (
           <TableRow key={lead.id} className="cursor-pointer">
             <TableCell>
-              <Link href={`/app/${orgSlug}/leads/${lead.id}`} className="block font-medium hover:underline">
+              <Link href={`/app/${orgSlug}/contatos/${lead.id}`} className="block font-medium hover:underline">
                 {lead.name}
               </Link>
             </TableCell>

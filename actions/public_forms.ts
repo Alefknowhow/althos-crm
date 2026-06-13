@@ -48,13 +48,13 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   let leadId: string | null = null
 
   if (emailValue) {
-    const { data: existingLead } = await supabaseAdmin.from('leads').select('id')
+    const { data: existingLead } = await supabaseAdmin.from('contatos').select('id')
       .eq('organization_id', form.organization_id)
       .eq('email', emailValue).maybeSingle()
 
     if (existingLead) {
       leadId = existingLead.id
-      await supabaseAdmin.from('leads').update({
+      await supabaseAdmin.from('contatos').update({
         name: nameValue,
         phone: phoneValue || undefined,
         stage_id: form.stage_id || undefined,
@@ -64,7 +64,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   }
 
   if (!leadId) {
-    const { data: newLead } = await supabaseAdmin.from('leads').insert({
+    const { data: newLead } = await supabaseAdmin.from('contatos').insert({
       organization_id: form.organization_id,
       pipeline_id: form.pipeline_id,
       stage_id: form.stage_id,
@@ -86,7 +86,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
 
   const { error: submissionError } = await supabaseAdmin.from('form_submissions').insert({
     form_id: form.id,
-    lead_id: leadId,
+    contato_id: leadId,
     data: validData,
     meta: meta,
     utm_source: utmSource,
@@ -105,8 +105,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
 
   if (leadId) {
     // lead_activity — best-effort, don't fail the submission on error.
-    const { error: activityError } = await supabaseAdmin.from('lead_activities').insert({
-      lead_id: leadId,
+    const { error: activityError } = await supabaseAdmin.from('contato_activities').insert({
+      contato_id: leadId,
       organization_id: form.organization_id,
       type: 'form_submitted',
       payload: { form_id: form.id, form_name: form.name, data: validData }

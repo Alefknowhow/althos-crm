@@ -1,4 +1,4 @@
-import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -8,20 +8,43 @@ import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 import TaskCard from '@/components/features/TaskCard'
 import TaskDialog from '@/components/features/TaskDialog'
 import SendEmailDialog from '@/components/features/SendEmailDialog'
+import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
+import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
+import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
+import { listRelationships } from '@/actions/relationships'
 
-export default async function LeadDetailPage({
-  params
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  lead: { label: 'Lead', className: 'border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20' },
+  cliente: {
+    label: 'Cliente',
+    className: 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20',
+  },
+  inativo: {
+    label: 'Inativo',
+    className: 'border-zinc-300 text-zinc-600 bg-zinc-50 dark:bg-zinc-800/40',
+  },
+}
+
+function fmtCurrency(cents: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+    (cents || 0) / 100,
+  )
+}
+
+export default async function ContatoDetailPage({
+  params,
 }: {
-  params: { orgSlug: string, id: string }
+  params: { orgSlug: string; id: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
-  
+
   const { data: lead } = await supabase
-    .from('leads')
+    .from('contatos')
     .select('*, pipeline_stages(name)')
     .eq('id', params.id)
     .eq('organization_id', org.id)
@@ -36,22 +59,25 @@ export default async function LeadDetailPage({
     { data: templates },
     { data: defaultPipeline },
     { data: whatsappConv },
+    { data: sales },
+    { data: documents },
+    relationships,
   ] = await Promise.all([
     supabase
-      .from('lead_activities')
+      .from('contato_activities')
       .select('id, type, payload, created_at')
-      .eq('lead_id', lead.id)
+      .eq('contato_id', lead.id)
       .order('created_at', { ascending: false })
       .limit(50),
     supabase
       .from('tasks')
-      .select('id, title, status, priority, due_date, lead_id')
-      .eq('lead_id', lead.id)
+      .select('id, title, status, priority, due_date, contato_id')
+      .eq('contato_id', lead.id)
       .order('due_date', { ascending: true }),
     supabase
       .from('email_sends')
       .select('id, status, created_at, email_templates(name)')
-      .eq('lead_id', lead.id)
+      .eq('contato_id', lead.id)
       .order('created_at', { ascending: false }),
     supabase
       .from('email_templates')
@@ -59,7 +85,20 @@ export default async function LeadDetailPage({
       .eq('organization_id', org.id)
       .order('name', { ascending: true }),
     supabase.from('pipelines').select('id').eq('organization_id', org.id).eq('is_default', true).maybeSingle(),
-    supabase.from('whatsapp_conversations').select('*').eq('lead_id', lead.id).maybeSingle(),
+    supabase.from('whatsapp_conversations').select('*').eq('contato_id', lead.id).maybeSingle(),
+    supabase
+      .from('sales')
+      .select('id, sale_date, amount_cents, status, payment_method, installments, products(name)')
+      .eq('contato_id', lead.id)
+      .eq('organization_id', org.id)
+      .order('sale_date', { ascending: false }),
+    supabase
+      .from('contato_documents')
+      .select('id, kind, file_path, file_name, file_size_bytes, mime_type, created_at')
+      .eq('contato_id', lead.id)
+      .eq('organization_id', org.id)
+      .order('created_at', { ascending: false }),
+    listRelationships(params.orgSlug, lead.id),
   ])
 
   const stagesRes = defaultPipeline
@@ -71,29 +110,60 @@ export default async function LeadDetailPage({
     : { data: [] as any[] }
   const stages = stagesRes.data || []
 
+  const statusMeta = STATUS_META[lead.status] || STATUS_META.lead
+  const totalPurchased = (sales || []).reduce(
+    (a: number, s: any) => a + (s.amount_cents || 0),
+    0,
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <Link
+        href={`/app/${params.orgSlug}/contatos`}
+        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="w-3 h-3" /> Contatos
+      </Link>
+
+      <div className="flex justify-between items-start gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold">{lead.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{lead.name}</h1>
+            <Badge variant="outline" className={statusMeta.className}>
+              {statusMeta.label}
+            </Badge>
+          </div>
           <div className="text-muted-foreground mt-1 space-x-4">
             <span>{lead.email || 'Sem e-mail'}</span>
             <span>{lead.phone || 'Sem telefone'}</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <AIScoreBadge score={lead.ai_score} tier={lead.ai_tier} summary={lead.ai_summary} />
-          <Badge variant={lead.stage_id ? "default" : "outline"} className="text-sm px-3 py-1">
-            {lead.stage_id ? stages.find(s => s.id === lead.stage_id)?.name || 'Estágio Atual' : 'Sem estágio'}
+          <Badge variant={lead.stage_id ? 'default' : 'outline'} className="text-sm px-3 py-1">
+            {lead.stage_id
+              ? stages.find(s => s.id === lead.stage_id)?.name || 'Estágio Atual'
+              : 'Sem estágio'}
           </Badge>
           <RequalifyButton orgSlug={params.orgSlug} leadId={lead.id} />
           <SendEmailDialog orgSlug={params.orgSlug} lead={lead} templates={templates || []} org={org} />
           <LeadDetailActions lead={lead} orgSlug={params.orgSlug} stages={stages} />
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
+          {/* Cadastro (CPF, endereço, passaporte) */}
+          <CustomerProfileForm orgSlug={params.orgSlug} leadId={lead.id} initial={lead} />
+
+          {/* Documentos */}
+          <CustomerDocuments
+            orgSlug={params.orgSlug}
+            leadId={lead.id}
+            profileId={lead.id}
+            initialDocuments={documents || []}
+          />
+
           <Card>
             <CardHeader><CardTitle>Timeline de Atividades</CardTitle></CardHeader>
             <CardContent>
@@ -105,7 +175,7 @@ export default async function LeadDetailPage({
                     </div>
                     <div>
                       <div className="text-sm font-medium">
-                        {act.type === 'manual_created' ? 'Lead criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type}
+                        {act.type === 'manual_created' ? 'Contato criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type}
                       </div>
                       {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
                       {act.type === 'ai_qualified' && (
@@ -165,7 +235,7 @@ export default async function LeadDetailPage({
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>WhatsApp</CardTitle>
@@ -186,14 +256,14 @@ export default async function LeadDetailPage({
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-lg">
-                  <p className="mb-4">Este lead ainda não possui conversas registradas via WhatsApp Cloud API.</p>
+                  <p className="mb-4">Este contato ainda não possui conversas registradas via WhatsApp Cloud API.</p>
                   <Button variant="outline" className="text-xs" disabled>Iniciar nova (em breve via HSM)</Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-        
+
         <div className="space-y-6">
           <Card>
             <CardHeader><CardTitle>Detalhes</CardTitle></CardHeader>
@@ -212,6 +282,49 @@ export default async function LeadDetailPage({
                   {lead.tags?.length ? lead.tags.map((t: string) => <Badge key={t} variant="outline">{t}</Badge>) : '-'}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Parentesco */}
+          <ContatoRelationships
+            orgSlug={params.orgSlug}
+            contatoId={lead.id}
+            initial={relationships}
+          />
+
+          {/* Compras */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Compras</CardTitle>
+              <span className="text-sm font-bold tabular-nums">{fmtCurrency(totalPurchased)}</span>
+            </CardHeader>
+            <CardContent>
+              {(sales || []).length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Sem vendas registradas.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {(sales || []).map((s: any) => {
+                    const product = Array.isArray(s.products) ? s.products[0] : s.products
+                    return (
+                      <div key={s.id} className="border-l-2 border-primary/30 pl-3 py-1 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{product?.name || 'Venda'}</span>
+                          <span className="text-xs tabular-nums font-semibold">
+                            {fmtCurrency(s.amount_cents)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                          <span>{new Date(s.sale_date).toLocaleDateString('pt-BR')}</span>
+                          {s.payment_method && <span>· {s.payment_method}</span>}
+                          {(s.installments || 0) > 1 && <span>· {s.installments}x</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
