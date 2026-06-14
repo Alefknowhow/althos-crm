@@ -14,6 +14,7 @@ import PushNotificationToggle from '@/components/features/PushNotificationToggle
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget } from '@/components/features/SupportWidget'
 import Link from 'next/link'
+import { Activity } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { isAccessBlocked } from '@/lib/billing/plans'
@@ -98,6 +99,15 @@ export default async function OrgLayout({
 
             <div className="flex items-center gap-2">
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
+              <Link
+                href={`/app/${params.orgSlug}/configuracoes/integracoes/saude`}
+                aria-label="Saúde das integrações"
+                title="Saúde das integrações"
+                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors"
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Saúde</span>
+              </Link>
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <Link
                 href={`/app/${params.orgSlug}/ajuda`}

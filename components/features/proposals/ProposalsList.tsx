@@ -16,7 +16,7 @@ import { createProposal, deleteProposal, type ProposalRow } from '@/actions/trav
 import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
-  ArrowLeft, Share2, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
+  ArrowLeft, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -295,10 +295,15 @@ function ProposalDetail({
 
   const travelers = Array.isArray(p.travelers) ? p.travelers : []
 
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
+    catch { toast.error('Não foi possível copiar') }
+  }
+
   return (
     <div className="flex flex-col w-full">
       {/* header */}
-      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex items-center gap-3 z-10">
+      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex items-center gap-2 z-10">
         <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
@@ -308,9 +313,33 @@ function ProposalDetail({
             <Badge variant="outline" className={cn('shrink-0', st.cls)}>{st.label}</Badge>
           </div>
         </div>
-        <Button asChild size="sm">
-          <Link href={`/app/${orgSlug}/cotacoes/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Abrir editor</Link>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button asChild size="sm">
+            <Link href={`/app/${orgSlug}/cotacoes/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Abrir editor</Link>
+          </Button>
+          {p.public_token && (
+            <>
+              <Button type="button" variant="outline" size="sm" asChild>
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF
+                </a>
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={copyLink}>
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+                {copied ? 'Copiado' : 'Copiar link'}
+              </Button>
+            </>
+          )}
+          <Button
+            type="button" variant="outline" size="icon"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Excluir proposta"
+            title="Excluir proposta"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="p-4 space-y-5">
@@ -341,30 +370,6 @@ function ProposalDetail({
           </div>
         )}
 
-        {p.public_token && (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 space-y-2">
-            <p className="text-sm font-medium flex items-center gap-2"><Share2 className="w-4 h-4 text-primary" /> Link público</p>
-            <Input readOnly value={publicUrl} onFocus={e => e.currentTarget.select()} className="font-mono text-xs" />
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={async () => {
-                try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-                catch { toast.error('Não foi possível copiar') }
-              }}>
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? 'Copiado' : 'Copiar'}
-              </Button>
-              <Button type="button" variant="outline" size="sm" asChild>
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF</a>
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="pt-2 border-t">
-          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={onDelete}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir proposta
-          </Button>
-        </div>
       </div>
     </div>
   )
