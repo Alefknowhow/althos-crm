@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import DashboardHeader from '@/components/features/dashboard/DashboardHeader'
 import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
+import SellerFilter from '@/components/features/dashboard/SellerFilter'
 import MetricsWidget from '@/components/features/dashboard/MetricsWidget'
 import MetricChartWidget from '@/components/features/dashboard/MetricChartWidget'
 import ConversionFunnelWidget from '@/components/features/dashboard/ConversionFunnelWidget'
@@ -17,6 +18,7 @@ import RecentActivityWidget from '@/components/features/dashboard/RecentActivity
 import LeadSourcesWidget from '@/components/features/dashboard/LeadSourcesWidget'
 import TasksTodayWidget from '@/components/features/dashboard/TasksTodayWidget'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
+import { listOrgMembers } from '@/actions/sales'
 import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
 import UpgradeBanner from '@/components/features/onboarding/UpgradeBanner'
 
@@ -25,7 +27,7 @@ export default async function OrgDashboard({
   searchParams,
 }: {
   params: { orgSlug: string }
-  searchParams: { period?: string; pipeline_id?: string; metric?: string }
+  searchParams: { period?: string; pipeline_id?: string; metric?: string; seller_id?: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const user = await requireAuth()
@@ -54,6 +56,12 @@ export default async function OrgDashboard({
     ? pipelineId
     : null
 
+  // Members power the seller filter dropdown + validate the seller_id param.
+  const members = await listOrgMembers(params.orgSlug)
+  const sellerIdParam = searchParams.seller_id || null
+  const validSellerId =
+    sellerIdParam && members.some(m => m.id === sellerIdParam) ? sellerIdParam : null
+
   // Initial funnel data (default filters: 30d + all sources) so the widget
   // paints with content on first load. User filters re-fetch via server action.
   const [initialFunnel, funnelSourceOptions] = await Promise.all([
@@ -77,30 +85,37 @@ export default async function OrgDashboard({
         <DashboardHeader userName={userName} />
         <div className="flex items-center gap-3 flex-wrap">
           <PipelineFilter pipelines={pipelines || []} />
+          <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
           <PeriodFilter />
         </div>
       </div>
 
       <Suspense
         fallback={
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <Skeleton key={i} className="h-28 sm:h-32 w-full" />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} className="h-24 sm:h-28 w-full" />
             ))}
           </div>
         }
       >
-        <MetricsWidget orgId={org.id} period={period} pipelineId={validPipelineId} />
+        <MetricsWidget
+          orgId={org.id}
+          period={period}
+          pipelineId={validPipelineId}
+          sellerId={validSellerId}
+        />
       </Suspense>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Suspense key={`${metric}-${period}`} fallback={<Skeleton className="h-[400px] w-full" />}>
+          <Suspense key={`${metric}-${period}-${validSellerId ?? 'all'}`} fallback={<Skeleton className="h-[400px] w-full" />}>
             <MetricChartWidget
               orgId={org.id}
               period={period}
               metric={metric}
               pipelineId={validPipelineId}
+              sellerId={validSellerId}
             />
           </Suspense>
         </div>

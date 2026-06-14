@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { fetchNormalizedSales } from '@/lib/dashboard/sales-source'
+import { fetchNormalizedSales, isOrgTravelNiche } from '@/lib/dashboard/sales-source'
 
 export type Period = 'today' | '7d' | '30d' | '90d'
 
@@ -41,6 +41,7 @@ export async function getDashboardMetrics(
   orgId: string,
   period: Period = '30d',
   pipelineId?: string | null,
+  sellerId?: string | null,
 ) {
   const supabase = createClient()
   const { start, previousStart, previousEnd } = getDates(period)
@@ -52,6 +53,7 @@ export async function getDashboardMetrics(
     .eq('organization_id', orgId)
     .gte('created_at', start.toISOString())
   if (pipelineId) leadsQ = leadsQ.eq('pipeline_id', pipelineId)
+  if (sellerId) leadsQ = leadsQ.eq('assigned_to', sellerId)
   const { count: currentLeads } = await leadsQ
 
   let prevLeadsQ = supabase
@@ -61,6 +63,7 @@ export async function getDashboardMetrics(
     .gte('created_at', previousStart.toISOString())
     .lte('created_at', previousEnd.toISOString())
   if (pipelineId) prevLeadsQ = prevLeadsQ.eq('pipeline_id', pipelineId)
+  if (sellerId) prevLeadsQ = prevLeadsQ.eq('assigned_to', sellerId)
   const { count: previousLeads } = await prevLeadsQ
 
   const leadsChange = previousLeads && previousLeads > 0
@@ -87,6 +90,7 @@ export async function getDashboardMetrics(
       .eq('stage_id', closedStage.id)
       .gte('updated_at', start.toISOString())
     if (pipelineId) convQ = convQ.eq('pipeline_id', pipelineId)
+    if (sellerId) convQ = convQ.eq('assigned_to', sellerId)
     const { count: convCount } = await convQ
 
     currentConversions = convCount || 0
@@ -99,6 +103,7 @@ export async function getDashboardMetrics(
       .gte('updated_at', previousStart.toISOString())
       .lte('updated_at', previousEnd.toISOString())
     if (pipelineId) prevConvQ = prevConvQ.eq('pipeline_id', pipelineId)
+    if (sellerId) prevConvQ = prevConvQ.eq('assigned_to', sellerId)
     const { count: prevConvCount } = await prevConvQ
 
     previousConversions = prevConvCount || 0
@@ -123,6 +128,24 @@ export async function getDashboardMetrics(
     .eq('status', 'done')
     .gte('created_at', start.toISOString())
 
+  // 4. Comissão no período (apenas nicho viagens — travel_sales.commission_cents).
+  // Vendas canceladas são excluídas; quando há filtro de vendedor, restringe por
+  // created_by (o responsável pela venda no nicho viagens).
+  let commissionCents = 0
+  const isTravel = await isOrgTravelNiche(supabase, orgId)
+  if (isTravel) {
+    let commQ = supabase
+      .from('travel_sales')
+      .select('commission_cents, status, created_by')
+      .eq('organization_id', orgId)
+      .gte('created_at', start.toISOString())
+    if (sellerId) commQ = commQ.eq('created_by', sellerId)
+    const { data: commRows } = await commQ
+    commissionCents = (commRows || [])
+      .filter((r: any) => r.status !== 'canceled')
+      .reduce((a: number, r: any) => a + (r.commission_cents || 0), 0)
+  }
+
   return {
     newLeads: {
       value: currentLeads || 0,
@@ -139,7 +162,10 @@ export async function getDashboardMetrics(
     },
     revenue: {
       value: currentRevenue / 100 // em reais
-    }
+    },
+    // Comissão só faz sentido no nicho viagens; demais nichos recebem null e a
+    // UI omite o card.
+    commission: isTravel ? { value: commissionCents / 100 } : null,
   }
 }
 
@@ -1176,6 +1202,7 @@ export async function getMetricTimeSeries(
   period: Period = '30d',
   metric: DashboardMetric = 'leads',
   pipelineId?: string | null,
+  sellerId?: string | null,
 ): Promise<MetricSeries> {
   const supabase = createClient()
   const { start, now } = getDates(period)
@@ -1204,12 +1231,15 @@ export async function getMetricTimeSeries(
       .eq('organization_id', orgId)
       .gte('created_at', start.toISOString())
     if (pipelineId) q = q.eq('pipeline_id', pipelineId)
+    if (sellerId) q = q.eq('assigned_to', sellerId)
     const { data } = await q
     ;(data ?? []).forEach((r: any) => add(r.created_at, 1))
   } else if (metric === 'revenue' || metric === 'sales') {
     // Niche-aware: travel orgs read from travel_sales, others from sales.
     const rows = await fetchNormalizedSales(supabase, orgId, { since: start })
-    rows.forEach(r => add(r.date, metric === 'revenue' ? (r.amount_cents || 0) / 100 : 1))
+    rows
+      .filter(r => !sellerId || r.seller_id === sellerId)
+      .forEach(r => add(r.date, metric === 'revenue' ? (r.amount_cents || 0) / 100 : 1))
   } else if (metric === 'appointments') {
     const { data } = await supabase
       .from('appointments')

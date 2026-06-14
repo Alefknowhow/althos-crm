@@ -18,13 +18,15 @@ export default async function MetricChartWidget({
   period,
   metric,
   pipelineId,
+  sellerId,
 }: {
   orgId: string
   period: Period
   metric: DashboardMetric
   pipelineId?: string | null
+  sellerId?: string | null
 }) {
-  const series = await getMetricTimeSeries(orgId, period, metric, pipelineId)
+  const series = await getMetricTimeSeries(orgId, period, metric, pipelineId, sellerId)
 
   return (
     <Card className="reveal">

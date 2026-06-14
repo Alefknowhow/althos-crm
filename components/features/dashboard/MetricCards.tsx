@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, Target, CheckCircle2, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Users, Target, CheckCircle2, DollarSign, Percent, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface MetricCardsProps {
@@ -8,6 +8,7 @@ interface MetricCardsProps {
     conversions: { value: number; change: number }
     completedTasks: { value: number }
     revenue: { value: number }
+    commission?: { value: number } | null
   }
 }
 
@@ -74,27 +75,40 @@ export default function MetricCards({ metrics }: MetricCardsProps) {
     },
   ]
 
+  // Comissão só aparece quando o nicho fornece o dado (viagens).
+  if (metrics.commission) {
+    cards.push({
+      title: 'Comissão',
+      value: formatCurrency(metrics.commission.value),
+      icon: Percent,
+      description: 'no período',
+    })
+  }
+
+  // 5 cards (com comissão) precisam de uma coluna extra em telas grandes.
+  const lgCols = cards.length >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className={`grid grid-cols-2 ${lgCols} gap-2.5 sm:gap-3`}>
       {cards.map(card => {
         const Icon = card.icon
         return (
           <Card key={card.title} className="reveal apple-hover-lift">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between mb-3 sm:mb-5">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-start justify-between mb-2 sm:mb-3">
                 <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   {card.title}
                 </p>
-                <div className="rounded-full bg-secondary p-1.5 sm:p-2 text-muted-foreground shrink-0">
+                <div className="rounded-full bg-secondary p-1 sm:p-1.5 text-muted-foreground shrink-0">
                   <Icon className="h-3.5 w-3.5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-[32px] font-semibold leading-none tracking-apple-tighter text-foreground">
+              <div className="text-xl sm:text-2xl font-semibold leading-none tracking-apple-tighter text-foreground">
                 {card.value}
               </div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 sm:mt-3">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 sm:mt-2">
                 {card.change !== undefined && <ChangeChip change={card.change} />}
-                <p className="text-[11px] sm:text-xs text-muted-foreground tracking-apple-snug">{card.description}</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground tracking-apple-snug">{card.description}</p>
               </div>
             </CardContent>
           </Card>

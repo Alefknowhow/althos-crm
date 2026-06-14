@@ -199,9 +199,12 @@ export default function ConversionFunnelWidget({
             Nenhum lead corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {result.stages.map((stage, idx) => {
-              const widthPct = (stage.count / maxCount) * 100
+              // Each bar is centered; its width tapers with the stage count so
+              // the whole stack forms a funnel. A floor keeps small/zero stages
+              // wide enough to stay legible.
+              const widthPct = Math.max(28, (stage.count / maxCount) * 100)
               const color = stage.color || '#3b82f6'
               const showConvBadge = idx > 0
               const isWorrying =
@@ -225,30 +228,26 @@ export default function ConversionFunnelWidget({
                       </Badge>
                     </div>
                   )}
-                  <div className="flex items-center gap-3">
-                    {/* Bar */}
-                    <div className="flex-1 relative h-9 bg-muted/40 rounded-md overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-md transition-all duration-300"
-                        style={{
-                          width: `${widthPct}%`,
-                          backgroundColor: `${color}33`,
-                          borderLeft: `3px solid ${color}`,
-                        }}
-                      />
-                      <div className="relative h-full flex items-center px-3 text-sm font-medium">
-                        {stage.name}
-                      </div>
-                    </div>
-                    {/* Numbers */}
-                    <div className="w-24 text-right shrink-0">
-                      <div className="text-sm font-bold tabular-nums">{stage.count}</div>
+                  {/* Centered, tapering bar */}
+                  <div
+                    className="mx-auto h-11 rounded-md flex items-center justify-between px-3 gap-3 transition-all duration-300"
+                    style={{
+                      width: `${widthPct}%`,
+                      backgroundColor: `${color}26`,
+                      border: `1px solid ${color}55`,
+                    }}
+                  >
+                    <span className="text-sm font-medium truncate">{stage.name}</span>
+                    <span className="text-right shrink-0">
+                      <span className="block text-sm font-bold tabular-nums leading-tight">
+                        {stage.count}
+                      </span>
                       {stage.value_cents > 0 && (
-                        <div className="text-[10px] text-muted-foreground tabular-nums">
+                        <span className="block text-[10px] text-muted-foreground tabular-nums leading-tight">
                           {fmtCurrency(stage.value_cents)}
-                        </div>
+                        </span>
                       )}
-                    </div>
+                    </span>
                   </div>
                 </div>
               )
