@@ -461,6 +461,19 @@ function SaleEditor({
             </p>
           )}
         </div>
+
+        {/* Actions relocated from the bottom of the form into the header bar */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          <Button variant="outline" size="sm" disabled={saving} onClick={() => onSave(patch(), false)}>
+            {saving ? 'Salvando…' : 'Salvar'}
+          </Button>
+          <Button size="sm" disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)}>
+            <ListChecks className="w-3.5 h-3.5 mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Processando…' : 'Salvar e gerar tarefas'}</span><span className="sm:hidden">Tarefas</span>
+          </Button>
+          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -639,18 +652,6 @@ function SaleEditor({
             <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
           </p>
         )}
-
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-          <Button variant="outline" disabled={saving} onClick={() => onSave(patch(), false)}>
-            {saving ? 'Salvando…' : 'Salvar'}
-          </Button>
-          <Button disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)}>
-            <ListChecks className="w-4 h-4 mr-1.5" /> {saving ? 'Processando…' : 'Salvar e gerar tarefas'}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 ml-auto" onClick={onDelete}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
-          </Button>
-        </div>
       </div>
     </div>
   )
