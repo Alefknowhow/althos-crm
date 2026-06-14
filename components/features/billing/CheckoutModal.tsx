@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { createCheckoutSession } from '@/actions/billing'
 import { PLANS, getPlanPricing, ANNUAL_DISCOUNT_PCT, SEMESTRAL_DISCOUNT_PCT, type BillingCycle } from '@/lib/billing/plans'
+import { PLAN_FEATURES } from '@/lib/billing/plan-features'
 import { toast } from 'sonner'
 import { Loader2, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,42 +21,9 @@ interface Props {
   initialPlan: Plan
 }
 
-// ── Plan feature matrix ───────────────────────────────────────────────────────
-
-// Starter, Pro e Business têm as MESMAS funcionalidades — a diferença está na
-// QUANTIDADE de uso de cada coisa. Dois recursos premium (Insights IA e
-// Exportar relatórios) ficam reservados a Pro/Business.
-const PLAN_FEATURES: {
-  label:    string
-  starter:  boolean | string
-  pro:      boolean | string
-  business: boolean | string
-}[] = [
-  // ── Quantidades ──
-  { label: 'Usuários incluídos',                 starter: '1',            pro: 'Até 6',        business: 'Ilimitados' },
-  { label: 'Pipelines',                          starter: '2',            pro: '5',            business: 'Ilimitados' },
-  { label: 'Leads no pipeline',                  starter: 'Ilimitados',   pro: 'Ilimitados',   business: 'Ilimitados' },
-  { label: 'Clientes cadastrados',               starter: '500',          pro: '2.000',        business: 'Ilimitados' },
-  { label: 'Créditos de IA / mês',               starter: '300',          pro: '1.200',        business: '3.000'      },
-  { label: 'Automações ativas',                  starter: '5',            pro: '20',           business: 'Ilimitadas' },
-  { label: 'Disparos de automação / mês',        starter: '1.000',        pro: '10.000',       business: 'Ilimitados' },
-  { label: 'Contas de social (DM)',              starter: '1',            pro: '3',            business: 'Ilimitadas' },
-  { label: 'Mensagens de social / mês',          starter: '500',          pro: '5.000',        business: 'Ilimitadas' },
-  // ── Funcionalidades (iguais em todos) ──
-  { label: 'Formulários de captação',            starter: true,           pro: true,           business: true         },
-  { label: 'WhatsApp centralizado',              starter: true,           pro: true,           business: true         },
-  { label: 'Catálogo de produtos',               starter: true,           pro: true,           business: true         },
-  { label: 'Tarefas e atividades',               starter: true,           pro: true,           business: true         },
-  { label: 'Agendamentos online',                starter: true,           pro: true,           business: true         },
-  { label: 'Atendimento com IA 24/7',            starter: true,           pro: true,           business: true         },
-  { label: 'Score e qualificação por IA',        starter: true,           pro: true,           business: true         },
-  { label: 'Instagram (DMs e comentários)',      starter: true,           pro: true,           business: true         },
-  { label: 'Meta Ads + Pixel/CAPI',              starter: true,           pro: true,           business: true         },
-  // ── Premium (Pro/Business) ──
-  { label: 'Insights de vendas com IA',          starter: false,          pro: true,           business: true         },
-  { label: 'Exportar relatórios',                starter: false,          pro: true,           business: true         },
-  { label: 'Gerente de conta dedicado',          starter: false,          pro: false,          business: true         },
-]
+// ── Plan info ─────────────────────────────────────────────────────────────────
+// The feature matrix (PLAN_FEATURES) is shared with the /upgrade page via
+// lib/billing/plan-features.ts so both screens always show identical info.
 
 const PLAN_INFO: Record<Plan, {
   label:    string

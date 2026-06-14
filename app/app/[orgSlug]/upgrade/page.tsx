@@ -1,30 +1,13 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { PUBLIC_PLANS, getPlan, formatPrice, isAccessBlocked } from '@/lib/billing/plans'
+import { PLAN_FEATURES } from '@/lib/billing/plan-features'
 import UpgradeCheckoutButton from '@/components/features/billing/UpgradeCheckoutButton'
 import { CheckCircle2, XCircle, Sparkles, Clock, AlertCircle, Zap, Users, Rocket } from 'lucide-react'
 import Link from 'next/link'
 
-const FEATURE_ROWS: { label: string; starter: boolean | string; pro: boolean | string; business: boolean | string }[] = [
-  { label: 'Leads e clientes',             starter: 'Ilimitados',  pro: 'Ilimitados',  business: 'Ilimitados'  },
-  { label: 'Oportunidades e pipeline',      starter: '✓',           pro: '✓',           business: '✓'           },
-  { label: 'Formulários de captação',       starter: '✓',           pro: '✓',           business: '✓'           },
-  { label: 'WhatsApp centralizado',         starter: '✓',           pro: '✓',           business: '✓'           },
-  { label: 'Catálogo de produtos',          starter: '✓',           pro: '✓',           business: '✓'           },
-  { label: 'Tarefas e atividades',          starter: '✓',           pro: '✓',           business: '✓'           },
-  { label: 'Agendamentos online',           starter: '—',           pro: '✓',           business: '✓'           },
-  { label: 'Atendimento com IA 24/7',       starter: '—',           pro: '✓',           business: '✓'           },
-  { label: 'Score e qualificação por IA',   starter: '—',           pro: '✓',           business: '✓'           },
-  { label: 'Instagram (DMs + comentários)', starter: '—',           pro: '✓',           business: '✓'           },
-  { label: 'Meta Ads + Pixel/CAPI',         starter: '—',           pro: '✓',           business: '✓'           },
-  { label: 'Insights de vendas com IA',     starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'White-label',                   starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'Multi-tenant',                  starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'Exportar relatórios',           starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'API aberta e webhooks',         starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'Usuários',                      starter: '1 usuário',   pro: 'Até 5',       business: 'Ilimitado'   },
-  { label: 'Gerente de conta dedicado',     starter: '—',           pro: '—',           business: '✓'           },
-  { label: 'Suporte',                       starter: 'E-mail',      pro: 'Prioritário', business: 'VIP'         },
-]
+// Canonical feature matrix shared with the checkout popup (CheckoutModal) via
+// lib/billing/plan-features.ts — keeps both screens perfectly in sync.
+const FEATURE_ROWS = PLAN_FEATURES
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
   starter:  Users,
