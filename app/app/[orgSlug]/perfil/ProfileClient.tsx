@@ -29,7 +29,6 @@ import {
   Mail,
   Lock,
   Building2,
-  Plus,
   ExternalLink,
   CheckCircle2,
   Eye,
@@ -404,15 +403,6 @@ export default function ProfileClient({
               </div>
             )
           })}
-
-          <div className="pt-2">
-            <Link href="/onboarding?new=1">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Plus className="w-3.5 h-3.5" />
-                Nova organização
-              </Button>
-            </Link>
-          </div>
         </div>
       </Section>
 

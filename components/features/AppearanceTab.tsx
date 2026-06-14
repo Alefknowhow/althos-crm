@@ -83,12 +83,15 @@ export default function AppearanceTab({
       // Bust cache — Supabase CDN caches by path; append timestamp.
       const bustedUrl = `${publicUrl}?t=${Date.now()}`
 
-      startTransition(async () => {
-        const res = await updateOrgAppearance(orgSlug, { logo_url: bustedUrl })
-        if (!res.ok) throw new Error((res as any).error)
-        setLogoUrl(bustedUrl)
-        toast.success('Logo atualizada!')
-      })
+      // Persist the URL. We await directly (NOT inside startTransition) so a
+      // failed save surfaces as a toast and never leaves the upload "stuck":
+      // throwing inside a startTransition async callback is swallowed by React,
+      // which is why the logo previously appeared to never finish.
+      const res = await updateOrgAppearance(orgSlug, { logo_url: bustedUrl })
+      if (!res.ok) throw new Error((res as any).error || 'Não foi possível salvar a logo.')
+
+      setLogoUrl(bustedUrl)
+      toast.success('Logo atualizada!')
     } catch (err: any) {
       toast.error(err?.message ?? 'Erro ao fazer upload.')
     } finally {

@@ -57,13 +57,34 @@ export async function createTemplate(orgSlug: string, name: string) {
 export async function updateTemplate(orgSlug: string, id: string, updates: any) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  
+
   const { error } = await supabase.from('email_templates').update(updates).eq('id', id).eq('organization_id', org.id)
-  
+
   if (error) return { ok: false, error: error.message }
   revalidatePath(`/app/${orgSlug}/email-templates`)
   revalidatePath(`/app/${orgSlug}/email-templates/${id}/edit`)
   return { ok: true }
+}
+
+/**
+ * Permanently deletes an email template. Scoped to the caller's org so a user
+ * can never delete another org's template. Automations that referenced this
+ * template by ID will simply stop sending it (handled gracefully at send time).
+ */
+export async function deleteTemplate(orgSlug: string, id: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('email_templates')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/email-templates`)
+  return { ok: true as const }
 }
 
 export async function sendTestEmail(orgSlug: string, templateId: string) {
