@@ -159,6 +159,60 @@ export async function deleteProposal(orgSlug: string, id: string) {
   return { ok: true as const }
 }
 
+// Duplicate an existing proposal onto another contato/lead. Copies the full
+// content (destinations, hotels, prices, etc.) but resets identity fields:
+// a fresh row, no public_token (a new link is generated on first share),
+// status back to "draft" (Rascunho), and the chosen contato's name as client_name.
+export async function duplicateProposal(orgSlug: string, sourceId: string, targetContatoId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+
+  // Load the source within this org (RLS-safe via explicit org filter).
+  const { data: source, error: srcErr } = await supabase
+    .from('travel_proposals')
+    .select('*')
+    .eq('organization_id', org.id)
+    .eq('id', sourceId)
+    .maybeSingle()
+  if (srcErr) return { ok: false as const, error: srcErr.message || 'Erro ao carregar a proposta de origem.' }
+  if (!source) return { ok: false as const, error: 'Proposta de origem não encontrada nesta organização.' }
+
+  // Resolve the target contato (for client_name + ownership validation).
+  const { data: contato, error: contErr } = await supabase
+    .from('contatos')
+    .select('id, name')
+    .eq('organization_id', org.id)
+    .eq('id', targetContatoId)
+    .maybeSingle()
+  if (contErr) return { ok: false as const, error: contErr.message || 'Erro ao carregar o contato de destino.' }
+  if (!contato) return { ok: false as const, error: 'Contato de destino não encontrado nesta organização.' }
+
+  // Copy only the whitelisted content fields, then override identity fields.
+  const copy = pick(source as Record<string, any>)
+  const { data, error } = await supabase
+    .from('travel_proposals')
+    .insert({
+      ...copy,
+      title: `${(source as ProposalRow).title || 'Proposta'} (cópia)`,
+      status: 'draft',
+      contato_id: contato.id,
+      client_name: (contato as any).name || copy.client_name || null,
+      public_token: null,
+      organization_id: org.id,
+      created_by: user.id,
+    })
+    .select()
+    .single()
+
+  if (error) return { ok: false as const, error: error.message || 'Erro ao duplicar proposta.' }
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  return { ok: true as const, data: data as ProposalRow }
+}
+
 // Cotações (proposals) linked to a specific lead — for the pipeline card popup.
 export type LeadProposalRow = {
   id: string

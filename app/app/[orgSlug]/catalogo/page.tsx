@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/empty-state'
 import { Package, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default async function CatalogPage({
   params,
@@ -45,13 +46,11 @@ export default async function CatalogPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Catálogo de Produtos e Serviços</h1>
-          <p className="text-sm text-muted-foreground">Gerencie o que você oferece aos seus clientes.</p>
-        </div>
-        <ProductDialog orgSlug={orgSlug} categories={categories} />
-      </div>
+      <PageHeader
+        title="Catálogo de Produtos e Serviços"
+        hint="Gerencie o que você oferece aos seus clientes."
+        actions={<ProductDialog orgSlug={orgSlug} categories={categories} />}
+      />
 
       <div className="space-y-4">
         <Tabs defaultValue={type} className="w-full">

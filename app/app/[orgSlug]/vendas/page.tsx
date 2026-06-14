@@ -5,6 +5,7 @@ import { listSales, listActiveProducts, listOrgMembers } from '@/actions/sales'
 import SalesTable from '@/components/features/sales/SalesTable'
 import SaleDialog from '@/components/features/sales/SaleDialog'
 import { formatCurrency } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,24 +25,24 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-apple-tight">Vendas</h1>
-          <p className="text-sm text-muted-foreground mt-1">Registro de produtos e serviços vendidos.</p>
-        </div>
-        <SaleDialog
-          orgSlug={params.orgSlug}
-          members={members}
-          products={products}
-          currentUserId={user.id}
-          trigger={
-            <Button>
-              <Plus className="w-4 h-4 mr-1.5" />
-              Registrar venda
-            </Button>
-          }
-        />
-      </div>
+      <PageHeader
+        title="Vendas"
+        hint="Registro de produtos e serviços vendidos."
+        actions={
+          <SaleDialog
+            orgSlug={params.orgSlug}
+            members={members}
+            products={products}
+            currentUserId={user.id}
+            trigger={
+              <Button>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Registrar venda
+              </Button>
+            }
+          />
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border rounded-xl p-5">

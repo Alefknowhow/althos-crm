@@ -5,6 +5,7 @@ import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { minimumPlanFor, getPlanMeta } from '@/lib/plans/config'
 import { isTravelNiche } from '@/lib/niche'
 import ReportsClient from '@/components/features/reports/ReportsClient'
+import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,7 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
     const planLabel = minPlan ? getPlanMeta(minPlan).name : 'Business'
     return (
       <div className="max-w-3xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-muted-foreground text-sm">Exporte seus dados em PDF e Excel.</p>
-        </div>
+        <PageHeader title="Relatórios" hint="Exporte seus dados em PDF e Excel." />
         <div className="rounded-xl border bg-card p-10 text-center space-y-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Lock className="h-6 w-6" />
@@ -46,15 +44,10 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
   return (
     <div className="max-w-5xl space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
           <FileBarChart className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-muted-foreground text-sm">
-            Escolha o período e exporte em PDF ou Excel.
-          </p>
-        </div>
+        <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." className="flex-1" />
       </div>
 
       <ReportsClient orgSlug={params.orgSlug} isTravel={isTravelNiche(org.niche)} />

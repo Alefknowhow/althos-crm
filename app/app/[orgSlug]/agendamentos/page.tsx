@@ -7,6 +7,7 @@ import {
 import { listPipelines } from '@/actions/pipeline'
 import { createClient } from '@/lib/supabase/server'
 import AppointmentsAdminTabs from '@/components/features/appointments/AppointmentsAdminTabs'
+import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,12 +37,10 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-apple-tight">Agendamentos</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Crie tipos de evento, defina horários disponíveis e gerencie agendamentos.
-        </p>
-      </div>
+      <PageHeader
+        title="Agendamentos"
+        hint="Crie tipos de evento, defina horários disponíveis e gerencie agendamentos."
+      />
 
       <AppointmentsAdminTabs
         orgSlug={params.orgSlug}

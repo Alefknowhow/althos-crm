@@ -4,6 +4,7 @@ import { listOrgMembers } from '@/actions/team'
 import { listTaskColumns } from '@/actions/tasks'
 import TaskDialog from '@/components/features/TaskDialog'
 import TasksBoard from '@/components/features/tasks/TasksBoard'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default async function TasksPage({ params }: { params: { orgSlug: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
@@ -35,13 +36,11 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tarefas</h1>
-          <p className="text-sm text-muted-foreground">Organize seu trabalho em quadro Kanban ou lista.</p>
-        </div>
-        <TaskDialog orgSlug={params.orgSlug} members={members} />
-      </div>
+      <PageHeader
+        title="Tarefas"
+        hint="Organize seu trabalho em quadro Kanban ou lista."
+        actions={<TaskDialog orgSlug={params.orgSlug} members={members} />}
+      />
 
       <TasksBoard
         initialTasks={normalized as any}
