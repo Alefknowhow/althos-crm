@@ -125,6 +125,56 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
       required: ['criterio'],
     },
   },
+  {
+    name: 'consultar_cotacoes',
+    description:
+      'Resumo das cotações/propostas de viagem no período: quantidade, valor total, distribuição por status (rascunho, enviada, aprovada etc.) e taxa de aprovação. Use para "cotações", "propostas", "orçamentos enviados", "quantas propostas", "taxa de aprovação de propostas".',
+    input_schema: {
+      type: 'object',
+      properties: { periodo: PERIOD_PARAM },
+    },
+  },
+  {
+    name: 'consultar_reservas',
+    description:
+      'Resumo das reservas/vendas de viagem fechadas no período: quantidade, faturamento, comissão total e ticket médio, com distribuição por status. Use para "reservas", "vendas de viagem", "viagens vendidas", "faturamento de viagens", "comissão".',
+    input_schema: {
+      type: 'object',
+      properties: { periodo: PERIOD_PARAM },
+    },
+  },
+  {
+    name: 'consultar_embarques',
+    description:
+      'Lista os próximos embarques (viagens com data de partida futura) nos próximos N dias. Use para "embarques", "próximas viagens", "quem viaja em breve", "partidas da semana", "agenda de viagens".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        dias: {
+          type: 'integer',
+          description: 'Janela de dias à frente para listar embarques (1 a 180). Padrão: 30.',
+        },
+      },
+    },
+  },
+  {
+    name: 'consultar_ofertas',
+    description:
+      'Resumo das ofertas/pacotes da vitrine de viagens: total cadastrado, publicados vs. rascunho e distribuição por categoria. Use para "ofertas", "pacotes", "vitrine", "quantos pacotes publicados".',
+    input_schema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'consultar_tarefas',
+    description:
+      'Panorama operacional das tarefas: quantas em aberto, em andamento, concluídas e vencidas (atrasadas). Use para "tarefas", "pendências", "o que está atrasado", "tarefas vencidas", "produtividade da equipe".',
+    input_schema: {
+      type: 'object',
+      properties: { periodo: PERIOD_PARAM },
+    },
+  },
 ]
 
 /* ------- Executor dispatcher ------- */
@@ -148,6 +198,16 @@ export async function executeAnalyticsTool(
         return await queryMarketing(input, ctx)
       case 'consultar_top_leads':
         return await queryTopLeads(input, ctx)
+      case 'consultar_cotacoes':
+        return await queryQuotes(input, ctx)
+      case 'consultar_reservas':
+        return await queryReservations(input, ctx)
+      case 'consultar_embarques':
+        return await queryDepartures(input, ctx)
+      case 'consultar_ofertas':
+        return await queryOffers(input, ctx)
+      case 'consultar_tarefas':
+        return await queryTasks(input, ctx)
       default:
         return {
           summary: `Tool desconhecida: ${name}`,
@@ -656,5 +716,212 @@ async function queryTopLeads(
         l.source || '—',
       ]),
     },
+  }
+}
+
+/* ------- Travel-specific tools (cotações / reservas / embarques / ofertas) ------- */
+
+const QUOTE_STATUS_LABEL: Record<string, string> = {
+  draft: 'Rascunho',
+  rascunho: 'Rascunho',
+  sent: 'Enviada',
+  enviada: 'Enviada',
+  approved: 'Aprovada',
+  aprovada: 'Aprovada',
+  rejected: 'Recusada',
+  recusada: 'Recusada',
+  expired: 'Expirada',
+  expirada: 'Expirada',
+}
+
+function labelStatus(map: Record<string, string>, raw: string | null): string {
+  if (!raw) return 'Sem status'
+  return map[raw.toLowerCase()] || raw
+}
+
+async function queryQuotes(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  const { data } = await ctx.supabase
+    .from('travel_proposals')
+    .select('status, total_cents, created_at')
+    .eq('organization_id', ctx.orgId)
+    .gte('created_at', start.toISOString())
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhuma cotação criada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const byStatus = new Map<string, number>()
+  let totalCents = 0
+  let approved = 0
+  for (const r of rows) {
+    const key = labelStatus(QUOTE_STATUS_LABEL, r.status)
+    byStatus.set(key, (byStatus.get(key) || 0) + 1)
+    totalCents += r.total_cents || 0
+    if (['approved', 'aprovada'].includes((r.status || '').toLowerCase())) approved += 1
+  }
+  const approvalRate = rows.length > 0 ? (approved / rows.length) * 100 : 0
+
+  const pieData = Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }))
+
+  return {
+    summary: `${rows.length} cotações no período (${label}), somando ${fmtCurrency(totalCents)}. ${approved} aprovadas (taxa de aprovação ${approvalRate.toFixed(1)}%). Distribuição por status: ${Array.from(byStatus.entries()).map(([k, v]) => `${k}: ${v}`).join(', ')}.`,
+    view: { type: 'pie', data: pieData },
+  }
+}
+
+async function queryReservations(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  const { data } = await ctx.supabase
+    .from('travel_sales')
+    .select('status, total_cents, commission_cents, created_at')
+    .eq('organization_id', ctx.orgId)
+    .gte('created_at', start.toISOString())
+
+  const rows = ((data as any[]) || []).filter(r => (r.status || '').toLowerCase() !== 'canceled')
+  if (rows.length === 0) {
+    return { summary: `Nenhuma reserva fechada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const revenue = rows.reduce((a, r) => a + (r.total_cents || 0), 0)
+  const commission = rows.reduce((a, r) => a + (r.commission_cents || 0), 0)
+  const ticket = rows.length > 0 ? revenue / rows.length : 0
+
+  const items = [
+    { label: 'Reservas', value: String(rows.length) },
+    { label: 'Faturamento', value: fmtCurrency(revenue) },
+    { label: 'Comissão', value: fmtCurrency(commission) },
+    { label: 'Ticket médio', value: fmtCurrency(ticket) },
+  ]
+
+  return {
+    summary: `${rows.length} reservas no período (${label}): faturamento ${fmtCurrency(revenue)}, comissão ${fmtCurrency(commission)}, ticket médio ${fmtCurrency(ticket)}.`,
+    view: { type: 'kpis', items },
+  }
+}
+
+async function queryDepartures(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const days = Math.min(180, Math.max(1, Number(input.dias) || 30))
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const until = new Date(today)
+  until.setDate(until.getDate() + days)
+
+  const { data } = await ctx.supabase
+    .from('travel_sales')
+    .select('client_name, destination, departure_date, return_date, total_cents, status')
+    .eq('organization_id', ctx.orgId)
+    .not('departure_date', 'is', null)
+    .gte('departure_date', today.toISOString().slice(0, 10))
+    .lte('departure_date', until.toISOString().slice(0, 10))
+    .order('departure_date', { ascending: true })
+    .limit(50)
+
+  const rows = ((data as any[]) || []).filter(r => (r.status || '').toLowerCase() !== 'canceled')
+  if (rows.length === 0) {
+    return { summary: `Nenhum embarque previsto nos próximos ${days} dias.`, view: { type: 'none' } }
+  }
+
+  const fmtDate = (d: string | null) =>
+    d ? new Date(`${d.slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR') : '—'
+
+  return {
+    summary: `${rows.length} embarques previstos nos próximos ${days} dias. Próximo: ${rows[0].client_name || 'cliente'} para ${rows[0].destination || 'destino não informado'} em ${fmtDate(rows[0].departure_date)}.`,
+    view: {
+      type: 'table',
+      columns: ['Cliente', 'Destino', 'Partida', 'Retorno', 'Valor'],
+      rows: rows.map(r => [
+        r.client_name || '—',
+        r.destination || '—',
+        fmtDate(r.departure_date),
+        fmtDate(r.return_date),
+        r.total_cents ? fmtCurrency(r.total_cents) : '—',
+      ]),
+    },
+  }
+}
+
+async function queryOffers(
+  _input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { data } = await ctx.supabase
+    .from('travel_showcase_packages')
+    .select('category, is_published, total_cents')
+    .eq('organization_id', ctx.orgId)
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhuma oferta/pacote cadastrado na vitrine.', view: { type: 'none' } }
+  }
+
+  const published = rows.filter(r => r.is_published).length
+  const draft = rows.length - published
+  const byCategory = new Map<string, number>()
+  for (const r of rows) {
+    const k = r.category || 'Sem categoria'
+    byCategory.set(k, (byCategory.get(k) || 0) + 1)
+  }
+  const barData = Array.from(byCategory.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  return {
+    summary: `${rows.length} ofertas na vitrine: ${published} publicadas e ${draft} em rascunho. Categorias: ${barData.map(c => `${c.name} (${c.value})`).join(', ')}.`,
+    view: { type: 'bar', data: barData, color: '#f59e0b' },
+  }
+}
+
+async function queryTasks(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  // Tarefas criadas no período + status atual. Vencidas = due_date no passado e
+  // ainda não concluídas (independente da data de criação).
+  const { data } = await ctx.supabase
+    .from('tasks')
+    .select('status, due_date, created_at')
+    .eq('organization_id', ctx.orgId)
+    .gte('created_at', start.toISOString())
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhuma tarefa criada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const now = Date.now()
+  let open = 0
+  let doing = 0
+  let done = 0
+  let overdue = 0
+  for (const t of rows) {
+    const status = (t.status || 'open').toLowerCase()
+    if (status === 'done') done += 1
+    else if (status === 'doing') doing += 1
+    else open += 1
+    if (status !== 'done' && t.due_date && new Date(t.due_date).getTime() < now) overdue += 1
+  }
+
+  const items = [
+    { label: 'Em aberto', value: String(open) },
+    { label: 'Em andamento', value: String(doing) },
+    { label: 'Concluídas', value: String(done) },
+    { label: 'Vencidas', value: String(overdue) },
+  ]
+
+  return {
+    summary: `${rows.length} tarefas no período (${label}): ${open} em aberto, ${doing} em andamento, ${done} concluídas e ${overdue} vencidas (atrasadas).`,
+    view: { type: 'kpis', items },
   }
 }
