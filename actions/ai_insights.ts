@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
+import { getPlatformAiKey } from '@/lib/ai/api-key'
 
 /* -------- Sessions -------- */
 
@@ -88,16 +89,18 @@ export async function sendInsightMessage(
     }
   }
 
-  // Org-level Anthropic key (cadastrada em /configuracoes/ia).
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_api_key, ai_qualifier_model')
+    .select('name, ai_qualifier_model')
     .eq('id', org.id)
     .maybeSingle()
-  if (!orgData?.ai_api_key) {
+  // AI runs on the platform's centralized token (env), metered per account by
+  // the credit gate above — no per-org API key required.
+  const apiKey = getPlatformAiKey()
+  if (!apiKey) {
     return {
       ok: false as const,
-      error: 'Chave da Anthropic não cadastrada em Configurações → IA.',
+      error: 'IA temporariamente indisponível. Tente novamente em instantes.',
     }
   }
 
@@ -156,7 +159,7 @@ export async function sendInsightMessage(
   // Sonnet 4.6 is a sensible default for analysis (better reasoning). User
   // can override per-org via the qualifier model setting — same pool of
   // models powers all AI features for now.
-  const model = orgData.ai_qualifier_model || 'claude-sonnet-4-6'
+  const model = orgData?.ai_qualifier_model || 'claude-sonnet-4-6'
 
   // Tool calls collected as we go (engine returns them too but we want raw
   // AnalyticsResult objects, not the JSON strings we sent back to Claude).
@@ -171,7 +174,7 @@ export async function sendInsightMessage(
         knowledgeBase: [],
         handoffPhrases: [],
         leadProfile: null,
-        orgName: orgData.name || undefined,
+        orgName: orgData?.name || undefined,
         messages: history,
         tools: ANALYTICS_TOOLS,
         executeTool: async (name, input) => {
@@ -187,7 +190,7 @@ export async function sendInsightMessage(
         },
       },
       {
-        apiKey: orgData.ai_api_key,
+        apiKey,
         model,
         maxOutputTokens: 1200,
         maxIterations: 6,

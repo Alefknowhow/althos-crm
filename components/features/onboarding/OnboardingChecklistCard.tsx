@@ -9,7 +9,7 @@
  *   - 1º lead:    at least one row in leads
  *   - Formulário: at least one row in forms
  *   - WhatsApp:   organizations.whatsapp_phone_number_id is set
- *   - IA:         organizations.ai_enabled AND ai_api_key set
+ *   - IA:         organizations.ai_enabled (runs on the platform token)
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -27,7 +27,7 @@ export default async function OnboardingChecklistCard({
   const [{ data: org }, leadsRes, formsRes] = await Promise.all([
     supabase
       .from('organizations')
-      .select('logo_url, whatsapp_phone_number_id, ai_enabled, ai_api_key')
+      .select('logo_url, whatsapp_phone_number_id, ai_enabled')
       .eq('id', orgId)
       .maybeSingle(),
     supabase
@@ -44,7 +44,7 @@ export default async function OnboardingChecklistCard({
   const hasForms = (formsRes.count ?? 0) > 0
   const hasLogo = !!org?.logo_url
   const hasWhatsapp = !!org?.whatsapp_phone_number_id
-  const hasAi = !!org?.ai_enabled && !!org?.ai_api_key
+  const hasAi = !!org?.ai_enabled
 
   const base = `/app/${orgSlug}`
 

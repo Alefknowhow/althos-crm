@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { qualifyLead } from './qualifier'
+import { getPlatformAiKey } from './api-key'
 
 export type RunQualificationResult =
   | { ok: true; score: number; tier: string }
@@ -24,12 +25,15 @@ export async function runLeadQualification(
   // 1) Org config
   const { data: orgConfig } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_api_key, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
+    .select('ai_enabled, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
     .eq('id', orgId)
     .maybeSingle()
 
   if (!orgConfig?.ai_enabled)  return { ok: false, reason: 'AI desabilitada para esta organização' }
-  if (!orgConfig.ai_api_key)   return { ok: false, reason: 'Chave de API da IA não configurada. Acesse Configurações → IA.' }
+  // AI runs on the platform's centralized token (env), metered per account by
+  // the credit system below — no per-org API key required.
+  const apiKey = getPlatformAiKey()
+  if (!apiKey) return { ok: false, reason: 'IA temporariamente indisponível. Tente novamente em instantes.' }
 
   // 1b) Plan gate (per account). This runs in a service-role/background context
   //     (Inngest, webhooks) with no user JWT, so we call the gating RPCs through
@@ -115,7 +119,7 @@ export async function runLeadQualification(
         formSchema,
       },
       {
-        apiKey: orgConfig.ai_api_key,
+        apiKey,
         model: orgConfig.ai_qualifier_model || 'claude-haiku-4-5',
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,

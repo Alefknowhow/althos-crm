@@ -37,16 +37,15 @@ export async function askSupport(
   try {
     const supabase = createClient()
 
-    // Per-org API key (fallback to platform key). Best-effort — never throw.
-    let apiKey = process.env.ANTHROPIC_API_KEY || ''
+    // Centralized platform token (env) — same key for every account.
+    const apiKey = process.env.ANTHROPIC_API_KEY || ''
     let model = 'claude-haiku-4-5'
     try {
       const { data: org } = await supabase
         .from('organizations')
-        .select('ai_api_key, ai_qualifier_model')
+        .select('ai_qualifier_model')
         .eq('slug', orgSlug)
         .maybeSingle()
-      if (org?.ai_api_key) apiKey = org.ai_api_key
       if (org?.ai_qualifier_model) model = org.ai_qualifier_model
     } catch {
       /* ignore — use platform defaults */

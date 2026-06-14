@@ -202,15 +202,13 @@ export async function createOrganization(formData: FormData) {
 
 /**
  * Update org-level AI qualifier configuration (Bloco 2 — IA Nível 1).
- * The API key is stored plaintext for now (TODO: Supabase Vault before prod).
- * Empty string for ai_api_key means "do not change" so the form doesn't have to
- * round-trip the existing key.
+ * The AI now runs on the platform's centralized token (env ANTHROPIC_API_KEY),
+ * metered per account by the credit system — there is no per-org API key.
  */
 export async function updateOrgAI(
   orgSlug: string,
   payload: {
     ai_enabled?: boolean
-    ai_api_key?: string // empty = unchanged
     ai_qualifier_model?: string
     ai_qualifier_prompt?: string
     ai_business_context?: string
@@ -227,9 +225,6 @@ export async function updateOrgAI(
     updates.ai_qualifier_prompt = payload.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT
   if (typeof payload.ai_business_context === 'string')
     updates.ai_business_context = payload.ai_business_context
-  if (payload.ai_api_key && payload.ai_api_key.trim()) {
-    updates.ai_api_key = payload.ai_api_key.trim()
-  }
 
   if (Object.keys(updates).length === 0) return { ok: true as const }
 
@@ -244,8 +239,8 @@ export async function updateOrgAI(
 }
 
 /**
- * Returns the AI config for the current org WITHOUT the api key (so we never
- * leak the secret to the client).
+ * Returns the AI config for the current org. The AI runs on the platform's
+ * centralized token, so there is no per-org API key to read or expose.
  */
 export async function getOrgAIConfig(orgSlug: string) {
   await requireAuth()
@@ -254,7 +249,7 @@ export async function getOrgAIConfig(orgSlug: string) {
 
   const { data } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, ai_api_key')
+    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -264,7 +259,6 @@ export async function getOrgAIConfig(orgSlug: string) {
     ai_qualifier_model: data?.ai_qualifier_model ?? 'claude-haiku-4-5',
     ai_qualifier_prompt: data?.ai_qualifier_prompt ?? DEFAULT_QUALIFIER_PROMPT,
     ai_business_context: data?.ai_business_context ?? '',
-    has_api_key: !!data?.ai_api_key,
   }
 }
 

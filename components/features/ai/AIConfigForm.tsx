@@ -3,13 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { Sparkles, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { Sparkles, RotateCcw } from 'lucide-react'
 import { updateOrgAI } from '@/actions/organization'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
 import {
@@ -23,7 +22,6 @@ type Initial = {
   ai_qualifier_model: string
   ai_qualifier_prompt: string
   ai_business_context: string
-  has_api_key: boolean
 }
 
 const MODEL_OPTIONS = [
@@ -37,8 +35,6 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const [model, setModel] = useState(initial.ai_qualifier_model)
   const [prompt, setPrompt] = useState(initial.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT)
   const [businessContext, setBusinessContext] = useState(initial.ai_business_context || '')
-  const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -49,12 +45,10 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
       ai_qualifier_model: model,
       ai_qualifier_prompt: prompt,
       ai_business_context: businessContext,
-      ai_api_key: apiKey, // empty string = unchanged
     })
     setSaving(false)
     if (res.ok) {
       toast.success('Configuração de IA salva')
-      setApiKey('')
       router.refresh()
     } else {
       toast.error(res.error || 'Erro ao salvar')
@@ -91,47 +85,14 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
 
       <Card>
         <CardHeader>
-          <CardTitle>Credenciais</CardTitle>
+          <CardTitle>Modelo de IA</CardTitle>
           <CardDescription>
-            Sua chave da Anthropic (Claude). Crie uma em{' '}
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              console.anthropic.com
-            </a>
-            .
+            A IA do {' '}
+            <span className="font-medium">Althos</span> já vem pronta para usar — você não precisa
+            cadastrar nenhuma chave. O uso é controlado pelos créditos do seu plano.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Anthropic API Key</Label>
-            <div className="relative">
-              <Input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                placeholder={initial.has_api_key ? '•••••••••• (chave já configurada — preencha para trocar)' : 'sk-ant-...'}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showKey ? 'Esconder' : 'Mostrar'}
-              >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {initial.has_api_key
-                ? 'Chave já configurada. Deixe em branco para mantê-la.'
-                : 'A chave fica armazenada no seu Supabase e nunca é exposta no front-end.'}
-            </p>
-          </div>
-
           <div className="space-y-2">
             <Label>Modelo</Label>
             <select
@@ -145,6 +106,9 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              Modelos mais precisos consomem mais créditos por qualificação.
+            </p>
           </div>
         </CardContent>
       </Card>

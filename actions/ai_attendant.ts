@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
+import { getPlatformAiKey } from '@/lib/ai/api-key'
 import {
   DEFAULT_PERSONA_PROMPT,
   DEFAULT_OUT_OF_HOURS_MESSAGE,
@@ -292,13 +293,16 @@ export async function sendSandboxMessage(
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_api_key')
+    .select('name')
     .eq('id', org.id)
     .maybeSingle()
-  if (!orgData?.ai_api_key) {
+  // AI runs on the platform's centralized token (env), metered per account by
+  // the credit gate below — no per-org API key required.
+  const apiKey = getPlatformAiKey()
+  if (!apiKey) {
     return {
       ok: false as const,
-      error: 'Chave da Anthropic não cadastrada em Configurações → IA.',
+      error: 'IA temporariamente indisponível. Tente novamente em instantes.',
     }
   }
 
@@ -375,7 +379,7 @@ export async function sendSandboxMessage(
         knowledgeBase: (knowledge || []) as any,
         handoffPhrases: config.handoff_phrases,
         leadProfile: (session.simulated_lead as any) || null,
-        orgName: orgData.name || undefined,
+        orgName: orgData?.name || undefined,
         messages: history,
         // Give the attendant access to the CRM: list event types, check
         // availability. The executor closes over the org-scoped client.
@@ -384,7 +388,7 @@ export async function sendSandboxMessage(
           executeAttendantTool(name, input, { orgId: org.id, supabase: supabase as any }),
       },
       {
-        apiKey: orgData.ai_api_key,
+        apiKey,
         model: config.model,
         maxOutputTokens: 600,
       },

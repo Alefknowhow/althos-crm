@@ -5,7 +5,7 @@ import {
   listSandboxMessages,
   createSandboxSession,
 } from '@/actions/ai_attendant'
-import { getOrgAIConfig } from '@/actions/organization'
+import { hasPlatformAiKey } from '@/lib/ai/api-key'
 import SandboxPlayground from '@/components/features/ai/SandboxPlayground'
 
 export const dynamic = 'force-dynamic'
@@ -20,10 +20,9 @@ export default async function PlaygroundPage({
   await requireAuth()
   await getCurrentOrganization(params.orgSlug)
 
-  const [config, sessions, orgAi] = await Promise.all([
+  const [config, sessions] = await Promise.all([
     getAttendantConfig(params.orgSlug),
     listSandboxSessions(params.orgSlug),
-    getOrgAIConfig(params.orgSlug),
   ])
 
   // Pick session: requested via URL, latest existing, or create a new one.
@@ -43,7 +42,7 @@ export default async function PlaygroundPage({
   return (
     <SandboxPlayground
       orgSlug={params.orgSlug}
-      hasApiKey={orgAi.has_api_key}
+      hasApiKey={hasPlatformAiKey()}
       attendantEnabled={config.is_enabled}
       sessions={sessions as any[]}
       activeSessionId={activeSessionId || ''}

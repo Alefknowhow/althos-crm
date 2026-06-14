@@ -189,12 +189,13 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   } else {
     const { data: org } = await supabase
       .from('organizations')
-      .select('name, ai_api_key, ai_business_context, ai_qualifier_model')
+      .select('name, ai_business_context, ai_qualifier_model')
       .eq('id', orgId)
       .maybeSingle()
-    const apiKey = org?.ai_api_key || process.env.ANTHROPIC_API_KEY
+    // Centralized platform token (env) — same key for every account.
+    const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
-      console.warn('[social engine] no Anthropic API key for org', orgId)
+      console.warn('[social engine] ANTHROPIC_API_KEY not configured')
       return
     }
     try {

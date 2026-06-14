@@ -4,7 +4,7 @@ import {
   listInsightsMessages,
   createInsightsSession,
 } from '@/actions/ai_insights'
-import { getOrgAIConfig } from '@/actions/organization'
+import { hasPlatformAiKey } from '@/lib/ai/api-key'
 import InsightsChat from '@/components/features/ai/InsightsChat'
 
 export const dynamic = 'force-dynamic'
@@ -19,10 +19,7 @@ export default async function InsightsPage({
   await requireAuth()
   await getCurrentOrganization(params.orgSlug)
 
-  const [sessions, orgAi] = await Promise.all([
-    listInsightsSessions(params.orgSlug),
-    getOrgAIConfig(params.orgSlug),
-  ])
+  const sessions = await listInsightsSessions(params.orgSlug)
 
   // Resolve active session: URL param → most recent → auto-create.
   let activeSessionId = searchParams.session
@@ -41,7 +38,7 @@ export default async function InsightsPage({
   return (
     <InsightsChat
       orgSlug={params.orgSlug}
-      hasApiKey={orgAi.has_api_key}
+      hasApiKey={hasPlatformAiKey()}
       sessions={sessions as any[]}
       activeSessionId={activeSessionId || ''}
       initialMessages={messages as any[]}
