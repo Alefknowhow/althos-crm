@@ -1102,3 +1102,55 @@ export async function getDocumentSignedUrl(orgSlug: string, documentId: string) 
   }
   return { ok: true as const, url: signed.signedUrl }
 }
+
+// =====================================================================
+// Registros de viagem vinculados a um contato (para os atalhos da lista:
+// "Cotações enviadas" e "Reservas"). Carregado sob demanda quando o popup
+// é aberto, evitando consultas por linha na listagem.
+// =====================================================================
+
+export type ContatoQuoteLink = {
+  id: string
+  title: string | null
+  client_name: string | null
+  status: string | null
+  total_cents: number | null
+  created_at: string | null
+  public_token: string | null
+}
+
+export type ContatoReservationLink = {
+  id: string
+  client_name: string | null
+  destination: string | null
+  status: string | null
+  total_cents: number | null
+  departure_date: string | null
+  created_at: string | null
+}
+
+export async function getContatoTravelLinks(orgSlug: string, contatoId: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const [{ data: quotes }, { data: reservations }] = await Promise.all([
+    supabase
+      .from('travel_proposals')
+      .select('id, title, client_name, status, total_cents, created_at, public_token')
+      .eq('organization_id', org.id)
+      .eq('contato_id', contatoId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('travel_sales')
+      .select('id, client_name, destination, status, total_cents, departure_date, created_at')
+      .eq('organization_id', org.id)
+      .eq('contato_id', contatoId)
+      .order('created_at', { ascending: false }),
+  ])
+
+  return {
+    quotes: (quotes || []) as ContatoQuoteLink[],
+    reservations: (reservations || []) as ContatoReservationLink[],
+  }
+}

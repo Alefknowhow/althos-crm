@@ -23,13 +23,14 @@ import {
 import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Mail, Phone,
   MapPin, FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
-  Bookmark, X,
+  Bookmark, X, MessageCircle, FileSignature, Plane,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
 } from '@/lib/contatos'
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
+  getContatoTravelLinks, type ContatoQuoteLink, type ContatoReservationLink,
 } from '@/actions/contatos'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
@@ -91,6 +92,7 @@ interface Props {
   allSources: string[]
   savedFilters: SavedFilter[]
   filters: Filters
+  isTravel: boolean
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -137,11 +139,14 @@ export default function ContatosView({
   allSources,
   savedFilters,
   filters,
+  isTravel,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mobileDetail, setMobileDetail] = useState(false)
+  // Linked-records popup (cotações / reservas) for a given contato.
+  const [linksFor, setLinksFor] = useState<{ kind: 'quotes' | 'reservations'; contato: ListRow } | null>(null)
 
   // ── Navegação por URL preservando params ──────────────────────────
   function buildUrl(patch: Record<string, string | null>): string {
@@ -233,7 +238,7 @@ export default function ContatosView({
         {/* Master */}
         <div
           className={cn(
-            'lg:w-1/2 lg:shrink-0 rounded-xl border bg-card flex flex-col overflow-hidden',
+            'lg:w-[360px] lg:shrink-0 rounded-xl border bg-card flex flex-col overflow-hidden',
             mobileDetail && 'hidden lg:flex',
           )}
         >
@@ -241,39 +246,77 @@ export default function ContatosView({
             {contatos.map(c => {
               const active = c.id === selectedId
               const meta = CONTATO_STATUS_META[(c.status as ContatoStatus)] || null
-              const secondary = c.city || c.state
-                ? [c.city, c.state].filter(Boolean).join(' · ')
-                : c.email || c.phone || 'Sem contato'
               return (
-                <button
+                <div
                   key={c.id}
-                  onClick={() => selectRow(c.id)}
                   className={cn(
-                    'w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors',
+                    'px-3 py-2.5 transition-colors',
                     active ? 'bg-primary/10' : 'hover:bg-muted/40',
                   )}
                 >
-                  <ListAvatar name={c.name} url={c.avatar_url} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">{c.name}</span>
-                      {c.has_documents && (
-                        <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
-                      )}
+                  <button
+                    onClick={() => selectRow(c.id)}
+                    className="w-full text-left flex items-center gap-3"
+                  >
+                    <ListAvatar name={c.name} url={c.avatar_url} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{c.name}</span>
+                        {c.has_documents && (
+                          <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        <Phone className="w-3 h-3 shrink-0" />
+                        {c.phone || 'Sem telefone'}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">{secondary}</div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {meta && (
-                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', meta.badgeClass)}>
-                        {meta.label}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {meta && (
+                        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', meta.badgeClass)}>
+                          {meta.label}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        {relativeTime(c.last_activity_at || c.updated_at)}
                       </span>
+                    </div>
+                  </button>
+
+                  {/* Atalhos: conversas, cotações enviadas, reservas */}
+                  <div className="mt-2 flex items-center gap-1.5 pl-12">
+                    <ShortcutButton
+                      asChild
+                      label="Conversas"
+                      icon={MessageCircle}
+                    >
+                      <Link href={`/app/${orgSlug}/conversas?lead=${c.id}`}>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Conversas
+                      </Link>
+                    </ShortcutButton>
+                    {isTravel && (
+                      <>
+                        <ShortcutButton
+                          label="Cotações enviadas"
+                          icon={FileSignature}
+                          onClick={() => setLinksFor({ kind: 'quotes', contato: c })}
+                        >
+                          <FileSignature className="w-3.5 h-3.5" />
+                          Cotações
+                        </ShortcutButton>
+                        <ShortcutButton
+                          label="Reservas"
+                          icon={Plane}
+                          onClick={() => setLinksFor({ kind: 'reservations', contato: c })}
+                        >
+                          <Plane className="w-3.5 h-3.5" />
+                          Reservas
+                        </ShortcutButton>
+                      </>
                     )}
-                    <span className="text-[10px] text-muted-foreground">
-                      {relativeTime(c.last_activity_at || c.updated_at)}
-                    </span>
                   </div>
-                </button>
+                </div>
               )
             })}
             {contatos.length === 0 && (
@@ -311,7 +354,7 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'lg:w-1/2 lg:flex-1 rounded-xl border bg-card overflow-y-auto',
+            'lg:flex-1 lg:min-w-0 rounded-xl border bg-card overflow-y-auto',
             !mobileDetail && 'hidden lg:block',
           )}
         >
@@ -332,7 +375,155 @@ export default function ContatosView({
           )}
         </div>
       </div>
+
+      {/* Popup: registros ligados (cotações / reservas) */}
+      <LinkedRecordsDialog
+        orgSlug={orgSlug}
+        target={linksFor}
+        onClose={() => setLinksFor(null)}
+      />
     </div>
+  )
+}
+
+// ── Botão de atalho (pill) ───────────────────────────────────────────
+function ShortcutButton({
+  label, icon: Icon, onClick, asChild, children,
+}: {
+  label: string
+  icon: any
+  onClick?: () => void
+  asChild?: boolean
+  children: React.ReactNode
+}) {
+  const cls =
+    'inline-flex items-center gap-1 rounded-full border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+  if (asChild) {
+    return (
+      <span className={cls} title={label}>
+        {children}
+      </span>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} className={cls} title={label}>
+      {children}
+    </button>
+  )
+}
+
+// ── Popup de registros ligados ───────────────────────────────────────
+function LinkedRecordsDialog({
+  orgSlug, target, onClose,
+}: {
+  orgSlug: string
+  target: { kind: 'quotes' | 'reservations'; contato: ListRow } | null
+  onClose: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const [quotes, setQuotes] = useState<ContatoQuoteLink[]>([])
+  const [reservations, setReservations] = useState<ContatoReservationLink[]>([])
+
+  useEffect(() => {
+    if (!target) return
+    let cancelled = false
+    setLoading(true)
+    getContatoTravelLinks(orgSlug, target.contato.id)
+      .then(res => {
+        if (cancelled) return
+        setQuotes(res.quotes)
+        setReservations(res.reservations)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Não foi possível carregar os registros.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [target, orgSlug])
+
+  const isQuotes = target?.kind === 'quotes'
+  const title = isQuotes ? 'Cotações enviadas' : 'Reservas'
+
+  return (
+    <Dialog open={!!target} onOpenChange={o => { if (!o) onClose() }}>
+      <DialogContent className="sm:max-w-lg">
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              {isQuotes ? <FileSignature className="w-4 h-4" /> : <Plane className="w-4 h-4" />}
+              {title}
+            </h2>
+            {target && (
+              <p className="text-sm text-muted-foreground">{target.contato.name}</p>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="grid place-items-center py-10 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          ) : isQuotes ? (
+            quotes.length === 0 ? (
+              <EmptyLinked label="Nenhuma cotação enviada para este contato." />
+            ) : (
+              <div className="divide-y rounded-lg border max-h-[60vh] overflow-y-auto">
+                {quotes.map(q => (
+                  <Link
+                    key={q.id}
+                    href={`/app/${orgSlug}/cotacoes/${q.id}`}
+                    onClick={onClose}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{q.title || 'Cotação'}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fmtDate(q.created_at)} · {q.status || '—'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-semibold tabular-nums">{fmtCurrency(q.total_cents)}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )
+          ) : reservations.length === 0 ? (
+            <EmptyLinked label="Nenhuma reserva para este contato." />
+          ) : (
+            <div className="divide-y rounded-lg border max-h-[60vh] overflow-y-auto">
+              {reservations.map(r => (
+                <Link
+                  key={r.id}
+                  href={`/app/${orgSlug}/reservas`}
+                  onClick={onClose}
+                  className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{r.destination || 'Reserva'}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.departure_date ? `Embarque ${fmtDate(r.departure_date)}` : fmtDate(r.created_at)} · {r.status || '—'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-semibold tabular-nums">{fmtCurrency(r.total_cents)}</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EmptyLinked({ label }: { label: string }) {
+  return (
+    <div className="py-10 text-center text-sm text-muted-foreground">{label}</div>
   )
 }
 

@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/empty-state'
 import { Users } from 'lucide-react'
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
+import { isTravelNiche } from '@/lib/niche'
 
 const PAGE_SIZE = 50
 
@@ -245,6 +246,7 @@ export default async function ContatosPage({
         allSources={allSources}
         savedFilters={savedFilters}
         filters={searchParams}
+        isTravel={isTravelNiche(org.niche)}
       />
       {listRows.length === 0 && !isFiltered && (
         <EmptyState
