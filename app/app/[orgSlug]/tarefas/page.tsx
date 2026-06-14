@@ -1,6 +1,7 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
+import { listTaskColumns } from '@/actions/tasks'
 import TaskDialog from '@/components/features/TaskDialog'
 import TasksBoard from '@/components/features/tasks/TasksBoard'
 
@@ -8,17 +9,20 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
 
-  // Pull every active-workflow task; the board splits them into columns
-  // (A Fazer / Em Andamento / Concluído) and filters client-side.
-  const [{ data: tasks }, members] = await Promise.all([
+  // Pull every active-workflow task; the board groups them by custom column
+  // and filters client-side. Columns are user-defined (pipeline-style).
+  const [{ data: tasks }, members, columnsRes] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, title, description, status, priority, due_date, assigned_to, leads:contatos(id, name)')
+      .select('id, title, description, status, priority, due_date, assigned_to, column_id, leads:contatos(id, name)')
       .eq('organization_id', org.id)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false }),
     listOrgMembers(params.orgSlug),
+    listTaskColumns(params.orgSlug),
   ])
+
+  const columns = columnsRes.ok ? columnsRes.columns : []
 
   const memberName = new Map(members.map(m => [m.user_id, m.name]))
 
@@ -39,7 +43,12 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
         <TaskDialog orgSlug={params.orgSlug} members={members} />
       </div>
 
-      <TasksBoard initialTasks={normalized as any} orgSlug={params.orgSlug} members={members} />
+      <TasksBoard
+        initialTasks={normalized as any}
+        initialColumns={columns}
+        orgSlug={params.orgSlug}
+        members={members}
+      />
     </div>
   )
 }

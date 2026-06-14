@@ -9,15 +9,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import LeadCombobox from '@/components/features/LeadCombobox'
-import { setTaskStatus, updateTask, deleteTask, toggleTaskStatus } from '@/actions/tasks'
+import {
+  updateTask, deleteTask, toggleTaskStatus,
+  moveTaskToColumn, createTaskColumn, renameTaskColumn, deleteTaskColumn,
+} from '@/actions/tasks'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   LayoutGrid, List as ListIcon, Calendar, User2, UserCheck, CheckCircle2, Circle,
-  Clock, GripVertical, Trash2,
+  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ListTodo, AlertTriangle,
 } from 'lucide-react'
 
 type Member = { user_id: string; name: string; email: string }
+
+type Column = { id: string; name: string; position: number }
 
 type Task = {
   id: string
@@ -28,6 +33,7 @@ type Task = {
   due_date?: string | null
   assigned_to?: string | null
   assignee_name?: string | null
+  column_id?: string | null
   leads?: { id: string; name: string } | null
 }
 
@@ -52,12 +58,6 @@ function dueDateOnly(t: Task): Date | null {
   return new Date(y, m - 1, d)
 }
 
-const COLUMNS: { id: Task['status']; name: string; accent: string; dot: string }[] = [
-  { id: 'open',  name: 'A Fazer',       accent: 'border-t-slate-400',  dot: 'bg-slate-400' },
-  { id: 'doing', name: 'Em Andamento',  accent: 'border-t-blue-500',   dot: 'bg-blue-500' },
-  { id: 'done',  name: 'Concluído',     accent: 'border-t-green-500',  dot: 'bg-green-500' },
-]
-
 const PRIORITY_META: Record<Task['priority'], { label: string; cls: string; bar: string }> = {
   low:    { label: 'Baixa', cls: 'bg-green-100 text-green-800 border-green-200',   bar: 'bg-green-400' },
   normal: { label: 'Média', cls: 'bg-amber-100 text-amber-800 border-amber-200',   bar: 'bg-amber-400' },
@@ -79,27 +79,41 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })
 }
 
+/** Sort helper: keeps pending tasks on top and pushes completed ones to the
+ *  bottom while preserving the incoming order within each group. */
+function doneLast(list: Task[]): Task[] {
+  const pending = list.filter(t => t.status !== 'done')
+  const done = list.filter(t => t.status === 'done')
+  return [...pending, ...done]
+}
+
 export default function TasksBoard({
   initialTasks,
+  initialColumns,
   orgSlug,
   members = [],
 }: {
   initialTasks: Task[]
+  initialColumns: Column[]
   orgSlug: string
   members?: Member[]
 }) {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [columns, setColumns] = useState<Column[]>(initialColumns)
   const [view, setView] = useState<View>('kanban')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [assignee, setAssignee] = useState<AssigneeFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [editing, setEditing] = useState<Task | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
-  const [overCol, setOverCol] = useState<Task['status'] | null>(null)
+  const [overCol, setOverCol] = useState<string | null>(null)
+  const [editingColId, setEditingColId] = useState<string | null>(null)
+  const [colDraft, setColDraft] = useState('')
 
   // Re-sync when the server sends fresh data (after router.refresh()).
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
+  useEffect(() => { setColumns(initialColumns) }, [initialColumns])
 
   // Restore preferred view (avoid SSR hydration mismatch by reading after mount).
   useEffect(() => {
@@ -151,6 +165,17 @@ export default function TasksBoard({
     [tasks, priority, assignee, dateFilter, bounds],
   )
 
+  // Mini dashboard: open / overdue / done across all (unfiltered) tasks.
+  const summary = useMemo(() => {
+    let open = 0, overdue = 0, done = 0
+    for (const t of tasks) {
+      if (t.status === 'done') { done++; continue }
+      open++
+      if (isOverdue(t)) overdue++
+    }
+    return { open, overdue, done }
+  }, [tasks])
+
   const dateCounts = useMemo(() => {
     const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, this_week: 0, next_week: 0, this_month: 0 }
     for (const t of tasks) {
@@ -161,19 +186,28 @@ export default function TasksBoard({
     return c
   }, [tasks, bounds])
 
+  // Group tasks by column. Tasks with no/unknown column fall into the first one.
   const byColumn = useMemo(() => {
-    const map: Record<Task['status'], Task[]> = { open: [], doing: [], done: [] }
-    for (const t of filtered) (map[t.status] ?? map.open).push(t)
+    const firstId = columns[0]?.id ?? null
+    const valid = new Set(columns.map(c => c.id))
+    const map: Record<string, Task[]> = {}
+    for (const c of columns) map[c.id] = []
+    for (const t of filtered) {
+      const key = t.column_id && valid.has(t.column_id) ? t.column_id : firstId
+      if (key) (map[key] ??= []).push(t)
+    }
+    for (const k of Object.keys(map)) map[k] = doneLast(map[k])
     return map
-  }, [filtered])
+  }, [filtered, columns])
 
-  async function moveTo(taskId: string, status: Task['status']) {
+  async function moveTo(taskId: string, columnId: string) {
     const task = tasks.find(t => t.id === taskId)
-    if (!task || task.status === status) return
-    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status } : t)))
-    const res = await setTaskStatus(orgSlug, taskId, status)
+    if (!task || task.column_id === columnId) return
+    const prevCol = task.column_id ?? null
+    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, column_id: columnId } : t)))
+    const res = await moveTaskToColumn(orgSlug, taskId, columnId)
     if (!res.ok) {
-      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, status: task.status } : t)))
+      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, column_id: prevCol } : t)))
       toast.error('Erro ao mover tarefa')
       return
     }
@@ -205,6 +239,66 @@ export default function TasksBoard({
     router.refresh()
   }
 
+  // --- Column management ----------------------------------------------------
+  async function handleAddColumn() {
+    const res = await createTaskColumn(orgSlug, 'Nova coluna')
+    if (!res.ok || !res.column) {
+      toast.error('Erro ao criar coluna')
+      return
+    }
+    setColumns(prev => [...prev, res.column!])
+    setEditingColId(res.column.id)
+    setColDraft(res.column.name)
+    router.refresh()
+  }
+
+  function startEditCol(col: Column) {
+    setEditingColId(col.id)
+    setColDraft(col.name)
+  }
+
+  async function commitEditCol() {
+    const id = editingColId
+    if (!id) return
+    const name = colDraft.trim()
+    setEditingColId(null)
+    const current = columns.find(c => c.id === id)
+    if (!name || name === current?.name) return
+    setColumns(prev => prev.map(c => (c.id === id ? { ...c, name } : c)))
+    const res = await renameTaskColumn(orgSlug, id, name)
+    if (!res.ok) {
+      toast.error(res.error || 'Erro ao renomear coluna')
+      if (current) setColumns(prev => prev.map(c => (c.id === id ? { ...c, name: current.name } : c)))
+      return
+    }
+    router.refresh()
+  }
+
+  async function handleDeleteColumn(col: Column) {
+    if (columns.length <= 1) {
+      toast.error('Mantenha ao menos uma coluna.')
+      return
+    }
+    const count = byColumn[col.id]?.length ?? 0
+    const msg = count > 0
+      ? `Excluir "${col.name}"? As ${count} tarefa(s) serão movidas para a primeira coluna.`
+      : `Excluir a coluna "${col.name}"?`
+    if (!window.confirm(msg)) return
+
+    const fallback = columns.find(c => c.id !== col.id)
+    setColumns(prev => prev.filter(c => c.id !== col.id))
+    if (fallback) {
+      setTasks(prev => prev.map(t => (t.column_id === col.id ? { ...t, column_id: fallback.id } : t)))
+    }
+    const res = await deleteTaskColumn(orgSlug, col.id)
+    if (!res.ok) {
+      toast.error(res.error || 'Erro ao excluir coluna')
+      router.refresh()
+      return
+    }
+    router.refresh()
+  }
+
   const counts = { all: tasks.length, ...(['low', 'normal', 'high'] as const).reduce(
     (acc, p) => ({ ...acc, [p]: tasks.filter(t => t.priority === p).length }), {} as Record<string, number>) }
 
@@ -219,6 +313,28 @@ export default function TasksBoard({
 
   return (
     <div className="space-y-4">
+      {/* Mini dashboard */}
+      <div className="grid grid-cols-3 gap-3">
+        <SummaryCard
+          icon={ListTodo}
+          label="Em aberto"
+          value={summary.open}
+          tone="neutral"
+        />
+        <SummaryCard
+          icon={AlertTriangle}
+          label="Vencidas"
+          value={summary.overdue}
+          tone={summary.overdue > 0 ? 'danger' : 'neutral'}
+        />
+        <SummaryCard
+          icon={CheckCircle2}
+          label="Concluídas"
+          value={summary.done}
+          tone="success"
+        />
+      </div>
+
       {/* Date filters */}
       <div className="flex flex-wrap items-center gap-1.5">
         {DATE_FILTERS.map(f => {
@@ -297,8 +413,8 @@ export default function TasksBoard({
 
       {/* Board */}
       {view === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {COLUMNS.map(col => (
+        <div className="flex gap-4 overflow-x-auto pb-2 items-start">
+          {columns.map(col => (
             <div
               key={col.id}
               onDragOver={e => { e.preventDefault(); setOverCol(col.id) }}
@@ -311,23 +427,60 @@ export default function TasksBoard({
                 setOverCol(null)
               }}
               className={cn(
-                'rounded-xl border bg-muted/20 border-t-2 flex flex-col min-h-[200px] transition-colors',
-                col.accent,
+                'rounded-xl border bg-muted/20 border-t-2 border-t-primary/40 flex flex-col min-h-[200px] w-[300px] shrink-0 transition-colors',
                 overCol === col.id && 'bg-primary/5 ring-2 ring-primary/30',
               )}
             >
-              <div className="flex items-center justify-between px-3 py-2.5 sticky top-0">
-                <div className="flex items-center gap-2">
-                  <span className={cn('w-2 h-2 rounded-full', col.dot)} />
-                  <span className="text-sm font-semibold">{col.name}</span>
-                </div>
-                <span className="text-xs text-muted-foreground tabular-nums bg-background border rounded-full px-2 py-0.5">
-                  {byColumn[col.id].length}
-                </span>
+              <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+                {editingColId === col.id ? (
+                  <div className="flex items-center gap-1 flex-1">
+                    <Input
+                      autoFocus
+                      value={colDraft}
+                      onChange={e => setColDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitEditCol()
+                        if (e.key === 'Escape') setEditingColId(null)
+                      }}
+                      className="h-7 text-sm font-semibold"
+                    />
+                    <button onClick={commitEditCol} className="text-green-600 hover:text-green-700 shrink-0" aria-label="Salvar">
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setEditingColId(null)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Cancelar">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => startEditCol(col)}
+                      className="group flex items-center gap-1.5 min-w-0"
+                      title="Renomear coluna"
+                    >
+                      <span className="text-sm font-semibold truncate">{col.name}</span>
+                      <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-xs text-muted-foreground tabular-nums bg-background border rounded-full px-2 py-0.5">
+                        {byColumn[col.id]?.length ?? 0}
+                      </span>
+                      {columns.length > 1 && (
+                        <button
+                          onClick={() => handleDeleteColumn(col)}
+                          className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                          aria-label="Excluir coluna"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex-1 px-2 pb-2 space-y-2 overflow-y-auto">
-                {byColumn[col.id].length === 0 ? (
+                {(byColumn[col.id]?.length ?? 0) === 0 ? (
                   <div className="text-center text-xs text-muted-foreground py-8 border-2 border-dashed rounded-lg">
                     Arraste tarefas para cá
                   </div>
@@ -346,17 +499,27 @@ export default function TasksBoard({
               </div>
             </div>
           ))}
+
+          {/* Add column */}
+          <button
+            onClick={handleAddColumn}
+            className="w-[220px] shrink-0 min-h-[120px] rounded-xl border-2 border-dashed text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-sm font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Nova coluna
+          </button>
         </div>
       ) : (
         <div className="rounded-xl border divide-y bg-card">
-          {filtered.length === 0 ? (
+          {doneLast(filtered).length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">Nenhuma tarefa nesta visão.</div>
           ) : (
-            filtered.map(task => (
+            doneLast(filtered).map(task => (
               <TaskRow
                 key={task.id}
                 task={task}
                 orgSlug={orgSlug}
+                columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
                 onOpen={() => setEditing(task)}
                 onToggleDone={() => handleToggleDone(task)}
               />
@@ -378,6 +541,37 @@ export default function TasksBoard({
         }}
         onDelete={handleDelete}
       />
+    </div>
+  )
+}
+
+function SummaryCard({
+  icon: Icon, label, value, tone,
+}: {
+  icon: any
+  label: string
+  value: number
+  tone: 'neutral' | 'danger' | 'success'
+}) {
+  const toneCls = {
+    neutral: 'text-foreground',
+    danger:  'text-destructive',
+    success: 'text-green-600',
+  }[tone]
+  const iconCls = {
+    neutral: 'text-muted-foreground',
+    danger:  'text-destructive',
+    success: 'text-green-600',
+  }[tone]
+  return (
+    <div className="rounded-xl border bg-card p-3 sm:p-4 flex items-center gap-3">
+      <div className={cn('shrink-0', iconCls)}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</div>
+        <div className={cn('text-xl sm:text-2xl font-bold tabular-nums leading-tight', toneCls)}>{value}</div>
+      </div>
     </div>
   )
 }
@@ -415,7 +609,10 @@ function KanbanCard({
       onDragStart={e => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
       onDragEnd={onDragEnd}
       onClick={onOpen}
-      className="group relative rounded-lg border bg-card p-3 pl-4 shadow-sm hover:shadow-md hover:border-primary/40 cursor-pointer transition-all"
+      className={cn(
+        'group relative rounded-lg border bg-card p-3 pl-4 shadow-sm hover:shadow-md hover:border-primary/40 cursor-pointer transition-all',
+        task.status === 'done' && 'opacity-70',
+      )}
     >
       <span className={cn('absolute left-0 top-0 bottom-0 w-1 rounded-l-lg', pm.bar)} />
       <div className="flex items-start gap-2">
@@ -458,17 +655,18 @@ function KanbanCard({
 }
 
 function TaskRow({
-  task, orgSlug, onOpen, onToggleDone,
+  task, orgSlug, columnName, onOpen, onToggleDone,
 }: {
   task: Task
   orgSlug: string
+  columnName: string
   onOpen: () => void
   onToggleDone: () => void
 }) {
   const pm = PRIORITY_META[task.priority]
   const overdue = isOverdue(task)
   const date = fmtDate(task.due_date)
-  const statusName = task.status === 'done' ? 'Concluído' : task.status === 'doing' ? 'Em Andamento' : 'A Fazer'
+  const statusName = task.status === 'done' ? 'Concluído' : columnName
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
       <button
