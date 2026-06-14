@@ -35,9 +35,9 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
             products={products}
             currentUserId={user.id}
             trigger={
-              <Button>
-                <Plus className="w-4 h-4 mr-1.5" />
-                Registrar venda
+              <Button title="Registrar venda" aria-label="Registrar venda">
+                <Plus className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Registrar venda</span>
               </Button>
             }
           />

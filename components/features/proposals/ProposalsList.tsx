@@ -426,20 +426,22 @@ function ProposalDetail({
             <Badge variant="outline" className={cn('shrink-0', st.cls)}>{st.label}</Badge>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button asChild size="sm">
-            <Link href={`/app/${orgSlug}/cotacoes/${p.id}`}><Pencil className="w-3.5 h-3.5 mr-1.5" /> Abrir editor</Link>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button asChild size="sm" title="Abrir editor">
+            <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
+              <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
+            </Link>
           </Button>
           {p.public_token && (
             <>
-              <Button type="button" variant="outline" size="sm" asChild>
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF
+              <Button type="button" variant="outline" size="sm" asChild title="Abrir / PDF">
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir / PDF">
+                  <ExternalLink className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir / PDF</span>
                 </a>
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={copyLink}>
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? 'Copiado' : 'Copiar link'}
+              <Button type="button" variant="outline" size="sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 sm:mr-1.5" />}
+                <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar link'}</span>
               </Button>
             </>
           )}
@@ -447,8 +449,9 @@ function ProposalDetail({
             type="button" variant="outline" size="sm"
             onClick={onDuplicate}
             title="Copiar proposta para outro lead/contato"
+            aria-label="Copiar proposta para outro lead/contato"
           >
-            <CopyPlus className="w-3.5 h-3.5 mr-1.5" /> Copiar p/ lead
+            <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Copiar p/ lead</span>
           </Button>
           <Button
             type="button" variant="outline" size="icon"

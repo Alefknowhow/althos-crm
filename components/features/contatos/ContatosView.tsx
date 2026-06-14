@@ -290,9 +290,8 @@ export default function ContatosView({
                       label="Conversas"
                       icon={MessageCircle}
                     >
-                      <Link href={`/app/${orgSlug}/conversas?lead=${c.id}`}>
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        Conversas
+                      <Link href={`/app/${orgSlug}/conversas?lead=${c.id}`} aria-label="Conversas">
+                        <MessageCircle className="w-4 h-4" />
                       </Link>
                     </ShortcutButton>
                     {isTravel && (
@@ -301,18 +300,12 @@ export default function ContatosView({
                           label="Cotações enviadas"
                           icon={FileSignature}
                           onClick={() => setLinksFor({ kind: 'quotes', contato: c })}
-                        >
-                          <FileSignature className="w-3.5 h-3.5" />
-                          Cotações
-                        </ShortcutButton>
+                        />
                         <ShortcutButton
                           label="Reservas"
                           icon={Plane}
                           onClick={() => setLinksFor({ kind: 'reservations', contato: c })}
-                        >
-                          <Plane className="w-3.5 h-3.5" />
-                          Reservas
-                        </ShortcutButton>
+                        />
                       </>
                     )}
                   </div>
@@ -394,20 +387,23 @@ function ShortcutButton({
   icon: any
   onClick?: () => void
   asChild?: boolean
-  children: React.ReactNode
+  /** Only used when asChild — should be the navigation element (e.g. a <Link>). */
+  children?: React.ReactNode
 }) {
+  // Plain clickable icon: no label, no border, no background.
   const cls =
-    'inline-flex items-center gap-1 rounded-full border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+    'inline-flex items-center justify-center p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md'
   if (asChild) {
+    // The child is the link wrapper; render only the icon inside it.
     return (
-      <span className={cls} title={label}>
+      <span className={cls} title={label} aria-label={label}>
         {children}
       </span>
     )
   }
   return (
-    <button type="button" onClick={onClick} className={cls} title={label}>
-      {children}
+    <button type="button" onClick={onClick} className={cls} title={label} aria-label={label}>
+      <Icon className="w-4 h-4" />
     </button>
   )
 }

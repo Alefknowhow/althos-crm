@@ -28,7 +28,7 @@ import { uploadSaleVoucher } from '@/actions/upload'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
-  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users,
+  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null }
@@ -464,11 +464,11 @@ function SaleEditor({
 
         {/* Actions relocated from the bottom of the form into the header bar */}
         <div className="shrink-0 flex items-center gap-1.5">
-          <Button variant="outline" size="sm" disabled={saving} onClick={() => onSave(patch(), false)}>
-            {saving ? 'Salvando…' : 'Salvar'}
+          <Button variant="outline" size="sm" disabled={saving} onClick={() => onSave(patch(), false)} title="Salvar" aria-label="Salvar">
+            <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
           </Button>
-          <Button size="sm" disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)}>
-            <ListChecks className="w-3.5 h-3.5 mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Processando…' : 'Salvar e gerar tarefas'}</span><span className="sm:hidden">Tarefas</span>
+          <Button size="sm" disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)} title="Salvar e gerar tarefas" aria-label="Salvar e gerar tarefas">
+            <ListChecks className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Processando…' : 'Salvar e gerar tarefas'}</span>
           </Button>
           <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
             <Trash2 className="w-4 h-4" />

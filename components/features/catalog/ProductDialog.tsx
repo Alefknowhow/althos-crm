@@ -20,9 +20,9 @@ export default function ProductDialog({ orgSlug, product, trigger, categories }:
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Item
+          <Button title="Novo Item" aria-label="Novo Item">
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Item</span>
           </Button>
         )}
       </DialogTrigger>

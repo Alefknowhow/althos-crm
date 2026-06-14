@@ -90,7 +90,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          {trigger ?? <Button><Plus className="w-4 h-4 mr-1" /> Nova Tarefa</Button>}
+          {trigger ?? <Button title="Nova Tarefa" aria-label="Nova Tarefa"><Plus className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">Nova Tarefa</span></Button>}
         </DialogTrigger>
 
         <DialogContent>
