@@ -25,8 +25,13 @@ export default async function OrgLayout({
   children: React.ReactNode
   params: { orgSlug: string }
 }) {
-  const user = await requireAuth()
-  const org  = await getCurrentOrganization(params.orgSlug)
+  // Resolve auth + org in parallel. requireAuth() and getCurrentOrganization()
+  // both go through the per-request-cached getUser(), so this is two independent
+  // round-trips collapsed into one await instead of running back-to-back.
+  const [user, org] = await Promise.all([
+    requireAuth(),
+    getCurrentOrganization(params.orgSlug),
+  ])
 
   // ── Billing gate ────────────────────────────────────────────────────────────
   // Skip when the user is already on /upgrade (prevent infinite redirect).
