@@ -21,7 +21,7 @@ import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Share2, Copy, ExternalLink, Upload, Loader2, Search,
-  ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon,
+  ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon, Lock,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -618,6 +618,7 @@ export default function ProposalBuilder({
       checklist: p.checklist, photos: p.photos,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
+      operadora: p.operadora, commission_total_cents: p.commission_total_cents,
     })
     setSaving(false)
     if (res.ok) { toast.success('Proposta salva'); router.refresh() }
@@ -995,8 +996,25 @@ export default function ProposalBuilder({
       </div>
 
       {/* Notas internas */}
-      <SectionCard icon={CalendarRange} title="Notas internas (não aparecem na proposta)">
-        <Textarea value={p.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Anotações internas sobre essa proposta" />
+      <SectionCard icon={Lock} title="Uso interno (não aparece na proposta / PDF)">
+        <p className="text-xs text-muted-foreground">
+          Visível apenas para a equipe interna. Nunca é exibido no link público nem no PDF enviado ao cliente.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Operadora">
+            <Input
+              value={p.operadora || ''}
+              onChange={e => set('operadora', e.target.value)}
+              placeholder="Ex.: CVC, Decolar, Azul Viagens"
+            />
+          </Field>
+          <Field label="Comissão total">
+            <MoneyInput value={p.commission_total_cents || 0} onChange={c => set('commission_total_cents', c)} />
+          </Field>
+        </div>
+        <Field label="Notas internas">
+          <Textarea value={p.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Anotações internas sobre essa proposta" />
+        </Field>
       </SectionCard>
 
       {/* bottom save */}

@@ -33,6 +33,9 @@ export type ProposalRow = {
   payment: Record<string, any>
   company_override: Record<string, any> | null
   notes: string | null
+  // Internal-only (never shown on the public proposal/PDF).
+  operadora: string | null
+  commission_total_cents: number
   created_at: string
   updated_at: string
 }
@@ -43,7 +46,7 @@ const WRITABLE = [
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
   'services', 'included', 'not_included', 'checklist', 'photos', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
-  'company_override', 'notes',
+  'company_override', 'notes', 'operadora', 'commission_total_cents',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
@@ -52,7 +55,7 @@ function pick(input: Record<string, any>): Record<string, any> {
     if (k in input) out[k] = input[k]
   }
   // Coerce integer money/count fields defensively.
-  for (const k of ['total_cents', 'pax_count', 'price_per_person_cents'] as const) {
+  for (const k of ['total_cents', 'pax_count', 'price_per_person_cents', 'commission_total_cents'] as const) {
     if (k in out) {
       const n = Number(out[k])
       out[k] = Number.isFinite(n) ? Math.round(n) : 0
