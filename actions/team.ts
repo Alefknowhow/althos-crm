@@ -596,6 +596,71 @@ export async function cancelInvitation(orgSlug: string, invitationId: string) {
   return { ok: true as const }
 }
 
+// ── Shared: materialize memberships for an accepted invitation ─────────────────
+/**
+ * Joins `userId` to the account/orgs described by `inv` and marks the invite
+ * accepted. Shared by both the logged-in accept flow and the new-invitee
+ * signup flow. Returns the slug of the origin org for redirect.
+ */
+async function fanOutInvitation(
+  admin: ReturnType<typeof createAdminClient>,
+  inv: { id: string; organization_id: string; role: string; permissions: Permissions | null },
+  userId: string,
+): Promise<string | null> {
+  const { data: originOrg } = await admin
+    .from('organizations')
+    .select('slug, account_id')
+    .eq('id', inv.organization_id)
+    .single()
+  const accountId = (originOrg as any)?.account_id as string | null
+
+  const accRole = inv.role === 'admin' ? 'admin' : 'member'
+  const memberPerms = inv.role === 'admin' ? allPermissions() : (inv.permissions ?? defaultMemberPermissions())
+
+  if (accountId) {
+    // 1. Ensure account membership (the seat).
+    await admin
+      .from('account_members')
+      .upsert(
+        { account_id: accountId, user_id: userId, role: accRole },
+        { onConflict: 'account_id,user_id', ignoreDuplicates: true },
+      )
+
+    // 2. Fan out a membership into EVERY org of the account (present everywhere).
+    const { data: orgRows } = await admin
+      .from('organizations')
+      .select('id')
+      .eq('account_id', accountId)
+    for (const o of orgRows ?? []) {
+      await admin
+        .from('memberships')
+        .upsert(
+          {
+            organization_id: o.id,
+            user_id:         userId,
+            role:            accRole,
+            permissions:     memberPerms,
+            hidden:          false,
+          },
+          { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
+        )
+    }
+  } else {
+    // Legacy org without account: single membership.
+    await admin
+      .from('memberships')
+      .upsert(
+        { organization_id: inv.organization_id, user_id: userId, role: inv.role, permissions: memberPerms },
+        { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
+      )
+  }
+
+  // Mark invitation accepted.
+  await admin.from('invitations').update({ accepted_at: new Date().toISOString() }).eq('id', inv.id)
+
+  return (originOrg as any)?.slug ?? null
+}
+
 // ── Accept invitation (called from /convite/[token]) ──────────────────────────
 
 export async function acceptInvitation(token: string) {
@@ -622,59 +687,95 @@ export async function acceptInvitation(token: string) {
     }
   }
 
-  // Resolve the account of the origin org.
-  const { data: originOrg } = await admin
-    .from('organizations')
-    .select('slug, account_id')
-    .eq('id', inv.organization_id)
-    .single()
-  const accountId = (originOrg as any)?.account_id as string | null
+  const slug = await fanOutInvitation(admin, inv, user.id)
+  return { ok: true as const, redirectTo: `/app/${slug}/pipeline` }
+}
 
-  const accRole = inv.role === 'admin' ? 'admin' : 'member'
-  const memberPerms = inv.role === 'admin' ? allPermissions() : (inv.permissions ?? defaultMemberPermissions())
+// ── Status check for the acceptance page (new vs. existing user) ───────────────
+/**
+ * Returns whether the invited e-mail already has an auth account, so the
+ * /convite page can route a brand-new invitee to the lightweight signup form
+ * (name + password) instead of a login screen they can't pass.
+ */
+export async function getInviteeAccountStatus(
+  token: string,
+): Promise<{ ok: false } | { ok: true; email: string; hasAccount: boolean }> {
+  const admin = createAdminClient()
+  const { data: inv } = await admin
+    .from('invitations')
+    .select('email')
+    .eq('token', token)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+  if (!inv) return { ok: false }
 
-  if (accountId) {
-    // 1. Ensure account membership (the seat).
-    await admin
-      .from('account_members')
-      .upsert(
-        { account_id: accountId, user_id: user.id, role: accRole },
-        { onConflict: 'account_id,user_id', ignoreDuplicates: true },
-      )
+  const { data: list } = await admin.auth.admin.listUsers()
+  const hasAccount = !!list?.users?.some(
+    u => (u.email ?? '').toLowerCase() === inv.email.toLowerCase(),
+  )
+  return { ok: true, email: inv.email, hasAccount }
+}
 
-    // 2. Fan out a membership into EVERY org of the account (present everywhere).
-    const { data: orgRows } = await admin
-      .from('organizations')
-      .select('id')
-      .eq('account_id', accountId)
-    for (const o of orgRows ?? []) {
-      await admin
-        .from('memberships')
-        .upsert(
-          {
-            organization_id: o.id,
-            user_id:         user.id,
-            role:            accRole,
-            permissions:     memberPerms,
-            hidden:          false,
-          },
-          { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
-        )
-    }
-  } else {
-    // Legacy org without account: single membership.
-    await admin
-      .from('memberships')
-      .upsert(
-        { organization_id: inv.organization_id, user_id: user.id, role: inv.role, permissions: memberPerms },
-        { onConflict: 'organization_id,user_id', ignoreDuplicates: true },
-      )
+// ── New invitee: create account + accept in one step ──────────────────────────
+/**
+ * Lightweight onboarding for an invited member who has no account yet. Unlike
+ * the account-owner signup (which creates an org + picks a niche/plan), the
+ * invitee only supplies their name and a password — their role and org access
+ * come from the invitation. Possession of the invite token proves ownership of
+ * the e-mail, so the account is created already-confirmed (no second e-mail).
+ */
+export async function acceptInviteAsNewUser(token: string, name: string, password: string) {
+  const admin = createAdminClient()
+
+  const cleanName = name.trim()
+  if (cleanName.length < 2) return { ok: false as const, error: 'Informe seu nome.' }
+  if ((password ?? '').length < 8) {
+    return { ok: false as const, error: 'A senha deve ter pelo menos 8 caracteres.' }
   }
 
-  // Mark invitation accepted.
-  await admin.from('invitations').update({ accepted_at: new Date().toISOString() }).eq('id', inv.id)
+  const { data: inv } = await admin
+    .from('invitations')
+    .select('id, email, role, permissions, organization_id, expires_at, accepted_at')
+    .eq('token', token)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+  if (!inv) return { ok: false as const, error: 'Convite inválido ou expirado.' }
 
-  return { ok: true as const, redirectTo: `/app/${originOrg?.slug}/pipeline` }
+  // Refuse if an account already exists for this e-mail — they must log in.
+  const { data: list } = await admin.auth.admin.listUsers()
+  const existing = list?.users?.find(
+    u => (u.email ?? '').toLowerCase() === inv.email.toLowerCase(),
+  )
+  if (existing) {
+    return {
+      ok: false as const,
+      error: 'Já existe uma conta com este e-mail. Faça login para aceitar o convite.',
+    }
+  }
+
+  // Create the user, e-mail pre-confirmed (the invite link proves ownership).
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email:         inv.email,
+    password,
+    email_confirm: true,
+    user_metadata: { name: cleanName },
+  })
+  if (createErr || !created?.user) {
+    return { ok: false as const, error: createErr?.message ?? 'Erro ao criar a conta.' }
+  }
+
+  // Keep the profiles mirror in sync (best-effort).
+  await admin
+    .from('profiles')
+    .upsert(
+      { id: created.user.id, email: inv.email, full_name: cleanName },
+      { onConflict: 'id' },
+    )
+
+  const slug = await fanOutInvitation(admin, inv as any, created.user.id)
+  return { ok: true as const, email: inv.email, redirectTo: `/app/${slug}/pipeline` }
 }
 
 // ── Get invitation info (for the acceptance page) ─────────────────────────────

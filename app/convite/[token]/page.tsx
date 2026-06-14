@@ -1,10 +1,10 @@
-import { getInvitationInfo, acceptInvitation } from '@/actions/team'
+import { getInvitationInfo, getInviteeAccountStatus } from '@/actions/team'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Building2, CheckCircle2, AlertTriangle, LogIn, XCircle } from 'lucide-react'
 import AcceptButton from './AcceptButton'
+import InviteeSignupForm from './InviteeSignupForm'
 
 export default async function ConvitePage({
   params,
@@ -51,25 +51,37 @@ export default async function ConvitePage({
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    // Not logged in — send to login with redirect back
+    // Not logged in. A brand-new invitee has no password yet, so route them to
+    // a lightweight signup (name + password) instead of a login screen they
+    // can't pass. An existing user just logs in and the invite is accepted.
+    const status = await getInviteeAccountStatus(params.token)
     const redirectTo = `/convite/${params.token}`
+
+    if (status.ok && !status.hasAccount) {
+      return (
+        <InvitePage
+          icon={<Building2 className="w-10 h-10 text-primary" />}
+          title={`Você foi convidado para ${inv.orgName}`}
+          description="Crie seu acesso para entrar no workspace."
+          action={
+            <InviteeSignupForm token={params.token} email={inv.email} role={inv.role} />
+          }
+        />
+      )
+    }
+
     return (
       <InvitePage
         icon={<Building2 className="w-10 h-10 text-primary" />}
         title={`Você foi convidado para ${inv.orgName}`}
-        description={`Faça login ou crie sua conta com o e-mail ${inv.email} para aceitar o convite.`}
+        description={`Faça login com o e-mail ${inv.email} para aceitar o convite.`}
         action={
-          <div className="flex flex-col gap-2 w-full">
-            <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`}>
-              <Button className="w-full gap-2">
-                <LogIn className="w-4 h-4" />
-                Fazer login para aceitar
-              </Button>
-            </Link>
-            <Link href={`/register?redirect=${encodeURIComponent(redirectTo)}&email=${encodeURIComponent(inv.email)}`}>
-              <Button variant="outline" className="w-full">Criar conta nova</Button>
-            </Link>
-          </div>
+          <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`}>
+            <Button className="w-full gap-2">
+              <LogIn className="w-4 h-4" />
+              Fazer login para aceitar
+            </Button>
+          </Link>
         }
       />
     )

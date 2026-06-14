@@ -35,6 +35,13 @@ export default function LoginPage() {
       typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('confirmed') === '1',
   )
+  // Optional safe internal redirect (e.g. /login?redirect=/convite/TOKEN).
+  // Only same-site, absolute paths are honored to avoid open-redirects.
+  const [redirectParam] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const r = new URLSearchParams(window.location.search).get('redirect') || ''
+    return r.startsWith('/') && !r.startsWith('//') ? r : ''
+  })
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -47,9 +54,9 @@ export default function LoginPage() {
       setLoading(false)
     } else if (result.mfaRequired) {
       // Account has 2FA — finish authentication on the challenge screen.
-      router.push(`/mfa?next=${encodeURIComponent(result.redirectTo || '/onboarding')}`)
+      router.push(`/mfa?next=${encodeURIComponent(redirectParam || result.redirectTo || '/onboarding')}`)
     } else {
-      router.push(result.redirectTo!)
+      router.push(redirectParam || result.redirectTo!)
     }
   }
 
