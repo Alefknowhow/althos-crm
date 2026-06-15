@@ -126,51 +126,57 @@ export default function ProposalsList({
 
   return (
     <>
-      {/* Filters */}
-      <div className="flex flex-col gap-3 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Buscar por cliente, destino, título…"
-              className="pl-8"
-            />
-          </div>
+      {/* Filters — busca em cima; controles compactos numa única linha abaixo */}
+      <div className="flex flex-col gap-2 mb-4">
+        {/* Texto (busca) numa linha própria, acima dos botões */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Buscar por cliente, destino, título…"
+            className="pl-8 h-9"
+          />
+        </div>
+
+        {/* Controles compactos: filtro de data + vendedor + nova proposta */}
+        <div className="flex items-center gap-1.5">
+          <Select value={dateBucket} onValueChange={v => setDateBucket(v as DateBucket)}>
+            <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_BUCKETS.map(b => (
+                <SelectItem key={b.id} value={b.id} className="text-xs">{b.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {members.length > 0 && (
             <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
                 <SelectValue placeholder="Vendedor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os vendedores</SelectItem>
+                <SelectItem value="all" className="text-xs">Todos os vendedores</SelectItem>
                 {members.map(m => (
-                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                  <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
-          <Button onClick={handleCreate} disabled={creating}>
-            <Plus className="w-4 h-4 mr-2" /> {creating ? 'Criando…' : 'Nova proposta'}
-          </Button>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {DATE_BUCKETS.map(b => (
-            <button
-              key={b.id}
-              onClick={() => setDateBucket(b.id)}
-              className={cn(
-                'px-3 h-7 rounded-full border text-xs font-medium transition-colors',
-                dateBucket === b.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
-              )}
-            >
-              {b.label}
-            </button>
-          ))}
+          <Button
+            onClick={handleCreate}
+            disabled={creating}
+            size="sm"
+            className="h-8 px-2.5 text-xs shrink-0"
+            title="Nova proposta"
+            aria-label="Nova proposta"
+          >
+            <Plus className="w-3.5 h-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">{creating ? 'Criando…' : 'Nova proposta'}</span>
+          </Button>
         </div>
       </div>
 
