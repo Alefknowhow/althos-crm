@@ -173,20 +173,33 @@ export default function TravelSalesView({
   return (
     <>
       {/* Filters */}
-      <div className="flex flex-col gap-3 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Buscar por cliente, destino, hotel, cia…"
-              className="pl-8"
-            />
-          </div>
+      <div className="flex flex-col gap-2 mb-4">
+        {/* Search on its own row so the buttons never overlap it on mobile. */}
+        <div className="relative w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Buscar por cliente, destino, hotel, cia…"
+            className="pl-8 h-9"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Time filter: dropdown on mobile, pills on desktop. */}
+          <select
+            value={dateBucket}
+            onChange={e => setDateBucket(e.target.value as DateBucket)}
+            className="sm:hidden h-8 flex-1 min-w-0 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground"
+          >
+            {DATE_BUCKETS.map(b => (
+              <option key={b.id} value={b.id}>{b.label}</option>
+            ))}
+          </select>
+
           {members.length > 0 && (
             <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
                 <SelectValue placeholder="Vendedor" />
               </SelectTrigger>
               <SelectContent>
@@ -197,12 +210,13 @@ export default function TravelSalesView({
               </SelectContent>
             </Select>
           )}
-          <Button onClick={() => setNewOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Nova venda
+          <Button onClick={() => setNewOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+            <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Nova venda</span>
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Date pills — desktop only. */}
+        <div className="hidden sm:flex flex-wrap items-center gap-1.5">
           {DATE_BUCKETS.map(b => (
             <button
               key={b.id}
@@ -263,9 +277,9 @@ export default function TravelSalesView({
                   <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>
                 </div>
                 {seller && (
-                  <div className="mt-1.5">
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
-                      <UserCircle2 className="w-3 h-3" /> {seller}
+                  <div className="mt-1.5 flex">
+                    <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
+                      <UserCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{seller}</span>
                     </Badge>
                   </div>
                 )}

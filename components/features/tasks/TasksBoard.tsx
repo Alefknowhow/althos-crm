@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   LayoutGrid, List as ListIcon, Calendar, User2, UserCheck, CheckCircle2, Circle,
-  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ListTodo, AlertTriangle,
+  Clock, GripVertical, Trash2, Plus, Check, X, Pencil,
 } from 'lucide-react'
 
 type Member = { user_id: string; name: string; email: string }
@@ -125,6 +125,17 @@ export default function TasksBoard({
     localStorage.setItem('tasks-view', v)
   }
 
+  // On mobile, only the list view is available (kanban needs horizontal space).
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  const effectiveView: View = isMobile ? 'list' : view
+
   // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
   const bounds = useMemo(() => {
     const now = new Date(); now.setHours(0, 0, 0, 0)
@@ -164,17 +175,6 @@ export default function TasksBoard({
     ),
     [tasks, priority, assignee, dateFilter, bounds],
   )
-
-  // Mini dashboard: open / overdue / done across all (unfiltered) tasks.
-  const summary = useMemo(() => {
-    let open = 0, overdue = 0, done = 0
-    for (const t of tasks) {
-      if (t.status === 'done') { done++; continue }
-      open++
-      if (isOverdue(t)) overdue++
-    }
-    return { open, overdue, done }
-  }, [tasks])
 
   const dateCounts = useMemo(() => {
     const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, this_week: 0, next_week: 0, this_month: 0 }
@@ -313,30 +313,8 @@ export default function TasksBoard({
 
   return (
     <div className="space-y-4">
-      {/* Mini dashboard */}
-      <div className="grid grid-cols-3 gap-3">
-        <SummaryCard
-          icon={ListTodo}
-          label="Em aberto"
-          value={summary.open}
-          tone="neutral"
-        />
-        <SummaryCard
-          icon={AlertTriangle}
-          label="Vencidas"
-          value={summary.overdue}
-          tone={summary.overdue > 0 ? 'danger' : 'neutral'}
-        />
-        <SummaryCard
-          icon={CheckCircle2}
-          label="Concluídas"
-          value={summary.done}
-          tone="success"
-        />
-      </div>
-
-      {/* Date filters */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Date filters — pills on desktop, dropdown on mobile to save space. */}
+      <div className="hidden sm:flex flex-wrap items-center gap-1.5">
         {DATE_FILTERS.map(f => {
           const active = dateFilter === f.id
           const count = dateCounts[f.id]
@@ -360,10 +338,21 @@ export default function TasksBoard({
           )
         })}
       </div>
+      <select
+        value={dateFilter}
+        onChange={e => setDateFilter(e.target.value as DateFilter)}
+        className="sm:hidden w-full h-9 rounded-md border border-border bg-background px-2 text-sm font-medium text-foreground"
+      >
+        {DATE_FILTERS.map(f => (
+          <option key={f.id} value={f.id}>
+            {f.label} ({dateCounts[f.id]})
+          </option>
+        ))}
+      </select>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
+        <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
           <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
           <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
         </div>
@@ -412,7 +401,7 @@ export default function TasksBoard({
       </div>
 
       {/* Board */}
-      {view === 'kanban' ? (
+      {effectiveView === 'kanban' ? (
         <div className="flex gap-4 overflow-x-auto pb-2 items-start">
           {columns.map(col => (
             <div
@@ -541,37 +530,6 @@ export default function TasksBoard({
         }}
         onDelete={handleDelete}
       />
-    </div>
-  )
-}
-
-function SummaryCard({
-  icon: Icon, label, value, tone,
-}: {
-  icon: any
-  label: string
-  value: number
-  tone: 'neutral' | 'danger' | 'success'
-}) {
-  const toneCls = {
-    neutral: 'text-foreground',
-    danger:  'text-destructive',
-    success: 'text-green-600',
-  }[tone]
-  const iconCls = {
-    neutral: 'text-muted-foreground',
-    danger:  'text-destructive',
-    success: 'text-green-600',
-  }[tone]
-  return (
-    <div className="rounded-xl border bg-card p-3 sm:p-4 flex items-center gap-3">
-      <div className={cn('shrink-0', iconCls)}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</div>
-        <div className={cn('text-xl sm:text-2xl font-bold tabular-nums leading-tight', toneCls)}>{value}</div>
-      </div>
     </div>
   )
 }
