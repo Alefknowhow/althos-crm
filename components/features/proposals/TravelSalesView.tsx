@@ -15,6 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,6 +41,10 @@ const SERVICE_LABELS: Record<string, string> = {
 }
 
 const PAYMENT_METHODS = ['Pix', 'Cartão de crédito', 'Boleto'] as const
+
+// Keyboard focus ring for the custom <button> filters/toggles (the design
+// system zeroes the native outline).
+const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
 const INCLUDED_ITEMS: { key: string; label: string }[] = [
   { key: 'voos', label: 'Voos' },
@@ -187,19 +192,17 @@ export default function TravelSalesView({
 
         <div className="flex items-center gap-1.5">
           {/* Time filter: dropdown on mobile, pills on desktop. */}
-          <select
+          <ResponsiveSelect
+            className="sm:hidden h-9 flex-1 min-w-0 text-xs"
+            aria-label="Filtrar por data"
             value={dateBucket}
-            onChange={e => setDateBucket(e.target.value as DateBucket)}
-            className="sm:hidden h-8 flex-1 min-w-0 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground"
-          >
-            {DATE_BUCKETS.map(b => (
-              <option key={b.id} value={b.id}>{b.label}</option>
-            ))}
-          </select>
+            onValueChange={v => setDateBucket(v as DateBucket)}
+            options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+          />
 
           {members.length > 0 && (
             <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
+              <SelectTrigger className="h-9 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
                 <SelectValue placeholder="Vendedor" />
               </SelectTrigger>
               <SelectContent>
@@ -210,7 +213,7 @@ export default function TravelSalesView({
               </SelectContent>
             </Select>
           )}
-          <Button onClick={() => setNewOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+          <Button onClick={() => setNewOpen(true)} className="h-9 px-2.5 text-xs shrink-0">
             <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Nova venda</span>
           </Button>
         </div>
@@ -223,6 +226,7 @@ export default function TravelSalesView({
               onClick={() => setDateBucket(b.id)}
               className={cn(
                 'px-3 h-7 rounded-full border text-xs font-medium transition-colors',
+                FOCUS_RING,
                 dateBucket === b.id
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-background hover:bg-muted text-muted-foreground border-border',
@@ -256,6 +260,7 @@ export default function TravelSalesView({
                 onClick={() => setSelectedId(s.id)}
                 className={cn(
                   'w-full text-left p-3 transition-colors',
+                  FOCUS_RING,
                   active ? 'bg-primary/5' : 'hover:bg-muted/50',
                 )}
               >
@@ -264,8 +269,8 @@ export default function TravelSalesView({
                     {s.client_name || 'Cliente'}
                   </span>
                   {s.tasks_generated_at
-                    ? <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas</Badge>
-                    : <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
+                    ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas</Badge>
+                    : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
                 </div>
                 {s.destination && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -458,8 +463,8 @@ function SaleEditor({
               <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
             </h2>
             {s.tasks_generated_at
-              ? <Badge variant="outline" className="shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">Tarefas geradas</Badge>
-              : <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>}
+              ? <Badge variant="success" className="shrink-0">Tarefas geradas</Badge>
+              : <Badge variant="warning" className="shrink-0">Pendente</Badge>}
             {s.proposal_id && (
               <Link
                 href={`/app/${orgSlug}/cotacoes/${s.proposal_id}`}
@@ -555,6 +560,7 @@ function SaleEditor({
                   onClick={() => set('payment_method', active ? null : m)}
                   className={cn(
                     'px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                    FOCUS_RING,
                     active
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background hover:bg-muted text-muted-foreground border-border',
@@ -579,8 +585,9 @@ function SaleEditor({
                   onClick={() => toggleIncluded(item.key)}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                    FOCUS_RING,
                     active
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      ? 'bg-success/15 text-success border-success/30'
                       : 'bg-background hover:bg-muted text-muted-foreground border-border',
                   )}
                 >
@@ -662,7 +669,7 @@ function SaleEditor({
         <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
 
         {s.tasks_generated_at && (
-          <p className="text-xs text-emerald-700 flex items-center gap-1.5">
+          <p className="text-xs text-success flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
           </p>
         )}

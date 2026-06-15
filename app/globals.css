@@ -29,6 +29,15 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Semantic status tokens — text-on-tint colors (used by Badge soft style
+       and any success/warning/info state). Tuned for AA contrast on a /15 tint. */
+    --success: 142 72% 29%;             /* emerald-700 */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 38%;              /* amber-700 */
+    --warning-foreground: 0 0% 100%;
+    --info: 217 80% 48%;                /* blue-600 */
+    --info-foreground: 0 0% 100%;
+
     --border: 240 6% 83%;               /* #d2d2d7 apple-line */
     --input: 240 6% 83%;
     --ring: 243 75% 59%;               /* Althos indigo focus ring */
@@ -61,6 +70,12 @@
     --accent-foreground: 240 3% 12%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 38%;
+    --warning-foreground: 0 0% 100%;
+    --info: 217 80% 48%;
+    --info-foreground: 0 0% 100%;
     --border: 240 6% 83%;
     --input: 240 6% 83%;
     --ring: 243 75% 59%;
@@ -95,6 +110,14 @@
 
     --destructive: 0 62.8% 40%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Lighter status hues for legibility on dark tints. */
+    --success: 142 69% 58%;             /* emerald-400 */
+    --success-foreground: 240 6% 10%;
+    --warning: 43 96% 56%;              /* amber-400 */
+    --warning-foreground: 240 6% 10%;
+    --info: 213 94% 68%;                /* blue-400 */
+    --info-foreground: 240 6% 10%;
 
     --border: 240 3% 17%;               /* #2a2a2c */
     --input: 240 3% 17%;

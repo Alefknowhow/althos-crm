@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import {
   updateTask, deleteTask, toggleTaskStatus,
@@ -58,11 +59,18 @@ function dueDateOnly(t: Task): Date | null {
   return new Date(y, m - 1, d)
 }
 
+// Priority maps onto the semantic status tokens (low→success, normal→warning,
+// high→destructive) so the colors track the design system in both themes.
 const PRIORITY_META: Record<Task['priority'], { label: string; cls: string; bar: string }> = {
-  low:    { label: 'Baixa', cls: 'bg-green-100 text-green-800 border-green-200',   bar: 'bg-green-400' },
-  normal: { label: 'Média', cls: 'bg-amber-100 text-amber-800 border-amber-200',   bar: 'bg-amber-400' },
-  high:   { label: 'Alta',  cls: 'bg-red-100 text-red-800 border-red-200',         bar: 'bg-red-500' },
+  low:    { label: 'Baixa', cls: 'bg-success/15 text-success border-success/20',           bar: 'bg-success' },
+  normal: { label: 'Média', cls: 'bg-warning/15 text-warning border-warning/20',           bar: 'bg-warning' },
+  high:   { label: 'Alta',  cls: 'bg-destructive/15 text-destructive border-destructive/20', bar: 'bg-destructive' },
 }
+
+// Shared focus-visible ring for the custom <button> filters/toggles below —
+// the design system zeroes the native outline, so interactive non-shadcn
+// elements need this to stay keyboard-navigable.
+const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
 function todayISO() {
   const d = new Date()
@@ -325,6 +333,7 @@ export default function TasksBoard({
               onClick={() => setDateFilter(f.id)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                FOCUS_RING,
                 active
                   ? (danger ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-primary text-primary-foreground border-primary')
                   : (danger && count > 0
@@ -338,17 +347,13 @@ export default function TasksBoard({
           )
         })}
       </div>
-      <select
+      <ResponsiveSelect
+        className="sm:hidden w-full"
+        aria-label="Filtrar por data"
         value={dateFilter}
-        onChange={e => setDateFilter(e.target.value as DateFilter)}
-        className="sm:hidden w-full h-9 rounded-md border border-border bg-background px-2 text-sm font-medium text-foreground"
-      >
-        {DATE_FILTERS.map(f => (
-          <option key={f.id} value={f.id}>
-            {f.label} ({dateCounts[f.id]})
-          </option>
-        ))}
-      </select>
+        onValueChange={v => setDateFilter(v as DateFilter)}
+        options={DATE_FILTERS.map(f => ({ value: f.id, label: `${f.label} (${dateCounts[f.id]})` }))}
+      />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -363,19 +368,17 @@ export default function TasksBoard({
               <span className="text-muted-foreground mr-1 inline-flex items-center gap-1">
                 <UserCheck className="w-3.5 h-3.5" />Responsável:
               </span>
-              <select
+              <ResponsiveSelect
+                className="h-8 w-[180px] text-xs"
+                aria-label="Filtrar por responsável"
                 value={assignee}
-                onChange={e => setAssignee(e.target.value as AssigneeFilter)}
-                className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground"
-              >
-                <option value="all">Todos ({assigneeCounts.all})</option>
-                <option value="none">Sem responsável ({assigneeCounts.none})</option>
-                {members.map(m => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.name} ({assigneeCounts[m.user_id] ?? 0})
-                  </option>
-                ))}
-              </select>
+                onValueChange={v => setAssignee(v as AssigneeFilter)}
+                options={[
+                  { value: 'all', label: `Todos (${assigneeCounts.all})` },
+                  { value: 'none', label: `Sem responsável (${assigneeCounts.none})` },
+                  ...members.map(m => ({ value: m.user_id, label: `${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
+                ]}
+              />
             </div>
           )}
 
@@ -387,6 +390,7 @@ export default function TasksBoard({
                 onClick={() => setPriority(p)}
                 className={cn(
                   'px-2.5 h-7 rounded-md border transition-colors font-medium',
+                  FOCUS_RING,
                   priority === p
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-background hover:bg-muted text-muted-foreground border-border',
@@ -540,6 +544,7 @@ function ViewBtn({ active, onClick, icon: Icon, label }: { active: boolean; onCl
       onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-sm font-medium transition-colors',
+        FOCUS_RING,
         active ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
