@@ -8,6 +8,7 @@ import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirt
 import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-emails'
 import { integrationHealthCheckFn, integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
+import { scheduledWhatsappMessagesFn } from '@/lib/inngest/scheduled-messages-cron'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -27,5 +28,6 @@ export const { GET, POST, PUT } = serve({
     integrationHealthCheckFn,
     integrationHealthPruneFn,
     generateSystemAlertsFn,
+    scheduledWhatsappMessagesFn,
   ]
 })

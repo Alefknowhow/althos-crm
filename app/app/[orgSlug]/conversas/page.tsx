@@ -1,7 +1,8 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
-import { getConversationContext } from '@/actions/whatsapp'
+import { getConversationContext, listScheduledMessages } from '@/actions/whatsapp'
+import { getWaTemplates } from '@/actions/whatsapp-templates'
 import WhatsappChat from '@/components/features/WhatsappChat'
 
 export default async function ConversasPage({ params, searchParams }: { params: { orgSlug: string }, searchParams: { id?: string, lead?: string } }) {
@@ -17,9 +18,13 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // Team members power both the inbox agent-color tags and the side panel selectors.
   const members = await listOrgMembers(params.orgSlug)
 
+  // Templates aprovados servem de fallback quando a janela de 24h está fechada.
+  const templates = await getWaTemplates(params.orgSlug)
+
   let selectedConversation = null
   let messages: any[] = []
   let panelContext: any = null
+  let scheduled: any[] = []
 
   // Resolve the conversation: by explicit conversation id, or by lead id (deep-link
   // from a pipeline lead card → opens that lead's most recent conversation).
@@ -34,6 +39,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
       const { data: msgs } = await supabase.from('whatsapp_messages').select('*').eq('conversation_id', selectedConversation.id).order('created_at', { ascending: true })
       messages = msgs || []
       panelContext = await getConversationContext(params.orgSlug, selectedConversation.id)
+      scheduled = await listScheduledMessages(params.orgSlug, selectedConversation.id)
     }
   }
 
@@ -47,6 +53,8 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         initialMessages={messages}
         members={members}
         panelContext={panelContext}
+        scheduled={scheduled}
+        templates={templates}
         isMock={!org.whatsapp_access_token || org.whatsapp_access_token === 'mock'}
       />
     </div>

@@ -4,14 +4,16 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage } from '@/actions/whatsapp'
+import { sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
+import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
+import { Clock, X } from 'lucide-react'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, isMock }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock }: any) {
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -142,6 +144,16 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
       setInput(text) // restore so the user doesn't lose what they typed
     }
     setSending(false)
+  }
+
+  async function handleCancelScheduled(id: string) {
+    const res = await cancelScheduledMessage(orgSlug, id)
+    if (!res.ok) {
+      toast.error('Não foi possível cancelar', { description: res.error })
+      return
+    }
+    toast.success('Agendamento cancelado.')
+    router.refresh()
   }
 
   async function handleSeed() {
@@ -398,6 +410,29 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               <div ref={messagesEndRef} className="h-1" />
             </div>
 
+            {scheduled.length > 0 && (
+              <div className="px-4 pt-2 bg-background border-t shrink-0 space-y-1">
+                {scheduled.map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-1.5">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="font-medium shrink-0">
+                      {new Date(s.send_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="truncate flex-1 text-amber-800">{s.body}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelScheduled(s.id)}
+                      className="shrink-0 hover:text-red-600"
+                      title="Cancelar agendamento"
+                      aria-label="Cancelar agendamento"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 z-10 relative">
               {isMock && (
                 <Button
@@ -452,6 +487,15 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
               </button>
+
+              {/* Agendar envio */}
+              <ScheduleMessageButton
+                orgSlug={orgSlug}
+                conversationId={selectedConversation.id}
+                text={input}
+                templates={templates}
+                onScheduled={() => setInput('')}
+              />
 
               <Input className="flex-1 bg-muted/50 rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
 
