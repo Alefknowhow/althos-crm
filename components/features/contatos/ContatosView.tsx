@@ -711,14 +711,28 @@ function AvatarUploader({
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  // Optimistic local copy: reflects the just-uploaded/removed photo immediately,
+  // so the avatar updates even if the server `router.refresh()` data lags or the
+  // tab is running a slightly stale bundle. `undefined` = follow the server prop.
+  const [localUrl, setLocalUrl] = useState<string | null | undefined>(undefined)
+
+  // When the server prop changes (navigating between contatos), drop the override.
+  useEffect(() => { setLocalUrl(undefined) }, [contatoId])
+
+  const shownUrl = localUrl === undefined ? url : localUrl
 
   async function onFile(file: File) {
     setBusy(true)
+    // Show the picked image instantly while the upload runs.
+    const preview = URL.createObjectURL(file)
+    setLocalUrl(preview)
     const fd = new FormData()
     fd.append('file', file)
     const res = await uploadContatoAvatar(orgSlug, contatoId, fd)
     setBusy(false)
-    if (!res.ok) { toast.error(res.error); return }
+    if (!res.ok) { setLocalUrl(undefined); URL.revokeObjectURL(preview); toast.error(res.error); return }
+    setLocalUrl(res.url)
+    URL.revokeObjectURL(preview)
     toast.success('Foto atualizada.')
     router.refresh()
   }
@@ -728,15 +742,16 @@ function AvatarUploader({
     const res = await removeContatoAvatar(orgSlug, contatoId)
     setBusy(false)
     if (!res.ok) { toast.error(res.error); return }
+    setLocalUrl(null)
     toast.success('Foto removida.')
     router.refresh()
   }
 
   return (
     <div className="relative shrink-0 group">
-      {url ? (
+      {shownUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={name} className="w-14 h-14 rounded-full object-cover" />
+        <img src={shownUrl} alt={name} className="w-14 h-14 rounded-full object-cover" />
       ) : (
         <span className="w-14 h-14 rounded-full grid place-items-center bg-brand-100 text-brand-700 text-lg font-semibold">
           {initials(name)}
@@ -751,7 +766,7 @@ function AvatarUploader({
       >
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
       </button>
-      {url && !busy && (
+      {shownUrl && !busy && (
         <button
           type="button"
           onClick={onRemove}
