@@ -27,8 +27,6 @@ import {
   Bot,
   Sparkles,
   Share2,
-  Upload,
-  Building2,
   FileSignature,
   PlaneTakeoff,
   Store,
@@ -312,20 +310,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span className="flex items-center gap-2.5">
                 <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                 <span>Campanhas</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/marketing/contas`}>
-              <span className="flex items-center gap-2.5">
-                <Building2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Contas</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/marketing/importar`}>
-              <span className="flex items-center gap-2.5">
-                <Upload className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Importar</span>
               </span>
             </SidebarNavLink>
           </>
