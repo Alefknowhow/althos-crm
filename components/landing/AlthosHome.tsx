@@ -70,6 +70,7 @@ export default function AlthosHome() {
         <AiBlock onZoom={onZoom} />
         <Segments />
         <Compare />
+        <Onboard />
         <Pricing />
         <FinalCta />
       </div>
@@ -546,6 +547,39 @@ function Pricing() {
   )
 }
 
+const ONBOARD_STEPS = [
+  { h: 'Crie sua conta grátis', p: 'Sem cartão e sem burocracia. Em segundos você já está dentro do Althos.' },
+  { h: 'Conecte seu WhatsApp', p: 'Ligue o número do seu negócio e traga seus contatos para o funil.' },
+  { h: 'Ensine a IA', p: 'Descreva seu negócio e suas regras; o atendente de IA aprende o seu tom de voz.' },
+  { h: 'Monte seu funil', p: 'Etapas, automações e formulários prontos para captar e dar follow-up.' },
+  { h: 'Comece a vender', p: 'A IA atende 24h, qualifica e agenda. Você acompanha tudo pelo painel.' },
+] as const
+
+/* ----------------------------- Onboarding ----------------------------- */
+function Onboard() {
+  return (
+    <section className="onboard" aria-label="Como começar">
+      <div className="onboard-head">
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Comece em minutos</div>
+        <h2 className="reveal" data-d="1">No ar hoje, vendendo amanhã</h2>
+        <p className="reveal" data-d="2">
+          Sem implantação cara nem semanas de configuração. Você conecta, a IA aprende o seu
+          negócio e o funil começa a girar — no mesmo dia.
+        </p>
+      </div>
+      <ol className="steps">
+        {ONBOARD_STEPS.map((s, i) => (
+          <li className="step reveal" data-d={i} key={i}>
+            <span className="step-n">{i + 1}</span>
+            <h3>{s.h}</h3>
+            <p>{s.p}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 /* ----------------------------- Final CTA ----------------------------- */
 function FinalCta() {
   return (
@@ -692,7 +726,7 @@ function Behaviors() {
       const card = root.querySelector<HTMLElement>('#browser')
       if (wrap && card) {
         let raf: number | null = null, tx = 0, ty = 0, cx = 0, cy = 0
-        const MAX = 7
+        const MAX = 4
         const tick = () => {
           cx += (tx - cx) * 0.12; cy += (ty - cy) * 0.12
           card.style.transform = `rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`
@@ -753,7 +787,7 @@ function Behaviors() {
         const resize = () => {
           const r = section.getBoundingClientRect()
           W = canvas.width = r.width; H = canvas.height = r.height
-          const n = Math.min(70, Math.round((W * H) / 26000))
+          const n = Math.min(48, Math.round((W * H) / 34000))
           dots = []
           for (let i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + 0.4, a: Math.random(), sp: Math.random() * 0.02 + 0.005, vy: -(Math.random() * 0.25 + 0.05) })
         }
@@ -764,7 +798,7 @@ function Behaviors() {
             if (d.y < -4) { d.y = H + 4; d.x = Math.random() * W }
             const o = (Math.sin(d.a) * 0.5 + 0.5) * 0.7
             ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-            ctx.fillStyle = `rgba(96,165,250,${o.toFixed(3)})`
+            ctx.fillStyle = `rgba(99,102,241,${o.toFixed(3)})`
             ctx.fill()
           }
           raf = requestAnimationFrame(draw)

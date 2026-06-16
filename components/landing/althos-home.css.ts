@@ -40,7 +40,7 @@ export const HOME_CSS = `
 .althos-home ul { padding: 0; list-style: none; }
 
 /* aurora / mesh background — pastel discreto sobre branco (sem mix-blend) */
-.althos-home .aurora { position: fixed; inset: -25%; z-index: 0; pointer-events: none; filter: blur(70px) saturate(1.05); opacity: 0.7; }
+.althos-home .aurora { position: fixed; inset: -25%; z-index: 0; pointer-events: none; filter: blur(82px) saturate(1.02); opacity: 0.42; }
 .althos-home .aurora span { position: absolute; border-radius: 50%; will-change: transform; }
 .althos-home .aurora .a1 { width: 55vw; height: 55vw; left: 8%; top: -14%; background: radial-gradient(circle at 50% 50%, rgba(99,102,241,0.20), transparent 62%); animation: ah-drift1 26s var(--ease) infinite alternate; }
 .althos-home .aurora .a2 { width: 48vw; height: 48vw; right: -6%; top: 6%; background: radial-gradient(circle at 50% 50%, rgba(129,140,248,0.16), transparent 62%); animation: ah-drift2 32s var(--ease) infinite alternate; }
@@ -185,7 +185,7 @@ export const HOME_CSS = `
 .althos-home .ai { position: relative; padding: 96px 0 110px; border-top: 1px solid var(--line); overflow: hidden; }
 .althos-home .ai .ai-glow { position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%); width: 70vw; height: 70vw; max-width: 900px; max-height: 900px; background: radial-gradient(circle at 50% 50%, var(--accent-glow), transparent 62%); filter: blur(50px); z-index: 0; pointer-events: none; animation: ah-breathe 7s ease-in-out infinite; }
 @keyframes ah-breathe { 0%,100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%,-50%) scale(1.08); } }
-.althos-home .ai canvas.sparkles { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.5; }
+.althos-home .ai canvas.sparkles { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.3; }
 .althos-home .ai-inner { position: relative; z-index: 2; max-width: 1280px; margin: 0 auto; padding: 0 40px; }
 .althos-home .ai-head { max-width: 760px; margin: 0 auto 56px; text-align: center; }
 .althos-home .ai-head .eyebrow { margin: 0 auto 22px; }
@@ -260,6 +260,33 @@ export const HOME_CSS = `
   .althos-home .bento-card.lead { grid-column: span 1; }
 }
 
+/* Onboarding — passos numerados (estilo Attio "no ar em minutos") */
+.althos-home .onboard { position: relative; max-width: 1180px; margin: 0 auto; padding: 96px 40px 100px; border-top: 1px solid var(--line); }
+.althos-home .onboard-head { max-width: 760px; margin: 0 auto 52px; text-align: center; }
+.althos-home .onboard-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .onboard-head h2 { font-weight: 800; font-size: clamp(32px,4.2vw,56px); line-height: 1.04; letter-spacing: -0.025em; color: var(--ink); text-wrap: balance; }
+.althos-home .onboard-head p { margin-top: 20px; font-size: clamp(16px,1.2vw,18px); line-height: 1.6; color: var(--ink-dim); }
+.althos-home .steps { display: grid; grid-template-columns: repeat(5,1fr); gap: 18px; counter-reset: ah-step; }
+.althos-home .step { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 26px 22px 24px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-sm); transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease); }
+.althos-home .step:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); border-color: var(--line-strong); }
+.althos-home .step-n { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 11px; font-size: 15px; font-weight: 800; color: #fff; background: linear-gradient(180deg, var(--accent-bright), var(--accent-deep)); box-shadow: 0 6px 16px -6px var(--accent-glow); }
+.althos-home .step h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); line-height: 1.25; }
+.althos-home .step p { font-size: 14px; line-height: 1.55; color: var(--ink-dim); }
+.althos-home .step::after { content: ""; position: absolute; top: 44px; right: -10px; width: 20px; height: 1px; background: var(--line-strong); }
+.althos-home .step:last-child::after { display: none; }
+@media (max-width: 980px) {
+  .althos-home .steps { grid-template-columns: repeat(2,1fr); }
+  .althos-home .step::after { display: none; }
+}
+@media (max-width: 560px) {
+  .althos-home .onboard { padding: 56px 16px 60px; }
+  .althos-home .onboard-head { margin-bottom: 32px; }
+  .althos-home .onboard-head h2 { font-size: clamp(24px,7vw,34px); }
+  .althos-home .steps { grid-template-columns: 1fr; gap: 12px; }
+  .althos-home .step { flex-direction: row; align-items: flex-start; padding: 18px; }
+  .althos-home .step-n { flex-shrink: 0; width: 34px; height: 34px; }
+}
+
 /* Pricing */
 .althos-home .pricing { position: relative; max-width: 1280px; margin: 0 auto; padding: 96px 40px 110px; border-top: 1px solid var(--line); }
 .althos-home .pricing-head { text-align: center; margin-bottom: 38px; }
@@ -305,7 +332,7 @@ export const HOME_CSS = `
 
 /* Final CTA */
 .althos-home .final { position: relative; overflow: hidden; border-top: 1px solid var(--line); padding: 130px 40px 140px; text-align: center; background: var(--surface-2); }
-.althos-home .final .aurora-strong { position: absolute; inset: -30% -10% -10%; z-index: 0; pointer-events: none; filter: blur(70px); opacity: 0.75; }
+.althos-home .final .aurora-strong { position: absolute; inset: -30% -10% -10%; z-index: 0; pointer-events: none; filter: blur(78px); opacity: 0.5; }
 .althos-home .final .aurora-strong span { position: absolute; border-radius: 50%; }
 .althos-home .final .aurora-strong .s1 { width: 60vw; height: 60vw; max-width: 760px; max-height: 760px; left: 50%; top: 46%; transform: translate(-50%,-50%); background: radial-gradient(circle at 50% 50%, rgba(99,102,241,0.22), transparent 60%); animation: ah-breathe 8s ease-in-out infinite; }
 .althos-home .final .aurora-strong .s2 { width: 40vw; height: 40vw; left: 22%; top: 30%; background: radial-gradient(circle at 50% 50%, rgba(129,140,248,0.18), transparent 62%); animation: ah-drift1 30s var(--ease) infinite alternate; }
@@ -320,7 +347,7 @@ export const HOME_CSS = `
 .althos-home .final .micro .check { color: var(--accent); }
 
 /* Entrance animation */
-.althos-home .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+.althos-home .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.55s var(--ease), transform 0.55s var(--ease); }
 .althos-home .reveal.in { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
