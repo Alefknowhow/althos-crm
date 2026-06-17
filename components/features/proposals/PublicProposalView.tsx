@@ -43,7 +43,6 @@ type Proposal = {
   pax_count: number | null
   price_per_person_cents: number | null
   payment: Record<string, any>
-  map_config: Record<string, any> | null
   weather: Record<string, any> | null
   company_override: Record<string, any> | null
   created_at: string | null
@@ -145,12 +144,6 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
   const days = nights != null ? nights + 1 : null
   const paxCount = proposal.pax_count ?? (Array.isArray(proposal.travelers) && proposal.travelers.length > 0 ? proposal.travelers.length : null)
 
-  // Mapa interativo: configurável na cotação. Ligado por padrão (compatível com
-  // propostas antigas). A "query" personalizada sobrescreve o destino automático.
-  const mapCfg = proposal.map_config || {}
-  const mapEnabled = mapCfg.enabled !== false
-  const mapQuery = (mapCfg.query as string)?.trim() || (destinations[0]?.name as string) || proposal.title || ''
-
   // Clima: aba opcional sobre o tempo nas datas + sazonalidade do destino.
   const weather = proposal.weather || {}
   const weatherOn = !!weather.enabled && !!(
@@ -243,20 +236,6 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                       {d.briefing && <p className="pp-card-text">{d.briefing}</p>}
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {mapEnabled && mapQuery && (
-              <div className="pp-block">
-                <h3 className="pp-h3">No mapa</h3>
-                <div className="pp-map">
-                  <iframe
-                    title={`Mapa de ${mapQuery}`}
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=11&ie=UTF8&iwloc=&hl=pt-BR&output=embed`}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
                 </div>
               </div>
             )}
@@ -621,10 +600,6 @@ const CSS = `
 .pp-fact-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-top: 4px; }
 .pp-fact-value { font-size: 14px; font-weight: 700; color: #1e293b; }
 
-/* Mapa */
-.pp-map { border-radius: 14px; overflow: hidden; border: 1px solid #e9edf3; height: 220px; background: #eef2f7; }
-.pp-map iframe { width: 100%; height: 100%; border: 0; display: block; }
-
 /* Voos */
 .pp-flight { background: #fff; border: 1px solid #e9edf3; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
 .pp-flight-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 11px 14px 4px; }
@@ -701,7 +676,6 @@ const CSS = `
   .pp-tabs { display: none !important; }
   .pp-scroll { overflow: visible; height: auto; background: #fff; }
   .pp-panel { display: block !important; break-inside: avoid; padding: 18px 24px; }
-  .pp-map { display: none !important; }
   .pp-card, .pp-flight, .pp-hotel, .pp-fact, .pp-check { break-inside: avoid; }
   .pp-stage, .pp-stage * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }

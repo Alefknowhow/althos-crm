@@ -371,7 +371,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Começando',
     question: 'Preciso de cartão de crédito para começar?',
-    answer: 'Não. O plano Free é gratuito para sempre e não pede cartão. Quando quiser desbloquear os recursos avançados, os planos pagos têm 7 dias de teste grátis — só pedem uma forma de pagamento (cartão ou Pix) para iniciar e você não é cobrado durante o teste.',
+    answer: 'Não. O plano Free é gratuito para sempre e não pede cartão. Nos planos pagos, você assina com uma forma de pagamento (cartão ou Pix) e tem 7 dias para testar o app por completo — se não ficar satisfeito, é só pedir o reembolso total dentro desse prazo.',
   },
   {
     category: 'Começando',

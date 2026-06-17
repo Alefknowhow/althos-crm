@@ -36,7 +36,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
     'faq': {
       title: 'Perguntas Frequentes',
       content: `
-        - O CRM é gratuito? Sim — o plano Free é gratuito para sempre, sem cartão. Os planos pagos têm 7 dias de teste.
+        - O CRM é gratuito? Sim — o plano Free é gratuito para sempre, sem cartão. Nos planos pagos você assina e tem 7 dias para testar o app, com reembolso total em caso de insatisfação dentro desse prazo.
         - Posso importar leads? Sim, via arquivo CSV em Leads > Importar.
         - Como falar com o suporte? Clique no botão de interrogação no cabeçalho ou envie um email para suporte@althoscrm.com.br.
       `

@@ -208,8 +208,9 @@ export function PricingPlans() {
 
       {/* Nota de pagamento */}
       <p className="mt-8 text-center text-[13px] text-slate-500 sm:mt-10">
-        Comece no <strong className="text-slate-700">Free</strong>, sem cartão. Nos planos pagos, os{' '}
-        <strong className="text-slate-700">7 dias de teste grátis</strong> pedem uma forma de pagamento (Pix ou cartão) para iniciar.
+        Comece no <strong className="text-slate-700">Free</strong>, sem cartão. Nos planos pagos, você assina com uma forma de pagamento (Pix ou cartão) e tem{' '}
+        <strong className="text-slate-700">7 dias para testar o app por completo</strong> — se não ficar satisfeito,{' '}
+        <strong className="text-slate-700">reembolso total</strong> dentro desse prazo.
         No semestral e no anual, pague à vista no <strong className="text-slate-700">Pix</strong> ou parcele no{' '}
         <strong className="text-slate-700">cartão de crédito</strong>. Sem fidelidade — cancele quando quiser.
       </p>

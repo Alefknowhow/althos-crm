@@ -532,9 +532,10 @@ function Pricing() {
       </div>
 
       <p className="price-note reveal" data-d="0">
-        Comece no <b>Free</b>, sem cartão. Nos planos pagos, os <b>7 dias de teste grátis</b> pedem uma
-        forma de pagamento (Pix ou cartão) para iniciar. No semestral e no anual, pague à vista no Pix ou
-        parcele no cartão de crédito. <b>Sem fidelidade</b> — cancele quando quiser.
+        Comece no <b>Free</b>, sem cartão. Nos planos pagos, você assina com uma forma de pagamento (Pix ou
+        cartão) e tem <b>7 dias para testar o app por completo</b> — se não ficar satisfeito, <b>reembolso total</b> nesse
+        prazo. No semestral e no anual, pague à vista no Pix ou parcele no cartão de crédito.
+        <b> Sem fidelidade</b> — cancele quando quiser.
       </p>
 
       <div className="seals reveal" data-d="0">

@@ -31,7 +31,6 @@ export type ProposalRow = {
   pax_count: number | null
   price_per_person_cents: number | null
   payment: Record<string, any>
-  map_config: Record<string, any>
   weather: Record<string, any>
   company_override: Record<string, any> | null
   notes: string | null
@@ -48,7 +47,7 @@ const WRITABLE = [
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
   'services', 'included', 'not_included', 'checklist', 'photos', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
-  'map_config', 'weather',
+  'weather',
   'company_override', 'notes', 'operadora', 'commission_total_cents',
 ] as const
 
