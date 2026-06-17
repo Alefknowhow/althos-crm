@@ -118,6 +118,8 @@ export default function InsightsChat({
   // Mobile: one pane at a time. 'chat' is the default (a session is always
   // active); the user opens the session list with the header button.
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('chat')
+  // Aviso "configure a chave" pode ser dispensado pelo usuário.
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -279,42 +281,50 @@ export default function InsightsChat({
             <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="font-medium text-sm">Analista IA</div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="hidden sm:block text-[11px] text-muted-foreground">
                 Pergunte sobre vendas, leads, campanhas, agendamentos. Eu consulto seus dados em tempo real.
               </div>
             </div>
           </div>
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-[10px] shrink-0">
             <Sparkles className="w-2.5 h-2.5 mr-1" /> Beta
           </Badge>
         </header>
 
-        {!hasApiKey && (
-          <div className="border-b border-amber-300 bg-amber-50 dark:bg-amber-900/20 px-6 py-3 text-sm flex items-center gap-2">
+        {!hasApiKey && !noticeDismissed && (
+          <div className="border-b border-amber-300 bg-amber-50 dark:bg-amber-900/20 px-4 sm:px-6 py-2.5 text-[13px] flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span className="text-amber-800 dark:text-amber-300">
+            <span className="text-amber-800 dark:text-amber-300 min-w-0">
               Cadastre a chave da Anthropic em{' '}
               <Link href={`/app/${orgSlug}/configuracoes/ia`} className="underline font-medium">
                 Configurações → IA
               </Link>{' '}
               antes de usar.
             </span>
+            <button
+              type="button"
+              onClick={() => setNoticeDismissed(true)}
+              className="ml-auto shrink-0 p-1 rounded-md text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+              aria-label="Ocultar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 space-y-5 sm:space-y-6">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-6">
-              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <Sparkles className="w-6 h-6" />
+            <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-5 sm:space-y-6">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                   O que você quer saber sobre o negócio hoje?
                 </h1>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-[13px] sm:text-sm text-muted-foreground mt-2">
                   Eu acesso todos os seus dados do CRM em tempo real — vendas, leads, campanhas,
                   agendamentos, pipeline. Pergunte em português natural.
                 </p>
@@ -325,7 +335,7 @@ export default function InsightsChat({
                     key={p}
                     type="button"
                     onClick={() => send(p)}
-                    className="text-left text-xs border rounded-lg px-3 py-2.5 hover:bg-muted hover:border-primary/40 transition-all"
+                    className="text-left text-[13px] sm:text-xs border rounded-lg px-3 py-2.5 hover:bg-muted hover:border-primary/40 transition-all"
                   >
                     {p}
                   </button>

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import EmptyState from '@/components/ui/empty-state'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
@@ -15,7 +14,7 @@ import { categoryLabel, sortCategories } from '@/lib/showcase'
 import { toast } from 'sonner'
 import {
   Store, Plus, MapPin, CalendarRange, Trash2, Pencil, EyeOff,
-  Share2, Copy, ExternalLink, CheckCircle2, FileSignature, Loader2, Video,
+  Copy, ExternalLink, CheckCircle2, FileSignature, Loader2, Video,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -89,28 +88,22 @@ export default function ShowcaseList({
 
   return (
     <>
-      {/* Link público da vitrine */}
+      {/* Link público da vitrine — 2 ações discretas */}
       {vitrineToken && (
-        <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-          <div className="flex items-center gap-2 text-sm font-medium shrink-0">
-            <Share2 className="w-4 h-4 text-primary" /> Link público da vitrine
-          </div>
-          <Input readOnly value={vitrineUrl} onFocus={e => e.currentTarget.select()} className="font-mono text-xs" />
-          <div className="flex gap-2 shrink-0">
-            <Button type="button" variant="outline" size="sm"
-              onClick={async () => {
-                try { await navigator.clipboard.writeText(vitrineUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-                catch { toast.error('Não foi possível copiar') }
-              }}>
-              {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-              {copied ? 'Copiado' : 'Copiar'}
-            </Button>
-            <Button type="button" variant="outline" size="sm" asChild>
-              <a href={vitrineUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir vitrine
-              </a>
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <Button type="button" variant="outline" size="sm"
+            onClick={async () => {
+              try { await navigator.clipboard.writeText(vitrineUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
+              catch { toast.error('Não foi possível copiar') }
+            }}>
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+            {copied ? 'Copiado' : 'Copiar link'}
+          </Button>
+          <Button type="button" variant="outline" size="sm" asChild>
+            <a href={vitrineUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir vitrine
+            </a>
+          </Button>
         </div>
       )}
 

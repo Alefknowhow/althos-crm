@@ -89,15 +89,15 @@ export default async function OrgLayout({
           {/* pl-14 on mobile leaves space for the fixed sidebar hamburger
               rendered by SidebarShell. md+ uses normal padding since the
               desktop aside occupies its own column. */}
-          <header className="h-14 border-b border-border bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex items-center pl-14 pr-3 md:px-5 justify-between sticky top-0 z-30">
-            <div className="flex items-center gap-3">
+          <header className="h-14 border-b border-border bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
+            <div className="flex items-center gap-3 min-w-0">
               <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
                 Organização
               </span>
               <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
               <Link
                 href={`/app/${params.orgSlug}/configuracoes/integracoes/saude`}

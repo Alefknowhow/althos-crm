@@ -20,9 +20,9 @@ import { formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Save, Plus, Trash2, Plane, Hotel, MapPin, Users, CalendarRange,
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
-  Share2, Copy, ExternalLink, Upload, Loader2, Search,
+  Copy, ExternalLink, Upload, Loader2, Search,
   ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon, Lock,
-  CloudSun,
+  CloudSun, MessageCircle, Mail,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -675,37 +675,39 @@ export default function ProposalBuilder({
         </Button>
       </div>
 
-      {/* Compartilhamento */}
-      {p.public_token && (
-        <Card className="border-primary/20 bg-primary/[0.03]">
-          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium shrink-0">
-              <Share2 className="w-4 h-4 text-primary" /> Link público
-            </div>
-            <Input
-              readOnly
-              value={publicUrl}
-              onFocus={e => e.currentTarget.select()}
-              className="font-mono text-xs"
-            />
-            <div className="flex gap-2 shrink-0">
-              <Button type="button" variant="outline" size="sm"
-                onClick={async () => {
-                  try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-                  catch { toast.error('Não foi possível copiar') }
-                }}>
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-                {copied ? 'Copiado' : 'Copiar'}
-              </Button>
-              <Button type="button" variant="outline" size="sm" asChild>
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Compartilhamento — 4 ações rápidas */}
+      {p.public_token && (() => {
+        const shareMsg = `Olá! Aqui está a sua proposta de viagem${p.title ? ` — ${p.title}` : ''}: ${publicUrl}`
+        const waHref = `https://wa.me/?text=${encodeURIComponent(shareMsg)}`
+        const mailHref = `mailto:?subject=${encodeURIComponent(p.title || 'Sua proposta de viagem')}&body=${encodeURIComponent(shareMsg)}`
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm"
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
+                catch { toast.error('Não foi possível copiar') }
+              }}>
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? 'Copiado' : 'Copiar link'}
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF
+              </a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={waHref} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Enviar na conversa
+              </a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={mailHref}>
+                <Mail className="w-3.5 h-3.5 mr-1.5" /> Enviar email
+              </a>
+            </Button>
+          </div>
+        )
+      })()}
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Lead link + datas + cliente */}

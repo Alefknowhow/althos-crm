@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
-  CloudSun, Thermometer,
+  CloudSun, Thermometer, MessageCircle,
 } from 'lucide-react'
 
 type Org = {
@@ -490,6 +490,22 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
               )}
             </div>
 
+            {/* CTA: abre o WhatsApp da agência com mensagem pré-definida */}
+            {(() => {
+              const digits = (phone || '').replace(/\D/g, '')
+              const waNumber = digits ? (digits.length <= 11 ? `55${digits}` : digits) : ''
+              const msg = `Quero reservar minha viagem para - ${proposal.title || 'a viagem'}`
+              const href = waNumber
+                ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`
+                : `https://wa.me/?text=${encodeURIComponent(msg)}`
+              return (
+                <a href={href} target="_blank" rel="noopener noreferrer" className="pp-reserve no-print">
+                  <MessageCircle className="w-5 h-5" />
+                  Quero reservar
+                </a>
+              )
+            })()}
+
             {methods.length > 0 && (
               <div className="pp-block">
                 <h3 className="pp-h3">Formas de pagamento</h3>
@@ -661,6 +677,9 @@ const CSS = `
 .pp-total-label { font-size: 12.5px; color: #94a3b8; }
 .pp-total-val { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
 .pp-total-sub { font-size: 12.5px; color: #cbd5e1; margin-top: 4px; }
+.pp-reserve { margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #16a34a; color: #fff; font-size: 15px; font-weight: 700; padding: 14px; border-radius: 14px; box-shadow: 0 10px 24px -10px rgba(22,163,74,0.65); transition: background .2s, transform .1s; }
+.pp-reserve:hover { background: #15803d; }
+.pp-reserve:active { transform: translateY(1px); }
 .pp-pay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .pp-fineprint { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e9edf3; font-size: 11.5px; color: #94a3b8; line-height: 1.5; }
 .pp-foot { margin-top: 16px; padding: 14px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 11.5px; color: #94a3b8; }
