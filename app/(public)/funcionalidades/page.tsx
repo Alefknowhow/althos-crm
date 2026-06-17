@@ -14,17 +14,17 @@ export default function FuncionalidadesPage() {
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-blue-600/15 blur-[120px]" />
-          <div className="absolute top-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-600/10 blur-[120px]" />
+          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute top-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-400/15 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
             Funcionalidades
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
             Tudo que você precisa para vender mais
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-white/55 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
             Clique em cada recurso para ver como ele funciona na prática. Do primeiro contato ao fechamento, em um só lugar.
           </p>
         </div>
@@ -35,8 +35,8 @@ export default function FuncionalidadesPage() {
       </section>
 
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">Pronto para ver na sua operação?</h2>
-        <p className="mx-auto mt-3 max-w-md text-[14px] text-white/55">
+        <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Pronto para ver na sua operação?</h2>
+        <p className="mx-auto mt-3 max-w-md text-[14px] text-slate-600">
           Comece de graça no plano Free. Sem cartão, sem compromisso.
         </p>
         <Link

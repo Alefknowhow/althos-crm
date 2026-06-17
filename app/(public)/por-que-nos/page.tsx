@@ -15,16 +15,16 @@ export default function PorQueNosPage() {
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-blue-600/15 blur-[120px]" />
+          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-indigo-400/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
             Por que nós?
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
             Mais que um CRM. Um time a mais no seu negócio.
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-white/55 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
             Construído para quem precisa de resultado, não de mais um software complicado para configurar.
           </p>
         </div>
@@ -35,13 +35,13 @@ export default function PorQueNosPage() {
           {DIFFERENTIATORS.map(d => (
             <div
               key={d.title}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition-colors hover:border-white/20"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors hover:border-indigo-300"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-600/25">
                 <SiteIcon name={d.icon} className="h-5.5 w-5.5" />
               </span>
-              <h2 className="mt-4 text-[16px] font-bold text-white">{d.title}</h2>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/55">{d.body}</p>
+              <h2 className="mt-4 text-[16px] font-bold text-slate-900">{d.title}</h2>
+              <p className="mt-2 text-[13px] leading-relaxed text-slate-600">{d.body}</p>
             </div>
           ))}
         </div>
@@ -49,23 +49,23 @@ export default function PorQueNosPage() {
 
       {/* Comparativo simples */}
       <section className="relative mx-auto max-w-3xl px-4 pb-20 sm:px-6">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 sm:p-9">
-          <h2 className="text-center text-xl font-bold text-white sm:text-2xl">
+        <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9">
+          <h2 className="text-center text-xl font-bold text-slate-900 sm:text-2xl">
             Planilha e WhatsApp solto vs. Althos CRM
           </h2>
           <div className="mt-7 grid gap-5 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/8 bg-white/[0.01] p-5">
-              <p className="text-[13px] font-semibold text-white/50">Do jeito antigo</p>
-              <ul className="mt-3 space-y-2 text-[13px] text-white/45">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-[13px] font-semibold text-slate-500">Do jeito antigo</p>
+              <ul className="mt-3 space-y-2 text-[13px] text-slate-500">
                 <li>• Leads perdidos entre conversas</li>
                 <li>• Follow-up depende da memória</li>
                 <li>• Sem visão de funil ou resultado</li>
                 <li>• Atendimento manual e lento</li>
               </ul>
             </div>
-            <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-5">
-              <p className="text-[13px] font-semibold text-blue-300">Com o Althos</p>
-              <ul className="mt-3 space-y-2 text-[13px] text-white/70">
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5">
+              <p className="text-[13px] font-semibold text-indigo-700">Com o Althos</p>
+              <ul className="mt-3 space-y-2 text-[13px] text-slate-700">
                 <li>• Cada conversa vira um lead rastreável</li>
                 <li>• Automações cuidam do follow-up</li>
                 <li>• Dashboards e previsão de receita</li>

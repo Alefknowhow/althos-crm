@@ -56,13 +56,14 @@ export const HOME_CSS = `
 .althos-home .shell { position: relative; z-index: 5; }
 
 /* Hero */
-.althos-home .hero { max-width: 1360px; margin: 0 auto; padding: 40px 40px 110px; display: grid; grid-template-columns: minmax(0,0.78fr) minmax(0,1.5fr); align-items: center; gap: 40px; }
+.althos-home .hero { max-width: 1120px; margin: 0 auto; padding: 56px 40px 96px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 60px; }
+.althos-home .hero-copy { display: flex; flex-direction: column; align-items: center; width: 100%; }
 .althos-home .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02)); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--accent-deep); width: fit-content; box-shadow: var(--shadow-sm); }
 .althos-home .eyebrow .star { color: var(--accent); font-size: 12px; line-height: 1; }
-.althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,84px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); }
+.althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,80px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); max-width: 16ch; }
 .althos-home h1.headline em { font-style: italic; background: linear-gradient(100deg, var(--accent-bright), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.althos-home .subtitle { margin-top: 26px; font-size: clamp(17px,1.3vw,20px); line-height: 1.6; color: var(--ink-dim); max-width: 30em; font-weight: 400; }
-.althos-home .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
+.althos-home .subtitle { margin-top: 26px; font-size: clamp(17px,1.3vw,20px); line-height: 1.6; color: var(--ink-dim); max-width: 32em; font-weight: 400; }
+.althos-home .cta-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
 .althos-home .btn { font-size: 15.5px; font-weight: 600; letter-spacing: -0.005em; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; padding: 14px 24px; border-radius: 12px; transition: transform 0.25s var(--ease), box-shadow 0.3s var(--ease), background 0.25s var(--ease), border-color 0.25s var(--ease); }
 .althos-home .btn-solid { color: #fff; border: 1px solid var(--accent); background: linear-gradient(180deg, var(--accent-bright), var(--accent-deep)); box-shadow: 0 8px 24px -8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.18); }
 .althos-home .btn-solid:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.24); }
@@ -70,15 +71,15 @@ export const HOME_CSS = `
 .althos-home .btn-solid:hover .arrow { transform: translateX(3px); }
 .althos-home .btn-outline { color: var(--ink); border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow-sm); }
 .althos-home .btn-outline:hover { border-color: var(--ink-faint); background: var(--surface-2); transform: translateY(-2px); }
-.althos-home .microcopy { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-faint); font-weight: 500; }
+.althos-home .microcopy { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13.5px; color: var(--ink-faint); font-weight: 500; }
 .althos-home .microcopy .check { color: var(--accent); }
-.althos-home .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 40px; }
+.althos-home .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 40px; }
 .althos-home .chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 14.5px; font-weight: 500; color: var(--ink-dim); box-shadow: var(--shadow-sm); transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease); }
 .althos-home .chip:hover { border-color: var(--line-strong); color: var(--ink); background: var(--surface-2); }
 .althos-home .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
 /* Product mockup */
-.althos-home .mock-wrap { position: relative; perspective: 1600px; display: flex; justify-content: center; width: calc(100% + 60px); margin-right: -60px; }
+.althos-home .mock-wrap { position: relative; perspective: 1600px; display: flex; justify-content: center; width: 100%; max-width: 1000px; margin: 0 auto; }
 .althos-home .mock-glow { position: absolute; inset: -8% -4% -16% -4%; background: radial-gradient(60% 55% at 60% 38%, var(--accent-glow), transparent 70%); filter: blur(50px); z-index: 0; pointer-events: none; }
 .althos-home .browser { position: relative; z-index: 1; width: 100%; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); overflow: hidden; transform-style: preserve-3d; will-change: transform; transition: transform 0.18s var(--ease); }
 .althos-home .browser-bar { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
@@ -99,8 +100,8 @@ export const HOME_CSS = `
 .althos-home .panel img { width: 100%; height: 100%; display: block; object-fit: contain; object-position: center; cursor: zoom-in; }
 
 @media (max-width: 940px) {
-  .althos-home .hero { grid-template-columns: 1fr; padding-top: 16px; gap: 48px; text-align: left; }
-  .althos-home .mock-wrap { order: 2; width: 100%; margin-right: 0; }
+  .althos-home .hero { padding-top: 16px; gap: 44px; }
+  .althos-home .mock-wrap { width: 100%; margin: 0 auto; }
 }
 
 /* Stats */

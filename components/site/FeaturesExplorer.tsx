@@ -27,26 +27,26 @@ export function FeaturesExplorer() {
               onClick={() => setActive(f.slug)}
               className={`group flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-all ${
                 on
-                  ? 'border-blue-500/40 bg-blue-500/[0.08]'
-                  : 'border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]'
+                  ? 'border-indigo-300 bg-indigo-50'
+                  : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                  on ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/60'
+                  on ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 <SiteIcon name={f.icon} className="h-4.5 w-4.5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-[14px] font-semibold ${on ? 'text-white' : 'text-white/80'}`}>
+                <span className={`block text-[14px] font-semibold ${on ? 'text-slate-900' : 'text-slate-700'}`}>
                   {f.title}
                 </span>
-                <span className="mt-0.5 block text-[12px] leading-snug text-white/45">{f.tagline}</span>
+                <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">{f.tagline}</span>
               </span>
               <ChevronRight
                 className={`mt-1 h-4 w-4 shrink-0 transition-transform ${
-                  on ? 'text-blue-400 translate-x-0' : 'text-white/20 group-hover:translate-x-0.5'
+                  on ? 'text-indigo-500 translate-x-0' : 'text-slate-300 group-hover:translate-x-0.5'
                 }`}
               />
             </button>
@@ -55,7 +55,7 @@ export function FeaturesExplorer() {
       </div>
 
       {/* Corpo */}
-      <div className="relative min-h-0 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-5 sm:min-h-[360px] sm:p-9">
+      <div className="relative min-h-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:min-h-[360px] sm:p-9">
         <AnimatePresence mode="wait">
           <motion.div
             key={feature.slug}
@@ -67,17 +67,17 @@ export function FeaturesExplorer() {
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30 sm:h-12 sm:w-12">
               <SiteIcon name={feature.icon} className="h-5 w-5 sm:h-6 sm:w-6" />
             </span>
-            <h3 className="mt-4 text-xl font-bold text-white sm:mt-5 sm:text-2xl">{feature.title}</h3>
+            <h3 className="mt-4 text-xl font-bold text-slate-900 sm:mt-5 sm:text-2xl">{feature.title}</h3>
             <div className="mt-3 space-y-2.5 sm:space-y-3">
               {feature.body.map((p, i) => (
-                <p key={i} className="text-[14px] leading-relaxed text-white/60">{p}</p>
+                <p key={i} className="text-[14px] leading-relaxed text-slate-600">{p}</p>
               ))}
             </div>
             <ul className="mt-6 space-y-2.5">
               {feature.bullets.map(b => (
                 <li key={b} className="flex items-start gap-2.5">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                  <span className="text-[13px] text-white/70">{b}</span>
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <span className="text-[13px] text-slate-700">{b}</span>
                 </li>
               ))}
             </ul>

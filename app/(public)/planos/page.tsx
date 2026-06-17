@@ -15,16 +15,16 @@ export default function PlanosPage() {
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-blue-600/15 blur-[120px]" />
+          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-indigo-400/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
             Planos e preços
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
             Um preço justo para cada fase do seu negócio
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-white/55 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
             Comece de graça no plano Free, sem cartão. Mude de plano quando quiser. Sem pegadinha.
           </p>
         </div>
@@ -37,15 +37,15 @@ export default function PlanosPage() {
 
       {/* CTA final */}
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 sm:p-10">
-          <h2 className="text-2xl font-bold text-white">Ainda com dúvidas?</h2>
-          <p className="mx-auto mt-3 max-w-md text-[14px] text-white/55">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
+          <h2 className="text-2xl font-bold text-slate-900">Ainda com dúvidas?</h2>
+          <p className="mx-auto mt-3 max-w-md text-[14px] text-slate-600">
             Veja as perguntas frequentes ou fale com a gente. Estamos prontos para ajudar a escolher o plano ideal.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/faq"
-              className="rounded-xl border border-white/15 px-6 py-3 text-[14px] font-semibold text-white hover:bg-white/5 transition-colors"
+              className="rounded-xl border border-slate-300 px-6 py-3 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Ver FAQ
             </Link>
