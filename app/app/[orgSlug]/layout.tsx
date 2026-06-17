@@ -12,7 +12,7 @@ import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
-import { SupportWidget } from '@/components/features/SupportWidget'
+import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
 import Link from 'next/link'
 import { Activity } from 'lucide-react'
 import { redirect } from 'next/navigation'
@@ -91,10 +91,15 @@ export default async function OrgLayout({
               desktop aside occupies its own column. */}
           <header className="h-14 border-b border-border bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
-                Organização
-              </span>
-              <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
+              {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
+              {orgs.length > 1 && (
+                <>
+                  <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
+                    Organização
+                  </span>
+                  <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -119,6 +124,7 @@ export default async function OrgLayout({
               <div className="w-px h-4 bg-border mx-1" />
               <PushNotificationToggle orgSlug={params.orgSlug} />
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
+              <SupportHeaderButton className="md:hidden" />
               <ModeToggle />
             </div>
           </header>

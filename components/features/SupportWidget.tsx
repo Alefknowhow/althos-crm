@@ -54,6 +54,13 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
     }
   }, [messages, open, loading])
 
+  // Abre o painel a partir do botão fixo na barra superior (mobile).
+  useEffect(() => {
+    const handler = () => setOpen(true)
+    window.addEventListener('althos:support-open', handler)
+    return () => window.removeEventListener('althos:support-open', handler)
+  }, [])
+
   // Hide-on-scroll-down behaviour. The app shell scrolls inside <main>
   // (h-screen + overflow-hidden), not the window — so we listen on that
   // element. Falls back to window if not found. Cheap, passive listener.
@@ -119,12 +126,12 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
 
   return (
     <>
-      {/* Launcher */}
+      {/* Launcher — flutuante só no desktop; no mobile usa o ícone fixo na barra superior */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Fechar suporte' : 'Abrir suporte'}
         className={cn(
-          'fixed bottom-5 right-5 z-[60] flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:scale-105 active:scale-95',
+          'fixed bottom-5 right-5 z-[60] hidden md:flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:scale-105 active:scale-95',
           'bg-gradient-to-br from-brand-500 to-brand-700',
           // Mobile: slide out of the way while scrolling down. Desktop (md+)
           // always stays put regardless of scroll.
@@ -141,10 +148,17 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-border bg-gradient-to-br from-brand-600 to-brand-700 px-4 py-3 text-white">
             <LogoMark gradient={false} className="h-8 w-8 text-white/20" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold leading-tight">Suporte Althos</p>
               <p className="text-xs text-white/80">Responde na hora, com IA</p>
             </div>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Fechar suporte"
+              className="shrink-0 rounded-full p-1.5 text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           {/* Messages */}
@@ -237,5 +251,27 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Ícone fixo na barra superior (apenas mobile) que abre o painel de suporte.
+ * Dispara um evento que o SupportWidget escuta — assim o estado do painel
+ * continua encapsulado no widget.
+ */
+export function SupportHeaderButton({ className }: { className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent('althos:support-open'))}
+      aria-label="Abrir suporte"
+      title="Suporte"
+      className={cn(
+        'inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+        className,
+      )}
+    >
+      <MessageCircle className="h-5 w-5" />
+    </button>
   )
 }

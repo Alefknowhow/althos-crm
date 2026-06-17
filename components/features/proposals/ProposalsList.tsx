@@ -12,7 +12,10 @@ import {
 } from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
-import { createProposal, deleteProposal, duplicateProposal, type ProposalRow } from '@/actions/travel-proposals'
+import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover'
 import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
@@ -30,11 +33,11 @@ import {
 type Member = { user_id: string; name: string; email: string }
 type Contato = { id: string; name: string }
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  draft: { label: 'Rascunho', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  sent: { label: 'Enviada', cls: 'bg-sky-100 text-sky-700 border-sky-200' },
-  accepted: { label: 'Aceita', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  rejected: { label: 'Recusada', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
+const STATUS: Record<string, { label: string; short: string; cls: string }> = {
+  draft: { label: 'Rascunho', short: 'R', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  sent: { label: 'Enviada', short: 'E', cls: 'bg-sky-100 text-sky-700 border-sky-200' },
+  accepted: { label: 'Aceita', short: 'A', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  rejected: { label: 'Recusada', short: '✕', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
 }
 
 function fmtDate(d?: string | null) {
@@ -45,6 +48,61 @@ function fmtTimestamp(d?: string | null) {
 }
 function destOf(p: ProposalRow) {
   return (p.destinations || []).map((d: any) => d?.name).filter(Boolean).join(', ')
+}
+
+/* Etiqueta de status de 1 letra, editável inline (sem abrir a cotação). */
+function StatusTag({ orgSlug, proposalId, status: initial }: { orgSlug: string; proposalId: string; status: string }) {
+  const router = useRouter()
+  const [status, setStatus] = useState(initial)
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const st = STATUS[status] || STATUS.draft
+
+  async function change(next: string) {
+    if (next === status) { setOpen(false); return }
+    const prev = status
+    setStatus(next); setSaving(true); setOpen(false)
+    const res = await updateProposal(orgSlug, proposalId, { status: next })
+    setSaving(false)
+    if (!res.ok) { setStatus(prev); toast.error(res.error || 'Erro ao atualizar status') }
+    else { toast.success('Status atualizado'); router.refresh() }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={`Status: ${st.label} — toque para alterar`}
+          aria-label={`Status: ${st.label}. Toque para alterar`}
+          className={cn(
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-transform hover:scale-105',
+            st.cls,
+          )}
+        >
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : st.short}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-48 p-1">
+        <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">Alterar status</p>
+        {Object.entries(STATUS).map(([key, s]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => change(key)}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+              key === status && 'bg-muted/60 font-medium',
+            )}
+          >
+            <span className={cn('inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold leading-none', s.cls)}>{s.short}</span>
+            {s.label}
+            {key === status && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-emerald-600" />}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export default function ProposalsList({
@@ -211,7 +269,12 @@ export default function ProposalsList({
                   <span className="font-medium text-sm leading-tight line-clamp-2">
                     {p.client_name || p.title || 'Proposta sem título'}
                   </span>
-                  <Badge variant="outline" className={cn('shrink-0 text-[10px] px-1.5 py-0', st.cls)}>{st.label}</Badge>
+                  <span
+                    title={st.label}
+                    className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none', st.cls)}
+                  >
+                    {st.short}
+                  </span>
                 </div>
                 {dest && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -404,7 +467,6 @@ function ProposalDetail({
   onDelete: () => void
   onDuplicate: () => void
 }) {
-  const st = STATUS[p.status] || STATUS.draft
   const dest = destOf(p)
   const [publicUrl, setPublicUrl] = useState('')
   const [copied, setCopied] = useState(false)
@@ -429,7 +491,7 @@ function ProposalDetail({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold truncate">{p.title || 'Proposta sem título'}</h2>
-            <Badge variant="outline" className={cn('shrink-0', st.cls)}>{st.label}</Badge>
+            <StatusTag orgSlug={orgSlug} proposalId={p.id} status={p.status} />
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
