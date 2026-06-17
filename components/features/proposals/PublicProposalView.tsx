@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
-  CloudSun, Thermometer, MessageCircle,
+  CloudSun, Thermometer, MessageCircle, Mail, Globe,
 } from 'lucide-react'
 
 type Org = {
@@ -429,7 +429,13 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                 <div className="pp-weather-temp">
                   <Thermometer className="w-5 h-5" />
                   <span className="pp-weather-range">
-                    {[weather.temp_min, weather.temp_max].filter(Boolean).join(' — ')}
+                    {[weather.temp_min, weather.temp_max]
+                      .filter(v => v != null && String(v).trim() !== '')
+                      .map(v => {
+                        const s = String(v).trim()
+                        return /[°ºcCfF]/.test(s) ? s : `${s}°C`
+                      })
+                      .join(' — ')}
                   </span>
                   <span className="pp-weather-cap">Temperatura prevista nas datas da viagem</span>
                 </div>
@@ -535,18 +541,78 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             </p>
 
             {/* Rodapé da agência */}
-            <div className="pp-foot">
-              <p className="pp-foot-name">{companyName}</p>
-              <div className="pp-foot-row">
-                {cnpj && <span>CNPJ: {cnpj}</span>}
-                {cadastur && <span>CADASTUR: {cadastur}</span>}
-                {phone && <span>{phone}</span>}
-                {email && <span>{email}</span>}
-                {instagram && <span>{instagram.startsWith('@') ? instagram : `@${instagram}`}</span>}
-                {website && <span>{website.replace(/^https?:\/\//, '')}</span>}
-              </div>
-              {addrParts.length > 0 && <p>{addrParts.join(', ')}</p>}
-            </div>
+            {(() => {
+              // Telefone → WhatsApp
+              const digits = (phone || '').replace(/\D/g, '')
+              const waNumber = digits ? (digits.length <= 11 ? `55${digits}` : digits) : ''
+              const waHref = waNumber ? `https://wa.me/${waNumber}` : ''
+              // Site → garante protocolo
+              const siteHref = website
+                ? (/^https?:\/\//.test(website) ? website : `https://${website}`)
+                : ''
+              // Instagram → perfil
+              const igHandle = instagram ? instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '') : ''
+              const igHref = igHandle ? `https://instagram.com/${igHandle}` : ''
+              // Endereço → Google Maps
+              const addrText = addrParts.join(', ')
+              const mapHref = addrText ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${companyName} ${addrText}`)}` : ''
+
+              return (
+                <div className="pp-foot">
+                  <p className="pp-foot-name">{companyName}</p>
+
+                  {(cnpj || cadastur) && (
+                    <div className="pp-foot-reg">
+                      {cnpj && <span>CNPJ: {cnpj}</span>}
+                      {cadastur && <span>CADASTUR: {cadastur}</span>}
+                    </div>
+                  )}
+
+                  <div className="pp-foot-contacts">
+                    {waHref && (
+                      <a href={waHref} target="_blank" rel="noopener noreferrer" className="pp-foot-item">
+                        <span className="pp-foot-ic" aria-hidden>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.69 8.23-8.23 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.8-.23-.09-.39-.12-.56.12-.17.25-.64.8-.79.97-.14.17-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43-.14-.01-.31-.01-.48-.01-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.28Z" />
+                          </svg>
+                        </span>
+                        <span>{phone}</span>
+                      </a>
+                    )}
+                    {email && (
+                      <a href={`mailto:${email}`} className="pp-foot-item">
+                        <span className="pp-foot-ic" aria-hidden><Mail width={14} height={14} /></span>
+                        <span>{email}</span>
+                      </a>
+                    )}
+                    {siteHref && (
+                      <a href={siteHref} target="_blank" rel="noopener noreferrer" className="pp-foot-item">
+                        <span className="pp-foot-ic" aria-hidden><Globe width={14} height={14} /></span>
+                        <span>{website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                      </a>
+                    )}
+                    {igHref && (
+                      <a href={igHref} target="_blank" rel="noopener noreferrer" className="pp-foot-item">
+                        <span className="pp-foot-ic" aria-hidden>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                          </svg>
+                        </span>
+                        <span>@{igHandle}</span>
+                      </a>
+                    )}
+                    {addrText && (
+                      <a href={mapHref} target="_blank" rel="noopener noreferrer" className="pp-foot-item">
+                        <span className="pp-foot-ic" aria-hidden><MapPin width={14} height={14} /></span>
+                        <span>{addrText}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       </div>
@@ -682,9 +748,15 @@ const CSS = `
 .pp-reserve:active { transform: translateY(1px); }
 .pp-pay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .pp-fineprint { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e9edf3; font-size: 11.5px; color: #94a3b8; line-height: 1.5; }
-.pp-foot { margin-top: 16px; padding: 14px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 11.5px; color: #94a3b8; }
-.pp-foot-name { font-weight: 700; color: #334155; font-size: 13px; }
-.pp-foot-row { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; }
+.pp-foot { margin-top: 16px; padding: 18px 16px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 12px; color: #64748b; text-align: center; }
+.pp-foot-name { font-weight: 700; color: #1e293b; font-size: 15px; text-align: center; letter-spacing: -0.01em; }
+.pp-foot-reg { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 8px 0 12px; font-size: 11px; color: #94a3b8; }
+.pp-foot-contacts { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+.pp-foot-item { display: inline-flex; align-items: center; gap: 8px; color: #475569; text-decoration: none; font-size: 12.5px; line-height: 1.3; transition: color .15s; max-width: 100%; }
+.pp-foot-item:hover { color: #4f46e5; }
+.pp-foot-item > span:last-child { word-break: break-word; }
+.pp-foot-ic { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: #f1f5f9; color: #4f46e5; }
+.pp-foot-item:hover .pp-foot-ic { background: #e0e7ff; }
 
 /* Print: empilha tudo, sem moldura */
 @media print {

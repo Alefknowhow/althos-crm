@@ -661,6 +661,23 @@ export default function ProposalBuilder({
             className="border-0 shadow-none text-lg font-semibold px-0 focus-visible:ring-0"
           />
         </div>
+        {p.public_token && (
+          <>
+            <Button type="button" variant="outline" size="sm" className="hidden sm:inline-flex"
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
+                catch { toast.error('Não foi possível copiar') }
+              }}>
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? 'Copiado' : 'Copiar link'}
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir / PDF
+              </a>
+            </Button>
+          </>
+        )}
         <Select value={p.status} onValueChange={v => set('status', v)}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -675,9 +692,9 @@ export default function ProposalBuilder({
         </Button>
       </div>
 
-      {/* Compartilhamento — copiar link e abrir/PDF */}
+      {/* Compartilhamento — copiar link e abrir/PDF (mobile; no desktop ficam na barra) */}
       {p.public_token && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:hidden">
           <Button type="button" variant="outline" size="sm"
             onClick={async () => {
               try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
@@ -753,8 +770,8 @@ export default function ProposalBuilder({
         </SectionCard>
       </div>
 
-      {/* Clima */}
-      <div className="grid gap-5 items-start">
+      {/* Clima — meia tela */}
+      <div className="grid gap-5 lg:grid-cols-2 items-start">
         {/* Clima */}
         <SectionCard
           icon={CloudSun} title="Clima"
@@ -773,13 +790,13 @@ export default function ProposalBuilder({
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Temperatura mínima">
-                  <Input placeholder="Ex.: 18°C" value={weather.temp_min || ''}
-                    onChange={e => setWeather({ temp_min: e.target.value })} />
+                <Field label="Temperatura mínima (°C)">
+                  <Input inputMode="numeric" placeholder="Ex.: 18" value={weather.temp_min || ''}
+                    onChange={e => setWeather({ temp_min: e.target.value.replace(/[^\d-]/g, '') })} />
                 </Field>
-                <Field label="Temperatura máxima">
-                  <Input placeholder="Ex.: 29°C" value={weather.temp_max || ''}
-                    onChange={e => setWeather({ temp_max: e.target.value })} />
+                <Field label="Temperatura máxima (°C)">
+                  <Input inputMode="numeric" placeholder="Ex.: 29" value={weather.temp_max || ''}
+                    onChange={e => setWeather({ temp_max: e.target.value.replace(/[^\d-]/g, '') })} />
                 </Field>
               </div>
               <Field label="Clima nas datas da viagem">
