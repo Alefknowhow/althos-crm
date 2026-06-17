@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
+  CloudSun, Thermometer,
 } from 'lucide-react'
 
 type Org = {
@@ -42,6 +43,8 @@ type Proposal = {
   pax_count: number | null
   price_per_person_cents: number | null
   payment: Record<string, any>
+  map_config: Record<string, any> | null
+  weather: Record<string, any> | null
   company_override: Record<string, any> | null
   created_at: string | null
   updated_at: string | null
@@ -97,7 +100,7 @@ const METHOD_LABELS: Record<string, string> = {
   pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de crédito',
 }
 
-type TabKey = 'resumo' | 'voos' | 'hospedagem' | 'servicos' | 'checklist' | 'incluso' | 'investimento'
+type TabKey = 'resumo' | 'voos' | 'hospedagem' | 'servicos' | 'checklist' | 'clima' | 'incluso' | 'investimento'
 
 /* ───────────────────────── component ───────────────────────── */
 export default function PublicProposalView({ proposal, org }: { proposal: Proposal; org: Org }) {
@@ -141,7 +144,18 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     : null
   const days = nights != null ? nights + 1 : null
   const paxCount = proposal.pax_count ?? (Array.isArray(proposal.travelers) && proposal.travelers.length > 0 ? proposal.travelers.length : null)
-  const mapQuery = (destinations[0]?.name as string) || proposal.title || ''
+
+  // Mapa interativo: configurável na cotação. Ligado por padrão (compatível com
+  // propostas antigas). A "query" personalizada sobrescreve o destino automático.
+  const mapCfg = proposal.map_config || {}
+  const mapEnabled = mapCfg.enabled !== false
+  const mapQuery = (mapCfg.query as string)?.trim() || (destinations[0]?.name as string) || proposal.title || ''
+
+  // Clima: aba opcional sobre o tempo nas datas + sazonalidade do destino.
+  const weather = proposal.weather || {}
+  const weatherOn = !!weather.enabled && !!(
+    weather.summary || weather.seasonality || weather.expect || weather.temp_min || weather.temp_max
+  )
 
   // Abas disponíveis (Resumo e Investimento sempre presentes)
   const TABS: { key: TabKey; label: string; icon: any; show: boolean }[] = [
@@ -150,6 +164,7 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     { key: 'hospedagem', label: 'Hospedagem', icon: BedDouble, show: hotels.length > 0 },
     { key: 'servicos', label: 'Serviços', icon: Sparkles, show: activeServices.length > 0 || orderBumps.length > 0 },
     { key: 'checklist', label: 'Check-list', icon: ListChecks, show: checklist.length > 0 },
+    { key: 'clima', label: 'Clima', icon: CloudSun, show: weatherOn },
     { key: 'incluso', label: 'Incluso', icon: CheckCircle2, show: (proposal.included || []).length > 0 || (proposal.not_included || []).length > 0 },
     { key: 'investimento', label: 'Investimento', icon: Wallet, show: true },
   ]
@@ -232,7 +247,7 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
               </div>
             )}
 
-            {mapQuery && (
+            {mapEnabled && mapQuery && (
               <div className="pp-block">
                 <h3 className="pp-h3">No mapa</h3>
                 <div className="pp-map">
@@ -428,6 +443,39 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             </div>
           )}
 
+          {/* ── Clima ── */}
+          {weatherOn && (
+            <div className={panelCls('clima')}>
+              {(weather.temp_min || weather.temp_max) && (
+                <div className="pp-weather-temp">
+                  <Thermometer className="w-5 h-5" />
+                  <span className="pp-weather-range">
+                    {[weather.temp_min, weather.temp_max].filter(Boolean).join(' — ')}
+                  </span>
+                  <span className="pp-weather-cap">Temperatura prevista nas datas da viagem</span>
+                </div>
+              )}
+              {weather.summary && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Clima nas datas da viagem</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.summary}</p>
+                </div>
+              )}
+              {weather.seasonality && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Sazonalidade do destino</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.seasonality}</p>
+                </div>
+              )}
+              {weather.expect && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">O que você vai encontrar</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.expect}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Incluso ── */}
           {((proposal.included || []).length > 0 || (proposal.not_included || []).length > 0) && (
             <div className={panelCls('incluso')}>
@@ -620,6 +668,12 @@ const CSS = `
 .pp-check.done { background: #f0fdf4; border-color: #bbf7d0; color: #166534; text-decoration: line-through; text-decoration-color: rgba(22,101,52,0.4); }
 .pp-check-box { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid #cbd5e1; color: #16a34a; font-size: 13px; font-weight: 700; }
 .pp-check.done .pp-check-box { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* Clima */
+.pp-weather-temp { display: flex; flex-direction: column; align-items: center; gap: 2px; background: linear-gradient(160deg, #0ea5e9, #0f172a); color: #fff; border-radius: 18px; padding: 20px; text-align: center; }
+.pp-weather-temp > svg { opacity: 0.85; }
+.pp-weather-range { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
+.pp-weather-cap { font-size: 12px; color: rgba(255,255,255,0.82); }
 
 /* Incluso */
 .pp-list { display: flex; flex-direction: column; gap: 7px; }

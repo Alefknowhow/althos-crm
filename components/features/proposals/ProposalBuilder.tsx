@@ -22,6 +22,7 @@ import {
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Share2, Copy, ExternalLink, Upload, Loader2, Search,
   ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon, Lock,
+  Map as MapIcon, CloudSun,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -596,6 +597,8 @@ export default function ProposalBuilder({
     order_bumps: initial.order_bumps || [],
     payment: initial.payment || {},
     photos: initial.photos || [],
+    map_config: initial.map_config || { enabled: true },
+    weather: initial.weather || { enabled: false },
   })
 
   const set = useCallback(<K extends keyof ProposalRow>(key: K, val: ProposalRow[K]) => {
@@ -606,6 +609,11 @@ export default function ProposalBuilder({
   function setService(key: string, patch: any) {
     set('services', { ...p.services, [key]: { ...service(key), ...patch } })
   }
+
+  const mapCfg = p.map_config || {}
+  const setMap = (patch: any) => set('map_config', { ...mapCfg, ...patch })
+  const weather = p.weather || {}
+  const setWeather = (patch: any) => set('weather', { ...weather, ...patch })
 
   async function handleSave() {
     setSaving(true)
@@ -618,6 +626,7 @@ export default function ProposalBuilder({
       checklist: p.checklist, photos: p.photos,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
+      map_config: p.map_config, weather: p.weather,
       operadora: p.operadora, commission_total_cents: p.commission_total_cents,
     })
     setSaving(false)
@@ -757,6 +766,86 @@ export default function ProposalBuilder({
                 onChange={e => { const n = [...p.destinations]; n[i] = { ...n[i], briefing: e.target.value }; set('destinations', n) }} />
             </div>
           ))}
+        </SectionCard>
+      </div>
+
+      {/* Mapa dinâmico + Clima lado a lado */}
+      <div className="grid gap-5 lg:grid-cols-2 items-start">
+        {/* Mapa interativo */}
+        <SectionCard
+          icon={MapIcon} title="Mapa interativo"
+          action={
+            <Switch
+              checked={mapCfg.enabled !== false}
+              onCheckedChange={v => setMap({ enabled: v })}
+            />
+          }
+        >
+          {mapCfg.enabled === false ? (
+            <p className="text-sm text-muted-foreground">
+              Mapa desativado. Ative para exibir um mapa interativo na aba “Resumo” da proposta.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Por padrão o mapa centraliza no primeiro destino. Informe um local
+                personalizado abaixo (cidade, país ou coordenadas) para sobrescrever.
+              </p>
+              <Field label="Local do mapa (opcional)">
+                <Input
+                  placeholder="Ex.: Cancún, México — ou deixe em branco para usar o destino"
+                  value={mapCfg.query || ''}
+                  onChange={e => setMap({ query: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
+        </SectionCard>
+
+        {/* Clima */}
+        <SectionCard
+          icon={CloudSun} title="Clima"
+          action={
+            <Switch
+              checked={!!weather.enabled}
+              onCheckedChange={v => setWeather({ enabled: v })}
+            />
+          }
+        >
+          {!weather.enabled ? (
+            <p className="text-sm text-muted-foreground">
+              Clima desativado. Ative para adicionar a aba “Clima” na proposta, com o
+              tempo nas datas da viagem e a sazonalidade do destino.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Temperatura mínima">
+                  <Input placeholder="Ex.: 18°C" value={weather.temp_min || ''}
+                    onChange={e => setWeather({ temp_min: e.target.value })} />
+                </Field>
+                <Field label="Temperatura máxima">
+                  <Input placeholder="Ex.: 29°C" value={weather.temp_max || ''}
+                    onChange={e => setWeather({ temp_max: e.target.value })} />
+                </Field>
+              </div>
+              <Field label="Clima nas datas da viagem">
+                <Textarea placeholder="Como estará o tempo durante a estadia (chuvas, calor, frio, etc.)"
+                  value={weather.summary || ''}
+                  onChange={e => setWeather({ summary: e.target.value })} />
+              </Field>
+              <Field label="Sazonalidade do destino">
+                <Textarea placeholder="Alta/baixa temporada, eventos sazonais, melhor época, etc."
+                  value={weather.seasonality || ''}
+                  onChange={e => setWeather({ seasonality: e.target.value })} />
+              </Field>
+              <Field label="O que o passageiro vai encontrar">
+                <Textarea placeholder="Paisagens, clima do dia a dia, o que levar na mala, dicas locais…"
+                  value={weather.expect || ''}
+                  onChange={e => setWeather({ expect: e.target.value })} />
+              </Field>
+            </>
+          )}
         </SectionCard>
       </div>
 
