@@ -2,7 +2,7 @@
   "name": "Althos CRM",
   "short_name": "Althos",
   "description": "CRM multi-tenant da Althos Performance",
-  "start_url": "/",
+  "start_url": "/onboarding",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
