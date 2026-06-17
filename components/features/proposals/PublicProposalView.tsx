@@ -1,7 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Printer } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import {
+  Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
+  CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
+} from 'lucide-react'
 
 type Org = {
   name: string | null
@@ -44,18 +47,16 @@ type Proposal = {
   updated_at: string | null
 }
 
+/* ───────────────────────── helpers ───────────────────────── */
 function fmtTimestamp(d?: string | null) {
   return d ? new Date(d).toLocaleDateString('pt-BR') : null
 }
-
 function brl(cents?: number | null) {
   return ((cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
 }
-
-// ── Voos: agrupa por "jornada" (ida / trecho interno / volta) ───────────────
 function flMins(min: number): string {
   if (!min || min <= 0) return ''
   const h = Math.floor(min / 60)
@@ -71,7 +72,6 @@ function flBetween(aIso?: string, bIso?: string): number {
   if (Number.isNaN(a) || Number.isNaN(b)) return 0
   return Math.round((b - a) / 60000)
 }
-// Aceita formato antigo (voo plano) e novo (jornada com legs).
 function flNormalize(flights: any[]): any[] {
   return (Array.isArray(flights) ? flights : []).map((f, i) => {
     if (f && Array.isArray(f.legs)) {
@@ -97,17 +97,14 @@ const METHOD_LABELS: Record<string, string> = {
   pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de crédito',
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="proposal-section">
-      <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">{title}</h2>
-      {children}
-    </section>
-  )
-}
+type TabKey = 'resumo' | 'voos' | 'hospedagem' | 'servicos' | 'checklist' | 'incluso' | 'investimento'
 
+/* ───────────────────────── component ───────────────────────── */
 export default function PublicProposalView({ proposal, org }: { proposal: Proposal; org: Org }) {
   const [imgErr, setImgErr] = useState<Record<string, boolean>>({})
+  const [hotelImg, setHotelImg] = useState<Record<number, number>>({})
+  const [checked, setChecked] = useState<Record<number, boolean>>({})
+
   const ov = proposal.company_override || {}
   const companyName = ov.name || org.name || 'Agência de Viagens'
   const logo = ov.logo_url || org.logo_url
@@ -123,348 +120,535 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     ov.address_zip || org.address_zip,
   ].filter(Boolean)
 
-  const activeServices = Object.entries(proposal.services || {})
-    .filter(([, v]: any) => v?.enabled)
+  const activeServices = Object.entries(proposal.services || {}).filter(([, v]: any) => v?.enabled)
+  const orderBumps = Array.isArray(proposal.order_bumps) ? proposal.order_bumps : []
   const methods: string[] = proposal.payment?.methods || []
+  const flights = useMemo(() => flNormalize(proposal.flights).filter(j => Array.isArray(j.legs) && j.legs.length > 0), [proposal.flights])
+  const hotels = Array.isArray(proposal.hotels) ? proposal.hotels : []
+  const destinations = Array.isArray(proposal.destinations) ? proposal.destinations : []
+  const checklist = Array.isArray(proposal.checklist) ? proposal.checklist : []
 
-  // Galeria de capa: usa as fotos da viagem (campo dedicado). Para propostas
-  // antigas, recai sobre as fotos agregadas das hospedagens (compatibilidade).
+  // Imagem da cotação (capa, fixa no topo). Usa as fotos da viagem; recai
+  // sobre as fotos das hospedagens para propostas antigas.
   const rawHero: string[] = Array.isArray(proposal.photos) && proposal.photos.length > 0
     ? proposal.photos
-    : (proposal.hotels || []).flatMap((h: any) => (Array.isArray(h.photos) ? h.photos : []))
-  const heroPhotos: string[] = rawHero.filter((src: string) => src && !imgErr[`hero-${src}`])
+    : hotels.flatMap((h: any) => (Array.isArray(h.photos) ? h.photos : []))
+  const cover = rawHero.find((src: string) => src && !imgErr[`cover-${src}`]) || null
+
+  // Duração + pessoas
+  const nights = proposal.start_date && proposal.end_date
+    ? Math.max(0, Math.round((new Date(proposal.end_date + 'T00:00:00').getTime() - new Date(proposal.start_date + 'T00:00:00').getTime()) / 86400000))
+    : null
+  const days = nights != null ? nights + 1 : null
+  const paxCount = proposal.pax_count ?? (Array.isArray(proposal.travelers) && proposal.travelers.length > 0 ? proposal.travelers.length : null)
+  const mapQuery = (destinations[0]?.name as string) || proposal.title || ''
+
+  // Abas disponíveis (Resumo e Investimento sempre presentes)
+  const TABS: { key: TabKey; label: string; icon: any; show: boolean }[] = [
+    { key: 'resumo', label: 'Resumo', icon: MapPin, show: true },
+    { key: 'voos', label: 'Voos', icon: Plane, show: flights.length > 0 },
+    { key: 'hospedagem', label: 'Hospedagem', icon: BedDouble, show: hotels.length > 0 },
+    { key: 'servicos', label: 'Serviços', icon: Sparkles, show: activeServices.length > 0 || orderBumps.length > 0 },
+    { key: 'checklist', label: 'Check-list', icon: ListChecks, show: checklist.length > 0 },
+    { key: 'incluso', label: 'Incluso', icon: CheckCircle2, show: (proposal.included || []).length > 0 || (proposal.not_included || []).length > 0 },
+    { key: 'investimento', label: 'Investimento', icon: Wallet, show: true },
+  ]
+  const tabs = TABS.filter(t => t.show)
+  const [active, setActive] = useState<TabKey>('resumo')
+  const panelCls = (k: TabKey) => `pp-panel${active === k ? '' : ' hidden'}`
 
   return (
-    <div className="min-h-screen bg-slate-100 print:bg-white">
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .proposal-paper { box-shadow: none !important; margin: 0 !important; max-width: none !important; border-radius: 0 !important; }
-          .proposal-paper, .proposal-paper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .proposal-section { break-inside: avoid; }
-          @page { margin: 14mm; }
-        }
-      `}</style>
+    <div className="pp-stage">
+      <style>{CSS}</style>
 
-      {/* Print bar */}
-      <div className="no-print sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-600">Proposta de viagem</span>
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700"
-          >
-            <Printer className="w-4 h-4" /> Imprimir / Salvar PDF
-          </button>
-        </div>
-      </div>
+      <button onClick={() => window.print()} className="pp-print no-print" aria-label="Imprimir ou salvar PDF">
+        <Printer className="w-4 h-4" />
+      </button>
 
-      <div className="proposal-paper max-w-3xl mx-auto my-6 bg-white shadow-sm rounded-xl overflow-hidden print:my-0">
-        {/* Header */}
-        <header className="px-8 py-6 border-b flex items-center gap-4">
-          {logo && !imgErr['logo'] ? (
+      <div className="pp-phone">
+        {/* Capa fixa */}
+        <div className="pp-cover">
+          {cover ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={companyName} className="h-12 w-auto object-contain"
-              onError={() => setImgErr(e => ({ ...e, logo: true }))} />
+            <img src={cover} alt={proposal.title || 'Viagem'} onError={() => setImgErr(e => ({ ...e, [`cover-${cover}`]: true }))} />
           ) : (
-            <div className="h-12 w-12 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-lg">
-              {companyName.charAt(0)}
-            </div>
+            <div className="pp-cover-fallback" />
           )}
-          <div>
-            <p className="text-xl font-bold text-slate-900">{companyName}</p>
-            <p className="text-sm text-slate-500">Proposta de viagem personalizada</p>
-          </div>
-        </header>
-
-        {/* Galeria de capa (imagens em destaque, acima do título) */}
-        {heroPhotos.length > 0 && (
-          <div className="px-8 pt-6">
-            {heroPhotos.length === 1 ? (
+          <div className="pp-cover-ov" />
+          <div className="pp-cover-top">
+            {logo && !imgErr['logo'] ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={heroPhotos[0]} alt="" className="w-full h-72 object-cover rounded-xl border border-slate-200"
-                onError={() => setImgErr(e => ({ ...e, [`hero-${heroPhotos[0]}`]: true }))} />
+              <img src={logo} alt={companyName} className="pp-logo" onError={() => setImgErr(e => ({ ...e, logo: true }))} />
             ) : (
-              <div className="grid grid-cols-4 grid-rows-2 gap-2 h-72">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroPhotos[0]} alt="" className="col-span-2 row-span-2 w-full h-full object-cover rounded-xl border border-slate-200"
-                  onError={() => setImgErr(e => ({ ...e, [`hero-${heroPhotos[0]}`]: true }))} />
-                {heroPhotos.slice(1, 5).map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={src} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200"
-                    onError={() => setImgErr(e => ({ ...e, [`hero-${src}`]: true }))} />
-                ))}
+              <span className="pp-logo-fallback">{companyName.charAt(0)}</span>
+            )}
+            <span className="pp-company">{companyName}</span>
+          </div>
+          <div className="pp-cover-meta">
+            <h1>{proposal.title || 'Proposta de viagem'}</h1>
+            <p>
+              {destinations.length > 0 && <span>{destinations.map((d: any) => d.name).filter(Boolean).join(' · ')}</span>}
+              {destinations.length > 0 && (proposal.start_date || proposal.end_date) && <span className="dot">•</span>}
+              {(proposal.start_date || proposal.end_date) && <span>{fmtDate(proposal.start_date)} – {fmtDate(proposal.end_date)}</span>}
+            </p>
+          </div>
+        </div>
+
+        {/* Abas */}
+        <nav className="pp-tabs" role="tablist" aria-label="Seções da proposta">
+          {tabs.map(t => {
+            const Icon = t.icon
+            return (
+              <button key={t.key} role="tab" aria-selected={active === t.key}
+                className={`pp-tab${active === t.key ? ' active' : ''}`} onClick={() => setActive(t.key)}>
+                <Icon className="w-3.5 h-3.5" /> {t.label}
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Conteúdo */}
+        <div className="pp-scroll">
+          {/* ── Resumo ── */}
+          <div className={panelCls('resumo')}>
+            <div className="pp-facts">
+              {proposal.client_name && <Fact icon={Users} label="Cliente" value={proposal.client_name} />}
+              {paxCount != null && <Fact icon={Users} label="Viajantes" value={`${paxCount} ${paxCount > 1 ? 'pessoas' : 'pessoa'}`} />}
+              {(proposal.start_date || proposal.end_date) && <Fact icon={CalendarDays} label="Período" value={`${fmtDate(proposal.start_date)} – ${fmtDate(proposal.end_date)}`} />}
+              {days != null && <Fact icon={Clock} label="Duração" value={`${days} ${days > 1 ? 'dias' : 'dia'} / ${nights} ${nights! > 1 ? 'noites' : 'noite'}`} />}
+            </div>
+
+            {destinations.length > 0 && (
+              <div className="pp-block">
+                <h3 className="pp-h3">Sobre o destino</h3>
+                <div className="pp-stack">
+                  {destinations.map((d: any, i: number) => (
+                    <div key={i} className="pp-card">
+                      <p className="pp-card-title"><MapPin className="w-4 h-4 text-slate-400" /> {d.name || 'Destino'}</p>
+                      {d.briefing && <p className="pp-card-text">{d.briefing}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mapQuery && (
+              <div className="pp-block">
+                <h3 className="pp-h3">No mapa</h3>
+                <div className="pp-map">
+                  <iframe
+                    title={`Mapa de ${mapQuery}`}
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=6&output=embed`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              </div>
+            )}
+
+            {proposal.travelers_note && (
+              <div className="pp-block">
+                <h3 className="pp-h3">Observações</h3>
+                <p className="pp-card-text whitespace-pre-line">{proposal.travelers_note}</p>
               </div>
             )}
           </div>
-        )}
 
-        <div className="px-8 py-6 space-y-8">
-          {/* Title + period */}
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{proposal.title || 'Proposta de viagem'}</h1>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600">
-              {proposal.client_name && <span><strong>Cliente:</strong> {proposal.client_name}</span>}
-              <span><strong>Período:</strong> {fmtDate(proposal.start_date)} – {fmtDate(proposal.end_date)}</span>
-            </div>
-          </div>
-
-          {/* Destinations */}
-          {(proposal.destinations || []).length > 0 && (
-            <Section title="Destinos">
-              <div className="space-y-3">
-                {proposal.destinations.map((d: any, i: number) => (
-                  <div key={i} className="rounded-lg border border-slate-200 p-4">
-                    <p className="font-semibold text-slate-800">{d.name || 'Destino'}</p>
-                    {d.briefing && <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">{d.briefing}</p>}
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Flights */}
-          {(proposal.flights || []).length > 0 && (
-            <Section title="Voos">
-              <div className="space-y-4">
-                {flNormalize(proposal.flights).map((j: any, i: number) => {
-                  const legs: any[] = Array.isArray(j.legs) ? j.legs : []
-                  if (legs.length === 0) return null
+          {/* ── Voos ── */}
+          {flights.length > 0 && (
+            <div className={panelCls('voos')}>
+              <div className="pp-stack">
+                {flights.map((j: any, i: number) => {
+                  const legs: any[] = j.legs
                   const first = legs[0]
                   const last = legs[legs.length - 1]
                   const totalMin = flBetween(first.departure_utc, last.arrival_utc)
                   const stops = legs.length - 1
                   return (
-                    <div key={i} className="rounded-lg border border-slate-200 overflow-hidden text-sm">
-                      {/* Cabeçalho da jornada */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-4 py-2 border-b border-slate-200">
-                        <span className="font-semibold text-slate-800">
-                          ✈ {j.label || 'Voo'}
-                          <span className="ml-2 font-normal text-slate-500">{first.origin} → {last.destination}</span>
-                        </span>
-                        <span className="flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
-                          {j.cabin_class && <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">{j.cabin_class}</span>}
-                          {totalMin > 0 && <span>Duração total {flMins(totalMin)}</span>}
-                          <span>{stops === 0 ? 'Direto' : `${stops} ${stops > 1 ? 'conexões' : 'conexão'}`}</span>
-                        </span>
+                    <div key={i} className="pp-flight">
+                      <div className="pp-flight-head">
+                        <span className="pp-flight-title">✈ {j.label || 'Voo'}</span>
+                        <span className="pp-flight-route">{first.origin} → {last.destination}</span>
                       </div>
-                      {/* Trechos */}
-                      <div className="divide-y divide-slate-100">
+                      <div className="pp-flight-tags">
+                        {j.cabin_class && <span className="pp-pill">{j.cabin_class}</span>}
+                        {totalMin > 0 && <span className="pp-muted">Duração {flMins(totalMin)}</span>}
+                        <span className="pp-muted">{stops === 0 ? 'Direto' : `${stops} ${stops > 1 ? 'conexões' : 'conexão'}`}</span>
+                      </div>
+                      <div className="pp-legs">
                         {legs.map((l: any, k: number) => {
                           const layover = k > 0 ? flBetween(legs[k - 1].arrival_utc, l.departure_utc) : 0
                           const connAirport = k > 0 ? (legs[k - 1].destination || l.origin) : ''
                           return (
                             <div key={k}>
                               {k > 0 && (
-                                <div className="bg-amber-50 px-4 py-1.5 text-xs text-amber-700">
-                                  ↳ Conexão em {connAirport || '—'}{layover > 0 ? ` · ${flMins(layover)} de espera` : ''}
-                                </div>
+                                <div className="pp-conn">↳ Conexão em {connAirport || '—'}{layover > 0 ? ` · ${flMins(layover)} de espera` : ''}</div>
                               )}
-                              <div className="px-4 py-3">
-                                <div className="flex items-center justify-between font-semibold text-slate-800">
+                              <div className="pp-leg">
+                                <div className="pp-leg-top">
                                   <span>{[l.origin, l.destination].filter(Boolean).join(' → ') || 'Trecho'}</span>
-                                  <span className="text-slate-500 font-normal">{[l.airline, l.flight_number].filter(Boolean).join(' · ')}</span>
+                                  <span className="pp-muted">{[l.airline, l.flight_number].filter(Boolean).join(' · ')}</span>
                                 </div>
                                 {(l.origin_name || l.destination_name) && (
-                                  <div className="mt-0.5 text-xs text-slate-400">
-                                    {[l.origin_name, l.destination_name].filter(Boolean).join(' → ')}
-                                  </div>
+                                  <div className="pp-leg-sub">{[l.origin_name, l.destination_name].filter(Boolean).join(' → ')}</div>
                                 )}
-                                <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-slate-600">
-                                  {l.departure_at && <span><strong>Embarque:</strong> {l.departure_at}{l.origin_terminal ? ` · Terminal ${l.origin_terminal}` : ''}</span>}
-                                  {l.arrival_at && <span><strong>Chegada:</strong> {l.arrival_at}{l.destination_terminal ? ` · Terminal ${l.destination_terminal}` : ''}</span>}
-                                  {Number(l.duration_min) > 0 && <span><strong>Duração:</strong> {flMins(l.duration_min)}</span>}
-                                  {l.aircraft && <span><strong>Aeronave:</strong> {l.aircraft}</span>}
-                                  {/* compat: voo antigo podia ter texto livre em connections */}
-                                  {l.connections && <span><strong>Conexões:</strong> {l.connections}</span>}
+                                <div className="pp-leg-grid">
+                                  {l.departure_at && <span><b>Embarque:</b> {l.departure_at}{l.origin_terminal ? ` · T${l.origin_terminal}` : ''}</span>}
+                                  {l.arrival_at && <span><b>Chegada:</b> {l.arrival_at}{l.destination_terminal ? ` · T${l.destination_terminal}` : ''}</span>}
+                                  {Number(l.duration_min) > 0 && <span><b>Duração:</b> {flMins(l.duration_min)}</span>}
+                                  {l.aircraft && <span><b>Aeronave:</b> {l.aircraft}</span>}
+                                  {l.connections && <span><b>Conexões:</b> {l.connections}</span>}
                                 </div>
                               </div>
                             </div>
                           )
                         })}
                       </div>
-                      {/* Rodapé: bagagem + políticas da jornada */}
                       {(j.baggage || j.policies) && (
-                        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 space-y-1">
-                          {j.baggage && <p><strong>Bagagem:</strong> {j.baggage}</p>}
-                          {j.policies && <p className="text-slate-500 whitespace-pre-line">{j.policies}</p>}
+                        <div className="pp-flight-foot">
+                          {j.baggage && <p><b>Bagagem:</b> {j.baggage}</p>}
+                          {j.policies && <p className="pp-muted whitespace-pre-line">{j.policies}</p>}
                         </div>
                       )}
                     </div>
                   )
                 })}
               </div>
-            </Section>
+            </div>
           )}
 
-          {/* Hotels */}
-          {(proposal.hotels || []).length > 0 && (
-            <Section title="Hospedagem">
-              <div className="space-y-4">
-                {proposal.hotels.map((h: any, i: number) => {
-                  const checkin = h.checkin_time || '15:00'
-                  const checkout = h.checkout_time || '12:00'
-                  const fmtDate = (d?: string) => {
+          {/* ── Hospedagem ── */}
+          {hotels.length > 0 && (
+            <div className={panelCls('hospedagem')}>
+              <div className="pp-stack">
+                {hotels.map((h: any, i: number) => {
+                  const photos: string[] = (Array.isArray(h.photos) ? h.photos : []).filter((s: string) => s && !imgErr[`h${i}-${s}`])
+                  const idx = Math.min(hotelImg[i] ?? 0, Math.max(0, photos.length - 1))
+                  const fmtD = (d?: string) => {
                     if (!d) return ''
                     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d)
                     return m ? `${m[3]}/${m[2]}/${m[1]}` : d
                   }
-                  const checkinDate = fmtDate(h.checkin_date)
-                  const checkoutDate = fmtDate(h.checkout_date)
                   return (
-                    <div key={i} className="rounded-lg border border-slate-200 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-slate-800">{h.name || 'Hospedagem'}</p>
-                        {h.kind && <span className="text-xs text-slate-500">{h.kind}</span>}
-                      </div>
-                      <div className="mt-2 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600">
-                        {h.room_category && <span><strong>Quarto:</strong> {h.room_category}</span>}
-                        {h.meal_plan && <span><strong>Regime:</strong> {h.meal_plan}</span>}
-                        <span><strong>Check-in:</strong> {checkinDate ? `${checkinDate} · ` : ''}a partir das {checkin}</span>
-                        <span><strong>Check-out:</strong> {checkoutDate ? `${checkoutDate} · ` : ''}até {checkout}</span>
-                      </div>
-                      {h.briefing && <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">{h.briefing}</p>}
-                      {h.cancellation_policy && (
-                        <p className="mt-2 text-xs text-slate-500"><strong>Cancelamento:</strong> {h.cancellation_policy}</p>
+                    <div key={i} className="pp-hotel">
+                      {photos.length > 0 && (
+                        <div className="pp-hotel-photo">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photos[idx]} alt={h.name || 'Hospedagem'} onError={() => setImgErr(e => ({ ...e, [`h${i}-${photos[idx]}`]: true }))} />
+                          {photos.length > 1 && (
+                            <>
+                              <button className="pp-nav left" aria-label="Foto anterior"
+                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx - 1 + photos.length) % photos.length }))}>
+                                <ChevronLeft className="w-5 h-5" />
+                              </button>
+                              <button className="pp-nav right" aria-label="Próxima foto"
+                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx + 1) % photos.length }))}>
+                                <ChevronRight className="w-5 h-5" />
+                              </button>
+                              <div className="pp-dots">
+                                {photos.map((_, k) => (
+                                  <button key={k} aria-label={`Foto ${k + 1}`} className={k === idx ? 'on' : ''}
+                                    onClick={() => setHotelImg(s => ({ ...s, [i]: k }))} />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
+                      <div className="pp-hotel-body">
+                        <div className="pp-hotel-head">
+                          <p className="pp-card-title">{h.name || 'Hospedagem'}</p>
+                          {h.kind && <span className="pp-muted">{h.kind}</span>}
+                        </div>
+                        <div className="pp-leg-grid">
+                          {h.room_category && <span><b>Quarto:</b> {h.room_category}</span>}
+                          {h.meal_plan && <span><b>Regime:</b> {h.meal_plan}</span>}
+                          <span><b>Check-in:</b> {fmtD(h.checkin_date) ? `${fmtD(h.checkin_date)} · ` : ''}a partir das {h.checkin_time || '15:00'}</span>
+                          <span><b>Check-out:</b> {fmtD(h.checkout_date) ? `${fmtD(h.checkout_date)} · ` : ''}até {h.checkout_time || '12:00'}</span>
+                        </div>
+                        {h.briefing && <p className="pp-card-text">{h.briefing}</p>}
+                        {h.cancellation_policy && <p className="pp-muted mt-1"><b>Cancelamento:</b> {h.cancellation_policy}</p>}
+                      </div>
                     </div>
                   )
                 })}
               </div>
-            </Section>
+            </div>
           )}
 
-          {/* Additional services */}
-          {activeServices.length > 0 && (
-            <Section title="Serviços inclusos">
-              <ul className="space-y-2">
-                {activeServices.map(([key, v]: any) => (
-                  <li key={key} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-medium text-slate-800">{SERVICE_LABELS[key] || key}</span>
-                    {v.details && <span className="text-slate-600"> — {v.details}</span>}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {/* Included / not included */}
-          {((proposal.included || []).length > 0 || (proposal.not_included || []).length > 0) && (
-            <Section title="Incluso e não incluso">
-              <div className="grid sm:grid-cols-2 gap-6">
-                {(proposal.included || []).length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-700 mb-2">Incluso</p>
-                    <ul className="space-y-1 text-sm text-slate-700">
-                      {proposal.included.map((it, i) => <li key={i} className="flex gap-2"><span className="text-emerald-600">✓</span>{it}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {(proposal.not_included || []).length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold text-rose-700 mb-2">Não incluso</p>
-                    <ul className="space-y-1 text-sm text-slate-700">
-                      {proposal.not_included.map((it, i) => <li key={i} className="flex gap-2"><span className="text-rose-500">✕</span>{it}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </Section>
-          )}
-
-          {/* Checklist do viajante */}
-          {(proposal.checklist || []).length > 0 && (
-            <Section title="Checklist do viajante">
-              <p className="text-sm text-slate-500 mb-3">Providencie estes itens antes da viagem:</p>
-              <ul className="grid sm:grid-cols-2 gap-2">
-                {proposal.checklist.map((it, i) => (
-                  <li key={i} className="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                    <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-400">☐</span>
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {/* Optionals */}
-          {(proposal.order_bumps || []).length > 0 && (
-            <Section title="Opcionais">
-              <p className="mb-2 text-xs text-slate-500">Itens opcionais — não inclusos no valor do pacote.</p>
-              <div className="space-y-2">
-                {proposal.order_bumps.map((b: any, i: number) => (
-                  <div key={i} className="flex items-start justify-between rounded-lg border border-slate-200 p-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-slate-800 text-sm">{b.name || 'Opcional'}</p>
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                          Não incluso no pacote
-                        </span>
+          {/* ── Serviços adicionais ── */}
+          {(activeServices.length > 0 || orderBumps.length > 0) && (
+            <div className={panelCls('servicos')}>
+              {activeServices.length > 0 && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Serviços inclusos</h3>
+                  <div className="pp-stack">
+                    {activeServices.map(([key, v]: any) => (
+                      <div key={key} className="pp-card">
+                        <p className="pp-card-title">{SERVICE_LABELS[key] || key}</p>
+                        {v.details && <p className="pp-card-text">{v.details}</p>}
                       </div>
-                      {b.description && <p className="text-xs text-slate-500 mt-0.5">{b.description}</p>}
-                    </div>
-                    <span className="text-sm font-semibold text-slate-800 whitespace-nowrap">{brl(b.price_cents)}</span>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Payment */}
-          <Section title="Investimento">
-            <div className="rounded-xl bg-slate-900 text-white p-5">
-              <div className="flex items-end justify-between">
-                <span className="text-sm text-slate-300">Valor total</span>
-                <span className="text-3xl font-bold">{brl(proposal.total_cents)}</span>
-              </div>
-              {(proposal.pax_count || proposal.price_per_person_cents) && (
-                <p className="mt-1 text-sm text-slate-300 text-right">
-                  {proposal.price_per_person_cents ? `${brl(proposal.price_per_person_cents)} por pessoa` : ''}
-                  {proposal.pax_count ? ` · ${proposal.pax_count} pax` : ''}
-                </p>
+                </div>
+              )}
+              {orderBumps.length > 0 && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Opcionais</h3>
+                  <p className="pp-muted mb-2">Itens opcionais — não inclusos no valor do pacote.</p>
+                  <div className="pp-stack">
+                    {orderBumps.map((b: any, i: number) => (
+                      <div key={i} className="pp-card pp-bump">
+                        <div>
+                          <p className="pp-card-title">{b.name || 'Opcional'}</p>
+                          {b.description && <p className="pp-card-text">{b.description}</p>}
+                        </div>
+                        <span className="pp-bump-price">{brl(b.price_cents)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
+          )}
+
+          {/* ── Check-list ── */}
+          {checklist.length > 0 && (
+            <div className={panelCls('checklist')}>
+              <p className="pp-muted mb-3">Providencie estes itens antes da viagem. Toque para marcar.</p>
+              <div className="pp-stack">
+                {checklist.map((it, i) => (
+                  <button key={i} className={`pp-check${checked[i] ? ' done' : ''}`}
+                    onClick={() => setChecked(s => ({ ...s, [i]: !s[i] }))}>
+                    <span className="pp-check-box">{checked[i] ? '✓' : ''}</span>
+                    <span>{it}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Incluso ── */}
+          {((proposal.included || []).length > 0 || (proposal.not_included || []).length > 0) && (
+            <div className={panelCls('incluso')}>
+              {(proposal.included || []).length > 0 && (
+                <div className="pp-block">
+                  <h3 className="pp-h3 text-emerald-700">Está incluso</h3>
+                  <ul className="pp-list">
+                    {proposal.included.map((it, i) => <li key={i}><span className="ok">✓</span>{it}</li>)}
+                  </ul>
+                </div>
+              )}
+              {(proposal.not_included || []).length > 0 && (
+                <div className="pp-block">
+                  <h3 className="pp-h3 text-rose-700">Não incluso</h3>
+                  <ul className="pp-list">
+                    {proposal.not_included.map((it, i) => <li key={i}><span className="no">✕</span>{it}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Investimento ── */}
+          <div className={panelCls('investimento')}>
+            <div className="pp-total">
+              <span className="pp-total-label">Valor total</span>
+              <span className="pp-total-val">{brl(proposal.total_cents)}</span>
+              {(proposal.pax_count || proposal.price_per_person_cents) && (
+                <span className="pp-total-sub">
+                  {proposal.price_per_person_cents ? `${brl(proposal.price_per_person_cents)} por pessoa` : ''}
+                  {proposal.pax_count ? ` · ${proposal.pax_count} pax` : ''}
+                </span>
+              )}
+            </div>
+
             {methods.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {methods.map(m => {
-                  const cond = proposal.payment?.method_conditions?.[m]
-                  return (
-                    <div key={m} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
-                      <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
-                        {METHOD_LABELS[m] || m}
-                      </span>
-                      {cond && <span className="text-slate-600">{cond}</span>}
-                    </div>
-                  )
-                })}
+              <div className="pp-block">
+                <h3 className="pp-h3">Formas de pagamento</h3>
+                <div className="pp-stack">
+                  {methods.map(m => {
+                    const cond = proposal.payment?.method_conditions?.[m]
+                    return (
+                      <div key={m} className="pp-pay">
+                        <span className="pp-pill dark">{METHOD_LABELS[m] || m}</span>
+                        {cond && <span className="pp-card-text">{cond}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
+
             {proposal.payment?.conditions && (
-              <p className="mt-3 text-sm text-slate-600 whitespace-pre-line">{proposal.payment.conditions}</p>
+              <p className="pp-card-text whitespace-pre-line mt-3">{proposal.payment.conditions}</p>
             )}
-            <p className="mt-4 text-xs text-slate-500 border-t border-slate-200 pt-3">
+
+            <p className="pp-fineprint">
               {fmtTimestamp(proposal.updated_at || proposal.created_at) && (
                 <>Cotação realizada em {fmtTimestamp(proposal.updated_at || proposal.created_at)}. </>
               )}
               Preços e tarifas estão sujeitos a alterações sem aviso prévio.
             </p>
-          </Section>
-        </div>
 
-        {/* Footer */}
-        <footer className="px-8 py-6 border-t bg-slate-50 text-xs text-slate-500 space-y-1">
-          <p className="font-semibold text-slate-700">{companyName}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {cnpj && <span>CNPJ: {cnpj}</span>}
-            {cadastur && <span>CADASTUR: {cadastur}</span>}
-            {phone && <span>Tel: {phone}</span>}
-            {email && <span>{email}</span>}
-            {instagram && <span>Instagram: {instagram.startsWith('@') ? instagram : `@${instagram}`}</span>}
-            {website && <span>{website.replace(/^https?:\/\//, '')}</span>}
+            {/* Rodapé da agência */}
+            <div className="pp-foot">
+              <p className="pp-foot-name">{companyName}</p>
+              <div className="pp-foot-row">
+                {cnpj && <span>CNPJ: {cnpj}</span>}
+                {cadastur && <span>CADASTUR: {cadastur}</span>}
+                {phone && <span>{phone}</span>}
+                {email && <span>{email}</span>}
+                {instagram && <span>{instagram.startsWith('@') ? instagram : `@${instagram}`}</span>}
+                {website && <span>{website.replace(/^https?:\/\//, '')}</span>}
+              </div>
+              {addrParts.length > 0 && <p>{addrParts.join(', ')}</p>}
+            </div>
           </div>
-          {addrParts.length > 0 && <p>{addrParts.join(', ')}</p>}
-        </footer>
+        </div>
       </div>
     </div>
   )
 }
+
+function Fact({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="pp-fact">
+      <Icon className="w-4 h-4 text-slate-400" />
+      <span className="pp-fact-label">{label}</span>
+      <span className="pp-fact-value">{value}</span>
+    </div>
+  )
+}
+
+const CSS = `
+.pp-stage { min-height: 100vh; min-height: 100dvh; background: #e6e8ee; display: flex; align-items: center; justify-content: center; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (min-width: 640px) { .pp-stage { padding: 24px; } }
+
+.pp-print { position: fixed; top: 14px; right: 14px; z-index: 50; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: #0f172a; color: #fff; box-shadow: 0 8px 24px -8px rgba(15,23,42,0.5); }
+.pp-print:hover { background: #1e293b; }
+
+.pp-phone { position: relative; width: 100vw; height: 100vh; height: 100dvh; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+@media (min-width: 640px) {
+  .pp-phone { width: auto; height: min(900px, 94vh); aspect-ratio: 9 / 16; border-radius: 30px; border: 1px solid rgba(15,23,42,0.08); box-shadow: 0 40px 90px -25px rgba(15,23,42,0.45); }
+}
+
+/* Capa */
+.pp-cover { position: relative; flex: 0 0 38%; min-height: 190px; background: #0f172a; overflow: hidden; }
+.pp-cover > img { width: 100%; height: 100%; object-fit: cover; }
+.pp-cover-fallback { position: absolute; inset: 0; background: radial-gradient(120% 100% at 30% 0%, #334155, #0f172a 70%); }
+.pp-cover-ov { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0) 30%, rgba(15,23,42,0) 45%, rgba(15,23,42,0.82) 100%); }
+.pp-cover-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding: 14px 16px; }
+.pp-logo { height: 30px; width: auto; max-width: 120px; object-fit: contain; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4)); }
+.pp-logo-fallback { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.18); color: #fff; font-weight: 700; backdrop-filter: blur(4px); }
+.pp-company { font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+.pp-cover-meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px; color: #fff; }
+.pp-cover-meta h1 { font-size: 22px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+.pp-cover-meta p { margin-top: 6px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.92); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+.pp-cover-meta .dot { opacity: 0.6; }
+
+/* Abas */
+.pp-tabs { flex: 0 0 auto; display: flex; gap: 6px; overflow-x: auto; padding: 9px 12px; border-bottom: 1px solid #eef0f4; background: #fff; scrollbar-width: none; }
+.pp-tabs::-webkit-scrollbar { display: none; }
+.pp-tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 13px; font-weight: 600; color: #64748b; padding: 7px 13px; border-radius: 999px; border: 1px solid transparent; transition: background .2s, color .2s, border-color .2s; }
+.pp-tab:hover { background: #f1f5f9; }
+.pp-tab.active { color: #fff; background: #0f172a; }
+
+/* Conteúdo */
+.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; }
+.pp-panel { padding: 16px; }
+.pp-panel.hidden { display: none; }
+.pp-block { margin-top: 18px; }
+.pp-block:first-child { margin-top: 0; }
+.pp-h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; margin-bottom: 10px; }
+.pp-stack { display: flex; flex-direction: column; gap: 10px; }
+.pp-card { background: #fff; border: 1px solid #e9edf3; border-radius: 14px; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.pp-card-title { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 700; color: #1e293b; }
+.pp-card-text { margin-top: 6px; font-size: 13.5px; line-height: 1.55; color: #475569; }
+.pp-muted { font-size: 12px; color: #94a3b8; }
+
+/* Resumo: fatos */
+.pp-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pp-fact { background: #fff; border: 1px solid #e9edf3; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.pp-fact-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-top: 4px; }
+.pp-fact-value { font-size: 14px; font-weight: 700; color: #1e293b; }
+
+/* Mapa */
+.pp-map { border-radius: 14px; overflow: hidden; border: 1px solid #e9edf3; height: 220px; background: #eef2f7; }
+.pp-map iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* Voos */
+.pp-flight { background: #fff; border: 1px solid #e9edf3; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.pp-flight-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 11px 14px 4px; }
+.pp-flight-title { font-size: 14.5px; font-weight: 700; color: #1e293b; }
+.pp-flight-route { font-size: 13px; color: #64748b; }
+.pp-flight-tags { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 0 14px 11px; border-bottom: 1px solid #f1f5f9; }
+.pp-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #f1f5f9; color: #334155; }
+.pp-pill.dark { background: #0f172a; color: #fff; }
+.pp-legs { display: flex; flex-direction: column; }
+.pp-leg { padding: 11px 14px; border-top: 1px solid #f1f5f9; }
+.pp-leg:first-child { border-top: 0; }
+.pp-leg-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; font-weight: 700; color: #1e293b; }
+.pp-leg-sub { margin-top: 2px; font-size: 11.5px; color: #94a3b8; }
+.pp-leg-grid { margin-top: 8px; display: grid; gap: 3px 14px; font-size: 12.5px; color: #475569; }
+.pp-leg-grid b { font-weight: 600; color: #334155; }
+.pp-conn { background: #fffbeb; color: #b45309; font-size: 11.5px; padding: 6px 14px; }
+.pp-flight-foot { background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 10px 14px; font-size: 12px; color: #475569; display: flex; flex-direction: column; gap: 3px; }
+.pp-flight-foot b { color: #334155; }
+
+/* Hospedagem */
+.pp-hotel { background: #fff; border: 1px solid #e9edf3; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+.pp-hotel-photo { position: relative; aspect-ratio: 16 / 10; background: #eef2f7; }
+.pp-hotel-photo img { width: 100%; height: 100%; object-fit: cover; }
+.pp-nav { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: rgba(15,23,42,0.55); color: #fff; backdrop-filter: blur(2px); }
+.pp-nav.left { left: 8px; }
+.pp-nav.right { right: 8px; }
+.pp-nav:hover { background: rgba(15,23,42,0.78); }
+.pp-dots { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 5px; }
+.pp-dots button { width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.55); }
+.pp-dots button.on { background: #fff; width: 16px; }
+.pp-hotel-body { padding: 14px; }
+.pp-hotel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+
+/* Serviços / opcionais */
+.pp-bump { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pp-bump-price { font-size: 14px; font-weight: 700; color: #1e293b; white-space: nowrap; }
+
+/* Checklist */
+.pp-check { display: flex; align-items: flex-start; gap: 10px; text-align: left; width: 100%; background: #fff; border: 1px solid #e9edf3; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155; transition: background .15s, border-color .15s; }
+.pp-check:hover { border-color: #cbd5e1; }
+.pp-check.done { background: #f0fdf4; border-color: #bbf7d0; color: #166534; text-decoration: line-through; text-decoration-color: rgba(22,101,52,0.4); }
+.pp-check-box { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid #cbd5e1; color: #16a34a; font-size: 13px; font-weight: 700; }
+.pp-check.done .pp-check-box { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* Incluso */
+.pp-list { display: flex; flex-direction: column; gap: 7px; }
+.pp-list li { display: flex; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #334155; }
+.pp-list .ok { color: #16a34a; font-weight: 700; }
+.pp-list .no { color: #e11d48; font-weight: 700; }
+
+/* Investimento */
+.pp-total { background: #0f172a; color: #fff; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; }
+.pp-total-label { font-size: 12.5px; color: #94a3b8; }
+.pp-total-val { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
+.pp-total-sub { font-size: 12.5px; color: #cbd5e1; margin-top: 4px; }
+.pp-pay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.pp-fineprint { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e9edf3; font-size: 11.5px; color: #94a3b8; line-height: 1.5; }
+.pp-foot { margin-top: 16px; padding: 14px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 11.5px; color: #94a3b8; }
+.pp-foot-name { font-weight: 700; color: #334155; font-size: 13px; }
+.pp-foot-row { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; }
+
+/* Print: empilha tudo, sem moldura */
+@media print {
+  .no-print { display: none !important; }
+  .pp-stage { display: block; background: #fff; padding: 0; }
+  .pp-phone { width: auto !important; height: auto !important; aspect-ratio: auto !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; display: block; overflow: visible; }
+  .pp-cover { flex: none; height: 280px; }
+  .pp-tabs { display: none !important; }
+  .pp-scroll { overflow: visible; height: auto; background: #fff; }
+  .pp-panel { display: block !important; break-inside: avoid; padding: 18px 24px; }
+  .pp-map { display: none !important; }
+  .pp-card, .pp-flight, .pp-hotel, .pp-fact, .pp-check { break-inside: avoid; }
+  .pp-stage, .pp-stage * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+`
