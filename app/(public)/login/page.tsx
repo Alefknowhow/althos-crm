@@ -79,8 +79,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] p-4">
-      <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-lg p-8 space-y-6">
+    <div className="relative flex min-h-screen items-center justify-center bg-[#eef2f7] p-4 overflow-hidden">
+      {/* Imagem de fundo — apenas desktop, atrás da caixa de login */}
+      <div
+        aria-hidden
+        className="hidden md:block absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: 'url(/login-bg.png)' }}
+      />
+      <div className="relative z-10 w-full max-w-[400px] bg-white rounded-2xl shadow-xl p-8 space-y-6">
 
         {/* Logo + heading */}
         <div className="flex flex-col items-center gap-1 text-center">
