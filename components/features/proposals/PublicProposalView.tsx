@@ -253,7 +253,7 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                 <div className="pp-map">
                   <iframe
                     title={`Mapa de ${mapQuery}`}
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=6&output=embed`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=11&ie=UTF8&iwloc=&hl=pt-BR&output=embed`}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                   />

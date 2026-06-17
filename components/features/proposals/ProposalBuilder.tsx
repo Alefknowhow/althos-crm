@@ -938,17 +938,19 @@ export default function ProposalBuilder({
       </SectionCard>
       </div>
 
-      {/* Fotos da viagem (galeria do topo no link público) */}
-      <SectionCard icon={ImageIcon} title="Fotos da viagem">
-        <p className="text-sm text-muted-foreground">
-          Imagens exibidas na galeria de destaque no topo da proposta (destinos, hotéis, experiências).
-        </p>
-        <PhotoManager
-          orgSlug={orgSlug}
-          photos={Array.isArray(p.photos) ? p.photos : []}
-          onChange={(photos) => set('photos', photos as any)}
-        />
-      </SectionCard>
+      {/* Fotos da viagem (galeria do topo no link público) — meia tela */}
+      <div className="lg:w-1/2">
+        <SectionCard icon={ImageIcon} title="Fotos da viagem">
+          <p className="text-sm text-muted-foreground">
+            Imagens exibidas na galeria de destaque no topo da proposta (destinos, hotéis, experiências).
+          </p>
+          <PhotoManager
+            orgSlug={orgSlug}
+            photos={Array.isArray(p.photos) ? p.photos : []}
+            onChange={(photos) => set('photos', photos as any)}
+          />
+        </SectionCard>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Serviços adicionais */}
