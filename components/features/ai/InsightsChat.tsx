@@ -191,7 +191,7 @@ export default function InsightsChat({
 
   return (
     <>
-    <div className="-m-6 h-[calc(100vh-4rem)] flex">
+    <div className="-mx-3 -my-5 sm:-mx-5 h-[calc(100dvh-3.5rem)] flex">
       {/* Session list */}
       <aside className={`w-full md:w-72 border-r bg-muted/20 flex-col ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`}>
         <div className="p-4 border-b">
