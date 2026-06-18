@@ -226,21 +226,55 @@ export async function checkEmail(org: EmailConfig): Promise<HealthResult> {
       }
     }
 
-    // Resend's domain record exposes per-record status (spf/dkim/dmarc) under records[].
-    const records: any[] = match.records || []
-    const recStatus = (type: string) => {
-      const r = records.find(x => String(x?.record || x?.type || '').toUpperCase().includes(type))
-      return r?.status ? String(r.status).toLowerCase() === 'verified' : null
+    // The LIST endpoint (GET /domains) omits the per-record array, so SPF/DKIM/
+    // DMARC status isn't available there. Fetch the single-domain endpoint to
+    // read records[] and report each record's real status.
+    let records: any[] = Array.isArray(match.records) ? match.records : []
+    if (records.length === 0 && match.id) {
+      const detailRes = await fetch(`https://api.resend.com/domains/${match.id}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: probeSignal(),
+      }).catch(() => null)
+      if (detailRes?.ok) {
+        const detailBody: any = await detailRes.json().catch(() => ({}))
+        if (Array.isArray(detailBody?.records)) records = detailBody.records
+      }
     }
+
+    // Each Resend record carries `record: 'SPF' | 'DKIM' | 'DMARC'` and a
+    // `status`. A type can map to several records (e.g. DKIM uses 3 CNAMEs) —
+    // require ALL of them verified. Returns null when no such record exists.
+    const recStatus = (type: string): boolean | null => {
+      const matches = records.filter(
+        x => String(x?.record || x?.type || '').toUpperCase().includes(type),
+      )
+      if (matches.length === 0) return null
+      return matches.every(m => String(m?.status || '').toLowerCase() === 'verified')
+    }
+
     const verified = match.status === 'verified'
-    const details: HealthDetailCheck[] = [
+    const spf = recStatus('SPF')
+    const dkim = recStatus('DKIM')
+    const dmarc = recStatus('DMARC')
+
+    // SPF + DKIM são obrigatórios para entregabilidade e definem a saúde do
+    // card. DMARC é opcional no Resend (não é criado automaticamente), então é
+    // só informativo — sua ausência não rebaixa o status.
+    const coreDetails: HealthDetailCheck[] = [
       { label: 'Chave de API', ok: true },
       { label: 'Domínio validado', ok: verified, message: match.status },
-      { label: 'SPF', ok: recStatus('SPF') },
-      { label: 'DKIM', ok: recStatus('DKIM') },
-      { label: 'DMARC', ok: recStatus('DMARC') },
+      { label: 'SPF', ok: spf },
+      { label: 'DKIM', ok: dkim },
     ]
-    const status: HealthStatus = verified ? rollup(details) : 'error'
+    const details: HealthDetailCheck[] = [
+      ...coreDetails,
+      {
+        label: 'DMARC',
+        ok: dmarc,
+        message: dmarc === null ? 'opcional — não configurado' : undefined,
+      },
+    ]
+    const status: HealthStatus = verified ? rollup(coreDetails) : 'error'
     return {
       ...base,
       status,
