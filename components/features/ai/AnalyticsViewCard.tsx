@@ -86,11 +86,11 @@ function KpisRow({ items }: { items: KpiItem[] }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
       {items.map((it, i) => (
-        <div key={i} className="p-3 rounded-lg bg-background border">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <div key={i} className="p-3 rounded-lg bg-background border min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">
             {it.label}
           </div>
-          <div className="text-xl font-bold tabular-nums mt-1">{it.value}</div>
+          <div className="text-sm sm:text-lg font-bold tabular-nums mt-1 leading-tight break-words">{it.value}</div>
           {it.delta != null && (
             <div
               className={`text-[10px] mt-1 inline-flex items-center gap-0.5 ${
