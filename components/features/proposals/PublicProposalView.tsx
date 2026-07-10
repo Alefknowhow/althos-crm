@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import 'leaflet/dist/leaflet.css'
 import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
   CloudSun, Thermometer, MessageCircle, Mail, Globe, Car, ShieldCheck, CreditCard, FileText,
+  Map as MapIcon,
 } from 'lucide-react'
 
 type Org = {
@@ -44,9 +46,72 @@ type Proposal = {
   price_per_person_cents: number | null
   payment: Record<string, any>
   weather: Record<string, any> | null
+  map_config: Record<string, any> | null
   company_override: Record<string, any> | null
   created_at: string | null
   updated_at: string | null
+}
+
+type MapPoint = { kind?: string; query?: string; label?: string; lat?: number; lng?: number }
+
+const PIN_COLORS: Record<string, string> = {
+  origem: '#0ea5e9', destino: '#e11d48', hotel: '#16a34a', atracao: '#f59e0b',
+}
+const PIN_LABELS: Record<string, string> = {
+  origem: 'Origem', destino: 'Destino', hotel: 'Hotel', atracao: 'Atração',
+}
+
+/** Mapa interativo (Leaflet/OSM). Carregado só no browser, com pins coloridos
+ *  por tipo — as coordenadas já vêm salvas da edição (sem geocode aqui). */
+function ProposalMap({ points }: { points: MapPoint[] }) {
+  const mapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let map: any
+    let cancelled = false
+    ;(async () => {
+      const L = (await import('leaflet')).default
+      if (cancelled || !mapRef.current || mapRef.current.dataset.ready) return
+      mapRef.current.dataset.ready = '1'
+      map = L.map(mapRef.current, { scrollWheelZoom: false })
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
+      }).addTo(map)
+
+      const latlngs: [number, number][] = []
+      for (const pt of points) {
+        if (pt.lat == null || pt.lng == null) continue
+        const color = PIN_COLORS[pt.kind || 'destino'] || '#e11d48'
+        const icon = L.divIcon({
+          className: '',
+          html: `<span class="pp-pin" style="--pin:${color}"></span>`,
+          iconSize: [22, 30], iconAnchor: [11, 30], popupAnchor: [0, -28],
+        })
+        const name = pt.label || pt.query || 'Local'
+        L.marker([pt.lat, pt.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<b>${name.replace(/</g, '&lt;')}</b><br/><small>${PIN_LABELS[pt.kind || 'destino'] || ''}</small>`)
+        latlngs.push([pt.lat, pt.lng])
+      }
+      if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [36, 36] })
+      else if (latlngs.length === 1) map.setView(latlngs[0], 12)
+    })()
+    return () => { cancelled = true; if (map) map.remove(); if (mapRef.current) delete mapRef.current.dataset.ready }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const kinds = Array.from(new Set(points.filter(p => p.lat != null).map(p => p.kind || 'destino')))
+  return (
+    <div>
+      <div ref={mapRef} className="pp-map" />
+      <div className="pp-map-legend">
+        {kinds.map(k => (
+          <span key={k}><i style={{ background: PIN_COLORS[k] || '#e11d48' }} />{PIN_LABELS[k] || k}</span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -151,6 +216,13 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     weather.summary || weather.seasonality || weather.expect || weather.temp_min || weather.temp_max
   )
 
+  // Mapa interativo: só entra se ativado e com pelo menos um pin posicionado.
+  const mapCfg = proposal.map_config || {}
+  const mapPoints: MapPoint[] = Array.isArray(mapCfg.points)
+    ? mapCfg.points.filter((pt: MapPoint) => pt && pt.lat != null && pt.lng != null)
+    : []
+  const mapOn = !!mapCfg.enabled && mapPoints.length > 0
+
   return (
     <div className="pp-stage">
       <style>{CSS}</style>
@@ -235,6 +307,14 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* ── Mapa da viagem ── */}
+          {mapOn && (
+            <section className="pp-section no-print">
+              <div className="pp-sec-head"><MapIcon className="w-4 h-4" /><h2 className="pp-sec-title">Mapa da viagem</h2></div>
+              <ProposalMap points={mapPoints} />
             </section>
           )}
 
@@ -495,16 +575,24 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
           {/* ── Investimento ── */}
           <section className="pp-section">
             <div className="pp-sec-head"><Wallet className="w-4 h-4" /><h2 className="pp-sec-title">Investimento</h2></div>
-            <div className="pp-total">
-              <span className="pp-total-label">Valor total</span>
-              <span className="pp-total-val">{brl(proposal.total_cents)}</span>
-              {(proposal.pax_count || proposal.price_per_person_cents) && (
+            {proposal.price_per_person_cents ? (
+              <div className="pp-total">
+                <span className="pp-total-label">Valor por pessoa</span>
+                <span className="pp-total-val">{brl(proposal.price_per_person_cents)}</span>
                 <span className="pp-total-sub">
-                  {proposal.price_per_person_cents ? `${brl(proposal.price_per_person_cents)} por pessoa` : ''}
-                  {proposal.pax_count ? ` · ${proposal.pax_count} pax` : ''}
+                  Valor total: {brl(proposal.total_cents)}
+                  {proposal.pax_count ? ` · ${proposal.pax_count} ${proposal.pax_count > 1 ? 'pessoas' : 'pessoa'}` : ''}
                 </span>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="pp-total">
+                <span className="pp-total-label">Valor total</span>
+                <span className="pp-total-val">{brl(proposal.total_cents)}</span>
+                {proposal.pax_count && (
+                  <span className="pp-total-sub">{proposal.pax_count} {proposal.pax_count > 1 ? 'pessoas' : 'pessoa'}</span>
+                )}
+              </div>
+            )}
 
             {/* CTA: abre o WhatsApp da agência com mensagem pré-definida */}
             {(() => {
@@ -663,7 +751,8 @@ const CSS = `
 .pp-scroll { background: #f8fafc; padding: 16px max(16px, calc((100% - 720px) / 2)) 28px; }
 .pp-section { padding-top: 22px; margin-top: 22px; border-top: 1px solid #eef0f4; }
 .pp-section:first-of-type { padding-top: 0; margin-top: 22px; }
-.pp-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #0f172a; }
+.pp-sec-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; color: #0f172a; }
+.pp-sec-head > svg { width: 27px; height: 27px; padding: 6px; border-radius: 8px; background: #eef2ff; color: #4f46e5; flex-shrink: 0; }
 .pp-sec-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; color: #0f172a; }
 .pp-block { margin-top: 18px; }
 .pp-block:first-child { margin-top: 0; }
@@ -731,6 +820,14 @@ const CSS = `
 .pp-weather-range { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
 .pp-weather-cap { font-size: 12px; color: rgba(255,255,255,0.82); }
 
+/* Mapa interativo */
+.pp-map { height: 340px; border-radius: 16px; overflow: hidden; border: 1px solid #e9edf3; box-shadow: 0 1px 2px rgba(15,23,42,0.04); background: #eef2f7; z-index: 0; }
+.pp-map .leaflet-container, .pp-map > div { height: 100%; width: 100%; }
+.pp-pin { display: block; width: 22px; height: 22px; background: var(--pin, #e11d48); border: 2.5px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(15,23,42,0.35); }
+.pp-map-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px; font-size: 11.5px; color: #64748b; }
+.pp-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pp-map-legend i { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+
 /* Incluso: colunas lado a lado */
 .pp-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; align-items: start; }
 .pp-list { display: flex; flex-direction: column; gap: 7px; }
@@ -739,10 +836,10 @@ const CSS = `
 .pp-list .no { color: #e11d48; font-weight: 700; }
 
 /* Investimento */
-.pp-total { background: #0f172a; color: #fff; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; }
-.pp-total-label { font-size: 12.5px; color: #94a3b8; }
-.pp-total-val { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
-.pp-total-sub { font-size: 12.5px; color: #cbd5e1; margin-top: 4px; }
+.pp-total { background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 65%); color: #fff; border-radius: 18px; padding: 22px 20px; display: flex; flex-direction: column; box-shadow: 0 14px 34px -16px rgba(30,27,75,0.55); }
+.pp-total-label { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #a5b4fc; }
+.pp-total-val { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
+.pp-total-sub { font-size: 13px; color: #cbd5e1; margin-top: 5px; }
 .pp-reserve { margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #16a34a; color: #fff; font-size: 15px; font-weight: 700; padding: 14px; border-radius: 14px; box-shadow: 0 10px 24px -10px rgba(22,163,74,0.65); transition: background .2s, transform .1s; }
 .pp-reserve:hover { background: #15803d; }
 .pp-reserve:active { transform: translateY(1px); }

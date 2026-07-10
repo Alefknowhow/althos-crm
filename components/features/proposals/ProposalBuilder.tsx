@@ -22,7 +22,7 @@ import {
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Copy, ExternalLink, Upload, Loader2, Search,
   ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon, Lock,
-  CloudSun,
+  CloudSun, Map as MapIcon, LocateFixed,
 } from 'lucide-react'
 
 type Lead = { id: string; name: string }
@@ -598,6 +598,9 @@ export default function ProposalBuilder({
     payment: initial.payment || {},
     photos: initial.photos || [],
     weather: initial.weather || { enabled: false },
+    map_config: (initial.map_config && Array.isArray(initial.map_config.points))
+      ? initial.map_config
+      : { enabled: false, points: [] },
   })
 
   const set = useCallback(<K extends keyof ProposalRow>(key: K, val: ProposalRow[K]) => {
@@ -612,6 +615,38 @@ export default function ProposalBuilder({
   const weather = p.weather || {}
   const setWeather = (patch: any) => set('weather', { ...weather, ...patch })
 
+  const mapCfg = p.map_config || { enabled: false, points: [] }
+  const mapPoints: any[] = Array.isArray(mapCfg.points) ? mapCfg.points : []
+  const setMap = (patch: any) => set('map_config', { ...mapCfg, ...patch })
+  const [geocoding, setGeocoding] = useState<number | null>(null)
+
+  // Geocodifica em tempo de edição (Nominatim/OSM, sem chave) e persiste as
+  // coordenadas no ponto — o link público só renderiza pins, sem geocode.
+  async function geocodePoint(i: number) {
+    const pt = mapPoints[i]
+    if (!pt?.query?.trim()) { toast.error('Digite o local antes de buscar'); return }
+    setGeocoding(i)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(pt.query.trim())}`,
+        { headers: { Accept: 'application/json' } },
+      )
+      const data = await res.json()
+      if (Array.isArray(data) && data[0]?.lat) {
+        const n = [...mapPoints]
+        n[i] = { ...pt, lat: Number(data[0].lat), lng: Number(data[0].lon), found_name: data[0].display_name }
+        setMap({ points: n })
+        toast.success('Local encontrado no mapa')
+      } else {
+        toast.error('Local não encontrado — tente incluir cidade/país')
+      }
+    } catch {
+      toast.error('Erro ao buscar o local. Tente novamente.')
+    } finally {
+      setGeocoding(null)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     const res = await updateProposal(orgSlug, p.id, {
@@ -623,7 +658,7 @@ export default function ProposalBuilder({
       checklist: p.checklist, photos: p.photos,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
-      weather: p.weather,
+      weather: p.weather, map_config: p.map_config,
       operadora: p.operadora, commission_total_cents: p.commission_total_cents,
     })
     setSaving(false)
@@ -814,6 +849,73 @@ export default function ProposalBuilder({
                   value={weather.expect || ''}
                   onChange={e => setWeather({ expect: e.target.value })} />
               </Field>
+            </>
+          )}
+        </SectionCard>
+
+        {/* Mapa interativo */}
+        <SectionCard
+          icon={MapIcon} title="Mapa interativo"
+          action={
+            <Switch
+              checked={!!mapCfg.enabled}
+              onCheckedChange={v => setMap({ enabled: v })}
+            />
+          }
+        >
+          {!mapCfg.enabled ? (
+            <p className="text-sm text-muted-foreground">
+              Mapa desativado. Ative para exibir um mapa na proposta com pins de
+              origem, destino, hotéis e atrações.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Adicione os pontos e clique em <b>buscar</b> para posicionar cada pin no mapa.
+              </p>
+              {mapPoints.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum ponto adicionado.</p>
+              )}
+              {mapPoints.map((pt: any, i: number) => (
+                <div key={i} className="rounded-lg border p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Select value={pt.kind || 'destino'}
+                      onValueChange={v => { const n = [...mapPoints]; n[i] = { ...n[i], kind: v }; setMap({ points: n }) }}>
+                      <SelectTrigger className="w-[120px] shrink-0"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="origem">Origem</SelectItem>
+                        <SelectItem value="destino">Destino</SelectItem>
+                        <SelectItem value="hotel">Hotel</SelectItem>
+                        <SelectItem value="atracao">Atração</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input className="flex-1" placeholder="Local (ex.: Enotel, Porto de Galinhas)"
+                      value={pt.query || ''}
+                      onChange={e => { const n = [...mapPoints]; n[i] = { ...n[i], query: e.target.value, lat: undefined, lng: undefined }; setMap({ points: n }) }} />
+                    <Button type="button" variant="outline" size="icon" className="shrink-0"
+                      disabled={geocoding === i} onClick={() => geocodePoint(i)}
+                      title="Buscar coordenadas">
+                      {geocoding === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                      onClick={() => setMap({ points: mapPoints.filter((_: any, j: number) => j !== i) })}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <Input placeholder="Nome exibido no pin (opcional — usa o local se vazio)"
+                    value={pt.label || ''}
+                    onChange={e => { const n = [...mapPoints]; n[i] = { ...n[i], label: e.target.value }; setMap({ points: n }) }} />
+                  {pt.lat != null && pt.lng != null ? (
+                    <p className="text-[11px] text-emerald-600 truncate">✓ {pt.found_name || `${pt.lat}, ${pt.lng}`}</p>
+                  ) : (
+                    <p className="text-[11px] text-amber-600">Pin ainda sem posição — clique em buscar</p>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm"
+                onClick={() => setMap({ points: [...mapPoints, { kind: mapPoints.length === 0 ? 'origem' : 'destino', query: '', label: '' }] })}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Ponto no mapa
+              </Button>
             </>
           )}
         </SectionCard>

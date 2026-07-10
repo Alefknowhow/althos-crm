@@ -32,6 +32,7 @@ export type ProposalRow = {
   price_per_person_cents: number | null
   payment: Record<string, any>
   weather: Record<string, any>
+  map_config: Record<string, any> | null
   company_override: Record<string, any> | null
   notes: string | null
   // Internal-only (never shown on the public proposal/PDF).
@@ -47,7 +48,7 @@ const WRITABLE = [
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
   'services', 'included', 'not_included', 'checklist', 'photos', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
-  'weather',
+  'weather', 'map_config',
   'company_override', 'notes', 'operadora', 'commission_total_cents',
 ] as const
 
