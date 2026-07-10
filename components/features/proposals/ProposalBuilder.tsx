@@ -22,8 +22,9 @@ import {
   CheckCircle2, XCircle, Sparkles, CreditCard, Briefcase,
   Copy, ExternalLink, Upload, Loader2, Search,
   ChevronDown, Clock, ArrowRight, Backpack, Luggage, ListChecks, Image as ImageIcon, Lock,
-  CloudSun, Map as MapIcon, LocateFixed,
+  CloudSun, Map as MapIcon, LocateFixed, Route,
 } from 'lucide-react'
+import ItineraryEditor from './ItineraryEditor'
 
 type Lead = { id: string; name: string }
 
@@ -601,6 +602,7 @@ export default function ProposalBuilder({
     map_config: (initial.map_config && Array.isArray(initial.map_config.points))
       ? initial.map_config
       : { enabled: false, points: [] },
+    itinerary: initial.itinerary || { enabled: false, html: '' },
   })
 
   const set = useCallback(<K extends keyof ProposalRow>(key: K, val: ProposalRow[K]) => {
@@ -618,6 +620,9 @@ export default function ProposalBuilder({
   const mapCfg = p.map_config || { enabled: false, points: [] }
   const mapPoints: any[] = Array.isArray(mapCfg.points) ? mapCfg.points : []
   const setMap = (patch: any) => set('map_config', { ...mapCfg, ...patch })
+
+  const itinerary = p.itinerary || { enabled: false, html: '' }
+  const setItinerary = (patch: any) => set('itinerary', { ...itinerary, ...patch })
   const [geocoding, setGeocoding] = useState<number | null>(null)
 
   // Geocodifica em tempo de edição (Nominatim/OSM, sem chave) e persiste as
@@ -658,7 +663,7 @@ export default function ProposalBuilder({
       checklist: p.checklist, photos: p.photos,
       order_bumps: p.order_bumps, total_cents: p.total_cents, pax_count: p.pax_count,
       price_per_person_cents: p.price_per_person_cents, payment: p.payment, notes: p.notes,
-      weather: p.weather, map_config: p.map_config,
+      weather: p.weather, map_config: p.map_config, itinerary: p.itinerary,
       operadora: p.operadora, commission_total_cents: p.commission_total_cents,
     })
     setSaving(false)
@@ -920,6 +925,31 @@ export default function ProposalBuilder({
           )}
         </SectionCard>
       </div>
+
+      {/* Roteiro — largura total (o editor rico precisa de espaço) */}
+      <SectionCard
+        icon={Route} title="Roteiro"
+        action={
+          <Switch
+            checked={!!itinerary.enabled}
+            onCheckedChange={v => setItinerary({ enabled: v })}
+          />
+        }
+      >
+        {!itinerary.enabled ? (
+          <p className="text-sm text-muted-foreground">
+            Roteiro desativado. Ative para escrever o roteiro da viagem com texto
+            formatado (negrito, fontes, tamanhos) e imagens — cole com Ctrl+V ou
+            arraste para o editor.
+          </p>
+        ) : (
+          <ItineraryEditor
+            orgSlug={orgSlug}
+            value={itinerary.html || ''}
+            onChange={html => setItinerary({ html })}
+          />
+        )}
+      </SectionCard>
 
       {/* Voos + Hospedagem lado a lado (cada um em meia tela) */}
       <div className="grid gap-5 lg:grid-cols-2 items-start">

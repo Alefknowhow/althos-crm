@@ -6,7 +6,7 @@ import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
   CloudSun, Thermometer, MessageCircle, Mail, Globe, Car, ShieldCheck, CreditCard, FileText,
-  Map as MapIcon,
+  Map as MapIcon, Route,
 } from 'lucide-react'
 
 type Org = {
@@ -47,6 +47,7 @@ type Proposal = {
   payment: Record<string, any>
   weather: Record<string, any> | null
   map_config: Record<string, any> | null
+  itinerary: Record<string, any> | null
   company_override: Record<string, any> | null
   created_at: string | null
   updated_at: string | null
@@ -59,6 +60,21 @@ const PIN_COLORS: Record<string, string> = {
 }
 const PIN_LABELS: Record<string, string> = {
   origem: 'Origem', destino: 'Destino', hotel: 'Hotel', atracao: 'Atração',
+}
+
+/** HTML do roteiro autorado no builder, sanitizado (DOMPurify) antes de
+ *  renderizar — só no browser, após montar, para evitar mismatch de SSR. */
+function RichHtml({ html }: { html: string }) {
+  const [clean, setClean] = useState('')
+  useEffect(() => {
+    let active = true
+    import('dompurify').then(mod => {
+      if (active) setClean(mod.default.sanitize(html))
+    })
+    return () => { active = false }
+  }, [html])
+  if (!clean) return null
+  return <div className="pp-rich" dangerouslySetInnerHTML={{ __html: clean }} />
 }
 
 /** Mapa interativo (Leaflet/OSM). Carregado só no browser, com pins coloridos
@@ -223,6 +239,11 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
     : []
   const mapOn = !!mapCfg.enabled && mapPoints.length > 0
 
+  // Roteiro rico: só entra se ativado e com conteúdo real (não só tags vazias).
+  const itinerary = proposal.itinerary || {}
+  const itineraryOn = !!itinerary.enabled && !!(itinerary.html || '').replace(/<[^>]*>/g, '').trim()
+    || (!!itinerary.enabled && /<img/i.test(itinerary.html || ''))
+
   return (
     <div className="pp-stage">
       <style>{CSS}</style>
@@ -315,6 +336,16 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
             <section className="pp-section no-print">
               <div className="pp-sec-head"><MapIcon className="w-4 h-4" /><h2 className="pp-sec-title">Mapa da viagem</h2></div>
               <ProposalMap points={mapPoints} />
+            </section>
+          )}
+
+          {/* ── Roteiro ── */}
+          {itineraryOn && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><Route className="w-4 h-4" /><h2 className="pp-sec-title">Roteiro</h2></div>
+              <div className="pp-card">
+                <RichHtml html={itinerary.html || ''} />
+              </div>
             </section>
           )}
 
@@ -819,6 +850,23 @@ const CSS = `
 .pp-weather-temp > svg { opacity: 0.85; }
 .pp-weather-range { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
 .pp-weather-cap { font-size: 12px; color: rgba(255,255,255,0.82); }
+
+/* Roteiro (HTML rico do editor) */
+.pp-rich { font-size: 14px; line-height: 1.65; color: #334155; }
+.pp-rich h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin: 14px 0 6px; letter-spacing: -0.01em; }
+.pp-rich h2 { font-size: 17px; font-weight: 700; color: #0f172a; margin: 12px 0 5px; }
+.pp-rich h3 { font-size: 15px; font-weight: 700; color: #1e293b; margin: 10px 0 4px; }
+.pp-rich h1:first-child, .pp-rich h2:first-child, .pp-rich h3:first-child, .pp-rich p:first-child { margin-top: 0; }
+.pp-rich p { margin: 7px 0; }
+.pp-rich ul, .pp-rich ol { margin: 7px 0; padding-left: 22px; }
+.pp-rich ul { list-style: disc; }
+.pp-rich ol { list-style: decimal; }
+.pp-rich li { margin: 3px 0; }
+.pp-rich img { max-width: 100%; height: auto; border-radius: 12px; margin: 10px 0; display: block; }
+.pp-rich hr { border: 0; border-top: 1px solid #e9edf3; margin: 14px 0; }
+.pp-rich blockquote { border-left: 3px solid #c7d2fe; padding-left: 12px; color: #475569; margin: 10px 0; }
+.pp-rich a { color: #4f46e5; text-decoration: underline; }
+.pp-rich strong { color: #1e293b; }
 
 /* Mapa interativo */
 .pp-map { height: 340px; border-radius: 16px; overflow: hidden; border: 1px solid #e9edf3; box-shadow: 0 1px 2px rgba(15,23,42,0.04); background: #eef2f7; z-index: 0; }
