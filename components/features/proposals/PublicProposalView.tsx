@@ -634,33 +634,35 @@ function Fact({ icon: Icon, label, value }: { icon: any; label: string; value: s
 }
 
 const CSS = `
-.pp-stage { min-height: 100vh; min-height: 100dvh; background: #e6e8ee; display: flex; align-items: center; justify-content: center; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-@media (min-width: 640px) { .pp-stage { padding: 24px; } }
+.pp-stage { min-height: 100vh; min-height: 100dvh; background: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 
 .pp-print { position: fixed; top: 14px; right: 14px; z-index: 50; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: #0f172a; color: #fff; box-shadow: 0 8px 24px -8px rgba(15,23,42,0.5); }
 .pp-print:hover { background: #1e293b; }
 
-.pp-phone { position: relative; width: 100vw; height: 100vh; height: 100dvh; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
-@media (min-width: 640px) {
-  .pp-phone { width: auto; height: min(900px, 94vh); aspect-ratio: 9 / 16; border-radius: 30px; border: 1px solid rgba(15,23,42,0.08); box-shadow: 0 40px 90px -25px rgba(15,23,42,0.45); }
-}
+/* Tela inteira em qualquer dispositivo: 9:16 natural no celular, full-bleed no desktop */
+.pp-phone { position: relative; width: 100%; height: 100vh; height: 100dvh; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Coluna de leitura centralizada em telas largas (mobile: padding normal) */
+.pp-cover-top, .pp-cover-meta { padding-left: max(16px, calc((100% - 720px) / 2)); padding-right: max(16px, calc((100% - 720px) / 2)); }
 
 /* Capa */
 .pp-cover { position: relative; flex: 0 0 38%; min-height: 190px; background: #0f172a; overflow: hidden; }
+@media (min-width: 640px) { .pp-cover { flex-basis: 44%; } }
 .pp-cover > img { width: 100%; height: 100%; object-fit: cover; }
 .pp-cover-fallback { position: absolute; inset: 0; background: radial-gradient(120% 100% at 30% 0%, #334155, #0f172a 70%); }
 .pp-cover-ov { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0) 30%, rgba(15,23,42,0) 45%, rgba(15,23,42,0.82) 100%); }
-.pp-cover-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding: 14px 16px; }
+.pp-cover-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding-top: 14px; padding-bottom: 14px; }
 .pp-logo { height: 30px; width: auto; max-width: 120px; object-fit: contain; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4)); }
 .pp-logo-fallback { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.18); color: #fff; font-weight: 700; backdrop-filter: blur(4px); }
 .pp-company { font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
-.pp-cover-meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px; color: #fff; }
+.pp-cover-meta { position: absolute; left: 0; right: 0; bottom: 0; padding-top: 16px; padding-bottom: 16px; color: #fff; }
 .pp-cover-meta h1 { font-size: 22px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+@media (min-width: 640px) { .pp-cover-meta h1 { font-size: 30px; } }
 .pp-cover-meta p { margin-top: 6px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.92); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
 .pp-cover-meta .dot { opacity: 0.6; }
 
 /* Conteúdo */
-.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; padding: 16px; }
+.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; padding: 16px max(16px, calc((100% - 720px) / 2)); }
 .pp-section { padding-top: 22px; margin-top: 22px; border-top: 1px solid #eef0f4; }
 .pp-section:first-of-type { padding-top: 0; margin-top: 22px; }
 .pp-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #0f172a; }
@@ -676,6 +678,7 @@ const CSS = `
 
 /* Resumo: fatos */
 .pp-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 640px) { .pp-facts { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
 .pp-fact { background: #fff; border: 1px solid #e9edf3; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
 .pp-fact-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-top: 4px; }
 .pp-fact-value { font-size: 14px; font-weight: 700; color: #1e293b; }
