@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   Printer, MapPin, Plane, BedDouble, Sparkles, ListChecks,
   CheckCircle2, Wallet, CalendarDays, Users, Clock, ChevronLeft, ChevronRight,
-  CloudSun, Thermometer, MessageCircle, Mail, Globe,
+  CloudSun, Thermometer, MessageCircle, Mail, Globe, Car, ShieldCheck, CreditCard, FileText,
 } from 'lucide-react'
 
 type Org = {
@@ -99,8 +99,6 @@ const METHOD_LABELS: Record<string, string> = {
   pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de crédito',
 }
 
-type TabKey = 'resumo' | 'voos' | 'hospedagem' | 'servicos' | 'checklist' | 'clima' | 'incluso' | 'investimento'
-
 /* ───────────────────────── component ───────────────────────── */
 export default function PublicProposalView({ proposal, org }: { proposal: Proposal; org: Org }) {
   const [imgErr, setImgErr] = useState<Record<string, boolean>>({})
@@ -129,6 +127,9 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
   const hotels = Array.isArray(proposal.hotels) ? proposal.hotels : []
   const destinations = Array.isArray(proposal.destinations) ? proposal.destinations : []
   const checklist = Array.isArray(proposal.checklist) ? proposal.checklist : []
+  const cancellationPolicies = hotels
+    .map((h: any, i: number) => ({ name: h.name || `Hospedagem ${i + 1}`, policy: (h.cancellation_policy || '').trim() }))
+    .filter(h => h.policy)
 
   // Imagem da cotação (capa, fixa no topo). Usa as fotos da viagem; recai
   // sobre as fotos das hospedagens para propostas antigas.
@@ -149,21 +150,6 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
   const weatherOn = !!weather.enabled && !!(
     weather.summary || weather.seasonality || weather.expect || weather.temp_min || weather.temp_max
   )
-
-  // Abas disponíveis (Resumo e Investimento sempre presentes)
-  const TABS: { key: TabKey; label: string; icon: any; show: boolean }[] = [
-    { key: 'resumo', label: 'Resumo', icon: MapPin, show: true },
-    { key: 'voos', label: 'Voos', icon: Plane, show: flights.length > 0 },
-    { key: 'hospedagem', label: 'Hospedagem', icon: BedDouble, show: hotels.length > 0 },
-    { key: 'servicos', label: 'Serviços', icon: Sparkles, show: activeServices.length > 0 || orderBumps.length > 0 },
-    { key: 'checklist', label: 'Check-list', icon: ListChecks, show: checklist.length > 0 },
-    { key: 'clima', label: 'Clima', icon: CloudSun, show: weatherOn },
-    { key: 'incluso', label: 'Incluso', icon: CheckCircle2, show: (proposal.included || []).length > 0 || (proposal.not_included || []).length > 0 },
-    { key: 'investimento', label: 'Investimento', icon: Wallet, show: true },
-  ]
-  const tabs = TABS.filter(t => t.show)
-  const [active, setActive] = useState<TabKey>('resumo')
-  const panelCls = (k: TabKey) => `pp-panel${active === k ? '' : ' hidden'}`
 
   return (
     <div className="pp-stage">
@@ -202,55 +188,210 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
           </div>
         </div>
 
-        {/* Abas */}
-        <nav className="pp-tabs" role="tablist" aria-label="Seções da proposta">
-          {tabs.map(t => {
-            const Icon = t.icon
-            return (
-              <button key={t.key} role="tab" aria-selected={active === t.key}
-                className={`pp-tab${active === t.key ? ' active' : ''}`} onClick={() => setActive(t.key)}>
-                <Icon className="w-3.5 h-3.5" /> {t.label}
-              </button>
-            )
-          })}
-        </nav>
-
         {/* Conteúdo */}
         <div className="pp-scroll">
-          {/* ── Resumo ── */}
-          <div className={panelCls('resumo')}>
-            <div className="pp-facts">
-              {proposal.client_name && <Fact icon={Users} label="Cliente" value={proposal.client_name} />}
-              {paxCount != null && <Fact icon={Users} label="Viajantes" value={`${paxCount} ${paxCount > 1 ? 'pessoas' : 'pessoa'}`} />}
-              {(proposal.start_date || proposal.end_date) && <Fact icon={CalendarDays} label="Período" value={`${fmtDate(proposal.start_date)} – ${fmtDate(proposal.end_date)}`} />}
-              {days != null && <Fact icon={Clock} label="Duração" value={`${days} ${days > 1 ? 'dias' : 'dia'} / ${nights} ${nights! > 1 ? 'noites' : 'noite'}`} />}
-            </div>
-
-            {destinations.length > 0 && (
-              <div className="pp-block">
-                <h3 className="pp-h3">Sobre o destino</h3>
-                <div className="pp-stack">
-                  {destinations.map((d: any, i: number) => (
-                    <div key={i} className="pp-card">
-                      <p className="pp-card-title"><MapPin className="w-4 h-4 text-slate-400" /> {d.name || 'Destino'}</p>
-                      {d.briefing && <p className="pp-card-text">{d.briefing}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {proposal.travelers_note && (
-              <div className="pp-block">
-                <h3 className="pp-h3">Observações</h3>
-                <p className="pp-card-text whitespace-pre-line">{proposal.travelers_note}</p>
-              </div>
-            )}
+          {/* ── Dados principais (sempre visível logo após a foto) ── */}
+          <div className="pp-facts">
+            {proposal.client_name && <Fact icon={Users} label="Cliente" value={proposal.client_name} />}
+            {destinations.length > 0 && <Fact icon={MapPin} label="Destino" value={destinations.map((d: any) => d.name).filter(Boolean).join(' · ')} />}
+            {(proposal.start_date || proposal.end_date) && <Fact icon={CalendarDays} label="Data" value={`${fmtDate(proposal.start_date)} – ${fmtDate(proposal.end_date)}`} />}
+            {days != null && <Fact icon={Clock} label="Duração" value={`${days} ${days > 1 ? 'dias' : 'dia'} / ${nights} ${nights! > 1 ? 'noites' : 'noite'}`} />}
+            {paxCount != null && <Fact icon={Users} label="Pessoas" value={`${paxCount} ${paxCount > 1 ? 'pessoas' : 'pessoa'}`} />}
           </div>
+
+          {/* ── Briefing da viagem ── */}
+          {proposal.travelers_note && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><Sparkles className="w-4 h-4" /><h2 className="pp-sec-title">Briefing da viagem</h2></div>
+              <p className="pp-card-text whitespace-pre-line">{proposal.travelers_note}</p>
+            </section>
+          )}
+
+          {/* ── Dados da cotação ── */}
+          <section className="pp-section">
+            <div className="pp-sec-head"><FileText className="w-4 h-4" /><h2 className="pp-sec-title">Dados da cotação</h2></div>
+            <div className="pp-stack">
+              <div className="pp-card">
+                <div className="pp-leg-grid">
+                  {proposal.client_name && <span><b>Cliente:</b> {proposal.client_name}</span>}
+                  {paxCount != null && <span><b>Viajantes:</b> {paxCount} {paxCount > 1 ? 'pessoas' : 'pessoa'}</span>}
+                  {(proposal.start_date || proposal.end_date) && <span><b>Período:</b> {fmtDate(proposal.start_date)} – {fmtDate(proposal.end_date)}</span>}
+                  {fmtTimestamp(proposal.updated_at || proposal.created_at) && <span><b>Cotação realizada em:</b> {fmtTimestamp(proposal.updated_at || proposal.created_at)}</span>}
+                </div>
+                <p className="pp-muted mt-2">Preços e tarifas estão sujeitos a alterações sem aviso prévio.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Destinos ── */}
+          {destinations.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><MapPin className="w-4 h-4" /><h2 className="pp-sec-title">Destinos</h2></div>
+              <div className="pp-stack">
+                {destinations.map((d: any, i: number) => (
+                  <div key={i} className="pp-card">
+                    <p className="pp-card-title"><MapPin className="w-4 h-4 text-slate-400" /> {d.name || 'Destino'}</p>
+                    {d.briefing && <p className="pp-card-text">{d.briefing}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Clima ── */}
+          {weatherOn && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><CloudSun className="w-4 h-4" /><h2 className="pp-sec-title">Clima</h2></div>
+              {(weather.temp_min || weather.temp_max) && (
+                <div className="pp-weather-temp">
+                  <Thermometer className="w-5 h-5" />
+                  <span className="pp-weather-range">
+                    {[weather.temp_min, weather.temp_max]
+                      .filter(v => v != null && String(v).trim() !== '')
+                      .map(v => {
+                        const s = String(v).trim()
+                        return /[°ºcCfF]/.test(s) ? s : `${s}°C`
+                      })
+                      .join(' — ')}
+                  </span>
+                  <span className="pp-weather-cap">Temperatura prevista nas datas da viagem</span>
+                </div>
+              )}
+              {weather.summary && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Clima nas datas da viagem</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.summary}</p>
+                </div>
+              )}
+              {weather.seasonality && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">Sazonalidade do destino</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.seasonality}</p>
+                </div>
+              )}
+              {weather.expect && (
+                <div className="pp-block">
+                  <h3 className="pp-h3">O que você vai encontrar</h3>
+                  <p className="pp-card-text whitespace-pre-line">{weather.expect}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ── Hospedagens ── */}
+          {hotels.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><BedDouble className="w-4 h-4" /><h2 className="pp-sec-title">Hospedagens</h2></div>
+              <div className="pp-stack">
+                {hotels.map((h: any, i: number) => {
+                  const photos: string[] = (Array.isArray(h.photos) ? h.photos : []).filter((s: string) => s && !imgErr[`h${i}-${s}`])
+                  const idx = Math.min(hotelImg[i] ?? 0, Math.max(0, photos.length - 1))
+                  const fmtD = (d?: string) => {
+                    if (!d) return ''
+                    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d)
+                    return m ? `${m[3]}/${m[2]}/${m[1]}` : d
+                  }
+                  return (
+                    <div key={i} className="pp-hotel">
+                      {photos.length > 0 && (
+                        <div className="pp-hotel-photo">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photos[idx]} alt={h.name || 'Hospedagem'} onError={() => setImgErr(e => ({ ...e, [`h${i}-${photos[idx]}`]: true }))} />
+                          {photos.length > 1 && (
+                            <>
+                              <button className="pp-nav left" aria-label="Foto anterior"
+                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx - 1 + photos.length) % photos.length }))}>
+                                <ChevronLeft className="w-5 h-5" />
+                              </button>
+                              <button className="pp-nav right" aria-label="Próxima foto"
+                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx + 1) % photos.length }))}>
+                                <ChevronRight className="w-5 h-5" />
+                              </button>
+                              <div className="pp-dots">
+                                {photos.map((_, k) => (
+                                  <button key={k} aria-label={`Foto ${k + 1}`} className={k === idx ? 'on' : ''}
+                                    onClick={() => setHotelImg(s => ({ ...s, [i]: k }))} />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      <div className="pp-hotel-body">
+                        <div className="pp-hotel-head">
+                          <p className="pp-card-title">{h.name || 'Hospedagem'}</p>
+                          {h.kind && <span className="pp-muted">{h.kind}</span>}
+                        </div>
+                        <div className="pp-leg-grid">
+                          {h.room_category && <span><b>Quarto:</b> {h.room_category}</span>}
+                          {h.meal_plan && <span><b>Regime:</b> {h.meal_plan}</span>}
+                          <span><b>Check-in:</b> {fmtD(h.checkin_date) ? `${fmtD(h.checkin_date)} · ` : ''}a partir das {h.checkin_time || '15:00'}</span>
+                          <span><b>Check-out:</b> {fmtD(h.checkout_date) ? `${fmtD(h.checkout_date)} · ` : ''}até {h.checkout_time || '12:00'}</span>
+                        </div>
+                        {h.briefing && <p className="pp-card-text">{h.briefing}</p>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── Passeios (opcionais) ── */}
+          {orderBumps.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><Sparkles className="w-4 h-4" /><h2 className="pp-sec-title">Passeios</h2></div>
+              <p className="pp-muted mb-2">Itens opcionais — não inclusos no valor do pacote.</p>
+              <div className="pp-stack">
+                {orderBumps.map((b: any, i: number) => (
+                  <div key={i} className="pp-card pp-bump">
+                    <div>
+                      <p className="pp-card-title">{b.name || 'Passeio'}</p>
+                      {b.description && <p className="pp-card-text">{b.description}</p>}
+                    </div>
+                    <span className="pp-bump-price">{brl(b.price_cents)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Transfer e serviços adicionais ── */}
+          {activeServices.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><Car className="w-4 h-4" /><h2 className="pp-sec-title">Transfer</h2></div>
+              <div className="pp-stack">
+                {activeServices.map(([key, v]: any) => (
+                  <div key={key} className="pp-card">
+                    <p className="pp-card-title">{SERVICE_LABELS[key] || key}</p>
+                    {v.details && <p className="pp-card-text">{v.details}</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Check-list ── */}
+          {checklist.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><ListChecks className="w-4 h-4" /><h2 className="pp-sec-title">Check-list</h2></div>
+              <p className="pp-muted mb-3">Providencie estes itens antes da viagem. Toque para marcar.</p>
+              <div className="pp-stack">
+                {checklist.map((it, i) => (
+                  <button key={i} className={`pp-check${checked[i] ? ' done' : ''}`}
+                    onClick={() => setChecked(s => ({ ...s, [i]: !s[i] }))}>
+                    <span className="pp-check-box">{checked[i] ? '✓' : ''}</span>
+                    <span>{it}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── Voos ── */}
           {flights.length > 0 && (
-            <div className={panelCls('voos')}>
+            <section className="pp-section">
+              <div className="pp-sec-head"><Plane className="w-4 h-4" /><h2 className="pp-sec-title">Voos</h2></div>
               <div className="pp-stack">
                 {flights.map((j: any, i: number) => {
                   const legs: any[] = j.legs
@@ -308,162 +449,28 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                   )
                 })}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* ── Hospedagem ── */}
-          {hotels.length > 0 && (
-            <div className={panelCls('hospedagem')}>
+          {/* ── Política de cancelamento ── */}
+          {cancellationPolicies.length > 0 && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><ShieldCheck className="w-4 h-4" /><h2 className="pp-sec-title">Política de cancelamento</h2></div>
               <div className="pp-stack">
-                {hotels.map((h: any, i: number) => {
-                  const photos: string[] = (Array.isArray(h.photos) ? h.photos : []).filter((s: string) => s && !imgErr[`h${i}-${s}`])
-                  const idx = Math.min(hotelImg[i] ?? 0, Math.max(0, photos.length - 1))
-                  const fmtD = (d?: string) => {
-                    if (!d) return ''
-                    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d)
-                    return m ? `${m[3]}/${m[2]}/${m[1]}` : d
-                  }
-                  return (
-                    <div key={i} className="pp-hotel">
-                      {photos.length > 0 && (
-                        <div className="pp-hotel-photo">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={photos[idx]} alt={h.name || 'Hospedagem'} onError={() => setImgErr(e => ({ ...e, [`h${i}-${photos[idx]}`]: true }))} />
-                          {photos.length > 1 && (
-                            <>
-                              <button className="pp-nav left" aria-label="Foto anterior"
-                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx - 1 + photos.length) % photos.length }))}>
-                                <ChevronLeft className="w-5 h-5" />
-                              </button>
-                              <button className="pp-nav right" aria-label="Próxima foto"
-                                onClick={() => setHotelImg(s => ({ ...s, [i]: (idx + 1) % photos.length }))}>
-                                <ChevronRight className="w-5 h-5" />
-                              </button>
-                              <div className="pp-dots">
-                                {photos.map((_, k) => (
-                                  <button key={k} aria-label={`Foto ${k + 1}`} className={k === idx ? 'on' : ''}
-                                    onClick={() => setHotelImg(s => ({ ...s, [i]: k }))} />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      <div className="pp-hotel-body">
-                        <div className="pp-hotel-head">
-                          <p className="pp-card-title">{h.name || 'Hospedagem'}</p>
-                          {h.kind && <span className="pp-muted">{h.kind}</span>}
-                        </div>
-                        <div className="pp-leg-grid">
-                          {h.room_category && <span><b>Quarto:</b> {h.room_category}</span>}
-                          {h.meal_plan && <span><b>Regime:</b> {h.meal_plan}</span>}
-                          <span><b>Check-in:</b> {fmtD(h.checkin_date) ? `${fmtD(h.checkin_date)} · ` : ''}a partir das {h.checkin_time || '15:00'}</span>
-                          <span><b>Check-out:</b> {fmtD(h.checkout_date) ? `${fmtD(h.checkout_date)} · ` : ''}até {h.checkout_time || '12:00'}</span>
-                        </div>
-                        {h.briefing && <p className="pp-card-text">{h.briefing}</p>}
-                        {h.cancellation_policy && <p className="pp-muted mt-1"><b>Cancelamento:</b> {h.cancellation_policy}</p>}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── Serviços adicionais ── */}
-          {(activeServices.length > 0 || orderBumps.length > 0) && (
-            <div className={panelCls('servicos')}>
-              {activeServices.length > 0 && (
-                <div className="pp-block">
-                  <h3 className="pp-h3">Serviços inclusos</h3>
-                  <div className="pp-stack">
-                    {activeServices.map(([key, v]: any) => (
-                      <div key={key} className="pp-card">
-                        <p className="pp-card-title">{SERVICE_LABELS[key] || key}</p>
-                        {v.details && <p className="pp-card-text">{v.details}</p>}
-                      </div>
-                    ))}
+                {cancellationPolicies.map((h, i) => (
+                  <div key={i} className="pp-card">
+                    <p className="pp-card-title">{h.name}</p>
+                    <p className="pp-card-text whitespace-pre-line">{h.policy}</p>
                   </div>
-                </div>
-              )}
-              {orderBumps.length > 0 && (
-                <div className="pp-block">
-                  <h3 className="pp-h3">Opcionais</h3>
-                  <p className="pp-muted mb-2">Itens opcionais — não inclusos no valor do pacote.</p>
-                  <div className="pp-stack">
-                    {orderBumps.map((b: any, i: number) => (
-                      <div key={i} className="pp-card pp-bump">
-                        <div>
-                          <p className="pp-card-title">{b.name || 'Opcional'}</p>
-                          {b.description && <p className="pp-card-text">{b.description}</p>}
-                        </div>
-                        <span className="pp-bump-price">{brl(b.price_cents)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Check-list ── */}
-          {checklist.length > 0 && (
-            <div className={panelCls('checklist')}>
-              <p className="pp-muted mb-3">Providencie estes itens antes da viagem. Toque para marcar.</p>
-              <div className="pp-stack">
-                {checklist.map((it, i) => (
-                  <button key={i} className={`pp-check${checked[i] ? ' done' : ''}`}
-                    onClick={() => setChecked(s => ({ ...s, [i]: !s[i] }))}>
-                    <span className="pp-check-box">{checked[i] ? '✓' : ''}</span>
-                    <span>{it}</span>
-                  </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* ── Clima ── */}
-          {weatherOn && (
-            <div className={panelCls('clima')}>
-              {(weather.temp_min || weather.temp_max) && (
-                <div className="pp-weather-temp">
-                  <Thermometer className="w-5 h-5" />
-                  <span className="pp-weather-range">
-                    {[weather.temp_min, weather.temp_max]
-                      .filter(v => v != null && String(v).trim() !== '')
-                      .map(v => {
-                        const s = String(v).trim()
-                        return /[°ºcCfF]/.test(s) ? s : `${s}°C`
-                      })
-                      .join(' — ')}
-                  </span>
-                  <span className="pp-weather-cap">Temperatura prevista nas datas da viagem</span>
-                </div>
-              )}
-              {weather.summary && (
-                <div className="pp-block">
-                  <h3 className="pp-h3">Clima nas datas da viagem</h3>
-                  <p className="pp-card-text whitespace-pre-line">{weather.summary}</p>
-                </div>
-              )}
-              {weather.seasonality && (
-                <div className="pp-block">
-                  <h3 className="pp-h3">Sazonalidade do destino</h3>
-                  <p className="pp-card-text whitespace-pre-line">{weather.seasonality}</p>
-                </div>
-              )}
-              {weather.expect && (
-                <div className="pp-block">
-                  <h3 className="pp-h3">O que você vai encontrar</h3>
-                  <p className="pp-card-text whitespace-pre-line">{weather.expect}</p>
-                </div>
-              )}
-            </div>
+            </section>
           )}
 
           {/* ── Incluso ── */}
           {((proposal.included || []).length > 0 || (proposal.not_included || []).length > 0) && (
-            <div className={panelCls('incluso')}>
+            <section className="pp-section">
+              <div className="pp-sec-head"><CheckCircle2 className="w-4 h-4" /><h2 className="pp-sec-title">Incluso</h2></div>
               {(proposal.included || []).length > 0 && (
                 <div className="pp-block">
                   <h3 className="pp-h3 text-emerald-700">Está incluso</h3>
@@ -480,11 +487,12 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                   </ul>
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {/* ── Investimento ── */}
-          <div className={panelCls('investimento')}>
+          <section className="pp-section">
+            <div className="pp-sec-head"><Wallet className="w-4 h-4" /><h2 className="pp-sec-title">Investimento</h2></div>
             <div className="pp-total">
               <span className="pp-total-label">Valor total</span>
               <span className="pp-total-val">{brl(proposal.total_cents)}</span>
@@ -511,10 +519,13 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                 </a>
               )
             })()}
+          </section>
 
-            {methods.length > 0 && (
-              <div className="pp-block">
-                <h3 className="pp-h3">Formas de pagamento</h3>
+          {/* ── Forma de pagamento ── */}
+          {(methods.length > 0 || proposal.payment?.conditions) && (
+            <section className="pp-section">
+              <div className="pp-sec-head"><CreditCard className="w-4 h-4" /><h2 className="pp-sec-title">Forma de pagamento</h2></div>
+              {methods.length > 0 && (
                 <div className="pp-stack">
                   {methods.map(m => {
                     const cond = proposal.payment?.method_conditions?.[m]
@@ -526,22 +537,15 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                     )
                   })}
                 </div>
-              </div>
-            )}
-
-            {proposal.payment?.conditions && (
-              <p className="pp-card-text whitespace-pre-line mt-3">{proposal.payment.conditions}</p>
-            )}
-
-            <p className="pp-fineprint">
-              {fmtTimestamp(proposal.updated_at || proposal.created_at) && (
-                <>Cotação realizada em {fmtTimestamp(proposal.updated_at || proposal.created_at)}. </>
               )}
-              Preços e tarifas estão sujeitos a alterações sem aviso prévio.
-            </p>
 
-            {/* Rodapé da agência */}
-            {(() => {
+              {proposal.payment?.conditions && (
+                <p className="pp-card-text whitespace-pre-line mt-3">{proposal.payment.conditions}</p>
+              )}
+            </section>
+          )}
+
+          {(() => {
               // Telefone → WhatsApp
               const digits = (phone || '').replace(/\D/g, '')
               const waNumber = digits ? (digits.length <= 11 ? `55${digits}` : digits) : ''
@@ -613,7 +617,6 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
                 </div>
               )
             })()}
-          </div>
         </div>
       </div>
     </div>
@@ -656,17 +659,12 @@ const CSS = `
 .pp-cover-meta p { margin-top: 6px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.92); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
 .pp-cover-meta .dot { opacity: 0.6; }
 
-/* Abas */
-.pp-tabs { flex: 0 0 auto; display: flex; gap: 6px; overflow-x: auto; padding: 9px 12px; border-bottom: 1px solid #eef0f4; background: #fff; scrollbar-width: none; }
-.pp-tabs::-webkit-scrollbar { display: none; }
-.pp-tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 13px; font-weight: 600; color: #64748b; padding: 7px 13px; border-radius: 999px; border: 1px solid transparent; transition: background .2s, color .2s, border-color .2s; }
-.pp-tab:hover { background: #f1f5f9; }
-.pp-tab.active { color: #fff; background: #0f172a; }
-
 /* Conteúdo */
-.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; }
-.pp-panel { padding: 16px; }
-.pp-panel.hidden { display: none; }
+.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; padding: 16px; }
+.pp-section { padding-top: 22px; margin-top: 22px; border-top: 1px solid #eef0f4; }
+.pp-section:first-of-type { padding-top: 0; margin-top: 22px; }
+.pp-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #0f172a; }
+.pp-sec-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; color: #0f172a; }
 .pp-block { margin-top: 18px; }
 .pp-block:first-child { margin-top: 0; }
 .pp-h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; margin-bottom: 10px; }
@@ -764,9 +762,8 @@ const CSS = `
   .pp-stage { display: block; background: #fff; padding: 0; }
   .pp-phone { width: auto !important; height: auto !important; aspect-ratio: auto !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; display: block; overflow: visible; }
   .pp-cover { flex: none; height: 280px; }
-  .pp-tabs { display: none !important; }
-  .pp-scroll { overflow: visible; height: auto; background: #fff; }
-  .pp-panel { display: block !important; break-inside: avoid; padding: 18px 24px; }
+  .pp-scroll { overflow: visible; height: auto; background: #fff; padding: 18px 24px; }
+  .pp-section { break-inside: avoid; }
   .pp-card, .pp-flight, .pp-hotel, .pp-fact, .pp-check { break-inside: avoid; }
   .pp-stage, .pp-stage * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
