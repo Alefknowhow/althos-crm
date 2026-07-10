@@ -471,22 +471,24 @@ export default function PublicProposalView({ proposal, org }: { proposal: Propos
           {((proposal.included || []).length > 0 || (proposal.not_included || []).length > 0) && (
             <section className="pp-section">
               <div className="pp-sec-head"><CheckCircle2 className="w-4 h-4" /><h2 className="pp-sec-title">Incluso</h2></div>
-              {(proposal.included || []).length > 0 && (
-                <div className="pp-block">
-                  <h3 className="pp-h3 text-emerald-700">Está incluso</h3>
-                  <ul className="pp-list">
-                    {proposal.included.map((it, i) => <li key={i}><span className="ok">✓</span>{it}</li>)}
-                  </ul>
-                </div>
-              )}
-              {(proposal.not_included || []).length > 0 && (
-                <div className="pp-block">
-                  <h3 className="pp-h3 text-rose-700">Não incluso</h3>
-                  <ul className="pp-list">
-                    {proposal.not_included.map((it, i) => <li key={i}><span className="no">✕</span>{it}</li>)}
-                  </ul>
-                </div>
-              )}
+              <div className="pp-cols2">
+                {(proposal.included || []).length > 0 && (
+                  <div>
+                    <h3 className="pp-h3 text-emerald-700">Está incluso</h3>
+                    <ul className="pp-list">
+                      {proposal.included.map((it, i) => <li key={i}><span className="ok">✓</span>{it}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {(proposal.not_included || []).length > 0 && (
+                  <div>
+                    <h3 className="pp-h3 text-rose-700">Não incluso</h3>
+                    <ul className="pp-list">
+                      {proposal.not_included.map((it, i) => <li key={i}><span className="no">✕</span>{it}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
@@ -639,30 +641,26 @@ const CSS = `
 .pp-print { position: fixed; top: 14px; right: 14px; z-index: 50; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: #0f172a; color: #fff; box-shadow: 0 8px 24px -8px rgba(15,23,42,0.5); }
 .pp-print:hover { background: #1e293b; }
 
-/* Tela inteira em qualquer dispositivo: 9:16 natural no celular, full-bleed no desktop */
-.pp-phone { position: relative; width: 100%; height: 100vh; height: 100dvh; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+/* Página rola normalmente; a capa faz parte do fluxo e sai de cena ao rolar */
+.pp-phone { position: relative; width: 100%; min-height: 100vh; min-height: 100dvh; background: #f8fafc; }
 
-/* Coluna de leitura centralizada em telas largas (mobile: padding normal) */
-.pp-cover-top, .pp-cover-meta { padding-left: max(16px, calc((100% - 720px) / 2)); padding-right: max(16px, calc((100% - 720px) / 2)); }
-
-/* Capa */
-.pp-cover { position: relative; flex: 0 0 38%; min-height: 190px; background: #0f172a; overflow: hidden; }
-@media (min-width: 640px) { .pp-cover { flex-basis: 44%; } }
+/* Capa: coluna central com proporção de página (destaque ao abrir, depois rola) */
+.pp-cover { position: relative; width: min(720px, calc(100% - 32px)); height: min(64vh, 560px); min-height: 280px; margin: 16px auto 0; border-radius: 20px; background: #0f172a; overflow: hidden; box-shadow: 0 18px 45px -18px rgba(15,23,42,0.35); }
 .pp-cover > img { width: 100%; height: 100%; object-fit: cover; }
 .pp-cover-fallback { position: absolute; inset: 0; background: radial-gradient(120% 100% at 30% 0%, #334155, #0f172a 70%); }
 .pp-cover-ov { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0) 30%, rgba(15,23,42,0) 45%, rgba(15,23,42,0.82) 100%); }
-.pp-cover-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding-top: 14px; padding-bottom: 14px; }
+.pp-cover-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding: 14px 16px; }
 .pp-logo { height: 30px; width: auto; max-width: 120px; object-fit: contain; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4)); }
 .pp-logo-fallback { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.18); color: #fff; font-weight: 700; backdrop-filter: blur(4px); }
 .pp-company { font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
-.pp-cover-meta { position: absolute; left: 0; right: 0; bottom: 0; padding-top: 16px; padding-bottom: 16px; color: #fff; }
+.pp-cover-meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px; color: #fff; }
 .pp-cover-meta h1 { font-size: 22px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
 @media (min-width: 640px) { .pp-cover-meta h1 { font-size: 30px; } }
 .pp-cover-meta p { margin-top: 6px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.92); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
 .pp-cover-meta .dot { opacity: 0.6; }
 
 /* Conteúdo */
-.pp-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; padding: 16px max(16px, calc((100% - 720px) / 2)); }
+.pp-scroll { background: #f8fafc; padding: 16px max(16px, calc((100% - 720px) / 2)) 28px; }
 .pp-section { padding-top: 22px; margin-top: 22px; border-top: 1px solid #eef0f4; }
 .pp-section:first-of-type { padding-top: 0; margin-top: 22px; }
 .pp-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #0f172a; }
@@ -733,7 +731,8 @@ const CSS = `
 .pp-weather-range { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
 .pp-weather-cap { font-size: 12px; color: rgba(255,255,255,0.82); }
 
-/* Incluso */
+/* Incluso: colunas lado a lado */
+.pp-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; align-items: start; }
 .pp-list { display: flex; flex-direction: column; gap: 7px; }
 .pp-list li { display: flex; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #334155; }
 .pp-list .ok { color: #16a34a; font-weight: 700; }
@@ -749,14 +748,15 @@ const CSS = `
 .pp-reserve:active { transform: translateY(1px); }
 .pp-pay { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .pp-fineprint { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e9edf3; font-size: 11.5px; color: #94a3b8; line-height: 1.5; }
-.pp-foot { margin-top: 16px; padding: 18px 16px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 12px; color: #64748b; text-align: center; }
-.pp-foot-name { font-weight: 700; color: #1e293b; font-size: 15px; text-align: center; letter-spacing: -0.01em; }
-.pp-foot-reg { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 8px 0 12px; font-size: 11px; color: #94a3b8; }
-.pp-foot-contacts { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
-.pp-foot-item { display: inline-flex; align-items: center; gap: 8px; color: #475569; text-decoration: none; font-size: 12.5px; line-height: 1.3; transition: color .15s; max-width: 100%; }
+/* Rodapé compacto: nome + registros numa linha, contatos escritos em linha corrida */
+.pp-foot { margin-top: 16px; padding: 12px 14px; background: #fff; border: 1px solid #e9edf3; border-radius: 14px; font-size: 11.5px; color: #64748b; text-align: center; }
+.pp-foot-name { font-weight: 700; color: #1e293b; font-size: 13.5px; text-align: center; letter-spacing: -0.01em; }
+.pp-foot-reg { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; margin: 3px 0 8px; font-size: 11px; color: #94a3b8; }
+.pp-foot-contacts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 5px 14px; padding-top: 8px; border-top: 1px solid #f1f5f9; }
+.pp-foot-item { display: inline-flex; align-items: center; gap: 5px; color: #475569; text-decoration: none; font-size: 11.5px; line-height: 1.3; transition: color .15s; max-width: 100%; }
 .pp-foot-item:hover { color: #4f46e5; }
 .pp-foot-item > span:last-child { word-break: break-word; }
-.pp-foot-ic { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: #f1f5f9; color: #4f46e5; }
+.pp-foot-ic { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; background: #f1f5f9; color: #4f46e5; }
 .pp-foot-item:hover .pp-foot-ic { background: #e0e7ff; }
 
 /* Print: empilha tudo, sem moldura */
@@ -764,7 +764,7 @@ const CSS = `
   .no-print { display: none !important; }
   .pp-stage { display: block; background: #fff; padding: 0; }
   .pp-phone { width: auto !important; height: auto !important; aspect-ratio: auto !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; display: block; overflow: visible; }
-  .pp-cover { flex: none; height: 280px; }
+  .pp-cover { width: 100%; height: 280px; min-height: 0; margin: 0; border-radius: 0; box-shadow: none; }
   .pp-scroll { overflow: visible; height: auto; background: #fff; padding: 18px 24px; }
   .pp-section { break-inside: avoid; }
   .pp-card, .pp-flight, .pp-hotel, .pp-fact, .pp-check { break-inside: avoid; }
