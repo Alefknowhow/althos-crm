@@ -84,6 +84,7 @@ function ProposalMap({ points }: { points: MapPoint[] }) {
 
   useEffect(() => {
     let map: any
+    let ro: ResizeObserver | undefined
     let cancelled = false
     ;(async () => {
       const L = (await import('leaflet')).default
@@ -110,10 +111,18 @@ function ProposalMap({ points }: { points: MapPoint[] }) {
           .bindPopup(`<b>${name.replace(/</g, '&lt;')}</b><br/><small>${PIN_LABELS[pt.kind || 'destino'] || ''}</small>`)
         latlngs.push([pt.lat, pt.lng])
       }
-      if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [36, 36] })
-      else if (latlngs.length === 1) map.setView(latlngs[0], 12)
+      const fit = () => {
+        if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [36, 36] })
+        else if (latlngs.length === 1) map.setView(latlngs[0], 12)
+      }
+      fit()
+      // Se o container ainda não tinha dimensão na inicialização (aba oculta,
+      // rotação de tela, etc), o Leaflet calcula o zoom errado — re-mede e
+      // re-enquadra sempre que o tamanho mudar.
+      ro = new ResizeObserver(() => { map.invalidateSize(); fit() })
+      ro.observe(mapRef.current)
     })()
-    return () => { cancelled = true; if (map) map.remove(); if (mapRef.current) delete mapRef.current.dataset.ready }
+    return () => { cancelled = true; ro?.disconnect(); if (map) map.remove(); if (mapRef.current) delete mapRef.current.dataset.ready }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

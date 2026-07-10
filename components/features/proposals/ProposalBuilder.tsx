@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { updateProposal, type ProposalRow } from '@/actions/travel-proposals'
+import { updateProposal, geocodePlace, type ProposalRow } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import { lookupFlight, lookupFlightRoute } from '@/actions/flight-lookup'
 import { toast } from 'sonner'
@@ -625,30 +625,21 @@ export default function ProposalBuilder({
   const setItinerary = (patch: any) => set('itinerary', { ...itinerary, ...patch })
   const [geocoding, setGeocoding] = useState<number | null>(null)
 
-  // Geocodifica em tempo de edição (Nominatim/OSM, sem chave) e persiste as
-  // coordenadas no ponto — o link público só renderiza pins, sem geocode.
+  // Geocodifica em tempo de edição via server action (Nominatim/OSM, sem
+  // chave) e persiste as coordenadas — o link público só renderiza pins.
   async function geocodePoint(i: number) {
     const pt = mapPoints[i]
     if (!pt?.query?.trim()) { toast.error('Digite o local antes de buscar'); return }
     setGeocoding(i)
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(pt.query.trim())}`,
-        { headers: { Accept: 'application/json' } },
-      )
-      const data = await res.json()
-      if (Array.isArray(data) && data[0]?.lat) {
-        const n = [...mapPoints]
-        n[i] = { ...pt, lat: Number(data[0].lat), lng: Number(data[0].lon), found_name: data[0].display_name }
-        setMap({ points: n })
-        toast.success('Local encontrado no mapa')
-      } else {
-        toast.error('Local não encontrado — tente incluir cidade/país')
-      }
-    } catch {
-      toast.error('Erro ao buscar o local. Tente novamente.')
-    } finally {
-      setGeocoding(null)
+    const res = await geocodePlace(orgSlug, pt.query)
+    setGeocoding(null)
+    if (res.ok) {
+      const n = [...mapPoints]
+      n[i] = { ...pt, lat: res.lat, lng: res.lng, found_name: res.display_name }
+      setMap({ points: n })
+      toast.success('Local encontrado no mapa')
+    } else {
+      toast.error(res.error)
     }
   }
 
