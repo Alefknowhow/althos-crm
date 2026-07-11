@@ -49,7 +49,7 @@ const WRITABLE = [
   'travelers', 'travelers_note', 'destinations', 'flights', 'hotels',
   'services', 'included', 'not_included', 'checklist', 'photos', 'order_bumps',
   'total_cents', 'pax_count', 'price_per_person_cents', 'payment',
-  'weather', 'map_config', 'itinerary',
+  'map_config', 'itinerary',
   'company_override', 'notes', 'operadora', 'commission_total_cents',
 ] as const
 

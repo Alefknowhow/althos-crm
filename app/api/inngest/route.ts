@@ -9,6 +9,7 @@ import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-em
 import { integrationHealthCheckFn, integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
 import { scheduledWhatsappMessagesFn } from '@/lib/inngest/scheduled-messages-cron'
+import { proposalEventFn } from '@/lib/inngest/proposal-events'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -29,5 +30,6 @@ export const { GET, POST, PUT } = serve({
     integrationHealthPruneFn,
     generateSystemAlertsFn,
     scheduledWhatsappMessagesFn,
+    proposalEventFn,
   ]
 })
