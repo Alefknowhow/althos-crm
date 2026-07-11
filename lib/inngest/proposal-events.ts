@@ -12,9 +12,11 @@ import { createAdminClient } from '@/lib/supabase/server'
  * visualização +5, CTA +15 (reservar) / +10 (dúvidas).
  */
 export const proposalEventFn = inngest.createFunction(
-  { id: 'proposal-engagement' },
-  [{ event: 'proposal.viewed' }, { event: 'proposal.cta_clicked' }],
-  async ({ event, step }) => {
+  {
+    id: 'proposal-engagement',
+    triggers: [{ event: 'proposal.viewed' }, { event: 'proposal.cta_clicked' }],
+  },
+  async ({ event, step }: { event: any; step: any }) => {
     const { orgId, proposalId, contatoId, cta } = event.data as {
       orgId: string; proposalId: string; contatoId?: string | null; cta?: string
     }
