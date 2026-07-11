@@ -1,0 +1,275 @@
+'use server'
+
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+/**
+ * Actions da Cotação reformulada (editor split-view).
+ * Pai = travel_proposals; filhas = quotation_* (ver migração 0080).
+ * Toda gravação revalida a tag do link público (quotation:{token}).
+ */
+
+/* ─────────── schemas ─────────── */
+const LodgingSchema = z.object({
+  name: z.string().max(200).default(''),
+  check_in: z.string().nullable().optional(),
+  check_out: z.string().nullable().optional(),
+  room_category: z.string().max(200).nullable().optional(),
+  board: z.string().max(120).nullable().optional(),
+  description_html: z.string().max(20000).nullable().optional(),
+  photos: z.array(z.string().url()).max(12).default([]),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  tripadvisor_location_id: z.string().max(40).nullable().optional(),
+  tripadvisor_data: z.record(z.string(), z.any()).nullable().optional(),
+})
+
+const FlightSchema = z.object({
+  leg_type: z.enum(['outbound', 'inbound', 'connection']).default('outbound'),
+  from_code: z.string().max(8).nullable().optional(),
+  from_city: z.string().max(120).nullable().optional(),
+  to_code: z.string().max(8).nullable().optional(),
+  to_city: z.string().max(120).nullable().optional(),
+  airline: z.string().max(120).nullable().optional(),
+  date: z.string().nullable().optional(),
+  duration_label: z.string().max(60).nullable().optional(),
+  stopover_label: z.string().max(160).nullable().optional(),
+})
+
+const DaySchema = z.object({
+  day_label: z.string().max(60).default(''),
+  date: z.string().nullable().optional(),
+  title: z.string().max(200).default(''),
+  items: z.array(z.string().max(300)).max(20).default([]),
+})
+
+const PinSchema = z.object({
+  label: z.string().max(160).default(''),
+  type: z.enum(['lodging', 'attraction', 'airport', 'custom']).default('attraction'),
+  lat: z.number(),
+  lng: z.number(),
+})
+
+const QuotationSchema = z.object({
+  title: z.string().max(200).nullable().optional(),
+  subtitle: z.string().max(300).nullable().optional(),
+  status: z.enum(['draft', 'sent', 'viewed', 'won', 'lost', 'expired']).optional(),
+  contato_id: z.string().uuid().nullable().optional(),
+  client_name: z.string().max(160).nullable().optional(),
+  client_whatsapp: z.string().max(30).nullable().optional(),
+  cover_image_url: z.string().url().nullable().optional(),
+  origin_label: z.string().max(120).nullable().optional(),
+  origin_note: z.string().max(200).nullable().optional(),
+  destinations: z.array(z.object({ name: z.string().max(120).default(''), country: z.string().max(120).optional() })).max(10).optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
+  pax_adults: z.number().int().min(0).max(99).optional(),
+  pax_children: z.number().int().min(0).max(99).optional(),
+  children_ages: z.array(z.number().int().min(0).max(17)).max(20).optional(),
+  occupancy_label: z.string().max(120).nullable().optional(),
+  intro_html: z.string().max(20000).nullable().optional(),
+  important_html: z.string().max(20000).nullable().optional(),
+  closing_html: z.string().max(20000).nullable().optional(),
+  included: z.array(z.string().max(200)).max(40).optional(),
+  not_included: z.array(z.string().max(200)).max(40).optional(),
+  price_per_person_cents: z.number().int().min(0).nullable().optional(),
+  total_cents: z.number().int().min(0).optional(),
+  payment_conditions: z.array(z.object({ label: z.string().max(120).default(''), value: z.string().max(200).default('') })).max(10).optional(),
+  price_disclaimer: z.string().max(600).nullable().optional(),
+  validity_days: z.number().int().min(1).max(90).optional(),
+  operadora: z.string().max(160).nullable().optional(),
+  commission_total_cents: z.number().int().min(0).optional(),
+  lodgings: z.array(LodgingSchema).max(10).optional(),
+  flights: z.array(FlightSchema).max(20).optional(),
+  itinerary_days: z.array(DaySchema).max(30).optional(),
+  map_pins: z.array(PinSchema).max(30).optional(),
+})
+
+export type QuotationInput = z.infer<typeof QuotationSchema>
+
+export type QuotationFull = {
+  quotation: Record<string, any>
+  lodgings: Record<string, any>[]
+  flights: Record<string, any>[]
+  itinerary_days: Record<string, any>[]
+  map_pins: Record<string, any>[]
+  org_settings: Record<string, any> | null
+}
+
+/* ─────────── leitura completa (editor) ─────────── */
+export async function getQuotationFull(orgSlug: string, id: string): Promise<QuotationFull | null> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: q } = await supabase
+    .from('travel_proposals').select('*')
+    .eq('id', id).eq('organization_id', org.id).maybeSingle()
+  if (!q) return null
+
+  const [l, f, d, p, s] = await Promise.all([
+    supabase.from('quotation_lodgings').select('*').eq('quotation_id', id).order('sort_order'),
+    supabase.from('quotation_flights').select('*').eq('quotation_id', id).order('sort_order'),
+    supabase.from('quotation_itinerary_days').select('*').eq('quotation_id', id).order('sort_order'),
+    supabase.from('quotation_map_pins').select('*').eq('quotation_id', id),
+    supabase.from('org_settings').select('*').eq('org_id', org.id).maybeSingle(),
+  ])
+
+  return {
+    quotation: q,
+    lodgings: l.data ?? [],
+    flights: f.data ?? [],
+    itinerary_days: d.data ?? [],
+    map_pins: p.data ?? [],
+    org_settings: s.data ?? null,
+  }
+}
+
+/* ─────────── gravação (autosave) ─────────── */
+export async function saveQuotation(orgSlug: string, id: string, input: unknown) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const parsed = QuotationSchema.safeParse(input)
+  if (!parsed.success) return { ok: false as const, error: 'Dados inválidos: ' + parsed.error.issues[0]?.message }
+  const v = parsed.data
+
+  const supabase = createClient()
+  const { data: existing } = await supabase
+    .from('travel_proposals').select('id, public_token')
+    .eq('id', id).eq('organization_id', org.id).maybeSingle()
+  if (!existing) return { ok: false as const, error: 'Cotação não encontrada' }
+
+  const { lodgings, flights, itinerary_days, map_pins, ...parent } = v
+
+  const clean = (s?: string | null) => (s == null ? s : s === '' ? null : s)
+  const parentPatch: Record<string, any> = {
+    ...parent,
+    start_date: clean(parent.start_date as any),
+    end_date: clean(parent.end_date as any),
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error: upErr } = await supabase
+    .from('travel_proposals').update(parentPatch)
+    .eq('id', id).eq('organization_id', org.id)
+  if (upErr) return { ok: false as const, error: upErr.message }
+
+  // Filhas: substituição integral (listas pequenas; mantém sort_order simples).
+  async function replaceChildren(table: string, rows: Record<string, any>[] | undefined, withSort = true) {
+    if (rows === undefined) return null
+    const del = await supabase.from(table).delete().eq('quotation_id', id)
+    if (del.error) return del.error.message
+    if (rows.length === 0) return null
+    const ins = await supabase.from(table).insert(
+      rows.map((r, i) => ({
+        ...r,
+        quotation_id: id,
+        ...(withSort ? { sort_order: i } : {}),
+        check_in: clean(r.check_in), check_out: clean(r.check_out), date: clean(r.date),
+      })).map(r => Object.fromEntries(Object.entries(r).filter(([, val]) => val !== undefined))),
+    )
+    return ins.error?.message ?? null
+  }
+
+  const errs = [
+    await replaceChildren('quotation_lodgings', lodgings),
+    await replaceChildren('quotation_flights', flights),
+    await replaceChildren('quotation_itinerary_days', itinerary_days),
+    await replaceChildren('quotation_map_pins', map_pins, false),
+  ].filter(Boolean)
+  if (errs.length) return { ok: false as const, error: errs[0] as string }
+
+  if (existing.public_token) revalidateTag(`quotation:${existing.public_token}`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  return { ok: true as const }
+}
+
+/* ─────────── gerar/rotacionar link ─────────── */
+export async function generateQuotationLink(orgSlug: string, id: string, rotate = false) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+  const { data: q } = await supabase
+    .from('travel_proposals').select('id, public_token, status')
+    .eq('id', id).eq('organization_id', org.id).maybeSingle()
+  if (!q) return { ok: false as const, error: 'Cotação não encontrada' }
+
+  const oldToken = q.public_token
+  const token = rotate || !oldToken
+    ? Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => b.toString(16).padStart(2, '0')).join('')
+    : oldToken
+
+  const { error } = await supabase.from('travel_proposals').update({
+    public_token: token,
+    status: ['draft'].includes(q.status) ? 'sent' : q.status,
+    quoted_at: new Date().toISOString(),
+  }).eq('id', id)
+  if (error) return { ok: false as const, error: error.message }
+
+  if (oldToken && oldToken !== token) revalidateTag(`quotation:${oldToken}`)
+  revalidateTag(`quotation:${token}`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  return { ok: true as const, token }
+}
+
+/* ─────────── TripAdvisor (Content API, cacheado na montagem) ─────────── */
+export async function tripadvisorLookup(orgSlug: string, query: string) {
+  await requireAuth()
+  await getCurrentOrganization(orgSlug)
+
+  const key = process.env.TRIPADVISOR_API_KEY
+  if (!key) {
+    return { ok: false as const, error: 'TripAdvisor não configurado. Adicione TRIPADVISOR_API_KEY nas variáveis de ambiente.' }
+  }
+  const q = (query || '').trim()
+  if (!q) return { ok: false as const, error: 'Digite o nome do hotel' }
+
+  try {
+    const search = await fetch(
+      `https://api.content.tripadvisor.com/api/v1/location/search?key=${key}&searchQuery=${encodeURIComponent(q)}&category=hotels&language=pt`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' },
+    )
+    if (!search.ok) return { ok: false as const, error: `TripAdvisor indisponível (${search.status})` }
+    const sr = await search.json()
+    const loc = sr?.data?.[0]
+    if (!loc?.location_id) return { ok: false as const, error: 'Hotel não encontrado no TripAdvisor' }
+
+    const [detRes, photoRes] = await Promise.all([
+      fetch(`https://api.content.tripadvisor.com/api/v1/location/${loc.location_id}/details?key=${key}&language=pt&currency=BRL`,
+        { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+      fetch(`https://api.content.tripadvisor.com/api/v1/location/${loc.location_id}/photos?key=${key}&language=pt&limit=5`,
+        { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+    ])
+    const det = detRes.ok ? await detRes.json() : {}
+    const photos = photoRes.ok ? await photoRes.json() : {}
+
+    const data = {
+      rating: det.rating ? Number(det.rating) : undefined,
+      reviews_count: det.num_reviews ? Number(det.num_reviews) : undefined,
+      url: det.web_url || undefined,
+      photos: Array.isArray(photos?.data)
+        ? photos.data.map((p: any) => p?.images?.large?.url || p?.images?.original?.url).filter(Boolean)
+        : [],
+      lat: det.latitude ? Number(det.latitude) : undefined,
+      lng: det.longitude ? Number(det.longitude) : undefined,
+      address: det.address_obj?.address_string || undefined,
+    }
+    return {
+      ok: true as const,
+      location_id: String(loc.location_id),
+      name: det.name || loc.name || q,
+      data,
+    }
+  } catch {
+    return { ok: false as const, error: 'Erro ao consultar o TripAdvisor. Tente novamente.' }
+  }
+}

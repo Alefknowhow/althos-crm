@@ -1,12 +1,12 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
-import { getProposal, listLeadsForPicker } from '@/actions/travel-proposals'
-import ProposalBuilder from '@/components/features/proposals/ProposalBuilder'
+import { getQuotationFull } from '@/actions/quotations'
+import QuotationEditor from '@/components/features/quotations/QuotationEditor'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ProposalEditorPage({
+export default async function QuotationEditorPage({
   params,
 }: {
   params: { orgSlug: string; id: string }
@@ -15,10 +15,8 @@ export default async function ProposalEditorPage({
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
 
-  const proposal = await getProposal(params.orgSlug, params.id)
-  if (!proposal) notFound()
+  const full = await getQuotationFull(params.orgSlug, params.id)
+  if (!full) notFound()
 
-  const leads = await listLeadsForPicker(params.orgSlug)
-
-  return <ProposalBuilder orgSlug={params.orgSlug} initial={proposal} leads={leads} />
+  return <QuotationEditor orgSlug={params.orgSlug} initial={full} />
 }

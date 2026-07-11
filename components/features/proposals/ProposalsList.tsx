@@ -36,8 +36,10 @@ type Contato = { id: string; name: string }
 const STATUS: Record<string, { label: string; short: string; cls: string }> = {
   draft: { label: 'Rascunho', short: 'R', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
   sent: { label: 'Enviada', short: 'E', cls: 'bg-sky-100 text-sky-700 border-sky-200' },
-  accepted: { label: 'Aceita', short: 'A', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  rejected: { label: 'Recusada', short: '✕', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
+  viewed: { label: 'Visualizada', short: 'V', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  won: { label: 'Fechada', short: '✓', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  lost: { label: 'Perdida', short: '✕', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
+  expired: { label: 'Expirada', short: 'X', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
 }
 
 function fmtDate(d?: string | null) {
