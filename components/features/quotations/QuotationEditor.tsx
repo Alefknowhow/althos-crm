@@ -40,7 +40,18 @@ import {
 import { saveQuotation, generateQuotationLink, tripadvisorLookup, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
-import PublicQuotationView, { type PublicQuotation } from './PublicQuotationView'
+import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
+
+const INCLUDED_SUGGESTIONS = [
+  'Aéreo ida e volta', 'Bagagem (23kg)', 'Bagagem de mão (10kg)', 'Marcação de assentos',
+  'Taxas e impostos', 'Transfer aeroporto ⇄ hotel', 'Café da manhã', 'Seguro viagem',
+  'Hospedagem', 'Passeios mencionados', 'Assistência 24h',
+]
+const NOT_INCLUDED_SUGGESTIONS = [
+  'Bagagem despachada', 'Marcação de assentos', 'Taxas e impostos locais', 'Transfer',
+  'Passeios não citados', 'Refeições não mencionadas', 'Despesas pessoais', 'Seguro viagem',
+  'Gorjetas', 'Vistos e documentação',
+]
 
 /* ═════════════ helpers ═════════════ */
 let keySeq = 0
@@ -89,7 +100,8 @@ function RichField({ value, onChange, placeholder, minH = 120 }: {
       Placeholder.configure({ placeholder: placeholder || 'Escreva aqui…' }),
     ],
     content: value || '',
-    onUpdate({ editor }) { onChange(editor.getHTML()) },
+    // editor vazio persiste como '' (não '<p></p>') para o bloco sumir da entrega
+    onUpdate({ editor }) { onChange(editor.isEmpty ? '' : editor.getHTML()) },
     editorProps: {
       attributes: { class: `prose prose-sm dark:prose-invert max-w-none focus:outline-none px-3 py-2`, style: `min-height:${minH}px` },
     },
@@ -286,10 +298,30 @@ function EditBlock({ icon: Icon, title, children, action }: { icon: any; title: 
   )
 }
 
-/** Lista simples de strings (incluso / não incluso / itens do dia). */
-function StringList({ items, onChange, placeholder }: { items: string[]; onChange: (v: string[]) => void; placeholder: string }) {
+/** Lista simples de strings (incluso / não incluso / itens do dia).
+ *  `suggestions` vira chips clicáveis que adicionam/removem o item. */
+function StringList({ items, onChange, placeholder, suggestions }: {
+  items: string[]; onChange: (v: string[]) => void; placeholder: string; suggestions?: string[]
+}) {
   return (
     <div className="space-y-1.5">
+      {suggestions && suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1 pb-1">
+          {suggestions.map(s => {
+            const on = items.includes(s)
+            return (
+              <button key={s} type="button"
+                onClick={() => onChange(on ? items.filter(x => x !== s) : [...items, s])}
+                className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                  on ? 'bg-primary text-primary-foreground border-primary'
+                     : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'
+                }`}>
+                {on ? '✓ ' : '+ '}{s}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {items.map((it, i) => (
         <div key={i} className="flex gap-1.5">
           <Input value={it} placeholder={placeholder}
@@ -305,9 +337,41 @@ function StringList({ items, onChange, placeholder }: { items: string[]; onChang
   )
 }
 
+/** Seletor de franquias de bagagem: botões só com ícone + resumo textual. */
+function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const ICONS: Record<string, React.ReactNode> = {
+    item_pessoal: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5M8 10h8" /></svg>,
+    mao: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="6" y="7" width="12" height="14" rx="2" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3M10 11v6M14 11v6" /></svg>,
+    despachada: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 10v6M16 10v6M12 10v6" /></svg>,
+  }
+  const selected = BAGGAGE_OPTIONS.filter(o => value.includes(o.key))
+  return (
+    <div>
+      <div className="flex gap-1">
+        {BAGGAGE_OPTIONS.map(o => {
+          const on = value.includes(o.key)
+          return (
+            <button key={o.key} type="button" title={o.label}
+              onClick={() => onChange(on ? value.filter(k => k !== o.key) : [...value, o.key])}
+              className={`inline-flex items-center justify-center w-9 h-9 rounded-md border transition-colors ${
+                on ? 'bg-primary text-primary-foreground border-primary'
+                   : 'bg-background text-muted-foreground border-border hover:bg-muted'
+              }`}>
+              {ICONS[o.key]}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[11px] text-muted-foreground mt-1">
+        {selected.length > 0 ? `Inclui: ${selected.map(o => o.label).join(' · ')}` : 'Nenhuma franquia selecionada'}
+      </p>
+    </div>
+  )
+}
+
 /* ═════════════ estado do editor ═════════════ */
 type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any }
-type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null }
+type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
 type Day = { _key: string; day_label: string; date?: string | null; title: string; items: string[] }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
@@ -315,13 +379,16 @@ const STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho', sent: 'Enviada', viewed: 'Visualizada', won: 'Fechada', lost: 'Perdida', expired: 'Expirada',
 }
 
-export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string; initial: QuotationFull }) {
+export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
+  orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string }[]
+}) {
   const router = useRouter()
   const q0 = initial.quotation
 
   const [q, setQ] = useState(() => ({
     title: q0.title || '', subtitle: q0.subtitle || '',
     status: (q0.status || 'draft') as string,
+    contato_id: (q0.contato_id || null) as string | null,
     client_name: q0.client_name || '', client_whatsapp: q0.client_whatsapp || '',
     cover_image_url: q0.cover_image_url || null as string | null,
     origin_label: q0.origin_label || '', origin_note: q0.origin_note || '',
@@ -331,6 +398,7 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
     children_ages: (q0.children_ages || []) as number[],
     occupancy_label: q0.occupancy_label || '',
     intro_html: q0.intro_html || '', important_html: q0.important_html || '', closing_html: q0.closing_html || '',
+    cancellation_html: q0.cancellation_html || '',
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
@@ -349,6 +417,7 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
     leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: f.from_city,
     to_code: f.to_code, to_city: f.to_city, airline: f.airline, date: f.date,
     duration_label: f.duration_label, stopover_label: f.stopover_label,
+    baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
   }))) as Flight[])
   const [days, setDays] = useState<Day[]>(() => withKeys(initial.itinerary_days.map(d => ({
     day_label: d.day_label || '', date: d.date, title: d.title || '', items: (d.items || []) as string[],
@@ -378,6 +447,7 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
   /* ─────── payload + autosave ─────── */
   const payload = useMemo(() => ({
     title: q.title || null, subtitle: q.subtitle || null, status: q.status as any,
+    contato_id: q.contato_id,
     client_name: q.client_name || null, client_whatsapp: q.client_whatsapp || null,
     cover_image_url: q.cover_image_url || null,
     origin_label: q.origin_label || null, origin_note: q.origin_note || null,
@@ -386,13 +456,14 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
     pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
     occupancy_label: q.occupancy_label || null,
     intro_html: q.intro_html || null, important_html: q.important_html || null, closing_html: q.closing_html || null,
+    cancellation_html: q.cancellation_html || null,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
     price_disclaimer: q.price_disclaimer || null, validity_days: q.validity_days,
     operadora: q.operadora || null, commission_total_cents: q.commission_total_cents,
     lodgings: lodgings.map(({ _key, ...l }) => l),
-    flights: flights.map(({ _key, ...f }) => ({ ...f, leg_type: f.leg_type as any })),
+    flights: flights.map(({ _key, ...f }) => ({ ...f, leg_type: f.leg_type as any, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any })),
     itinerary_days: days.map(({ _key, ...d }) => ({ ...d, items: d.items.filter(Boolean) })),
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
   }), [q, lodgings, flights, days, pins])
@@ -422,6 +493,7 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
     pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
     occupancy_label: q.occupancy_label,
     intro_html: q.intro_html, important_html: q.important_html, closing_html: q.closing_html,
+    cancellation_html: q.cancellation_html,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions,
@@ -502,7 +574,22 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
       <EditBlock icon={ImageIcon} title="Capa">
         <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
         <F label="Subtítulo (H2)"><Input value={q.subtitle} onChange={e => setQ(s => ({ ...s, subtitle: e.target.value }))} placeholder="Ex.: All-inclusive no Caribe — sol, mar e descanso" /></F>
-        <F label="Nome do cliente"><Input value={q.client_name} onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" /></F>
+        <div className="grid grid-cols-2 gap-3">
+          <F label="Nome do cliente"><Input value={q.client_name} onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" /></F>
+          <F label="Vincular ao contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring)">
+            <Select value={q.contato_id || 'none'}
+              onValueChange={v => setQ(s => {
+                const lead = leads.find(l => l.id === v)
+                return { ...s, contato_id: v === 'none' ? null : v, client_name: s.client_name || lead?.name || '' }
+              })}>
+              <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem vínculo</SelectItem>
+                {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </F>
+        </div>
         <F label="Imagem de capa"><CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))} /></F>
       </EditBlock>
 
@@ -603,7 +690,7 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
       {/* AÉREO */}
       <EditBlock icon={Plane} title="Aéreo"
         action={<Button type="button" variant="outline" size="sm"
-          onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound' }])}>
+          onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [] }])}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
         </Button>}>
         {flights.length === 0 && <p className="text-sm text-muted-foreground">Nenhum trecho aéreo.</p>}
@@ -634,6 +721,22 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
               <div className="flex-1"><F label="Escala / observação"><Input placeholder="via Panamá (PTY)" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F></div>
               <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"
                 onClick={() => setFlights(fs => fs.filter(x => x._key !== f._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 items-start">
+              <F label="Bagagens incluídas">
+                <BaggagePicker value={f.baggage}
+                  onChange={b => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, baggage: b } : x))} />
+              </F>
+              <F label="Classe">
+                <Select value={f.cabin_class || 'none'}
+                  onValueChange={v => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, cabin_class: v === 'none' ? null : v } : x))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não exibir</SelectItem>
+                    {Object.entries(CABIN_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
             </div>
           </>
         )} />
@@ -709,9 +812,15 @@ export default function QuotationEditor({ orgSlug, initial }: { orgSlug: string;
       {/* O QUE INCLUI */}
       <EditBlock icon={CheckCircle2} title="O que inclui">
         <div className="grid sm:grid-cols-2 gap-4">
-          <F label="Incluso"><StringList items={q.included} placeholder="Passagem aérea ida e volta" onChange={v => setQ(s => ({ ...s, included: v }))} /></F>
-          <F label="Não incluso"><StringList items={q.not_included} placeholder="Seguro viagem" onChange={v => setQ(s => ({ ...s, not_included: v }))} /></F>
+          <F label="Incluso"><StringList items={q.included} placeholder="Passagem aérea ida e volta" suggestions={INCLUDED_SUGGESTIONS} onChange={v => setQ(s => ({ ...s, included: v }))} /></F>
+          <F label="Não incluso"><StringList items={q.not_included} placeholder="Seguro viagem" suggestions={NOT_INCLUDED_SUGGESTIONS} onChange={v => setQ(s => ({ ...s, not_included: v }))} /></F>
         </div>
+      </EditBlock>
+
+      {/* POLÍTICAS DE CANCELAMENTO */}
+      <EditBlock icon={AlertTriangle} title="Políticas de cancelamento">
+        <RichField value={q.cancellation_html} onChange={html => setQ(s => ({ ...s, cancellation_html: html }))}
+          placeholder="Condições de alteração, cancelamento e reembolso — escreva do jeito que preferir…" />
       </EditBlock>
 
       {/* INVESTIMENTO */}

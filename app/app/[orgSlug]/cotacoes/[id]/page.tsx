@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
 import { getQuotationFull } from '@/actions/quotations'
+import { listLeadsForPicker } from '@/actions/travel-proposals'
 import QuotationEditor from '@/components/features/quotations/QuotationEditor'
 
 export const dynamic = 'force-dynamic'
@@ -18,5 +19,7 @@ export default async function QuotationEditorPage({
   const full = await getQuotationFull(params.orgSlug, params.id)
   if (!full) notFound()
 
-  return <QuotationEditor orgSlug={params.orgSlug} initial={full} />
+  const leads = await listLeadsForPicker(params.orgSlug)
+
+  return <QuotationEditor orgSlug={params.orgSlug} initial={full} leads={leads} />
 }

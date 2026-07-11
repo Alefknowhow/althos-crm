@@ -62,6 +62,8 @@ export type QuotationFlight = {
   date?: string | null
   duration_label?: string | null
   stopover_label?: string | null
+  baggage?: string[]
+  cabin_class?: string | null
 }
 
 export type QuotationDay = {
@@ -94,6 +96,7 @@ export type PublicQuotation = {
   intro_html?: string | null
   important_html?: string | null
   closing_html?: string | null
+  cancellation_html?: string | null
   included?: string[]
   not_included?: string[]
   price_per_person_cents?: number | null
@@ -146,6 +149,21 @@ const PIN_COLORS: Record<string, string> = {
 }
 const LEG_LABELS: Record<string, string> = { outbound: 'Ida', inbound: 'Volta', connection: 'Conexão' }
 
+export const BAGGAGE_OPTIONS = [
+  { key: 'item_pessoal', label: 'Item pessoal (mochila)' },
+  { key: 'mao', label: 'Bagagem de mão (10 kg)' },
+  { key: 'despachada', label: 'Bagagem despachada (23 kg)' },
+] as const
+export const CABIN_LABELS: Record<string, string> = {
+  economica: 'Econômica', premium: 'Premium Economy', executiva: 'Executiva', primeira: 'Primeira Classe',
+}
+
+/** HTML "vazio" do editor (ex.: <p></p>) não conta como conteúdo. */
+function hasHtml(html?: string | null): boolean {
+  if (!html) return false
+  return html.replace(/<[^>]*>/g, '').trim() !== '' || /<img/i.test(html)
+}
+
 /** HTML rico do agente, sanitizado no cliente antes de renderizar. */
 function Rich({ html, className }: { html?: string | null; className?: string }) {
   const [clean, setClean] = useState('')
@@ -170,6 +188,12 @@ const IcWa = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1
 const IcChat = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2Z" /></svg>
 const IcIg = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
 const IcImg = () => <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+const IcBackpack = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5M8 10h8" /></svg>
+const IcCarryon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="6" y="7" width="12" height="14" rx="2" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3M10 11v6M14 11v6" /></svg>
+const IcSuitcase = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 10v6M16 10v6M12 10v6" /></svg>
+const BAGGAGE_ICONS: Record<string, () => JSX.Element> = {
+  item_pessoal: IcBackpack, mao: IcCarryon, despachada: IcSuitcase,
+}
 
 /* ─────────────────────── imagem com fade + fallback ─────────────────────── */
 function LazyImg({ src, alt = '', className }: { src?: string | null; alt?: string; className?: string }) {
@@ -233,7 +257,9 @@ function Block({
         <span className="bt"><h3>{title}</h3>{sub && <div className="sub">{sub}</div>}</span>
         <IcChev />
       </button>
-      <div className="block-body" ref={bodyRef} style={{ maxHeight: maxH === 'none' ? undefined : maxH, overflow: maxH === 'none' ? 'visible' : undefined }}>
+      {/* maxHeight 'none' precisa ir explícito no inline style — se cair no
+          CSS base (max-height:0) o bloco recolhe sozinho depois de abrir */}
+      <div className="block-body" ref={bodyRef} style={{ maxHeight: maxH, overflow: maxH === 'none' ? 'visible' : undefined }}>
         <div className="block-inner">{children}</div>
       </div>
     </section>
@@ -479,12 +505,10 @@ export default function PublicQuotationView({
           </div>
         </section>
 
-        {/* ───── INTRO ───── */}
-        {(data.intro_html || preview) && (
+        {/* ───── INTRO (só quando tem conteúdo real) ───── */}
+        {hasHtml(data.intro_html) && (
           <section className="intro reveal">
-            {data.intro_html
-              ? <Rich html={data.intro_html} />
-              : <p style={{ color: 'var(--muted)' }}>{AC} — escreva a introdução no editor.</p>}
+            <Rich html={data.intro_html} />
             <div className="sig">
               <span>{org.legal_name || ''}</span>
             </div>
@@ -515,7 +539,7 @@ export default function PublicQuotationView({
                     {l.room_category && <span className="pill gold">{l.room_category}</span>}
                     {l.board && <span className="pill">{l.board}</span>}
                   </div>
-                  <Rich html={l.description_html} />
+                  {hasHtml(l.description_html) && <Rich html={l.description_html} />}
                   {(l.photos || []).length > 0 && (
                     <div className="gallery">
                       {(l.photos || []).slice(0, 5).map((src, k) => (
@@ -536,21 +560,36 @@ export default function PublicQuotationView({
         {flights.length > 0 && (
           <Block num={num()} title="Aéreo"
             sub={flights.some(f => f.leg_type === 'inbound') ? 'Ida e volta' : 'Trechos da viagem'}>
-            {flights.map((f, i) => (
-              <div className="flight" key={f.id || i}>
-                <div className="tag">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</div>
-                <div className="route">
-                  <div className="ap"><div className="code">{f.from_code || '—'}</div><div className="city">{f.from_city || ''}</div></div>
-                  <div className="path"><IcPlane /></div>
-                  <div className="ap"><div className="code">{f.to_code || '—'}</div><div className="city">{f.to_city || ''}</div></div>
+            {flights.map((f, i) => {
+              const bags = (f.baggage || []).filter(k => BAGGAGE_ICONS[k])
+              return (
+                <div className="flight-wrap" key={f.id || i}>
+                  <div className="flight">
+                    <div className="tag">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</div>
+                    <div className="route">
+                      <div className="ap"><div className="code">{f.from_code || '—'}</div><div className="city">{f.from_city || ''}</div></div>
+                      <div className="path"><IcPlane /></div>
+                      <div className="ap"><div className="code">{f.to_code || '—'}</div><div className="city">{f.to_city || ''}</div></div>
+                    </div>
+                    <div className="det">
+                      {f.airline && <b>{f.airline}</b>}
+                      {[fmtDayMonth(f.date), f.stopover_label].filter(Boolean).join(' · ')}
+                      {f.duration_label && <><br />{f.duration_label}</>}
+                    </div>
+                  </div>
+                  {(bags.length > 0 || f.cabin_class) && (
+                    <div className="flight-extra">
+                      {f.cabin_class && <span className="pill gold">{CABIN_LABELS[f.cabin_class] || f.cabin_class}</span>}
+                      {bags.map(k => {
+                        const Ic = BAGGAGE_ICONS[k]
+                        const opt = BAGGAGE_OPTIONS.find(o => o.key === k)
+                        return <span key={k} className="bag"><Ic />{opt?.label}</span>
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className="det">
-                  {f.airline && <b>{f.airline}</b>}
-                  {[fmtDayMonth(f.date), f.stopover_label].filter(Boolean).join(' · ')}
-                  {f.duration_label && <><br />{f.duration_label}</>}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </Block>
         )}
 
@@ -586,7 +625,7 @@ export default function PublicQuotationView({
         )}
 
         {/* ───── IMPORTANTE ───── */}
-        {data.important_html && (
+        {hasHtml(data.important_html) && (
           <Block num={num()} title="Importante" sub="Antes de fechar, leia com atenção">
             <Rich html={data.important_html} className="important" />
           </Block>
@@ -609,6 +648,13 @@ export default function PublicQuotationView({
                 </div>
               )}
             </div>
+          </Block>
+        )}
+
+        {/* ───── POLÍTICAS DE CANCELAMENTO ───── */}
+        {hasHtml(data.cancellation_html) && (
+          <Block num={num()} title="Políticas de cancelamento" sub="Condições de alteração, cancelamento e reembolso">
+            <Rich html={data.cancellation_html} className="important" />
           </Block>
         )}
 
@@ -643,7 +689,7 @@ export default function PublicQuotationView({
 
         {/* ───── FECHAMENTO + CTA ───── */}
         <section className="closing reveal">
-          {data.closing_html
+          {hasHtml(data.closing_html)
             ? <Rich html={data.closing_html} className="closing-rich" />
             : <>
               <h3>Vamos garantir essa viagem?</h3>
@@ -777,7 +823,12 @@ const CSS = `
 .alq .hero::after{content:"";position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(11,27,43,.15) 0%,rgba(11,27,43,.05) 40%,rgba(11,27,43,.82) 100%)}
 .alq .hero-inner{position:relative;z-index:2;color:#fff;padding:0 20px 56px;max-width:860px;margin:0 auto;width:100%}
-.alq .hero .eyebrow{color:var(--gold-soft)}
+/* Etiqueta com fundo escuro translúcido: o nome do cliente precisa de
+   contraste garantido sobre qualquer foto de capa */
+.alq .hero .eyebrow{display:inline-block;color:var(--gold-soft);
+  background:rgba(11,27,43,.55);backdrop-filter:blur(8px);
+  border:1px solid rgba(205,169,104,.35);border-radius:999px;
+  padding:7px 16px;text-shadow:none}
 .alq .hero h1{color:#fff;font-size:clamp(34px,6vw,58px);line-height:1.05;margin:14px 0 10px;max-width:15ch;
   text-shadow:0 2px 30px rgba(0,0,0,.25)}
 .alq .hero h2{color:rgba(255,255,255,.86);font-style:italic;font-size:clamp(17px,2.6vw,22px);font-weight:400}
@@ -860,7 +911,12 @@ const CSS = `
 .alq .route .path svg{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;color:var(--sea)}
 .alq .flight .det{text-align:right;font-size:12.5px;color:var(--muted);min-width:120px}
 .alq .flight .det b{color:var(--ink);font-weight:600;display:block;font-size:13.5px}
-@media(max-width:560px){.alq .flight{flex-wrap:wrap}.alq .flight .det{text-align:left;width:100%}}
+.alq .flight-wrap+.flight-wrap{border-top:1px solid var(--line)}
+.alq .flight-wrap .flight+.flight{border-top:0}
+.alq .flight-extra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:0 0 14px 70px;margin-top:-4px}
+.alq .flight-extra .bag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5a5140}
+.alq .flight-extra .bag svg{width:15px;height:15px;color:var(--gold)}
+@media(max-width:560px){.alq .flight{flex-wrap:wrap}.alq .flight .det{text-align:left;width:100%}.alq .flight-extra{padding-left:0}}
 
 /* Mapa */
 .alq .alq-map{height:360px;border-radius:12px;z-index:0;border:1px solid var(--line);background:#eef0ec}
