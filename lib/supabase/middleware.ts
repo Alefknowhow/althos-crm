@@ -44,7 +44,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname.startsWith('/v/')       ||  // public vitrine / ofertas (sem login)
     pathname.startsWith('/docs/')    ||  // documentation
     pathname.startsWith('/api/webhooks/') ||  // webhook receivers (self-authenticate)
-    pathname.startsWith('/api/inngest')        // Inngest event API
+    pathname.startsWith('/api/inngest')    ||  // Inngest event API
+    pathname.startsWith('/api/track/')         // tracking da proposta pública (sem login)
   ) {
     return 'public'
   }
