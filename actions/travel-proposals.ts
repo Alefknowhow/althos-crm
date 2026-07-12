@@ -243,16 +243,16 @@ export async function listProposalsForLead(orgSlug: string, leadId: string): Pro
 }
 
 // Lightweight lead list for the proposal → pipeline link picker.
-export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string; name: string }[]> {
+export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string; name: string; phone: string | null }[]> {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')
-    .select('id, name')
+    .select('id, name, phone')
     .eq('organization_id', org.id)
     .order('updated_at', { ascending: false })
     .limit(500)
-  return (data as { id: string; name: string }[]) ?? []
+  return (data as { id: string; name: string; phone: string | null }[]) ?? []
 }
 
 /**

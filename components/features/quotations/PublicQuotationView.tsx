@@ -97,6 +97,7 @@ export type PublicQuotation = {
   important_html?: string | null
   closing_html?: string | null
   cancellation_html?: string | null
+  itinerary_html?: string | null
   included?: string[]
   not_included?: string[]
   price_per_person_cents?: number | null
@@ -606,7 +607,11 @@ export default function PublicQuotationView({
         )}
 
         {/* ───── ITINERÁRIO ───── */}
-        {days.length > 0 && (
+        {hasHtml(data.itinerary_html) ? (
+          <Block num={num()} title="Itinerário" sub="Roteiro da viagem">
+            <Rich html={data.itinerary_html} className="rich-body" />
+          </Block>
+        ) : days.length > 0 ? (
           <Block num={num()} title="Itinerário" sub="Dia a dia sugerido">
             <div className="timeline">
               {days.map((day, i) => (
@@ -622,7 +627,7 @@ export default function PublicQuotationView({
               ))}
             </div>
           </Block>
-        )}
+        ) : null}
 
         {/* ───── IMPORTANTE ───── */}
         {hasHtml(data.important_html) && (
@@ -935,6 +940,18 @@ const CSS = `
 .alq .map-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12.5px;color:var(--muted)}
 .alq .map-legend span{display:inline-flex;align-items:center;gap:6px}
 .alq .dot{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
+
+/* Itinerário em HTML rico (respeita fontes/cores/imagens do editor) */
+.alq .rich-body{font-size:15px;line-height:1.7;color:#39424d}
+.alq .rich-body h1{font-family:'Lora',serif;font-size:24px;color:var(--navy);margin:6px 0 10px}
+.alq .rich-body h2{font-family:'Lora',serif;font-size:20px;color:var(--navy);margin:6px 0 8px}
+.alq .rich-body h3{font-family:'Lora',serif;font-size:17px;color:var(--navy);margin:6px 0 6px}
+.alq .rich-body p{margin:0 0 12px}
+.alq .rich-body img{max-width:100%;height:auto;border-radius:12px;margin:10px 0}
+.alq .rich-body ul,.alq .rich-body ol{margin:0 0 12px;padding-left:22px}
+.alq .rich-body li{margin:4px 0}
+.alq .rich-body a{color:var(--sea);text-decoration:underline}
+.alq .rich-body hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 
 /* Itinerário */
 .alq .timeline{position:relative;padding-left:26px}

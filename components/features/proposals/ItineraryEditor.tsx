@@ -6,7 +6,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
-import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style'
+import { TextStyle, FontFamily, FontSize, Color } from '@tiptap/extension-text-style'
 import { toast } from 'sonner'
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
@@ -73,7 +73,7 @@ export default function ItineraryEditor({
       Image.configure({ HTMLAttributes: { style: 'max-width: 100%; height: auto;' } }),
       Placeholder.configure({ placeholder: 'Escreva o roteiro dia a dia… Cole ou arraste imagens direto aqui.' }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle, FontFamily, FontSize,
+      TextStyle, FontFamily, FontSize, Color,
     ],
     content: value || '',
     onUpdate({ editor }) { onChange(editor.getHTML()) },
@@ -107,6 +107,7 @@ export default function ItineraryEditor({
 
   const currentFont = editor.getAttributes('textStyle').fontFamily || ''
   const currentSize = editor.getAttributes('textStyle').fontSize || ''
+  const currentColor = editor.getAttributes('textStyle').color || '#1c2530'
 
   return (
     <div className="border rounded-md bg-background">
@@ -149,6 +150,16 @@ export default function ItineraryEditor({
         <TB title="Itálico (Ctrl+I)" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-4 h-4" /></TB>
         <TB title="Sublinhado (Ctrl+U)" active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}><UnderlineIcon className="w-4 h-4" /></TB>
         <TB title="Tachado" active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()}><Strikethrough className="w-4 h-4" /></TB>
+
+        {/* Cor do texto */}
+        <label title="Cor do texto" className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted cursor-pointer relative">
+          <span className="text-[13px] font-bold" style={{ color: currentColor }}>A</span>
+          <span className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded" style={{ background: currentColor }} />
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(currentColor) ? currentColor : '#1c2530'}
+            onChange={e => editor.chain().focus().setColor(e.target.value).run()}
+            className="absolute inset-0 opacity-0 cursor-pointer" />
+        </label>
+        <TB title="Remover cor" onClick={() => editor.chain().focus().unsetColor().run()}><span className="text-[11px] text-muted-foreground">A✕</span></TB>
 
         <div className="w-px h-5 bg-border mx-1" />
 

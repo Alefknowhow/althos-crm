@@ -41,6 +41,7 @@ import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFrom
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
+import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
 
 const INCLUDED_SUGGESTIONS = [
   'Aéreo ida e volta', 'Bagagem (23kg)', 'Bagagem de mão (10kg)', 'Marcação de assentos',
@@ -372,7 +373,6 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
 /* ═════════════ estado do editor ═════════════ */
 type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any }
 type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
-type Day = { _key: string; day_label: string; date?: string | null; title: string; items: string[] }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -380,7 +380,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
-  orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string }[]
+  orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]
 }) {
   const router = useRouter()
   const q0 = initial.quotation
@@ -399,6 +399,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     occupancy_label: q0.occupancy_label || '',
     intro_html: q0.intro_html || '', important_html: q0.important_html || '', closing_html: q0.closing_html || '',
     cancellation_html: q0.cancellation_html || '',
+    itinerary_html: q0.itinerary_html || '',
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
@@ -419,9 +420,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     duration_label: f.duration_label, stopover_label: f.stopover_label,
     baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
   }))) as Flight[])
-  const [days, setDays] = useState<Day[]>(() => withKeys(initial.itinerary_days.map(d => ({
-    day_label: d.day_label || '', date: d.date, title: d.title || '', items: (d.items || []) as string[],
-  }))) as Day[])
   const [pins, setPins] = useState<Pin[]>(() => withKeys(initial.map_pins.map(p => ({
     label: p.label || '', type: p.type || 'attraction', lat: p.lat, lng: p.lng,
   }))) as Pin[])
@@ -458,6 +456,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     occupancy_label: q.occupancy_label || null,
     intro_html: q.intro_html || null, important_html: q.important_html || null, closing_html: q.closing_html || null,
     cancellation_html: q.cancellation_html || null,
+    itinerary_html: q.itinerary_html || null,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
@@ -465,9 +464,8 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     operadora: q.operadora || null, commission_total_cents: q.commission_total_cents,
     lodgings: lodgings.map(({ _key, ...l }) => l),
     flights: flights.map(({ _key, ...f }) => ({ ...f, leg_type: f.leg_type as any, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any })),
-    itinerary_days: days.map(({ _key, ...d }) => ({ ...d, items: d.items.filter(Boolean) })),
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
-  }), [q, lodgings, flights, days, pins])
+  }), [q, lodgings, flights, pins])
 
   const firstRun = useRef(true)
   const payloadJson = JSON.stringify(payload)
@@ -494,7 +492,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
     occupancy_label: q.occupancy_label,
     intro_html: q.intro_html, important_html: q.important_html, closing_html: q.closing_html,
-    cancellation_html: q.cancellation_html,
+    cancellation_html: q.cancellation_html, itinerary_html: q.itinerary_html,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions,
@@ -502,7 +500,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     validity_days: q.validity_days,
     lodgings: lodgings.map(l => ({ ...l })),
     flights: flights.map(f => ({ ...f })),
-    itinerary_days: days.map(d => ({ ...d })),
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type, lat: p.lat!, lng: p.lng! })),
     org: {
       legal_name: initial.org_settings?.legal_name, brand_logo_url: initial.org_settings?.brand_logo_url,
@@ -511,9 +508,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
       privacy_url: initial.org_settings?.privacy_url, whatsapp_number: initial.org_settings?.whatsapp_number,
       city_state: initial.org_settings?.city_state, cnpj: initial.org_settings?.cnpj,
     },
-  }), [q, lodgings, flights, days, pins, q0, initial.org_settings])
+  }), [q, lodgings, flights, pins, q0, initial.org_settings])
   // preview remonta quando dados estruturais mudam (mapa/accordion medem o DOM)
-  const previewKey = useMemo(() => payloadJson.length + ':' + lodgings.length + ':' + flights.length + ':' + days.length, [payloadJson, lodgings, flights, days])
+  const previewKey = useMemo(() => payloadJson.length + ':' + lodgings.length + ':' + flights.length, [payloadJson, lodgings, flights])
 
   /* ─────── ações ─────── */
   const missing: string[] = []
@@ -534,6 +531,32 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
       catch { toast.success('Link gerado') }
       router.refresh()
     } else toast.error(res.error)
+  }
+
+  async function onSendToClient() {
+    // Garante que o link existe (gera na hora, sem rotacionar).
+    let token = publicToken
+    if (!token) {
+      const res = await generateQuotationLink(orgSlug, q0.id, false)
+      if (!res.ok) { toast.error(res.error); return }
+      token = res.token
+      setPublicToken(token)
+      setQ(s => ({ ...s, status: s.status === 'draft' ? 'sent' : s.status }))
+    }
+    const url = `${window.location.origin}/p/${token}`
+    const lead = leads.find(l => l.id === q.contato_id)
+    const digits = (lead?.phone || '').replace(/\D/g, '')
+    const firstName = (q.client_name || lead?.name || '').trim().split(/\s+/)[0]
+    const msg = `Oi${firstName ? ` ${firstName}` : ''}! Preparei sua proposta de viagem${q.title ? ` — ${q.title}` : ''}. Dá uma olhada com carinho: ${url}`
+    if (digits) {
+      const wa = digits.length <= 11 ? `55${digits}` : digits
+      window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+    } else {
+      // Sem telefone no contato: abre o WhatsApp sem destinatário (escolhe na hora)
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+      if (q.contato_id) toast.info('O contato vinculado não tem telefone — escolha o destinatário no WhatsApp.')
+      else toast.info('Nenhum contato vinculado — escolha o destinatário no WhatsApp.')
+    }
   }
 
   async function onGenerateSale() {
@@ -790,30 +813,14 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
         ))}
       </EditBlock>
 
-      {/* ITINERÁRIO */}
-      <EditBlock icon={Route} title="Itinerário"
-        action={<Button type="button" variant="outline" size="sm"
-          onClick={() => setDays(ds => [...ds, { _key: nk(), day_label: `Dia ${ds.length + 1}`, title: '', items: [] }])}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Dia
-        </Button>}>
-        {days.length === 0 && <p className="text-sm text-muted-foreground">Nenhum dia no itinerário.</p>}
-        <SortableList items={days} onReorder={setDays} render={(d) => (
-          <>
-            <div className="grid grid-cols-3 gap-2">
-              <F label="Rótulo"><Input placeholder="Dia 1" value={d.day_label} onChange={e => setDays(ds => ds.map(x => x._key === d._key ? { ...x, day_label: e.target.value } : x))} /></F>
-              <F label="Data"><Input type="date" value={d.date || ''} onChange={e => setDays(ds => ds.map(x => x._key === d._key ? { ...x, date: e.target.value } : x))} /></F>
-              <div className="flex items-end justify-end">
-                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"
-                  onClick={() => setDays(ds => ds.filter(x => x._key !== d._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
-              </div>
-            </div>
-            <F label="Título do dia"><Input placeholder="Chegada e check-in" value={d.title} onChange={e => setDays(ds => ds.map(x => x._key === d._key ? { ...x, title: e.target.value } : x))} /></F>
-            <F label="Itens">
-              <StringList items={d.items} placeholder="🚐 Transfer privativo ao resort"
-                onChange={items => setDays(ds => ds.map(x => x._key === d._key ? { ...x, items } : x))} />
-            </F>
-          </>
-        )} />
+      {/* ITINERÁRIO — texto livre rico (fonte, cor, imagens) */}
+      <EditBlock icon={Route} title="Itinerário">
+        <p className="text-[11px] text-muted-foreground">
+          Escreva o roteiro do jeito que preferir. Formate a letra (fonte, tamanho, cor),
+          e insira imagens pelo botão, colando (Ctrl+V) ou arrastando para o texto.
+        </p>
+        <ItineraryEditor orgSlug={orgSlug} value={q.itinerary_html}
+          onChange={html => setQ(s => ({ ...s, itinerary_html: html }))} />
       </EditBlock>
 
       {/* IMPORTANTE */}
@@ -923,11 +930,16 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Abrir</span></a>
             </Button>
+            <Button type="button" size="sm" className="bg-[#25D366] hover:bg-[#1eb959] text-[#0a3d22]" onClick={onSendToClient}>
+              <MessageCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Enviar ao cliente</span>
+            </Button>
           </>
         )}
-        <Button type="button" size="sm" onClick={() => onGenerateLink(false)}>
-          <Link2 className="w-3.5 h-3.5 mr-1" /> {publicToken ? 'Reenviar' : 'Gerar link'}
-        </Button>
+        {!publicToken && (
+          <Button type="button" size="sm" onClick={() => onGenerateLink(false)}>
+            <Link2 className="w-3.5 h-3.5 mr-1" /> Gerar link
+          </Button>
+        )}
         <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
           {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
           <span className="hidden sm:inline">Gerar venda</span>

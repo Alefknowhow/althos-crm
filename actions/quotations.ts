@@ -76,6 +76,7 @@ const QuotationSchema = z.object({
   important_html: z.string().max(20000).nullable().optional(),
   closing_html: z.string().max(20000).nullable().optional(),
   cancellation_html: z.string().max(20000).nullable().optional(),
+  itinerary_html: z.string().max(60000).nullable().optional(),
   included: z.array(z.string().max(200)).max(40).optional(),
   not_included: z.array(z.string().max(200)).max(40).optional(),
   price_per_person_cents: z.number().int().min(0).nullable().optional(),
