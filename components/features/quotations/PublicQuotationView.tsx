@@ -782,6 +782,17 @@ export default function PublicQuotationView({
           </div>
         )
       })()}
+
+      {/* ───── Botão flutuante de WhatsApp ───── */}
+      {waNumber && (
+        <a className="wa-fab no-print" target="_blank" rel="noopener noreferrer"
+          onClick={() => trackCta('duvidas')}
+          href={waHref(`Oi! Vim pela proposta "${data.title || 'de viagem'}" e gostaria de falar com vocês.`)}
+          aria-label="Falar no WhatsApp">
+          <IcWa />
+          <span className="wa-fab-lbl">Falar no WhatsApp</span>
+        </a>
+      )}
     </div>
   )
 }
@@ -1085,6 +1096,19 @@ const CSS = `
   .alq .closing h3,.alq .closing-rich h1,.alq .closing-rich h2,.alq .closing-rich h3{font-size:21px}
   .alq .closing p,.alq .closing-rich p{font-size:14.5px}
   .alq .btn{padding:13px 22px;font-size:14px}
+}
+
+/* Botão flutuante de WhatsApp */
+.alq .wa-fab{position:fixed;z-index:900;right:20px;bottom:20px;display:inline-flex;align-items:center;gap:10px;
+  height:56px;padding:0 20px 0 16px;border-radius:999px;background:#25D366;color:#0a3d22;text-decoration:none;
+  font-weight:700;font-size:15px;box-shadow:0 10px 28px rgba(37,211,102,.42);
+  transition:transform .18s ease,box-shadow .18s ease}
+.alq .wa-fab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(37,211,102,.5)}
+.alq .wa-fab svg{width:26px;height:26px;flex:none}
+.alq .wa-fab-lbl{white-space:nowrap}
+@media(max-width:560px){
+  .alq .wa-fab{right:16px;bottom:16px;height:52px;padding:0 16px 0 14px;font-size:14px}
+  .alq .wa-fab svg{width:24px;height:24px}
 }
 
 /* Print */
