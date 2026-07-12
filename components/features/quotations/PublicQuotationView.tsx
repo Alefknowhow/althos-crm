@@ -848,10 +848,11 @@ const CSS = `
 .alq .fact{background:var(--paper);border-radius:var(--radius);padding:22px 20px;box-shadow:var(--shadow);
   border-top:3px solid var(--gold)}
 .alq .fact .ic{width:26px;height:26px;color:var(--sea);margin-bottom:10px}
-.alq .fact .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.alq .fact .v{font-family:'Lora',serif;font-size:20px;margin-top:4px;line-height:1.2}
-.alq .fact .v small{display:block;font-family:'Inter';font-size:12.5px;color:var(--muted);font-weight:500;margin-top:3px;letter-spacing:normal}
-@media(max-width:640px){.alq .facts{grid-template-columns:1fr;gap:12px;margin-top:-30px}}
+.alq .fact .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700}
+/* valor em navy quase-preto: máximo contraste contra a etiqueta dourada */
+.alq .fact .v{font-family:'Lora',serif;font-size:20px;margin-top:4px;line-height:1.2;color:var(--navy);font-weight:600}
+.alq .fact .v small{display:block;font-family:'Inter';font-size:12.5px;color:#4a5560;font-weight:500;margin-top:3px;letter-spacing:normal}
+@media(max-width:640px){.alq .facts{grid-template-columns:1fr;gap:10px;margin-top:-28px}}
 
 /* INTRO */
 .alq .intro{background:var(--paper);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -1030,6 +1031,61 @@ const CSS = `
   padding:44px 38px;max-width:520px;text-align:center}
 .alq .expired-card h1{font-size:28px;color:var(--navy);margin:12px 0 12px}
 .alq .expired-card p{color:#39424d;margin:0 0 24px}
+
+/* ─────── Mobile: letras menores, espaços mais justos ─────── */
+@media(max-width:560px){
+  .alq{line-height:1.5}
+  .alq .wrap{padding:0 14px}
+  /* hero mais baixo e títulos compactos */
+  .alq .hero{min-height:62vh}
+  .alq .hero-inner{padding:0 14px 32px}
+  .alq .hero h1{font-size:clamp(26px,7.5vw,34px);margin:10px 0 8px}
+  .alq .hero h2{font-size:15px}
+  .alq .hero .eyebrow{font-size:10.5px;letter-spacing:.14em;padding:5px 12px}
+  .alq .hero-meta{margin-top:9px;font-size:12px}
+  /* cards compactos: ícone à esquerda, texto à direita */
+  .alq .facts{margin-top:-22px}
+  .alq .fact{padding:13px 14px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;border-top-width:2px}
+  .alq .fact .ic{width:20px;height:20px;margin-bottom:0;grid-row:span 2}
+  .alq .fact .k{font-size:10px;letter-spacing:.12em}
+  .alq .fact .v{font-size:16px;margin-top:1px}
+  .alq .fact .v small{font-size:11.5px;margin-top:1px}
+  /* intro */
+  .alq .intro{padding:20px 16px;margin-top:16px}
+  .alq .intro p{font-size:14.5px;margin:0 0 10px}
+  .alq .intro .sig{font-size:13.5px}
+  /* blocos */
+  .alq .block{margin-top:12px}
+  .alq .block-head{padding:15px 16px;gap:10px}
+  .alq .block-head .num{width:20px;font-size:12.5px}
+  .alq .block-head h3{font-size:16.5px}
+  .alq .block-head .sub{font-size:11.5px}
+  .alq .block-inner{padding:0 16px 18px}
+  /* hospedagem */
+  .alq .lodge .name{font-size:18px}
+  .alq .lodge p{font-size:14px}
+  .alq .pill{font-size:11.5px;padding:4px 10px}
+  .alq .lodge+.lodge{margin-top:20px;padding-top:20px}
+  /* aéreo */
+  .alq .route .ap .code{font-size:19px}
+  .alq .flight .det{font-size:12px}
+  .alq .flight .det b{font-size:13px}
+  /* itinerário / importante / inclui */
+  .alq .day .dh{font-size:15.5px}
+  .alq .day li{font-size:13.5px}
+  .alq .important p,.alq .important li{font-size:14px}
+  .alq .incl li{font-size:13.5px;padding-left:24px}
+  /* investimento */
+  .alq .invest h3{font-size:20px;margin-bottom:18px}
+  .alq .price-card{padding:16px}
+  .alq .price-card .amt{font-size:28px}
+  .alq .pay .row{font-size:13.5px}
+  /* fechamento */
+  .alq .closing{padding:36px 16px 4px}
+  .alq .closing h3,.alq .closing-rich h1,.alq .closing-rich h2,.alq .closing-rich h3{font-size:21px}
+  .alq .closing p,.alq .closing-rich p{font-size:14.5px}
+  .alq .btn{padding:13px 22px;font-size:14px}
+}
 
 /* Print */
 @media print{

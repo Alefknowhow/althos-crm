@@ -34,10 +34,10 @@ import {
   CheckCircle2, Link2, Image as ImageIcon, Search, Bold, Italic, List, ListOrdered,
   Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
-  ChevronLeft, ChevronRight, Eye, Pencil,
+  ChevronLeft, ChevronRight, Eye, Pencil, ShoppingBag,
 } from 'lucide-react'
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, type QuotationFull } from '@/actions/quotations'
+import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -431,6 +431,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
   const [taBusy, setTaBusy] = useState<string | null>(null)
   const [geoBusy, setGeoBusy] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form')
+  const [saleBusy, setSaleBusy] = useState(false)
 
   const paxTotal = (q.pax_adults || 0) + (q.pax_children || 0)
 
@@ -532,6 +533,18 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
       try { await navigator.clipboard.writeText(url); toast.success('Link copiado para a área de transferência') }
       catch { toast.success('Link gerado') }
       router.refresh()
+    } else toast.error(res.error)
+  }
+
+  async function onGenerateSale() {
+    // Grava o estado atual antes para a venda nascer com os dados mais recentes.
+    setSaleBusy(true)
+    await saveQuotation(orgSlug, q0.id, payload)
+    const res = await createSaleFromQuotation(orgSlug, q0.id)
+    setSaleBusy(false)
+    if (res.ok) {
+      toast.success(res.existed ? 'Esta cotação já tinha uma venda — abrindo…' : 'Venda criada com os dados da cotação')
+      router.push(`/app/${orgSlug}/reservas?sale=${res.saleId}`)
     } else toast.error(res.error)
   }
 
@@ -914,6 +927,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
         )}
         <Button type="button" size="sm" onClick={() => onGenerateLink(false)}>
           <Link2 className="w-3.5 h-3.5 mr-1" /> {publicToken ? 'Reenviar' : 'Gerar link'}
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
+          {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
+          <span className="hidden sm:inline">Gerar venda</span>
         </Button>
         {missing.length > 0 && (
           <span className="w-full sm:w-auto inline-flex items-center gap-1.5 text-[11px] text-amber-600">

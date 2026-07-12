@@ -75,15 +75,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function TravelSalesView({
-  orgSlug, sales, proposals = [], members = [],
+  orgSlug, sales, proposals = [], members = [], initialSelectedId,
 }: {
   orgSlug: string
   sales: TravelSaleRow[]
   proposals?: ProposalOption[]
   members?: Member[]
+  initialSelectedId?: string | null
 }) {
   const router = useRouter()
-  const [selectedId, setSelectedId] = useState<string | null>(sales[0]?.id ?? null)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    (initialSelectedId && sales.some(s => s.id === initialSelectedId) ? initialSelectedId : sales[0]?.id) ?? null,
+  )
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [newOpen, setNewOpen] = useState(false)

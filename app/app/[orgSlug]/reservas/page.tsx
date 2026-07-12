@@ -9,7 +9,9 @@ import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
 
-export default async function TravelSalesPage({ params }: { params: { orgSlug: string } }) {
+export default async function TravelSalesPage({
+  params, searchParams,
+}: { params: { orgSlug: string }; searchParams: { sale?: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
@@ -32,7 +34,7 @@ export default async function TravelSalesPage({ params }: { params: { orgSlug: s
         hint={'Crie uma venda com "Nova venda" (importando uma proposta) ou deixe que ela seja gerada automaticamente quando um lead com proposta é movido para "Fechado". Complete os localizadores e a comissão, depois gere as tarefas operacionais.'}
       />
 
-      <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} members={members} />
+      <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} members={members} initialSelectedId={searchParams.sale ?? null} />
     </div>
   )
 }

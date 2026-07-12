@@ -224,6 +224,86 @@ export async function generateQuotationLink(orgSlug: string, id: string, rotate 
   return { ok: true as const, token }
 }
 
+/* ─────────── gerar venda a partir da cotação ─────────── */
+/**
+ * Cria uma venda (travel_sales) pré-preenchida com os dados atuais da
+ * cotação — lendo o schema novo (pai + tabelas-filhas). Idempotente: se já
+ * existe venda vinculada a esta cotação, retorna a existente (sem duplicar).
+ */
+export async function createSaleFromQuotation(orgSlug: string, id: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+
+  const { data: q } = await supabase
+    .from('travel_proposals').select('*')
+    .eq('id', id).eq('organization_id', org.id).maybeSingle()
+  if (!q) return { ok: false as const, error: 'Cotação não encontrada' }
+
+  // Idempotência: uma venda por cotação.
+  const { data: existing } = await supabase
+    .from('travel_sales').select('id')
+    .eq('organization_id', org.id).eq('proposal_id', id).maybeSingle()
+  if (existing) return { ok: true as const, saleId: (existing as any).id, existed: true }
+
+  const [lodg, fl] = await Promise.all([
+    supabase.from('quotation_lodgings').select('name').eq('quotation_id', id).order('sort_order'),
+    supabase.from('quotation_flights').select('airline').eq('quotation_id', id).order('sort_order'),
+  ])
+
+  const destination = (Array.isArray(q.destinations) ? q.destinations : [])
+    .map((d: any) => d?.name).filter(Boolean).join(', ') || null
+  const hotelName = (lodg.data || []).map((l: any) => l.name).filter(Boolean).join(', ') || null
+  const airline = Array.from(new Set((fl.data || []).map((f: any) => f.airline).filter(Boolean))).join(', ') || null
+  const paymentMethod = (Array.isArray(q.payment_conditions) ? q.payment_conditions : [])
+    .map((p: any) => p?.label).filter(Boolean).join(', ') || null
+
+  let negotiationDays: number | null = null
+  if (q.created_at) negotiationDays = Math.max(0, Math.round((Date.now() - new Date(q.created_at).getTime()) / 86400000))
+
+  const { data: sale, error } = await supabase
+    .from('travel_sales')
+    .insert({
+      organization_id: org.id,
+      contato_id: q.contato_id ?? null,
+      proposal_id: q.id,
+      created_by: user.id,
+      status: 'open',
+      client_name: q.client_name,
+      destination,
+      departure_date: q.start_date,
+      return_date: q.end_date,
+      negotiation_days: negotiationDays,
+      total_cents: q.total_cents || 0,
+      hotel_name: hotelName,
+      airline,
+      operator: q.operadora ?? null,
+      included_items: Array.isArray(q.included) ? q.included : [],
+      travelers_note: q.occupancy_label ?? null,
+      payment_method: paymentMethod,
+      commission_cents: q.commission_total_cents || 0,
+    })
+    .select('id, client_name')
+    .single()
+
+  if (error || !sale) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
+
+  const { createNotification } = await import('@/actions/notifications')
+  await createNotification({
+    organizationId: org.id,
+    type: 'new_sale',
+    title: 'Nova venda viagem criada',
+    content: (sale as any).client_name ? `Venda iniciada para ${(sale as any).client_name}.` : 'Uma nova venda viagem foi iniciada.',
+    link: `/app/${orgSlug}/reservas`,
+  })
+
+  revalidatePath(`/app/${orgSlug}/reservas`)
+  return { ok: true as const, saleId: (sale as any).id, existed: false }
+}
+
 /* ─────────── TripAdvisor (Content API, cacheado na montagem) ─────────── */
 export async function tripadvisorLookup(orgSlug: string, query: string) {
   await requireAuth()
