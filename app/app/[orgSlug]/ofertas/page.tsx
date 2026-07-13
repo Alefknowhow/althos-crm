@@ -1,23 +1,20 @@
 import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
-import { listPackages, getVitrineToken } from '@/actions/travel-showcase'
-import ShowcaseList from '@/components/features/showcase/ShowcaseList'
+import { listOffers } from '@/actions/quotations'
+import { getVitrineToken } from '@/actions/travel-showcase'
+import OffersList from '@/components/features/quotations/OffersList'
 import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
 
-export default async function VitrinePage({ params }: { params: { orgSlug: string } }) {
+export default async function OffersPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
+  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
 
-  // Niche-gated feature.
-  if (!isTravelNiche(org.niche)) {
-    redirect(`/app/${params.orgSlug}`)
-  }
-
-  const [packages, vitrineToken] = await Promise.all([
-    listPackages(params.orgSlug),
+  const [offers, vitrineToken] = await Promise.all([
+    listOffers(params.orgSlug),
     getVitrineToken(params.orgSlug),
   ])
 
@@ -25,10 +22,9 @@ export default async function VitrinePage({ params }: { params: { orgSlug: strin
     <div className="space-y-6">
       <PageHeader
         title="Ofertas"
-        hint="Monte pacotes prontos de viagem e compartilhe a vitrine pública com seus clientes. Cada pacote pode virar uma proposta com um clique."
+        hint="Monte pacotes prontos (do mesmo jeito que uma cotação, sem cliente) e publique na vitrine. Cada oferta vira uma cotação com um clique."
       />
-
-      <ShowcaseList orgSlug={params.orgSlug} packages={packages} vitrineToken={vitrineToken} />
+      <OffersList orgSlug={params.orgSlug} offers={offers} vitrineToken={vitrineToken} />
     </div>
   )
 }

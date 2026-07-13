@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Upload, Loader2, Copy, ExternalLink,
   CheckCircle2, Link2, Image as ImageIcon, Search, Bold, Italic, List, ListOrdered,
@@ -37,7 +38,7 @@ import {
   ChevronLeft, ChevronRight, Eye, Pencil, ShoppingBag,
 } from 'lucide-react'
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, type QuotationFull } from '@/actions/quotations'
+import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -379,8 +380,8 @@ const STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho', sent: 'Enviada', viewed: 'Visualizada', won: 'Fechada', lost: 'Perdida', expired: 'Expirada',
 }
 
-export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
-  orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]
+export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
+  orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]; isOffer?: boolean
 }) {
   const router = useRouter()
   const q0 = initial.quotation
@@ -408,6 +409,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     price_disclaimer: q0.price_disclaimer || '',
     validity_days: q0.validity_days || 5,
     operadora: q0.operadora || '', commission_total_cents: q0.commission_total_cents || 0,
+    offer_published: !!q0.offer_published, offer_category: q0.offer_category || '',
   }))
   const [lodgings, setLodgings] = useState<Lodging[]>(() => withKeys(initial.lodgings.map(l => ({
     name: l.name || '', check_in: l.check_in, check_out: l.check_out, room_category: l.room_category,
@@ -462,6 +464,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
     price_disclaimer: q.price_disclaimer || null, validity_days: q.validity_days,
     operadora: q.operadora || null, commission_total_cents: q.commission_total_cents,
+    ...(isOffer ? { offer_published: q.offer_published, offer_category: q.offer_category || null } : {}),
     lodgings: lodgings.map(({ _key, ...l }) => l),
     flights: flights.map(({ _key, ...f }) => ({ ...f, leg_type: f.leg_type as any, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any })),
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
@@ -559,6 +562,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
     }
   }
 
+  async function onConvertToQuotation() {
+    setSaleBusy(true)
+    await saveQuotation(orgSlug, q0.id, payload)
+    const res = await convertOfferToQuotation(orgSlug, q0.id)
+    setSaleBusy(false)
+    if (res.ok) { toast.success('Oferta copiada para uma nova cotação'); router.push(`/app/${orgSlug}/cotacoes/${res.id}`) }
+    else toast.error(res.error)
+  }
+
   async function onGenerateSale() {
     // Grava o estado atual antes para a venda nascer com os dados mais recentes.
     setSaleBusy(true)
@@ -610,22 +622,34 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
       <EditBlock icon={ImageIcon} title="Capa">
         <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
         <F label="Subtítulo (H2)"><Input value={q.subtitle} onChange={e => setQ(s => ({ ...s, subtitle: e.target.value }))} placeholder="Ex.: All-inclusive no Caribe — sol, mar e descanso" /></F>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Nome do cliente"><Input value={q.client_name} onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" /></F>
-          <F label="Vincular ao contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring)">
-            <Select value={q.contato_id || 'none'}
-              onValueChange={v => setQ(s => {
-                const lead = leads.find(l => l.id === v)
-                return { ...s, contato_id: v === 'none' ? null : v, client_name: s.client_name || lead?.name || '' }
-              })}>
-              <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem vínculo</SelectItem>
-                {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </F>
-        </div>
+        {isOffer ? (
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Categoria (vitrine)"><Input value={q.offer_category} onChange={e => setQ(s => ({ ...s, offer_category: e.target.value }))} placeholder="Ex.: Praia, Lua de mel, Nacional" /></F>
+            <F label="Publicar na vitrine" hint="aparece no link público da vitrine quando ligado">
+              <label className="flex items-center gap-2 h-9 text-sm">
+                <Switch checked={q.offer_published} onCheckedChange={v => setQ(s => ({ ...s, offer_published: v }))} />
+                {q.offer_published ? 'Publicada' : 'Rascunho (oculta)'}
+              </label>
+            </F>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Nome do cliente"><Input value={q.client_name} onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" /></F>
+            <F label="Vincular ao contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring)">
+              <Select value={q.contato_id || 'none'}
+                onValueChange={v => setQ(s => {
+                  const lead = leads.find(l => l.id === v)
+                  return { ...s, contato_id: v === 'none' ? null : v, client_name: s.client_name || lead?.name || '' }
+                })}>
+                <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem vínculo</SelectItem>
+                  {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </F>
+          </div>
+        )}
         <F label="Imagem de capa"><CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))} /></F>
       </EditBlock>
 
@@ -930,9 +954,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Abrir</span></a>
             </Button>
-            <Button type="button" size="sm" className="bg-[#25D366] hover:bg-[#1eb959] text-[#0a3d22]" onClick={onSendToClient}>
-              <MessageCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Enviar ao cliente</span>
-            </Button>
+            {!isOffer && (
+              <Button type="button" size="sm" className="bg-[#25D366] hover:bg-[#1eb959] text-[#0a3d22]" onClick={onSendToClient}>
+                <MessageCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Enviar ao cliente</span>
+              </Button>
+            )}
           </>
         )}
         {!publicToken && (
@@ -940,10 +966,17 @@ export default function QuotationEditor({ orgSlug, initial, leads = [] }: {
             <Link2 className="w-3.5 h-3.5 mr-1" /> Gerar link
           </Button>
         )}
-        <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
-          {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
-          <span className="hidden sm:inline">Gerar venda</span>
-        </Button>
+        {isOffer ? (
+          <Button type="button" size="sm" variant="secondary" onClick={onConvertToQuotation} disabled={saleBusy}>
+            {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <FileText className="w-3.5 h-3.5 sm:mr-1" />}
+            <span className="hidden sm:inline">Converter em cotação</span>
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
+            {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
+            <span className="hidden sm:inline">Gerar venda</span>
+          </Button>
+        )}
         {missing.length > 0 && (
           <span className="w-full sm:w-auto inline-flex items-center gap-1.5 text-[11px] text-amber-600">
             <AlertTriangle className="w-3.5 h-3.5" /> Pendentes: {missing.join(', ')}

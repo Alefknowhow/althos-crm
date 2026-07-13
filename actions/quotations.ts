@@ -86,6 +86,8 @@ const QuotationSchema = z.object({
   validity_days: z.number().int().min(1).max(90).optional(),
   operadora: z.string().max(160).nullable().optional(),
   commission_total_cents: z.number().int().min(0).optional(),
+  offer_published: z.boolean().optional(),
+  offer_category: z.string().max(80).nullable().optional(),
   lodgings: z.array(LodgingSchema).max(10).optional(),
   flights: z.array(FlightSchema).max(20).optional(),
   itinerary_days: z.array(DaySchema).max(30).optional(),
@@ -223,6 +225,83 @@ export async function generateQuotationLink(orgSlug: string, id: string, rotate 
   revalidateTag(`quotation:${token}`)
   revalidatePath(`/app/${orgSlug}/cotacoes`)
   return { ok: true as const, token }
+}
+
+/* ─────────── ofertas (vitrine) = cotações com is_offer ─────────── */
+export type OfferRow = {
+  id: string; title: string | null; offer_category: string | null
+  offer_published: boolean; cover_image_url: string | null; public_token: string | null
+  total_cents: number; price_per_person_cents: number | null; updated_at: string
+}
+
+export async function listOffers(orgSlug: string): Promise<OfferRow[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('travel_proposals')
+    .select('id, title, offer_category, offer_published, cover_image_url, public_token, total_cents, price_per_person_cents, updated_at')
+    .eq('organization_id', org.id)
+    .eq('is_offer', true)
+    .order('updated_at', { ascending: false })
+    .limit(500)
+  return (data as OfferRow[]) ?? []
+}
+
+export async function createOffer(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('travel_proposals')
+    .insert({ organization_id: org.id, created_by: user.id, title: 'Nova oferta', status: 'sent', is_offer: true })
+    .select('id').single()
+  if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar oferta' }
+  revalidatePath(`/app/${orgSlug}/ofertas`)
+  return { ok: true as const, id: (data as any).id }
+}
+
+/**
+ * Converte uma oferta da vitrine numa cotação nova (draft, sem cliente),
+ * duplicando pai + tabelas-filhas. A oferta original permanece publicada.
+ */
+export async function convertOfferToQuotation(orgSlug: string, offerId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: offer } = await supabase
+    .from('travel_proposals').select('*')
+    .eq('id', offerId).eq('organization_id', org.id).eq('is_offer', true).maybeSingle()
+  if (!offer) return { ok: false as const, error: 'Oferta não encontrada' }
+
+  const o = offer as Record<string, any>
+  // Campos a copiar (exclui identidade/estado de publicação/token).
+  const {
+    id: _id, created_at: _c, updated_at: _u, public_token: _t, is_offer: _o,
+    offer_published: _op, offer_category: _oc, contato_id: _ct, quoted_at: _q, ...rest
+  } = o
+  const { data: created, error } = await supabase
+    .from('travel_proposals')
+    .insert({ ...rest, organization_id: org.id, created_by: user.id, contato_id: null, is_offer: false, offer_published: false, status: 'draft', quoted_at: new Date().toISOString() })
+    .select('id').single()
+  if (error || !created) return { ok: false as const, error: error?.message || 'Erro ao converter' }
+  const newId = (created as any).id
+
+  // Duplica as tabelas-filhas.
+  for (const table of ['quotation_lodgings', 'quotation_flights', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
+    const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', offerId)
+    if (rows?.length) {
+      const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
+      await supabase.from(table).insert(copies)
+    }
+  }
+
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  return { ok: true as const, id: newId }
 }
 
 /* ─────────── gerar venda a partir da cotação ─────────── */
