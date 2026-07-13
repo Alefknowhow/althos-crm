@@ -82,6 +82,8 @@ export async function POST(req: Request) {
           senderId,
           text: m.message.text,
           mid: m.message.mid ?? null,
+          // Respostas a stories chegam como DM com contexto reply_to.story.
+          isStoryReply: !!m.message?.reply_to?.story,
         })
       }
 

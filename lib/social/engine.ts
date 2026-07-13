@@ -13,7 +13,7 @@ import {
   privateReplyToComment,
 } from '@/lib/social/instagram'
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
-import { runFunnelForInbound } from '@/lib/social/funnel-engine'
+import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -24,6 +24,7 @@ export type InboundInteraction = {
   commentId?: string | null  // present for comments
   postId?: string | null
   mid?: string | null        // message id — used for idempotency on DMs
+  isStoryReply?: boolean      // DM that is actually a reply to one of our stories
 }
 
 type Automation = {
@@ -138,7 +139,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       const handled = await runFunnelForInbound(
         supabase,
         { id: connection.id, organization_id: orgId, page_id: connection.page_id, access_token: connection.access_token },
-        { igAccountId: inbound.igAccountId, senderId: inbound.senderId, senderUsername: inbound.senderUsername, text: inbound.text },
+        { igAccountId: inbound.igAccountId, senderId: inbound.senderId, senderUsername: inbound.senderUsername, text: inbound.text, isStoryReply: inbound.isStoryReply },
       )
       if (handled) {
         await supabase.from('social_interactions').insert({
@@ -157,6 +158,21 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       }
     } catch (e: any) {
       console.error('[social engine] funnel failed:', e?.message)
+    }
+  }
+
+  // 2.6) Comentário que inicia um funil: responde em privado ao comentário e
+  //      abre a conversa (os próximos passos seguem na DM). Não impede a regra
+  //      simples de comentário (resposta pública) abaixo.
+  if (inbound.kind === 'comment' && inbound.commentId) {
+    try {
+      await startCommentFunnel(
+        supabase,
+        { id: connection.id, organization_id: orgId, page_id: connection.page_id, access_token: connection.access_token },
+        { senderId: inbound.senderId, text: inbound.text, commentId: inbound.commentId },
+      )
+    } catch (e: any) {
+      console.error('[social engine] comment funnel failed:', e?.message)
     }
   }
 

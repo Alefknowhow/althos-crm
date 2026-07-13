@@ -14,7 +14,7 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server'
-import { sendInstagramDM } from '@/lib/social/instagram'
+import { sendInstagramDM, privateReplyToComment } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -31,6 +31,7 @@ type Inbound = {
   senderId: string
   senderUsername?: string | null
   text: string
+  isStoryReply?: boolean
 }
 
 type Step = {
@@ -123,15 +124,19 @@ export async function runFunnelForInbound(
     startIndex = (state as any).current_step
     stateId = (state as any).id
   } else {
-    // 2) Procura um funil ativo cujo gatilho de DM case.
+    // 2) Procura um funil ativo cujo gatilho case. Resposta a story tem
+    //    prioridade para funis 'story_reply'; senão, funis de 'dm'.
+    const triggerTypes = inbound.isStoryReply ? ['story_reply', 'dm'] : ['dm']
     const { data: funnels } = await admin
       .from('social_funnels')
-      .select('id, trigger_keywords')
+      .select('id, trigger_type, trigger_keywords')
       .eq('organization_id', connection.organization_id)
-      .eq('trigger_type', 'dm')
+      .in('trigger_type', triggerTypes)
       .eq('is_active', true)
-      .order('created_at', { ascending: true })
-    const hit = (funnels || []).find((f: any) => funnelMatches(f.trigger_keywords, inbound.text))
+    // Ordena story_reply antes de dm quando aplicável.
+    const ordered = (funnels || []).sort((a: any, b: any) =>
+      triggerTypes.indexOf(a.trigger_type) - triggerTypes.indexOf(b.trigger_type))
+    const hit = ordered.find((f: any) => funnelMatches(f.trigger_keywords, inbound.text))
     if (!hit) return false
     funnelId = (hit as any).id
     startIndex = 0
@@ -172,5 +177,72 @@ export async function runFunnelForInbound(
       last_advanced_at: new Date().toISOString(),
     })
   }
+  return true
+}
+
+/**
+ * Início de funil a partir de um COMENTÁRIO: se um funil de gatilho 'comment'
+ * casa, envia o 1º passo como resposta privada ao comentário (abre a DM) e
+ * cria o estado da conversa. Os próximos passos continuam quando a pessoa
+ * responder na DM (via runFunnelForInbound). Retorna true se iniciou um funil.
+ */
+export async function startCommentFunnel(
+  admin: Admin,
+  connection: Connection,
+  inbound: { senderId: string; text: string; commentId: string },
+): Promise<boolean> {
+  // Já existe conversa ativa com esta pessoa? Não duplica.
+  const { data: existing } = await admin
+    .from('social_conversation_state')
+    .select('id')
+    .eq('social_connection_id', connection.id)
+    .eq('sender_external_id', inbound.senderId)
+    .eq('status', 'active')
+    .maybeSingle()
+  if (existing) return true
+
+  const { data: funnels } = await admin
+    .from('social_funnels')
+    .select('id, trigger_keywords')
+    .eq('organization_id', connection.organization_id)
+    .eq('trigger_type', 'comment')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+  const hit = (funnels || []).find((f: any) => funnelMatches(f.trigger_keywords, inbound.text))
+  if (!hit) return false
+  const funnelId = (hit as any).id
+
+  const { data: stepsData } = await admin
+    .from('social_funnel_steps')
+    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply')
+    .eq('funnel_id', funnelId)
+    .order('sort_order', { ascending: true })
+  const steps = (stepsData || []) as Step[]
+  if (steps.length === 0) return false
+
+  // 1º passo vai como resposta privada ao comentário (inicia a DM).
+  const first = steps[0]
+  const text = await renderStep(admin, connection.organization_id, first, {
+    igAccountId: connection.page_id, senderId: inbound.senderId, text: inbound.text,
+  })
+  if (text.trim()) {
+    try {
+      await privateReplyToComment(connection.page_id, connection.access_token, inbound.commentId, text)
+    } catch (e: any) {
+      console.error('[funnel] comment private reply failed:', e?.message)
+      return false
+    }
+  }
+
+  const done = steps.length <= 1
+  await admin.from('social_conversation_state').insert({
+    organization_id: connection.organization_id,
+    funnel_id: funnelId,
+    social_connection_id: connection.id,
+    sender_external_id: inbound.senderId,
+    current_step: 1,
+    status: done ? 'done' : 'active',
+    last_advanced_at: new Date().toISOString(),
+  })
   return true
 }

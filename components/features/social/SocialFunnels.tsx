@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
@@ -22,6 +23,10 @@ import {
 type EditStep = FunnelStep & { _key: string }
 let seq = 0
 const nk = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`
+
+const TRIGGER_LABELS: Record<string, string> = {
+  dm: 'DM', story_reply: 'Story', comment: 'Comentário',
+}
 
 export default function SocialFunnels({
   orgSlug, initialFunnels,
@@ -92,6 +97,9 @@ export default function SocialFunnels({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium truncate">{f.name}</span>
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                    {TRIGGER_LABELS[f.trigger_type] || f.trigger_type}
+                  </Badge>
                   <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-normal">
                     {f.steps.length} passo{f.steps.length !== 1 ? 's' : ''}
                   </Badge>
@@ -136,6 +144,7 @@ function FunnelBuilder({
   orgSlug, funnel, onClose, onSaved,
 }: { orgSlug: string; funnel: SocialFunnel; onClose: () => void; onSaved: (f: SocialFunnel) => void }) {
   const [name, setName] = useState(funnel.name)
+  const [triggerType, setTriggerType] = useState<'dm' | 'comment' | 'story_reply'>(funnel.trigger_type)
   const [keywords, setKeywords] = useState((funnel.trigger_keywords || []).join(', '))
   const [createLead, setCreateLead] = useState(funnel.create_lead)
   const [steps, setSteps] = useState<EditStep[]>(
@@ -164,7 +173,7 @@ function FunnelBuilder({
     setSaving(true)
     const kwArr = keywords.split(',').map(k => k.trim()).filter(Boolean)
     const [u, s] = await Promise.all([
-      updateFunnel(orgSlug, funnel.id, { name: name || 'Funil', trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead }),
+      updateFunnel(orgSlug, funnel.id, { name: name || 'Funil', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead }),
       saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order, ...rest }) => rest)),
     ])
     setSaving(false)
@@ -172,7 +181,7 @@ function FunnelBuilder({
     if (!s.ok) { toast.error(s.error); return }
     toast.success('Funil salvo')
     onSaved({
-      ...funnel, name: name || 'Funil', create_lead: createLead,
+      ...funnel, name: name || 'Funil', trigger_type: triggerType, create_lead: createLead,
       trigger_keywords: kwArr.length ? kwArr : null,
       steps: steps.map(({ _key, ...rest }) => rest),
     })
@@ -196,9 +205,21 @@ function FunnelBuilder({
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Boas-vindas + oferta" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Palavras-chave do gatilho (vírgula)</label>
-              <Input value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="preço, valor, quero — vazio = qualquer 1ª DM" />
+              <label className="text-xs font-medium text-muted-foreground">Gatilho (o que inicia o funil)</label>
+              <Select value={triggerType} onValueChange={v => setTriggerType(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dm">DM recebida</SelectItem>
+                  <SelectItem value="story_reply">Resposta a um story</SelectItem>
+                  <SelectItem value="comment">Comentário no post (responde em DM)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Palavras-chave do gatilho (separadas por vírgula)</label>
+            <Input value={keywords} onChange={e => setKeywords(e.target.value)}
+              placeholder={triggerType === 'comment' ? 'eu quero, preço — vazio = qualquer comentário' : 'preço, valor, quero — vazio = qualquer 1ª mensagem'} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={createLead} onCheckedChange={setCreateLead} />
