@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2, History, ArrowLeft } from 'lucide-react'
 import { createAutomation, toggleAutomation, deleteAutomation } from '@/actions/automations'
+import AutomationsTabsNav from './AutomationsTabsNav'
 import { toast } from 'sonner'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -125,6 +126,11 @@ export default function AutomationsShell({
             {pending ? 'Criando...' : 'Nova Automação'}
           </Button>
         </div>
+      </div>
+
+      {/* ── Abas: CRM / Instagram ───────────────────────────────────────────── */}
+      <div className="px-4 py-2 border-b bg-background shrink-0 overflow-x-auto">
+        <AutomationsTabsNav orgSlug={orgSlug} />
       </div>
 
       {/* ── Split panel ─────────────────────────────────────────────────────── */}

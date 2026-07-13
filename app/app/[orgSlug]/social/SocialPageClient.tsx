@@ -10,6 +10,7 @@ import {
   type SocialInteraction,
 } from '@/actions/social-automations'
 import { Button } from '@/components/ui/button'
+import AutomationsTabsNav from '@/components/features/automations/AutomationsTabsNav'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -324,10 +325,13 @@ export function SocialPageClient({
   return (
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto">
 
+      {/* Abas: CRM / Instagram */}
+      <div className="-mb-2 overflow-x-auto"><AutomationsTabsNav orgSlug={orgSlug} /></div>
+
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Social · DMs & Comentários</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Instagram · DMs & Comentários</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Automatize respostas do Instagram com IA
           </p>
