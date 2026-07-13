@@ -6,15 +6,14 @@
  * Called by the Instagram webhook (app/api/webhooks/instagram/route.ts).
  */
 
-import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '@/lib/supabase/server'
 import {
   sendInstagramDM,
   replyToComment,
   privateReplyToComment,
 } from '@/lib/social/instagram'
-
-type InboundKind = 'dm' | 'comment'
+import { generateAiReply, type InboundKind } from '@/lib/social/ai'
+import { runFunnelForInbound } from '@/lib/social/funnel-engine'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -42,6 +41,8 @@ type Automation = {
 
 /** A rule matches if its trigger type covers this inbound kind AND (no keywords
  *  configured OR the text contains one of them, case-insensitive). */
+/* generateAiReply agora vem de lib/social/ai.ts (compartilhado com o funil). */
+
 function matches(auto: Automation, kind: InboundKind, text: string): boolean {
   if (!auto.is_active) return false
   const typeOk =
@@ -54,45 +55,6 @@ function matches(auto: Automation, kind: InboundKind, text: string): boolean {
   if (kws.length === 0) return true
   const haystack = text.toLowerCase()
   return kws.some(k => haystack.includes(k))
-}
-
-async function generateAiReply(opts: {
-  apiKey: string
-  model?: string | null
-  orgName?: string | null
-  businessContext?: string | null
-  instructions?: string | null
-  inboundKind: InboundKind
-  inboundText: string
-  senderUsername?: string | null
-}): Promise<string> {
-  const client = new Anthropic({ apiKey: opts.apiKey })
-
-  const system = [
-    `Você é o atendente social de ${opts.orgName || 'uma empresa'} respondendo no Instagram.`,
-    opts.businessContext ? `Contexto do negócio:\n${opts.businessContext}` : '',
-    opts.instructions ? `Instruções específicas desta automação:\n${opts.instructions}` : '',
-    'Regras: responda de forma curta, simpática e natural, como um humano da equipe.',
-    'Use no máximo 2 frases. Não use linguagem robótica. Pode usar 1 emoji quando fizer sentido.',
-    opts.inboundKind === 'comment'
-      ? 'Esta é uma resposta pública a um comentário — seja acolhedor e convide a pessoa a chamar no direct se precisar de mais detalhes.'
-      : 'Esta é uma resposta a uma mensagem privada (direct).',
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-
-  const userMsg = opts.senderUsername
-    ? `@${opts.senderUsername} disse: "${opts.inboundText}"`
-    : `Mensagem recebida: "${opts.inboundText}"`
-
-  const res = await client.messages.create({
-    model: opts.model || 'claude-haiku-4-5',
-    max_tokens: 300,
-    system,
-    messages: [{ role: 'user', content: userMsg }],
-  })
-  const block = res.content.find(b => b.type === 'text') as Anthropic.Messages.TextBlock | undefined
-  return (block?.text || '').trim()
 }
 
 async function maybeCreateLead(
@@ -167,6 +129,35 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       .eq('raw_payload->>mid', inbound.mid)
       .maybeSingle()
     if (dup) return
+  }
+
+  // 2.5) Funil de conversa (só DMs): se a pessoa já está num funil ou um funil
+  //      de DM casa, o funil trata a mensagem e a automação simples é pulada.
+  if (inbound.kind === 'dm') {
+    try {
+      const handled = await runFunnelForInbound(
+        supabase,
+        { id: connection.id, organization_id: orgId, page_id: connection.page_id, access_token: connection.access_token },
+        { igAccountId: inbound.igAccountId, senderId: inbound.senderId, senderUsername: inbound.senderUsername, text: inbound.text },
+      )
+      if (handled) {
+        await supabase.from('social_interactions').insert({
+          organization_id: orgId,
+          social_connection_id: connection.id,
+          platform: 'instagram',
+          interaction_type: 'dm',
+          sender_external_id: inbound.senderId,
+          sender_username: inbound.senderUsername ?? null,
+          inbound_text: inbound.text,
+          response_type: 'fixed',
+          responded_at: new Date().toISOString(),
+          raw_payload: { mid: inbound.mid ?? null, funnel: true },
+        })
+        return
+      }
+    } catch (e: any) {
+      console.error('[social engine] funnel failed:', e?.message)
+    }
   }
 
   // 3) Find a matching active automation.

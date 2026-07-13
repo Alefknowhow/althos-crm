@@ -11,6 +11,8 @@ import {
 } from '@/actions/social-automations'
 import { Button } from '@/components/ui/button'
 import AutomationsTabsNav from '@/components/features/automations/AutomationsTabsNav'
+import SocialFunnels from '@/components/features/social/SocialFunnels'
+import type { SocialFunnel } from '@/actions/social-funnels'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -270,6 +272,7 @@ interface Props {
   initialAutomations: SocialAutomation[]
   initialConnections: SocialConnection[]
   initialInteractions: SocialInteraction[]
+  initialFunnels: SocialFunnel[]
 }
 
 export function SocialPageClient({
@@ -277,6 +280,7 @@ export function SocialPageClient({
   initialAutomations,
   initialConnections,
   initialInteractions,
+  initialFunnels,
 }: Props) {
   const [automations, setAutomations] = useState(initialAutomations)
   const [interactions] = useState(initialInteractions)
@@ -393,11 +397,14 @@ export function SocialPageClient({
         )}
       </div>
 
+      {/* Funis de conversa em DM */}
+      <SocialFunnels orgSlug={orgSlug} initialFunnels={initialFunnels} />
+
       {/* Automations list */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Regras de automação
+            Regras rápidas (resposta única)
           </h2>
           <span className="text-xs text-muted-foreground">{automations.length} regra{automations.length !== 1 ? 's' : ''}</span>
         </div>
