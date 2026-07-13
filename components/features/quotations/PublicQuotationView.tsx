@@ -920,11 +920,14 @@ const CSS = `
 .alq .flight{display:flex;align-items:center;gap:16px;padding:16px 0}
 .alq .flight+.flight{border-top:1px solid var(--line)}
 .alq .flight .tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600;width:64px;flex:none}
-.alq .route{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap}
-.alq .route .ap{text-align:center;min-width:56px}
+/* Rota sempre numa linha só: origem → avião → destino. As colunas dividem o
+   espaço (min-width:0) e o nome do aeroporto quebra embaixo do código, sem
+   empurrar o destino para a linha de baixo. */
+.alq .route{display:flex;align-items:flex-start;gap:10px;flex:1;flex-wrap:nowrap;min-width:0}
+.alq .route .ap{text-align:center;flex:1 1 0;min-width:0}
 .alq .route .ap .code{font-family:'Lora',serif;font-size:22px;color:var(--navy);line-height:1}
-.alq .route .ap .city{font-size:11px;color:var(--muted)}
-.alq .route .path{flex:1;min-width:80px;height:1px;background:linear-gradient(90deg,var(--gold),transparent 40%,var(--gold) 60%,transparent);position:relative}
+.alq .route .ap .city{font-size:11px;color:var(--muted);line-height:1.25;margin-top:2px;word-break:break-word}
+.alq .route .path{flex:1 1 44px;min-width:44px;margin-top:11px;height:1px;background:linear-gradient(90deg,var(--gold),transparent 40%,var(--gold) 60%,transparent);position:relative}
 .alq .route .path svg{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;color:var(--sea)}
 .alq .flight .det{text-align:right;font-size:12.5px;color:var(--muted);min-width:120px}
 .alq .flight .det b{color:var(--ink);font-weight:600;display:block;font-size:13.5px}
