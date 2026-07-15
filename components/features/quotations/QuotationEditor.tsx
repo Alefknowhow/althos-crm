@@ -384,10 +384,6 @@ type Lodging = { _key: string; name: string; check_in?: string | null; check_out
 type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Rascunho', sent: 'Enviada', viewed: 'Visualizada', won: 'Fechada', lost: 'Perdida', expired: 'Expirada',
-}
-
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
   orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]; isOffer?: boolean
 }) {
@@ -973,7 +969,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   return (
     <div className="pb-8">
       {/* Toolbar */}
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-background/85 backdrop-blur border-b flex items-center gap-2 flex-wrap">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85 backdrop-blur border-b flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
         </Button>
@@ -981,12 +977,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         <span className={`text-[11px] ${saveState === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
           {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? '✓ Salvo' : saveState === 'error' ? 'Erro ao salvar' : ''}
         </span>
-        <Select value={q.status} onValueChange={v => setQ(s => ({ ...s, status: v }))}>
-          <SelectTrigger className="w-[128px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
         {publicUrl && (
           <>
             <Button type="button" variant="outline" size="sm" onClick={async () => {

@@ -33,15 +33,6 @@ import {
 type Member = { user_id: string; name: string; email: string }
 type Contato = { id: string; name: string }
 
-const STATUS: Record<string, { label: string; short: string; cls: string }> = {
-  draft: { label: 'Rascunho', short: 'R', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  sent: { label: 'Enviada', short: 'E', cls: 'bg-sky-100 text-sky-700 border-sky-200' },
-  viewed: { label: 'Visualizada', short: 'V', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  won: { label: 'Fechada', short: '✓', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  lost: { label: 'Perdida', short: '✕', cls: 'bg-rose-100 text-rose-700 border-rose-200' },
-  expired: { label: 'Expirada', short: 'X', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-}
-
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
 }
@@ -50,61 +41,6 @@ function fmtTimestamp(d?: string | null) {
 }
 function destOf(p: ProposalRow) {
   return (p.destinations || []).map((d: any) => d?.name).filter(Boolean).join(', ')
-}
-
-/* Etiqueta de status de 1 letra, editável inline (sem abrir a cotação). */
-function StatusTag({ orgSlug, proposalId, status: initial }: { orgSlug: string; proposalId: string; status: string }) {
-  const router = useRouter()
-  const [status, setStatus] = useState(initial)
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const st = STATUS[status] || STATUS.draft
-
-  async function change(next: string) {
-    if (next === status) { setOpen(false); return }
-    const prev = status
-    setStatus(next); setSaving(true); setOpen(false)
-    const res = await updateProposal(orgSlug, proposalId, { status: next })
-    setSaving(false)
-    if (!res.ok) { setStatus(prev); toast.error(res.error || 'Erro ao atualizar status') }
-    else { toast.success('Status atualizado'); router.refresh() }
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title={`Status: ${st.label} — toque para alterar`}
-          aria-label={`Status: ${st.label}. Toque para alterar`}
-          className={cn(
-            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-transform hover:scale-105',
-            st.cls,
-          )}
-        >
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : st.short}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-48 p-1">
-        <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">Alterar status</p>
-        {Object.entries(STATUS).map(([key, s]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => change(key)}
-            className={cn(
-              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-              key === status && 'bg-muted/60 font-medium',
-            )}
-          >
-            <span className={cn('inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold leading-none', s.cls)}>{s.short}</span>
-            {s.label}
-            {key === status && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-emerald-600" />}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  )
 }
 
 export default function ProposalsList({
@@ -253,7 +189,6 @@ export default function ProposalsList({
               Nenhuma proposta encontrada com esses filtros.
             </div>
           ) : filtered.map(p => {
-            const st = STATUS[p.status] || STATUS.draft
             const dest = destOf(p)
             const active = p.id === selectedId
             const seller = p.created_by ? sellerName.get(p.created_by) : null
@@ -270,12 +205,6 @@ export default function ProposalsList({
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium text-sm leading-tight line-clamp-2">
                     {p.client_name || p.title || 'Proposta sem título'}
-                  </span>
-                  <span
-                    title={st.label}
-                    className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none', st.cls)}
-                  >
-                    {st.short}
                   </span>
                 </div>
                 {dest && (
@@ -486,17 +415,15 @@ function ProposalDetail({
   return (
     <div className="flex flex-col w-full">
       {/* header */}
-      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex items-center gap-2 z-10">
-        <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold truncate">{p.title || 'Proposta sem título'}</h2>
-            <StatusTag orgSlug={orgSlug} proposalId={p.id} status={p.status} />
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex flex-col gap-2 sm:flex-row sm:items-center z-10">
+        {/* Título — pequeno, negrito e discreto no mobile; normal no desktop */}
+        <h2 className="order-1 min-w-0 sm:flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground sm:text-base sm:font-semibold sm:normal-case sm:tracking-normal sm:text-foreground">
+          {p.title || 'Proposta sem título'}
+        </h2>
+        <div className="order-2 flex items-center gap-1.5 sm:gap-2 shrink-0 overflow-x-auto">
+          <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
           <Button asChild size="sm" title="Abrir editor">
             <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
               <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
