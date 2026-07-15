@@ -156,10 +156,11 @@ async function fetchOneFlight(
     airline: entry.airline?.name || '',
     flight_number: (entry.number || designator).replace(/\s+/g, ''),
     origin: dep.airport?.iata || '',
-    origin_name: dep.airport?.shortName || dep.airport?.municipalityName || '',
+    // Preferir a CIDADE (municipalityName) ao nome do aeroporto (shortName).
+    origin_name: dep.airport?.municipalityName || dep.airport?.shortName || '',
     origin_terminal: dep.terminal || '',
     destination: arr2.airport?.iata || '',
-    destination_name: arr2.airport?.shortName || arr2.airport?.municipalityName || '',
+    destination_name: arr2.airport?.municipalityName || arr2.airport?.shortName || '',
     destination_terminal: arr2.terminal || '',
     departure_at: fmtLocal(dep.scheduledTime?.local),
     arrival_at: fmtLocal(arr2.scheduledTime?.local),

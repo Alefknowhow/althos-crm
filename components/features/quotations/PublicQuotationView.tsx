@@ -214,6 +214,39 @@ function LazyImg({ src, alt = '', className }: { src?: string | null; alt?: stri
   return <img src={ok ? src : undefined} alt={alt} className={`${className || ''}${ok ? ' loaded' : ''}`} />
 }
 
+/* ─────────────────────── lightbox (ampliar foto) ─────────────────────── */
+function Lightbox({
+  photos, index, onIndex, onClose,
+}: { photos: string[]; index: number; onIndex: (i: number) => void; onClose: () => void }) {
+  const prev = () => onIndex((index - 1 + photos.length) % photos.length)
+  const next = () => onIndex((index + 1) % photos.length)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowLeft') prev()
+      else if (e.key === 'ArrowRight') next()
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = '' }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, photos.length])
+  return (
+    <div className="pp-lb" role="dialog" aria-modal="true" onClick={onClose}>
+      <button className="pp-lb-close" onClick={onClose} aria-label="Fechar">×</button>
+      {photos.length > 1 && <button className="pp-lb-nav left" onClick={e => { e.stopPropagation(); prev() }} aria-label="Anterior">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+      </button>}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={photos[index]} alt="" className="pp-lb-img" onClick={e => e.stopPropagation()} />
+      {photos.length > 1 && <button className="pp-lb-nav right" onClick={e => { e.stopPropagation(); next() }} aria-label="Próxima">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+      </button>}
+      {photos.length > 1 && <div className="pp-lb-count">{index + 1} / {photos.length}</div>}
+    </div>
+  )
+}
+
 /* ─────────────────────── bloco retrátil ─────────────────────── */
 function Block({
   num, title, sub, defaultOpen = false, onFirstOpen, children,
@@ -289,6 +322,7 @@ export default function PublicQuotationView({
   const mapObj = useRef<any>(null)
   const miniMapRef = useRef<HTMLDivElement>(null)
   const [modalLodge, setModalLodge] = useState<QuotationLodging | null>(null)
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null)
 
   const org = data.org || {}
   const AC = '[A CONFIRMAR]'
@@ -544,10 +578,14 @@ export default function PublicQuotationView({
                   {(l.photos || []).length > 0 && (
                     <div className="gallery">
                       {(l.photos || []).slice(0, 5).map((src, k) => (
-                        <div className="g" key={k}>
+                        <button type="button" className="g" key={k} aria-label="Ampliar foto"
+                          onClick={() => setLightbox({ photos: (l.photos || []), index: k })}>
                           {k === 0 && <span className="ph"><IcImg /></span>}
                           <LazyImg src={src} alt={l.name || ''} />
-                        </div>
+                          {k === 4 && (l.photos || []).length > 5 && (
+                            <span className="g-more">+{(l.photos || []).length - 5}</span>
+                          )}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -788,6 +826,13 @@ export default function PublicQuotationView({
         )
       })()}
 
+      {/* ───── Lightbox das fotos ───── */}
+      {lightbox && (
+        <Lightbox photos={lightbox.photos} index={lightbox.index}
+          onIndex={i => setLightbox(lb => lb && { ...lb, index: i })}
+          onClose={() => setLightbox(null)} />
+      )}
+
       {/* ───── Botão flutuante de WhatsApp ───── */}
       {waNumber && (
         <a className="wa-fab no-print" target="_blank" rel="noopener noreferrer"
@@ -909,12 +954,25 @@ const CSS = `
 .alq .pill.gold{background:rgba(184,146,75,.12);color:#8a6b2f;border-color:rgba(184,146,75,.3)}
 .alq .lodge p{margin:0 0 14px;color:#39424d;font-size:15px}
 .alq .gallery{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:repeat(2,90px);gap:8px}
-.alq .gallery .g{border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);position:relative}
+.alq .gallery .g{border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);position:relative;padding:0;border:0;cursor:zoom-in;display:block}
 .alq .gallery .g:first-child{grid-row:1/3}
-.alq .gallery .g img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s;position:relative;z-index:1}
+.alq .gallery .g img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s,transform .3s;position:relative;z-index:1}
 .alq .gallery .g img.loaded{opacity:1}
+.alq .gallery .g:hover img{transform:scale(1.04)}
 .alq .gallery .g .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9fb0ac}
+.alq .gallery .g .g-more{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;background:rgba(11,27,43,.55);color:#fff;font-size:18px;font-weight:700}
 @media(max-width:560px){.alq .gallery{grid-template-rows:repeat(2,70px)}}
+
+/* Lightbox */
+.alq .pp-lb{position:fixed;inset:0;z-index:1200;background:rgba(11,27,43,.92);display:flex;align-items:center;justify-content:center;padding:20px}
+.alq .pp-lb-img{max-width:94vw;max-height:88vh;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.alq .pp-lb-close{position:absolute;top:16px;right:18px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;border:0;font-size:26px;line-height:1;cursor:pointer}
+.alq .pp-lb-close:hover{background:rgba(255,255,255,.26)}
+.alq .pp-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.alq .pp-lb-nav:hover{background:rgba(255,255,255,.26)}
+.alq .pp-lb-nav.left{left:14px}.alq .pp-lb-nav.right{right:14px}
+.alq .pp-lb-count{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85);font-size:13px}
+@media(max-width:560px){.alq .pp-lb-nav{width:40px;height:40px}}
 
 /* Aéreo */
 .alq .flight{display:flex;align-items:center;gap:16px;padding:16px 0}

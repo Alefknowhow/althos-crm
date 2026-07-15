@@ -36,7 +36,15 @@ import {
   Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, Eye, Pencil, ShoppingBag,
+  CreditCard, QrCode, Receipt,
 } from 'lucide-react'
+
+// Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
+const PAYMENT_METHODS = [
+  { label: 'Pix', icon: QrCode, placeholder: 'Ex.: à vista com 5% de desconto' },
+  { label: 'Cartão de crédito', icon: CreditCard, placeholder: 'Ex.: até 12x sem juros' },
+  { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
+] as const
 
 import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
@@ -405,7 +413,18 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
     total_manual: false,
-    payment_conditions: (Array.isArray(q0.payment_conditions) ? q0.payment_conditions : []).map((x: any) => ({ label: x?.label || '', value: x?.value || '' })),
+    payment_conditions: (Array.isArray(q0.payment_conditions) ? q0.payment_conditions : [])
+      .map((x: any) => {
+        // Normaliza labels antigos para os 3 métodos fixos (Pix/Cartão/Boleto).
+        const raw = (x?.label || '').toLowerCase()
+        const label = raw.includes('pix') ? 'Pix'
+          : raw.includes('cart') ? 'Cartão de crédito'
+          : raw.includes('boleto') ? 'Boleto'
+          : (x?.label || '')
+        return { label, value: x?.value || '' }
+      })
+      // Descarta duplicatas do mesmo método, mantendo a primeira.
+      .filter((x: any, i: number, arr: any[]) => arr.findIndex(y => y.label === x.label) === i),
     price_disclaimer: q0.price_disclaimer || '',
     validity_days: q0.validity_days || 5,
     operadora: q0.operadora || '', commission_total_cents: q0.commission_total_cents || 0,
@@ -756,6 +775,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         {flights.length === 0 && <p className="text-sm text-muted-foreground">Nenhum trecho aéreo.</p>}
         <SortableList items={flights} onReorder={setFlights} render={(f) => (
           <>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Trecho</span>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-destructive hover:bg-destructive/10"
+                title="Remover trecho" onClick={() => setFlights(fs => fs.filter(x => x._key !== f._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <F label="Tipo">
                 <Select value={f.leg_type} onValueChange={v => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, leg_type: v } : x))}>
@@ -768,7 +792,8 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
               <F label="Companhia"><Input placeholder="Copa Airlines" value={f.airline || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, airline: e.target.value } : x))} /></F>
-              <F label="Data"><Input type="date" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F>
+              {/* Data ocupa a linha toda no mobile — o input nativo dd/mm/aaaa precisa de largura */}
+              <div className="col-span-2 sm:col-span-1"><F label="Data"><Input type="date" className="w-full" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F></div>
               <F label="Duração"><Input placeholder="≈ 12h total" value={f.duration_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, duration_label: e.target.value } : x))} /></F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -777,11 +802,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Destino (código)"><Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: e.target.value.toUpperCase() } : x))} /></F>
               <F label="Cidade destino"><Input placeholder="Punta Cana" value={f.to_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_city: e.target.value } : x))} /></F>
             </div>
-            <div className="flex gap-2 items-end">
-              <div className="flex-1"><F label="Escala / observação"><Input placeholder="via Panamá (PTY)" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F></div>
-              <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"
-                onClick={() => setFlights(fs => fs.filter(x => x._key !== f._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
-            </div>
+            <F label="Escala / observação"><Input placeholder="via Panamá (PTY)" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
             <div className="grid grid-cols-2 gap-2 items-start">
               <F label="Bagagens incluídas">
                 <BaggagePicker value={f.baggage}
@@ -885,21 +906,41 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </div>
           </F>
         </div>
-        <F label="Condições de pagamento">
-          <div className="space-y-1.5">
-            {q.payment_conditions.map((p, i) => (
-              <div key={i} className="flex gap-1.5">
-                <Input className="w-44" placeholder="À vista (Pix)" value={p.label}
-                  onChange={e => setQ(s => { const n = [...s.payment_conditions]; n[i] = { ...n[i], label: e.target.value }; return { ...s, payment_conditions: n } })} />
-                <Input className="flex-1" placeholder="R$ 16.910 · 5% off" value={p.value}
-                  onChange={e => setQ(s => { const n = [...s.payment_conditions]; n[i] = { ...n[i], value: e.target.value }; return { ...s, payment_conditions: n } })} />
-                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => setQ(s => ({ ...s, payment_conditions: s.payment_conditions.filter((_, j) => j !== i) }))}><Trash2 className="w-3.5 h-3.5" /></Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => setQ(s => ({ ...s, payment_conditions: [...s.payment_conditions, { label: '', value: '' }] }))}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Condição
-            </Button>
+        <F label="Formas de pagamento">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {PAYMENT_METHODS.map(m => {
+                const active = q.payment_conditions.some(p => p.label === m.label)
+                const Icon = m.icon
+                return (
+                  <button key={m.label} type="button"
+                    onClick={() => setQ(s => ({
+                      ...s,
+                      payment_conditions: active
+                        ? s.payment_conditions.filter(p => p.label !== m.label)
+                        : [...s.payment_conditions, { label: m.label, value: '' }],
+                    }))}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+                      active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                    }`}>
+                    <Icon className="w-4 h-4" /> {m.label}
+                  </button>
+                )
+              })}
+            </div>
+            {PAYMENT_METHODS.filter(m => q.payment_conditions.some(p => p.label === m.label)).map(m => {
+              const cond = q.payment_conditions.find(p => p.label === m.label)
+              return (
+                <div key={m.label} className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground w-28 shrink-0">{m.label}</span>
+                  <Input className="flex-1" placeholder={m.placeholder} value={cond?.value || ''}
+                    onChange={e => setQ(s => ({
+                      ...s,
+                      payment_conditions: s.payment_conditions.map(p => p.label === m.label ? { ...p, value: e.target.value } : p),
+                    }))} />
+                </div>
+              )
+            })}
           </div>
         </F>
         <div className="grid grid-cols-[1fr_120px] gap-3">
