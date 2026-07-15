@@ -151,9 +151,9 @@ const PIN_COLORS: Record<string, string> = {
 const LEG_LABELS: Record<string, string> = { outbound: 'Ida', inbound: 'Volta', connection: 'Conexão' }
 
 export const BAGGAGE_OPTIONS = [
-  { key: 'item_pessoal', label: 'Item pessoal (mochila)' },
-  { key: 'mao', label: 'Bagagem de mão (10 kg)' },
-  { key: 'despachada', label: 'Bagagem despachada (23 kg)' },
+  { key: 'item_pessoal', label: 'Item pessoal (mochila)', short: 'Mochila' },
+  { key: 'mao', label: 'Bagagem de mão (10 kg)', short: 'Mão 10kg' },
+  { key: 'despachada', label: 'Bagagem despachada (23 kg)', short: 'Despacho 23kg' },
 ] as const
 export const CABIN_LABELS: Record<string, string> = {
   economica: 'Econômica', premium: 'Premium Economy', executiva: 'Executiva', primeira: 'Primeira Classe',
@@ -603,26 +603,30 @@ export default function PublicQuotationView({
               const bags = (f.baggage || []).filter(k => BAGGAGE_ICONS[k])
               return (
                 <div className="flight-wrap" key={f.id || i}>
-                  <div className="flight">
-                    <div className="tag">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</div>
+                  {/* Linha 1: tipo · data · duração · classe */}
+                  <div className="fl-top">
+                    <span className="fl-leg">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</span>
+                    {fmtDayMonth(f.date) && <span className="fl-meta">{fmtDayMonth(f.date)}</span>}
+                    {f.duration_label && <span className="fl-meta">{f.duration_label}</span>}
+                    {f.cabin_class && <span className="pill gold fl-cabin">{CABIN_LABELS[f.cabin_class] || f.cabin_class}</span>}
+                  </div>
+                  {/* Linha 2: origem → destino · cia */}
+                  <div className="fl-mid">
                     <div className="route">
                       <div className="ap"><div className="code">{f.from_code || '—'}</div><div className="city">{f.from_city || ''}</div></div>
                       <div className="path"><IcPlane /></div>
                       <div className="ap"><div className="code">{f.to_code || '—'}</div><div className="city">{f.to_city || ''}</div></div>
                     </div>
-                    <div className="det">
-                      {f.airline && <b>{f.airline}</b>}
-                      {[fmtDayMonth(f.date), f.stopover_label].filter(Boolean).join(' · ')}
-                      {f.duration_label && <><br />{f.duration_label}</>}
-                    </div>
+                    {f.airline && <span className="fl-airline">{f.airline}</span>}
                   </div>
-                  {(bags.length > 0 || f.cabin_class) && (
-                    <div className="flight-extra">
-                      {f.cabin_class && <span className="pill gold">{CABIN_LABELS[f.cabin_class] || f.cabin_class}</span>}
+                  {(f.stopover_label || bags.length > 0) && (
+                    <div className="fl-bags">
+                      {f.stopover_label && <span className="fl-stop">{f.stopover_label}</span>}
+                      {/* Linha 3: bagagem com ícone + texto reduzido */}
                       {bags.map(k => {
                         const Ic = BAGGAGE_ICONS[k]
                         const opt = BAGGAGE_OPTIONS.find(o => o.key === k)
-                        return <span key={k} className="bag"><Ic />{opt?.label}</span>
+                        return <span key={k} className="bag"><Ic />{opt?.short}</span>
                       })}
                     </div>
                   )}
@@ -974,27 +978,29 @@ const CSS = `
 .alq .pp-lb-count{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85);font-size:13px}
 @media(max-width:560px){.alq .pp-lb-nav{width:40px;height:40px}}
 
-/* Aéreo */
-.alq .flight{display:flex;align-items:center;gap:16px;padding:16px 0}
-.alq .flight+.flight{border-top:1px solid var(--line)}
-.alq .flight .tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600;width:64px;flex:none}
-/* Rota sempre numa linha só: origem → avião → destino. As colunas dividem o
-   espaço (min-width:0) e o nome do aeroporto quebra embaixo do código, sem
-   empurrar o destino para a linha de baixo. */
+/* Aéreo — layout em 3 linhas */
+.alq .flight-wrap{padding:16px 0}
+.alq .flight-wrap+.flight-wrap{border-top:1px solid var(--line)}
+/* Linha 1: tipo · data · duração · classe */
+.alq .fl-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:10px}
+.alq .fl-leg{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.alq .fl-meta{font-size:12.5px;color:var(--muted)}
+.alq .fl-meta::before{content:"·";margin-right:10px;color:var(--line)}
+.alq .fl-cabin{margin-left:auto}
+/* Linha 2: rota + cia */
+.alq .fl-mid{display:flex;align-items:center;gap:14px}
 .alq .route{display:flex;align-items:flex-start;gap:10px;flex:1;flex-wrap:nowrap;min-width:0}
 .alq .route .ap{text-align:center;flex:1 1 0;min-width:0}
 .alq .route .ap .code{font-family:'Lora',serif;font-size:22px;color:var(--navy);line-height:1}
 .alq .route .ap .city{font-size:11px;color:var(--muted);line-height:1.25;margin-top:2px;word-break:break-word}
 .alq .route .path{flex:1 1 44px;min-width:44px;margin-top:11px;height:1px;background:linear-gradient(90deg,var(--gold),transparent 40%,var(--gold) 60%,transparent);position:relative}
 .alq .route .path svg{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;color:var(--sea)}
-.alq .flight .det{text-align:right;font-size:12.5px;color:var(--muted);min-width:120px}
-.alq .flight .det b{color:var(--ink);font-weight:600;display:block;font-size:13.5px}
-.alq .flight-wrap+.flight-wrap{border-top:1px solid var(--line)}
-.alq .flight-wrap .flight+.flight{border-top:0}
-.alq .flight-extra{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:0 0 14px 70px;margin-top:-4px}
-.alq .flight-extra .bag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5a5140}
-.alq .flight-extra .bag svg{width:15px;height:15px;color:var(--gold)}
-@media(max-width:560px){.alq .flight{flex-wrap:wrap}.alq .flight .det{text-align:left;width:100%}.alq .flight-extra{padding-left:0}}
+.alq .fl-airline{font-size:13.5px;font-weight:600;color:var(--ink);white-space:nowrap;flex:none;align-self:flex-start;margin-top:4px}
+/* Linha 3: bagagem + escala */
+.alq .fl-bags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:12px}
+.alq .fl-bags .bag{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#5a5140}
+.alq .fl-bags .bag svg{width:14px;height:14px;color:var(--gold);flex:none}
+.alq .fl-stop{font-size:12px;color:var(--muted);width:100%}
 
 /* Mapa */
 .alq .alq-map{height:360px;border-radius:12px;z-index:0;border:1px solid var(--line);background:#eef0ec}
