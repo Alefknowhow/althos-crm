@@ -16,6 +16,7 @@
 import type { createAdminClient } from '@/lib/supabase/server'
 import { sendInstagramDM, privateReplyToComment } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
+import { logOutboundMessage } from '@/lib/social/conversation-log'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -76,6 +77,7 @@ async function renderStep(
  */
 async function runFrom(
   admin: Admin, connection: Connection, inbound: Inbound, steps: Step[], fromIndex: number,
+  conversationId?: string,
 ): Promise<number> {
   let i = fromIndex
   while (i < steps.length) {
@@ -84,6 +86,9 @@ async function runFrom(
     if (text.trim()) {
       try {
         await sendInstagramDM(connection.page_id, connection.access_token, inbound.senderId, text)
+        if (conversationId) {
+          await logOutboundMessage(admin, conversationId, connection.organization_id, text, 'funnel')
+        }
       } catch (e: any) {
         console.error('[funnel] send failed:', e?.message)
       }
@@ -102,7 +107,7 @@ function funnelMatches(kws: string[] | null, text: string): boolean {
 }
 
 export async function runFunnelForInbound(
-  admin: Admin, connection: Connection, inbound: Inbound,
+  admin: Admin, connection: Connection, inbound: Inbound, conversationId?: string,
 ): Promise<boolean> {
   // 1) Já existe conversa ativa deste remetente nesta conta?
   const { data: state } = await admin
@@ -156,7 +161,7 @@ export async function runFunnelForInbound(
   }
 
   // 4) Executa a partir do passo atual.
-  const nextIndex = await runFrom(admin, connection, inbound, steps, startIndex)
+  const nextIndex = await runFrom(admin, connection, inbound, steps, startIndex, conversationId)
   const done = nextIndex >= steps.length
 
   // 5) Persiste o estado.

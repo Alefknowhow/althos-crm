@@ -14,6 +14,7 @@ import {
 } from '@/lib/social/instagram'
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
+import { getOrCreateConversation, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -132,6 +133,27 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     if (dup) return
   }
 
+  // 2.4) Inbox manual: registra a mensagem inbound no histórico da conversa
+  //      (independente de automação). Se um atendente já assumiu a conversa
+  //      (automation_paused), a automação/funil não responde — só o histórico
+  //      é atualizado, o atendente responde pelo inbox.
+  let conversationId: string | undefined
+  if (inbound.kind === 'dm') {
+    try {
+      const conversation = await getOrCreateConversation(supabase, {
+        organizationId: orgId,
+        connectionId: connection.id,
+        senderId: inbound.senderId,
+        senderUsername: inbound.senderUsername,
+      })
+      await logInboundMessage(supabase, conversation.id, orgId, inbound.text)
+      conversationId = conversation.id
+      if (conversation.automationPaused) return
+    } catch (e: any) {
+      console.error('[social engine] conversation log failed:', e?.message)
+    }
+  }
+
   // 2.5) Funil de conversa (só DMs): se a pessoa já está num funil ou um funil
   //      de DM casa, o funil trata a mensagem e a automação simples é pulada.
   if (inbound.kind === 'dm') {
@@ -140,6 +162,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
         supabase,
         { id: connection.id, organization_id: orgId, page_id: connection.page_id, access_token: connection.access_token },
         { igAccountId: inbound.igAccountId, senderId: inbound.senderId, senderUsername: inbound.senderUsername, text: inbound.text, isStoryReply: inbound.isStoryReply },
+        conversationId,
       )
       if (handled) {
         await supabase.from('social_interactions').insert({
@@ -228,6 +251,9 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   try {
     if (inbound.kind === 'dm') {
       await sendInstagramDM(inbound.igAccountId, pageToken, inbound.senderId, responseText)
+      if (conversationId) {
+        await logOutboundMessage(supabase, conversationId, orgId, responseText, 'automation')
+      }
     } else {
       // Comment: reply publicly, and optionally also DM the commenter privately.
       if (inbound.commentId) {

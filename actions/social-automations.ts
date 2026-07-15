@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,16 @@ async function getOrgId(orgSlug: string): Promise<string> {
   return data.id
 }
 
+/** Escritas usam o admin client (bypassa RLS) — precisam checar auth +
+ *  permissão 'social' manualmente antes de qualquer alteração. */
+async function requireSocialPermission(orgSlug: string): Promise<string> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'social')
+  if (!perm.allowed) throw new Error(perm.reason || 'Sem permissão')
+  return org.id
+}
+
 // ── Automations CRUD ──────────────────────────────────────────────────────────
 
 export async function getSocialAutomations(orgSlug: string): Promise<SocialAutomation[]> {
@@ -87,7 +99,7 @@ export async function createSocialAutomation(
     send_dm_after_comment?: boolean
   },
 ) {
-  const orgId = await getOrgId(orgSlug)
+  const orgId = await requireSocialPermission(orgSlug)
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('social_automations')
@@ -114,7 +126,7 @@ export async function updateSocialAutomation(
   id: string,
   payload: Partial<Omit<SocialAutomation, 'id' | 'organization_id' | 'created_at'>>,
 ) {
-  const orgId = await getOrgId(orgSlug)
+  const orgId = await requireSocialPermission(orgSlug)
   const admin = createAdminClient()
   const { error } = await admin
     .from('social_automations')
@@ -126,7 +138,7 @@ export async function updateSocialAutomation(
 }
 
 export async function deleteSocialAutomation(orgSlug: string, id: string) {
-  const orgId = await getOrgId(orgSlug)
+  const orgId = await requireSocialPermission(orgSlug)
   const admin = createAdminClient()
   const { error } = await admin
     .from('social_automations')
@@ -156,7 +168,7 @@ export async function getSocialConnections(orgSlug: string): Promise<SocialConne
 }
 
 export async function deleteSocialConnection(orgSlug: string, id: string) {
-  const orgId = await getOrgId(orgSlug)
+  const orgId = await requireSocialPermission(orgSlug)
   const admin = createAdminClient()
   const { error } = await admin
     .from('social_connections')

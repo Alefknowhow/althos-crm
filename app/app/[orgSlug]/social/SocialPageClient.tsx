@@ -32,7 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MessageSquare, Trash2, Plus, Zap, Clock, Users, ChevronRight } from 'lucide-react'
+import { MessageSquare, Trash2, Plus, Zap, Clock, Users, ChevronRight, Inbox } from 'lucide-react'
+import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -340,10 +341,18 @@ export function SocialPageClient({
             Automatize respostas do Instagram com IA
           </p>
         </div>
-        <Button onClick={() => setShowNew(true)} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" />
-          Nova automação
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/app/${orgSlug}/social/inbox`}>
+              <Inbox className="w-4 h-4 mr-1.5" />
+              Inbox
+            </Link>
+          </Button>
+          <Button onClick={() => setShowNew(true)} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Nova automação
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
