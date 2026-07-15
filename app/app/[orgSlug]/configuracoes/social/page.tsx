@@ -1,6 +1,8 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { getSocialConnections } from '@/actions/social-automations'
+import { listDataDeletionRequests } from '@/actions/data-deletion'
 import SocialConnectClient from './SocialConnectClient'
+import DataDeletionRequestsPanel from './DataDeletionRequestsPanel'
 
 export default async function SocialSettingsPage({
   params,
@@ -11,7 +13,10 @@ export default async function SocialSettingsPage({
 }) {
   await requireAuth()
   await getCurrentOrganization(params.orgSlug)
-  const connections = await getSocialConnections(params.orgSlug)
+  const [connections, deletionRequests] = await Promise.all([
+    getSocialConnections(params.orgSlug),
+    listDataDeletionRequests(params.orgSlug),
+  ])
 
   // We can't read server-only env in the client component, so resolve the
   // "is the Meta App configured" flag here and pass it down.
@@ -35,6 +40,8 @@ export default async function SocialSettingsPage({
         webhookUrl={webhookUrl}
         flash={{ connected: searchParams.connected, error: searchParams.error, msg: searchParams.msg }}
       />
+
+      <DataDeletionRequestsPanel orgSlug={params.orgSlug} initialRequests={deletionRequests} />
     </div>
   )
 }

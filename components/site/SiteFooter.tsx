@@ -74,6 +74,7 @@ export function SiteFooter() {
             <Link href="/termos" className="text-[12px] text-[#15171c]/55 hover:text-[#15171c] transition-colors">Termos</Link>
             <Link href="/privacidade" className="text-[12px] text-[#15171c]/55 hover:text-[#15171c] transition-colors">Privacidade</Link>
             <Link href="/cookies" className="text-[12px] text-[#15171c]/55 hover:text-[#15171c] transition-colors">Cookies</Link>
+            <Link href="/exclusao-de-dados" className="text-[12px] text-[#15171c]/55 hover:text-[#15171c] transition-colors">Exclusão de dados</Link>
           </div>
         </div>
       </div>

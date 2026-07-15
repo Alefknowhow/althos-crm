@@ -21,6 +21,7 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/privacidade' ||    // public privacy policy (required by Meta)
     pathname === '/termos' ||         // public terms of service
     pathname === '/cookies' ||        // public cookie policy
+    pathname === '/exclusao-de-dados' || // public data deletion request (Meta requirement)
     pathname === '/funcionalidades' || // marketing: features
     pathname === '/para-quem-e' ||     // marketing: who it's for
     pathname === '/por-que-nos' ||     // marketing: why us
