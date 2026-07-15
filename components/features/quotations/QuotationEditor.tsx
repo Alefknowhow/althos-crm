@@ -969,7 +969,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   return (
     <div className="pb-8">
       {/* Toolbar */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85 backdrop-blur border-b flex items-center gap-2 flex-wrap">
+      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85 backdrop-blur border-b flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
         </Button>
