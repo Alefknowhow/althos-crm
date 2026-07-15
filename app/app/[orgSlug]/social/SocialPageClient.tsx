@@ -10,7 +10,7 @@ import {
   type SocialInteraction,
 } from '@/actions/social-automations'
 import { Button } from '@/components/ui/button'
-import AutomationsTabsNav from '@/components/features/automations/AutomationsTabsNav'
+import InstagramTabsNav from '@/components/features/social/InstagramTabsNav'
 import SocialFunnels from '@/components/features/social/SocialFunnels'
 import type { SocialFunnel } from '@/actions/social-funnels'
 import { Badge } from '@/components/ui/badge'
@@ -32,8 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MessageSquare, Trash2, Plus, Zap, Clock, Users, ChevronRight, Inbox } from 'lucide-react'
-import Link from 'next/link'
+import { MessageSquare, Trash2, Plus, Zap, Clock, Users, ChevronRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -330,29 +329,21 @@ export function SocialPageClient({
   return (
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto">
 
-      {/* Abas: CRM / Instagram */}
-      <div className="-mb-2 overflow-x-auto"><AutomationsTabsNav orgSlug={orgSlug} /></div>
+      {/* Abas: DM / Automações */}
+      <div className="-mb-2 overflow-x-auto"><InstagramTabsNav orgSlug={orgSlug} /></div>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Instagram · DMs & Comentários</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Instagram · Automações</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Automatize respostas do Instagram com IA
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/app/${orgSlug}/social/inbox`}>
-              <Inbox className="w-4 h-4 mr-1.5" />
-              Inbox
-            </Link>
-          </Button>
-          <Button onClick={() => setShowNew(true)} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" />
-            Nova automação
-          </Button>
-        </div>
+        <Button onClick={() => setShowNew(true)} size="sm">
+          <Plus className="w-4 h-4 mr-1.5" />
+          Nova automação
+        </Button>
       </div>
 
       {/* Stats */}
@@ -393,11 +384,20 @@ export function SocialPageClient({
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/app/${orgSlug}/configuracoes/social`}>
-              {initialConnections.length > 0 ? 'Gerenciar' : 'Conectar'} <ChevronRight className="w-3.5 h-3.5 ml-1" />
-            </a>
-          </Button>
+          {initialConnections.length > 0 ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/app/${orgSlug}/configuracoes/social`}>
+                Gerenciar <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </a>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => { window.location.href = `/api/social/instagram/connect?org=${encodeURIComponent(orgSlug)}` }}
+            >
+              Conectar Instagram
+            </Button>
+          )}
         </div>
         {initialConnections.length === 0 && (
           <p className="mt-3 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
