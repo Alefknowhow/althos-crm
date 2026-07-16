@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import {
   updateTask, deleteTask, toggleTaskStatus,
@@ -17,8 +18,8 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
-  LayoutGrid, List as ListIcon, Calendar, User2, UserCheck, CheckCircle2, Circle,
-  Clock, GripVertical, Trash2, Plus, Check, X, Pencil,
+  LayoutGrid, List as ListIcon, CalendarDays, Calendar, User2, UserCheck, CheckCircle2, Circle,
+  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 type Member = { user_id: string; name: string; email: string }
@@ -38,7 +39,7 @@ type Task = {
   leads?: { id: string; name: string } | null
 }
 
-type View = 'kanban' | 'list'
+type View = 'kanban' | 'list' | 'calendar'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
 type AssigneeFilter = 'all' | 'none' | string
 type DateFilter = 'all' | 'overdue' | 'today' | 'this_week' | 'next_week' | 'this_month'
@@ -58,6 +59,12 @@ function dueDateOnly(t: Task): Date | null {
   if (!y || !m || !d) return null
   return new Date(y, m - 1, d)
 }
+
+const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
+function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
+function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 // Priority maps onto the semantic status tokens (low→success, normal→warning,
 // high→destructive) so the colors track the design system in both themes.
@@ -118,6 +125,7 @@ export default function TasksBoard({
   const [overCol, setOverCol] = useState<string | null>(null)
   const [editingColId, setEditingColId] = useState<string | null>(null)
   const [colDraft, setColDraft] = useState('')
+  const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
 
   // Re-sync when the server sends fresh data (after router.refresh()).
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
@@ -126,7 +134,7 @@ export default function TasksBoard({
   // Restore preferred view (avoid SSR hydration mismatch by reading after mount).
   useEffect(() => {
     const v = localStorage.getItem('tasks-view')
-    if (v === 'kanban' || v === 'list') setView(v)
+    if (v === 'kanban' || v === 'list' || v === 'calendar') setView(v)
   }, [])
   function pickView(v: View) {
     setView(v)
@@ -142,7 +150,7 @@ export default function TasksBoard({
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
   }, [])
-  const effectiveView: View = isMobile ? 'list' : view
+  const effectiveView: View = isMobile && view === 'kanban' ? 'list' : view
 
   // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
   const bounds = useMemo(() => {
@@ -207,6 +215,29 @@ export default function TasksBoard({
     for (const k of Object.keys(map)) map[k] = doneLast(map[k])
     return map
   }, [filtered, columns])
+
+  // 6 semanas fixas (42 dias), começando no domingo antes (ou no) 1º do mês —
+  // grade estável, sem "pular" de altura entre meses de 4 ou 6 semanas.
+  const calDays = useMemo(() => {
+    const gridStart = new Date(calMonth)
+    gridStart.setDate(gridStart.getDate() - gridStart.getDay())
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(gridStart)
+      d.setDate(gridStart.getDate() + i)
+      return d
+    })
+  }, [calMonth])
+
+  const tasksByDate = useMemo(() => {
+    const map: Record<string, Task[]> = {}
+    for (const t of filtered) {
+      const d = dueDateOnly(t)
+      if (!d) continue
+      ;(map[ymd(d)] ??= []).push(t)
+    }
+    for (const k of Object.keys(map)) map[k] = doneLast(map[k])
+    return map
+  }, [filtered])
 
   async function moveTo(taskId: string, columnId: string) {
     const task = tasks.find(t => t.id === taskId)
@@ -360,6 +391,7 @@ export default function TasksBoard({
         <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
           <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
           <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
+          <ViewBtn active={view === 'calendar'} onClick={() => pickView('calendar')} icon={CalendarDays} label="Calendário" />
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -502,6 +534,96 @@ export default function TasksBoard({
             Nova coluna
           </button>
         </div>
+      ) : effectiveView === 'calendar' ? (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCalMonth(m => addMonths(m, -1))}
+                className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
+                aria-label="Mês anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-semibold min-w-[130px] text-center capitalize">
+                {calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </span>
+              <button
+                onClick={() => setCalMonth(m => addMonths(m, 1))}
+                className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
+                aria-label="Próximo mês"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={() => setCalMonth(startOfMonth(new Date()))}
+              className={cn('px-2.5 h-7 rounded-md border text-xs font-medium hover:bg-muted transition-colors', FOCUS_RING)}
+            >
+              Hoje
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 border-b">
+            {WEEKDAYS_PT.map(w => (
+              <div key={w} className="py-2 text-center text-[11px] font-medium text-muted-foreground">{w}</div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7">
+            {calDays.map((d, i) => {
+              const key = ymd(d)
+              const dayTasks = tasksByDate[key] || []
+              const inMonth = d.getMonth() === calMonth.getMonth()
+              const isToday = key === ymd(new Date())
+              const visible = dayTasks.slice(0, 3)
+              const overflow = dayTasks.length - visible.length
+              return (
+                <div
+                  key={key}
+                  className={cn(
+                    'min-h-[92px] sm:min-h-[104px] border-b border-r p-1.5',
+                    (i + 1) % 7 === 0 && 'border-r-0',
+                    i >= 35 && 'border-b-0',
+                    !inMonth && 'bg-muted/20',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1',
+                      isToday ? 'bg-primary text-primary-foreground font-semibold'
+                        : inMonth ? 'text-muted-foreground' : 'text-muted-foreground/40',
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <div className="space-y-0.5">
+                    {visible.map(t => {
+                      const pm = PRIORITY_META[t.priority]
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setEditing(t)}
+                          title={t.title}
+                          className={cn(
+                            'w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate border',
+                            pm.cls,
+                            t.status === 'done' && 'opacity-50 line-through',
+                          )}
+                        >
+                          {t.title}
+                        </button>
+                      )
+                    })}
+                    {overflow > 0 && (
+                      <DayOverflowPopover tasks={dayTasks} onOpen={setEditing} label={`+${overflow} mais`} />
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       ) : (
         <div className="rounded-xl border divide-y bg-card">
           {doneLast(filtered).length === 0 ? (
@@ -535,6 +657,42 @@ export default function TasksBoard({
         onDelete={handleDelete}
       />
     </div>
+  )
+}
+
+function DayOverflowPopover({ tasks, onOpen, label }: { tasks: Task[]; onOpen: (t: Task) => void; label: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full text-left text-[10px] text-muted-foreground hover:text-foreground px-1"
+        >
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-1.5" align="start">
+        <div className="space-y-0.5 max-h-64 overflow-y-auto">
+          {tasks.map(t => {
+            const pm = PRIORITY_META[t.priority]
+            return (
+              <button
+                key={t.id}
+                onClick={() => { onOpen(t); setOpen(false) }}
+                className={cn(
+                  'w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted flex items-center gap-1.5',
+                  t.status === 'done' && 'opacity-60 line-through',
+                )}
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', pm.bar)} />
+                <span className="truncate">{t.title}</span>
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

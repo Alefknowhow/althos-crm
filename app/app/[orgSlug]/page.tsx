@@ -10,6 +10,8 @@ import DashboardCustomizer from '@/components/features/dashboard/DashboardCustom
 import PinnedCardsGrid from '@/components/features/dashboard/PinnedCardsGrid'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
+import { isTravelNiche } from '@/lib/niche'
+import UpcomingDeparturesWidget from '@/components/features/dashboard/UpcomingDeparturesWidget'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
 import { listDashboardInsights } from '@/actions/dashboard-insights'
@@ -128,6 +130,12 @@ export default async function OrgDashboard({
       </div>
 
       <InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />
+
+      {isTravelNiche((org as any).niche) && (
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <UpcomingDeparturesWidget orgSlug={params.orgSlug} />
+        </Suspense>
+      )}
 
       <DashboardCustomizer
         orgSlug={params.orgSlug}

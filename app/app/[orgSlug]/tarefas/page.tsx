@@ -38,7 +38,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
     <div className="space-y-6">
       <PageHeader
         title="Tarefas"
-        hint="Organize seu trabalho em quadro Kanban ou lista."
+        hint="Organize seu trabalho em quadro Kanban, lista ou calendário."
         actions={<TaskDialog orgSlug={params.orgSlug} members={members} />}
       />
 

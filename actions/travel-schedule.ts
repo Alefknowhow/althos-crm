@@ -72,6 +72,54 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   })
 }
 
+/**
+ * Viagens com embarque nos próximos `days` dias (inclui hoje). Base do bloco
+ * "Embarques" da Inicial — janela curta e fixa, então não reaproveita
+ * listScheduledTrips (que traz até 500 linhas sem filtro de data).
+ */
+export async function listUpcomingDepartures(orgSlug: string, days = 7): Promise<ScheduledTrip[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const until = new Date(today); until.setDate(until.getDate() + days)
+  const todayISO = today.toISOString().split('T')[0]
+  const untilISO = until.toISOString().split('T')[0]
+
+  const { data: sales } = await supabase
+    .from('travel_sales')
+    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes')
+    .eq('organization_id', org.id)
+    .gte('departure_date', todayISO)
+    .lte('departure_date', untilISO)
+    .order('departure_date', { ascending: true })
+    .limit(50)
+
+  const rows = (sales as any[]) ?? []
+  const leadIds = Array.from(new Set(rows.map(r => r.contato_id).filter(Boolean)))
+
+  const leadById = new Map<string, { name: string | null; phone: string | null }>()
+  if (leadIds.length > 0) {
+    const { data: leads } = await supabase
+      .from('contatos')
+      .select('id, name, phone')
+      .eq('organization_id', org.id)
+      .in('id', leadIds)
+    for (const l of (leads as any[]) ?? []) {
+      leadById.set(l.id, { name: l.name ?? null, phone: l.phone ?? null })
+    }
+  }
+
+  return rows.map(r => {
+    const lead = r.contato_id ? leadById.get(r.contato_id) : null
+    return {
+      ...r,
+      lead_name: lead?.name ?? null,
+      lead_phone: lead?.phone ?? null,
+    } as ScheduledTrip
+  })
+}
+
 /** Tarefas operacionais vinculadas ao lead da viagem. */
 export async function getTripTasks(orgSlug: string, leadId: string): Promise<TripTask[]> {
   const org = await getCurrentOrganization(orgSlug)
