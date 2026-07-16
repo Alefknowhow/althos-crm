@@ -225,7 +225,7 @@ export async function getFormWithSubmissions(
   let q = supabase
     .from('form_submissions')
     .select(
-      'id, created_at, data, meta, contato_id, utm_source, utm_medium, utm_campaign, leads(id, name, email, phone)',
+      'id, created_at, data, meta, contato_id, utm_source, utm_medium, utm_campaign, contatos(id, name, email, phone)',
       { count: 'exact' },
     )
     .eq('form_id', formId)

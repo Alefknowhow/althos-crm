@@ -29,7 +29,7 @@ type Submission = {
   utm_source?: string | null
   utm_medium?: string | null
   utm_campaign?: string | null
-  leads: Lead | Lead[] | null
+  contatos: Lead | Lead[] | null
 }
 
 type Props = {
@@ -48,8 +48,8 @@ type Props = {
 }
 
 function pickLead(s: Submission): Lead {
-  if (Array.isArray(s.leads)) return s.leads[0] || null
-  return s.leads as Lead
+  if (Array.isArray(s.contatos)) return s.contatos[0] || null
+  return s.contatos as Lead
 }
 
 function renderCell(field: FormField, value: any): string {
