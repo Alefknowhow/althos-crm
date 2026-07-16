@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import InstagramTabsNav from '@/components/features/social/InstagramTabsNav'
 import {
   sendManualMessage,
   toggleAutomationPause,
@@ -97,9 +96,6 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
   return (
     <div className="flex w-full h-full border-t">
       <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b bg-background shrink-0 h-16 flex items-center">
-          <InstagramTabsNav orgSlug={orgSlug} />
-        </div>
         <div className="px-3 py-2 border-b bg-background shrink-0">
           <Input
             value={query}

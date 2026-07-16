@@ -10,7 +10,6 @@ import {
   type SocialInteraction,
 } from '@/actions/social-automations'
 import { Button } from '@/components/ui/button'
-import InstagramTabsNav from '@/components/features/social/InstagramTabsNav'
 import SocialFunnels from '@/components/features/social/SocialFunnels'
 import type { SocialFunnel } from '@/actions/social-funnels'
 import { Badge } from '@/components/ui/badge'
@@ -327,10 +326,8 @@ export function SocialPageClient({
   }
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto">
-
-      {/* Abas: DM / Automações */}
-      <div className="-mb-2 overflow-x-auto"><InstagramTabsNav orgSlug={orgSlug} /></div>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
@@ -544,6 +541,7 @@ export function SocialPageClient({
         onClose={() => setShowNew(false)}
         onCreated={auto => setAutomations(prev => [auto, ...prev])}
       />
+    </div>
     </div>
   )
 }

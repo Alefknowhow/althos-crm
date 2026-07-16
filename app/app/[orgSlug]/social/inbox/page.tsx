@@ -19,7 +19,7 @@ export default async function SocialInboxPage({
     : []
 
   return (
-    <div className="h-[calc(100vh-4rem)] -m-6 flex bg-background overflow-hidden">
+    <div className="h-full flex bg-background overflow-hidden">
       <SocialInbox
         orgSlug={params.orgSlug}
         conversations={conversations}
