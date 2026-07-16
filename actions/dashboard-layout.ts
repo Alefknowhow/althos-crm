@@ -72,3 +72,64 @@ export async function savePeriodDefault(orgSlug: string, period: string) {
   if (error) return { ok: false as const, error: error.message }
   return { ok: true as const }
 }
+
+export type PinnedCard = { id: string; title: string; view: any; createdAt: string }
+
+const MAX_PINNED_CARDS = 12
+
+/** Fixa um gráfico gerado pelo copiloto na grade da Inicial. */
+export async function pinCardToDashboard(orgSlug: string, title: string, view: any) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('dashboard_layouts')
+    .select('pinned_cards')
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const current: PinnedCard[] = data?.pinned_cards || []
+  const next = [
+    ...current,
+    { id: crypto.randomUUID(), title, view, createdAt: new Date().toISOString() },
+  ].slice(-MAX_PINNED_CARDS)
+
+  const { error } = await supabase
+    .from('dashboard_layouts')
+    .upsert(
+      { organization_id: org.id, user_id: user.id, pinned_cards: next },
+      { onConflict: 'organization_id,user_id' },
+    )
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}`)
+  return { ok: true as const }
+}
+
+export async function unpinCard(orgSlug: string, cardId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('dashboard_layouts')
+    .select('pinned_cards')
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const current: PinnedCard[] = data?.pinned_cards || []
+  const next = current.filter(c => c.id !== cardId)
+
+  const { error } = await supabase
+    .from('dashboard_layouts')
+    .update({ pinned_cards: next })
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}`)
+  return { ok: true as const }
+}

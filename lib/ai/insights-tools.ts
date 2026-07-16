@@ -75,13 +75,28 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: 'consultar_pipeline',
     description:
-      'Distribuição atual de leads pelos estágios do pipeline (funil de vendas). Mostra quantos leads estão em cada estágio e o valor agregado. Use para "como está o funil", "quantos leads tenho", "pipeline".',
+      'Funil de conversão: quantos leads estão em cada estágio, valor agregado e a TAXA DE CONVERSÃO entre estágios (quanto % passa de um pro próximo, e do primeiro ao último). Use para "como está o funil", "onde estou perdendo mais leads", "taxa de conversão", "pipeline".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        periodo: PERIOD_PARAM,
+        pipeline_id: {
+          type: 'string',
+          description: 'ID opcional de pipeline específico. Se omitido, usa o padrão da org.',
+        },
+      },
+    },
+  },
+  {
+    name: 'consultar_forecast',
+    description:
+      'Projeção de receita: quanto já foi fechado no mês + quanto é esperado do pipeline atual (ponderado pela probabilidade histórica de cada estágio fechar). Use para "forecast", "previsão de receita", "quanto vou faturar", "projeção do mês/trimestre".',
     input_schema: {
       type: 'object',
       properties: {
         pipeline_id: {
           type: 'string',
-          description: 'ID opcional de pipeline específico. Se omitido, usa o padrão da org.',
+          description: 'ID opcional de pipeline específico. Se omitido, considera o(s) pipeline(s) padrão da org.',
         },
       },
     },
@@ -192,6 +207,8 @@ export async function executeAnalyticsTool(
         return await querySales(input, ctx)
       case 'consultar_pipeline':
         return await queryPipeline(input, ctx)
+      case 'consultar_forecast':
+        return await queryForecast(input, ctx)
       case 'consultar_agendamentos':
         return await queryAppointments(input, ctx)
       case 'consultar_marketing':
@@ -503,51 +520,52 @@ async function queryPipeline(
   input: Record<string, any>,
   ctx: AnalyticsContext,
 ): Promise<AnalyticsResult> {
-  let pipelineId: string | null = input.pipeline_id || null
-  if (!pipelineId) {
-    const { data } = await ctx.supabase
-      .from('pipelines')
-      .select('id')
-      .eq('organization_id', ctx.orgId)
-      .eq('is_default', true)
-      .maybeSingle()
-    pipelineId = data?.id || null
+  const { getAdvancedFunnel } = await import('@/actions/dashboard')
+  const periodo = (input.periodo as string) || '30d'
+  const result = await getAdvancedFunnel(ctx.orgId, {
+    period: periodo as any,
+    source: { kind: 'all' },
+    pipelineId: input.pipeline_id || null,
+  })
+
+  if (result.stages.length === 0) {
+    return { summary: 'Nenhum estágio de pipeline configurado.', view: { type: 'none' } }
   }
 
-  if (!pipelineId) {
-    return { summary: 'Nenhum pipeline padrão configurado.', view: { type: 'none' } }
-  }
-
-  const { data: stages } = await ctx.supabase
-    .from('pipeline_stages')
-    .select('id, name, position')
-    .eq('pipeline_id', pipelineId)
-    .order('position', { ascending: true })
-
-  const { data: leads } = await ctx.supabase
-    .from('contatos')
-    .select('stage_id, value_cents')
-    .eq('organization_id', ctx.orgId)
-    .eq('pipeline_id', pipelineId)
-
-  const byStage = new Map<string, { count: number; value: number }>()
-  for (const l of leads || []) {
-    const k = l.stage_id || 'unassigned'
-    const cur = byStage.get(k) || { count: 0, value: 0 }
-    cur.count += 1
-    cur.value += l.value_cents || 0
-    byStage.set(k, cur)
-  }
-
-  const data = (stages || []).map(s => ({
-    name: s.name,
-    value: byStage.get(s.id)?.count || 0,
-  }))
-
-  const totalValue = (leads || []).reduce((a, l) => a + (l.value_cents || 0), 0)
   return {
-    summary: `${(leads || []).length} leads distribuídos em ${(stages || []).length} estágios, valor total agregado ${fmtCurrency(totalValue)}.`,
-    view: { type: 'bar', data, color: '#a855f7' },
+    summary: `${result.total_leads} leads no funil, conversão geral de ${result.overall_conversion_pct.toFixed(1)}% (do 1º ao último estágio), valor agregado ${fmtCurrency(result.total_value_cents)}. Por estágio: ${result.stages.map(s => `${s.name} — ${s.count} leads (${s.conversion_from_previous.toFixed(0)}% do estágio anterior)`).join('; ')}.`,
+    view: {
+      type: 'table',
+      columns: ['Estágio', 'Leads', 'Valor', 'Conversão do anterior'],
+      rows: result.stages.map(s => [s.name, String(s.count), fmtCurrency(s.value_cents), `${s.conversion_from_previous.toFixed(0)}%`]),
+    },
+  }
+}
+
+async function queryForecast(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { getRevenueForecast } = await import('@/actions/dashboard')
+  const forecast = await getRevenueForecast(ctx.orgId, { pipelineId: input.pipeline_id || null })
+
+  if (forecast.stages.length === 0 && forecast.already_won_cents === 0) {
+    return { summary: 'Sem dados suficientes no pipeline para projetar receita.', view: { type: 'none' } }
+  }
+
+  const items = [
+    { label: 'Já ganho (mês)', value: fmtCurrency(forecast.already_won_cents) },
+    { label: 'Esperado do pipeline', value: fmtCurrency(forecast.total_expected_cents) },
+    { label: 'Projeção combinada', value: fmtCurrency(forecast.combined_forecast_cents) },
+  ]
+
+  const byStage = forecast.stages
+    .map(s => `${s.stage_name} (${(s.probability * 100).toFixed(0)}% de ${s.lead_count} leads)`)
+    .join(', ')
+
+  return {
+    summary: `Forecast do mês: já ganho ${fmtCurrency(forecast.already_won_cents)} + esperado do pipeline ${fmtCurrency(forecast.total_expected_cents)} = projeção combinada de ${fmtCurrency(forecast.combined_forecast_cents)}.${byStage ? ` Por estágio: ${byStage}.` : ''}`,
+    view: { type: 'kpis', items },
   }
 }
 

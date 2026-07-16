@@ -296,3 +296,98 @@ export async function respondAsAttendant(
     handoffRequested,
   }
 }
+
+/* ─────────────────────────── Streaming variant ───────────────────────────
+ * Used by the Inicial copiloto dock. Same tool loop as respondAsAttendant,
+ * but streams the model's text as it's generated instead of awaiting the
+ * whole response — the tool-use iterations themselves still run to
+ * completion before the next call (a tool round-trip is fast and mostly
+ * invisible; only the final natural-language answer needs to feel "live").
+ */
+
+export type CopilotStreamEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'tool_call'; name: string; input: Record<string, any>; result: string }
+  | { type: 'done'; reply: string; usage: AggregatedUsage; modelUsed: string; costUsdCents: number }
+
+export async function* respondAsAttendantStream(
+  input: AttendantInput,
+  config: AttendantConfig,
+): AsyncGenerator<CopilotStreamEvent, void, unknown> {
+  const client = new Anthropic({ apiKey: config.apiKey })
+
+  const systemBlocks = buildSystemBlocks(input)
+  const model = config.model || 'claude-haiku-4-5'
+  const maxIterations = config.maxIterations ?? 5
+  const hasTools = (input.tools?.length ?? 0) > 0 && !!input.executeTool
+
+  const messages: Anthropic.Messages.MessageParam[] = input.messages.map(m => ({
+    role: m.role,
+    content: m.content,
+  }))
+
+  const usage: AggregatedUsage = {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+  }
+
+  let modelUsed = model
+  let finalReply = ''
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const stream = client.messages.stream({
+      model,
+      max_tokens: config.maxOutputTokens ?? 1200,
+      system: systemBlocks,
+      messages,
+      ...(hasTools && { tools: input.tools }),
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield { type: 'text_delta', text: event.delta.text }
+      }
+    }
+
+    const response = await stream.finalMessage()
+    accumulateUsage(usage, response.usage)
+    modelUsed = response.model
+
+    if (response.stop_reason !== 'tool_use') {
+      const textBlock = response.content.find(b => b.type === 'text') as
+        | Anthropic.Messages.TextBlock
+        | undefined
+      finalReply = textBlock?.text || ''
+      break
+    }
+
+    messages.push({ role: 'assistant', content: response.content })
+
+    const toolUseBlocks = response.content.filter(
+      (b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use',
+    )
+    const toolResultBlocks: Anthropic.Messages.ToolResultBlockParam[] = []
+    for (const tu of toolUseBlocks) {
+      const result = input.executeTool
+        ? await input.executeTool(tu.name, (tu.input as Record<string, any>) || {})
+        : '[ERRO: executor não configurado]'
+      yield { type: 'tool_call', name: tu.name, input: (tu.input as Record<string, any>) || {}, result }
+      toolResultBlocks.push({ type: 'tool_result', tool_use_id: tu.id, content: result })
+    }
+    messages.push({ role: 'user', content: toolResultBlocks })
+
+    if (iter === maxIterations - 1) {
+      finalReply = 'Desculpe, fiquei sem dados para concluir. Pode reformular ou eu chamo um atendente?'
+    }
+  }
+
+  yield {
+    type: 'done',
+    reply: finalReply,
+    usage,
+    modelUsed,
+    costUsdCents: computeCostUsdCents(modelUsed, usage),
+  }
+}

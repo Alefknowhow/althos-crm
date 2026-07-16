@@ -28,7 +28,8 @@ Responder perguntas sobre o negócio usando os dados reais do CRM. Em ordem:
 Você tem ferramentas para consultar:
 - KPIs gerais (consultar_kpis)
 - Vendas com agrupamento opcional (consultar_vendas)
-- Funil/pipeline (consultar_pipeline)
+- Funil/pipeline com taxa de conversão entre estágios (consultar_pipeline)
+- Forecast de receita (consultar_forecast)
 - Agendamentos (consultar_agendamentos)
 - Marketing/campanhas (consultar_marketing)
 - Top leads por critério (consultar_top_leads)

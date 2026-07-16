@@ -7,6 +7,9 @@ import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
 import SellerFilter from '@/components/features/dashboard/SellerFilter'
 import DashboardCustomizer from '@/components/features/dashboard/DashboardCustomizer'
+import PinnedCardsGrid from '@/components/features/dashboard/PinnedCardsGrid'
+import CopilotDock from '@/components/features/dashboard/CopilotDock'
+import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
 import { listDashboardInsights } from '@/actions/dashboard-insights'
@@ -53,6 +56,18 @@ export default async function OrgDashboard({
   const validPipelineId = pipelineId && (pipelines || []).some(p => p.id === pipelineId)
     ? pipelineId
     : null
+
+  // Copiloto: gated pela permissão 'insights' (o plano é checado por dentro
+  // de getCopilotInit/o route handler — aqui só decide se o FAB aparece).
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role, permissions')
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const canUseCopilot = membership
+    ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'insights')
+    : false
 
   // Members power the seller filter dropdown + validate the seller_id param.
   const members = await listOrgMembers(params.orgSlug)
@@ -119,6 +134,10 @@ export default async function OrgDashboard({
         widgetKeys={layout.widgetKeys}
         renderedByKey={renderedByKey}
       />
+
+      <PinnedCardsGrid orgSlug={params.orgSlug} initialCards={layout.pinnedCards} />
+
+      {canUseCopilot && <CopilotDock orgSlug={params.orgSlug} period={period} />}
     </div>
   )
 }
