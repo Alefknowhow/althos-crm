@@ -120,11 +120,11 @@ export default async function OrgLayout({
               >
                 Central de Ajuda
               </Link>
-              <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no canto inferior direito." />
+              <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no ícone de balão aqui na barra." />
               <div className="w-px h-4 bg-border mx-1" />
               <PushNotificationToggle orgSlug={params.orgSlug} />
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-              <SupportHeaderButton className="md:hidden" />
+              <SupportHeaderButton />
               <ModeToggle />
             </div>
           </header>

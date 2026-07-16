@@ -152,7 +152,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
       )}
 
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[380px] bg-background border-l shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-1/2 sm:min-w-[420px] sm:max-w-3xl bg-background border-l shadow-2xl flex flex-col">
           <div className="h-16 border-b px-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
