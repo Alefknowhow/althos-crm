@@ -16,6 +16,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -29,7 +33,7 @@ import { uploadSaleVoucher } from '@/actions/upload'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
-  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save,
+  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -73,6 +77,63 @@ function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) 
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="space-y-1"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>
+}
+
+// Combobox com busca por digitação — a lista de contatos pode ser grande,
+// então rolar com o mouse num <select> comum não escala.
+function ContactCombobox({ leads, value, onChange }: {
+  leads: LeadOption[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = leads.find(l => l.id === value) || null
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className={cn('truncate', !selected && 'text-muted-foreground')}>
+            {selected ? `${selected.name}${selected.phone ? ` · ${selected.phone}` : ''}` : 'Selecione o contato do CRM'}
+          </span>
+          <ChevronsUpDown className="w-4 h-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command
+          filter={(id, search) => {
+            const lead = leads.find(l => l.id === id)
+            if (!lead) return 0
+            const haystack = `${lead.name} ${lead.phone || ''}`.toLowerCase()
+            return haystack.includes(search.toLowerCase()) ? 1 : 0
+          }}
+        >
+          <CommandInput placeholder="Buscar por nome ou telefone..." />
+          <CommandList>
+            <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+            <CommandGroup>
+              {leads.map(l => (
+                <CommandItem
+                  key={l.id}
+                  value={l.id}
+                  onSelect={() => { onChange(l.id); setOpen(false) }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4 shrink-0', value === l.id ? 'opacity-100' : 'opacity-0')} />
+                  <span className="truncate">{l.name}{l.phone ? ` · ${l.phone}` : ''}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export default function TravelSalesView({
@@ -384,18 +445,7 @@ function NewSaleDialog({
         <div className="py-2 space-y-4">
           <div className="space-y-2">
             <Label className="text-xs">Cliente <span className="text-destructive">*</span></Label>
-            <Select value={pickedContato} onValueChange={setPickedContato}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o contato do CRM" />
-              </SelectTrigger>
-              <SelectContent>
-                {leads.map(l => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.name}{l.phone ? ` · ${l.phone}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ContactCombobox leads={leads} value={pickedContato} onChange={setPickedContato} />
             {leads.length === 0 && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" /> Nenhum contato cadastrado ainda — cadastre o cliente em Contatos primeiro.
