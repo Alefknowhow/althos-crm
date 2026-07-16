@@ -144,7 +144,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+          className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity"
           aria-label="Abrir copiloto IA"
         >
           <Sparkles className="w-6 h-6" />
