@@ -93,7 +93,6 @@ export default async function UpcomingDeparturesWidget({ orgSlug }: { orgSlug: s
                         href={wa}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
                         className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
                         aria-label="Abrir WhatsApp"
                       >
