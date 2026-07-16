@@ -173,17 +173,32 @@ function mapProposalToSaleFields(proposal: any): Record<string, any> {
  * Manually create a travel sale, optionally pre-filled from a proposal.
  * Powers the "Nova venda" button — a robust fallback to the auto-creation
  * that fires when a lead is moved to a won stage.
+ *
+ * `contatoId` is mandatory: toda venda precisa estar ligada a um lead/contato
+ * do CRM, para que o vendedor não consiga registrar um cliente que não foi
+ * cadastrado. O nome do cliente da venda vem sempre do contato vinculado.
  */
-export async function createTravelSale(orgSlug: string, proposalId?: string | null) {
+export async function createTravelSale(orgSlug: string, proposalId: string | null | undefined, contatoId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'sales')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
+  if (!contatoId) {
+    return { ok: false as const, error: 'Selecione o cliente (contato do CRM) para criar a venda.' }
+  }
+
   const supabase = createClient()
 
+  const { data: contato } = await supabase
+    .from('contatos')
+    .select('id, name')
+    .eq('organization_id', org.id)
+    .eq('id', contatoId)
+    .maybeSingle()
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado.' }
+
   let prefill: Record<string, any> = {}
-  let leadId: string | null = null
   let linkedProposalId: string | null = null
 
   if (proposalId) {
@@ -195,7 +210,6 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
       .maybeSingle()
     if (!proposal) return { ok: false as const, error: 'Proposta não encontrada.' }
     prefill = mapProposalToSaleFields(proposal)
-    leadId = (proposal as any).contato_id ?? null
     linkedProposalId = (proposal as any).id
   }
 
@@ -203,11 +217,12 @@ export async function createTravelSale(orgSlug: string, proposalId?: string | nu
     .from('travel_sales')
     .insert({
       organization_id: org.id,
-      contato_id: leadId,
+      contato_id: contato.id,
       proposal_id: linkedProposalId,
       created_by: user.id,
       status: 'open',
       ...prefill,
+      client_name: (contato as any).name || prefill.client_name || null,
     })
     .select()
     .single()

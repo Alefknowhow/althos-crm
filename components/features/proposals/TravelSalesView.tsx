@@ -32,7 +32,8 @@ import {
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save,
 } from 'lucide-react'
 
-type ProposalOption = { id: string; title: string | null; client_name: string | null }
+type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
+type LeadOption = { id: string; name: string; phone: string | null }
 type Member = { user_id: string; name: string; email: string }
 type Voucher = { url: string; name: string }
 
@@ -75,12 +76,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function TravelSalesView({
-  orgSlug, sales, proposals = [], members = [], initialSelectedId,
+  orgSlug, sales, proposals = [], members = [], leads = [], initialSelectedId,
 }: {
   orgSlug: string
   sales: TravelSaleRow[]
   proposals?: ProposalOption[]
   members?: Member[]
+  leads?: LeadOption[]
   initialSelectedId?: string | null
 }) {
   const router = useRouter()
@@ -92,6 +94,7 @@ export default function TravelSalesView({
   const [newOpen, setNewOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
+  const [pickedContato, setPickedContato] = useState<string>('')
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -128,15 +131,23 @@ export default function TravelSalesView({
   }
 
   async function handleCreate() {
+    if (!pickedContato) { toast.error('Selecione o cliente (contato do CRM)'); return }
     setCreating(true)
-    const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal)
+    const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal, pickedContato)
     setCreating(false)
     if (!res.ok) { toast.error(res.error); return }
     setNewOpen(false)
     setPickedProposal('none')
+    setPickedContato('')
     toast.success('Venda criada')
     setSelectedId(res.data.id)
     router.refresh()
+  }
+
+  function handlePickProposal(v: string) {
+    setPickedProposal(v)
+    const proposal = proposals.find(p => p.id === v)
+    if (proposal?.contato_id) setPickedContato(proposal.contato_id)
   }
 
   async function handleSave(id: string, patch: Record<string, any>, generate: boolean) {
@@ -170,8 +181,9 @@ export default function TravelSalesView({
           description="Crie uma venda manualmente com o botão 'Nova venda' (importando uma proposta), ou mova um lead com proposta vinculada para a etapa 'Fechado' no pipeline — a venda é gerada automaticamente."
         />
         <NewSaleDialog
-          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}
-          proposals={proposals} picked={pickedProposal} setPicked={setPickedProposal}
+          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+          proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
+          leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
           creating={creating} onCreate={handleCreate}
         />
       </>
@@ -322,8 +334,9 @@ export default function TravelSalesView({
       </div>
 
       <NewSaleDialog
-        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setPickedProposal('none') }}
-        proposals={proposals} picked={pickedProposal} setPicked={setPickedProposal}
+        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+        proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
+        leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
         creating={creating} onCreate={handleCreate}
       />
 
@@ -345,13 +358,16 @@ export default function TravelSalesView({
 }
 
 function NewSaleDialog({
-  open, onOpenChange, proposals, picked, setPicked, creating, onCreate,
+  open, onOpenChange, proposals, picked, setPicked, leads, pickedContato, setPickedContato, creating, onCreate,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   proposals: ProposalOption[]
   picked: string
   setPicked: (v: string) => void
+  leads: LeadOption[]
+  pickedContato: string
+  setPickedContato: (v: string) => void
   creating: boolean
   onCreate: () => void
 }) {
@@ -361,35 +377,53 @@ function NewSaleDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Nova venda de viagem</DialogTitle>
           <DialogDescription>
-            Importe uma proposta para preencher os dados automaticamente, ou comece em branco.
+            Toda venda precisa estar ligada a um contato do CRM. Se o cliente ainda não foi cadastrado, cadastre-o em Contatos antes de continuar.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-2 space-y-2">
-          <Label className="text-xs">Importar de uma proposta</Label>
-          <Select value={picked} onValueChange={setPicked}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma proposta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Começar em branco</SelectItem>
-              {proposals.map(p => (
-                <SelectItem key={p.id} value={p.id}>
-                  {(p.title || 'Proposta sem título')}{p.client_name ? ` · ${p.client_name}` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {proposals.length === 0 && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Nenhuma proposta criada ainda — a venda começará em branco.
-            </p>
-          )}
+        <div className="py-2 space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs">Cliente <span className="text-destructive">*</span></Label>
+            <Select value={pickedContato} onValueChange={setPickedContato}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o contato do CRM" />
+              </SelectTrigger>
+              <SelectContent>
+                {leads.map(l => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name}{l.phone ? ` · ${l.phone}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {leads.length === 0 && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" /> Nenhum contato cadastrado ainda — cadastre o cliente em Contatos primeiro.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Importar de uma proposta <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            <Select value={picked} onValueChange={setPicked}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma proposta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem proposta — preencher manualmente</SelectItem>
+                {proposals.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {(p.title || 'Proposta sem título')}{p.client_name ? ` · ${p.client_name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" disabled={creating} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={creating} onClick={onCreate}>
+          <Button disabled={creating || !pickedContato} onClick={onCreate}>
             {creating ? 'Criando…' : 'Criar venda'}
           </Button>
         </DialogFooter>
@@ -505,7 +539,18 @@ function SaleEditor({
         <div>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Dados da viagem (pré-preenchidos)</p>
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Cliente"><Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} /></Field>
+            <Field label="Cliente">
+              {s.contato_id ? (
+                <div className="h-9 flex items-center px-3 rounded-md border bg-muted/40 text-sm justify-between gap-2">
+                  <span className="truncate">{s.client_name || 'Cliente'}</span>
+                  <Link href={`/app/${orgSlug}/contatos/${s.contato_id}`} className="shrink-0 text-primary hover:underline text-xs inline-flex items-center gap-1">
+                    <ExternalLink className="w-3 h-3" /> Abrir
+                  </Link>
+                </div>
+              ) : (
+                <Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} />
+              )}
+            </Field>
             <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
             <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
             <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
