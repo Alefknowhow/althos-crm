@@ -46,7 +46,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
-  { key: 'insights',      label: 'Insights IA',       section: 'Comunicação' },
+  { key: 'insights',      label: 'Copiloto IA',       section: 'Comunicação' },
   // Marketing
   { key: 'marketing',     label: 'Campanhas',         section: 'Marketing' },
   { key: 'forms',         label: 'Formulários',       section: 'Marketing' },

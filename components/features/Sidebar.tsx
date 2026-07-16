@@ -138,21 +138,12 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
 
         {/* ── Topo ──────────────────────────────────── */}
-        <SidebarNavLink href={base} exact>
+        <SidebarNavLink href={base} exact dataTour="insights">
           <span className="flex items-center gap-2.5">
             <LayoutDashboard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Dashboard</span>
+            <span>Inicial</span>
           </span>
         </SidebarNavLink>
-
-        {can('insights') && planInsights && (
-          <SidebarNavLink href={`${base}/insights`} dataTour="insights">
-            <span className="flex items-center gap-2.5">
-              <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Insights IA</span>
-            </span>
-          </SidebarNavLink>
-        )}
 
         {isOwnerOrAdmin && planReports && (
           <SidebarNavLink href={`${base}/relatorios`}>
