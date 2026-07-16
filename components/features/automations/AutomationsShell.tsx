@@ -132,7 +132,7 @@ export default function AutomationsShell({
 
         {/* Left sidebar — full width on mobile (hidden while viewing a detail) */}
         <aside className={cn(
-          'w-full md:w-56 shrink-0 border-r bg-card flex-col overflow-hidden',
+          'w-full md:w-72 shrink-0 border-r bg-card flex-col overflow-hidden',
           isDetail ? 'hidden md:flex' : 'flex',
         )}>
           <div className="overflow-y-auto flex-1">
