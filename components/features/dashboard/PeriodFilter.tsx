@@ -3,6 +3,7 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Period } from '@/actions/dashboard'
+import { savePeriodDefault } from '@/actions/dashboard-layout'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'today', label: 'Hoje' },
@@ -11,7 +12,7 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: '90d', label: '90 dias' },
 ]
 
-export default function PeriodFilter() {
+export default function PeriodFilter({ orgSlug }: { orgSlug?: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -22,6 +23,7 @@ export default function PeriodFilter() {
     const params = new URLSearchParams(searchParams.toString())
     params.set('period', value)
     router.push(`${pathname}?${params.toString()}`, { scroll: false })
+    if (orgSlug) savePeriodDefault(orgSlug, value)
   }
 
   return (

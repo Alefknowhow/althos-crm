@@ -840,7 +840,7 @@ export type RevenueForecast = {
  */
 export async function getRevenueForecast(
   orgId: string,
-  options: { pipelineId?: string | null } = {},
+  options: { pipelineId?: string | null; sellerId?: string | null } = {},
 ): Promise<RevenueForecast> {
   const supabase = createClient()
 
@@ -899,12 +899,14 @@ export async function getRevenueForecast(
   }
 
   // Current pipeline value per stage.
-  const { data: openLeads } = await supabase
+  let openLeadsQ = supabase
     .from('contatos')
     .select('stage_id, value_cents')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
     .not('stage_id', 'is', null)
+  if (options.sellerId) openLeadsQ = openLeadsQ.eq('assigned_to', options.sellerId)
+  const { data: openLeads } = await openLeadsQ
 
   const byStage = new Map<string, { count: number; value: number }>()
   for (const l of openLeads || []) {
@@ -998,7 +1000,9 @@ export async function getRevenueForecast(
 
   // Niche-aware: travel orgs read already-won from travel_sales, others from sales.
   const monthSales = await fetchNormalizedSales(supabase, orgId, { since: monthStart, onlyCompleted: true })
-  const alreadyWon = monthSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
+  const alreadyWon = monthSales
+    .filter(s => !options.sellerId || s.seller_id === options.sellerId)
+    .reduce((a, s) => a + (s.amount_cents || 0), 0)
 
   // Pipeline = sum of non-terminal stage values (terminal IS already won and
   // counted separately).

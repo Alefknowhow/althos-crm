@@ -6,18 +6,10 @@ import DashboardHeader from '@/components/features/dashboard/DashboardHeader'
 import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
 import SellerFilter from '@/components/features/dashboard/SellerFilter'
-import MetricsWidget from '@/components/features/dashboard/MetricsWidget'
-import MetricChartWidget from '@/components/features/dashboard/MetricChartWidget'
-import ConversionFunnelWidget from '@/components/features/dashboard/ConversionFunnelWidget'
-import PipelineAtRiskWidget from '@/components/features/dashboard/PipelineAtRiskWidget'
-import TimeInStageWidget from '@/components/features/dashboard/TimeInStageWidget'
-import RevenueForecastWidget from '@/components/features/dashboard/RevenueForecastWidget'
-import SourcePerformanceWidget from '@/components/features/dashboard/SourcePerformanceWidget'
-import SellersRankingWidget from '@/components/features/dashboard/SellersRankingWidget'
-import RecentActivityWidget from '@/components/features/dashboard/RecentActivityWidget'
-import LeadSourcesWidget from '@/components/features/dashboard/LeadSourcesWidget'
-import TasksTodayWidget from '@/components/features/dashboard/TasksTodayWidget'
+import DashboardCustomizer from '@/components/features/dashboard/DashboardCustomizer'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
+import { getDashboardLayout } from '@/actions/dashboard-layout'
+import { WIDGET_REGISTRY, type WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { listOrgMembers } from '@/actions/sales'
 import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
 import UpgradeBanner from '@/components/features/onboarding/UpgradeBanner'
@@ -31,7 +23,8 @@ export default async function OrgDashboard({
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const user = await requireAuth()
-  const period = (searchParams.period as Period) || '30d'
+  const layout = await getDashboardLayout(params.orgSlug)
+  const period = (searchParams.period as Period) || (layout.periodDefault as Period) || '30d'
   const pipelineId = searchParams.pipeline_id || null
   const validMetrics = ['leads', 'revenue', 'sales', 'appointments'] as const
   const metric = (validMetrics as readonly string[]).includes(searchParams.metric || '')
@@ -73,6 +66,30 @@ export default async function OrgDashboard({
     getFunnelSourceOptions(org.id),
   ])
 
+  const ctx: WidgetCtx = {
+    orgSlug: params.orgSlug,
+    orgId: org.id,
+    period,
+    pipelineId: validPipelineId,
+    sellerId: validSellerId,
+    metric,
+    initialFunnel,
+    funnelSourceOptions,
+  }
+
+  // Só renderiza (e busca dados de) widgets ativos no layout do usuário —
+  // widgets ocultos não gastam query nenhuma até serem adicionados de volta.
+  const renderedByKey: Record<string, React.ReactNode> = {}
+  for (const key of layout.widgetKeys) {
+    const def = WIDGET_REGISTRY.find(w => w.key === key)
+    if (!def) continue
+    renderedByKey[key] = (
+      <Suspense key={key} fallback={<Skeleton className="h-[400px] w-full" />}>
+        {def.render(ctx)}
+      </Suspense>
+    )
+  }
+
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
       <UpgradeBanner orgSlug={params.orgSlug} />
@@ -86,102 +103,15 @@ export default async function OrgDashboard({
         <div className="flex items-center gap-3 flex-wrap">
           <PipelineFilter pipelines={pipelines || []} />
           <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
-          <PeriodFilter />
+          <PeriodFilter orgSlug={params.orgSlug} />
         </div>
       </div>
 
-      <Suspense
-        fallback={
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
-            {[1, 2, 3, 4, 5].map(i => (
-              <Skeleton key={i} className="h-24 sm:h-28 w-full" />
-            ))}
-          </div>
-        }
-      >
-        <MetricsWidget
-          orgId={org.id}
-          period={period}
-          pipelineId={validPipelineId}
-          sellerId={validSellerId}
-        />
-      </Suspense>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Suspense key={`${metric}-${period}-${validSellerId ?? 'all'}`} fallback={<Skeleton className="h-[400px] w-full" />}>
-            <MetricChartWidget
-              orgId={org.id}
-              period={period}
-              metric={metric}
-              pipelineId={validPipelineId}
-              sellerId={validSellerId}
-            />
-          </Suspense>
-        </div>
-        <div>
-          <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-            <LeadSourcesWidget orgId={org.id} period={period} pipelineId={validPipelineId} />
-          </Suspense>
-        </div>
-      </div>
-
-      {/* Featured row: Conversion funnel takes 2/3 of width since it's
-          the centerpiece of the dashboard with its own filters. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ConversionFunnelWidget
-            orgSlug={params.orgSlug}
-            pipelineId={validPipelineId}
-            initialResult={initialFunnel}
-            sourceOptions={funnelSourceOptions}
-          />
-        </div>
-        <Suspense fallback={<Skeleton className="h-[450px] w-full" />}>
-          <TasksTodayWidget orgId={org.id} orgSlug={params.orgSlug} />
-        </Suspense>
-      </div>
-
-      {/* Diagnostic + action row: at-risk leads (where to act NOW) +
-          time-in-stage (where the bottleneck IS). Pair the funnel with these
-          to get a complete picture: WHERE drops + WHY + WHO to call. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Suspense fallback={<Skeleton className="h-[450px] w-full" />}>
-            <PipelineAtRiskWidget
-              orgSlug={params.orgSlug}
-              orgId={org.id}
-              pipelineId={validPipelineId}
-            />
-          </Suspense>
-        </div>
-        <div>
-          <Suspense fallback={<Skeleton className="h-[450px] w-full" />}>
-            <TimeInStageWidget orgId={org.id} pipelineId={validPipelineId} />
-          </Suspense>
-        </div>
-      </div>
-
-      {/* Strategic row: Forecast (predict future) + Source (which channel pays
-          off) + Sellers (who closes more). All three are 1/3 width to fit
-          comfortably side-by-side. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-          <RevenueForecastWidget orgId={org.id} pipelineId={validPipelineId} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-          <SourcePerformanceWidget orgId={org.id} pipelineId={validPipelineId} />
-        </Suspense>
-        <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-          <SellersRankingWidget orgSlug={params.orgSlug} orgId={org.id} />
-        </Suspense>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
-          <RecentActivityWidget orgId={org.id} />
-        </Suspense>
-      </div>
+      <DashboardCustomizer
+        orgSlug={params.orgSlug}
+        widgetKeys={layout.widgetKeys}
+        renderedByKey={renderedByKey}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Filter, TrendingDown, ArrowDown, Loader2 } from 'lucide-react'
@@ -74,6 +75,7 @@ export default function ConversionFunnelWidget({
   initialResult,
   sourceOptions,
 }: Props) {
+  const router = useRouter()
   const [period, setPeriod] = useState<FunnelPeriod>('30d')
   const [sourceKey, setSourceKey] = useState<string>('all')
   const [result, setResult] = useState<FunnelResult>(initialResult)
@@ -228,9 +230,14 @@ export default function ConversionFunnelWidget({
                       </Badge>
                     </div>
                   )}
-                  {/* Centered, tapering bar */}
+                  {/* Centered, tapering bar — clicável, leva pro Pipeline */}
                   <div
-                    className="mx-auto h-11 rounded-md flex items-center justify-between px-3 gap-3 transition-all duration-300"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
+                    onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
+                    title="Ver no Pipeline"
+                    className="mx-auto h-11 rounded-md flex items-center justify-between px-3 gap-3 transition-all duration-300 cursor-pointer hover:brightness-95"
                     style={{
                       width: `${widthPct}%`,
                       backgroundColor: `${color}26`,
