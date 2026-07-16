@@ -9,6 +9,8 @@ import SellerFilter from '@/components/features/dashboard/SellerFilter'
 import DashboardCustomizer from '@/components/features/dashboard/DashboardCustomizer'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
+import { listDashboardInsights } from '@/actions/dashboard-insights'
+import InsightsStrip from '@/components/features/dashboard/InsightsStrip'
 import { WIDGET_REGISTRY, type WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { listOrgMembers } from '@/actions/sales'
 import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
@@ -23,7 +25,10 @@ export default async function OrgDashboard({
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const user = await requireAuth()
-  const layout = await getDashboardLayout(params.orgSlug)
+  const [layout, insights] = await Promise.all([
+    getDashboardLayout(params.orgSlug),
+    listDashboardInsights(params.orgSlug),
+  ])
   const period = (searchParams.period as Period) || (layout.periodDefault as Period) || '30d'
   const pipelineId = searchParams.pipeline_id || null
   const validMetrics = ['leads', 'revenue', 'sales', 'appointments'] as const
@@ -106,6 +111,8 @@ export default async function OrgDashboard({
           <PeriodFilter orgSlug={params.orgSlug} />
         </div>
       </div>
+
+      <InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />
 
       <DashboardCustomizer
         orgSlug={params.orgSlug}

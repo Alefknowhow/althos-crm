@@ -10,6 +10,7 @@ import { integrationHealthCheckFn, integrationHealthPruneFn } from '@/lib/innges
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
 import { scheduledWhatsappMessagesFn } from '@/lib/inngest/scheduled-messages-cron'
 import { proposalEventFn } from '@/lib/inngest/proposal-events'
+import { dashboardInsightsCronFn } from '@/lib/inngest/dashboard-insights-cron'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -31,5 +32,6 @@ export const { GET, POST, PUT } = serve({
     generateSystemAlertsFn,
     scheduledWhatsappMessagesFn,
     proposalEventFn,
+    dashboardInsightsCronFn,
   ]
 })
