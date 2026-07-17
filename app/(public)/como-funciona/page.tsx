@@ -2,12 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { HOW_IT_WORKS } from '@/lib/site/content'
+import { buildPageMetadata } from '@/lib/landing/seo'
 
-export const metadata: Metadata = {
-  title: 'Como funciona — Althos CRM',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Althos CRM | Como Funciona a Automação de Vendas',
   description:
     'Conecte seus canais, configure a IA e as automações, acompanhe o funil e decida com dados. Veja como começar com o Althos CRM em 4 passos.',
-}
+  path: '/como-funciona',
+})
 
 export default function ComoFuncionaPage() {
   return (

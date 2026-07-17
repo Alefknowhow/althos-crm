@@ -2,12 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { FeaturesExplorer } from '@/components/site/FeaturesExplorer'
+import { buildPageMetadata } from '@/lib/landing/seo'
 
-export const metadata: Metadata = {
-  title: 'Funcionalidades — Althos CRM',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Althos CRM | Funcionalidades do CRM com IA',
   description:
     'Funil de vendas visual, atendente de IA 24h, automações, WhatsApp e Instagram nativos, relatórios com IA e mais. Conheça tudo que o Althos CRM faz.',
-}
+  path: '/funcionalidades',
+})
 
 export default function FuncionalidadesPage() {
   return (

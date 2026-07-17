@@ -60,7 +60,7 @@ export const FEATURES: Record<string, NicheContent> = {
   'automacao-instagram': {
     slug: 'automacao-instagram',
     nav: 'Automação de Instagram',
-    metaTitle: 'Automação para Instagram — DM, Stories e Comentários — Althos CRM',
+    metaTitle: 'Automação de Instagram — Althos CRM',
     metaDescription:
       'Automatize a DM do Instagram: funis por resposta de story, comentário em post ou primeira mensagem, com IA ou passos fixos, direto do CRM.',
     eyebrow: 'Automação de Instagram',

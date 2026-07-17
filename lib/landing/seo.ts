@@ -8,14 +8,29 @@ import type { NicheContent } from './niches'
  * absoluto via metadataBase (definido em app/layout.tsx).
  */
 export function buildLandingMetadata(c: NicheContent): Metadata {
-  const path = `/${c.slug}`
+  return buildPageMetadata({ title: c.metaTitle, description: c.metaDescription, path: `/${c.slug}` })
+}
+
+/**
+ * Metadata completa (OG/Twitter/canonical) para páginas institucionais que
+ * não são data-driven (funcionalidades, como-funciona, para-quem-é, por-que-
+ * nós, blog). Mesmo padrão de buildLandingMetadata, só que recebendo o
+ * title/description/path diretamente em vez de um NicheContent.
+ */
+export function buildPageMetadata({
+  title, description, path,
+}: {
+  title: string
+  description: string
+  path: string
+}): Metadata {
   return {
-    title: c.metaTitle,
-    description: c.metaDescription,
+    title,
+    description,
     alternates: { canonical: path },
     openGraph: {
-      title: c.metaTitle,
-      description: c.metaDescription,
+      title,
+      description,
       url: path,
       siteName: 'Althos CRM',
       type: 'website',
@@ -23,8 +38,8 @@ export function buildLandingMetadata(c: NicheContent): Metadata {
     },
     twitter: {
       card: 'summary_large_image',
-      title: c.metaTitle,
-      description: c.metaDescription,
+      title,
+      description,
     },
   }
 }

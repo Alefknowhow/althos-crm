@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { SiteShell } from '@/components/site/SiteShell'
 import { PostBody } from '@/components/site/PostBody'
+import { BRAND } from '@/lib/constants/brand'
 import { POSTS, getPost, getRelatedPosts, formatPostDate } from '@/lib/blog/posts'
 
 export function generateStaticParams() {
@@ -13,14 +14,24 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const post = getPost(params.slug)
   if (!post) return { title: 'Artigo não encontrado — Althos CRM' }
+  const path = `/blog/${post.slug}`
   return {
     title: `${post.title} — Blog Althos CRM`,
     description: post.description,
+    alternates: { canonical: path },
     openGraph: {
       title: post.title,
       description: post.description,
+      url: path,
+      siteName: 'Althos CRM',
       type: 'article',
       publishedTime: post.date,
+      locale: 'pt_BR',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.description,
     },
   }
 }
@@ -38,6 +49,19 @@ function articleJsonLd(post: NonNullable<ReturnType<typeof getPost>>) {
   }
 }
 
+/** JSON-LD BreadcrumbList — Home > Blog > Post. */
+function breadcrumbJsonLd(post: NonNullable<ReturnType<typeof getPost>>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Início', item: BRAND.domain },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BRAND.domain}/blog` },
+      { '@type': 'ListItem', position: 3, name: post.title, item: `${BRAND.domain}/blog/${post.slug}` },
+    ],
+  }
+}
+
 export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const post = getPost(params.slug)
   if (!post) notFound()
@@ -49,6 +73,10 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd(post)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(post)) }}
       />
 
       <article className="relative mx-auto max-w-3xl px-4 pt-8 pb-14 sm:px-6 sm:pt-24 sm:pb-20">

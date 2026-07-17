@@ -4,12 +4,14 @@ import { Check } from 'lucide-react'
 import { SiteShell } from '@/components/site/SiteShell'
 import { SiteIcon } from '@/components/site/SiteIcon'
 import { NICHES } from '@/lib/site/content'
+import { buildPageMetadata } from '@/lib/landing/seo'
 
-export const metadata: Metadata = {
-  title: 'Para quem é — Althos CRM',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Althos CRM | CRM para Pequenas Empresas e Nichos',
   description:
     'Agências de viagens, imobiliárias, clínicas, lojas de veículos, agências de marketing e pequenas empresas. Veja como o Althos CRM se adapta ao seu nicho.',
-}
+  path: '/para-quem-e',
+})
 
 /** Mapeia o slug do nicho (content.ts) para a landing page dedicada. */
 const NICHE_LANDING: Record<string, string> = {

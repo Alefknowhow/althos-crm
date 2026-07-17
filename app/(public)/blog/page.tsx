@@ -2,12 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { POSTS_SORTED, formatPostDate } from '@/lib/blog/posts'
+import { buildPageMetadata } from '@/lib/landing/seo'
 
-export const metadata: Metadata = {
-  title: 'Blog — Althos CRM',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Althos CRM | Blog sobre Vendas e Automação Comercial',
   description:
     'Conteúdo sobre Meta Ads, Google Ads, funil de vendas, gestão de equipe e treinamento de vendas (SDR, Closer, CS) para você vender mais.',
-}
+  path: '/blog',
+})
 
 export default function BlogIndexPage() {
   const [featured, ...rest] = POSTS_SORTED

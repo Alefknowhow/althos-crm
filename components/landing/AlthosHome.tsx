@@ -11,6 +11,7 @@ import {
   type PlanConfig,
 } from '@/lib/billing/plans'
 import { PLAN_LIMITS, PLAN_META, type PlanId } from '@/lib/plans/config'
+import { HOME_GEO_INTRO, HOME_GEO_BLOCKS, HOME_FAQ } from '@/lib/site/content'
 
 /* ---------------------------------------------------------------------------
  * AlthosHome — recreação da landing "tech premium dark" do handoff,
@@ -72,6 +73,7 @@ export default function AlthosHome() {
         <Compare />
         <Onboard />
         <Pricing />
+        <GeoFaq />
         <FinalCta />
       </div>
 
@@ -308,6 +310,7 @@ function Features({ onZoom }: { onZoom: OnZoom }) {
                   data-shot={s.shot}
                   className={i === 0 ? 'active' : ''}
                   alt={s.h}
+                  loading={i === 0 ? 'eager' : 'lazy'}
                   onClick={() => onZoom(SHOTS[s.shot], s.h)}
                 />
               ))}
@@ -363,7 +366,7 @@ function AiBlock({ onZoom }: { onZoom: OnZoom }) {
               </div>
               <div className="ai-shot">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SHOTS.insights} alt="Insights gerados pela IA do Althos" onClick={() => onZoom(SHOTS.insights, 'Insights gerados pela IA do Althos')} />
+                <img src={SHOTS.insights} alt="Insights gerados pela IA do Althos" loading="lazy" onClick={() => onZoom(SHOTS.insights, 'Insights gerados pela IA do Althos')} />
                 <div className="ai-scan" aria-hidden="true" />
                 <div className="ai-typingbar">
                   <span className="spark">✦</span>
@@ -578,6 +581,53 @@ function Onboard() {
         ))}
       </ol>
     </section>
+  )
+}
+
+/* ----------------------------- GEO + FAQ ----------------------------- */
+/* Blocos objetivos ("o que é", "para quem", diferenciais, casos de uso) e
+ * FAQ geral sobre CRM — conteúdo pensado para citação direta por buscadores
+ * com IA (Google AI Overview), sem tom de conversa. O schema FAQPage
+ * correspondente é injetado no Server Component (app/(public)/page.tsx). */
+function GeoFaq() {
+  return (
+    <>
+      <section className="geo" aria-label="Sobre a Althos CRM">
+        <div className="geo-head">
+          <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> O que é a Althos CRM</div>
+          <h2 className="reveal" data-d="1">Um CRM brasileiro com inteligência artificial</h2>
+        </div>
+        <p className="geo-intro reveal" data-d="2">{HOME_GEO_INTRO}</p>
+        <div className="geo-grid">
+          {HOME_GEO_BLOCKS.map((b, i) => (
+            <article className="geo-card reveal" data-d={i} key={b.title}>
+              <h3>{b.title}</h3>
+              <p>{b.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="faq" aria-label="Perguntas frequentes">
+        <div className="faq-head">
+          <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Dúvidas comuns</div>
+          <h2 className="reveal" data-d="1">Perguntas frequentes sobre CRM</h2>
+        </div>
+        <div className="faq-list">
+          {HOME_FAQ.map((f, i) => (
+            <details className="faq-item reveal" data-d={i} key={f.question}>
+              <summary>
+                {f.question}
+                <span className="plus" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>
+                </span>
+              </summary>
+              <p>{f.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+    </>
   )
 }
 

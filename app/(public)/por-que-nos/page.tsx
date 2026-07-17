@@ -3,12 +3,14 @@ import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { SiteIcon } from '@/components/site/SiteIcon'
 import { DIFFERENTIATORS } from '@/lib/site/content'
+import { buildPageMetadata } from '@/lib/landing/seo'
 
-export const metadata: Metadata = {
-  title: 'Por que nós? — Althos CRM',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Althos CRM | Por Que Escolher Nosso CRM Brasileiro',
   description:
     'IA de verdade, pronto em minutos, adaptável ao seu nicho, suporte em português e preço honesto. Veja por que escolher o Althos CRM.',
-}
+  path: '/por-que-nos',
+})
 
 export default function PorQueNosPage() {
   return (

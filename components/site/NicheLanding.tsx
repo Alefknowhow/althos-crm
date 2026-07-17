@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
+import { BRAND } from '@/lib/constants/brand'
 import type { NicheContent } from '@/lib/landing/niches'
 
 /**
@@ -21,12 +22,28 @@ function faqJsonLd(c: NicheContent) {
   }
 }
 
+/** JSON-LD BreadcrumbList — Home > página (as landings são de nível único). */
+function breadcrumbJsonLd(c: NicheContent) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Início', item: BRAND.domain },
+      { '@type': 'ListItem', position: 2, name: c.nav, item: `${BRAND.domain}/${c.slug}` },
+    ],
+  }
+}
+
 export function NicheLanding({ c }: { c: NicheContent }) {
   return (
     <SiteShell>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(c)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(c)) }}
       />
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-12 sm:pt-20 sm:pb-16">

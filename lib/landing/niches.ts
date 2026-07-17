@@ -223,7 +223,7 @@ export const NICHES: Record<string, NicheContent> = {
   trafego: {
     slug: 'trafego',
     nav: 'Agências de tráfego',
-    metaTitle: 'CRM para Agências de Tráfego e Gestores de Anúncios — Althos CRM',
+    metaTitle: 'CRM para Agências de Tráfego — Althos CRM',
     metaDescription:
       'CRM com IA para agências de tráfego: leads de Meta Ads e formulários direto no funil, atendimento 24h no WhatsApp e ROI por campanha para provar resultado ao cliente.',
     eyebrow: 'Para agências de tráfego',

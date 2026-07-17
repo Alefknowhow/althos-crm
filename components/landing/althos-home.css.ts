@@ -347,6 +347,31 @@ export const HOME_CSS = `
 .althos-home .final .micro { margin-top: 18px; font-size: 14px; color: var(--ink-faint); font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
 .althos-home .final .micro .check { color: var(--accent); }
 
+/* GEO / conteúdo enciclopédico (o que é, para quem, diferenciais) */
+.althos-home .geo { position: relative; max-width: 1080px; margin: 0 auto; padding: 96px 40px 20px; border-top: 1px solid var(--line); }
+.althos-home .geo-head { max-width: 760px; margin: 0 auto 32px; text-align: center; }
+.althos-home .geo-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .geo-head h2 { font-weight: 800; font-size: clamp(32px,4.2vw,52px); line-height: 1.05; letter-spacing: -0.025em; color: var(--ink); text-wrap: balance; }
+.althos-home .geo-intro { max-width: 720px; margin: 0 auto 40px; font-size: 16px; line-height: 1.7; color: var(--ink-dim); text-align: center; }
+.althos-home .geo-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+.althos-home .geo-card { border: 1px solid var(--line); border-radius: 16px; padding: 24px 22px; background: var(--surface); box-shadow: var(--shadow-sm); }
+.althos-home .geo-card h3 { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.005em; }
+.althos-home .geo-card p { font-size: 14px; line-height: 1.65; color: var(--ink-dim); }
+
+/* FAQ */
+.althos-home .faq { position: relative; max-width: 820px; margin: 0 auto; padding: 60px 40px 110px; }
+.althos-home .faq-head { text-align: center; margin-bottom: 36px; }
+.althos-home .faq-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .faq-head h2 { font-weight: 800; font-size: clamp(30px,3.6vw,44px); line-height: 1.06; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.althos-home .faq-list { display: flex; flex-direction: column; gap: 10px; }
+.althos-home .faq-item { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 4px 20px; box-shadow: var(--shadow-sm); transition: border-color 0.25s var(--ease); }
+.althos-home .faq-item[open] { border-color: var(--line-strong); }
+.althos-home .faq-item summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.althos-home .faq-item summary::-webkit-details-marker { display: none; }
+.althos-home .faq-item summary .plus { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; color: var(--ink-dim); transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease); }
+.althos-home .faq-item[open] summary .plus { transform: rotate(45deg); border-color: var(--accent); color: var(--accent); }
+.althos-home .faq-item p { padding: 0 0 18px; font-size: 14px; line-height: 1.6; color: var(--ink-dim); }
+
 /* Entrance animation */
 .althos-home .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.55s var(--ease), transform 0.55s var(--ease); }
 .althos-home .reveal.in { opacity: 1; transform: none; }
@@ -517,5 +542,18 @@ export const HOME_CSS = `
   .althos-home .final h2 { font-size: clamp(32px, 9vw, 46px); }
   .althos-home .final p { font-size: 16px; margin-top: 18px; }
   .althos-home .final .btn { margin-top: 30px; font-size: 16px; padding: 15px 26px; }
+
+  /* --- GEO / FAQ --- */
+  .althos-home .geo { padding: 52px 16px 8px; }
+  .althos-home .geo-head { margin-bottom: 24px; }
+  .althos-home .geo-head h2 { font-size: clamp(24px, 7vw, 32px); }
+  .althos-home .geo-intro { font-size: 14.5px; margin-bottom: 28px; }
+  .althos-home .geo-grid { grid-template-columns: 1fr; gap: 12px; }
+  .althos-home .geo-card { padding: 18px 16px; border-radius: 13px; }
+  .althos-home .faq { padding: 40px 16px 60px; }
+  .althos-home .faq-head { margin-bottom: 24px; }
+  .althos-home .faq-head h2 { font-size: clamp(22px, 7vw, 28px); }
+  .althos-home .faq-item { padding: 4px 16px; }
+  .althos-home .faq-item summary { font-size: 14px; padding: 14px 0; }
 }
 `

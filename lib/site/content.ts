@@ -417,3 +417,70 @@ export const FAQ: FaqItem[] = [
 
 /** Categorias do FAQ na ordem de exibição. */
 export const FAQ_CATEGORIES = ['Começando', 'WhatsApp', 'IA', 'Planos', 'Segurança'] as const
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GEO / conteúdo enciclopédico da home — parágrafos objetivos, sem tom de
+// conversa, pensados para citação direta por buscadores com IA (Google AI
+// Overview e afins) e para o schema FAQPage da home.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GeoBlock {
+  title: string
+  body: string
+}
+
+export const HOME_GEO_INTRO =
+  'A Althos CRM é uma plataforma brasileira de CRM com inteligência artificial voltada para pequenas e médias empresas. Ela permite gerenciar leads, automatizar processos comerciais, acompanhar oportunidades em um funil de vendas visual e realizar atendimento automatizado pelo WhatsApp.'
+
+export const HOME_GEO_BLOCKS: GeoBlock[] = [
+  {
+    title: 'Principais funcionalidades',
+    body: 'Funil de vendas visual (pipeline), automação de vendas com fluxos no-code, atendimento com IA 24 horas, qualificação automática de leads, agendamento automático de compromissos, integração nativa com WhatsApp e Instagram, e automação de pós-venda.',
+  },
+  {
+    title: 'Para quem é indicada',
+    body: 'Pequenas e médias empresas que vendem por WhatsApp e precisam organizar leads, automatizar o comercial e reduzir tempo de resposta — incluindo agências de viagens, imobiliárias, clínicas, lojas de veículos e agências de tráfego pago.',
+  },
+  {
+    title: 'Diferenciais',
+    body: 'CRM brasileiro, em português, com suporte local. Integração oficial com a Cloud API do WhatsApp (sem risco de bloqueio), conformidade com a LGPD e implantação em minutos, sem equipe técnica.',
+  },
+  {
+    title: 'Casos de uso',
+    body: 'Responder e qualificar leads que chegam pelo WhatsApp fora do horário comercial; automatizar follow-up de orçamentos parados; agendar compromissos sem troca manual de mensagens; e acompanhar o funil de vendas em tempo real por vendedor.',
+  },
+]
+
+/** Perguntas frequentes gerais sobre CRM/produto — schema FAQPage da home. */
+export const HOME_FAQ: FaqItem[] = [
+  {
+    category: 'Sobre CRM',
+    question: 'O que é um CRM?',
+    answer: 'CRM (Customer Relationship Management) é um sistema de gestão de relacionamento com o cliente. Ele organiza contatos, leads e oportunidades de venda em um único lugar, substituindo planilhas e conversas soltas no WhatsApp por um funil visual com histórico completo de cada cliente.',
+  },
+  {
+    category: 'Sobre CRM',
+    question: 'Como funciona um CRM com IA?',
+    answer: 'Um CRM com IA usa inteligência artificial para automatizar tarefas do processo comercial: responder mensagens de clientes, qualificar leads pelo interesse demonstrado, sugerir o próximo passo da venda e gerar relatórios em linguagem natural — sem depender de um vendedor fazer isso manualmente.',
+  },
+  {
+    category: 'Produto',
+    question: 'A Althos possui integração com WhatsApp?',
+    answer: 'Sim. A Althos se conecta à Cloud API oficial do WhatsApp (Meta), centralizando as conversas da equipe em um só lugar, com atendimento automatizado por IA e automações de follow-up, sem risco de bloqueio por uso de métodos não oficiais.',
+  },
+  {
+    category: 'Produto',
+    question: 'Como funciona a automação de vendas?',
+    answer: 'A automação de vendas monta fluxos visuais e sem código que disparam ações automaticamente: enviar uma mensagem de follow-up, mover um lead de etapa, notificar um vendedor ou agendar um compromisso — a partir de gatilhos como tempo parado, resposta do cliente ou mudança de estágio no funil.',
+  },
+  {
+    category: 'Produto',
+    question: 'Quem pode usar a Althos CRM?',
+    answer: 'Pequenas e médias empresas que vendem por WhatsApp e precisam organizar o comercial. A plataforma se adapta a diferentes segmentos, com configurações específicas para agências de viagens, imobiliárias, clínicas, lojas de veículos e agências de tráfego pago.',
+  },
+  {
+    category: 'Produto',
+    question: 'Quanto tempo leva para implementar a Althos CRM?',
+    answer: 'Minutos. A conta é criada de imediato, a conexão do WhatsApp é feita por login oficial (sem copiar tokens) e a IA já pode ser configurada no mesmo dia — sem projeto de implantação nem equipe técnica.',
+  },
+]
