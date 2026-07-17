@@ -33,6 +33,10 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/veiculos' ||        // niche LP: lojas de veículos
     pathname === '/trafego' ||         // niche LP: agências de tráfego
     pathname === '/pequenas-empresas' || // niche LP: pequenas empresas
+    pathname === '/atendimento-ia' ||    // feature LP: atendimento com IA
+    pathname === '/automacao-instagram' || // feature LP: automação de Instagram
+    pathname === '/crm-whatsapp' ||    // feature LP: CRM com WhatsApp
+    pathname === '/pricing' ||         // legado: redireciona para /planos via next.config
     pathname === '/faq' ||             // marketing: FAQ
     pathname === '/robots.txt' ||      // SEO: crawler directives (must not 307→login)
     pathname === '/sitemap.xml' ||     // SEO: sitemap

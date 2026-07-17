@@ -159,8 +159,19 @@ const securityHeaders = async () => [
   },
 ]
 
+/**
+ * `/pricing` was a stale duplicate of `/planos` (wrong domain in its own
+ * metadata, prices out of sync with the real plan config, and never linked
+ * from anywhere in the app) — redirect it instead of maintaining two pricing
+ * pages that compete with each other for the same search intent.
+ */
+const redirects = async () => [
+  { source: '/pricing', destination: '/planos', permanent: true },
+]
+
 const nextConfig = {
   headers: securityHeaders,
+  redirects,
   eslint: { ignoreDuringBuilds: true },
 
   experimental: {

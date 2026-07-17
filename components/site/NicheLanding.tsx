@@ -8,9 +8,26 @@ import type { NicheContent } from '@/lib/landing/niches'
  * Usa o tema claro do SiteShell e Tailwind (mesmo padrão das páginas
  * institucionais). FAQ usa <details> nativo para funcionar sem JS.
  */
+/** JSON-LD para rich results de FAQ no Google (mesmo padrão da página /faq). */
+function faqJsonLd(c: NicheContent) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: c.faq.map(f => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  }
+}
+
 export function NicheLanding({ c }: { c: NicheContent }) {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(c)) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-12 sm:pt-20 sm:pb-16">
         <div className="pointer-events-none absolute inset-0">

@@ -2,16 +2,59 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { PricingPlans } from '@/components/site/PricingPlans'
+import { PUBLIC_PLANS } from '@/lib/billing/plans'
+
+const TITLE = 'Planos e Preços — Althos CRM'
+const DESCRIPTION =
+  'Planos transparentes do Althos CRM. Comece de graça no plano Free, sem cartão. Pague mensal ou economize 18% no anual.'
 
 export const metadata: Metadata = {
-  title: 'Planos e Preços — Althos CRM',
-  description:
-    'Planos transparentes do Althos CRM. Comece de graça no plano Free, sem cartão. Pague mensal ou economize 18% no anual.',
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/planos' },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: '/planos',
+    siteName: 'Althos CRM',
+    type: 'website',
+    locale: 'pt_BR',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+}
+
+/** JSON-LD com os preços reais (mesma fonte que a UI de checkout usa). */
+function pricingJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Althos CRM',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    offers: [
+      { '@type': 'Offer', name: 'Free', price: '0.00', priceCurrency: 'BRL' },
+      ...PUBLIC_PLANS.map(p => ({
+        '@type': 'Offer' as const,
+        name: p.label,
+        price: ((p.priceCents ?? 0) / 100).toFixed(2),
+        priceCurrency: 'BRL',
+        priceSpecification: { '@type': 'RecurringCharge', billingIncrement: 1, unitCode: 'MON' },
+      })),
+    ],
+  }
 }
 
 export default function PlanosPage() {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd()) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">

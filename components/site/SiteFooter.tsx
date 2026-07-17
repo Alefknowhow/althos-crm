@@ -1,17 +1,25 @@
 import Link from 'next/link'
 import { SITE_NAV } from '@/lib/site/content'
+import { NICHES } from '@/lib/landing/niches'
+import { FEATURES } from '@/lib/landing/features'
 
 /**
  * Rodapé do site institucional. Reaproveita SITE_NAV e adiciona colunas de
- * produto, recursos e legais. Dark theme.
+ * produto, nichos, recursos e legais. Dark theme.
+ *
+ * As colunas "Por nicho" e "Recursos" também servem de link interno para as
+ * landing pages de nicho/funcionalidade — sem isso, elas não tinham nenhum
+ * link a partir do resto do site (só descobríveis por URL direta).
  */
 export function SiteFooter() {
   const year = new Date().getFullYear()
+  const niches = Object.values(NICHES)
+  const features = Object.values(FEATURES)
 
   return (
     <footer className="relative z-10 border-t border-[#15171c]/8 bg-[#fafafb]">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 py-10 sm:py-14">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 lg:grid-cols-7">
           {/* Brand + CTA */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
@@ -55,6 +63,34 @@ export function SiteFooter() {
               <li><Link href="/signup" className="inline-block py-0.5 text-[14px] text-[#15171c]/70 hover:text-[#15171c] transition-colors">Criar conta</Link></li>
               <li><Link href="/planos" className="inline-block py-0.5 text-[14px] text-[#15171c]/70 hover:text-[#15171c] transition-colors">Planos e preços</Link></li>
               <li><Link href="/blog" className="inline-block py-0.5 text-[14px] text-[#15171c]/70 hover:text-[#15171c] transition-colors">Blog</Link></li>
+            </ul>
+          </div>
+
+          {/* Recursos */}
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#15171c]/45">Recursos</p>
+            <ul className="mt-3 space-y-1.5">
+              {features.map(f => (
+                <li key={f.slug}>
+                  <Link href={`/${f.slug}`} className="inline-block py-0.5 text-[14px] text-[#15171c]/70 hover:text-[#15171c] transition-colors">
+                    {f.nav}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Por nicho */}
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#15171c]/45">Por nicho</p>
+            <ul className="mt-3 space-y-1.5">
+              {niches.map(n => (
+                <li key={n.slug}>
+                  <Link href={`/${n.slug}`} className="inline-block py-0.5 text-[14px] text-[#15171c]/70 hover:text-[#15171c] transition-colors">
+                    {n.nav}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

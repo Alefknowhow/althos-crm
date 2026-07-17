@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 import { NicheLanding } from '@/components/site/NicheLanding'
-import { NICHES } from '@/lib/landing/niches'
+import { FEATURES } from '@/lib/landing/features'
 import { buildLandingMetadata } from '@/lib/landing/seo'
 
-const c = NICHES.viagens
+const c = FEATURES['automacao-instagram']
 
 export const metadata: Metadata = buildLandingMetadata(c)
 
-export default function ViagensPage() {
+export default function AutomacaoInstagramPage() {
   return <NicheLanding c={c} />
 }

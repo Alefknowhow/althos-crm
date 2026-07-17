@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import PWARegister from "@/components/features/PWARegister";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { BRAND } from "@/lib/constants/brand";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,6 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(BRAND.domain),
   title: "Althos CRM",
   description: "CRM multi-tenant da Althos Performance",
   applicationName: "Althos CRM",

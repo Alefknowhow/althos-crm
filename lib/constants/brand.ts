@@ -12,6 +12,8 @@ export const BRAND = {
   tagline: 'O CRM que cuida das suas vendas por você.',
   description:
     'Plataforma de CRM com automação de atendimento, IA e gestão de vendas para equipes que querem vender mais com menos esforço.',
+  /** Domínio canônico de produção — base para metadataBase, OG/canonical absolutos. */
+  domain: 'https://althoscrm.com.br',
 
   /** Brand indigo scale (mirrors tailwind `brand` color). */
   colors: {
