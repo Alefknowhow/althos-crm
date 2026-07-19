@@ -364,7 +364,7 @@ export default function SandboxPlayground({
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                    className={`rounded-none px-4 py-2.5 text-sm whitespace-pre-wrap ${
                       m.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : m.role === 'system'
@@ -397,7 +397,7 @@ export default function SandboxPlayground({
               <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-muted rounded-2xl px-4 py-2.5 text-sm flex items-center gap-2">
+              <div className="bg-muted rounded-none px-4 py-2.5 text-sm flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span className="text-muted-foreground">pensando...</span>
               </div>

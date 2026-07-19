@@ -87,7 +87,7 @@ function MfaInner() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#eef2f7] p-4">
-      <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-lg p-8 space-y-6">
+      <div className="w-full max-w-[400px] bg-white rounded-none   p-8 space-y-6">
         <div className="flex flex-col items-center gap-1 text-center">
           <div className="flex items-center gap-2 mb-1">
             <LogoMark className="h-9 w-9" />

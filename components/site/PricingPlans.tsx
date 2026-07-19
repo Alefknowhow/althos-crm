@@ -60,7 +60,7 @@ export function PricingPlans() {
               {cycle === c && (
                 <motion.span
                   layoutId="cycle-pill"
-                  className="absolute inset-0 rounded-full bg-blue-600 shadow-lg shadow-blue-600/30"
+                  className="absolute inset-0 rounded-full bg-blue-600 shadow-blue-600/30"
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                 />
               )}
@@ -83,7 +83,7 @@ export function PricingPlans() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="relative flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+          className="relative flex flex-col rounded-none border border-slate-200 bg-white p-5 sm:p-7"
         >
           <h3 className="text-lg font-bold text-slate-900">Free</h3>
           <p className="mt-1 text-[13px] text-slate-500">Para dar o primeiro passo</p>
@@ -102,7 +102,7 @@ export function PricingPlans() {
 
           <Link
             href="/signup"
-            className="mt-6 rounded-xl border border-slate-300 px-5 py-3 text-center text-[14px] font-semibold text-slate-700 transition-all hover:bg-slate-50"
+            className="mt-6 rounded-none border border-slate-300 px-5 py-3 text-center text-[14px] font-semibold text-slate-700 transition-all hover:bg-slate-50"
           >
             Começar grátis
           </Link>
@@ -142,14 +142,14 @@ export function PricingPlans() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }}
               transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative flex flex-col rounded-2xl border p-5 sm:p-7 ${
+              className={`relative flex flex-col rounded-none border p-5 sm:p-7 ${
                 highlight
-                  ? 'border-blue-500/50 bg-gradient-to-b from-blue-50 to-white shadow-2xl shadow-blue-600/10'
-                  : 'border-slate-200 bg-white shadow-sm'
+                  ? 'border-blue-500/50 bg-gradient-to-b from-blue-50 to-white   shadow-blue-600/10'
+                  : 'border-slate-200 bg-white  '
               }`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-semibold text-white shadow-lg shadow-blue-600/30">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-semibold text-white shadow-blue-600/30">
                   Mais popular
                 </span>
               )}
@@ -177,9 +177,9 @@ export function PricingPlans() {
 
               <Link
                 href="/signup"
-                className={`mt-6 rounded-xl px-5 py-3 text-center text-[14px] font-semibold transition-all ${
+                className={`mt-6 rounded-none px-5 py-3 text-center text-[14px] font-semibold transition-all ${
                   highlight
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
+                    ? 'bg-blue-600 text-white   shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
                     : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >

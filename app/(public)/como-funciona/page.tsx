@@ -16,10 +16,10 @@ export default function ComoFuncionaPage() {
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-[#4589ff]/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
             Como funciona
           </span>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
@@ -34,14 +34,14 @@ export default function ComoFuncionaPage() {
       <section className="relative mx-auto max-w-4xl px-4 pb-20 sm:px-6">
         <div className="relative">
           {/* Linha conectora */}
-          <div className="pointer-events-none absolute left-[27px] top-4 bottom-4 hidden w-px bg-gradient-to-b from-indigo-400/50 via-slate-200 to-transparent sm:block" />
+          <div className="pointer-events-none absolute left-[27px] top-4 bottom-4 hidden w-px bg-gradient-to-b from-[#4589ff]/50 via-slate-200 to-transparent sm:block" />
           <div className="space-y-5">
             {HOW_IT_WORKS.map(s => (
               <div
                 key={s.number}
-                className="relative flex gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7"
+                className="relative flex gap-5 rounded-none border border-slate-200 bg-white p-6   sm:p-7"
               >
-                <span className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-lg font-bold text-white shadow-lg shadow-blue-600/30">
+                <span className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-none bg-gradient-to-br from-blue-500 to-blue-700 text-lg font-bold text-white   shadow-blue-600/30">
                   {s.number}
                 </span>
                 <div>
@@ -61,7 +61,7 @@ export default function ComoFuncionaPage() {
         </p>
         <Link
           href="/signup"
-          className="mt-6 inline-flex rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors"
+          className="mt-6 inline-flex rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 hover:bg-blue-500 transition-colors"
         >
           Criar minha conta grátis
         </Link>

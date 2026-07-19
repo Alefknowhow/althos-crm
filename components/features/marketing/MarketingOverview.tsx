@@ -119,7 +119,7 @@ function PeriodTabs() {
           <TabsTrigger
             key={p.value}
             value={p.value}
-            className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background  "
           >
             {p.label}
           </TabsTrigger>

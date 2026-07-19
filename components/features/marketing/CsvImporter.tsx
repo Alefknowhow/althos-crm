@@ -307,7 +307,7 @@ export default function CsvImporter({
     return (
       <Card>
         <CardContent className="p-8">
-          <label className="block border-2 border-dashed border-border rounded-xl p-12 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+          <label className="block border-2 border-dashed border-border rounded-none p-12 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
             <input
               type="file"
               accept=".csv,text/csv"

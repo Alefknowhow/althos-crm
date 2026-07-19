@@ -319,7 +319,7 @@ export default function TravelSalesView({
       <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-xl border bg-card overflow-y-auto divide-y',
+          'rounded-none border bg-card overflow-y-auto divide-y',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -371,7 +371,7 @@ export default function TravelSalesView({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-xl border bg-card overflow-y-auto',
+          'rounded-none border bg-card overflow-y-auto',
           !selected && 'hidden md:flex',
         )}>
           {selected
@@ -540,7 +540,7 @@ function SaleEditor({
   return (
     <div className="flex flex-col w-full">
       {/* header */}
-      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex items-start gap-3 z-10">
+      <div className="sticky top-0 bg-card/90   border-b p-4 flex items-start gap-3 z-10">
         <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>

@@ -13,7 +13,7 @@ export default function OrganizationSwitcher({
 
   return (
     <select 
-      className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       value={currentSlug}
       onChange={(e) => {
         router.push(`/app/${e.target.value}/pipeline`)

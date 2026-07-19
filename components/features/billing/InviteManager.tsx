@@ -71,7 +71,7 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
     <div className="space-y-4">
       {/* Create form */}
       {showForm ? (
-        <div className="rounded-xl border p-4 space-y-4 bg-card">
+        <div className="rounded-none border p-4 space-y-4 bg-card">
           <h3 className="font-semibold text-sm">Novo convite</h3>
 
           <div className="grid grid-cols-2 gap-3">

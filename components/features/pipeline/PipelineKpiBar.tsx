@@ -66,7 +66,7 @@ export default function PipelineKpiBar({ leads }: { leads: Lead[] }) {
         return (
           <div
             key={item.label}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-2.5"
+            className="flex items-center gap-3 rounded-none border border-border bg-card px-3.5 py-2.5"
           >
             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
               <Icon className="h-4 w-4" />

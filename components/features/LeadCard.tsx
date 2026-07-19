@@ -158,7 +158,7 @@ function SellerPicker({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-7 z-30 w-48 rounded-lg border bg-popover p-1 shadow-lg">
+        <div className="absolute right-0 top-7 z-30 w-48 rounded-lg border bg-popover p-1  ">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Vendedor
           </div>
@@ -259,7 +259,7 @@ function TagEditor({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-6 z-30 w-52 rounded-lg border bg-popover p-2 shadow-lg">
+        <div className="absolute left-0 top-6 z-30 w-52 rounded-lg border bg-popover p-2  ">
           <div className="mb-1.5 flex items-center gap-1 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <Tag className="h-3 w-3" /> Tags
           </div>
@@ -357,7 +357,7 @@ function StagePicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-6 z-30 w-48 rounded-lg border bg-popover p-1 shadow-lg">
+        <div className="absolute left-0 top-6 z-30 w-48 rounded-lg border bg-popover p-1  ">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Mover para
           </div>
@@ -438,8 +438,8 @@ export default function LeadCard({
       style={isOverlay ? undefined : style}
       {...attributes}
       className={cn(
-        'group/card relative bg-background border rounded-xl shadow-sm select-none transition-all',
-        isOverlay ? 'shadow-xl rotate-1 scale-[1.02]' : 'hover:border-primary/40 hover:shadow-md',
+        'group/card relative bg-background border rounded-none   select-none transition-all',
+        isOverlay ? '  rotate-1 scale-[1.02]' : 'hover:border-primary/40  ',
         isDragging ? 'opacity-30' : '',
       )}
     >

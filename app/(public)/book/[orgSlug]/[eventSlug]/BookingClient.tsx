@@ -121,7 +121,7 @@ export default function BookingClient({ orgSlug, orgName, eventSlug, eventType }
   if (step === 'done') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md bg-card border rounded-2xl shadow-sm p-8 text-center">
+        <div className="w-full max-w-md bg-card border rounded-none   p-8 text-center">
           <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
             <Check className="w-7 h-7" />
           </div>
@@ -151,7 +151,7 @@ export default function BookingClient({ orgSlug, orgName, eventSlug, eventType }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-4xl bg-card border rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row">
+      <div className="w-full max-w-4xl bg-card border rounded-none   overflow-hidden flex flex-col md:flex-row">
         {/* Sidebar — event info */}
         <div className="w-full md:w-1/3 bg-muted/30 p-8 border-b md:border-b-0 md:border-r border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">

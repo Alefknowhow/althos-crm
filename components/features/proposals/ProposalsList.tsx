@@ -181,7 +181,7 @@ export default function ProposalsList({
       <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-xl border bg-card overflow-y-auto divide-y',
+          'rounded-none border bg-card overflow-y-auto divide-y',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -230,7 +230,7 @@ export default function ProposalsList({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-xl border bg-card overflow-y-auto',
+          'rounded-none border bg-card overflow-y-auto',
           !selected && 'hidden md:flex',
         )}>
           {selected
@@ -415,7 +415,7 @@ function ProposalDetail({
   return (
     <div className="flex flex-col w-full">
       {/* header */}
-      <div className="sticky top-0 bg-card/90 backdrop-blur border-b p-4 flex flex-col gap-2 sm:flex-row sm:items-center z-10">
+      <div className="sticky top-0 bg-card/90   border-b p-4 flex flex-col gap-2 sm:flex-row sm:items-center z-10">
         {/* Título — pequeno, negrito e discreto no mobile; normal no desktop */}
         <h2 className="order-1 min-w-0 sm:flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground sm:text-base sm:font-semibold sm:normal-case sm:tracking-normal sm:text-foreground">
           {p.title || 'Proposta sem título'}

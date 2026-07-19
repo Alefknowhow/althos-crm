@@ -142,7 +142,7 @@ export default function MetricsChart({ data }: Props) {
               onClick={() => toggle(k)}
               className={`text-xs px-2.5 py-1 rounded-full border transition-all inline-flex items-center gap-1.5 ${
                 on
-                  ? 'border-transparent shadow-sm'
+                  ? 'border-transparent  '
                   : 'border-border bg-card hover:bg-muted text-muted-foreground'
               }`}
               style={

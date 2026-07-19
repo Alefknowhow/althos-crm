@@ -16,11 +16,11 @@ export default function FuncionalidadesPage() {
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-[#4589ff]/20 blur-[120px]" />
           <div className="absolute top-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-400/15 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
             Funcionalidades
           </span>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
@@ -43,7 +43,7 @@ export default function FuncionalidadesPage() {
         </p>
         <Link
           href="/signup"
-          className="mt-6 inline-flex rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors"
+          className="mt-6 inline-flex rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 hover:bg-blue-500 transition-colors"
         >
           Começar agora
         </Link>

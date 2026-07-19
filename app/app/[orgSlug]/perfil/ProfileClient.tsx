@@ -65,7 +65,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
+    <div className="bg-card border border-border rounded-none overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
           <Icon className="w-4 h-4 text-primary" />

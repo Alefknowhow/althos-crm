@@ -680,7 +680,7 @@ export default function ProposalBuilder({
   return (
     <div className="space-y-5 pb-24">
       {/* Sticky toolbar */}
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-background/80 backdrop-blur border-b flex items-center gap-3">
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-background/80   border-b flex items-center gap-3">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar</Link>
         </Button>

@@ -238,7 +238,7 @@ export default function ContatosView({
         {/* Master */}
         <div
           className={cn(
-            'lg:w-[360px] lg:shrink-0 rounded-xl border bg-card flex flex-col overflow-hidden',
+            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
             mobileDetail && 'hidden lg:flex',
           )}
         >
@@ -347,7 +347,7 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'lg:flex-1 lg:min-w-0 rounded-xl border bg-card overflow-y-auto',
+            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto',
             !mobileDetail && 'hidden lg:block',
           )}
         >
@@ -668,7 +668,7 @@ function DetailPanel({
 
       {/* Histórico de compras */}
       {selected.sales.length > 0 && (
-        <div className="rounded-xl border">
+        <div className="rounded-none border">
           <div className="border-b px-4 py-2.5 text-sm font-semibold">Compras</div>
           <div className="divide-y">
             {selected.sales.map(s => (

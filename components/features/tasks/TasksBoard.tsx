@@ -452,7 +452,7 @@ export default function TasksBoard({
                 setOverCol(null)
               }}
               className={cn(
-                'rounded-xl border bg-muted/20 border-t-2 border-t-primary/40 flex flex-col min-h-[200px] w-[300px] shrink-0 transition-colors',
+                'rounded-none border bg-muted/20 border-t-2 border-t-primary/40 flex flex-col min-h-[200px] w-[300px] shrink-0 transition-colors',
                 overCol === col.id && 'bg-primary/5 ring-2 ring-primary/30',
               )}
             >
@@ -528,14 +528,14 @@ export default function TasksBoard({
           {/* Add column */}
           <button
             onClick={handleAddColumn}
-            className="w-[220px] shrink-0 min-h-[120px] rounded-xl border-2 border-dashed text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-sm font-medium"
+            className="w-[220px] shrink-0 min-h-[120px] rounded-none border-2 border-dashed text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-sm font-medium"
           >
             <Plus className="w-5 h-5" />
             Nova coluna
           </button>
         </div>
       ) : effectiveView === 'calendar' ? (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-none border bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center gap-2">
               <button
@@ -625,7 +625,7 @@ export default function TasksBoard({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border divide-y bg-card">
+        <div className="rounded-none border divide-y bg-card">
           {doneLast(filtered).length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">Nenhuma tarefa nesta visão.</div>
           ) : (
@@ -703,7 +703,7 @@ function ViewBtn({ active, onClick, icon: Icon, label }: { active: boolean; onCl
       className={cn(
         'inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-sm font-medium transition-colors',
         FOCUS_RING,
-        active ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+        active ? 'bg-background   text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
       <Icon className="w-4 h-4" />
@@ -731,7 +731,7 @@ function KanbanCard({
       onDragEnd={onDragEnd}
       onClick={onOpen}
       className={cn(
-        'group relative rounded-lg border bg-card p-3 pl-4 shadow-sm hover:shadow-md hover:border-primary/40 cursor-pointer transition-all',
+        'group relative rounded-lg border bg-card p-3 pl-4     hover:border-primary/40 cursor-pointer transition-all',
         task.status === 'done' && 'opacity-70',
       )}
     >

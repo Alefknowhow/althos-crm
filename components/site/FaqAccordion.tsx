@@ -15,15 +15,15 @@ export function FaqAccordion() {
         if (items.length === 0) return null
         return (
           <div key={cat}>
-            <h2 className="mb-4 text-[12px] font-semibold uppercase tracking-wider text-indigo-700">{cat}</h2>
+            <h2 className="mb-4 text-[12px] font-semibold uppercase tracking-wider text-[#0043ce]">{cat}</h2>
             <div className="space-y-2.5">
               {items.map(item => {
                 const isOpen = open === item.question
                 return (
                   <div
                     key={item.question}
-                    className={`rounded-xl border transition-colors ${
-                      isOpen ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white shadow-sm'
+                    className={`rounded-none border transition-colors ${
+                      isOpen ? 'border-[#78a9ff] bg-[#edf5ff]' : 'border-slate-200 bg-white  '
                     }`}
                   >
                     <button

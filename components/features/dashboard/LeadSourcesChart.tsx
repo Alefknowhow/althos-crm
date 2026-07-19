@@ -9,7 +9,7 @@ import type { LeadSourcesChartProps } from './LeadSourcesChartInner'
 
 const LeadSourcesChartInner = dynamic(() => import('./LeadSourcesChartInner'), {
   ssr: false,
-  loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-muted/40" />,
+  loading: () => <div className="h-[300px] w-full animate-pulse rounded-none bg-muted/40" />,
 })
 
 export default function LeadSourcesChart({ data }: LeadSourcesChartProps) {

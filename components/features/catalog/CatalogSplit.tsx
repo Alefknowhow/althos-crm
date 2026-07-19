@@ -69,7 +69,7 @@ export default function CatalogSplit({ products, orgSlug, categories }: CatalogS
       {/* ── Master: compact list ─────────────────────────────────── */}
       <div
         className={cn(
-          'lg:w-1/2 lg:shrink-0 rounded-xl border bg-card overflow-y-auto',
+          'lg:w-1/2 lg:shrink-0 rounded-none border bg-card overflow-y-auto',
           mobileDetail && 'hidden lg:block',
         )}
       >
@@ -117,7 +117,7 @@ export default function CatalogSplit({ products, orgSlug, categories }: CatalogS
       {/* ── Detail panel ─────────────────────────────────────────── */}
       <div
         className={cn(
-          'lg:w-1/2 lg:flex-1 rounded-xl border bg-card overflow-y-auto',
+          'lg:w-1/2 lg:flex-1 rounded-none border bg-card overflow-y-auto',
           !mobileDetail && 'hidden lg:block',
         )}
       >
@@ -180,7 +180,7 @@ function ProductDetail({
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className={cn(
-          'shrink-0 w-12 h-12 rounded-xl grid place-items-center',
+          'shrink-0 w-12 h-12 rounded-none grid place-items-center',
           isService ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600',
         )}>
           {isService ? <Wrench className="w-5 h-5" /> : <Package className="w-5 h-5" />}

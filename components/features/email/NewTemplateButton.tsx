@@ -68,13 +68,13 @@ export default function NewTemplateButton({ orgSlug }: { orgSlug: string }) {
             type="button"
             onClick={handleBlank}
             disabled={isPending}
-            className="border rounded-xl p-4 hover:bg-muted text-left transition disabled:opacity-50"
+            className="border rounded-none p-4 hover:bg-muted text-left transition disabled:opacity-50"
           >
             <FileText className="w-6 h-6 text-muted-foreground mb-2" />
             <div className="font-medium text-sm">Em branco</div>
             <div className="text-xs text-muted-foreground">Comece do zero</div>
           </button>
-          <div className="border-2 border-primary rounded-xl p-4 bg-primary/5">
+          <div className="border-2 border-primary rounded-none p-4 bg-primary/5">
             <Sparkles className="w-6 h-6 text-primary mb-2" />
             <div className="font-medium text-sm">A partir de modelo pronto</div>
             <div className="text-xs text-muted-foreground">10 templates prontos por categoria</div>
@@ -109,7 +109,7 @@ export default function NewTemplateButton({ orgSlug }: { orgSlug: string }) {
               type="button"
               onClick={() => handleSeed(seed)}
               disabled={isPending}
-              className="border rounded-xl p-4 hover:border-primary hover:bg-primary/5 text-left transition disabled:opacity-50"
+              className="border rounded-none p-4 hover:border-primary hover:bg-primary/5 text-left transition disabled:opacity-50"
             >
               <div className="font-medium text-sm mb-1">{seed.name}</div>
               <div className="text-xs text-muted-foreground mb-2">{seed.description}</div>

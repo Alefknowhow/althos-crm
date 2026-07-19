@@ -46,14 +46,6 @@ export default function AlthosHome() {
   return (
     <div className="althos-home">
       <style dangerouslySetInnerHTML={{ __html: HOME_CSS }} />
-      {/* Abre cedo as conexões com o Google Fonts para reduzir a latência da
-          fonte (o stylesheet abaixo, com display=swap, não bloqueia o texto). */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,800&display=swap"
-      />
 
       {/* Fundo global escopado (fica fixo atrás só enquanto a home está montada) */}
       <div className="aurora" aria-hidden="true">

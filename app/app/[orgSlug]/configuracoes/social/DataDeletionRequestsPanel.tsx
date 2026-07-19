@@ -38,7 +38,7 @@ export default function DataDeletionRequestsPanel({
   if (requests.length === 0) return null
 
   return (
-    <div className="rounded-xl border bg-card p-5 space-y-4">
+    <div className="rounded-none border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Trash2 className="w-4 h-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Solicitações de exclusão de dados</h2>

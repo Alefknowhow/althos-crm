@@ -49,7 +49,7 @@ export default async function InsightCard({ orgSlug, tab }: { orgSlug: string; t
   const href = `/app/${orgSlug}${match.deep_link || ''}`
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${KIND_STYLES[match.kind]}`}>
+    <div className={`flex items-center gap-3 rounded-none border px-4 py-3 ${KIND_STYLES[match.kind]}`}>
       <Icon className="w-4 h-4 shrink-0" />
       <span className="text-sm flex-1">{match.text}</span>
       <Link href={href} className="text-xs underline underline-offset-2 shrink-0 hover:opacity-80">

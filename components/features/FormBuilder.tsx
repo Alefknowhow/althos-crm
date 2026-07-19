@@ -18,7 +18,7 @@ function SortableField({ field, onEdit, onDelete }: any) {
   const style = { transform: CSS.Transform.toString(transform), transition }
   
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-3 bg-card border rounded-md mb-2 group shadow-sm hover:border-primary/50 transition-colors">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-3 bg-card border rounded-md mb-2 group   hover:border-primary/50 transition-colors">
       <div {...attributes} {...listeners} className="cursor-grab p-1 text-muted-foreground hover:text-foreground">⋮⋮</div>
       <div className="flex-1 text-sm font-medium">
         {field.label} {field.required && <span className="text-destructive">*</span>}
@@ -188,7 +188,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   return (
     <div ref={containerRef} className="flex w-full h-full text-foreground bg-background">
       <div className="flex flex-col bg-muted/10 min-w-0 shrink-0 w-full lg:w-auto" style={isDesktop ? { width: `${leftPct}%` } : undefined}>
-        <div className="p-3 sm:p-4 border-b bg-background flex flex-wrap justify-end sm:justify-between items-center gap-2 shadow-sm z-10 shrink-0">
+        <div className="p-3 sm:p-4 border-b bg-background flex flex-wrap justify-end sm:justify-between items-center gap-2   z-10 shrink-0">
           <div className="flex items-center gap-2 mr-auto">
             <Label className="text-xs text-muted-foreground">Ativo</Label>
             <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer" />
@@ -204,7 +204,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
 
         {editingUrl && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditingUrl(false)}>
-            <div className="bg-background rounded-xl shadow-xl border w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-background rounded-none   border w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
               <div>
                 <h3 className="font-semibold text-base">Editar URL pública</h3>
                 <p className="text-xs text-muted-foreground mt-1">Esse é o endereço do seu formulário público.</p>
@@ -233,7 +233,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
         
         <div className="flex-1 overflow-y-auto p-6 flex gap-6">
           <div className="flex-1 space-y-8">
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <h3 className="font-semibold text-sm">Modo de Exibição</h3>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -255,7 +255,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               </div>
             </div>
 
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Tela de Boas-Vindas</h3>
                 <input
@@ -296,7 +296,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               )}
             </div>
 
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Botão WhatsApp (alternativa)</h3>
                 <input
@@ -338,7 +338,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
 
             {/* Booking CTA: aparece DEPOIS do envio, na tela de sucesso.
                 Ideal pra direcionar o lead direto para marcar avaliação/consulta. */}
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-sm">Botão de Agendamento (após envio)</h3>
@@ -407,7 +407,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
 
             {/* ── Assinatura do rodapé ────────────────── */}
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-sm">Assinatura do Rodapé</h3>
@@ -446,7 +446,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
 
             {/* ── Meta Pixel ─────────────────────────── */}
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div>
                 <h3 className="font-semibold text-sm">Meta Pixel / CAPI</h3>
                 <p className="text-[11px] text-muted-foreground">
@@ -458,7 +458,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               </div>
             </div>
 
-            <div className="space-y-4 p-4 border rounded-xl bg-background shadow-sm">
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <h3 className="font-semibold text-sm">Destino do Lead</h3>
               <div className="grid grid-cols-2 gap-4">
                 <select className="flex h-9 w-full rounded-md border border-input px-3 py-1 text-sm bg-background cursor-pointer" value={form.pipeline_id || ''} onChange={e => setForm({...form, pipeline_id: e.target.value})}>
@@ -514,7 +514,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
           </div>
           
           {selectedField && (
-            <div className="w-72 bg-background border rounded-xl p-4 space-y-4 shrink-0 shadow-lg self-start sticky top-0">
+            <div className="w-72 bg-background border rounded-none p-4 space-y-4 shrink-0   self-start sticky top-0">
               <div className="flex justify-between items-center border-b pb-2 mb-2">
                 <h4 className="font-semibold text-sm">Propriedades</h4>
                 <button onClick={() => setSelectedField(null)} className="text-muted-foreground hover:text-foreground">✕</button>
@@ -573,12 +573,12 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
       />
 
       <div className="hidden lg:flex flex-1 min-w-0 bg-muted flex-col relative">
-        <div className="p-4 flex justify-between items-center border-b bg-background/50 backdrop-blur-sm z-10 shrink-0">
+        <div className="p-4 flex justify-between items-center border-b bg-background/50   z-10 shrink-0">
           <div className="text-sm font-medium text-muted-foreground">Preview</div>
           <Button variant="outline" size="sm" onClick={() => window.open(`/f/${form.slug}/preview`, '_blank')}>Ver em tela cheia ↗</Button>
         </div>
         <div className="flex-1 flex justify-center items-start py-6 px-4 overflow-y-auto hide-scrollbar">
-          <div className="w-full max-w-sm bg-background border rounded-3xl shadow-2xl overflow-hidden pointer-events-none relative ring-8 ring-muted/50">
+          <div className="w-full max-w-sm bg-background border rounded-none   overflow-hidden pointer-events-none relative ring-8 ring-muted/50">
              <div className="bg-muted px-4 py-3 flex justify-center items-center border-b gap-1 relative">
                 <div className="absolute left-4 w-12 h-4 bg-background/50 rounded-full" />
                 <div className="w-1/3 h-1.5 bg-background rounded-full" />
@@ -604,7 +604,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="bg-background border rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-background border rounded-none   overflow-hidden">
               <div className="p-6">
                 <h2 className="text-xl font-bold mb-6 text-center">{form.name}</h2>
                 {schema.mode === 'one_question'

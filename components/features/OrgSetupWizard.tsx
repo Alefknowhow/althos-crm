@@ -168,7 +168,7 @@ export default function OrgSetupWizard({ orgSlug, initialName }: Props) {
 
   return (
     <div className="light fixed inset-0 z-[200] bg-[#eef2f7] flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex min-h-[520px]">
+      <div className="w-full max-w-4xl bg-white rounded-none   overflow-hidden flex min-h-[520px]">
 
         {/* ── Left sidebar ─────────────────────────────────────────────── */}
         <div className="w-[300px] shrink-0 bg-white border-r border-border p-8 flex flex-col justify-between">
@@ -272,7 +272,7 @@ export default function OrgSetupWizard({ orgSlug, initialName }: Props) {
                       type="button"
                       onClick={() => patch('niche', n)}
                       className={cn(
-                        'h-20 rounded-xl border-2 text-sm font-medium transition-all duration-150 px-3',
+                        'h-20 rounded-none border-2 text-sm font-medium transition-all duration-150 px-3',
                         form.niche === n
                           ? 'border-primary bg-primary/5 text-primary'
                           : 'border-border hover:border-primary/40 hover:bg-muted/40 text-foreground',

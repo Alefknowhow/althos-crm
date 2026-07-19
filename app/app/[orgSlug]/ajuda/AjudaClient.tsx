@@ -82,14 +82,14 @@ function Block({ block }: { block: HelpBlock }) {
       )
     case 'tip':
       return (
-        <div className="flex gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+        <div className="flex gap-3 rounded-none border border-brand-200 bg-brand-50 px-4 py-3">
           <Lightbulb className="h-5 w-5 shrink-0 text-brand-600" />
           <p className="text-sm leading-relaxed text-brand-900">{block.text}</p>
         </div>
       )
     case 'warning':
       return (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="flex gap-3 rounded-none border border-amber-200 bg-amber-50 px-4 py-3">
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
           <p className="text-sm leading-relaxed text-amber-900">{block.text}</p>
         </div>
@@ -189,7 +189,7 @@ export function AjudaClient({ categories }: { categories: HelpCategory[] }) {
             <button
               key={`${category.slug}/${article.slug}`}
               onClick={() => openArticle(category.slug, article.slug)}
-              className="flex w-full items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50/40"
+              className="flex w-full items-start gap-3 rounded-none border border-border bg-card p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50/40"
             >
               <CategoryIcon name={category.icon} className="mt-0.5 h-5 w-5 text-brand-600" />
               <div className="min-w-0">
@@ -202,7 +202,7 @@ export function AjudaClient({ categories }: { categories: HelpCategory[] }) {
             </button>
           ))}
           {results.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
+            <div className="rounded-none border border-dashed border-border p-8 text-center text-muted-foreground">
               Nenhum guia encontrado. Tente outros termos ou fale com o suporte.
             </div>
           )}

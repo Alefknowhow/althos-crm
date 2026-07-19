@@ -144,7 +144,7 @@ export default function FormResponsesView({
   return (
     <div className="p-6 space-y-4">
       {/* Filter bar */}
-      <div className="bg-card border rounded-xl p-4 space-y-3">
+      <div className="bg-card border rounded-none p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Filter className="w-4 h-4" /> Filtros
         </div>
@@ -205,7 +205,7 @@ export default function FormResponsesView({
       </div>
 
       {/* Table */}
-      <div className="bg-card border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-none overflow-hidden">
         {visible.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <Inbox className="w-10 h-10 mx-auto mb-3 opacity-40" />

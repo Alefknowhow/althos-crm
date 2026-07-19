@@ -969,7 +969,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   return (
     <div className="pb-8">
       {/* Toolbar */}
-      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85 backdrop-blur border-b flex items-center gap-2 flex-wrap">
+      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85   border-b flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
         </Button>
@@ -1025,7 +1025,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(380px,44%)_1fr] items-start">
         <div className={mobileTab === 'form' ? '' : 'hidden lg:block'}>{form}</div>
         <div className={`${mobileTab === 'preview' ? '' : 'hidden lg:block'} lg:sticky lg:top-[52px]`}>
-          <div className="rounded-xl border overflow-hidden shadow-sm bg-white">
+          <div className="rounded-none border overflow-hidden   bg-white">
             <div className="px-3 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-2">
               <Eye className="w-3.5 h-3.5" /> Preview ao vivo — é exatamente o que o cliente verá
             </div>

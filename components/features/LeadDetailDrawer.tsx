@@ -154,7 +154,7 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
                     </p>
                   ) : (
                     automationRuns.map((run) => (
-                      <div key={run.id} className="text-sm border rounded-lg p-3 bg-card shadow-sm">
+                      <div key={run.id} className="text-sm border rounded-lg p-3 bg-card  ">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-medium">
                             {run.automations?.name || 'Automação Excluída'}

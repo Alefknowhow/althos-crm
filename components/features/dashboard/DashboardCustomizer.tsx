@@ -42,14 +42,14 @@ function SortableWidget({
     <div
       ref={setNodeRef}
       style={style}
-      className="relative rounded-xl border-2 border-dashed border-primary/40 p-1"
+      className="relative rounded-none border-2 border-dashed border-primary/40 p-1"
     >
       <div className="absolute -top-3 left-3 z-10 flex items-center gap-1">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="flex items-center justify-center h-6 w-6 rounded-full bg-background border shadow-sm text-muted-foreground cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center h-6 w-6 rounded-full bg-background border   text-muted-foreground cursor-grab active:cursor-grabbing"
           aria-label="Arrastar para reordenar"
         >
           <GripVertical className="w-3.5 h-3.5" />
@@ -57,7 +57,7 @@ function SortableWidget({
         <button
           type="button"
           onClick={onRemove}
-          className="flex items-center justify-center h-6 w-6 rounded-full bg-destructive text-destructive-foreground shadow-sm"
+          className="flex items-center justify-center h-6 w-6 rounded-full bg-destructive text-destructive-foreground  "
           aria-label="Remover widget"
         >
           <X className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ export default function DashboardCustomizer({ orgSlug, widgetKeys, renderedByKey
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar widget
           </Button>
           {showAdd && (
-            <div className="absolute z-20 mt-2 w-72 rounded-lg border bg-popover shadow-lg p-1.5 max-h-72 overflow-y-auto">
+            <div className="absolute z-20 mt-2 w-72 rounded-lg border bg-popover   p-1.5 max-h-72 overflow-y-auto">
               {hiddenWidgets.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-2">Todos os widgets já estão no painel.</p>
               ) : (

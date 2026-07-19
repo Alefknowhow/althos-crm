@@ -45,7 +45,7 @@ export default async function InvitePage({
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 rounded-none bg-primary flex items-center justify-center mx-auto mb-3">
             <span className="text-primary-foreground text-2xl font-bold">A</span>
           </div>
           <h1 className="text-2xl font-bold">Você foi convidado</h1>
@@ -56,7 +56,7 @@ export default async function InvitePage({
         </div>
 
         {/* Plan card */}
-        <div className="rounded-2xl border bg-card p-6 space-y-4">
+        <div className="rounded-none border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-lg">{plan.label}</span>
             <span className="text-xs bg-primary/10 text-primary rounded-full px-3 py-1 font-medium">

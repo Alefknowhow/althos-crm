@@ -82,7 +82,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
 
       <div className="space-y-6 max-w-3xl">
       {/* ── Plan + Status card ─────────────────────────────────────────────── */}
-      <div className="rounded-xl border bg-card p-6 space-y-5">
+      <div className="rounded-none border bg-card p-6 space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -148,7 +148,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
       </div>
 
       {/* ── Usage card ────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border bg-card p-6 space-y-4">
+      <div className="rounded-none border bg-card p-6 space-y-4">
         <h2 className="font-semibold text-sm">Uso atual</h2>
 
         <UsageRow
@@ -191,7 +191,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
 
       {/* ── Invoice history ───────────────────────────────────────────────── */}
       {!isManaged && (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-none border bg-card overflow-hidden">
           <div className="px-6 py-4 border-b">
             <h2 className="font-semibold text-sm">Histórico de faturas</h2>
           </div>

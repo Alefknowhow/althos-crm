@@ -26,7 +26,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
         <NewFormButton orgSlug={params.orgSlug} />
       </div>
 
-      <div className="bg-card border rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-none overflow-hidden">
         {forms && forms.length > 0 ? (
           <Table>
             <TableHeader>

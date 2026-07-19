@@ -58,14 +58,14 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
 
   if (sales.length === 0) {
     return (
-      <div className="p-12 text-center text-muted-foreground bg-muted/10 border rounded-xl">
+      <div className="p-12 text-center text-muted-foreground bg-muted/10 border rounded-none">
         Nenhuma venda registrada ainda. Clique em <strong>Registrar venda</strong> para começar.
       </div>
     )
   }
 
   return (
-    <div className="bg-card border rounded-xl overflow-hidden">
+    <div className="bg-card border rounded-none overflow-hidden">
       {/* overflow-x-auto + hidden md:table-cell on secondary columns keeps
           the table usable on phones without forcing a full card layout. */}
       <div className="overflow-x-auto">

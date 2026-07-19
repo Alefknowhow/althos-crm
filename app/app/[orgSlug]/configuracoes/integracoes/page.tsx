@@ -74,7 +74,7 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
 
       <SettingsTabsNav orgSlug={params.orgSlug} />
 
-      <div className="divide-y rounded-xl border bg-card">
+      <div className="divide-y rounded-none border bg-card">
         {items.map(item => {
           const Icon = item.icon
           return (

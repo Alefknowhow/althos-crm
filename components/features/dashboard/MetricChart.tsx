@@ -8,7 +8,7 @@ import type { MetricChartProps } from './MetricChartInner'
 
 const MetricChartInner = dynamic(() => import('./MetricChartInner'), {
   ssr: false,
-  loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-muted/40" />,
+  loading: () => <div className="h-[300px] w-full animate-pulse rounded-none bg-muted/40" />,
 })
 
 export default function MetricChart(props: MetricChartProps) {

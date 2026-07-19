@@ -111,7 +111,7 @@ export default function ScheduleMessageButton({ orgSlug, conversationId, text, t
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-12 left-0 z-20 w-80 bg-background border rounded-xl shadow-lg p-4 space-y-3">
+          <div className="absolute bottom-12 left-0 z-20 w-80 bg-background border rounded-none   p-4 space-y-3">
             <div className="font-semibold text-sm">Agendar mensagem</div>
 
             <div className="space-y-1">

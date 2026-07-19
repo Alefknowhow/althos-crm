@@ -228,7 +228,7 @@ export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTy
             onClick={() => setView('week')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md inline-flex items-center gap-1.5 transition-colors ${
               view === 'week'
-                ? 'bg-background shadow-sm text-foreground'
+                ? 'bg-background   text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -239,7 +239,7 @@ export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTy
             onClick={() => setView('month')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md inline-flex items-center gap-1.5 transition-colors ${
               view === 'month'
-                ? 'bg-background shadow-sm text-foreground'
+                ? 'bg-background   text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -250,7 +250,7 @@ export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTy
             onClick={() => setView('list')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md inline-flex items-center gap-1.5 transition-colors ${
               view === 'list'
-                ? 'bg-background shadow-sm text-foreground'
+                ? 'bg-background   text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

@@ -25,7 +25,7 @@ export default async function OrgBookingPage({
       <div className="mx-auto w-full max-w-2xl">
         {/* Header */}
         <div className="text-center space-y-2 mb-8">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-none bg-primary/10 text-primary">
             <CalendarDays className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{org.name}</h1>
@@ -36,7 +36,7 @@ export default async function OrgBookingPage({
 
         {/* Event types */}
         {eventTypes.length === 0 ? (
-          <div className="rounded-2xl border bg-card px-6 py-16 text-center text-sm text-muted-foreground">
+          <div className="rounded-none border bg-card px-6 py-16 text-center text-sm text-muted-foreground">
             Nenhum tipo de agendamento disponível no momento.
           </div>
         ) : (
@@ -45,7 +45,7 @@ export default async function OrgBookingPage({
               <Link
                 key={et.id}
                 href={`/book/${params.orgSlug}/${et.slug}`}
-                className="group flex items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/40"
+                className="group flex items-center gap-4 rounded-none border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/40"
               >
                 <span
                   className="h-10 w-1.5 shrink-0 rounded-full"

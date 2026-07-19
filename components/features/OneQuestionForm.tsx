@@ -80,7 +80,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
 
   if (orderedFields.length === 0 && !showWelcome) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
+      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-none bg-muted/30">
         <p className="text-sm font-medium text-foreground">O formulário está vazio</p>
         <p className="text-xs text-muted-foreground mt-1">Adicione campos para ver o preview aqui.</p>
       </div>

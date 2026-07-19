@@ -27,7 +27,7 @@ export default function TasksToday({ tasks, orgSlug }: TasksTodayProps) {
               <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
             ))
           ) : (
-            <div className="text-sm text-muted-foreground p-6 text-center border border-dashed border-border rounded-xl tracking-apple-snug">
+            <div className="text-sm text-muted-foreground p-6 text-center border border-dashed border-border rounded-none tracking-apple-snug">
               Você não tem tarefas para hoje
             </div>
           )}

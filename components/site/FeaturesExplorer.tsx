@@ -25,10 +25,10 @@ export function FeaturesExplorer() {
             <button
               key={f.slug}
               onClick={() => setActive(f.slug)}
-              className={`group flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-all ${
+              className={`group flex items-start gap-3 rounded-none border px-4 py-3.5 text-left transition-all ${
                 on
-                  ? 'border-indigo-300 bg-indigo-50'
-                  : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-[#78a9ff] bg-[#edf5ff]'
+                  : 'border-slate-200 bg-white   hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
               <span
@@ -46,7 +46,7 @@ export function FeaturesExplorer() {
               </span>
               <ChevronRight
                 className={`mt-1 h-4 w-4 shrink-0 transition-transform ${
-                  on ? 'text-indigo-500 translate-x-0' : 'text-slate-300 group-hover:translate-x-0.5'
+                  on ? 'text-[#4589ff] translate-x-0' : 'text-slate-300 group-hover:translate-x-0.5'
                 }`}
               />
             </button>
@@ -55,7 +55,7 @@ export function FeaturesExplorer() {
       </div>
 
       {/* Corpo */}
-      <div className="relative min-h-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:min-h-[360px] sm:p-9">
+      <div className="relative min-h-0 rounded-none border border-slate-200 bg-white p-5   sm:min-h-[360px] sm:p-9">
         <AnimatePresence mode="wait">
           <motion.div
             key={feature.slug}
@@ -64,7 +64,7 @@ export function FeaturesExplorer() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30 sm:h-12 sm:w-12">
+            <span className="flex h-10 w-10 items-center justify-center rounded-none bg-blue-600 text-white   shadow-blue-600/30 sm:h-12 sm:w-12">
               <SiteIcon name={feature.icon} className="h-5 w-5 sm:h-6 sm:w-6" />
             </span>
             <h3 className="mt-4 text-xl font-bold text-slate-900 sm:mt-5 sm:text-2xl">{feature.title}</h3>
@@ -83,7 +83,7 @@ export function FeaturesExplorer() {
             </ul>
             <Link
               href="/signup"
-              className="mt-7 inline-flex rounded-xl bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-500 transition-colors"
+              className="mt-7 inline-flex rounded-none bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white   shadow-blue-600/25 hover:bg-blue-500 transition-colors"
             >
               Experimentar grátis
             </Link>

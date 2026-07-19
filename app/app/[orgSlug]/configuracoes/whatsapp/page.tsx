@@ -38,7 +38,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
       {embeddedConfigured ? (
         <>
           {/* Caminho fácil: 1 clique, sem dados técnicos */}
-          <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+          <div className="bg-card border rounded-none p-6   space-y-4">
             <div>
               <h2 className="font-semibold text-base">Conexão rápida</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -54,7 +54,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
           </div>
 
           {/* Caminho manual escondido como avançado */}
-          <details className="bg-muted/30 border rounded-xl">
+          <details className="bg-muted/30 border rounded-none">
             <summary className="cursor-pointer px-6 py-4 text-sm font-medium select-none">
               Configuração manual (avançado)
             </summary>
@@ -72,7 +72,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
         </>
       ) : (
         <>
-          <div className="bg-card border rounded-xl p-6 shadow-sm">
+          <div className="bg-card border rounded-none p-6  ">
             <WhatsappConfigForm
               orgSlug={params.orgSlug}
               initialData={{
@@ -83,7 +83,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
             />
           </div>
 
-          <div className="bg-muted/30 border rounded-xl p-6 space-y-4 text-sm mt-8">
+          <div className="bg-muted/30 border rounded-none p-6 space-y-4 text-sm mt-8">
             <h2 className="font-semibold text-base">Passo a passo para integração</h2>
             <ol className="list-decimal pl-5 space-y-3 mt-4 text-muted-foreground">
               <li>Acesse o <a href="https://developers.facebook.com/" target="_blank" className="text-primary hover:underline font-medium">Meta for Developers</a> e crie um App do tipo &ldquo;Business&rdquo;.</li>

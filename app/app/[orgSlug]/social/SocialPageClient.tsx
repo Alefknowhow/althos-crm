@@ -60,7 +60,7 @@ function EmptyAutomations({ onNew }: { onNew: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-20 px-6">
       <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-5"
+        className="w-16 h-16 rounded-none flex items-center justify-center text-3xl mb-5"
         style={{ background: 'linear-gradient(135deg, #E1306C20, #833AB420)', border: '1px solid #E1306C30' }}
       >
         📸
@@ -233,7 +233,7 @@ function NewAutomationDialog({ orgSlug, open, onClose, onCreated }: NewDialogPro
           )}
 
           {/* Options */}
-          <div className="rounded-xl border border-border p-4 space-y-3">
+          <div className="rounded-none border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Criar lead automaticamente</p>
@@ -350,7 +350,7 @@ export function SocialPageClient({
           { icon: <MessageSquare className="w-4 h-4" />, label: 'Interações hoje', value: todayInteractions, color: 'text-blue-600' },
           { icon: <Users className="w-4 h-4" />,   label: 'Leads capturados',       value: leadsCreated,     color: 'text-violet-600' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-4">
+          <div key={s.label} className="rounded-none border border-border bg-card p-4">
             <div className={`flex items-center gap-1.5 text-xs font-medium mb-2 ${s.color}`}>
               {s.icon}
               {s.label}
@@ -361,11 +361,11 @@ export function SocialPageClient({
       </div>
 
       {/* Connection status */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-none border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold"
+              className="w-9 h-9 rounded-none flex items-center justify-center text-white text-sm font-bold"
               style={{ background: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' }}
             >
               IG
@@ -416,7 +416,7 @@ export function SocialPageClient({
         </div>
 
         {automations.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border">
+          <div className="rounded-none border border-dashed border-border">
             <EmptyAutomations onNew={() => setShowNew(true)} />
           </div>
         ) : (
@@ -424,7 +424,7 @@ export function SocialPageClient({
             {automations.map(auto => (
               <div
                 key={auto.id}
-                className={`rounded-xl border border-border bg-card p-4 flex items-center gap-4 transition-opacity ${
+                className={`rounded-none border border-border bg-card p-4 flex items-center gap-4 transition-opacity ${
                   !auto.is_active ? 'opacity-60' : ''
                 }`}
               >
@@ -486,7 +486,7 @@ export function SocialPageClient({
             </h2>
             <span className="text-xs text-muted-foreground">Últimas {interactions.length}</span>
           </div>
-          <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+          <div className="rounded-none border border-border overflow-hidden divide-y divide-border">
             {interactions.map(inter => (
               <div key={inter.id} className="flex items-start gap-3 p-3 bg-card hover:bg-muted/30 transition-colors">
                 <div

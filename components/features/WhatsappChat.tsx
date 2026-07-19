@@ -323,7 +323,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
       <div className={`flex-1 flex-col bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DckOUM5a.png')] bg-repeat ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0 shadow-sm z-10">
+            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0   z-10">
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
@@ -388,13 +388,13 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white/60 backdrop-blur-[2px]">
+            <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white/60">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
                 const body = msgBody(m) || '[Mídia recebida]'
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2 shadow-sm relative ${isInbound ? 'bg-white border text-black rounded-tl-none' : 'bg-[#dcf8c6] text-black border border-[#dcf8c6] rounded-tr-none'}`}>
+                    <div className={`max-w-[75%] rounded-none px-4 py-2   relative ${isInbound ? 'bg-white border text-black rounded-tl-none' : 'bg-[#dcf8c6] text-black border border-[#dcf8c6] rounded-tr-none'}`}>
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">{highlightText(body, msgQuery)}</div>
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-black/40`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -461,7 +461,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                 {showEmoji && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
+                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-none   p-2 grid grid-cols-8 gap-0.5">
                       {EMOJIS.map(e => (
                         <button
                           key={e}
@@ -519,8 +519,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-white/60 backdrop-blur-[2px]">
-            <div className="text-center p-8 bg-background/80 rounded-2xl shadow-sm border max-w-sm">
+          <div className="flex-1 flex items-center justify-center bg-white/60">
+            <div className="text-center p-8 bg-background/80 rounded-none   border max-w-sm">
                <h3 className="font-semibold text-lg mb-2">WhatsApp Web</h3>
                <p className="text-muted-foreground text-sm">Selecione uma conversa na barra lateral para iniciar o atendimento ao cliente.</p>
             </div>

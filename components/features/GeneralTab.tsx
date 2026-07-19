@@ -63,7 +63,7 @@ export default function GeneralTab({ orgSlug, initialNiche }: Props) {
                 type="button"
                 onClick={() => setNiche(opt.value)}
                 className={cn(
-                  'relative h-16 rounded-xl border-2 text-sm font-medium transition-all duration-150 px-3 flex items-center justify-center gap-2 text-center',
+                  'relative h-16 rounded-none border-2 text-sm font-medium transition-all duration-150 px-3 flex items-center justify-center gap-2 text-center',
                   active
                     ? 'border-primary bg-primary/5 text-primary'
                     : 'border-border hover:border-primary/40 hover:bg-muted/40 text-foreground',

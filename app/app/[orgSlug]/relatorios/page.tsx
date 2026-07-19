@@ -20,7 +20,7 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
     return (
       <div className="max-w-3xl space-y-6">
         <PageHeader title="Relatórios" hint="Exporte seus dados em PDF e Excel." />
-        <div className="rounded-xl border bg-card p-10 text-center space-y-4">
+        <div className="rounded-none border bg-card p-10 text-center space-y-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Lock className="h-6 w-6" />
           </div>

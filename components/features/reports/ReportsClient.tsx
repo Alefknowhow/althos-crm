@@ -116,7 +116,7 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl border bg-card p-5 space-y-4">
+      <div className="rounded-none border bg-card p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end">
           <div className="space-y-1.5">
             <Label className="text-xs">De</Label>
@@ -160,7 +160,7 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
 
       {/* Preview */}
       {showingForType && (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-none border bg-card overflow-hidden">
           <div className="px-5 py-3 border-b flex items-center justify-between">
             <h2 className="text-sm font-semibold">{showingForType.title}</h2>
             <span className="text-xs text-muted-foreground">

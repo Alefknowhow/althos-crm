@@ -105,7 +105,7 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
           <form onSubmit={handleAddNote} className="space-y-4">
             <div className="space-y-2">
               <Label>Nota</Label>
-              <textarea name="text" required className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+              <textarea name="text" required className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
             <DialogFooter>
               <Button type="submit" disabled={loading}>Adicionar</Button>

@@ -137,7 +137,7 @@ export default function ShowcaseList({
                   const cover = (p.cover_photos || [])[0]
                   const dest = destOf(p)
                   return (
-                    <div key={p.id} className="rounded-xl border bg-card overflow-hidden flex flex-col">
+                    <div key={p.id} className="rounded-none border bg-card overflow-hidden flex flex-col">
                       <div className="relative h-36 bg-muted">
                         {cover ? (
                           // eslint-disable-next-line @next/next/no-img-element

@@ -233,7 +233,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
           </div>
 
           {/* Header */}
-          <div className="space-y-3 rounded-xl border border-border p-4">
+          <div className="space-y-3 rounded-none border border-border p-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-semibold">Cabeçalho</Label>
               <Select value={form.header_type} onValueChange={v => patch({ header_type: v as any, header_text: null, header_media_url: null })}>
@@ -257,7 +257,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
               <div className="space-y-2">
                 {/* Preview if URL exists */}
                 {form.header_media_url && (
-                  <div className="relative rounded-xl overflow-hidden border border-border bg-muted">
+                  <div className="relative rounded-none overflow-hidden border border-border bg-muted">
                     {form.header_type === 'image' ? (
                       <img src={form.header_media_url} alt="header" className="w-full max-h-40 object-cover" />
                     ) : (
@@ -326,7 +326,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
 
           {/* Variable labels */}
           {varCount > 0 && (
-            <div className="space-y-2 rounded-xl border border-border p-4">
+            <div className="space-y-2 rounded-none border border-border p-4">
               <Label className="text-sm font-semibold">Nome das variáveis</Label>
               <div className="space-y-2">
                 {Array.from({ length: varCount }).map((_, i) => (
@@ -357,14 +357,14 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
           </div>
 
           {/* Live preview */}
-          <div className="rounded-xl border border-emerald-100 bg-[#ECF8F0] p-4">
+          <div className="rounded-none border border-emerald-100 bg-[#ECF8F0] p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 mb-3">Pré-visualização</p>
-            <div className="bg-white rounded-2xl rounded-tl-none shadow-sm max-w-xs p-3 space-y-1.5">
+            <div className="bg-white rounded-none rounded-tl-none   max-w-xs p-3 space-y-1.5">
               {form.header_type === 'image' && form.header_media_url && (
-                <img src={form.header_media_url} alt="header" className="rounded-xl w-full h-28 object-cover" />
+                <img src={form.header_media_url} alt="header" className="rounded-none w-full h-28 object-cover" />
               )}
               {form.header_type === 'image' && !form.header_media_url && (
-                <div className="rounded-xl w-full h-20 bg-muted flex items-center justify-center">
+                <div className="rounded-none w-full h-20 bg-muted flex items-center justify-center">
                   <ImageIcon className="w-8 h-8 text-muted-foreground" />
                 </div>
               )}
@@ -453,7 +453,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
       </div>
 
       {/* Info callout */}
-      <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-800 flex gap-3">
+      <div className="rounded-none bg-amber-50 border border-amber-100 p-4 text-sm text-amber-800 flex gap-3">
         <span className="text-lg shrink-0">⚠️</span>
         <div>
           <strong>Templates precisam ser aprovados pela Meta antes de serem enviados.</strong>
@@ -466,7 +466,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
 
       {/* Template list */}
       {templates.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center">
+        <div className="rounded-none border border-dashed border-border p-16 text-center">
           <div className="text-4xl mb-4">💬</div>
           <h3 className="text-base font-semibold mb-1">Nenhum template cadastrado</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
@@ -477,14 +477,14 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
       ) : (
         <div className="space-y-3">
           {templates.map(t => (
-            <div key={t.id} className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-sm transition-shadow">
+            <div key={t.id} className="rounded-none border border-border bg-card overflow-hidden   transition-shadow">
               <div className="flex items-start gap-4 p-4">
 
                 {/* Header media preview */}
                 {t.header_type === 'image' && t.header_media_url ? (
-                  <img src={t.header_media_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0 border border-border" />
+                  <img src={t.header_media_url} alt="" className="w-14 h-14 rounded-none object-cover shrink-0 border border-border" />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border">
+                  <div className="w-14 h-14 rounded-none bg-muted flex items-center justify-center shrink-0 border border-border">
                     {t.header_type === 'image'    && <ImageIcon className="w-6 h-6 text-muted-foreground" />}
                     {t.header_type === 'video'    && <Video className="w-6 h-6 text-muted-foreground" />}
                     {t.header_type === 'document' && <FileText className="w-6 h-6 text-muted-foreground" />}

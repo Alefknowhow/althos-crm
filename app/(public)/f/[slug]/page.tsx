@@ -72,7 +72,7 @@ export default async function PublicFormPage({ params, searchParams }: { params:
         </>
       )}
 
-      <div className="w-full max-w-lg bg-background border rounded-2xl shadow-sm p-6 sm:p-10 self-start">
+      <div className="w-full max-w-lg bg-background border rounded-none   p-6 sm:p-10 self-start">
         {!hideHeader && (
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-bold">{form.name}</h1>

@@ -163,7 +163,7 @@ function OrgCard({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-none border border-border bg-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -259,7 +259,7 @@ export default function OrganizationsClient({
 }) {
   if (organizations.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-none border border-border bg-card p-10 text-center text-sm text-muted-foreground">
         Nenhuma organização encontrada.
       </div>
     )

@@ -58,7 +58,7 @@ interface PublicFormPreviewProps {
 export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false }: PublicFormPreviewProps) {
   if (!schema?.fields || schema.fields.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
+      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-none bg-muted/30">
         <p className="text-sm font-medium text-foreground">O formulário está vazio</p>
         <p className="text-xs text-muted-foreground mt-1">Adicione campos para ver o preview aqui.</p>
       </div>

@@ -159,8 +159,8 @@ function InviteDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl w-full max-w-[520px] shadow-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40  ">
+      <div className="bg-card border border-border rounded-none w-full max-w-[520px]   overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -288,8 +288,8 @@ function EditPermissionsDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl w-full max-w-[520px] shadow-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40  ">
+      <div className="bg-card border border-border rounded-none w-full max-w-[520px]   overflow-hidden">
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -517,7 +517,7 @@ export default function TeamClient({
         </div>
 
         {/* Plan usage */}
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 border border-border text-sm">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-none bg-muted/50 border border-border text-sm">
           <Users className="w-4 h-4 text-muted-foreground shrink-0" />
           <span>
             {unlimited ? (
@@ -534,7 +534,7 @@ export default function TeamClient({
         </div>
 
         {/* Members */}
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="bg-card border border-border rounded-none overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Users className="w-4 h-4 text-primary" />
@@ -634,7 +634,7 @@ export default function TeamClient({
 
         {/* Pending invitations */}
         {invitations.length > 0 && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-none overflow-hidden">
             <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
               <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
                 <Clock className="w-4 h-4 text-amber-600" />

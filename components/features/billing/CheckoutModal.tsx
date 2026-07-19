@@ -131,7 +131,7 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                 key={p}
                 onClick={() => setPlan(p)}
                 className={cn(
-                  'relative rounded-xl border-2 p-2.5 sm:p-4 text-left transition-all flex flex-col gap-2 sm:gap-2.5 min-w-0',
+                  'relative rounded-none border-2 p-2.5 sm:p-4 text-left transition-all flex flex-col gap-2 sm:gap-2.5 min-w-0',
                   active
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/40'
@@ -170,7 +170,7 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
         </div>
 
         {/* ── Feature comparison for selected plan ── */}
-        <div className="rounded-xl border overflow-hidden">
+        <div className="rounded-none border overflow-hidden">
           <div className="grid grid-cols-4 bg-muted/50 px-4 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide border-b">
             <span className="col-span-1">Recurso</span>
             <span className="text-center">Starter</span>

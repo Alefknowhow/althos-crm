@@ -48,16 +48,16 @@ export function NicheLanding({ c }: { c: NicheContent }) {
       {/* Hero */}
       <section className="relative overflow-hidden pt-10 pb-12 sm:pt-20 sm:pb-16">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute -top-32 left-1/3 h-[480px] w-[480px] rounded-full bg-[#4589ff]/20 blur-[120px]" />
           <div className="absolute top-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-400/15 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
             {c.eyebrow}
           </span>
           <h1 className="mt-4 text-[28px] font-bold leading-[1.1] tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
             {c.h1}{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#0f62fe] to-blue-500 bg-clip-text text-transparent">
               {c.h1Accent}
             </span>
           </h1>
@@ -67,13 +67,13 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/signup"
-              className="inline-flex w-full justify-center rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
+              className="inline-flex w-full justify-center rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
             >
               Começar grátis
             </Link>
             <Link
               href="/planos"
-              className="inline-flex w-full justify-center rounded-xl border border-slate-300 bg-white px-7 py-3 text-[15px] font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:bg-slate-50 sm:w-auto"
+              className="inline-flex w-full justify-center rounded-none border border-slate-300 bg-white px-7 py-3 text-[15px] font-semibold text-slate-700 transition-colors hover:border-[#78a9ff] hover:bg-slate-50 sm:w-auto"
             >
               Ver planos
             </Link>
@@ -84,9 +84,9 @@ export function NicheLanding({ c }: { c: NicheContent }) {
             {c.heroChips.map((chip) => (
               <span
                 key={chip}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 shadow-sm"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600  "
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4589ff]" />
                 {chip}
               </span>
             ))}
@@ -108,7 +108,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           {c.dores.map((d) => (
             <div
               key={d.t}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+              className="rounded-none border border-slate-200 bg-white p-5   sm:p-6"
             >
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500">
@@ -130,7 +130,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
       <section className="relative border-y border-slate-200 bg-slate-50">
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
               Como a Althos resolve
             </span>
             <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
@@ -141,9 +141,9 @@ export function NicheLanding({ c }: { c: NicheContent }) {
             {c.resolve.map((r) => (
               <div
                 key={r.n}
-                className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                className="relative rounded-none border border-slate-200 bg-white p-6  "
               >
-                <span className="text-sm font-bold text-indigo-600">{r.n}</span>
+                <span className="text-sm font-bold text-[#0f62fe]">{r.n}</span>
                 <h3 className="mt-3 text-lg font-semibold text-slate-900">{r.t}</h3>
                 <p className="mt-2 text-[14px] leading-relaxed text-slate-600">{r.d}</p>
               </div>
@@ -161,8 +161,8 @@ export function NicheLanding({ c }: { c: NicheContent }) {
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {c.recursos.map((f) => (
-            <div key={f.t} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600">
+            <div key={f.t} className="rounded-none border border-slate-200 bg-white p-5   sm:p-6">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#a6c8ff] bg-[#edf5ff] text-[#0f62fe]">
                 <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2.2}>
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
@@ -187,9 +187,9 @@ export function NicheLanding({ c }: { c: NicheContent }) {
             {c.casos.map((caso, i) => (
               <li
                 key={i}
-                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
+                className="flex items-start gap-3 rounded-none border border-slate-200 bg-white px-5 py-4  "
               >
-                <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#d0e2ff] text-[#0f62fe]">
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.6}>
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
@@ -210,7 +210,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           {c.faq.map((item) => (
             <details
               key={item.q}
-              className="group rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm [&_summary]:cursor-pointer"
+              className="group rounded-none border border-slate-200 bg-white px-5 py-4   [&_summary]:cursor-pointer"
             >
               <summary className="flex items-center justify-between gap-4 text-[15px] font-semibold text-slate-900 marker:content-['']">
                 {item.q}
@@ -229,7 +229,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
       {/* CTA final */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-1/2 top-1/2 h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute left-1/2 top-1/2 h-[420px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4589ff]/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-24">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">{c.ctaTitle}</h2>
@@ -237,13 +237,13 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/signup"
-              className="inline-flex w-full justify-center rounded-xl bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
+              className="inline-flex w-full justify-center rounded-none bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
             >
               Começar grátis
             </Link>
             <Link
               href="/como-funciona"
-              className="inline-flex w-full justify-center rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-[15px] font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:bg-slate-50 sm:w-auto"
+              className="inline-flex w-full justify-center rounded-none border border-slate-300 bg-white px-8 py-3.5 text-[15px] font-semibold text-slate-700 transition-colors hover:border-[#78a9ff] hover:bg-slate-50 sm:w-auto"
             >
               Como funciona
             </Link>

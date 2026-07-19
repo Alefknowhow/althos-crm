@@ -87,7 +87,7 @@ export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) 
               <div className="p-4 border-b bg-background/50 flex justify-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Preview Visual</div>
               {template ? (
                 <div className="flex-1 overflow-y-auto p-8 hide-scrollbar">
-                  <div className="border rounded-xl overflow-hidden shadow-lg bg-white ring-1 ring-black/5 flex flex-col h-full min-h-[400px]">
+                  <div className="border rounded-none overflow-hidden   bg-white ring-1 ring-black/5 flex flex-col h-full min-h-[400px]">
                     <div className="p-4 border-b bg-gray-50 text-black shrink-0">
                       <div className="font-semibold text-lg">{previewSubject}</div>
                     </div>
@@ -96,7 +96,7 @@ export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) 
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center p-8">
-                  <div className="border-2 border-dashed rounded-xl w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-4 text-sm bg-background/50">
+                  <div className="border-2 border-dashed rounded-none w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-4 text-sm bg-background/50">
                     <Mail className="w-8 h-8 opacity-20" />
                     Selecione um template para ver o preview do disparo
                   </div>

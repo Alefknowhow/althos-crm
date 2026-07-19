@@ -75,7 +75,7 @@ export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="stage_id">Estágio</Label>
-                <select name="stage_id" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                <select name="stage_id" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                   <option value="">(Padrão)</option>
                   {stages.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>

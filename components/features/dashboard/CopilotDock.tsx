@@ -144,7 +144,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+          className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground   flex items-center justify-center hover:opacity-90 transition-opacity"
           aria-label="Abrir copiloto IA"
         >
           <Sparkles className="w-6 h-6" />
@@ -152,7 +152,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
       )}
 
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-1/2 sm:min-w-[420px] sm:max-w-3xl bg-background border-l shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-1/2 sm:min-w-[420px] sm:max-w-3xl bg-background border-l   flex flex-col">
           <div className="h-16 border-b px-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -216,7 +216,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                     ))}
                     {m.content && (
                       <div
-                        className={`rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${
+                        className={`rounded-none px-3.5 py-2 text-sm whitespace-pre-wrap ${
                           m.role === 'user' ? 'bg-primary text-primary-foreground inline-block' : 'bg-muted'
                         }`}
                       >
@@ -232,7 +232,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                 <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
-                <div className="bg-muted rounded-2xl px-3.5 py-2 text-sm flex items-center gap-2">
+                <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span className="text-muted-foreground text-xs">consultando os dados...</span>
                 </div>

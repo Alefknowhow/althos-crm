@@ -84,7 +84,7 @@ export default function PublicPackageView({
   return (
     <div className="min-h-screen bg-slate-100">
       {/* top bar */}
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
+      <div className="sticky top-0 z-10 bg-white/90   border-b">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           {backHref ? (
             <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -101,7 +101,7 @@ export default function PublicPackageView({
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto my-6 bg-white shadow-sm rounded-xl overflow-hidden">
+      <div className="max-w-3xl mx-auto my-6 bg-white   rounded-none overflow-hidden">
         <div className="px-6 sm:px-8 py-6 space-y-8">
           {/* 1) Título + datas no topo */}
           <div>
@@ -286,7 +286,7 @@ export default function PublicPackageView({
 
           {/* Pagamento */}
           <Section title="Plano de pagamento, condições e valores">
-            <div className="rounded-xl bg-slate-900 text-white p-5">
+            <div className="rounded-none bg-slate-900 text-white p-5">
               <div className="flex items-end justify-between">
                 <span className="text-sm text-slate-300">Valor total</span>
                 <span className="text-3xl font-bold">{brl(pkg.total_cents)}</span>

@@ -70,7 +70,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
 
   return (
     <>
-      <div className="flex items-start md:items-center gap-4 p-4 border rounded-xl bg-card hover:border-primary/50 transition-colors">
+      <div className="flex items-start md:items-center gap-4 p-4 border rounded-none bg-card hover:border-primary/50 transition-colors">
         <input 
           type="checkbox" 
           className="w-5 h-5 mt-1 md:mt-0 rounded border-gray-300 accent-primary cursor-pointer"

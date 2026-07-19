@@ -102,7 +102,7 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
     <>
       {/* Painel aberto a partir do botão fixo na barra superior (SupportHeaderButton) */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-[60] flex h-[min(70vh,560px)] w-[min(calc(100vw-2.5rem),380px)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="fixed bottom-5 right-5 z-[60] flex h-[min(70vh,560px)] w-[min(calc(100vw-2.5rem),380px)] flex-col overflow-hidden rounded-none border border-border bg-card  ">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-border bg-gradient-to-br from-brand-600 to-brand-700 px-4 py-3 text-white">
             <LogoMark gradient={false} className="h-8 w-8 text-white/20" />
@@ -131,7 +131,7 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
               >
                 <div
                   className={cn(
-                    'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed',
+                    'max-w-[85%] whitespace-pre-wrap rounded-none px-3.5 py-2 text-[14px] leading-relaxed',
                     m.role === 'user'
                       ? 'bg-brand-600 text-white'
                       : 'bg-secondary text-foreground',
@@ -144,7 +144,7 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-2xl bg-secondary px-3.5 py-2.5 text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-none bg-secondary px-3.5 py-2.5 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Digitando…</span>
                 </div>
@@ -172,7 +172,7 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
                 href={waLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+                className="flex items-center justify-center gap-2 rounded-none border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                   <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.69 8.23-8.23 8.23Z" />

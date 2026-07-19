@@ -86,7 +86,7 @@ export default function LoginPage() {
         className="hidden md:block absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: 'url(/login-bg.png)' }}
       />
-      <div className="relative z-10 w-full max-w-[400px] bg-white rounded-2xl shadow-xl p-8 space-y-6">
+      <div className="relative z-10 w-full max-w-[400px] bg-white rounded-none   p-8 space-y-6">
 
         {/* Logo + heading */}
         <div className="flex flex-col items-center gap-1 text-center">

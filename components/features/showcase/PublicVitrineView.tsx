@@ -130,7 +130,7 @@ export default function PublicVitrineView({
                       <Link
                         key={p.id}
                         href={`/v/${token}/${p.id}`}
-                        className="group rounded-xl border bg-white overflow-hidden flex flex-col hover:shadow-md transition-shadow"
+                        className="group rounded-none border bg-white overflow-hidden flex flex-col   transition-shadow"
                       >
                         <div className="relative h-40 bg-slate-100">
                           {cover && !imgErr[p.id] ? (

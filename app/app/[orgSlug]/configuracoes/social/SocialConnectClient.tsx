@@ -72,7 +72,7 @@ export default function SocialConnectClient({
   return (
     <div className="space-y-6">
       {/* Connected accounts */}
-      <div className="rounded-xl border bg-card p-5 space-y-4">
+      <div className="rounded-none border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Contas conectadas</h2>
           <Button size="sm" onClick={handleConnect}>
@@ -83,7 +83,7 @@ export default function SocialConnectClient({
         {connections.length === 0 ? (
           <div className="flex flex-col items-center text-center py-8 px-4 rounded-lg border border-dashed">
             <div
-              className="w-12 h-12 rounded-xl grid place-items-center text-white mb-3"
+              className="w-12 h-12 rounded-none grid place-items-center text-white mb-3"
               style={{ background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)' }}
             >
               <AtSign className="w-6 h-6" />
@@ -129,7 +129,7 @@ export default function SocialConnectClient({
 
       {/* Server-not-configured warning */}
       {!configured && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex gap-3">
+        <div className="rounded-none border border-amber-200 bg-amber-50 p-4 flex gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-800">
             <p className="font-semibold">Integração ainda não configurada no servidor</p>
@@ -233,7 +233,7 @@ function SetupGuide({ webhookUrl }: { webhookUrl: string }) {
   ]
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-none border bg-card p-5">
       <h2 className="text-sm font-semibold mb-1">Como conectar — passo a passo</h2>
       <p className="text-xs text-muted-foreground mb-4">
         Conectar o Instagram para automação de DMs/comentários usa OAuth + App Review do Meta — não é uma “chave” única.

@@ -176,7 +176,7 @@ export default function ScheduleClient({
 
         {/* ── Gantt ───────────────────────────────────────────── */}
         <TabsContent value="gantt" className="mt-4">
-          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="rounded-none border bg-card overflow-hidden">
             {/* nav header */}
             <div className="flex items-center justify-between gap-2 p-3 border-b">
               <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o - 1)}>
@@ -228,7 +228,7 @@ export default function ScheduleClient({
                       onClick={() => openTrip(trip)}
                       title={`${trip.client_name || trip.lead_name || 'Viagem'} — ${trip.destination || ''}`}
                       className={cn(
-                        'absolute top-1/2 -translate-y-1/2 h-7 rounded-md px-2 flex items-center text-[11px] font-medium text-white shadow-sm hover:brightness-95 transition-all overflow-hidden',
+                        'absolute top-1/2 -translate-y-1/2 h-7 rounded-md px-2 flex items-center text-[11px] font-medium text-white   hover:brightness-95 transition-all overflow-hidden',
                         meta.bar,
                       )}
                       style={{ left: `${left}%`, width: `${width}%`, minWidth: 60 }}
@@ -256,7 +256,7 @@ export default function ScheduleClient({
 
         {/* ── Lista ───────────────────────────────────────────── */}
         <TabsContent value="list" className="mt-4">
-          <div className="rounded-xl border bg-card divide-y">
+          <div className="rounded-none border bg-card divide-y">
             {filtered.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma viagem com esse filtro.</div>
             ) : filtered.map(t => {

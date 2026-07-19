@@ -211,7 +211,7 @@ function WeekView({
                     key={a.id}
                     type="button"
                     onClick={() => onSelect(a)}
-                    className={`absolute left-1 right-1 rounded text-left leading-tight overflow-hidden border shadow-sm hover:shadow-md hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(
+                    className={`absolute left-1 right-1 rounded text-left leading-tight overflow-hidden border     hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(
                       a.status,
                     )}`}
                     style={{

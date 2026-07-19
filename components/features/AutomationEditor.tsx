@@ -43,7 +43,7 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="p-3 sm:p-4 border-b flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center bg-card shadow-sm z-10 shrink-0">
+      <div className="p-3 sm:p-4 border-b flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center bg-card   z-10 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <Input
             value={auto.name}

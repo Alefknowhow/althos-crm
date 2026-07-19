@@ -85,7 +85,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
         </Link>
 
         <div className="mt-6 flex items-center gap-3 text-[12px] text-slate-500">
-          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 font-semibold text-indigo-700">{post.category}</span>
+          <span className="rounded-full bg-[#d0e2ff] px-2.5 py-0.5 font-semibold text-[#0043ce]">{post.category}</span>
           <span>{formatPostDate(post.date)}</span>
           <span>· {post.readingMinutes} min de leitura</span>
         </div>
@@ -109,10 +109,10 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
               <Link
                 key={p.slug}
                 href={`/blog/${p.slug}`}
-                className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-indigo-300 hover:bg-slate-50"
+                className="group rounded-none border border-slate-200 bg-white p-5   transition-colors hover:border-[#78a9ff] hover:bg-slate-50"
               >
-                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">{p.category}</span>
-                <h3 className="mt-3 text-[15px] font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">{p.title}</h3>
+                <span className="rounded-full bg-[#d0e2ff] px-2 py-0.5 text-[11px] font-semibold text-[#0043ce]">{p.category}</span>
+                <h3 className="mt-3 text-[15px] font-bold text-slate-900 group-hover:text-[#0043ce] transition-colors">{p.title}</h3>
                 <p className="mt-2 text-[13px] leading-relaxed text-slate-600 line-clamp-3">{p.excerpt}</p>
               </Link>
             ))}

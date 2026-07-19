@@ -64,7 +64,7 @@ export default function OnboardingChecklist({
   if (dismissed) return null
   if (allDone) {
     return (
-      <div className="relative flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+      <div className="relative flex items-center gap-3 rounded-none border border-primary/20 bg-primary/5 px-4 py-3">
         <PartyPopper className="h-5 w-5 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Tudo pronto! Você concluiu a configuração inicial.</p>
@@ -85,7 +85,7 @@ export default function OnboardingChecklist({
   }
 
   return (
-    <div className="relative rounded-xl border border-border bg-card p-5">
+    <div className="relative rounded-none border border-border bg-card p-5">
       <button
         type="button"
         onClick={dismiss}

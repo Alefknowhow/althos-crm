@@ -75,7 +75,7 @@ function ReferralCard({ orgSlug, overview }: { orgSlug: string; overview: Referr
   }
 
   return (
-    <div className="rounded-xl border bg-card p-6 space-y-4">
+    <div className="rounded-none border bg-card p-6 space-y-4">
       <div className="flex items-center gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Gift className="h-4.5 w-4.5" />
@@ -176,7 +176,7 @@ function CouponCard({ orgSlug, applied }: { orgSlug: string; applied: AppliedCou
   }
 
   return (
-    <div className="rounded-xl border bg-card p-6 space-y-4">
+    <div className="rounded-none border bg-card p-6 space-y-4">
       <div className="flex items-center gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Ticket className="h-4.5 w-4.5" />

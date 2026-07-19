@@ -178,7 +178,7 @@ export default function MobilePipelineList({
         const isOpen = openStage === stage.id
 
         return (
-          <div key={stage.id} className="overflow-hidden rounded-xl border bg-card">
+          <div key={stage.id} className="overflow-hidden rounded-none border bg-card">
             {/* Stage row — colour matches the stage */}
             <button
               type="button"

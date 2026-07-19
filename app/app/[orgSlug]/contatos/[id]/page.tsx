@@ -243,7 +243,7 @@ export default async function ContatoDetailPage({
             <CardContent>
               {whatsappConv ? (
                 <div className="space-y-4">
-                  <div className="text-sm font-medium border rounded-xl p-4 bg-muted/20 flex flex-col items-center justify-center text-center gap-2">
+                  <div className="text-sm font-medium border rounded-none p-4 bg-muted/20 flex flex-col items-center justify-center text-center gap-2">
                     <div className="font-semibold">{whatsappConv.contact_name || whatsappConv.contact_phone}</div>
                     <div className="text-muted-foreground">{whatsappConv.contact_phone}</div>
                     <div className="text-xs mt-2 bg-primary/10 text-primary px-2 py-1 rounded-full">

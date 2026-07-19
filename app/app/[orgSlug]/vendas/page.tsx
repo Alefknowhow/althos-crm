@@ -45,15 +45,15 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card border rounded-xl p-5">
+        <div className="bg-card border rounded-none p-5">
           <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Vendas no mês</div>
           <div className="text-2xl font-bold mt-1.5 tabular-nums">{monthSales.length}</div>
         </div>
-        <div className="bg-card border rounded-xl p-5">
+        <div className="bg-card border rounded-none p-5">
           <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Faturamento (mês)</div>
           <div className="text-2xl font-bold mt-1.5 tabular-nums">{formatCurrency(monthTotal)}</div>
         </div>
-        <div className="bg-card border rounded-xl p-5">
+        <div className="bg-card border rounded-none p-5">
           <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Total registradas</div>
           <div className="text-2xl font-bold mt-1.5 tabular-nums">{sales.length}</div>
         </div>

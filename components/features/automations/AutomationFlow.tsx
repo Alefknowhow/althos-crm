@@ -158,10 +158,10 @@ function FlowNode({
         tabIndex={0}
         onClick={onClick}
         className={cn(
-          'w-[260px] bg-card border rounded-xl shadow-sm text-left transition-all duration-150',
+          'w-[260px] bg-card border rounded-none   text-left transition-all duration-150',
           isSelected
-            ? 'ring-2 ring-primary border-primary shadow-md'
-            : 'hover:shadow-md hover:border-primary/40',
+            ? 'ring-2 ring-primary border-primary  '
+            : '  hover:border-primary/40',
         )}
       >
         {/* Colored top strip */}
@@ -242,7 +242,7 @@ function FlowNode({
         <button
           type="button"
           onClick={e => { e.stopPropagation(); onDelete() }}
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/node:opacity-100 transition-opacity flex items-center justify-center shadow-md z-10"
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/node:opacity-100 transition-opacity flex items-center justify-center   z-10"
           title="Remover passo"
         >
           <X className="w-3 h-3" />
@@ -1012,7 +1012,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                     <button
                       type="button"
                       title="Inserir passo aqui"
-                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm"
+                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center  "
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -1032,7 +1032,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                   type="button"
                   title="Remover conexão"
                   onClick={() => removeEdge(edge.source, edge.target)}
-                  className="w-6 h-6 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-destructive hover:bg-destructive hover:text-destructive-foreground transition-all flex items-center justify-center shadow-sm"
+                  className="w-6 h-6 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-destructive hover:bg-destructive hover:text-destructive-foreground transition-all flex items-center justify-center  "
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -1052,7 +1052,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                     <button
                       type="button"
                       title="Adicionar passo"
-                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center shadow-sm"
+                      className="w-7 h-7 rounded-full border-2 border-border bg-background text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center justify-center  "
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>

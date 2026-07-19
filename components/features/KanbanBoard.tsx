@@ -363,14 +363,14 @@ export default function KanbanBoard({
         </DndContext>
       ) : (
         /* List view — each row tinted with its pipeline stage colour */
-        <div className="flex-1 overflow-y-auto rounded-xl border border-border bg-card hide-scrollbar">
+        <div className="flex-1 overflow-y-auto rounded-none border border-border bg-card hide-scrollbar">
           {visibleLeads.length === 0 ? (
             <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
               Nenhum negócio encontrado.
             </div>
           ) : (
             <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
+              <thead className="sticky top-0 z-10 bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground  ">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Negócio</th>
                   <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Estágio</th>

@@ -45,7 +45,7 @@ export default function UpgradeBanner({ orgSlug }: { orgSlug: string }) {
   if (planId !== 'free') return null
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-4">
+    <div className="relative overflow-hidden rounded-none border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-4">
       <div className="flex items-center gap-4 pr-8">
         <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary sm:flex">
           <Sparkles className="h-5 w-5" />

@@ -122,7 +122,7 @@ export default function CustomersSplit({
         {/* ── Master: compact list ───────────────────────────────── */}
         <div
           className={cn(
-            'lg:w-1/2 lg:shrink-0 rounded-xl border bg-card overflow-y-auto',
+            'lg:w-1/2 lg:shrink-0 rounded-none border bg-card overflow-y-auto',
             mobileDetail && 'hidden lg:block',
           )}
         >
@@ -171,7 +171,7 @@ export default function CustomersSplit({
         {/* ── Detail panel ───────────────────────────────────────── */}
         <div
           className={cn(
-            'lg:w-1/2 lg:flex-1 rounded-xl border bg-card overflow-y-auto',
+            'lg:w-1/2 lg:flex-1 rounded-none border bg-card overflow-y-auto',
             !mobileDetail && 'hidden lg:block',
           )}
         >

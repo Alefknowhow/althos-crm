@@ -282,7 +282,7 @@ export default function AttendantConfigForm({
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between sticky bottom-4 bg-card border rounded-lg px-4 py-3 shadow-lg">
+      <div className="flex items-center justify-between sticky bottom-4 bg-card border rounded-lg px-4 py-3  ">
         <div className="flex items-center gap-2 text-sm">
           <Link
             href={`/app/${orgSlug}/configuracoes/atendente-ia/faq`}

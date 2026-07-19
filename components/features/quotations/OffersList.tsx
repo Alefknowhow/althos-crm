@@ -49,7 +49,7 @@ export default function OffersList({
       </div>
 
       {offers.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-none border border-dashed p-10 text-center text-sm text-muted-foreground">
           <Store className="w-8 h-8 mx-auto mb-3 opacity-20" />
           Nenhuma oferta ainda. Crie um pacote pronto — é montado igual a uma cotação, mas sem cliente.
         </div>
@@ -57,7 +57,7 @@ export default function OffersList({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {offers.map(o => (
             <Link key={o.id} href={`/app/${orgSlug}/ofertas/${o.id}`}
-              className="group rounded-xl border overflow-hidden bg-card hover:shadow-md transition-shadow">
+              className="group rounded-none border overflow-hidden bg-card   transition-shadow">
               <div className="aspect-[16/10] bg-muted relative">
                 {o.cover_image_url
                   ? // eslint-disable-next-line @next/next/no-img-element

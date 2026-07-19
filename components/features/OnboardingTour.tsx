@@ -196,10 +196,10 @@ export default function OnboardingTour({ userName }: { userName?: string }) {
         aria-modal="true"
       >
         <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60  "
           onClick={finish}
         />
-        <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="relative w-full max-w-md bg-card border border-border rounded-none   p-6 animate-in fade-in zoom-in-95 duration-200">
           <button
             type="button"
             onClick={finish}
@@ -283,7 +283,7 @@ function SpotlightOverlay({
   if (!rect) {
     return (
       <div className="fixed inset-0 z-[100]">
-        <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-black/55" />
         <TourTooltip
           step={step}
           index={index}
@@ -360,7 +360,7 @@ function SpotlightOverlay({
     }
   })()
 
-  const dim = 'fixed bg-black/55 backdrop-blur-[2px] transition-all duration-200 ease-out'
+  const dim = 'fixed bg-black/55 transition-all duration-200 ease-out'
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -412,7 +412,7 @@ function TourTooltip({
     <div
       role="dialog"
       aria-modal="true"
-      className="w-[320px] bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-1 duration-150"
+      className="w-[320px] bg-card border border-border rounded-none   p-4 animate-in fade-in slide-in-from-left-1 duration-150"
       style={style}
     >
       <div className="flex items-center justify-between mb-2">

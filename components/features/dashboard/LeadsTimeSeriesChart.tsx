@@ -9,7 +9,7 @@ import type { LeadsTimeSeriesChartProps } from './LeadsTimeSeriesChartInner'
 
 const LeadsTimeSeriesChartInner = dynamic(() => import('./LeadsTimeSeriesChartInner'), {
   ssr: false,
-  loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-muted/40" />,
+  loading: () => <div className="h-[300px] w-full animate-pulse rounded-none bg-muted/40" />,
 })
 
 export default function LeadsTimeSeriesChart({ data }: LeadsTimeSeriesChartProps) {

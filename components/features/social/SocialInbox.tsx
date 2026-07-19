@@ -146,7 +146,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
       <div className={`flex-1 flex-col bg-secondary/20 ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0 shadow-sm z-10">
+            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0   z-10">
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
@@ -180,7 +180,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                 const isInbound = m.direction === 'inbound'
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2 shadow-sm ${isInbound ? 'bg-background border rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'}`}>
+                    <div className={`max-w-[75%] rounded-none px-4 py-2   ${isInbound ? 'bg-background border rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'}`}>
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text || '[sem texto]'}</div>
                       <div className={`text-[10px] mt-1 text-right ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -210,7 +210,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-8 bg-background/80 rounded-2xl shadow-sm border max-w-sm">
+            <div className="text-center p-8 bg-background/80 rounded-none   border max-w-sm">
               <h3 className="font-semibold text-lg mb-2">Inbox do Instagram</h3>
               <p className="text-muted-foreground text-sm">Selecione uma conversa na barra lateral para atender manualmente.</p>
             </div>

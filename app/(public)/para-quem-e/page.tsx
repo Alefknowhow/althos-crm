@@ -28,10 +28,10 @@ export default function ParaQuemEPage() {
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-indigo-400/20 blur-[120px]" />
+          <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-[#4589ff]/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
             Para quem é
           </span>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
@@ -50,9 +50,9 @@ export default function ParaQuemEPage() {
             <a
               key={n.slug}
               href={`#${n.slug}`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-600 shadow-sm hover:border-indigo-300 hover:text-slate-900 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-600   hover:border-[#78a9ff] hover:text-slate-900 transition-colors"
             >
-              <SiteIcon name={n.icon} className="h-4 w-4 text-indigo-500" />
+              <SiteIcon name={n.icon} className="h-4 w-4 text-[#4589ff]" />
               {n.name}
             </a>
           ))}
@@ -66,12 +66,12 @@ export default function ParaQuemEPage() {
             <div
               key={n.slug}
               id={n.slug}
-              className="scroll-mt-20 grid gap-6 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9 lg:grid-cols-[1fr_1.1fr]"
+              className="scroll-mt-20 grid gap-6 rounded-none border border-slate-200 bg-white p-7   sm:p-9 lg:grid-cols-[1fr_1.1fr]"
             >
               {/* Esquerda: público + dores */}
               <div>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-none bg-blue-600 text-white   shadow-blue-600/30">
                     <SiteIcon name={n.icon} className="h-5.5 w-5.5" />
                   </span>
                   <div>
@@ -93,12 +93,12 @@ export default function ParaQuemEPage() {
               </div>
 
               {/* Direita: solução */}
-              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 sm:p-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-indigo-700">
+              <div className="rounded-none border border-[#a6c8ff] bg-[#edf5ff] p-5 sm:p-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-[#0043ce]">
                   Como o Althos resolve
                 </p>
                 <p className="mt-3 text-[14px] leading-relaxed text-slate-700">{n.solution}</p>
-                <ul className="mt-5 space-y-2.5 border-t border-indigo-200/70 pt-5">
+                <ul className="mt-5 space-y-2.5 border-t border-[#a6c8ff]/70 pt-5">
                   {n.highlights.map(h => (
                     <li key={h} className="flex items-start gap-2.5">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -109,7 +109,7 @@ export default function ParaQuemEPage() {
                 {NICHE_LANDING[n.slug] && (
                   <Link
                     href={NICHE_LANDING[n.slug]}
-                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-indigo-700 hover:text-indigo-800 transition-colors"
+                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0043ce] hover:text-[#002d9c] transition-colors"
                   >
                     Ver página completa <span aria-hidden="true">→</span>
                   </Link>
@@ -128,13 +128,13 @@ export default function ParaQuemEPage() {
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/signup"
-            className="rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-colors"
+            className="rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 hover:bg-blue-500 transition-colors"
           >
             Testar grátis
           </Link>
           <a
             href="mailto:suporte@althoscrm.com.br"
-            className="rounded-xl border border-slate-300 px-7 py-3 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="rounded-none border border-slate-300 px-7 py-3 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Falar com a gente
           </a>

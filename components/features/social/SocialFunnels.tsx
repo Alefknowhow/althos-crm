@@ -71,7 +71,7 @@ export default function SocialFunnels({
   }
 
   return (
-    <div className="rounded-xl border bg-card">
+    <div className="rounded-none border bg-card">
       <div className="flex items-center justify-between gap-3 p-4 border-b">
         <div className="flex items-center gap-2 min-w-0">
           <Route className="w-4 h-4 text-primary shrink-0" />

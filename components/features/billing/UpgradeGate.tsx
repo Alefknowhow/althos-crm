@@ -35,7 +35,7 @@ export default function UpgradeGate({ locked, orgSlug, featureName, requiredPlan
       </div>
 
       {/* Overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm rounded-xl">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80   rounded-none">
         <div className="flex flex-col items-center gap-3 text-center p-6 max-w-sm">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Lock className="w-6 h-6 text-primary" />
