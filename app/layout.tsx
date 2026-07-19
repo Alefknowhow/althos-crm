@@ -30,8 +30,8 @@ export const metadata: Metadata = {
   applicationName: "Althos CRM",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icon.svg" }],
+    icon: [{ url: "/logo-mark.png", type: "image/png" }],
+    apple: [{ url: "/logo-mark.png" }],
   },
   appleWebApp: {
     capable: true,

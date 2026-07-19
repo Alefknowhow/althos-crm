@@ -31,9 +31,8 @@ export function SiteNav() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-[#4589ff] to-[#0043ce] text-white text-xs font-black">
-            A
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.png" alt="Althos CRM" className="h-6 w-6 rounded-md object-cover" />
           <span className="text-sm sm:text-base font-semibold tracking-tight text-[#f4f4f4]">
             ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
           </span>

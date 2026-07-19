@@ -60,9 +60,8 @@ export function SiteFooter() {
           {/* Brand + CTA */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#4589ff] to-[#0043ce] text-white text-sm font-black">
-                A
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-mark.png" alt="Althos CRM" className="h-7 w-7 rounded-md object-cover" />
               <span className="text-base font-semibold tracking-tight text-[#f4f4f4]">
                 ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
               </span>

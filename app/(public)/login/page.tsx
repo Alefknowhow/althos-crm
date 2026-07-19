@@ -79,26 +79,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#eef2f7] p-4 overflow-hidden">
-      {/* Imagem de fundo — apenas desktop, atrás da caixa de login */}
-      <div
-        aria-hidden
-        className="hidden md:block absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url(/login-bg.png)' }}
-      />
-      <div className="relative z-10 w-full max-w-[400px] bg-white rounded-none   p-8 space-y-6">
+    <div className="flex min-h-screen">
+      {/* Imagem — metade esquerda, apenas desktop */}
+      <div className="hidden md:block relative md:w-1/2 lg:w-3/5 shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/login-hero.png"
+          alt="Althos CRM"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
 
-        {/* Logo + heading */}
-        <div className="flex flex-col items-center gap-1 text-center">
-          <div className="flex items-center gap-2 mb-1">
-            <LogoMark className="h-9 w-9" />
-            <span className="text-2xl font-black tracking-tighter text-foreground">Althos CRM</span>
+      {/* Caixa de login — metade direita, fora da imagem */}
+      <div className="flex flex-1 items-center justify-center bg-[#eef2f7] p-4">
+        <div className="w-full max-w-[400px] bg-white rounded-none p-8 space-y-6">
+
+          {/* Logo + heading */}
+          <div className="flex flex-col items-center gap-1 text-center">
+            <div className="flex items-center gap-2 mb-1">
+              <LogoMark className="h-9 w-9" />
+              <span className="text-2xl font-black tracking-tighter text-foreground">Althos CRM</span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight mt-1">Bem-vindo</h1>
+            <p className="text-sm text-muted-foreground leading-snug">
+              Acesse seu acelerador de vendas
+            </p>
           </div>
-          <h1 className="text-xl font-bold tracking-tight mt-1">Bem-vindo</h1>
-          <p className="text-sm text-muted-foreground leading-snug">
-            Acesse seu acelerador de vendas
-          </p>
-        </div>
 
         {/* E-mail confirmado com sucesso */}
         {confirmed && (
@@ -192,6 +198,7 @@ export default function LoginPage() {
           {googleLoading ? 'Redirecionando...' : 'Entrar com Google'}
         </Button>
 
+        </div>
       </div>
     </div>
   )

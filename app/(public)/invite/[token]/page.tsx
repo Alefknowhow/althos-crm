@@ -45,9 +45,8 @@ export default async function InvitePage({
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-none bg-primary flex items-center justify-center mx-auto mb-3">
-            <span className="text-primary-foreground text-2xl font-bold">A</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.png" alt="Althos CRM" className="w-14 h-14 rounded-md object-cover mx-auto mb-3" />
           <h1 className="text-2xl font-bold">Você foi convidado</h1>
           <p className="text-muted-foreground">
             Acesso ao <strong>Althos CRM</strong> com o plano{' '}
