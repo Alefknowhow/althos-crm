@@ -15,10 +15,10 @@ export default async function PreviewPublicFormPage({ params }: { params: { slug
 
   return (
     <div
-      className={`min-h-screen flex justify-center py-12 px-4 sm:px-6 ${bgColor ? '' : 'bg-muted/30'}`}
+      className={`min-h-[100dvh] flex sm:items-center justify-center sm:py-12 px-0 sm:px-6 ${bgColor ? '' : 'bg-muted/30'}`}
       style={bgColor ? { backgroundColor: bgColor } : undefined}
     >
-      <div className="w-full max-w-lg bg-background border rounded-none   p-6 sm:p-10 self-start">
+      <div className="w-full sm:max-w-lg min-h-[100dvh] sm:min-h-0 bg-transparent sm:bg-background sm:border rounded-none p-6 sm:p-10 flex flex-col justify-center">
         {!hideHeader && (
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-bold">{form.name}</h1>

@@ -173,7 +173,7 @@ export default function PublicFormClient({
       .filter(Boolean)
 
     return (
-      <div className="relative py-6">
+      <div className="relative py-6 pr-12">
         {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview</Badge>}
 
         {logoUrl && (
@@ -217,7 +217,7 @@ export default function PublicFormClient({
         </div>
 
         {/* Vertical step affordance, mirrors the reference layout's side arrows */}
-        <div className="hidden sm:flex flex-col gap-2 absolute right-0 top-1/2 -translate-y-1/2">
+        <div className="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2 z-10">
           <button
             type="button"
             disabled
@@ -262,7 +262,7 @@ export default function PublicFormClient({
 
   if (mode === 'one_question') {
     return (
-      <div>
+      <div className="flex flex-col flex-1 min-h-0">
         {honeypot}
         {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview (Lead não será criado)</Badge>}
         {error && <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
@@ -272,7 +272,7 @@ export default function PublicFormClient({
   }
 
   return (
-    <div>
+    <div className={`relative ${showWelcome ? 'pr-12' : ''}`}>
       {honeypot}
       {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview (Lead não será criado)</Badge>}
       {error && <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
@@ -293,6 +293,28 @@ export default function PublicFormClient({
             <MessageCircle className="w-4 h-4 text-green-600" />
             {schema.whatsapp?.label || 'Prefere falar no WhatsApp?'}
           </a>
+        </div>
+      )}
+
+      {/* Vertical step affordance — up volta pra tela de boas-vindas quando ela existe */}
+      {showWelcome && (
+        <div className="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2 z-10">
+          <button
+            type="button"
+            onClick={() => setWelcomePassed(false)}
+            aria-label="Voltar"
+            className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            disabled
+            aria-label="Fim"
+            className="h-9 w-9 flex items-center justify-center border border-input bg-background text-muted-foreground/30 cursor-not-allowed"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>
