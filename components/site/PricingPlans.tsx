@@ -110,11 +110,13 @@ export function PricingPlans() {
           <ul className="mt-5 space-y-2 border-t border-[#383838] pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">
             {[
               { label: 'Até 100 leads', on: true },
+              { label: 'Até 50 clientes', on: true },
               { label: 'Pipeline e oportunidades', on: true },
               { label: '1 formulário de captação', on: true },
               { label: 'WhatsApp e Instagram', on: false },
               { label: 'Atendente de IA 24h', on: false },
-              { label: 'Automações de tarefas', on: false },
+              { label: 'Automações', on: false },
+              { label: 'Relatórios e dashboards', on: false },
             ].map(f => (
               <li key={f.label} className="flex items-start gap-2.5">
                 {f.on ? (
@@ -131,9 +133,10 @@ export function PricingPlans() {
         </motion.div>
 
         {PUBLIC_PLANS.map((plan, i) => {
-          const pricing   = getPlanPricing(plan, cycle)
-          const highlight = plan.key === 'pro'
-          const features  = planFeatures(plan)
+          const pricing    = getPlanPricing(plan, cycle)
+          const highlight  = plan.key === 'pro'
+          const isBusiness = plan.key === 'business'
+          const features   = planFeatures(plan)
 
           return (
             <motion.div
@@ -157,34 +160,50 @@ export function PricingPlans() {
               <h3 className="text-lg font-bold text-[#f4f4f4]">{plan.label}</h3>
               <p className="mt-1 text-[13px] text-[#8d8d8d]">{plan.tagline}</p>
 
-              {/* Preço */}
-              <div className="mt-5">
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">{pricing.perMonthLabel}</span>
-                  <span className="mb-1 text-[13px] text-[#8d8d8d]">/mês</span>
+              {/* Preço — Business não expõe preço público, é sob consulta */}
+              {isBusiness ? (
+                <div className="mt-5">
+                  <div className="text-2xl font-bold tracking-tight text-[#f4f4f4]">Sob consulta</div>
+                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Plano sob medida pro seu volume de operação</p>
                 </div>
-                {cycle === 'annual' ? (
-                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">
-                    {pricing.totalLabel} cobrados uma vez por ano
-                    <span className="ml-1 text-emerald-600">· economize {pricing.savedLabel}</span>
-                  </p>
-                ) : (
-                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">cobrado mensalmente</p>
-                )}
-              </div>
+              ) : (
+                <div className="mt-5">
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">{pricing.perMonthLabel}</span>
+                    <span className="mb-1 text-[13px] text-[#8d8d8d]">/mês</span>
+                  </div>
+                  {cycle === 'annual' ? (
+                    <p className="mt-1.5 text-[12px] text-[#8d8d8d]">
+                      {pricing.totalLabel} cobrados uma vez por ano
+                      <span className="ml-1 text-emerald-600">· economize {pricing.savedLabel}</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-[12px] text-[#8d8d8d]">cobrado mensalmente</p>
+                  )}
+                </div>
+              )}
 
               <p className="mt-4 text-[13px] leading-relaxed text-[#a8a8a8]">{plan.description}</p>
 
-              <Link
-                href="/signup"
-                className={`mt-6 rounded-none px-5 py-3 text-center text-[14px] font-semibold transition-all ${
-                  highlight
-                    ? 'bg-blue-600 text-white   shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
-                    : 'border border-[#525252] text-[#d4d4d4] hover:bg-[#1f1f1f]'
-                }`}
-              >
-                Começar grátis
-              </Link>
+              {isBusiness ? (
+                <a
+                  href="mailto:suporte@althoscrm.com.br?subject=Quero%20agendar%20uma%20reuni%C3%A3o%20-%20Plano%20Business"
+                  className="mt-6 rounded-none border border-[#525252] px-5 py-3 text-center text-[14px] font-semibold text-[#d4d4d4] transition-all hover:bg-[#1f1f1f]"
+                >
+                  Agende uma reunião
+                </a>
+              ) : (
+                <Link
+                  href="/signup"
+                  className={`mt-6 rounded-none px-5 py-3 text-center text-[14px] font-semibold transition-all ${
+                    highlight
+                      ? 'bg-blue-600 text-white   shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
+                      : 'border border-[#525252] text-[#d4d4d4] hover:bg-[#1f1f1f]'
+                  }`}
+                >
+                  Começar grátis
+                </Link>
+              )}
 
               {/* Features */}
               <ul className="mt-5 space-y-2 border-t border-[#383838] pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">

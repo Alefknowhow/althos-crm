@@ -104,6 +104,27 @@ export const HOME_CSS = `
   .althos-home .mock-wrap { width: 100%; margin: 0 auto; }
 }
 
+/* Dores (nomeia o problema antes de mostrar a solução) */
+.althos-home .pains { position: relative; max-width: 1180px; margin: 0 auto; padding: 40px 40px 20px; }
+.althos-home .pains-head { max-width: 720px; margin: 0 auto 40px; text-align: center; }
+.althos-home .pains-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .pains-head h2 { font-weight: 800; font-size: clamp(30px,3.8vw,50px); line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.althos-home .pains-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+.althos-home .pain { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 0; padding: 24px 20px; background: var(--surface); transition: border-color 0.3s var(--ease), transform 0.3s var(--ease); }
+.althos-home .pain:hover { border-color: var(--line-strong); transform: translateY(-3px); }
+.althos-home .pain-icon { width: 38px; height: 38px; border-radius: 0; display: grid; place-items: center; border: 1px solid rgba(250,77,86,0.28); background: rgba(250,77,86,0.08); color: #fa4d56; margin-bottom: 14px; }
+.althos-home .pain-icon svg { width: 19px; height: 19px; }
+.althos-home .pain h4 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 7px; }
+.althos-home .pain p { font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
+@media (max-width: 860px) { .althos-home .pains-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 640px) {
+  .althos-home .pains { padding: 40px 16px 8px; }
+  .althos-home .pains-head { margin-bottom: 24px; }
+  .althos-home .pains-head h2 { font-size: clamp(24px, 7vw, 32px); }
+  .althos-home .pains-grid { grid-template-columns: 1fr; gap: 10px; }
+  .althos-home .pain { padding: 16px 14px; }
+}
+
 /* Stats */
 .althos-home .stats { position: relative; background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .althos-home .stats-inner { max-width: 1180px; margin: 0 auto; padding: 64px 40px; display: grid; grid-template-columns: repeat(3,1fr); align-items: center; }

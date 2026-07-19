@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { SiteShell } from '@/components/site/SiteShell'
 import { PostBody } from '@/components/site/PostBody'
+import { BlogCoverArt } from '@/components/site/BlogCoverArt'
 import { BRAND } from '@/lib/constants/brand'
 import { POSTS, getPost, getRelatedPosts, formatPostDate } from '@/lib/blog/posts'
 
@@ -84,6 +85,8 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
           <ArrowLeft className="h-4 w-4" /> Voltar para o blog
         </Link>
 
+        <BlogCoverArt category={post.category} iconSize={44} className="mt-6 h-48 w-full border border-[#383838] sm:h-64" />
+
         <div className="mt-6 flex items-center gap-3 text-[12px] text-[#8d8d8d]">
           <span className="rounded-full bg-[#4589ff]/15 px-2.5 py-0.5 font-semibold text-[#78a9ff]">{post.category}</span>
           <span>{formatPostDate(post.date)}</span>
@@ -109,11 +112,14 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
               <Link
                 key={p.slug}
                 href={`/blog/${p.slug}`}
-                className="group rounded-none border border-[#383838] bg-[#262626] p-5   transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f]"
+                className="group flex flex-col overflow-hidden rounded-none border border-[#383838] bg-[#262626] transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f]"
               >
-                <span className="rounded-full bg-[#4589ff]/15 px-2 py-0.5 text-[11px] font-semibold text-[#78a9ff]">{p.category}</span>
-                <h3 className="mt-3 text-[15px] font-bold text-[#f4f4f4] group-hover:text-[#78a9ff] transition-colors">{p.title}</h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-[#a8a8a8] line-clamp-3">{p.excerpt}</p>
+                <BlogCoverArt category={p.category} iconSize={28} className="h-24 w-full" />
+                <div className="p-5">
+                  <span className="rounded-full bg-[#4589ff]/15 px-2 py-0.5 text-[11px] font-semibold text-[#78a9ff]">{p.category}</span>
+                  <h3 className="mt-3 text-[15px] font-bold text-[#f4f4f4] group-hover:text-[#78a9ff] transition-colors">{p.title}</h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[#a8a8a8] line-clamp-3">{p.excerpt}</p>
+                </div>
               </Link>
             ))}
           </div>

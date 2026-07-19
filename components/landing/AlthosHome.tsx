@@ -58,6 +58,7 @@ export default function AlthosHome() {
 
       <div className="shell">
         <Hero onZoom={onZoom} />
+        <Pains />
         <Stats />
         <Features onZoom={onZoom} />
         <AiBlock onZoom={onZoom} />
@@ -104,8 +105,9 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
         <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Seu vendedor digital no WhatsApp</div>
         <h1 className="headline reveal" data-d="1">Seu próximo vendedor <em>não dorme</em> e nunca esquece o follow-up</h1>
         <p className="subtitle reveal" data-d="2">
-          A Althos atende, qualifica e dá sequência em cada lead no WhatsApp — com IA e automações no
-          piloto automático. Você acorda com a venda encaminhada, não com o lead esfriando.
+          Todo minuto sem resposta é um lead esfriando — e uma venda indo pro concorrente. A Althos
+          atende, qualifica e retoma cada conversa no WhatsApp sozinha, 24 horas por dia. Você acorda
+          com a venda encaminhada, não com o lead esfriado.
         </p>
         <div className="cta-row reveal" data-d="3">
           <a href="/signup" className="btn btn-solid">Começar grátis <span className="arrow">→</span></a>
@@ -164,6 +166,36 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
         </div>
       </div>
     </header>
+  )
+}
+
+const PAINS = [
+  { h: 'O lead esfria enquanto ninguém responde', p: 'No WhatsApp, quem responde primeiro geralmente fecha. Se sua equipe demora minutos, o cliente já está falando com o concorrente.' },
+  { h: 'Follow-up que fica só na intenção', p: 'Aquele "depois eu vejo" vira silêncio. Sem um sistema que cobra e retoma sozinho, a venda morre na memória de alguém.' },
+  { h: 'Time sobrecarregado, atendimento lento', p: 'Quando o volume de mensagens sobe, alguém sempre fica sem resposta — e vira reclamação em vez de venda.' },
+  { h: 'Zero visibilidade do que está travado', p: 'Sem funil nem dado nenhum, você só descobre que uma negociação parou quando já é tarde pra salvar.' },
+]
+
+/* ----------------------------- Dores ----------------------------- */
+function Pains() {
+  return (
+    <section className="pains" aria-label="Problemas comuns">
+      <div className="pains-head">
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Isso te soa familiar?</div>
+        <h2 className="reveal" data-d="1">Os motivos mais comuns de perder uma venda que já estava fechada</h2>
+      </div>
+      <div className="pains-grid">
+        {PAINS.map((x, i) => (
+          <article className="pain reveal" data-d={i} key={x.h}>
+            <span className="pain-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+            </span>
+            <h4>{x.h}</h4>
+            <p>{x.p}</p>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -261,11 +293,11 @@ function Compare() {
 }
 
 const FEAT_STEPS = [
-  { shot: 'pipeline', n: '01', kicker: 'Funil de vendas', h: 'Funil de vendas visual', p: 'Arraste e solte negociações entre etapas, veja gargalos na hora e nunca mais perca um lead no meio do caminho.', link: 'Conhecer o funil →' },
-  { shot: 'insights', n: '02', kicker: 'Inteligência artificial', h: 'Atendimento 24h com IA', p: 'A IA responde, qualifica e agenda sozinha — em segundos, a qualquer hora, com o tom de voz da sua empresa.', link: 'Ver a IA em ação →' },
-  { shot: 'automacoes', n: '03', kicker: 'Automação', h: 'Automações sem código', p: 'Monte fluxos de captação, follow-up e pós-venda num editor visual. Sem programar, sem depender de ninguém.', link: 'Explorar automações →' },
-  { shot: 'dashboard', n: '04', kicker: 'Dados', h: 'Relatórios e dashboards', p: 'Acompanhe conversão, receita e desempenho do time em painéis claros que se atualizam em tempo real.', link: 'Ver dashboards →' },
-  { shot: 'tasks', n: '05', kicker: 'Produtividade', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação definida. Lembretes, prazos e prioridades para o time nunca deixar dinheiro na mesa.', link: 'Organizar o time →' },
+  { shot: 'pipeline', n: '01', kicker: 'Lead perdido no meio do funil', h: 'Funil de vendas visual', p: 'Pare de descobrir tarde que uma negociação travou. Veja cada etapa, arraste com um clique e ataque os gargalos assim que aparecem — antes que virem lead perdido.', link: 'Conhecer o funil →' },
+  { shot: 'insights', n: '02', kicker: 'Demora no primeiro atendimento', h: 'Atendimento 24h com IA', p: 'Enquanto sua equipe dorme (ou está ocupada), a IA já respondeu, entendeu o que o cliente quer e qualificou se vale a pena continuar — no seu tom de voz, sem parecer robô.', link: 'Ver a IA em ação →' },
+  { shot: 'automacoes', n: '03', kicker: 'Follow-up que fica só na intenção', h: 'Automações sem código', p: 'Defina uma vez o que deve acontecer depois de cada ação e pare de depender da memória de alguém. Captação, retomada e pós-venda rodando sozinhos, sem programar.', link: 'Explorar automações →' },
+  { shot: 'dashboard', n: '04', kicker: 'Decisão no escuro, sem dado', h: 'Relatórios e dashboards', p: 'Pare de adivinhar o que está funcionando. Veja conversão, receita e desempenho de cada vendedor em tempo real, sem montar planilha.', link: 'Ver dashboards →' },
+  { shot: 'tasks', n: '05', kicker: 'Tarefa importante esquecida', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação, prazo e responsável definidos. Ninguém do time descobre depois que deixou dinheiro na mesa.', link: 'Organizar o time →' },
 ] as const
 
 /* ----------------------------- Features ----------------------------- */
@@ -442,11 +474,13 @@ function planFeats(plan: PlanConfig): [string, boolean][] {
 
 const FREE_FEATS: [string, boolean][] = [
   ['Até 100 leads', true],
+  ['Até 50 clientes', true],
   ['Pipeline e oportunidades', true],
   ['1 formulário de captação', true],
   ['WhatsApp e Instagram', false],
   ['Atendente de IA 24h', false],
-  ['Automações de tarefas', false],
+  ['Automações', false],
+  ['Relatórios e dashboards', false],
 ]
 
 /* ----------------------------- Pricing ----------------------------- */
@@ -497,25 +531,41 @@ function Pricing() {
         {PUBLIC_PLANS.map(plan => {
           const pricing = getPlanPricing(plan, cycle)
           const popular = plan.key === 'pro'
+          const isBusiness = plan.key === 'business'
           return (
             <article className={`plan reveal${popular ? ' popular spot' : ''}`} key={plan.key}>
               {popular && <span className="plan-badge">★ Mais popular</span>}
               <h3>{plan.label}</h3>
               <p className="ptag">{plan.tagline}</p>
-              <div className="price">
-                <span className="cur">R$</span>
-                <span className="val">{fmt(pricing.perMonthCents)}</span>
-                <span className="per">/mês</span>
-              </div>
-              <p className="annual-note">
-                {cycle === 'monthly'
-                  ? 'cobrado mensalmente'
-                  : cycle === 'annual'
-                    ? `${pricing.totalLabel} por ano · economize ${pricing.savedLabel}`
-                    : `${pricing.totalLabel} a cada 6 meses · economize ${pricing.savedLabel}`}
-              </p>
+              {isBusiness ? (
+                <>
+                  <div className="price">
+                    <span className="val" style={{ fontSize: '28px' }}>Sob consulta</span>
+                  </div>
+                  <p className="annual-note">Plano sob medida pro seu volume de operação</p>
+                </>
+              ) : (
+                <>
+                  <div className="price">
+                    <span className="cur">R$</span>
+                    <span className="val">{fmt(pricing.perMonthCents)}</span>
+                    <span className="per">/mês</span>
+                  </div>
+                  <p className="annual-note">
+                    {cycle === 'monthly'
+                      ? 'cobrado mensalmente'
+                      : cycle === 'annual'
+                        ? `${pricing.totalLabel} por ano · economize ${pricing.savedLabel}`
+                        : `${pricing.totalLabel} a cada 6 meses · economize ${pricing.savedLabel}`}
+                  </p>
+                </>
+              )}
               <p className="pdesc">{plan.description}</p>
-              <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
+              {isBusiness ? (
+                <a href="mailto:suporte@althoscrm.com.br?subject=Quero%20agendar%20uma%20reuni%C3%A3o%20-%20Plano%20Business" className="btn btn-outline">Agende uma reunião</a>
+              ) : (
+                <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
+              )}
               <ul>
                 {planFeats(plan).map(([label, on], i) => (
                   <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
