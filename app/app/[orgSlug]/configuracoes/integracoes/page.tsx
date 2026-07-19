@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Activity, Share2, Sparkles, AtSign } from 'lucide-react'
+import { Activity, Share2, Sparkles, AtSign, Target } from 'lucide-react'
 import SettingsTabsNav from '../SettingsTabsNav'
 
 type IntegrationItem = {
@@ -53,6 +53,15 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       iconClass: 'bg-purple-100 text-purple-600',
       actionLabel: 'Configurar',
       href: `${base}/ia`,
+    },
+    {
+      title: 'Capi / Pixel',
+      description: 'Eventos de conversão para o Meta Ads.',
+      detail: 'Configure o Pixel ID e o Access Token para enviar eventos de conversão ao Meta Ads, pelo navegador (Pixel) e pelo servidor (CAPI).',
+      icon: Target,
+      iconClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      actionLabel: 'Configurar',
+      href: `${base}/meta`,
     },
     {
       title: 'Instagram · DMs & Comentários',

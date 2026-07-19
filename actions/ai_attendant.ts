@@ -114,7 +114,7 @@ export async function updateAttendantConfig(orgSlug: string, raw: unknown) {
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/atendente-ia`)
+  revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
 
@@ -167,7 +167,7 @@ export async function createKnowledge(orgSlug: string, raw: unknown) {
     is_active: parsed.data.is_active ?? true,
   })
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/atendente-ia/faq`)
+  revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
 
@@ -183,7 +183,7 @@ export async function updateKnowledge(orgSlug: string, id: string, raw: unknown)
     .eq('id', id)
     .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/atendente-ia/faq`)
+  revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
 
@@ -199,7 +199,7 @@ export async function deleteKnowledge(orgSlug: string, id: string) {
     .eq('id', id)
     .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/atendente-ia/faq`)
+  revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
 

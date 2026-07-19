@@ -120,7 +120,7 @@ export default function CommandPalette({ orgSlug }: { orgSlug: string }) {
     { label: 'Agendamentos', href: `${base}/agendamentos`, icon: Calendar, keywords: 'booking reunioes' },
     { label: 'Templates', href: `${base}/email-templates`, icon: Mail, keywords: 'email modelo' },
     { label: 'Conversas', href: `${base}/conversas`, icon: MessageSquare, keywords: 'whatsapp chat mensagens' },
-    { label: 'Atendente IA', href: `${base}/atendente-ia/teste`, icon: Bot, keywords: 'bot ai whatsapp' },
+    { label: 'Agente IA', href: `${base}/configuracoes/agente-ia`, icon: Bot, keywords: 'bot ai whatsapp atendente' },
     { label: 'Marketing', href: `${base}/marketing`, icon: Megaphone, keywords: 'ads campanhas meta' },
     { label: 'Automações', href: `${base}/automacoes`, icon: Zap, keywords: 'workflow gatilhos' },
     { label: 'Configurações', href: `${base}/configuracoes`, icon: Settings, keywords: 'config settings ajustes' },

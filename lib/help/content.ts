@@ -295,14 +295,14 @@ export const HELP_CATEGORIES: HelpCategory[] = [
       },
       {
         slug: 'atendente-ia',
-        title: 'Atendente IA',
+        title: 'Agente IA',
         summary:
-          'Configure um atendente de IA com persona, horário e base de conhecimento.',
-        keywords: ['ia', 'bot', 'atendimento automático', 'faq', 'persona', 'handoff'],
+          'Configure o agente de IA com persona, horário e base de conhecimento.',
+        keywords: ['ia', 'bot', 'atendimento automático', 'faq', 'persona', 'handoff', 'agente'],
         blocks: [
           {
             type: 'paragraph',
-            text: 'O Atendente IA responde seus clientes automaticamente usando a personalidade, as regras e a base de conhecimento que você definir. Ele pode consultar disponibilidade de agenda e tipos de evento para ajudar a marcar reuniões.',
+            text: 'O Agente IA responde seus clientes automaticamente usando a personalidade, as regras e a base de conhecimento que você definir. Ele pode consultar disponibilidade de agenda e tipos de evento para ajudar a marcar reuniões.',
           },
           {
             type: 'heading',
@@ -311,15 +311,15 @@ export const HELP_CATEGORIES: HelpCategory[] = [
           {
             type: 'steps',
             items: [
-              'Em Configurações → Atendente IA, defina a persona (tom de voz, nome, como deve se comportar).',
-              'Configure o horário de atendimento e quando a IA deve assumir.',
-              'Cadastre perguntas e respostas na base de conhecimento (FAQ).',
-              'Defina o handoff: quando a IA deve transferir para um humano.',
+              'Em Configurações → Agente IA → Personalidade, defina o tom de voz, nome e como ele deve se comportar.',
+              'Na aba Horários, configure o horário de atendimento e quando o agente deve assumir.',
+              'Na aba Conhecimento, cadastre perguntas e respostas (FAQ).',
+              'Na aba Transferência Humana, defina quando o agente deve passar a conversa pra um humano.',
             ],
           },
           {
             type: 'tip',
-            text: 'Use a página de teste (sandbox) do Atendente IA para conversar com ele e ajustar a persona antes de ativar com clientes reais.',
+            text: 'Use a aba Testar Agente para conversar com ele e ajustar a persona antes de ativar com clientes reais.',
           },
         ],
       },

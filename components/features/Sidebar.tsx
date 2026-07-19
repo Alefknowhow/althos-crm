@@ -4,7 +4,6 @@ import { getCurrentOrganization, getUser } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
-import SidebarNavGroup from './SidebarNavGroup'
 import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
@@ -18,15 +17,11 @@ import {
   FileText,
   Package,
   ShoppingCart,
-  Mail,
   MessageSquare,
   Zap,
   Settings,
   Calendar,
   Megaphone,
-  Bot,
-  Sparkles,
-  Share2,
   FileSignature,
   PlaneTakeoff,
   Store,
@@ -99,10 +94,9 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     accountId
       ? Promise.all([
           checkFeatureAccess(accountId, 'ai_insights'),
-          checkFeatureAccess(accountId, 'ai_attendant'),
           checkFeatureAccess(accountId, 'export_reports'),
         ])
-      : Promise.resolve<[boolean, boolean, boolean]>([true, true, true]),
+      : Promise.resolve<[boolean, boolean]>([true, true]),
   ])
 
   // Membership → role + permissions
@@ -121,7 +115,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     return canAccess(userRole, userPermissions, key)
   }
 
-  const [planInsights, planAttendant, planReports] = planChecks as [boolean, boolean, boolean]
+  const [, planReports] = planChecks as [boolean, boolean]
 
   const overdueCount = (overdueRes as { count: number | null }).count
   const convs = (convsRes as { data: { unread_count: number }[] | null }).data
@@ -288,17 +282,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {planAttendant && (
-          <SidebarNavGroup
-            label="Atendente IA"
-            icon={<Bot className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />}
-            items={[
-              { name: 'Playground', href: `${base}/atendente-ia/teste` },
-              { name: 'Configurar',  href: `${base}/configuracoes/atendente-ia` },
-            ]}
-          />
-        )}
-
         {/* ── Marketing ─────────────────────────────── */}
         <SectionLabel>Marketing</SectionLabel>
 
@@ -322,15 +305,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {isOwnerOrAdmin && (
-          <SidebarNavLink href={`${base}/configuracoes/meta`}>
-            <span className="flex items-center gap-2.5">
-              <Share2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Meta / Pixel</span>
-            </span>
-          </SidebarNavLink>
-        )}
-
         {/* ── Operações ─────────────────────────────── */}
         <SectionLabel>Operações</SectionLabel>
 
@@ -341,24 +315,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span>Automações</span>
             </span>
           </SidebarNavLink>
-        )}
-
-        {can('templates') && (
-          <>
-            <SidebarNavLink href={`${base}/email-templates`}>
-              <span className="flex items-center gap-2.5">
-                <Mail className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Templates</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/whatsapp-templates`}>
-              <span className="flex items-center gap-2.5">
-                <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Templates WA</span>
-              </span>
-            </SidebarNavLink>
-          </>
         )}
 
         {/* ── Configurações ─────────────────────────── */}

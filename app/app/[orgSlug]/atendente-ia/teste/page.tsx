@@ -1,52 +1,13 @@
-import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import {
-  getAttendantConfig,
-  listSandboxSessions,
-  listSandboxMessages,
-  createSandboxSession,
-} from '@/actions/ai_attendant'
-import { hasPlatformAiKey } from '@/lib/ai/api-key'
-import SandboxPlayground from '@/components/features/ai/SandboxPlayground'
+import { redirect } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
-
-export default async function PlaygroundPage({
+export default function AtendenteIaPlaygroundRedirect({
   params,
   searchParams,
 }: {
   params: { orgSlug: string }
   searchParams: { session?: string }
 }) {
-  await requireAuth()
-  await getCurrentOrganization(params.orgSlug)
-
-  const [config, sessions] = await Promise.all([
-    getAttendantConfig(params.orgSlug),
-    listSandboxSessions(params.orgSlug),
-  ])
-
-  // Pick session: requested via URL, latest existing, or create a new one.
-  let activeSessionId = searchParams.session
-  if (!activeSessionId || !sessions.find(s => s.id === activeSessionId)) {
-    activeSessionId = sessions[0]?.id
-  }
-  if (!activeSessionId) {
-    const created = await createSandboxSession(params.orgSlug)
-    if (created.ok) activeSessionId = created.sessionId
-  }
-
-  const messages = activeSessionId
-    ? await listSandboxMessages(params.orgSlug, activeSessionId)
-    : []
-
-  return (
-    <SandboxPlayground
-      orgSlug={params.orgSlug}
-      hasApiKey={hasPlatformAiKey()}
-      attendantEnabled={config.is_enabled}
-      sessions={sessions as any[]}
-      activeSessionId={activeSessionId || ''}
-      initialMessages={messages as any[]}
-    />
-  )
+  const params2 = new URLSearchParams({ tab: 'testar' })
+  if (searchParams.session) params2.set('session', searchParams.session)
+  redirect(`/app/${params.orgSlug}/configuracoes/agente-ia?${params2.toString()}`)
 }

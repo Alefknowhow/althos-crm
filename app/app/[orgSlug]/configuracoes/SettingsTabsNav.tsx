@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Building, UsersRound, CreditCard, Share2, Bell, ShieldCheck } from 'lucide-react'
+import { Building, UsersRound, CreditCard, Share2, Bell, ShieldCheck, Bot } from 'lucide-react'
 
 /**
  * Shared tab navigation for the settings hub. Each tab is its own route so the
@@ -13,6 +13,7 @@ import { Building, UsersRound, CreditCard, Share2, Bell, ShieldCheck } from 'luc
  */
 const TABS = [
   { key: 'geral',        label: 'Geral',        icon: Building,    seg: '' },
+  { key: 'agente-ia',    label: 'Agente IA',    icon: Bot,         seg: 'agente-ia' },
   { key: 'equipe',       label: 'Equipe',       icon: UsersRound,  seg: 'equipe' },
   { key: 'assinatura',   label: 'Assinatura',   icon: CreditCard,  seg: 'assinatura' },
   { key: 'notificacoes', label: 'Notificações', icon: Bell,        seg: 'notificacoes' },

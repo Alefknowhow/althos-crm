@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
-import { Clock, X } from 'lucide-react'
+import { Clock, X, FileText } from 'lucide-react'
 
 export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock }: any) {
   const [messages, setMessages] = useState(initialMessages)
@@ -185,19 +185,29 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
       <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b bg-background font-semibold shrink-0 h-16 flex items-center justify-between gap-2">
           <span>Inbox WhatsApp</span>
-          {isMock && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleSeed}
-              disabled={seeding}
-              className="text-xs h-7"
-              title="Modo de teste — gera conversas fictícias (WhatsApp não conectado)"
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href={`/app/${orgSlug}/whatsapp-templates`}
+              className="inline-flex items-center gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+              title="Templates de mensagem do WhatsApp"
             >
-              {seeding ? '...' : '🧪 Gerar conversas'}
-            </Button>
-          )}
+              <FileText className="w-3.5 h-3.5" />
+              Templates
+            </Link>
+            {isMock && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleSeed}
+                disabled={seeding}
+                className="text-xs h-7"
+                title="Modo de teste — gera conversas fictícias (WhatsApp não conectado)"
+              >
+                {seeding ? '...' : '🧪 Gerar conversas'}
+              </Button>
+            )}
+          </div>
         </div>
         {/* Busca + filtros do inbox */}
         <div className="px-3 py-2 border-b bg-background shrink-0 space-y-2">
