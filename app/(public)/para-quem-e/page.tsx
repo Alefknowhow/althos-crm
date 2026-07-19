@@ -7,9 +7,9 @@ import { NICHES } from '@/lib/site/content'
 import { buildPageMetadata } from '@/lib/landing/seo'
 
 export const metadata: Metadata = buildPageMetadata({
-  title: 'Althos CRM | CRM para Pequenas Empresas e Nichos',
+  title: 'Althos CRM | Para Cada Tipo de Time de Vendas',
   description:
-    'Agências de viagens, imobiliárias, clínicas, lojas de veículos, agências de marketing e pequenas empresas. Veja como o Althos CRM se adapta ao seu nicho.',
+    'Agências de viagens, imobiliárias, clínicas, lojas de veículos, agências de marketing e pequenas empresas. Veja como o Althos CRM se adapta ao seu negócio.',
   path: '/para-quem-e',
 })
 

@@ -3,9 +3,9 @@ import { SiteShell } from '@/components/site/SiteShell'
 import AlthosHome from '@/components/landing/AlthosHome'
 import { HOME_FAQ } from '@/lib/site/content'
 
-const TITLE = 'Althos CRM | CRM com IA para Pequenas Empresas'
+const TITLE = 'Althos CRM | O CRM com IA para Times de Alta Performance'
 const DESCRIPTION =
-  'CRM com IA para organizar leads, automatizar vendas, integrar WhatsApp e aumentar conversões com um funil visual simples.'
+  'CRM com IA para times de vendas de alta performance: organize leads, automatize o comercial, integre o WhatsApp e aumente conversões com um funil visual simples.'
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   keywords: [
     'CRM', 'CRM online', 'CRM brasileiro', 'CRM com IA', 'automação de vendas',
     'automação comercial', 'funil de vendas', 'pipeline', 'leads', 'CRM com WhatsApp',
-    'CRM para pequenas empresas',
+    'CRM para times de vendas',
   ],
   alternates: { canonical: '/' },
   openGraph: {
