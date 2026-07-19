@@ -128,6 +128,11 @@
     --sidebar-border: 0 0% 22%;
     --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 96%;
+
+    /* Sem isso, o navegador renderiza o popup nativo de <select>/<option>
+       com chrome claro (fundo branco) mesmo com o app em tema escuro,
+       deixando o texto (herdado claro) ilegível sobre fundo branco. */
+    color-scheme: dark;
   }
 }
 
