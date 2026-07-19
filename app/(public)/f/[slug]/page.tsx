@@ -48,9 +48,13 @@ export default async function PublicFormPage({ params, searchParams }: { params:
   const hideHeader = !!form.schema?.welcome?.enabled || form.schema?.mode === 'one_question'
 
   const metaPixelId = org?.meta_pixel_id || null
+  const bgColor = form.schema?.style?.backgroundColor || null
 
   return (
-    <div className="min-h-screen bg-muted/30 flex justify-center py-12 px-4 sm:px-6">
+    <div
+      className={`min-h-screen flex justify-center py-12 px-4 sm:px-6 ${bgColor ? '' : 'bg-muted/30'}`}
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
+    >
       {/* Meta Pixel base code — only injected when org has a pixel configured */}
       {metaPixelId && (
         <>

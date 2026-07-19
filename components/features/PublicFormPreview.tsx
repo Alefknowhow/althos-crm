@@ -38,6 +38,10 @@ export interface FormSignature {
   name?: string
 }
 
+export interface FormStyle {
+  backgroundColor?: string
+}
+
 export interface FormSchema {
   fields: FormField[]
   submitButtonText?: string
@@ -46,6 +50,7 @@ export interface FormSchema {
   welcome?: FormWelcome
   whatsapp?: FormWhatsApp
   signature?: FormSignature
+  style?: FormStyle
 }
 
 interface PublicFormPreviewProps {

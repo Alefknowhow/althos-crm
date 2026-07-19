@@ -6,7 +6,7 @@ import { submitPublicForm } from '@/actions/public_forms'
 import { HONEYPOT_FIELD_NAME } from '@/lib/security/antispam-constants'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, MessageCircle, Calendar } from 'lucide-react'
+import { ArrowRight, MessageCircle, Calendar, Check, ChevronUp, ChevronDown } from 'lucide-react'
 
 // Only one of these is ever rendered per submission. Split the bundle so
 // Meta Ads landings on mobile load just the active mode's code.
@@ -164,15 +164,42 @@ export default function PublicFormClient({
   // Welcome screen for classic mode (one_question handles its own welcome)
   if (mode === 'classic' && showWelcome && !welcomePassed) {
     const whatsappUrl = buildWhatsAppUrl(schema.whatsapp)
+    const logoUrl = schema.signature?.logoUrl || null
+    // Description is rendered as a bullet list — one line per bullet — matching
+    // the reference layout's checklist-style body copy instead of a paragraph.
+    const bulletLines = (schema.welcome?.description || '')
+      .split('\n')
+      .map((l: string) => l.trim())
+      .filter(Boolean)
+
     return (
-      <div className="space-y-6 text-center py-6">
-        {isPreview && <Badge className="mb-2 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview</Badge>}
-        <h2 className="text-2xl font-bold tracking-tight">{schema.welcome?.title || 'Olá!'}</h2>
-        {schema.welcome?.description && (
-          <p className="text-muted-foreground whitespace-pre-line">{schema.welcome.description}</p>
+      <div className="relative py-6">
+        {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview</Badge>}
+
+        {logoUrl && (
+          <div className="flex justify-center mb-10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="" className="h-12 w-auto object-contain" />
+          </div>
         )}
-        <div className="flex flex-col gap-3 pt-4">
-          <Button size="lg" onClick={() => setWelcomePassed(true)}>
+
+        <h2 className="text-3xl font-bold tracking-tight leading-tight">
+          {schema.welcome?.title || 'Olá!'}
+        </h2>
+
+        {bulletLines.length > 0 && (
+          <ul className="mt-6 space-y-3">
+            {bulletLines.map((line: string, i: number) => (
+              <li key={i} className="flex items-start gap-2.5 text-muted-foreground">
+                <Check className="w-4 h-4 mt-1 shrink-0 text-primary" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex flex-col gap-3 pt-10">
+          <Button size="lg" className="w-full" onClick={() => setWelcomePassed(true)}>
             {schema.welcome?.buttonText || 'Começar'}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -187,6 +214,26 @@ export default function PublicFormClient({
               {schema.whatsapp?.label || 'Falar no WhatsApp'}
             </a>
           )}
+        </div>
+
+        {/* Vertical step affordance, mirrors the reference layout's side arrows */}
+        <div className="hidden sm:flex flex-col gap-2 absolute right-0 top-1/2 -translate-y-1/2">
+          <button
+            type="button"
+            disabled
+            aria-label="Início"
+            className="h-9 w-9 flex items-center justify-center border border-input bg-background text-muted-foreground/30 cursor-not-allowed"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setWelcomePassed(true)}
+            aria-label="Continuar"
+            className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
         </div>
       </div>
     )

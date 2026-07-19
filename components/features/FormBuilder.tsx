@@ -297,6 +297,43 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
 
             <div className="space-y-4 p-4 border rounded-none bg-background  ">
+              <h3 className="font-semibold text-sm">Aparência</h3>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Cor de fundo da página</Label>
+                <div className="flex items-center gap-2">
+                  <label
+                    className="relative w-9 h-9 rounded-full border shrink-0 cursor-pointer"
+                    style={{ backgroundColor: schema.style?.backgroundColor || '#f4f4f5' }}
+                    title="Alterar cor de fundo"
+                  >
+                    <input
+                      type="color"
+                      value={schema.style?.backgroundColor || '#f4f4f5'}
+                      onChange={e => setSchema({ ...schema, style: { ...(schema.style || {}), backgroundColor: e.target.value } })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  </label>
+                  <Input
+                    value={schema.style?.backgroundColor || ''}
+                    onChange={e => setSchema({ ...schema, style: { ...(schema.style || {}), backgroundColor: e.target.value || undefined } })}
+                    placeholder="Padrão do CRM"
+                    className="flex-1"
+                  />
+                  {schema.style?.backgroundColor && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSchema({ ...schema, style: { ...schema.style, backgroundColor: undefined } })}
+                    >
+                      Padrão
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">Botão WhatsApp (alternativa)</h3>
                 <input

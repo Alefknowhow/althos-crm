@@ -11,9 +11,13 @@ export default async function PreviewPublicFormPage({ params }: { params: { slug
   if (!form) notFound()
 
   const hideHeader = !!form.schema?.welcome?.enabled || form.schema?.mode === 'one_question'
+  const bgColor = form.schema?.style?.backgroundColor || null
 
   return (
-    <div className="min-h-screen bg-muted/30 flex justify-center py-12 px-4 sm:px-6">
+    <div
+      className={`min-h-screen flex justify-center py-12 px-4 sm:px-6 ${bgColor ? '' : 'bg-muted/30'}`}
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
+    >
       <div className="w-full max-w-lg bg-background border rounded-none   p-6 sm:p-10 self-start">
         {!hideHeader && (
           <div className="mb-8 text-center">
