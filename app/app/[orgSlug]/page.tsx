@@ -6,15 +6,19 @@ import DashboardHeader from '@/components/features/dashboard/DashboardHeader'
 import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
 import SellerFilter from '@/components/features/dashboard/SellerFilter'
-import DashboardCustomizer from '@/components/features/dashboard/DashboardCustomizer'
 import PinnedCardsGrid from '@/components/features/dashboard/PinnedCardsGrid'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
+import DashboardTabsShell from '@/components/features/dashboard/DashboardTabsShell'
+import VisaoGeralTab from '@/components/features/dashboard/tabs/VisaoGeralTab'
+import ComercialTab from '@/components/features/dashboard/tabs/ComercialTab'
+import VendasClientesTab from '@/components/features/dashboard/tabs/VendasClientesTab'
+import EquipeAtendimentoTab from '@/components/features/dashboard/tabs/EquipeAtendimentoTab'
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
 import { listDashboardInsights } from '@/actions/dashboard-insights'
 import InsightsStrip from '@/components/features/dashboard/InsightsStrip'
-import { WIDGET_REGISTRY, type WidgetCtx } from '@/lib/dashboard/widget-registry'
+import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { listOrgMembers } from '@/actions/sales'
 import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
 import UpgradeBanner from '@/components/features/onboarding/UpgradeBanner'
@@ -97,19 +101,6 @@ export default async function OrgDashboard({
     funnelSourceOptions,
   }
 
-  // Só renderiza (e busca dados de) widgets ativos no layout do usuário —
-  // widgets ocultos não gastam query nenhuma até serem adicionados de volta.
-  const renderedByKey: Record<string, React.ReactNode> = {}
-  for (const key of layout.widgetKeys) {
-    const def = WIDGET_REGISTRY.find(w => w.key === key)
-    if (!def) continue
-    renderedByKey[key] = (
-      <Suspense key={key} fallback={<Skeleton className="h-[400px] w-full" />}>
-        {def.render(ctx)}
-      </Suspense>
-    )
-  }
-
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
       <UpgradeBanner orgSlug={params.orgSlug} />
@@ -129,10 +120,27 @@ export default async function OrgDashboard({
 
       <InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />
 
-      <DashboardCustomizer
-        orgSlug={params.orgSlug}
-        widgetKeys={layout.widgetKeys}
-        renderedByKey={renderedByKey}
+      <DashboardTabsShell
+        visaoGeral={
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <VisaoGeralTab ctx={ctx} />
+          </Suspense>
+        }
+        comercial={
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <ComercialTab ctx={ctx} />
+          </Suspense>
+        }
+        vendasClientes={
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <VendasClientesTab ctx={ctx} />
+          </Suspense>
+        }
+        equipeAtendimento={
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <EquipeAtendimentoTab ctx={ctx} />
+          </Suspense>
+        }
       />
 
       <PinnedCardsGrid orgSlug={params.orgSlug} initialCards={layout.pinnedCards} />

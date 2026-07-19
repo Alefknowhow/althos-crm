@@ -437,6 +437,34 @@ export async function updateOrgCompany(orgSlug: string, payload: Partial<OrgComp
   return { ok: true as const }
 }
 
+// ─── Meta mensal de receita (linha de referência no gráfico da Inicial) ──────
+
+export async function getMonthlyRevenueGoal(orgSlug: string): Promise<number | null> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select('monthly_revenue_goal_cents')
+    .eq('id', org.id)
+    .maybeSingle()
+  return (data?.monthly_revenue_goal_cents as number | null) ?? null
+}
+
+export async function setMonthlyRevenueGoal(orgSlug: string, cents: number | null) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('organizations')
+    .update({ monthly_revenue_goal_cents: cents })
+    .eq('id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/configuracoes`)
+  revalidatePath(`/app/${orgSlug}`)
+  return { ok: true as const }
+}
+
 // ─── Account-level organization management ───────────────────────────────────
 
 /** True if `userId` is the account owner or an account admin. */
