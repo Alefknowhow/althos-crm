@@ -12,6 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import PublicFormPreview from './PublicFormPreview'
 import OneQuestionForm from './OneQuestionForm'
 import ImageUploadButton from './ImageUploadButton'
+import { FORM_BACKGROUND_PRESETS, DEFAULT_FORM_BACKGROUND, type FormBackgroundPreset } from '@/lib/forms/background-presets'
 
 function SortableField({ field, onEdit, onDelete }: any) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id })
@@ -300,35 +301,25 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               <h3 className="font-semibold text-sm">Aparência</h3>
               <div className="space-y-1.5">
                 <Label className="text-xs">Cor de fundo da página</Label>
-                <div className="flex items-center gap-2">
-                  <label
-                    className="relative w-9 h-9 rounded-full border shrink-0 cursor-pointer"
-                    style={{ backgroundColor: schema.style?.backgroundColor || '#f4f4f5' }}
-                    title="Alterar cor de fundo"
-                  >
-                    <input
-                      type="color"
-                      value={schema.style?.backgroundColor || '#f4f4f5'}
-                      onChange={e => setSchema({ ...schema, style: { ...(schema.style || {}), backgroundColor: e.target.value } })}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                  </label>
-                  <Input
-                    value={schema.style?.backgroundColor || ''}
-                    onChange={e => setSchema({ ...schema, style: { ...(schema.style || {}), backgroundColor: e.target.value || undefined } })}
-                    placeholder="Padrão do CRM"
-                    className="flex-1"
-                  />
-                  {schema.style?.backgroundColor && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSchema({ ...schema, style: { ...schema.style, backgroundColor: undefined } })}
-                    >
-                      Padrão
-                    </Button>
-                  )}
+                <p className="text-xs text-muted-foreground">
+                  A página pública é sempre escura, com texto branco — escolha
+                  o tom de fundo (leve gradiente aplicado automaticamente).
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {(Object.keys(FORM_BACKGROUND_PRESETS) as FormBackgroundPreset[]).map(key => {
+                    const preset = FORM_BACKGROUND_PRESETS[key]
+                    const active = (schema.style?.backgroundPreset || DEFAULT_FORM_BACKGROUND) === key
+                    return (
+                      <button
+                        type="button"
+                        key={key}
+                        title={preset.label}
+                        onClick={() => setSchema({ ...schema, style: { ...(schema.style || {}), backgroundPreset: key } })}
+                        className={`w-9 h-9 rounded-full border-2 transition-all ${active ? 'border-primary scale-110' : 'border-transparent hover:border-muted-foreground/30'}`}
+                        style={{ background: preset.gradient }}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             </div>

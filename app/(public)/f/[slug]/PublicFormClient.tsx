@@ -126,8 +126,8 @@ export default function PublicFormClient({
         <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">
           ✓
         </div>
-        <h2 className="text-2xl font-bold">Sucesso!</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold text-white">Sucesso!</h2>
+        <p className="text-gray-300">
           {schema.thankYouMessage || 'Obrigado! Entraremos em contato em breve.'}
         </p>
 
@@ -173,7 +173,7 @@ export default function PublicFormClient({
       .filter(Boolean)
 
     return (
-      <div className="relative py-6 pr-12">
+      <div className="relative py-6">
         {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview</Badge>}
 
         {logoUrl && (
@@ -183,15 +183,15 @@ export default function PublicFormClient({
           </div>
         )}
 
-        <h2 className="text-3xl font-bold tracking-tight leading-tight">
+        <h2 className="text-3xl font-bold tracking-tight leading-tight text-white">
           {schema.welcome?.title || 'Olá!'}
         </h2>
 
         {bulletLines.length > 0 && (
           <ul className="mt-6 space-y-3">
             {bulletLines.map((line: string, i: number) => (
-              <li key={i} className="flex items-start gap-2.5 text-muted-foreground">
-                <Check className="w-4 h-4 mt-1 shrink-0 text-primary" />
+              <li key={i} className="flex items-start gap-2.5 text-gray-300">
+                <Check className="w-4 h-4 mt-1 shrink-0 text-white" />
                 <span>{line}</span>
               </li>
             ))}
@@ -216,8 +216,9 @@ export default function PublicFormClient({
           )}
         </div>
 
-        {/* Vertical step affordance, mirrors the reference layout's side arrows */}
-        <div className="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2 z-10">
+        {/* Setas fixas na lateral direita, sempre centralizadas na tela
+            (fixed, não absolute — não se move com o scroll/conteúdo). */}
+        <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
           <button
             type="button"
             disabled
@@ -266,13 +267,13 @@ export default function PublicFormClient({
         {honeypot}
         {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview (Lead não será criado)</Badge>}
         {error && <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
-        <OneQuestionForm schema={schema} isPreview={isPreview} loading={loading} onSubmit={handleSubmit} />
+        <OneQuestionForm schema={schema} isPreview={isPreview} loading={loading} onSubmit={handleSubmit} dark />
       </div>
     )
   }
 
   return (
-    <div className={`relative ${showWelcome ? 'pr-12' : ''}`}>
+    <div className="relative">
       {honeypot}
       {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview (Lead não será criado)</Badge>}
       {error && <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}
@@ -281,14 +282,14 @@ export default function PublicFormClient({
           Por favor, verifique os campos destacados e tente novamente.
         </div>
       )}
-      <PublicFormPreview schema={schema} isPreview={false} onSubmit={handleSubmit} loading={loading} />
+      <PublicFormPreview schema={schema} isPreview={false} onSubmit={handleSubmit} loading={loading} dark />
       {buildWhatsAppUrl(schema.whatsapp) && (
-        <div className="pt-6 mt-6 border-t">
+        <div className="pt-6 mt-6 border-t border-white/15">
           <a
             href={isPreview ? undefined : buildWhatsAppUrl(schema.whatsapp) || undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
           >
             <MessageCircle className="w-4 h-4 text-green-600" />
             {schema.whatsapp?.label || 'Prefere falar no WhatsApp?'}
@@ -296,9 +297,10 @@ export default function PublicFormClient({
         </div>
       )}
 
-      {/* Vertical step affordance — up volta pra tela de boas-vindas quando ela existe */}
+      {/* Vertical step affordance — up volta pra tela de boas-vindas quando ela existe.
+          fixed: sempre centralizada verticalmente na tela, independente do scroll. */}
       {showWelcome && (
-        <div className="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2 z-10">
+        <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
           <button
             type="button"
             onClick={() => setWelcomePassed(false)}

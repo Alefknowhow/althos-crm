@@ -12,6 +12,10 @@ interface OneQuestionFormProps {
   isPreview?: boolean
   loading?: boolean
   onSubmit?: (data: FormData) => void
+  /** true na página pública real (fundo escuro em gradiente) — força textos
+   *  estáticos em branco/cinza-claro. false (padrão) mantém as cores normais
+   *  do CRM, usado no preview do editor de formulários. */
+  dark?: boolean
 }
 
 const CONTACT_TYPES = new Set<FormField['type']>(['email', 'phone'])
@@ -29,7 +33,10 @@ function buildWhatsAppUrl(wa: FormSchema['whatsapp']): string | null {
   return `https://wa.me/${digits}${msg ? `?text=${msg}` : ''}`
 }
 
-export default function OneQuestionForm({ schema, isPreview = false, loading = false, onSubmit }: OneQuestionFormProps) {
+export default function OneQuestionForm({ schema, isPreview = false, loading = false, onSubmit, dark = false }: OneQuestionFormProps) {
+  const textClass = dark ? 'text-white' : ''
+  const mutedClass = dark ? 'text-gray-300' : 'text-muted-foreground'
+  const dividerClass = dark ? 'border-white/15' : ''
   // Reorder: non-contact first, then contact at the end
   const orderedFields = useMemo(() => {
     if (!schema?.fields) return []
@@ -95,10 +102,10 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
   }
 
   return (
-    <div className="relative flex flex-col flex-1 pr-12">
+    <div className="relative flex flex-col flex-1">
       {/* Progress bar */}
       {totalSteps > 1 && (
-        <div className="h-1 bg-muted rounded-full overflow-hidden mb-8">
+        <div className={`h-1 rounded-full overflow-hidden mb-8 ${dark ? 'bg-white/15' : 'bg-muted'}`}>
           <div
             className="h-full bg-primary transition-all duration-300"
             style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
@@ -106,14 +113,14 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
         </div>
       )}
 
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col justify-center">
         {isWelcome && (
           <div className="space-y-6 text-center py-6">
-            <h2 className="text-2xl font-bold tracking-tight">
+            <h2 className={`text-2xl font-bold tracking-tight ${textClass}`}>
               {schema.welcome?.title || 'Olá!'}
             </h2>
             {schema.welcome?.description && (
-              <p className="text-muted-foreground whitespace-pre-line">
+              <p className={`whitespace-pre-line ${mutedClass}`}>
                 {schema.welcome.description}
               </p>
             )}
@@ -165,12 +172,12 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
               </div>
             )}
             <div className="space-y-2">
-              <Label className="text-lg font-semibold leading-snug block">
+              <Label className={`text-lg font-semibold leading-snug block ${textClass}`}>
                 {currentField.label}
                 {currentField.required && <span className="text-destructive ml-1">*</span>}
               </Label>
               {currentField.helperText && (
-                <p className="text-sm text-muted-foreground">{currentField.helperText}</p>
+                <p className={`text-sm ${mutedClass}`}>{currentField.helperText}</p>
               )}
             </div>
 
@@ -215,12 +222,12 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
       </div>
 
       {whatsappUrl && !isWelcome && (
-        <div className="pt-8 mt-auto border-t">
+        <div className={`pt-8 mt-auto border-t ${dividerClass}`}>
           <a
             href={isPreview ? undefined : whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className={`flex items-center justify-center gap-2 text-xs transition-colors ${dark ? 'text-gray-300 hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}
             tabIndex={isPreview ? -1 : 0}
           >
             <MessageCircle className="w-3.5 h-3.5 text-green-600" />
@@ -231,7 +238,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
 
       {/* Footer signature */}
       {schema.signature?.enabled && (schema.signature.logoUrl || schema.signature.name) && (
-        <div className="pt-4 mt-4 border-t flex items-center justify-center gap-2.5">
+        <div className={`pt-4 mt-4 border-t flex items-center justify-center gap-2.5 ${dividerClass}`}>
           {schema.signature.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -241,13 +248,15 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
             />
           )}
           {schema.signature.name && (
-            <span className="text-xs text-muted-foreground font-medium">{schema.signature.name}</span>
+            <span className={`text-xs font-medium ${mutedClass}`}>{schema.signature.name}</span>
           )}
         </div>
       )}
 
-      {/* Vertical step navigation — mesma ação dos botões Voltar/Continuar/Enviar */}
-      <div className="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2 z-10">
+      {/* Vertical step navigation — mesma ação dos botões Voltar/Continuar/Enviar.
+          fixed (não absolute): fica sempre centralizada verticalmente na tela,
+          independente do tamanho do conteúdo, igual pedido. */}
+      <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
         <button
           type="button"
           onClick={handleBack}

@@ -39,7 +39,7 @@ export interface FormSignature {
 }
 
 export interface FormStyle {
-  backgroundColor?: string
+  backgroundPreset?: 'black' | 'navy' | 'brown' | 'green' | 'red'
 }
 
 export interface FormSchema {
@@ -58,9 +58,13 @@ interface PublicFormPreviewProps {
   isPreview?: boolean
   onSubmit?: (formData: FormData) => void
   loading?: boolean
+  /** true na página pública real (fundo escuro em gradiente) — força
+   *  rótulos/textos estáticos em branco/cinza-claro. false (padrão) mantém
+   *  as cores normais do CRM, usado no preview do editor de formulários. */
+  dark?: boolean
 }
 
-export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false }: PublicFormPreviewProps) {
+export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false, dark = false }: PublicFormPreviewProps) {
   if (!schema?.fields || schema.fields.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-none bg-muted/30">
@@ -69,6 +73,9 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
       </div>
     )
   }
+
+  const labelClass = dark ? 'text-white' : 'text-foreground'
+  const helperClass = dark ? 'text-gray-300' : 'text-muted-foreground'
 
   return (
     <form className="space-y-5" onSubmit={e => {
@@ -90,13 +97,13 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
           )}
 
           {field.type !== 'checkbox' && (
-            <Label className="text-sm font-medium flex items-center gap-1">
+            <Label className={`text-sm font-medium flex items-center gap-1 ${labelClass}`}>
               {field.label} {field.required && <span className="text-destructive">*</span>}
             </Label>
           )}
 
           {field.helperText && field.type !== 'checkbox' && (
-            <p className="text-xs text-muted-foreground">{field.helperText}</p>
+            <p className={`text-xs ${helperClass}`}>{field.helperText}</p>
           )}
 
           {field.type === 'short_text' && (
@@ -239,11 +246,11 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
                 required={field.required}
               />
               <div className="space-y-1 leading-none">
-                <Label className="text-sm font-medium flex items-center gap-1">
+                <Label className={`text-sm font-medium flex items-center gap-1 ${labelClass}`}>
                   {field.label} {field.required && <span className="text-destructive">*</span>}
                 </Label>
                 {field.helperText && (
-                  <p className="text-xs text-muted-foreground">{field.helperText}</p>
+                  <p className={`text-xs ${helperClass}`}>{field.helperText}</p>
                 )}
               </div>
             </div>
@@ -262,7 +269,7 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
 
       {/* Footer signature */}
       {schema.signature?.enabled && (schema.signature.logoUrl || schema.signature.name) && (
-        <div className="pt-4 mt-4 border-t flex items-center justify-center gap-2.5">
+        <div className={`pt-4 mt-4 border-t flex items-center justify-center gap-2.5 ${dark ? 'border-white/15' : ''}`}>
           {schema.signature.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -272,7 +279,7 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
             />
           )}
           {schema.signature.name && (
-            <span className="text-xs text-muted-foreground font-medium">{schema.signature.name}</span>
+            <span className={`text-xs font-medium ${helperClass}`}>{schema.signature.name}</span>
           )}
         </div>
       )}

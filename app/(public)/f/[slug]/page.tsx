@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import PublicFormClient from './PublicFormClient'
+import { resolveFormBackground } from '@/lib/forms/background-presets'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,12 +49,12 @@ export default async function PublicFormPage({ params, searchParams }: { params:
   const hideHeader = !!form.schema?.welcome?.enabled || form.schema?.mode === 'one_question'
 
   const metaPixelId = org?.meta_pixel_id || null
-  const bgColor = form.schema?.style?.backgroundColor || null
+  const background = resolveFormBackground(form.schema?.style?.backgroundPreset)
 
   return (
     <div
-      className={`min-h-[100dvh] flex sm:items-center justify-center sm:py-12 px-0 sm:px-6 ${bgColor ? '' : 'bg-muted/30'}`}
-      style={bgColor ? { backgroundColor: bgColor } : undefined}
+      className="min-h-[100dvh] flex items-center justify-center px-6 py-10"
+      style={{ background }}
     >
       {/* Meta Pixel base code — only injected when org has a pixel configured */}
       {metaPixelId && (
@@ -76,14 +77,13 @@ export default async function PublicFormPage({ params, searchParams }: { params:
         </>
       )}
 
-      {/* No mobile (o destino quase exclusivo dos anúncios), o "cartão" ocupa
-          a tela inteira e é transparente — a cor de fundo escolhida cobre
-          100% da viewport, sem sobra branca. No desktop mantém o cartão
-          centralizado, só por completude visual (uso residual). */}
-      <div className="w-full sm:max-w-lg min-h-[100dvh] sm:min-h-0 bg-transparent sm:bg-background sm:border rounded-none p-6 sm:p-10 flex flex-col justify-center">
+      {/* Sem "cartão" branco em nenhum tamanho de tela — o gradiente escuro
+          cobre a viewport inteira, e o conteúdo fica centralizado (vertical
+          e horizontalmente) dentro de uma coluna de leitura confortável. */}
+      <div className="w-full max-w-lg">
         {!hideHeader && (
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold">{form.name}</h1>
+            <h1 className="text-2xl font-bold text-white">{form.name}</h1>
           </div>
         )}
         <PublicFormClient form={form} utms={utms} orgSlug={org?.slug || null} />
