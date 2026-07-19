@@ -60,7 +60,7 @@ export const HOME_CSS = `
 .althos-home .hero-copy { display: flex; flex-direction: column; align-items: center; width: 100%; }
 .althos-home .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, rgba(69,137,255,0.08), rgba(69,137,255,0.02)); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--accent-bright); width: fit-content; box-shadow: var(--shadow-sm); }
 .althos-home .eyebrow .star { color: var(--accent); font-size: 12px; line-height: 1; }
-.althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,80px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); max-width: 16ch; }
+.althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,80px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); max-width: 24ch; }
 .althos-home h1.headline em { font-style: italic; background: linear-gradient(100deg, var(--accent-bright), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .althos-home .subtitle { margin-top: 26px; font-size: clamp(17px,1.3vw,20px); line-height: 1.6; color: var(--ink-dim); max-width: 32em; font-weight: 400; }
 .althos-home .cta-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
@@ -170,7 +170,53 @@ export const HOME_CSS = `
   .althos-home .guarantees { grid-template-columns: repeat(2,1fr); }
 }
 
-/* Features sticky */
+/* Ecosystem (intro curta, só headline) */
+.althos-home .ecosystem { position: relative; max-width: 900px; margin: 0 auto; padding: 64px 40px 8px; text-align: center; }
+.althos-home .ecosystem .eyebrow { margin: 0 auto 22px; }
+.althos-home .ecosystem h2 { font-weight: 800; font-size: clamp(32px,4.4vw,56px); line-height: 1.06; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.althos-home .ecosystem p { margin-top: 18px; font-size: clamp(16px,1.2vw,18px); line-height: 1.6; color: var(--ink-dim); max-width: 640px; margin-left: auto; margin-right: auto; }
+@media (max-width: 640px) {
+  .althos-home .ecosystem { padding: 44px 16px 4px; }
+  .althos-home .ecosystem h2 { font-size: clamp(24px, 7vw, 32px); }
+}
+
+/* Solutions — abas horizontais + painel texto/imagem */
+.althos-home .solutions { position: relative; max-width: 1280px; margin: 0 auto; padding: 40px 40px 110px; }
+.althos-home .solutions-head { max-width: 760px; margin: 0 auto 40px; text-align: center; }
+.althos-home .solutions-head .eyebrow { margin: 0 auto 22px; }
+.althos-home .solutions-head h2 { font-weight: 800; font-size: clamp(32px,4.4vw,56px); line-height: 1.06; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.althos-home .solutions-head p { margin-top: 18px; font-size: clamp(15px,1.1vw,17px); line-height: 1.6; color: var(--ink-dim); }
+.althos-home .sol-tabbar { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.althos-home .sol-tab { position: relative; padding: 16px 22px; font-size: 15px; font-weight: 700; color: var(--ink-faint); background: none; border: none; cursor: pointer; transition: color 0.25s var(--ease); }
+.althos-home .sol-tab:hover { color: var(--ink-dim); }
+.althos-home .sol-tab.active { color: var(--ink); }
+.althos-home .sol-tab::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s var(--ease); }
+.althos-home .sol-tab.active::after { transform: scaleX(1); }
+.althos-home .sol-panel { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 56px; align-items: center; padding: 48px 0 0; }
+.althos-home .sol-copy .kicker { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.althos-home .sol-copy h3 { font-weight: 800; font-size: clamp(26px,2.6vw,38px); line-height: 1.12; letter-spacing: -0.015em; color: var(--ink); text-wrap: balance; }
+.althos-home .sol-copy p { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--ink-dim); max-width: 34em; }
+.althos-home .sol-copy .btn { margin-top: 26px; }
+.althos-home .sol-media { position: relative; }
+.althos-home .sol-frame { position: relative; border-radius: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
+.althos-home .sol-frame-bar { display: flex; align-items: center; gap: 7px; padding: 12px 15px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.althos-home .sol-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #525252; }
+.althos-home .sol-shot { position: relative; background: #202020; aspect-ratio: 1820 / 862; }
+.althos-home .sol-shot img { width: 100%; height: 100%; display: block; object-fit: contain; cursor: zoom-in; }
+@media (max-width: 900px) {
+  .althos-home .sol-panel { grid-template-columns: 1fr; gap: 28px; padding-top: 32px; }
+  .althos-home .sol-tabbar { overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  .althos-home .sol-tabbar::-webkit-scrollbar { display: none; }
+  .althos-home .sol-tab { flex: 0 0 auto; padding: 12px 16px; font-size: 13.5px; }
+}
+@media (max-width: 640px) {
+  .althos-home .solutions { padding: 32px 16px 56px; }
+  .althos-home .solutions-head { margin-bottom: 24px; }
+  .althos-home .solutions-head h2 { font-size: clamp(24px, 7vw, 32px); }
+}
+
+/* Features sticky (legado — mantido só pra não quebrar refs antigas; a
+   apresentação atual das soluções usa .solutions acima) */
 .althos-home .features { position: relative; max-width: 1360px; margin: 0 auto; padding: 40px 40px 120px; }
 .althos-home .features-head { max-width: 720px; margin: 0 auto 20px; text-align: center; }
 .althos-home .features-head .eyebrow { margin: 0 auto 22px; }

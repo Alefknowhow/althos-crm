@@ -58,11 +58,12 @@ export default function AlthosHome() {
 
       <div className="shell">
         <Hero onZoom={onZoom} />
+        <Ecosystem />
+        <Solutions onZoom={onZoom} />
+        <Segments />
         <Pains />
         <Stats />
-        <Features onZoom={onZoom} />
         <AiBlock onZoom={onZoom} />
-        <Segments />
         <Compare />
         <Onboard />
         <Pricing />
@@ -102,12 +103,11 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
   return (
     <header className="hero">
       <div className="hero-copy">
-        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Seu vendedor digital no WhatsApp</div>
-        <h1 className="headline reveal" data-d="1">Seu próximo vendedor <em>não dorme</em> e nunca esquece o follow-up</h1>
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Feito pra quem vende no WhatsApp</div>
+        <h1 className="headline reveal" data-d="1">Mais vendas fechadas.<br /><em>Nenhum lead esquecido.</em></h1>
         <p className="subtitle reveal" data-d="2">
-          Todo minuto sem resposta é um lead esfriando — e uma venda indo pro concorrente. A Althos
-          atende, qualifica e retoma cada conversa no WhatsApp sozinha, 24 horas por dia. Você acorda
-          com a venda encaminhada, não com o lead esfriado.
+          O Althos CRM organiza seu funil, atende no WhatsApp com IA 24h e garante que nenhuma
+          oportunidade esfrie — pra o seu negócio vender mais, todos os dias.
         </p>
         <div className="cta-row reveal" data-d="3">
           <a href="/signup" className="btn btn-solid">Começar grátis <span className="arrow">→</span></a>
@@ -293,51 +293,71 @@ function Compare() {
 }
 
 const FEAT_STEPS = [
-  { shot: 'pipeline', n: '01', kicker: 'Lead perdido no meio do funil', h: 'Funil de vendas visual', p: 'Pare de descobrir tarde que uma negociação travou. Veja cada etapa, arraste com um clique e ataque os gargalos assim que aparecem — antes que virem lead perdido.', link: 'Conhecer o funil →' },
-  { shot: 'insights', n: '02', kicker: 'Demora no primeiro atendimento', h: 'Atendimento 24h com IA', p: 'Enquanto sua equipe dorme (ou está ocupada), a IA já respondeu, entendeu o que o cliente quer e qualificou se vale a pena continuar — no seu tom de voz, sem parecer robô.', link: 'Ver a IA em ação →' },
-  { shot: 'automacoes', n: '03', kicker: 'Follow-up que fica só na intenção', h: 'Automações sem código', p: 'Defina uma vez o que deve acontecer depois de cada ação e pare de depender da memória de alguém. Captação, retomada e pós-venda rodando sozinhos, sem programar.', link: 'Explorar automações →' },
-  { shot: 'dashboard', n: '04', kicker: 'Decisão no escuro, sem dado', h: 'Relatórios e dashboards', p: 'Pare de adivinhar o que está funcionando. Veja conversão, receita e desempenho de cada vendedor em tempo real, sem montar planilha.', link: 'Ver dashboards →' },
-  { shot: 'tasks', n: '05', kicker: 'Tarefa importante esquecida', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação, prazo e responsável definidos. Ninguém do time descobre depois que deixou dinheiro na mesa.', link: 'Organizar o time →' },
+  { shot: 'pipeline', tabLabel: 'Funil', kicker: 'Lead perdido no meio do funil', h: 'Funil de vendas visual', p: 'Pare de descobrir tarde que uma negociação travou. Veja cada etapa, arraste com um clique e ataque os gargalos assim que aparecem — antes que virem lead perdido.', link: 'Conhecer o funil →' },
+  { shot: 'insights', tabLabel: 'Atendimento IA', kicker: 'Demora no primeiro atendimento', h: 'Atendimento 24h com IA', p: 'Enquanto sua equipe dorme (ou está ocupada), a IA já respondeu, entendeu o que o cliente quer e qualificou se vale a pena continuar — no seu tom de voz, sem parecer robô.', link: 'Ver a IA em ação →' },
+  { shot: 'automacoes', tabLabel: 'Automação', kicker: 'Follow-up que fica só na intenção', h: 'Automações sem código', p: 'Defina uma vez o que deve acontecer depois de cada ação e pare de depender da memória de alguém. Captação, retomada e pós-venda rodando sozinhos, sem programar.', link: 'Explorar automações →' },
+  { shot: 'dashboard', tabLabel: 'Dados', kicker: 'Decisão no escuro, sem dado', h: 'Relatórios e dashboards', p: 'Pare de adivinhar o que está funcionando. Veja conversão, receita e desempenho de cada vendedor em tempo real, sem montar planilha.', link: 'Ver dashboards →' },
+  { shot: 'tasks', tabLabel: 'Produtividade', kicker: 'Tarefa importante esquecida', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação, prazo e responsável definidos. Ninguém do time descobre depois que deixou dinheiro na mesa.', link: 'Organizar o time →' },
 ] as const
 
-/* ----------------------------- Features ----------------------------- */
-function Features({ onZoom }: { onZoom: OnZoom }) {
+/* ----------------------------- Ecosystem (intro) ----------------------------- */
+function Ecosystem() {
   return (
-    <section className="features" aria-label="Funcionalidades">
-      <div className="features-head">
-        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Tudo num só lugar</div>
-        <h2 className="reveal" data-d="1">Uma plataforma que vende enquanto você dorme</h2>
+    <section className="ecosystem" aria-label="Ecossistema Althos CRM">
+      <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Ecossistema Althos</div>
+      <h2 className="reveal" data-d="1">Conheça o ecossistema que ajuda o seu negócio a vender mais</h2>
+      <p className="reveal" data-d="2">
+        Funil, atendimento com IA, automações e dados — tudo conectado num só lugar, pra o seu
+        time parar de perder venda por falta de organização ou de resposta rápida.
+      </p>
+    </section>
+  )
+}
+
+/* ----------------------------- Solutions (abas) ----------------------------- */
+function Solutions({ onZoom }: { onZoom: OnZoom }) {
+  const [active, setActive] = useState(0)
+  const step = FEAT_STEPS[active]
+
+  return (
+    <section className="solutions" aria-label="Soluções por área">
+      <div className="solutions-head">
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Soluções sob medida</div>
+        <h2 className="reveal" data-d="1">Soluções sob medida para cada etapa da jornada do cliente</h2>
+        <p className="reveal" data-d="2">
+          Do primeiro contato ao pós-venda, o Althos CRM tem uma solução pronta pra cada ponto
+          onde uma venda costuma travar.
+        </p>
       </div>
 
-      <div className="features-grid">
-        <div className="feat-steps" id="featSteps">
-          {FEAT_STEPS.map(s => (
-            <article className="feat-step" data-shot={s.shot} key={s.shot}>
-              <span className="idx"><span className="n">{s.n}</span> {s.kicker}</span>
-              <h3>{s.h}</h3>
-              <p>{s.p}</p>
-              <a className="learn" href="/funcionalidades">{s.link}</a>
-            </article>
-          ))}
-        </div>
+      <div className="sol-tabbar" role="tablist" aria-label="Áreas do Althos CRM">
+        {FEAT_STEPS.map((s, i) => (
+          <button
+            key={s.shot}
+            type="button"
+            role="tab"
+            aria-selected={active === i}
+            className={`sol-tab${active === i ? ' active' : ''}`}
+            onClick={() => setActive(i)}
+          >
+            {s.tabLabel}
+          </button>
+        ))}
+      </div>
 
-        <div className="feat-sticky">
-          <div className="feat-frame">
-            <div className="glow" aria-hidden="true" />
-            <div className="feat-frame-bar" aria-hidden="true"><i /><i /><i /></div>
-            <div className="feat-shots" id="featShots">
-              {FEAT_STEPS.map((s, i) => (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  key={s.shot}
-                  src={SHOTS[s.shot]}
-                  data-shot={s.shot}
-                  className={i === 0 ? 'active' : ''}
-                  alt={s.h}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  onClick={() => onZoom(SHOTS[s.shot], s.h)}
-                />
-              ))}
+      <div className="sol-panel">
+        <div className="sol-copy">
+          <span className="kicker">{step.kicker}</span>
+          <h3>{step.h}</h3>
+          <p>{step.p}</p>
+          <a className="btn btn-solid" href="/funcionalidades">{step.link}</a>
+        </div>
+        <div className="sol-media">
+          <div className="sol-frame">
+            <div className="sol-frame-bar" aria-hidden="true"><i /><i /><i /></div>
+            <div className="sol-shot">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={SHOTS[step.shot]} alt={step.h} onClick={() => onZoom(SHOTS[step.shot], step.h)} />
             </div>
           </div>
         </div>
@@ -420,7 +440,7 @@ function Segments() {
     <section className="seg" aria-label="Segmentos">
       <div className="seg-head">
         <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Feito para o seu nicho</div>
-        <h2 className="reveal" data-d="1">Um CRM que fala a língua do seu negócio</h2>
+        <h2 className="reveal" data-d="1">Seja qual for o seu segmento, temos diferentes soluções para o seu negócio vender mais</h2>
       </div>
 
       <div className="bento">
