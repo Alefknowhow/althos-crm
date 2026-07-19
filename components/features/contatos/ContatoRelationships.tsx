@@ -96,37 +96,39 @@ export default function ContatoRelationships({ orgSlug, contatoId, initial }: Pr
       <CardContent className="space-y-4">
         {adding && (
           <div className="space-y-3 rounded-lg border p-3 bg-muted/20">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tipo de vínculo</Label>
-              <Select value={kind} onValueChange={(v) => setKind(v as RelationshipKind)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Escolher..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {RELATIONSHIP_KINDS.map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {RELATIONSHIP_LABELS[k]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Contato relacionado</Label>
-              <LeadCombobox
-                name="related_contato"
-                orgSlug={orgSlug}
-                placeholder="Buscar contato..."
-                onChange={(c) => setRelatedId(c?.id || null)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Observação (opcional)</Label>
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ex.: responsável financeiro"
-              />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo de vínculo</Label>
+                <Select value={kind} onValueChange={(v) => setKind(v as RelationshipKind)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolher..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RELATIONSHIP_KINDS.map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {RELATIONSHIP_LABELS[k]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Contato relacionado</Label>
+                <LeadCombobox
+                  name="related_contato"
+                  orgSlug={orgSlug}
+                  placeholder="Buscar contato..."
+                  onChange={(c) => setRelatedId(c?.id || null)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Observação (opcional)</Label>
+                <Input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ex.: responsável financeiro"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button
