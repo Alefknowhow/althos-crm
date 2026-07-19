@@ -59,7 +59,7 @@ export const processAutomationEvent = inngest.createFunction(
       if (isMatch) {
         matchedCount++
         await step.run(`create-run-${auto.id}`, async () => {
-          const { data: run } = await supabase.from('automation_runs').insert({
+          const { data: run, error } = await supabase.from('automation_runs').insert({
             organization_id: orgId,
             automation_id: auto.id,
             contato_id: leadId,
@@ -69,12 +69,14 @@ export const processAutomationEvent = inngest.createFunction(
             trigger_payload: event.data ?? {},
           }).select().single()
 
-          if (run) {
-            await inngest.send({
-              name: 'automation.run.execute',
-              data: { runId: run.id, orgId }
-            })
+          if (error || !run) {
+            throw new Error(`Falha ao criar automation_run para automation ${auto.id}: ${error?.message}`)
           }
+
+          await inngest.send({
+            name: 'automation.run.execute',
+            data: { runId: run.id, orgId }
+          })
         })
       }
     }
@@ -95,15 +97,16 @@ export const executeAutomationRun = inngest.createFunction(
     const { runId } = event.data
     const supabase = createAdminClient()
 
-    const { data: run } = await supabase
+    const { data: run, error: runError } = await supabase
       .from('automation_runs')
-      .select('*, automations(*), leads(*), organizations(*)')
+      .select('*, automations(*), contatos(*), organizations(*)')
       .eq('id', runId)
       .maybeSingle()
 
+    if (runError) throw new Error(`Falha ao carregar automation_run ${runId}: ${runError.message}`)
     if (!run || run.status !== 'running') return
 
-    const { automations: auto, leads: lead, organizations: orgConfig, organization_id: orgId } = run as any
+    const { automations: auto, contatos: lead, organizations: orgConfig, organization_id: orgId } = run as any
     if (!auto || !lead) return
 
     let currentStep = run.current_step

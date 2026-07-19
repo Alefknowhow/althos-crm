@@ -24,15 +24,16 @@ export const sendEmail = inngest.createFunction(
     const { emailSendId } = event.data
     const supabase = createAdminClient()
 
-    const { data: emailSend } = await supabase
+    const { data: emailSend, error: emailSendError } = await supabase
       .from('email_sends')
-      .select('*, leads(*, organizations(*)), email_templates(*)')
+      .select('*, contatos(*, organizations(*)), email_templates(*)')
       .eq('id', emailSendId)
       .maybeSingle()
 
+    if (emailSendError) throw new Error(`Falha ao carregar email_send ${emailSendId}: ${emailSendError.message}`)
     if (!emailSend) throw new Error('Email send not found')
 
-    const { leads: lead, email_templates: template } = emailSend
+    const { contatos: lead, email_templates: template } = emailSend
     if (!lead || !template) throw new Error('Missing lead or template')
 
     const variables = {

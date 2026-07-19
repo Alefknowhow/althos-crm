@@ -27,7 +27,7 @@ type Run = {
   error: string | null
   started_at: string
   completed_at: string | null
-  leads: Lead | Lead[] | null
+  contatos: Lead | Lead[] | null
 }
 
 type Step = {
@@ -167,7 +167,7 @@ export default function AutomationRunsPanel({ orgSlug, runs, steps }: Props) {
       {/* Runs */}
       <div className="space-y-2">
         {filtered.map(run => {
-          const lead = pickFirst(run.leads)
+          const lead = pickFirst(run.contatos)
           const status = STATUS_META[run.status] || STATUS_META.running
           const Icon = status.icon
           const isOpen = openId === run.id

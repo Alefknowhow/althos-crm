@@ -57,7 +57,7 @@ export async function getAutomationRunsPage(orgSlug: string, filter: RunsFilter 
   const toIdx = fromIdx + pageSize - 1
 
   const search = filter.search?.trim()
-  const leadEmbed = search ? 'leads!inner(id, name, email)' : 'leads(id, name, email)'
+  const leadEmbed = search ? 'contatos!inner(id, name, email)' : 'contatos(id, name, email)'
 
   let q = supabase
     .from('automation_runs')
@@ -76,14 +76,14 @@ export async function getAutomationRunsPage(orgSlug: string, filter: RunsFilter 
   if (filter.to) q = q.lte('started_at', filter.to)
   if (search) {
     const esc = search.replace(/[,()]/g, ' ')
-    q = q.or(`name.ilike.%${esc}%,email.ilike.%${esc}%`, { foreignTable: 'leads' })
+    q = q.or(`name.ilike.%${esc}%,email.ilike.%${esc}%`, { foreignTable: 'contatos' })
   }
 
   const { data, count } = await q
 
   const rows: RunRow[] = (data ?? []).map((r: any) => {
     const auto = pickFirst(r.automations)
-    const lead = pickFirst<RunLead>(r.leads)
+    const lead = pickFirst<RunLead>(r.contatos)
     return {
       id: r.id,
       status: r.status,
@@ -140,7 +140,7 @@ export async function getRunDetail(orgSlug: string, runId: string): Promise<RunD
     .from('automation_runs')
     .select(
       `id, status, current_step, error, started_at, completed_at, trigger_payload, automation_id,
-       automations(name, trigger_type, steps), leads(id, name, email)`,
+       automations(name, trigger_type, steps), contatos(id, name, email)`,
     )
     .eq('organization_id', org.id)
     .eq('id', runId)
@@ -149,7 +149,7 @@ export async function getRunDetail(orgSlug: string, runId: string): Promise<RunD
   if (!run) return null
 
   const auto = pickFirst<any>((run as any).automations)
-  const lead = pickFirst<RunLead>((run as any).leads)
+  const lead = pickFirst<RunLead>((run as any).contatos)
 
   const { data: logs } = await supabase
     .from('automation_step_logs')
