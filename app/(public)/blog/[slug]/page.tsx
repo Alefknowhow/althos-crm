@@ -80,22 +80,22 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       />
 
       <article className="relative mx-auto max-w-3xl px-4 pt-8 pb-14 sm:px-6 sm:pt-24 sm:pb-20">
-        <Link href="/blog" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-500 hover:text-slate-900 transition-colors">
+        <Link href="/blog" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#8d8d8d] hover:text-[#f4f4f4] transition-colors">
           <ArrowLeft className="h-4 w-4" /> Voltar para o blog
         </Link>
 
-        <div className="mt-6 flex items-center gap-3 text-[12px] text-slate-500">
-          <span className="rounded-full bg-[#d0e2ff] px-2.5 py-0.5 font-semibold text-[#0043ce]">{post.category}</span>
+        <div className="mt-6 flex items-center gap-3 text-[12px] text-[#8d8d8d]">
+          <span className="rounded-full bg-[#4589ff]/15 px-2.5 py-0.5 font-semibold text-[#78a9ff]">{post.category}</span>
           <span>{formatPostDate(post.date)}</span>
           <span>· {post.readingMinutes} min de leitura</span>
         </div>
 
-        <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-slate-900 sm:mt-4 sm:text-4xl">
+        <h1 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-[#f4f4f4] sm:mt-4 sm:text-4xl">
           {post.title}
         </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate-600 sm:mt-4 sm:text-[16px]">{post.excerpt}</p>
+        <p className="mt-3 text-[15px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-[16px]">{post.excerpt}</p>
 
-        <hr className="my-6 border-slate-200 sm:my-8" />
+        <hr className="my-6 border-[#383838] sm:my-8" />
 
         <PostBody blocks={post.blocks} />
       </article>
@@ -103,17 +103,17 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
       {/* Relacionados */}
       {related.length > 0 && (
         <section className="relative mx-auto max-w-3xl px-4 pb-24 sm:px-6">
-          <h2 className="text-lg font-bold text-slate-900">Continue lendo</h2>
+          <h2 className="text-lg font-bold text-[#f4f4f4]">Continue lendo</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             {related.map(p => (
               <Link
                 key={p.slug}
                 href={`/blog/${p.slug}`}
-                className="group rounded-none border border-slate-200 bg-white p-5   transition-colors hover:border-[#78a9ff] hover:bg-slate-50"
+                className="group rounded-none border border-[#383838] bg-[#262626] p-5   transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f]"
               >
-                <span className="rounded-full bg-[#d0e2ff] px-2 py-0.5 text-[11px] font-semibold text-[#0043ce]">{p.category}</span>
-                <h3 className="mt-3 text-[15px] font-bold text-slate-900 group-hover:text-[#0043ce] transition-colors">{p.title}</h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-slate-600 line-clamp-3">{p.excerpt}</p>
+                <span className="rounded-full bg-[#4589ff]/15 px-2 py-0.5 text-[11px] font-semibold text-[#78a9ff]">{p.category}</span>
+                <h3 className="mt-3 text-[15px] font-bold text-[#f4f4f4] group-hover:text-[#78a9ff] transition-colors">{p.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-[#a8a8a8] line-clamp-3">{p.excerpt}</p>
               </Link>
             ))}
           </div>

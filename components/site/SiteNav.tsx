@@ -8,14 +8,14 @@ import { SITE_NAV } from '@/lib/site/content'
 
 /**
  * Navegação do site institucional multi-página.
- * Dark theme, fixa no topo, com fade de fundo ao rolar e menu mobile.
+ * Dark theme (Carbon g100), fixa no topo, com fade de fundo ao rolar e menu mobile.
  * Marca o item ativo conforme a rota atual.
  */
 export function SiteNav() {
   const pathname = usePathname()
   const { scrollY } = useScroll()
-  const navBg     = useTransform(scrollY, [0, 60], ['rgba(255,255,255,0)', 'rgba(255,255,255,0.82)'])
-  const navBorder = useTransform(scrollY, [0, 60], ['rgba(17,20,28,0)', 'rgba(17,20,28,0.08)'])
+  const navBg     = useTransform(scrollY, [0, 60], ['rgba(26,26,26,0)', 'rgba(26,26,26,0.85)'])
+  const navBorder = useTransform(scrollY, [0, 60], ['rgba(244,244,244,0)', 'rgba(244,244,244,0.1)'])
   const [open, setOpen] = useState(false)
 
   function isActive(href: string) {
@@ -34,8 +34,8 @@ export function SiteNav() {
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-[#4589ff] to-[#0043ce] text-white text-xs font-black">
             A
           </span>
-          <span className="text-sm sm:text-base font-semibold tracking-tight text-[#161616]">
-            ALTHOS <span className="text-[#161616]/40 font-normal">CRM</span>
+          <span className="text-sm sm:text-base font-semibold tracking-tight text-[#f4f4f4]">
+            ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
           </span>
         </Link>
 
@@ -46,7 +46,7 @@ export function SiteNav() {
               key={l.href}
               href={l.href}
               className={`text-[13px] font-medium transition-colors ${
-                isActive(l.href) ? 'text-[#161616]' : 'text-[#161616]/55 hover:text-[#161616]'
+                isActive(l.href) ? 'text-[#f4f4f4]' : 'text-[#f4f4f4]/55 hover:text-[#f4f4f4]'
               }`}
             >
               {l.label}
@@ -56,7 +56,7 @@ export function SiteNav() {
 
         {/* Right actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Link href="/login" className="hidden sm:inline text-[13px] font-medium text-[#161616]/65 hover:text-[#161616] transition-colors">
+          <Link href="/login" className="hidden sm:inline text-[13px] font-medium text-[#f4f4f4]/65 hover:text-[#f4f4f4] transition-colors">
             Entrar
           </Link>
           <Link
@@ -68,7 +68,7 @@ Começar grátis
           {/* Mobile menu toggle */}
           <button
             onClick={() => setOpen(v => !v)}
-            className="lg:hidden flex h-8 w-8 items-center justify-center rounded-md text-[#161616]/65 hover:text-[#161616]"
+            className="lg:hidden flex h-8 w-8 items-center justify-center rounded-md text-[#f4f4f4]/65 hover:text-[#f4f4f4]"
             aria-label="Menu"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -86,7 +86,7 @@ Começar grátis
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className="lg:hidden overflow-hidden border-t border-[#161616]/8 bg-white/95  "
+            className="lg:hidden overflow-hidden border-t border-[#f4f4f4]/8 bg-[#1a1a1a]/95  "
           >
             <div className="flex flex-col px-5 py-4 gap-1">
               {SITE_NAV.map(l => (
@@ -95,13 +95,13 @@ Começar grátis
                   href={l.href}
                   onClick={() => setOpen(false)}
                   className={`py-2 text-[15px] font-medium transition-colors ${
-                    isActive(l.href) ? 'text-[#161616]' : 'text-[#161616]/70 hover:text-[#161616]'
+                    isActive(l.href) ? 'text-[#f4f4f4]' : 'text-[#f4f4f4]/70 hover:text-[#f4f4f4]'
                   }`}
                 >
                   {l.label}
                 </Link>
               ))}
-              <Link href="/login" onClick={() => setOpen(false)} className="py-2 text-[15px] font-medium text-[#161616]/70">
+              <Link href="/login" onClick={() => setOpen(false)} className="py-2 text-[15px] font-medium text-[#f4f4f4]/70">
                 Entrar
               </Link>
             </div>

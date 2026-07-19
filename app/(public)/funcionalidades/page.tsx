@@ -20,13 +20,13 @@ export default function FuncionalidadesPage() {
           <div className="absolute top-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-400/15 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#4589ff]/40 bg-[#0f62fe]/10 px-3 py-1 text-xs font-medium text-[#78a9ff]">
             Funcionalidades
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#f4f4f4] sm:mt-5 sm:text-5xl">
             Tudo que você precisa para vender mais
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-lg">
             Clique em cada recurso para ver como ele funciona na prática. Do primeiro contato ao fechamento, em um só lugar.
           </p>
         </div>
@@ -37,8 +37,8 @@ export default function FuncionalidadesPage() {
       </section>
 
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
-        <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Pronto para ver na sua operação?</h2>
-        <p className="mx-auto mt-3 max-w-md text-[14px] text-slate-600">
+        <h2 className="text-2xl font-bold text-[#f4f4f4] sm:text-3xl">Pronto para ver na sua operação?</h2>
+        <p className="mx-auto mt-3 max-w-md text-[14px] text-[#a8a8a8]">
           Comece de graça no plano Free. Sem cartão, sem compromisso.
         </p>
         <Link

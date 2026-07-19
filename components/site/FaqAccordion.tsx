@@ -15,7 +15,7 @@ export function FaqAccordion() {
         if (items.length === 0) return null
         return (
           <div key={cat}>
-            <h2 className="mb-4 text-[12px] font-semibold uppercase tracking-wider text-[#0043ce]">{cat}</h2>
+            <h2 className="mb-4 text-[12px] font-semibold uppercase tracking-wider text-[#78a9ff]">{cat}</h2>
             <div className="space-y-2.5">
               {items.map(item => {
                 const isOpen = open === item.question
@@ -23,16 +23,16 @@ export function FaqAccordion() {
                   <div
                     key={item.question}
                     className={`rounded-none border transition-colors ${
-                      isOpen ? 'border-[#78a9ff] bg-[#edf5ff]' : 'border-slate-200 bg-white  '
+                      isOpen ? 'border-[#78a9ff] bg-[#0f62fe]/10' : 'border-[#383838] bg-[#262626]  '
                     }`}
                   >
                     <button
                       onClick={() => setOpen(isOpen ? null : item.question)}
                       className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
                     >
-                      <span className="text-[14px] font-medium text-slate-900">{item.question}</span>
+                      <span className="text-[14px] font-medium text-[#f4f4f4]">{item.question}</span>
                       <ChevronDown
-                        className={`h-4.5 w-4.5 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        className={`h-4.5 w-4.5 shrink-0 text-[#707070] transition-transform ${isOpen ? 'rotate-180' : ''}`}
                       />
                     </button>
                     <AnimatePresence initial={false}>
@@ -44,7 +44,7 @@ export function FaqAccordion() {
                           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                           className="overflow-hidden"
                         >
-                          <p className="px-5 pb-4 text-[13px] leading-relaxed text-slate-600">{item.answer}</p>
+                          <p className="px-5 pb-4 text-[13px] leading-relaxed text-[#a8a8a8]">{item.answer}</p>
                         </motion.div>
                       )}
                     </AnimatePresence>

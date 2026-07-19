@@ -17,7 +17,7 @@ export function SiteFooter() {
   const features = Object.values(FEATURES)
 
   return (
-    <footer className="relative z-10 border-t border-[#161616]/8 bg-[#f4f4f4]">
+    <footer className="relative z-10 border-t border-[#f4f4f4]/8 bg-[#141414]">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 py-10 sm:py-14">
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 lg:grid-cols-7">
           {/* Brand + CTA */}
@@ -26,11 +26,11 @@ export function SiteFooter() {
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#4589ff] to-[#0043ce] text-white text-sm font-black">
                 A
               </span>
-              <span className="text-base font-semibold tracking-tight text-[#161616]">
-                ALTHOS <span className="text-[#161616]/40 font-normal">CRM</span>
+              <span className="text-base font-semibold tracking-tight text-[#f4f4f4]">
+                ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
               </span>
             </Link>
-            <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-[#161616]/65">
+            <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-[#f4f4f4]/65">
               O CRM com IA e automações que transforma mais leads em clientes.
             </p>
             <Link
@@ -43,11 +43,11 @@ export function SiteFooter() {
 
           {/* Navegação */}
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#161616]/45">Navegação</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Navegação</p>
             <ul className="mt-3 space-y-1.5">
               {SITE_NAV.map(l => (
                 <li key={l.href}>
-                  <Link href={l.href} className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">
+                  <Link href={l.href} className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">
                     {l.label}
                   </Link>
                 </li>
@@ -57,22 +57,22 @@ export function SiteFooter() {
 
           {/* Produto */}
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#161616]/45">Produto</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Produto</p>
             <ul className="mt-3 space-y-1.5">
-              <li><Link href="/login" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">Entrar</Link></li>
-              <li><Link href="/signup" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">Criar conta</Link></li>
-              <li><Link href="/planos" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">Planos e preços</Link></li>
-              <li><Link href="/blog" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">Blog</Link></li>
+              <li><Link href="/login" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">Entrar</Link></li>
+              <li><Link href="/signup" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">Criar conta</Link></li>
+              <li><Link href="/planos" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">Planos e preços</Link></li>
+              <li><Link href="/blog" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">Blog</Link></li>
             </ul>
           </div>
 
           {/* Recursos */}
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#161616]/45">Recursos</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Recursos</p>
             <ul className="mt-3 space-y-1.5">
               {features.map(f => (
                 <li key={f.slug}>
-                  <Link href={`/${f.slug}`} className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">
+                  <Link href={`/${f.slug}`} className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">
                     {f.nav}
                   </Link>
                 </li>
@@ -82,11 +82,11 @@ export function SiteFooter() {
 
           {/* Por nicho */}
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#161616]/45">Por nicho</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Por nicho</p>
             <ul className="mt-3 space-y-1.5">
               {niches.map(n => (
                 <li key={n.slug}>
-                  <Link href={`/${n.slug}`} className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">
+                  <Link href={`/${n.slug}`} className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">
                     {n.nav}
                   </Link>
                 </li>
@@ -96,21 +96,21 @@ export function SiteFooter() {
 
           {/* Contato */}
           <div className="col-span-2 md:col-span-1">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#161616]/45">Contato</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Contato</p>
             <ul className="mt-3 space-y-1.5">
-              <li><a href="mailto:suporte@althoscrm.com.br" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors break-all">suporte@althoscrm.com.br</a></li>
-              <li><Link href="/faq" className="inline-block py-0.5 text-[14px] text-[#161616]/70 hover:text-[#161616] transition-colors">Central de ajuda</Link></li>
+              <li><a href="mailto:suporte@althoscrm.com.br" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors break-all">suporte@althoscrm.com.br</a></li>
+              <li><Link href="/faq" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">Central de ajuda</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-8 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#161616]/8 pt-5">
-          <p className="text-[12px] text-[#161616]/45">© {year} Althos CRM.</p>
+        <div className="mt-8 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#f4f4f4]/8 pt-5">
+          <p className="text-[12px] text-[#f4f4f4]/45">© {year} Althos CRM.</p>
           <div className="flex items-center gap-4">
-            <Link href="/termos" className="text-[12px] text-[#161616]/55 hover:text-[#161616] transition-colors">Termos</Link>
-            <Link href="/privacidade" className="text-[12px] text-[#161616]/55 hover:text-[#161616] transition-colors">Privacidade</Link>
-            <Link href="/cookies" className="text-[12px] text-[#161616]/55 hover:text-[#161616] transition-colors">Cookies</Link>
-            <Link href="/exclusao-de-dados" className="text-[12px] text-[#161616]/55 hover:text-[#161616] transition-colors">Exclusão de dados</Link>
+            <Link href="/termos" className="text-[12px] text-[#f4f4f4]/55 hover:text-[#f4f4f4] transition-colors">Termos</Link>
+            <Link href="/privacidade" className="text-[12px] text-[#f4f4f4]/55 hover:text-[#f4f4f4] transition-colors">Privacidade</Link>
+            <Link href="/cookies" className="text-[12px] text-[#f4f4f4]/55 hover:text-[#f4f4f4] transition-colors">Cookies</Link>
+            <Link href="/exclusao-de-dados" className="text-[12px] text-[#f4f4f4]/55 hover:text-[#f4f4f4] transition-colors">Exclusão de dados</Link>
           </div>
         </div>
       </div>

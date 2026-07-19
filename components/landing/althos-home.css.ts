@@ -3,24 +3,24 @@
  * `.althos-home` (sem resets globais `*`/`body`) para não vazar para o
  * header/footer (SiteShell) nem para outras páginas.
  *
- * Tema CLARO inspirado no Attio: fundo branco, muito respiro, tipografia
+ * Tema ESCURO Carbon g100: fundo quase preto, muito respiro, tipografia
  * grotesk, superfícies brancas com sombras suaves, gradientes pastel
  * discretos e acento AZUL Carbon da Althos (#0f62fe).
  */
 export const HOME_CSS = `
 .althos-home {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f6f7f9;
-  --ink: #15171c;
-  --ink-dim: #51555e;
-  --ink-faint: #8a8f99;
-  --line: rgba(17,20,28,0.09);
-  --line-strong: rgba(17,20,28,0.14);
-  --accent: #0f62fe;
-  --accent-bright: #4589ff;
-  --accent-deep: #0043ce;
-  --accent-glow: rgba(15,98,254,0.20);
+  --bg: #1a1a1a;
+  --surface: #262626;
+  --surface-2: #333333;
+  --ink: #f4f4f4;
+  --ink-dim: #a8a8a8;
+  --ink-faint: #6f6f6f;
+  --line: rgba(244,244,244,0.09);
+  --line-strong: rgba(244,244,244,0.16);
+  --accent: #4589ff;
+  --accent-bright: #78a9ff;
+  --accent-deep: #0f62fe;
+  --accent-glow: rgba(69,137,255,0.20);
   --shadow-sm: none;
   --shadow-card: none;
   --shadow-float: none;
@@ -49,7 +49,7 @@ export const HOME_CSS = `
 @keyframes ah-drift2 { 0% { transform: translate3d(0,0,0) scale(1.05); } 100% { transform: translate3d(-5%,7%,0) scale(0.95); } }
 @keyframes ah-drift3 { 0% { transform: translate3d(0,0,0) scale(0.95); } 100% { transform: translate3d(4%,-6%,0) scale(1.1); } }
 
-.althos-home .bg-fade { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, transparent 24%, transparent 70%, var(--bg) 100%); }
+.althos-home .bg-fade { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(26,26,26,0.7) 0%, transparent 24%, transparent 70%, var(--bg) 100%); }
 .althos-home .grain { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0.025; mix-blend-mode: multiply; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: ah-grain 6s steps(4) infinite; }
 @keyframes ah-grain { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-4%,3%); } 50% { transform: translate(3%,-2%); } 75% { transform: translate(-2%,-4%); } }
 
@@ -58,7 +58,7 @@ export const HOME_CSS = `
 /* Hero */
 .althos-home .hero { max-width: 1120px; margin: 0 auto; padding: 56px 40px 96px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 60px; }
 .althos-home .hero-copy { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.althos-home .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, rgba(69,137,255,0.08), rgba(69,137,255,0.02)); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--accent-deep); width: fit-content; box-shadow: var(--shadow-sm); }
+.althos-home .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, rgba(69,137,255,0.08), rgba(69,137,255,0.02)); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--accent-bright); width: fit-content; box-shadow: var(--shadow-sm); }
 .althos-home .eyebrow .star { color: var(--accent); font-size: 12px; line-height: 1; }
 .althos-home h1.headline { font-weight: 800; font-size: clamp(46px,5.6vw,80px); line-height: 1.04; letter-spacing: -0.025em; margin-top: 26px; text-wrap: balance; color: var(--ink); max-width: 16ch; }
 .althos-home h1.headline em { font-style: italic; background: linear-gradient(100deg, var(--accent-bright), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
@@ -84,8 +84,8 @@ export const HOME_CSS = `
 .althos-home .browser { position: relative; z-index: 1; width: 100%; border-radius: 0; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); overflow: hidden; transform-style: preserve-3d; will-change: transform; transition: transform 0.18s var(--ease); }
 .althos-home .browser-bar { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .althos-home .dots { display: flex; gap: 7px; }
-.althos-home .dots i { width: 11px; height: 11px; border-radius: 50%; background: #d3d6dd; display: block; }
-.althos-home .url { flex: 1; max-width: 320px; margin: 0 auto; background: rgba(17,20,28,0.04); border: 1px solid var(--line); border-radius: 0; padding: 6px 12px; font-size: 12px; color: var(--ink-faint); display: flex; align-items: center; gap: 7px; }
+.althos-home .dots i { width: 11px; height: 11px; border-radius: 50%; background: #525252; display: block; }
+.althos-home .url { flex: 1; max-width: 320px; margin: 0 auto; background: rgba(244,244,244,0.06); border: 1px solid var(--line); border-radius: 0; padding: 6px 12px; font-size: 12px; color: var(--ink-faint); display: flex; align-items: center; gap: 7px; }
 .althos-home .url .lock { width: 9px; height: 9px; opacity: 0.6; }
 .althos-home .tabs { display: flex; align-items: stretch; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--surface-2); overflow-x: auto; scrollbar-width: none; }
 .althos-home .tabs::-webkit-scrollbar { display: none; }
@@ -94,7 +94,7 @@ export const HOME_CSS = `
 .althos-home .tab[aria-selected="true"] { color: var(--ink); }
 .althos-home .tab::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 0; background: linear-gradient(90deg, var(--accent-bright), var(--accent)); transform: scaleX(0); transform-origin: center; transition: transform 0.3s var(--ease); }
 .althos-home .tab[aria-selected="true"]::after { transform: scaleX(1); }
-.althos-home .browser-screen { position: relative; display: block; line-height: 0; background: #f3f4f6; aspect-ratio: 1820 / 862; }
+.althos-home .browser-screen { position: relative; display: block; line-height: 0; background: #202020; aspect-ratio: 1820 / 862; }
 .althos-home .panel { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity 0.28s var(--ease); }
 .althos-home .panel.active { opacity: 1; visibility: visible; }
 .althos-home .panel img { width: 100%; height: 100%; display: block; object-fit: contain; object-position: center; cursor: zoom-in; }
@@ -131,10 +131,10 @@ export const HOME_CSS = `
 .althos-home .cmp-feat { padding: 16px 20px; font-size: 14.5px; font-weight: 500; color: var(--ink-dim); line-height: 1.35; }
 .althos-home .cmp-col { padding: 16px 12px; text-align: center; display: flex; align-items: center; justify-content: center; min-height: 56px; }
 .althos-home .cmp-col.cmp-althos { background: linear-gradient(180deg, rgba(15,98,254,0.07), rgba(15,98,254,0.02)); position: relative; }
-.althos-home .cmp-header .cmp-col.cmp-althos { color: var(--accent-deep); font-weight: 800; }
+.althos-home .cmp-header .cmp-col.cmp-althos { color: var(--accent-bright); font-weight: 800; }
 .althos-home .cmp-yes { color: var(--accent); display: grid; place-items: center; }
 .althos-home .cmp-yes svg { width: 22px; height: 22px; }
-.althos-home .cmp-no { color: rgba(17,20,28,0.22); display: grid; place-items: center; }
+.althos-home .cmp-no { color: rgba(244,244,244,0.28); display: grid; place-items: center; }
 .althos-home .cmp-no svg { width: 19px; height: 19px; }
 .althos-home .cmp-partial { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); line-height: 1.25; }
 /* Garantias / objeções */
@@ -171,8 +171,8 @@ export const HOME_CSS = `
 .althos-home .feat-frame { position: relative; width: 100%; border-radius: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
 .althos-home .feat-frame .glow { position: absolute; inset: -10% -6% -18% -6%; z-index: 0; background: radial-gradient(58% 52% at 60% 40%, var(--accent-glow), transparent 72%); filter: blur(46px); pointer-events: none; }
 .althos-home .feat-frame-bar { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; padding: 12px 15px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-.althos-home .feat-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d3d6dd; }
-.althos-home .feat-shots { position: relative; z-index: 1; aspect-ratio: 1820 / 862; background: #f3f4f6; }
+.althos-home .feat-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #525252; }
+.althos-home .feat-shots { position: relative; z-index: 1; aspect-ratio: 1820 / 862; background: #202020; }
 .althos-home .feat-shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; opacity: 0; transition: opacity 0.5s var(--ease); cursor: zoom-in; }
 .althos-home .feat-shots img.active { opacity: 1; }
 @media (max-width: 900px) {
@@ -205,15 +205,15 @@ export const HOME_CSS = `
 .althos-home .ai-mock .glow { position: absolute; inset: -8% -4% -14% -4%; z-index: 0; background: radial-gradient(56% 50% at 55% 42%, var(--accent-glow), transparent 70%); filter: blur(44px); pointer-events: none; }
 .althos-home .ai-frame { position: relative; z-index: 1; border-radius: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
 .althos-home .ai-frame-bar { display: flex; align-items: center; gap: 7px; padding: 12px 15px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-.althos-home .ai-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d3d6dd; }
+.althos-home .ai-frame-bar i { width: 10px; height: 10px; border-radius: 50%; background: #525252; }
 .althos-home .ai-frame-bar .tag { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--accent); }
 .althos-home .ai-frame-bar .tag .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: ah-pulse 1.4s ease-in-out infinite; }
 @keyframes ah-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-.althos-home .ai-shot { position: relative; background: #f3f4f6; }
+.althos-home .ai-shot { position: relative; background: #202020; }
 .althos-home .ai-shot img { width: 100%; display: block; object-fit: contain; cursor: zoom-in; }
 .althos-home .ai-scan { position: absolute; left: 0; right: 0; top: 0; height: 40%; background: linear-gradient(180deg, transparent, rgba(69,137,255,0.10) 70%, rgba(69,137,255,0.18)); border-bottom: 1px solid rgba(69,137,255,0.35); box-shadow: 0 6px 24px rgba(69,137,255,0.18); animation: ah-scan 3.4s var(--ease) infinite; pointer-events: none; }
 @keyframes ah-scan { 0% { transform: translateY(-100%); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateY(250%); opacity: 0; } }
-.althos-home .ai-typingbar { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: 1px solid rgba(69,137,255,0.25); box-shadow: 0 8px 26px -10px rgba(17,20,28,0.25); }
+.althos-home .ai-typingbar { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 0; background: rgba(38,38,38,0.9); backdrop-filter: blur(8px); border: 1px solid rgba(69,137,255,0.25); box-shadow: 0 8px 26px -10px rgba(17,20,28,0.25); }
 .althos-home .ai-typingbar .spark { color: var(--accent); flex: 0 0 auto; }
 .althos-home .ai-typingbar .txt { font-size: 13.5px; color: var(--ink-dim); }
 .althos-home .ai-typingbar .txt b { color: var(--ink); font-weight: 600; }
@@ -296,7 +296,7 @@ export const HOME_CSS = `
 .althos-home .billing-toggle { display: inline-flex; align-items: center; gap: 4px; margin: 30px auto 0; padding: 5px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); }
 .althos-home .billing-toggle button { font-size: 14px; font-weight: 600; color: var(--ink-dim); background: none; border: none; cursor: pointer; padding: 9px 18px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; transition: color 0.25s var(--ease), background 0.3s var(--ease); }
 .althos-home .billing-toggle button.active { color: #fff; background: linear-gradient(180deg, var(--accent-bright), var(--accent-deep)); box-shadow: 0 4px 14px -4px var(--accent-glow); }
-.althos-home .save-pill { display: block; width: fit-content; margin: 18px auto 0; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.005em; color: var(--accent-deep); background: rgba(15,98,254,0.10); border: 1px solid rgba(15,98,254,0.24); }
+.althos-home .save-pill { display: block; width: fit-content; margin: 18px auto 0; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.005em; color: var(--accent-bright); background: rgba(15,98,254,0.10); border: 1px solid rgba(15,98,254,0.24); }
 .althos-home .plans { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 48px; align-items: start; }
 .althos-home .plan { position: relative; border-radius: 0; padding: 28px 24px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .althos-home .plan.popular { background: linear-gradient(180deg, rgba(15,98,254,0.05), var(--surface)); box-shadow: var(--shadow-card); transform: translateY(-10px); z-index: 1; }
@@ -316,7 +316,7 @@ export const HOME_CSS = `
 .althos-home .plan ul { display: flex; flex-direction: column; gap: 13px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
 .althos-home .plan li { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; color: var(--ink-dim); line-height: 1.4; }
 .althos-home .plan li svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 1px; color: var(--accent); }
-.althos-home .plan li.off { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: rgba(17,20,28,0.25); }
+.althos-home .plan li.off { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: rgba(244,244,244,0.3); }
 .althos-home .plan li.off svg { color: var(--ink-faint); opacity: 0.7; }
 .althos-home .price-note { max-width: 880px; margin: 36px auto 0; text-align: center; font-size: 14px; line-height: 1.6; color: var(--ink-faint); }
 .althos-home .price-note b { color: var(--ink-dim); font-weight: 600; }
@@ -338,7 +338,7 @@ export const HOME_CSS = `
 .althos-home .final .aurora-strong .s1 { width: 60vw; height: 60vw; max-width: 760px; max-height: 760px; left: 50%; top: 46%; transform: translate(-50%,-50%); background: radial-gradient(circle at 50% 50%, rgba(69,137,255,0.22), transparent 60%); animation: ah-breathe 8s ease-in-out infinite; }
 .althos-home .final .aurora-strong .s2 { width: 40vw; height: 40vw; left: 22%; top: 30%; background: radial-gradient(circle at 50% 50%, rgba(120,169,255,0.18), transparent 62%); animation: ah-drift1 30s var(--ease) infinite alternate; }
 .althos-home .final .aurora-strong .s3 { width: 38vw; height: 38vw; right: 16%; bottom: 6%; background: radial-gradient(circle at 50% 50%, rgba(166,200,255,0.18), transparent 64%); animation: ah-drift2 34s var(--ease) infinite alternate; }
-.althos-home .final .vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 100% at 50% 50%, transparent 42%, rgba(246,247,249,0.6) 74%, var(--surface-2) 100%); }
+.althos-home .final .vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 100% at 50% 50%, transparent 42%, rgba(38,38,38,0.6) 74%, var(--surface-2) 100%); }
 .althos-home .final-inner { position: relative; z-index: 2; max-width: 800px; margin: 0 auto; }
 .althos-home .final h2 { font-weight: 800; font-size: clamp(44px,6vw,86px); line-height: 1.04; letter-spacing: -0.03em; color: var(--ink); text-wrap: balance; }
 .althos-home .final h2 em { font-style: italic; background: linear-gradient(100deg, var(--accent-bright), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

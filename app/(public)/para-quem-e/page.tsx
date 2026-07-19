@@ -31,13 +31,13 @@ export default function ParaQuemEPage() {
           <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-[#4589ff]/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#4589ff]/40 bg-[#0f62fe]/10 px-3 py-1 text-xs font-medium text-[#78a9ff]">
             Para quem é
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#f4f4f4] sm:mt-5 sm:text-5xl">
             Um CRM que entende o seu negócio
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-lg">
             O Althos se adapta ao seu nicho — com recursos específicos para as dores do seu dia a dia.
           </p>
         </div>
@@ -50,7 +50,7 @@ export default function ParaQuemEPage() {
             <a
               key={n.slug}
               href={`#${n.slug}`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-600   hover:border-[#78a9ff] hover:text-slate-900 transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-[#383838] bg-[#262626] px-4 py-2 text-[13px] font-medium text-[#a8a8a8]   hover:border-[#78a9ff] hover:text-[#f4f4f4] transition-colors"
             >
               <SiteIcon name={n.icon} className="h-4 w-4 text-[#4589ff]" />
               {n.name}
@@ -66,7 +66,7 @@ export default function ParaQuemEPage() {
             <div
               key={n.slug}
               id={n.slug}
-              className="scroll-mt-20 grid gap-6 rounded-none border border-slate-200 bg-white p-7   sm:p-9 lg:grid-cols-[1fr_1.1fr]"
+              className="scroll-mt-20 grid gap-6 rounded-none border border-[#383838] bg-[#262626] p-7   sm:p-9 lg:grid-cols-[1fr_1.1fr]"
             >
               {/* Esquerda: público + dores */}
               <div>
@@ -75,16 +75,16 @@ export default function ParaQuemEPage() {
                     <SiteIcon name={n.icon} className="h-5.5 w-5.5" />
                   </span>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">{n.name}</h2>
-                    <p className="text-[12px] text-slate-500">{n.audience}</p>
+                    <h2 className="text-xl font-bold text-[#f4f4f4]">{n.name}</h2>
+                    <p className="text-[12px] text-[#8d8d8d]">{n.audience}</p>
                   </div>
                 </div>
-                <p className="mt-5 text-[12px] font-semibold uppercase tracking-wider text-slate-400">
+                <p className="mt-5 text-[12px] font-semibold uppercase tracking-wider text-[#707070]">
                   As dores de sempre
                 </p>
                 <ul className="mt-3 space-y-2.5">
                   {n.pains.map(p => (
-                    <li key={p} className="flex items-start gap-2.5 text-[13px] text-slate-600">
+                    <li key={p} className="flex items-start gap-2.5 text-[13px] text-[#a8a8a8]">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400/70" />
                       {p}
                     </li>
@@ -93,23 +93,23 @@ export default function ParaQuemEPage() {
               </div>
 
               {/* Direita: solução */}
-              <div className="rounded-none border border-[#a6c8ff] bg-[#edf5ff] p-5 sm:p-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-[#0043ce]">
+              <div className="rounded-none border border-[#4589ff]/40 bg-[#0f62fe]/10 p-5 sm:p-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-[#78a9ff]">
                   Como o Althos resolve
                 </p>
-                <p className="mt-3 text-[14px] leading-relaxed text-slate-700">{n.solution}</p>
-                <ul className="mt-5 space-y-2.5 border-t border-[#a6c8ff]/70 pt-5">
+                <p className="mt-3 text-[14px] leading-relaxed text-[#d4d4d4]">{n.solution}</p>
+                <ul className="mt-5 space-y-2.5 border-t border-[#4589ff]/40 pt-5">
                   {n.highlights.map(h => (
                     <li key={h} className="flex items-start gap-2.5">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                      <span className="text-[13px] text-slate-700">{h}</span>
+                      <span className="text-[13px] text-[#d4d4d4]">{h}</span>
                     </li>
                   ))}
                 </ul>
                 {NICHE_LANDING[n.slug] && (
                   <Link
                     href={NICHE_LANDING[n.slug]}
-                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0043ce] hover:text-[#002d9c] transition-colors"
+                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#78a9ff] hover:text-[#a6c8ff] transition-colors"
                   >
                     Ver página completa <span aria-hidden="true">→</span>
                   </Link>
@@ -121,8 +121,8 @@ export default function ParaQuemEPage() {
       </section>
 
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
-        <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Não viu o seu segmento?</h2>
-        <p className="mx-auto mt-3 max-w-md text-[14px] text-slate-600">
+        <h2 className="text-2xl font-bold text-[#f4f4f4] sm:text-3xl">Não viu o seu segmento?</h2>
+        <p className="mx-auto mt-3 max-w-md text-[14px] text-[#a8a8a8]">
           O Althos é flexível e se adapta a praticamente qualquer operação comercial. Fale com a gente e descubra como.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -134,7 +134,7 @@ export default function ParaQuemEPage() {
           </Link>
           <a
             href="mailto:suporte@althoscrm.com.br"
-            className="rounded-none border border-slate-300 px-7 py-3 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="rounded-none border border-[#525252] px-7 py-3 text-[15px] font-semibold text-[#d4d4d4] hover:bg-[#1f1f1f] transition-colors"
           >
             Falar com a gente
           </a>

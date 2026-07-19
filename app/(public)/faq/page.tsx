@@ -35,13 +35,13 @@ export default function FaqPage() {
           <div className="absolute -top-32 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-[#4589ff]/20 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a6c8ff] bg-[#edf5ff] px-3 py-1 text-xs font-medium text-[#0043ce]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#4589ff]/40 bg-[#0f62fe]/10 px-3 py-1 text-xs font-medium text-[#78a9ff]">
             FAQ
           </span>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:mt-5 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#f4f4f4] sm:mt-5 sm:text-5xl">
             Perguntas frequentes
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-lg">
             As dúvidas mais comuns sobre o Althos CRM. Não achou a sua? Fale com a gente.
           </p>
         </div>
@@ -52,9 +52,9 @@ export default function FaqPage() {
       </section>
 
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
-        <div className="rounded-none border border-slate-200 bg-white p-8  ">
-          <h2 className="text-xl font-bold text-slate-900">Ainda tem dúvidas?</h2>
-          <p className="mx-auto mt-2 max-w-md text-[14px] text-slate-600">
+        <div className="rounded-none border border-[#383838] bg-[#262626] p-8  ">
+          <h2 className="text-xl font-bold text-[#f4f4f4]">Ainda tem dúvidas?</h2>
+          <p className="mx-auto mt-2 max-w-md text-[14px] text-[#a8a8a8]">
             Nosso time responde em português, direto pela plataforma ou por e-mail.
           </p>
           <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -66,7 +66,7 @@ export default function FaqPage() {
             </a>
             <Link
               href="/signup"
-              className="rounded-none border border-slate-300 px-6 py-3 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-none border border-[#525252] px-6 py-3 text-[14px] font-semibold text-[#d4d4d4] hover:bg-[#1f1f1f] transition-colors"
             >
               Testar grátis
             </Link>
