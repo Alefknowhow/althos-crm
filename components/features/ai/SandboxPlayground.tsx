@@ -161,7 +161,7 @@ export default function SandboxPlayground({
     const res = await createSandboxSession(orgSlug)
     if (res.ok) {
       startTransition(() =>
-        router.push(`/app/${orgSlug}/atendente-ia/teste?session=${res.sessionId}`),
+        router.push(`/app/${orgSlug}/configuracoes/agente-ia?tab=testar&session=${res.sessionId}`),
       )
     } else {
       toast.error(res.error || 'Erro')
@@ -174,7 +174,7 @@ export default function SandboxPlayground({
       toast.success('Removida')
       // If deleted active, navigate away.
       if (sessionId === activeSessionId) {
-        startTransition(() => router.push(`/app/${orgSlug}/atendente-ia/teste`))
+        startTransition(() => router.push(`/app/${orgSlug}/configuracoes/agente-ia?tab=testar`))
       } else {
         router.refresh()
       }
@@ -184,15 +184,15 @@ export default function SandboxPlayground({
   }
 
   return (
-    <div className="-m-6 h-[calc(100vh-4rem)] flex">
+    <div className="h-full flex">
       {/* Sidebar with sessions */}
       <aside className={`w-full md:w-72 border-r bg-muted/20 flex-col ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`}>
         <div className="p-4 border-b">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <h2 className="font-semibold text-sm">Playground IA</h2>
+            <h2 className="font-semibold text-sm">Testar Agente</h2>
             <div className="flex items-center gap-1">
               <Link
-                href={`/app/${orgSlug}/configuracoes/atendente-ia`}
+                href={`/app/${orgSlug}/configuracoes/agente-ia`}
                 className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 p-1"
               >
                 <Settings className="w-3.5 h-3.5" />
@@ -231,7 +231,7 @@ export default function SandboxPlayground({
                   }`}
                 >
                   <Link
-                    href={`/app/${orgSlug}/atendente-ia/teste?session=${s.id}`}
+                    href={`/app/${orgSlug}/configuracoes/agente-ia?tab=testar&session=${s.id}`}
                     onClick={() => setMobileView('chat')}
                     className="flex-1 px-2 py-2 min-w-0"
                   >
@@ -294,7 +294,7 @@ export default function SandboxPlayground({
               <Bot className="w-4 h-4" />
             </div>
             <div>
-              <div className="font-medium text-sm">Atendente IA — Sandbox</div>
+              <div className="font-medium text-sm">Agente IA — Testar</div>
               <div className="text-[11px] text-muted-foreground">
                 Mensagens aqui NÃO enviam para WhatsApp e NÃO criam leads. É só pra testar a persona.
               </div>
