@@ -78,7 +78,7 @@ export default async function VendasClientesTab({ ctx }: { ctx: WidgetCtx }) {
             help="Clientes com mais compras registradas no período."
             icon={Crown}
             rows={MOCK_TOP_CUSTOMERS}
-            color="#f59e0b"
+            color="#f1c21b"
           />
         </div>
       </div>

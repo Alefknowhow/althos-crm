@@ -1,17 +1,29 @@
-import { getOrgGeneral, getAccountOrganizations } from '@/actions/organization'
+import { getOrgGeneral, getAccountOrganizations, getMonthlyRevenueGoal } from '@/actions/organization'
 import { getTeamData } from '@/actions/team'
+import { getCurrentOrganization } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
 import GeneralTab from '@/components/features/GeneralTab'
+import CompanyBrandingCard from '@/components/features/CompanyBrandingCard'
 import OrganizationsClient from './organizacoes/OrganizationsClient'
 import SettingsTabsNav from './SettingsTabsNav'
 
 export default async function SettingsPage({ params }: { params: { orgSlug: string } }) {
   // Niche is account-level; getOrgGeneral reads the authoritative account value
   // and enforces access via getCurrentOrganization internally.
-  const [general, organizations, team] = await Promise.all([
+  const [general, organizations, team, org, goalCents] = await Promise.all([
     getOrgGeneral(params.orgSlug),
     getAccountOrganizations(params.orgSlug),
     getTeamData(params.orgSlug),
+    getCurrentOrganization(params.orgSlug),
+    getMonthlyRevenueGoal(params.orgSlug),
   ])
+
+  const supabase = createClient()
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('logo_url')
+    .eq('id', org.id)
+    .maybeSingle()
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -40,6 +52,13 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
           canManage={team.currentUserIsManager}
         />
       </div>
+
+      <CompanyBrandingCard
+        orgSlug={params.orgSlug}
+        orgId={org.id}
+        initialLogoUrl={orgRow?.logo_url ?? null}
+        initialGoalCents={goalCents}
+      />
     </div>
   )
 }

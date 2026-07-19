@@ -79,7 +79,7 @@ export default async function ComercialTab({ ctx }: { ctx: WidgetCtx }) {
             help="Retorno sobre investimento por campanha Meta Ads — depende de vincular venda a campanha."
             icon={Target}
             rows={MOCK_CAMPAIGN_ROAS}
-            color="#0071e3"
+            color="#0f62fe"
           />
         </div>
       </div>

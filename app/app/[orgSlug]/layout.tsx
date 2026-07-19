@@ -2,7 +2,6 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
 import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
-import { PRESET_COLORS } from '@/lib/constants/colors'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
@@ -68,17 +67,8 @@ export default async function OrgLayout({
 
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
-  // Inject saved primary color so it persists on every full page load.
-  // getCurrentOrganization already returns primary_color (SELECT *), so we read
-  // it off the org object directly instead of firing a second round-trip.
-  const savedPreset = PRESET_COLORS.find(c => c.hex === (org as any).primary_color)
-  const primaryCSS  = savedPreset ? `--primary: ${savedPreset.hsl};` : ''
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
-      {primaryCSS && (
-        <style dangerouslySetInnerHTML={{ __html: `:root { ${primaryCSS} }` }} />
-      )}
+    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-plex">
       <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
@@ -89,7 +79,7 @@ export default async function OrgLayout({
           {/* pl-14 on mobile leaves space for the fixed sidebar hamburger
               rendered by SidebarShell. md+ uses normal padding since the
               desktop aside occupies its own column. */}
-          <header className="h-14 border-b border-border bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
+          <header className="h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
               {orgs.length > 1 && (

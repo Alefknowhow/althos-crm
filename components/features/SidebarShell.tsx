@@ -82,7 +82,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
           onClick={() => setOpen(true)}
           aria-label="Abrir menu"
           aria-expanded={open}
-          className="md:hidden fixed top-2.5 left-2.5 z-40 w-10 h-10 inline-flex items-center justify-center rounded-md bg-background/90 backdrop-blur border border-border shadow-sm text-foreground active:scale-95 transition-transform"
+          className="md:hidden fixed top-2.5 left-2.5 z-40 w-10 h-10 inline-flex items-center justify-center rounded-none bg-background border border-border text-foreground"
         >
           <Menu className="w-5 h-5" strokeWidth={1.75} />
         </button>
@@ -110,7 +110,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
 
           {/* Panel */}
           <aside
-            className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col shadow-xl transition-transform duration-200 ease-out"
+            className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-200 ease-out"
             style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
           >
             <button

@@ -2,14 +2,14 @@ import type { MockBarRow } from './MockBarListCard'
 import type { MockSegment } from './MockDonutCard'
 
 export const MOCK_CUSTOMER_SEGMENTS: MockSegment[] = [
-  { label: 'VIP', pct: 18, color: '#f59e0b' },
-  { label: 'Recorrente', pct: 34, color: '#0071e3' },
-  { label: 'Novo', pct: 48, color: '#94a3b8' },
+  { label: 'VIP', pct: 18, color: '#f1c21b' },
+  { label: 'Recorrente', pct: 34, color: '#0f62fe' },
+  { label: 'Novo', pct: 48, color: '#8d8d8d' },
 ]
 
 export const MOCK_NEW_VS_RETURNING: MockSegment[] = [
-  { label: 'Novos clientes', pct: 62, color: '#34c759' },
-  { label: 'Recorrentes', pct: 38, color: '#0071e3' },
+  { label: 'Novos clientes', pct: 62, color: '#24a148' },
+  { label: 'Recorrentes', pct: 38, color: '#0f62fe' },
 ]
 
 export const MOCK_CAMPAIGN_ROAS: MockBarRow[] = [

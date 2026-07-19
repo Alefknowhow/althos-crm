@@ -8,19 +8,11 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
+import { CARBON_CHART_PALETTE } from '@/lib/charts/carbon-theme'
 
 export interface LeadSourcesChartProps {
   data: { name: string; value: number }[]
 }
-
-const APPLE_PALETTE = [
-  '#0071e3', // systemBlue
-  '#34c759', // systemGreen
-  '#ff9500', // systemOrange
-  '#af52de', // systemPurple
-  '#ff3b30', // systemRed
-  '#30b0c7', // systemTeal
-]
 
 export default function LeadSourcesChartInner({ data }: LeadSourcesChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
@@ -51,15 +43,14 @@ export default function LeadSourcesChartInner({ data }: LeadSourcesChartProps) {
             stroke="none"
           >
             {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={APPLE_PALETTE[index % APPLE_PALETTE.length]} />
+              <Cell key={`cell-${index}`} fill={CARBON_CHART_PALETTE[index % CARBON_CHART_PALETTE.length]} />
             ))}
           </Pie>
           <Tooltip
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
-              borderRadius: '12px',
+              borderRadius: '0px',
               border: '1px solid hsl(var(--border))',
-              boxShadow: '0 12px 32px -4px rgba(0,0,0,0.12), 0 4px 12px -2px rgba(0,0,0,0.06)',
               fontSize: '12px',
               padding: '8px 10px',
               color: 'hsl(var(--foreground))',

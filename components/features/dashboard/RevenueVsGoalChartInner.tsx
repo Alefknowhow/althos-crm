@@ -37,8 +37,8 @@ export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVs
         <AreaChart data={data} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
           <defs>
             <linearGradient id="revenue-goal-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#0071e3" stopOpacity={0.28} />
-              <stop offset="95%" stopColor="#0071e3" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="#0f62fe" stopOpacity={0.28} />
+              <stop offset="95%" stopColor="#0f62fe" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
@@ -63,7 +63,7 @@ export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVs
             cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
-              borderRadius: '12px',
+              borderRadius: '0px',
               border: '1px solid hsl(var(--border))',
               fontSize: '12px',
               padding: '10px 12px',
@@ -75,7 +75,7 @@ export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVs
           <Area
             type="monotone"
             dataKey="value_cents"
-            stroke="#0071e3"
+            stroke="#0f62fe"
             strokeWidth={2.25}
             fill="url(#revenue-goal-grad)"
             dot={false}
@@ -84,10 +84,10 @@ export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVs
           {goalCents != null && goalCents > 0 && (
             <ReferenceLine
               y={goalCents}
-              stroke="#f59e0b"
+              stroke="#8a3ffc"
               strokeWidth={2}
               strokeDasharray="6 4"
-              label={{ value: `Meta: ${fmtCurrency(goalCents)}`, position: 'insideTopRight', fontSize: 11, fill: '#f59e0b' }}
+              label={{ value: `Meta: ${fmtCurrency(goalCents)}`, position: 'insideTopRight', fontSize: 11, fill: '#8a3ffc' }}
             />
           )}
         </AreaChart>

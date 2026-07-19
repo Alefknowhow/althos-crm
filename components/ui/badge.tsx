@@ -4,7 +4,9 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tracking-apple-snug transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background",
+  // Badges/status pills are the one place Carbon still allows a fully
+  // rounded shape — every other surface (button/card/input) stays flat.
+  "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-xs font-medium tracking-apple-snug transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background",
   {
     variants: {
       variant: {

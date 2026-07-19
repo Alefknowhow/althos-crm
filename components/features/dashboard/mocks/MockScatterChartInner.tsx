@@ -35,7 +35,7 @@ export default function MockScatterChartInner({ points }: { points: MockScatterP
             cursor={{ strokeDasharray: '3 3' }}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
-              borderRadius: '12px',
+              borderRadius: '0px',
               border: '1px solid hsl(var(--border))',
               fontSize: '12px',
               padding: '10px 12px',
@@ -44,7 +44,7 @@ export default function MockScatterChartInner({ points }: { points: MockScatterP
             formatter={(v: any, n: any) => [v, n]}
             labelFormatter={() => ''}
           />
-          <Scatter data={points} fill="#af52de" fillOpacity={0.7} />
+          <Scatter data={points} fill="#8a3ffc" fillOpacity={0.7} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>

@@ -43,7 +43,7 @@ export default function SidebarUserMenu({ name, email }: Props) {
     <div ref={ref} data-usermenu className="relative">
       {/* Popup menu */}
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-none overflow-hidden z-50">
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-xs font-semibold truncate">{name || 'Usuário'}</p>
             <p className="text-[11px] text-muted-foreground truncate">{email}</p>

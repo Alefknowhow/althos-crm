@@ -54,7 +54,7 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
             help="Percentual de leads atribuídos a cada vendedor que chegaram a um estágio de fechamento."
             icon={UserCheck}
             rows={MOCK_CONVERSION_BY_SELLER}
-            color="#34c759"
+            color="#24a148"
           />
         </div>
         <div className="md:col-span-4">
@@ -63,7 +63,7 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
             help="Percentual de leads atribuídos a cada vendedor que já tiveram alguma interação registrada."
             icon={ListChecks}
             rows={MOCK_ASSIGNED_VS_WORKED}
-            color="#af52de"
+            color="#8a3ffc"
           />
         </div>
       </div>

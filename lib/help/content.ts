@@ -528,13 +528,13 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     articles: [
       {
         slug: 'aparencia',
-        title: 'Aparência e marca',
-        summary: 'Personalize a cor principal da sua organização.',
-        keywords: ['cor', 'tema', 'identidade', 'branding', 'personalização'],
+        title: 'Sua marca no CRM',
+        summary: 'Faça upload da logo da sua organização.',
+        keywords: ['logo', 'identidade', 'branding', 'marca'],
         blocks: [
           {
             type: 'paragraph',
-            text: 'Em Configurações → Aparência você escolhe a cor principal da sua organização entre as opções disponíveis. Ela é aplicada em botões, destaques e elementos de ação em todo o app.',
+            text: 'Em Configurações → Geral → Sua Empresa você faz upload da logo da sua organização. Ela aparece nas propostas e cotações geradas para os seus clientes.',
           },
         ],
       },

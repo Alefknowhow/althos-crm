@@ -115,6 +115,15 @@ const config = {
           'system-ui',
           'sans-serif',
         ],
+        // Scoped to the CRM app shell (app/app/[orgSlug]/layout.tsx) — the
+        // public marketing site keeps the Inter/Apple-esque look, it's a
+        // separate brand surface untouched by the Carbon redesign.
+        plex: [
+          'var(--font-plex)',
+          'IBM Plex Sans',
+          'system-ui',
+          'sans-serif',
+        ],
       },
       letterSpacing: {
         tightest: '-0.04em',
@@ -131,14 +140,9 @@ const config = {
       },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-        'apple-card': '18px',
-      },
-      boxShadow: {
-        'apple-sm': '0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.06)',
-        'apple-md': '0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04)',
-        'apple-lg': '0 12px 32px -4px rgba(0, 0, 0, 0.10), 0 4px 12px -2px rgba(0, 0, 0, 0.05)',
+        md: 'var(--radius)',
+        sm: 'var(--radius)',
+        pill: '9999px',
       },
       keyframes: {
         'accordion-down': {

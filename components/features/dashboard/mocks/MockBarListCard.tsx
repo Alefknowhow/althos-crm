@@ -9,7 +9,7 @@ export default function MockBarListCard({
   help,
   icon: Icon,
   rows,
-  color = '#94a3b8',
+  color = '#8d8d8d',
 }: {
   title: string
   help: string

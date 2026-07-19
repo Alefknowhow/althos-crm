@@ -23,7 +23,7 @@ export default function SidebarNavLink({ href, exact = false, disabled = false, 
     return (
       <span
         aria-disabled
-        className="flex items-center justify-between px-3 py-2 text-sm font-medium tracking-apple-snug rounded-lg text-muted-foreground/60 cursor-not-allowed"
+        className="flex items-center justify-between px-3 py-2 text-sm font-medium tracking-apple-snug rounded-none border-l-2 border-transparent text-muted-foreground/60 cursor-not-allowed"
       >
         {children}
       </span>
@@ -34,10 +34,12 @@ export default function SidebarNavLink({ href, exact = false, disabled = false, 
     <Link
       href={href}
       className={cn(
-        'flex items-center justify-between px-3 py-2 text-sm font-medium tracking-apple-snug rounded-lg transition-colors duration-150 ease-apple',
+        // Carbon side-nav: active state is a 2px blue rule on the leading
+        // edge (the vertical-list analog of an underline), not a filled pill.
+        'flex items-center justify-between px-3 py-2 text-sm font-medium tracking-apple-snug rounded-none border-l-2 transition-colors duration-100',
         isActive
-          ? 'bg-sidebar-accent text-foreground'
-          : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
+          ? 'border-primary bg-sidebar-accent/60 text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40'
       )}
       aria-current={isActive ? 'page' : undefined}
       data-tour={dataTour}

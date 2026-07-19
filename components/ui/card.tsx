@@ -9,7 +9,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border/60 bg-card text-card-foreground shadow-apple-sm transition-shadow duration-300 ease-apple",
+      // Carbon card: flat corners, hairline border, no shadow — elevation
+      // comes from the border, not from a drop shadow.
+      "rounded-none border border-border bg-card text-card-foreground",
       className
     )}
     {...props}

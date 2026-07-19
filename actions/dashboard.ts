@@ -1179,10 +1179,10 @@ export const DASHBOARD_METRICS: {
   color: string
   format: 'number' | 'currency'
 }[] = [
-  { value: 'leads',        label: 'Novos leads',  color: '#0071e3', format: 'number' },
-  { value: 'revenue',      label: 'Receita',      color: '#34c759', format: 'currency' },
-  { value: 'sales',        label: 'Vendas',       color: '#af52de', format: 'number' },
-  { value: 'appointments', label: 'Agendamentos', color: '#ff9500', format: 'number' },
+  { value: 'leads',        label: 'Novos leads',  color: '#0f62fe', format: 'number' },
+  { value: 'revenue',      label: 'Receita',      color: '#24a148', format: 'currency' },
+  { value: 'sales',        label: 'Vendas',       color: '#8a3ffc', format: 'number' },
+  { value: 'appointments', label: 'Agendamentos', color: '#ee5396', format: 'number' },
 ]
 
 export type MetricSeries = {

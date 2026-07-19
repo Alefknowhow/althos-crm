@@ -48,5 +48,5 @@ export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: str
   }, [orgId]) // supabase is stable via ref — not a dependency
 
   if (count === 0) return null
-  return <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1 py-0 shadow-sm">{count}</Badge>
+  return <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1 py-0">{count}</Badge>
 }

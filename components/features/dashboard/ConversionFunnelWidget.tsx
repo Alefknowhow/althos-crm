@@ -207,7 +207,7 @@ export default function ConversionFunnelWidget({
               // the whole stack forms a funnel. A floor keeps small/zero stages
               // wide enough to stay legible.
               const widthPct = Math.max(28, (stage.count / maxCount) * 100)
-              const color = stage.color || '#3b82f6'
+              const color = stage.color || '#0f62fe'
               const showConvBadge = idx > 0
               const isWorrying =
                 showConvBadge && stage.conversion_from_previous > 0 && stage.conversion_from_previous < 30

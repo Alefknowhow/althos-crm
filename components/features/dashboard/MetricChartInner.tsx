@@ -74,9 +74,8 @@ export default function MetricChartInner({ points, color, format, label }: Metri
             cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
-              borderRadius: '12px',
+              borderRadius: '0px',
               border: '1px solid hsl(var(--border))',
-              boxShadow: '0 12px 32px -4px rgba(0,0,0,0.12), 0 4px 12px -2px rgba(0,0,0,0.06)',
               fontSize: '12px',
               padding: '10px 12px',
               color: 'hsl(var(--foreground))',
