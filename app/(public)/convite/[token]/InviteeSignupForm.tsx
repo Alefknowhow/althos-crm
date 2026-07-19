@@ -28,21 +28,27 @@ export default function InviteeSignupForm({
   email: string
   role:  'admin' | 'member'
 }) {
-  const [name,     setName]     = useState('')
-  const [password, setPassword] = useState('')
-  const [showPass, setShowPass] = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [name,      setName]      = useState('')
+  const [phone,     setPhone]     = useState('')
+  const [birthDate, setBirthDate] = useState('')
+  const [address,   setAddress]   = useState('')
+  const [password,  setPassword]  = useState('')
+  const [showPass,  setShowPass]  = useState(false)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
 
-    if (name.trim().length < 2) { setError('Informe seu nome.'); return }
-    if (password.length < 8)    { setError('A senha deve ter pelo menos 8 caracteres.'); return }
+    if (name.trim().length < 2)    { setError('Informe seu nome.'); return }
+    if (phone.trim().length < 8)   { setError('Informe um telefone válido.'); return }
+    if (!birthDate)                { setError('Informe sua data de nascimento.'); return }
+    if (address.trim().length < 5) { setError('Informe seu endereço.'); return }
+    if (password.length < 8)       { setError('A senha deve ter pelo menos 8 caracteres.'); return }
 
     setLoading(true)
-    const res = await acceptInviteAsNewUser(token, name, password)
+    const res = await acceptInviteAsNewUser(token, name, password, phone, birthDate, address)
     if (!res.ok) {
       setError(res.error)
       setLoading(false)
@@ -85,6 +91,46 @@ export default function InviteeSignupForm({
           onChange={e => setName(e.target.value)}
           required
           placeholder="João Silva"
+          className="h-11"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="invitee-phone">Telefone / WhatsApp</Label>
+        <Input
+          id="invitee-phone"
+          type="tel"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          required
+          placeholder="(11) 91234-5678"
+          className="h-11"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="invitee-birth-date">Data de nascimento</Label>
+        <Input
+          id="invitee-birth-date"
+          type="date"
+          value={birthDate}
+          onChange={e => setBirthDate(e.target.value)}
+          required
+          className="h-11"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="invitee-address">Endereço</Label>
+        <Input
+          id="invitee-address"
+          value={address}
+          onChange={e => setAddress(e.target.value)}
+          required
+          placeholder="Rua, número, bairro, cidade"
           className="h-11"
           disabled={loading}
         />

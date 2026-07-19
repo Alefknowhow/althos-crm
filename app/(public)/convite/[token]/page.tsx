@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Building2, CheckCircle2, AlertTriangle, LogIn, XCircle } from 'lucide-react'
 import AcceptButton from './AcceptButton'
 import InviteeSignupForm from './InviteeSignupForm'
+import SwitchAccountButton from './SwitchAccountButton'
 
 export default async function ConvitePage({
   params,
@@ -50,10 +51,14 @@ export default async function ConvitePage({
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    // Not logged in. A brand-new invitee has no password yet, so route them to
-    // a lightweight signup (name + password) instead of a login screen they
-    // can't pass. An existing user just logs in and the invite is accepted.
+  const loggedInAsWrongAccount = !!user && user.email?.toLowerCase() !== inv.email.toLowerCase()
+
+  if (!user || loggedInAsWrongAccount) {
+    // Ninguém logado (ou logado com um e-mail diferente do convidado — ex.:
+    // o convite foi aberto no mesmo navegador de quem enviou o convite).
+    // Um convidado novo ainda não tem senha, então mandamos direto pro
+    // cadastro (nome + senha) em vez de uma tela de login que ele não
+    // consegue passar. Quem já tem conta só faz login e o convite é aceito.
     const status = await getInviteeAccountStatus(params.token)
     const redirectTo = `/convite/${params.token}`
 
@@ -62,9 +67,15 @@ export default async function ConvitePage({
         <InvitePage
           icon={<Building2 className="w-10 h-10 text-primary" />}
           title={`Você foi convidado para ${inv.orgName}`}
-          description="Crie seu acesso para entrar no workspace."
+          description={
+            loggedInAsWrongAccount
+              ? `Este navegador está logado com outra conta. Saia para criar seu acesso com o e-mail ${inv.email}.`
+              : 'Crie seu acesso para entrar no workspace.'
+          }
           action={
-            <InviteeSignupForm token={params.token} email={inv.email} role={inv.role} />
+            loggedInAsWrongAccount
+              ? <SwitchAccountButton />
+              : <InviteeSignupForm token={params.token} email={inv.email} role={inv.role} />
           }
         />
       )
@@ -74,14 +85,22 @@ export default async function ConvitePage({
       <InvitePage
         icon={<Building2 className="w-10 h-10 text-primary" />}
         title={`Você foi convidado para ${inv.orgName}`}
-        description={`Faça login com o e-mail ${inv.email} para aceitar o convite.`}
+        description={
+          loggedInAsWrongAccount
+            ? `Este navegador está logado com outra conta. Saia e faça login com o e-mail ${inv.email} para aceitar o convite.`
+            : `Faça login com o e-mail ${inv.email} para aceitar o convite.`
+        }
         action={
-          <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`}>
-            <Button className="w-full gap-2">
-              <LogIn className="w-4 h-4" />
-              Fazer login para aceitar
-            </Button>
-          </Link>
+          loggedInAsWrongAccount
+            ? <SwitchAccountButton />
+            : (
+              <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`}>
+                <Button className="w-full gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Fazer login para aceitar
+                </Button>
+              </Link>
+            )
         }
       />
     )

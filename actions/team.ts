@@ -725,11 +725,24 @@ export async function getInviteeAccountStatus(
  * come from the invitation. Possession of the invite token proves ownership of
  * the e-mail, so the account is created already-confirmed (no second e-mail).
  */
-export async function acceptInviteAsNewUser(token: string, name: string, password: string) {
+export async function acceptInviteAsNewUser(
+  token: string,
+  name: string,
+  password: string,
+  phone: string,
+  birthDate: string,
+  address: string,
+) {
   const admin = createAdminClient()
 
-  const cleanName = name.trim()
+  const cleanName    = name.trim()
+  const cleanPhone   = phone.trim()
+  const cleanBirth   = birthDate.trim()
+  const cleanAddress = address.trim()
   if (cleanName.length < 2) return { ok: false as const, error: 'Informe seu nome.' }
+  if (cleanPhone.length < 8) return { ok: false as const, error: 'Informe um telefone válido.' }
+  if (!cleanBirth) return { ok: false as const, error: 'Informe sua data de nascimento.' }
+  if (cleanAddress.length < 5) return { ok: false as const, error: 'Informe seu endereço.' }
   if ((password ?? '').length < 8) {
     return { ok: false as const, error: 'A senha deve ter pelo menos 8 caracteres.' }
   }
@@ -760,7 +773,7 @@ export async function acceptInviteAsNewUser(token: string, name: string, passwor
     email:         inv.email,
     password,
     email_confirm: true,
-    user_metadata: { name: cleanName },
+    user_metadata: { name: cleanName, phone: cleanPhone, birth_date: cleanBirth, address: cleanAddress },
   })
   if (createErr || !created?.user) {
     return { ok: false as const, error: createErr?.message ?? 'Erro ao criar a conta.' }

@@ -42,6 +42,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/sitemap.xml' ||     // SEO: sitemap
     pathname === '/blog' ||            // marketing: blog index
     pathname.startsWith('/blog/')   ||  // marketing: blog posts
+    pathname.startsWith('/convite/') ||  // team invite acceptance (invitee has no account/session yet)
+    pathname.startsWith('/invite/')  ||  // referral/plan invite (same — pre-signup, no session yet)
     pathname.startsWith('/auth/')    ||  // auth callbacks (email confirm, OAuth)
     pathname.startsWith('/f/')       ||  // public forms
     pathname.startsWith('/book/')    ||  // public booking pages
