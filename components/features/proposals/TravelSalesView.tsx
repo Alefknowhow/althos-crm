@@ -32,11 +32,12 @@ import {
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
+import VoucherAutofillDialog from '@/components/features/reservas/VoucherAutofillDialog'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet,
+  Ban, Wallet, Sparkles, FileBadge,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -507,7 +508,12 @@ function SaleEditor({
   const [uploading, setUploading] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
+  const [voucherAutofillOpen, setVoucherAutofillOpen] = useState(false)
   const router = useRouter()
+
+  function handleVoucherAutofillApply(patch: Record<string, any>, voucher: { url: string; name: string } | null) {
+    setS(prev => ({ ...prev, ...patch, ...(voucher ? { vouchers: [...(Array.isArray(prev.vouchers) ? prev.vouchers : []), voucher] } : {}) }))
+  }
 
   function toggleIncluded(key: string) {
     set('included_items', included.includes(key)
@@ -585,6 +591,14 @@ function SaleEditor({
                 <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => setVoucherAutofillOpen(true)} title="Preencher com voucher" aria-label="Preencher com voucher">
+              <Sparkles className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Preencher com voucher</span>
+            </Button>
+            <a href={`/app/${orgSlug}/reservas/${s.id}/voucher`} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" title="Gerar voucher" aria-label="Gerar voucher">
+                <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
+              </Button>
+            </a>
             {s.status !== 'cancelled' && (
               <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
                 <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
@@ -812,6 +826,13 @@ function SaleEditor({
           onApplied={() => router.refresh()}
         />
       )}
+
+      <VoucherAutofillDialog
+        orgSlug={orgSlug}
+        open={voucherAutofillOpen}
+        onOpenChange={setVoucherAutofillOpen}
+        onApply={handleVoucherAutofillApply}
+      />
     </div>
   )
 }
