@@ -15,6 +15,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
@@ -24,11 +27,12 @@ import {
   uploadFinancialAttachment, deleteFinancialAttachment, getFinancialAttachmentUrl,
   type FinancialEntryRow,
 } from '@/actions/financial'
+import { createFinancialSetting, type FinancialSettingType, type FinancialSettingRow } from '@/actions/financial-settings'
 import FinancialCsvImporter from './FinancialCsvImporter'
 import { toast } from 'sonner'
 import {
   Wallet, Plus, Trash2, ArrowLeft, Search, Save, Sparkles, Upload, Paperclip, FileIcon,
-  ImageIcon, X, Loader2, TrendingUp, TrendingDown,
+  ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown,
 } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
@@ -59,11 +63,68 @@ function Field({ label, children }: { label: React.ReactNode; children: React.Re
   return <div className="space-y-1"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>
 }
 
+/** Select alimentado pelas listas cadastradas em Configurações (sem digitação livre). */
+function SettingSelect({
+  value, onChange, options, placeholder = 'Selecione…', required,
+}: {
+  value: string | null | undefined
+  onChange: (v: string | null) => void
+  options: string[]
+  placeholder?: string
+  required?: boolean
+}) {
+  return (
+    <Select value={value || '__none__'} onValueChange={v => onChange(v === '__none__' ? null : v)}>
+      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent>
+        {!required && <SelectItem value="__none__">— Nenhuma —</SelectItem>}
+        {options.length === 0 && <SelectItem value="__empty__" disabled>Nenhum item cadastrado</SelectItem>}
+        {options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/** Junta as opções cadastradas com um valor avulso ainda não cadastrado (ex.: sugestão de IA), pra não sumir da tela até o próximo refresh. */
+function withExtra(options: FinancialSettingRow[], extra?: string | null): string[] {
+  const names = options.map(o => o.name)
+  if (extra && !names.some(n => n.toLowerCase() === extra.toLowerCase())) names.unshift(extra)
+  return names
+}
+
+const STATUS_ICON_VARIANT: Record<string, 'warning' | 'success' | 'destructive' | 'outline'> = STATUS_VARIANT
+
+function StatusQuickMenu({ status, onChange }: { status: string; onChange: (s: string) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={e => e.stopPropagation()}
+          className="shrink-0"
+          aria-label="Trocar status"
+          title="Trocar status"
+        >
+          <Badge variant={STATUS_ICON_VARIANT[status]} className="text-[10px] px-1.5 py-0 gap-0.5 cursor-pointer hover:opacity-80">
+            {STATUS_LABELS[status]} <ChevronDown className="w-2.5 h-2.5" />
+          </Badge>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+        {Object.entries(STATUS_LABELS).map(([k, l]) => (
+          <DropdownMenuItem key={k} onClick={() => onChange(k)}>{l}</DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export default function FinancialEntriesView({
-  orgSlug, entries, initialSelectedId,
+  orgSlug, entries, settings, initialSelectedId,
 }: {
   orgSlug: string
   entries: FinancialEntryRow[]
+  settings: Record<FinancialSettingType, FinancialSettingRow[]>
   initialSelectedId?: string | null
 }) {
   const router = useRouter()
@@ -113,6 +174,12 @@ export default function FinancialEntriesView({
     router.refresh()
   }
 
+  async function handleQuickStatus(id: string, status: string) {
+    const res = await updateFinancialEntry(orgSlug, id, { status })
+    if (res.ok) { toast.success('Status atualizado'); router.refresh() }
+    else toast.error(res.error)
+  }
+
   if (entries.length === 0) {
     return (
       <>
@@ -129,7 +196,7 @@ export default function FinancialEntriesView({
           title="Nenhum lançamento financeiro ainda"
           description="Registre manualmente com 'Novo lançamento' ou importe um extrato bancário em CSV."
         />
-        <NewEntryDialog orgSlug={orgSlug} open={newOpen} onOpenChange={setNewOpen} creating={creating} setCreating={setCreating} onCreated={id => { setNewOpen(false); setSelectedId(id); router.refresh() }} />
+        <NewEntryDialog orgSlug={orgSlug} settings={settings} open={newOpen} onOpenChange={setNewOpen} creating={creating} setCreating={setCreating} onCreated={id => { setNewOpen(false); setSelectedId(id); router.refresh() }} />
         <FinancialCsvImporter orgSlug={orgSlug} open={csvOpen} onOpenChange={setCsvOpen} />
       </>
     )
@@ -137,36 +204,34 @@ export default function FinancialEntriesView({
 
   return (
     <>
-      <div className="flex flex-col gap-2 mb-4">
-        <div className="relative w-full">
+      {/* Filtros — tudo numa linha só (encolhe/quebra no mobile). */}
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por categoria, operadora, observações…" className="pl-8 h-9" />
+          <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar…" className="pl-8 h-9" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Select value={tipoFilter} onValueChange={v => setTipoFilter(v as any)}>
-            <SelectTrigger className="h-9 text-xs w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Receita e despesa</SelectItem>
-              <SelectItem value="receita">Só receitas</SelectItem>
-              <SelectItem value="despesa">Só despesas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 text-xs w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {Object.entries(STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <div className="flex-1" />
-          <Button variant="outline" size="sm" className="h-9" onClick={() => setCsvOpen(true)}>
-            <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar CSV</span>
-          </Button>
-          <Button size="sm" className="h-9" onClick={() => setNewOpen(true)}>
-            <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo lançamento</span>
-          </Button>
-        </div>
+        <Select value={tipoFilter} onValueChange={v => setTipoFilter(v as any)}>
+          <SelectTrigger className="h-9 text-xs w-[130px] shrink-0"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Receita e despesa</SelectItem>
+            <SelectItem value="receita">Só receitas</SelectItem>
+            <SelectItem value="despesa">Só despesas</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-9 text-xs w-[130px] shrink-0"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            {Object.entries(STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setCsvOpen(true)}>
+          <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar CSV</span>
+        </Button>
+        <Button size="sm" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setNewOpen(true)}>
+          <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo lançamento</span>
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {entries.length} lançamento(s)</p>
@@ -178,11 +243,13 @@ export default function FinancialEntriesView({
           ) : filtered.map(e => {
             const active = e.id === selectedId
             return (
-              <button
+              <div
                 key={e.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedId(e.id)}
-                className={cn('w-full text-left p-3 transition-colors', FOCUS_RING, active ? 'bg-primary/5' : 'hover:bg-muted/50')}
+                onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') setSelectedId(e.id) }}
+                className={cn('w-full text-left p-3 transition-colors cursor-pointer', FOCUS_RING, active ? 'bg-primary/5' : 'hover:bg-muted/50')}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium text-sm leading-tight truncate flex items-center gap-1.5">
@@ -191,7 +258,7 @@ export default function FinancialEntriesView({
                       : <TrendingDown className="w-3.5 h-3.5 text-destructive shrink-0" />}
                     {e.categoria}
                   </span>
-                  <Badge variant={STATUS_VARIANT[e.status]} className="shrink-0 text-[10px] px-1.5 py-0">{STATUS_LABELS[e.status]}</Badge>
+                  <StatusQuickMenu status={e.status} onChange={s => handleQuickStatus(e.id, s)} />
                 </div>
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   <span className={cn('text-xs font-semibold tabular-nums', e.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
@@ -199,7 +266,7 @@ export default function FinancialEntriesView({
                   </span>
                   <span className="text-[11px] text-muted-foreground">{fmtDate(e.competencia)}</span>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -210,6 +277,7 @@ export default function FinancialEntriesView({
                 key={selected.id}
                 orgSlug={orgSlug}
                 entry={selected}
+                settings={settings}
                 saving={saving}
                 onBack={() => setSelectedId(null)}
                 onDelete={() => setDeleteId(selected.id)}
@@ -224,7 +292,7 @@ export default function FinancialEntriesView({
         </div>
       </div>
 
-      <NewEntryDialog orgSlug={orgSlug} open={newOpen} onOpenChange={setNewOpen} creating={creating} setCreating={setCreating} onCreated={id => { setNewOpen(false); setSelectedId(id); router.refresh() }} />
+      <NewEntryDialog orgSlug={orgSlug} settings={settings} open={newOpen} onOpenChange={setNewOpen} creating={creating} setCreating={setCreating} onCreated={id => { setNewOpen(false); setSelectedId(id); router.refresh() }} />
       <FinancialCsvImporter orgSlug={orgSlug} open={csvOpen} onOpenChange={setCsvOpen} />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
@@ -272,17 +340,20 @@ function TipoToggle({ value, onChange }: { value: 'receita' | 'despesa'; onChang
 }
 
 function NewEntryDialog({
-  orgSlug, open, onOpenChange, creating, setCreating, onCreated,
+  orgSlug, settings, open, onOpenChange, creating, setCreating, onCreated,
 }: {
   orgSlug: string
+  settings: Record<FinancialSettingType, FinancialSettingRow[]>
   open: boolean
   onOpenChange: (o: boolean) => void
   creating: boolean
   setCreating: (b: boolean) => void
   onCreated: (id: string) => void
 }) {
+  const router = useRouter()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
-  const [categoria, setCategoria] = useState('')
+  const [categoria, setCategoria] = useState<string | null>(null)
+  const [extraCategoria, setExtraCategoria] = useState<string | null>(null)
   const [valorCents, setValorCents] = useState(0)
   const [competencia, setCompetencia] = useState(() => new Date().toISOString().slice(0, 10))
   const [vencimento, setVencimento] = useState('')
@@ -290,7 +361,7 @@ function NewEntryDialog({
   const [suggesting, setSuggesting] = useState(false)
 
   function reset() {
-    setTipo('despesa'); setCategoria(''); setValorCents(0)
+    setTipo('despesa'); setCategoria(null); setExtraCategoria(null); setValorCents(0)
     setCompetencia(new Date().toISOString().slice(0, 10)); setVencimento(''); setObservacoes('')
   }
 
@@ -299,12 +370,17 @@ function NewEntryDialog({
     setSuggesting(true)
     const res = await suggestCategoryForEntry(orgSlug, { descricao: observacoes, tipo })
     setSuggesting(false)
-    if (res.ok) setCategoria(res.categoria)
-    else toast.error(res.error)
+    if (!res.ok) { toast.error(res.error); return }
+    setCategoria(res.categoria)
+    if (!settings.categoria.some(c => c.name.toLowerCase() === res.categoria.toLowerCase())) {
+      setExtraCategoria(res.categoria)
+      const created = await createFinancialSetting(orgSlug, 'categoria', res.categoria)
+      if (created.ok) router.refresh()
+    }
   }
 
   async function handleCreate() {
-    if (!categoria.trim()) { toast.error('Informe a categoria.'); return }
+    if (!categoria?.trim()) { toast.error('Informe a categoria.'); return }
     if (!valorCents) { toast.error('Informe o valor.'); return }
     setCreating(true)
     const res = await createFinancialEntry(orgSlug, {
@@ -342,7 +418,7 @@ function NewEntryDialog({
                   <Sparkles className="w-3 h-3" /> {suggesting ? 'Sugerindo…' : 'Sugerir com IA'}
                 </button>
               </Label>
-              <Input value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Ex.: Comissão, Marketing, Passagens…" />
+              <SettingSelect value={categoria} onChange={setCategoria} options={withExtra(settings.categoria, extraCategoria)} required placeholder="Selecione a categoria" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Valor <span className="text-destructive">*</span></Label>
@@ -369,17 +445,20 @@ function NewEntryDialog({
 }
 
 function EntryEditor({
-  orgSlug, entry, saving, onSave, onBack, onDelete,
+  orgSlug, entry, settings, saving, onSave, onBack, onDelete,
 }: {
   orgSlug: string
   entry: FinancialEntryRow
+  settings: Record<FinancialSettingType, FinancialSettingRow[]>
   saving: boolean
   onSave: (patch: Record<string, any>) => void
   onBack: () => void
   onDelete: () => void
 }) {
+  const router = useRouter()
   const [e, setE] = useState<FinancialEntryRow>(entry)
   const set = (k: keyof FinancialEntryRow, v: any) => setE(prev => ({ ...prev, [k]: v }))
+  const [extraCategoria, setExtraCategoria] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
@@ -396,8 +475,13 @@ function EntryEditor({
     setSuggesting(true)
     const res = await suggestCategoryForEntry(orgSlug, { descricao: e.observacoes, tipo: e.tipo })
     setSuggesting(false)
-    if (res.ok) set('categoria', res.categoria)
-    else toast.error(res.error)
+    if (!res.ok) { toast.error(res.error); return }
+    set('categoria', res.categoria)
+    if (!settings.categoria.some(c => c.name.toLowerCase() === res.categoria.toLowerCase())) {
+      setExtraCategoria(res.categoria)
+      const created = await createFinancialSetting(orgSlug, 'categoria', res.categoria)
+      if (created.ok) router.refresh()
+    }
   }
 
   async function handleFiles(files: FileList | null) {
@@ -461,17 +545,27 @@ function EntryEditor({
             <button type="button" onClick={handleSuggest} disabled={suggesting} className="text-primary hover:underline inline-flex items-center gap-1 text-[11px] font-normal">
               <Sparkles className="w-3 h-3" /> {suggesting ? 'Sugerindo…' : 'Sugerir com IA'}
             </button></span>}>
-            <Input value={e.categoria || ''} onChange={ev => set('categoria', ev.target.value)} />
+            <SettingSelect value={e.categoria} onChange={v => set('categoria', v)} options={withExtra(settings.categoria, extraCategoria)} required placeholder="Selecione a categoria" />
           </Field>
-          <Field label="Subcategoria"><Input value={e.subcategoria || ''} onChange={ev => set('subcategoria', ev.target.value)} /></Field>
-          <Field label="Centro de custo"><Input value={e.centro_custo || ''} onChange={ev => set('centro_custo', ev.target.value)} /></Field>
+          <Field label="Subcategoria">
+            <SettingSelect value={e.subcategoria} onChange={v => set('subcategoria', v)} options={withExtra(settings.subcategoria, e.subcategoria)} />
+          </Field>
+          <Field label="Centro de custo">
+            <SettingSelect value={e.centro_custo} onChange={v => set('centro_custo', v)} options={withExtra(settings.centro_custo, e.centro_custo)} />
+          </Field>
           <Field label="Valor"><MoneyInput value={e.valor_cents} onChange={c => set('valor_cents', c)} /></Field>
           <Field label="Competência"><Input type="date" value={e.competencia || ''} onChange={ev => set('competencia', ev.target.value)} /></Field>
           <Field label="Vencimento"><Input type="date" value={e.vencimento || ''} onChange={ev => set('vencimento', ev.target.value)} /></Field>
           <Field label="Data de pagamento"><Input type="date" value={e.data_pagamento || ''} onChange={ev => set('data_pagamento', ev.target.value)} /></Field>
-          <Field label="Conta bancária"><Input value={e.conta_bancaria || ''} onChange={ev => set('conta_bancaria', ev.target.value)} /></Field>
-          <Field label="Forma de pagamento"><Input value={e.forma_pagamento || ''} onChange={ev => set('forma_pagamento', ev.target.value)} placeholder="Pix, Cartão, Boleto…" /></Field>
-          <Field label="Operadora"><Input value={e.operadora || ''} onChange={ev => set('operadora', ev.target.value)} /></Field>
+          <Field label="Conta bancária">
+            <SettingSelect value={e.conta_bancaria} onChange={v => set('conta_bancaria', v)} options={withExtra(settings.conta_bancaria, e.conta_bancaria)} />
+          </Field>
+          <Field label="Forma de pagamento">
+            <SettingSelect value={e.forma_pagamento} onChange={v => set('forma_pagamento', v)} options={withExtra(settings.forma_pagamento, e.forma_pagamento)} />
+          </Field>
+          <Field label="Operadora">
+            <SettingSelect value={e.operadora} onChange={v => set('operadora', v)} options={withExtra(settings.operadora, e.operadora)} />
+          </Field>
           <Field label="Status">
             <Select value={e.status} onValueChange={v => set('status', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>

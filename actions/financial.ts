@@ -30,6 +30,21 @@ export type FinancialEntryRow = {
   updated_at: string
 }
 
+/**
+ * "Vencido" não é um status gravado por um cron — é derivado na leitura:
+ * um lançamento pendente cujo vencimento já passou aparece como vencido
+ * pra quem consulta, sem precisar de job agendado. Se o usuário salvar o
+ * lançamento nesse estado (mesmo sem mudar nada), o valor computado é
+ * persistido normalmente via updateFinancialEntry.
+ */
+function withEffectiveStatus<T extends { status: FinancialEntryRow['status']; vencimento: string | null }>(entry: T): T {
+  if (entry.status === 'pendente' && entry.vencimento) {
+    const today = new Date().toISOString().slice(0, 10)
+    if (entry.vencimento < today) return { ...entry, status: 'vencido' }
+  }
+  return entry
+}
+
 const WRITABLE = [
   'tipo', 'categoria', 'subcategoria', 'centro_custo', 'conta_bancaria', 'forma_pagamento',
   'valor_cents', 'competencia', 'vencimento', 'data_pagamento', 'status',
@@ -65,13 +80,21 @@ export async function listFinancialEntries(
 
   if (filters?.tipo) query = query.eq('tipo', filters.tipo)
   if (filters?.categoria) query = query.eq('categoria', filters.categoria)
-  if (filters?.status) query = query.eq('status', filters.status)
   if (filters?.contatoId) query = query.eq('contato_id', filters.contatoId)
   if (filters?.from) query = query.gte('competencia', filters.from)
   if (filters?.to) query = query.lte('competencia', filters.to)
 
+  const today = new Date().toISOString().slice(0, 10)
+  if (filters?.status === 'vencido') {
+    query = query.or(`status.eq.vencido,and(status.eq.pendente,vencimento.lt.${today})`)
+  } else if (filters?.status === 'pendente') {
+    query = query.eq('status', 'pendente').or(`vencimento.is.null,vencimento.gte.${today}`)
+  } else if (filters?.status) {
+    query = query.eq('status', filters.status)
+  }
+
   const { data } = await query.order('competencia', { ascending: false }).limit(1000)
-  return (data as FinancialEntryRow[]) ?? []
+  return ((data as FinancialEntryRow[]) ?? []).map(withEffectiveStatus)
 }
 
 export async function getFinancialEntry(orgSlug: string, id: string): Promise<FinancialEntryRow | null> {
@@ -83,7 +106,7 @@ export async function getFinancialEntry(orgSlug: string, id: string): Promise<Fi
     .eq('organization_id', org.id)
     .eq('id', id)
     .maybeSingle()
-  return (data as FinancialEntryRow) ?? null
+  return data ? withEffectiveStatus(data as FinancialEntryRow) : null
 }
 
 export async function createFinancialEntry(orgSlug: string, input: Record<string, any>) {
@@ -114,7 +137,7 @@ export async function createFinancialEntry(orgSlug: string, input: Record<string
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar lançamento' }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)
-  return { ok: true as const, data: data as FinancialEntryRow }
+  return { ok: true as const, data: withEffectiveStatus(data as FinancialEntryRow) }
 }
 
 export async function updateFinancialEntry(orgSlug: string, id: string, input: Record<string, any>) {
@@ -135,7 +158,7 @@ export async function updateFinancialEntry(orgSlug: string, id: string, input: R
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao salvar lançamento' }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)
-  return { ok: true as const, data: data as FinancialEntryRow }
+  return { ok: true as const, data: withEffectiveStatus(data as FinancialEntryRow) }
 }
 
 export async function deleteFinancialEntry(orgSlug: string, id: string) {
@@ -489,4 +512,81 @@ export async function getSimpleDRE(
   const despesas_total_cents = despesas_por_categoria.reduce((a, d) => a + d.valor_cents, 0)
 
   return { receita_total_cents, despesas_por_categoria, resultado_cents: receita_total_cents - despesas_total_cents }
+}
+
+export async function getDailyCashFlow(
+  orgSlug: string,
+  range: { from: string; to: string },
+): Promise<{ day: string; receitas_cents: number; despesas_cents: number; saldo_cents: number }[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('financial_entries')
+    .select('tipo, valor_cents, competencia')
+    .eq('organization_id', org.id)
+    .neq('status', 'cancelado')
+    .gte('competencia', range.from)
+    .lte('competencia', range.to)
+
+  const buckets = new Map<string, { receitas_cents: number; despesas_cents: number }>()
+  const start = new Date(range.from + 'T12:00:00')
+  const end = new Date(range.to + 'T12:00:00')
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    buckets.set(d.toISOString().slice(0, 10), { receitas_cents: 0, despesas_cents: 0 })
+  }
+
+  for (const row of data || []) {
+    const bucket = buckets.get(row.competencia)
+    if (!bucket) continue
+    if (row.tipo === 'receita') bucket.receitas_cents += row.valor_cents
+    else bucket.despesas_cents += row.valor_cents
+  }
+
+  let running = 0
+  return Array.from(buckets.entries()).map(([day, v]) => {
+    running += v.receitas_cents - v.despesas_cents
+    return { day, ...v, saldo_cents: running }
+  })
+}
+
+export type UpcomingDueEntry = {
+  id: string
+  tipo: 'receita' | 'despesa'
+  categoria: string
+  valor_cents: number
+  vencimento: string
+  status: FinancialEntryRow['status']
+}
+
+export async function getUpcomingDueEntries(orgSlug: string, days = 30): Promise<UpcomingDueEntry[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const today = new Date()
+  const limit = new Date(today)
+  limit.setDate(limit.getDate() + days)
+
+  const { data } = await supabase
+    .from('financial_entries')
+    .select('id, tipo, categoria, valor_cents, vencimento, status')
+    .eq('organization_id', org.id)
+    .in('status', ['pendente', 'vencido'])
+    .not('vencimento', 'is', null)
+    .lte('vencimento', limit.toISOString().slice(0, 10))
+    .order('vencimento', { ascending: true })
+    .limit(50)
+
+  return ((data as UpcomingDueEntry[]) ?? []).map(e => withEffectiveStatus(e as any)) as UpcomingDueEntry[]
+}
+
+export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue] = await Promise.all([
+    getFinancialSummary(orgSlug, range),
+    getCashFlowSeries(orgSlug, 6),
+    getDailyCashFlow(orgSlug, range),
+    getExpensesByCategory(orgSlug, range),
+    getSimpleDRE(orgSlug, range),
+    getUpcomingDueEntries(orgSlug),
+  ])
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue }
 }
