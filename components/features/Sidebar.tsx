@@ -26,6 +26,7 @@ import {
   PlaneTakeoff,
   Store,
   CalendarClock,
+  Wallet,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -307,6 +308,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
         {/* ── Operações ─────────────────────────────── */}
         <SectionLabel>Operações</SectionLabel>
+
+        {can('financial') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/financeiro`}>
+            <span className="flex items-center gap-2.5">
+              <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Financeiro</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         {can('automations') && (
           <SidebarNavLink href={`${base}/automacoes`}>

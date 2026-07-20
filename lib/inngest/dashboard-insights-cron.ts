@@ -128,6 +128,68 @@ async function detectRevenueChange(admin: ReturnType<typeof createAdminClient>, 
   return null
 }
 
+/**
+ * Variação de despesa por categoria (Financeiro) — mesma janela de 7 dias
+ * dos outros detectores. Compara o total de despesas por categoria da
+ * última semana com a semana anterior e sinaliza a maior variação (ex.:
+ * "gastos com Marketing cresceram 24%"). Orgs sem lançamentos financeiros
+ * (fora do nicho de Agências de Viagens, ou que ainda não usam o módulo)
+ * simplesmente não retornam linhas — sem necessidade de gate por nicho aqui.
+ */
+async function detectExpenseCategoryChange(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+  const now = new Date()
+  const start7 = new Date(now.getTime() - 7 * DAY)
+  const prevStart = new Date(start7.getTime() - 7 * DAY)
+
+  const { data } = await admin
+    .from('financial_entries')
+    .select('categoria, valor_cents, competencia')
+    .eq('organization_id', orgId)
+    .eq('tipo', 'despesa')
+    .neq('status', 'cancelado')
+    .gte('competencia', prevStart.toISOString().slice(0, 10))
+
+  if (!data || data.length === 0) return null
+
+  const last7ByCategory = new Map<string, number>()
+  const prev7ByCategory = new Map<string, number>()
+  const start7Str = start7.toISOString().slice(0, 10)
+
+  for (const row of data) {
+    const bucket = row.competencia >= start7Str ? last7ByCategory : prev7ByCategory
+    bucket.set(row.categoria, (bucket.get(row.categoria) || 0) + row.valor_cents)
+  }
+
+  let best: { categoria: string; change: number; kind: 'risk' | 'opportunity' } | null = null
+  for (const [categoria, prevValue] of Array.from(prev7ByCategory.entries())) {
+    if (prevValue < 5_000) continue // menos de R$50 na semana anterior — sem base de comparação
+    const current = last7ByCategory.get(categoria) || 0
+    const change = ((current - prevValue) / prevValue) * 100
+    if (change >= 30 && (!best || change > best.change)) {
+      best = { categoria, change, kind: 'risk' }
+    } else if (change <= -30 && (!best || Math.abs(change) > Math.abs(best.change))) {
+      best = { categoria, change, kind: 'opportunity' }
+    }
+  }
+
+  if (!best) return null
+  return best.kind === 'risk'
+    ? {
+        kind: 'risk' as const,
+        icon: 'trending-down',
+        text: `Gastos com ${best.categoria} cresceram ${best.change.toFixed(0)}% na última semana.`,
+        deep_link: '/financeiro',
+        score: Math.min(100, best.change),
+      }
+    : {
+        kind: 'opportunity' as const,
+        icon: 'trending-up',
+        text: `Gastos com ${best.categoria} caíram ${Math.abs(best.change).toFixed(0)}% na última semana.`,
+        deep_link: '/financeiro',
+        score: Math.min(100, Math.abs(best.change)),
+      }
+}
+
 export const dashboardInsightsCronFn = inngest.createFunction(
   {
     id: 'dashboard-insights-cron',
@@ -151,6 +213,7 @@ export const dashboardInsightsCronFn = inngest.createFunction(
           detectStaleLeads(admin, org.id),
           detectLeadsChange(admin, org.id),
           detectRevenueChange(admin, org.id),
+          detectExpenseCategoryChange(admin, org.id),
         ])
         const rows = results.filter((r): r is NonNullable<typeof r> => !!r)
 

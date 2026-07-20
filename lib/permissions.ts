@@ -20,6 +20,7 @@ export type PermissionKey =
   | 'automations'
   | 'templates'
   | 'forms'
+  | 'financial'
   | 'settings'
 
 export type Permissions = Partial<Record<PermissionKey, boolean>>
@@ -53,6 +54,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   // Operações
   { key: 'automations',   label: 'Automações',        section: 'Operações' },
   { key: 'templates',     label: 'Templates',         section: 'Operações' },
+  { key: 'financial',     label: 'Financeiro',        section: 'Operações' },
   // Configurações
   { key: 'settings',      label: 'Configurações',     section: 'Configurações' },
 ]
@@ -99,6 +101,7 @@ export function defaultMemberPermissions(): Permissions {
     automations:   false,
     templates:     false,
     forms:         false,
+    financial:     false,
     settings:      false,
   }
 }
