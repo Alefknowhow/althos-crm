@@ -27,6 +27,7 @@ import {
   Store,
   CalendarClock,
   Wallet,
+  FileStack,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -248,6 +249,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Reservas</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/documentos`}>
+            <span className="flex items-center gap-2.5">
+              <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Documentos</span>
             </span>
           </SidebarNavLink>
         )}

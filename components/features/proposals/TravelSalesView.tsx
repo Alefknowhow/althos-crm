@@ -33,11 +33,12 @@ import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import VoucherAutofillDialog from '@/components/features/reservas/VoucherAutofillDialog'
+import SaleChecklist from '@/components/features/reservas/SaleChecklist'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, Sparkles, FileBadge,
+  Ban, Wallet, Sparkles, FileBadge, FileSignature,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -599,6 +600,11 @@ function SaleEditor({
                 <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
               </Button>
             </a>
+            <a href={`/app/${orgSlug}/reservas/${s.id}/contrato`} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" title="Gerar contrato" aria-label="Gerar contrato">
+                <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar contrato</span>
+              </Button>
+            </a>
             {s.status !== 'cancelled' && (
               <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
                 <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
@@ -617,6 +623,8 @@ function SaleEditor({
       </div>
 
       <div className="p-4 space-y-4">
+        <SaleChecklist orgSlug={orgSlug} sale={s} />
+
         {/* Auto-filled (editable) */}
         <div>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Dados da viagem (pré-preenchidos)</p>

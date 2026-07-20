@@ -34,9 +34,20 @@ export type TravelSaleRow = {
   commission_cents: number
   notes: string | null
   tasks_generated_at: string | null
+  contrato_gerado_at: string | null
+  contrato_assinado_at: string | null
+  pagamento_confirmado_at: string | null
+  voucher_entregue_at: string | null
+  documentacao_enviada_at: string | null
+  embarque_realizado_at: string | null
+  posvenda_concluido_at: string | null
   created_at: string
   updated_at: string
 }
+
+export type ChecklistStep =
+  | 'contrato_assinado' | 'pagamento_confirmado' | 'voucher_entregue'
+  | 'documentacao_enviada' | 'embarque_realizado' | 'posvenda_concluido'
 
 const WRITABLE = [
   'status', 'client_name', 'destination', 'departure_date', 'return_date',
@@ -190,6 +201,69 @@ export async function cancelTravelSale(
 
   revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, data: updated as TravelSaleRow, credit: creditResult.data }
+}
+
+/**
+ * Alterna uma etapa do checklist da venda (Contratos Inteligentes). As 8
+ * etapas são fixas — "venda registrada" é sempre `created_at`; "contrato
+ * gerado" é setado por `markContractGenerated` (não por aqui); as 6
+ * restantes são marcáveis/desmarcáveis manualmente pelo usuário.
+ */
+export async function toggleSaleChecklistStep(
+  orgSlug: string,
+  saleId: string,
+  step: ChecklistStep,
+  done: boolean,
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const CHECKLIST_STEPS: ChecklistStep[] = [
+    'contrato_assinado', 'pagamento_confirmado', 'voucher_entregue',
+    'documentacao_enviada', 'embarque_realizado', 'posvenda_concluido',
+  ]
+  if (!CHECKLIST_STEPS.includes(step)) return { ok: false as const, error: 'Etapa inválida.' }
+  const column = `${step}_at`
+
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('travel_sales')
+    .update({ [column]: done ? new Date().toISOString() : null })
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .select()
+    .single()
+
+  if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao atualizar etapa' }
+  revalidatePath(`/app/${orgSlug}/reservas`)
+  return { ok: true as const, data: data as TravelSaleRow }
+}
+
+/**
+ * Marca "contrato gerado" na venda — idempotente (só seta na primeira
+ * vez). Chamado pela rota de impressão do contrato ao carregar.
+ */
+export async function markContractGenerated(orgSlug: string, saleId: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: sale } = await supabase
+    .from('travel_sales')
+    .select('contrato_gerado_at')
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!sale) return
+
+  if (!(sale as any).contrato_gerado_at) {
+    await supabase
+      .from('travel_sales')
+      .update({ contrato_gerado_at: new Date().toISOString() })
+      .eq('id', saleId)
+      .eq('organization_id', org.id)
+  }
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────
