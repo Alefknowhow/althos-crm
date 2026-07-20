@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Activity, Share2, Sparkles, AtSign, Target } from 'lucide-react'
+import { Activity, Share2, Sparkles, AtSign, Target, MapPin } from 'lucide-react'
 import SettingsTabsNav from '../SettingsTabsNav'
 
 type IntegrationItem = {
@@ -71,6 +71,15 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       iconStyle: { background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)', color: '#fff' },
       actionLabel: 'Configurar',
       href: `${base}/social`,
+    },
+    {
+      title: 'Google Meu Negócio',
+      description: 'Avaliações, publicações e indicadores.',
+      detail: 'Conecte o Perfil da Empresa no Google e gerencie avaliações direto do CRM.',
+      icon: MapPin,
+      iconClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      actionLabel: 'Configurar',
+      href: `${base}/google-business`,
     },
   ]
 
