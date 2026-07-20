@@ -6,6 +6,9 @@ import { listProposals, listLeadsForPicker } from '@/actions/travel-proposals'
 import { listOrgMembers } from '@/actions/team'
 import TravelSalesView from '@/components/features/proposals/TravelSalesView'
 import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { FileSignature } from 'lucide-react'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +37,13 @@ export default async function TravelSalesPage({
       <PageHeader
         title="Reservas"
         hint={'Crie uma venda com "Nova venda" (importando uma proposta) ou deixe que ela seja gerada automaticamente quando um lead com proposta é movido para "Fechado". Complete os localizadores e a comissão, depois gere as tarefas operacionais.'}
+        actions={
+          <Link href={`/app/${params.orgSlug}/reservas/contrato-padrao`}>
+            <Button variant="outline" size="sm">
+              <FileSignature className="w-3.5 h-3.5 mr-1.5" /> Configurar contrato padrão
+            </Button>
+          </Link>
+        }
       />
 
       <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} members={members} leads={leads} initialSelectedId={searchParams.sale ?? null} />

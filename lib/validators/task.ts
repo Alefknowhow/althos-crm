@@ -7,4 +7,5 @@ export const taskSchema = z.object({
   priority: z.enum(['low', 'normal', 'high']).optional(),
   contato_id: z.string().uuid().optional().or(z.literal('')),
   assigned_to: z.string().uuid().optional().or(z.literal('')),
+  sale_id: z.string().uuid().optional().or(z.literal('')),
 })

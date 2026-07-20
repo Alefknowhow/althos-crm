@@ -24,6 +24,8 @@ export type ExtractedTravelDocument = {
   seguro: boolean
   valor_total_cents: number | null
   observacoes: string | null
+  informacoes_importantes: string | null
+  informacoes_servico: string | null
 }
 
 const EXTRACT_TOOL: Anthropic.Messages.Tool = {
@@ -57,8 +59,10 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
       seguro: { type: 'boolean', description: 'true se o documento menciona seguro viagem incluso' },
       valor_total_cents: { type: ['integer', 'null'], description: 'Valor total em centavos, se houver um valor monetário no documento' },
       observacoes: { type: ['string', 'null'], description: 'Outras informações relevantes não cobertas pelos campos acima, em 1-2 frases' },
+      informacoes_importantes: { type: ['string', 'null'], description: 'Informações importantes do documento — contatos de emergência, telefone de assistência, como buscar atendimento durante a viagem, etc.' },
+      informacoes_servico: { type: ['string', 'null'], description: 'Informações sobre os serviços contratados — o que está incluso, horários, condições de uso, etc.' },
     },
-    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes'],
+    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico'],
   },
 }
 
@@ -118,5 +122,7 @@ export async function extractTravelDocumentFromFile(
       ? Math.round(Number(parsed.valor_total_cents))
       : null,
     observacoes: typeof parsed.observacoes === 'string' ? parsed.observacoes.slice(0, 600) : null,
+    informacoes_importantes: typeof parsed.informacoes_importantes === 'string' ? parsed.informacoes_importantes.slice(0, 1000) : null,
+    informacoes_servico: typeof parsed.informacoes_servico === 'string' ? parsed.informacoes_servico.slice(0, 1000) : null,
   }
 }

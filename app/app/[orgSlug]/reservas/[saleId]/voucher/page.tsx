@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
 import { isTravelNiche } from '@/lib/niche'
 import { getTravelSale } from '@/actions/travel-sales'
 import VoucherPrintView from '@/components/features/reservas/VoucherPrintView'
@@ -16,9 +17,22 @@ export default async function VoucherPrintPage({
   const sale = await getTravelSale(params.orgSlug, params.saleId)
   if (!sale) notFound()
 
+  let contato: { phone: string | null; email: string | null } | null = null
+  if (sale.contato_id) {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('contatos')
+      .select('phone, email')
+      .eq('id', sale.contato_id)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    contato = data as any
+  }
+
   return (
     <VoucherPrintView
       sale={sale}
+      contato={contato}
       org={{
         name: org.name,
         logo_url: (org as any).logo_url ?? null,

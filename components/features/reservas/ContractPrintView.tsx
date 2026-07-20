@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Printer, ArrowLeft } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
+import AttachSignedContractButton from './AttachSignedContractButton'
 
 type OrgBranding = {
   name: string
@@ -22,19 +23,22 @@ function fmtCurrency(cents: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
-export default function ContractPrintView({ sale, org }: { sale: TravelSaleRow; org: OrgBranding }) {
+export default function ContractPrintView({ sale, org, orgSlug }: { sale: TravelSaleRow; org: OrgBranding; orgSlug: string }) {
   const accent = org.primary_color || '#0f62fe'
   const today = new Date().toLocaleDateString('pt-BR')
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 print:bg-white print:py-0">
-      <div className="max-w-[210mm] mx-auto print:hidden mb-4 px-4 flex items-center justify-between">
-        <a href={`/app`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={e => { e.preventDefault(); window.close() }}>
+      <div className="max-w-[210mm] mx-auto print:hidden mb-4 px-4 flex items-center justify-between gap-2">
+        <a href={`/app`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" onClick={e => { e.preventDefault(); window.close() }}>
           <ArrowLeft className="w-3 h-3" /> Fechar
         </a>
-        <Button onClick={() => window.print()}>
-          <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <AttachSignedContractButton orgSlug={orgSlug} saleId={sale.id} />
+          <Button onClick={() => window.print()}>
+            <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
+          </Button>
+        </div>
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm leading-relaxed">
@@ -109,21 +113,39 @@ export default function ContractPrintView({ sale, org }: { sale: TravelSaleRow; 
           </tbody>
         </table>
 
-        {/* Cláusula de cancelamento */}
+        {/* Cláusula de cancelamento — usa o texto da venda quando preenchido, senão um texto genérico padrão. */}
         <div className="mb-6">
           <p className="font-semibold mb-2">2. Cancelamento e reembolso</p>
-          <p>
-            Eventuais cancelamentos, alterações ou reembolsos seguirão as políticas específicas da
-            operadora e/ou companhia aérea responsáveis pelos serviços contratados, podendo incidir
-            multas e taxas conforme normas vigentes à época da solicitação. A CONTRATADA atuará como
-            intermediária junto aos fornecedores, não se responsabilizando por eventos alheios à sua
-            vontade (caso fortuito ou força maior).
+          <p className="whitespace-pre-wrap">
+            {sale.cancellation_policy || (
+              <>
+                Eventuais cancelamentos, alterações ou reembolsos seguirão as políticas específicas da
+                operadora e/ou companhia aérea responsáveis pelos serviços contratados, podendo incidir
+                multas e taxas conforme normas vigentes à época da solicitação. A CONTRATADA atuará como
+                intermediária junto aos fornecedores, não se responsabilizando por eventos alheios à sua
+                vontade (caso fortuito ou força maior).
+              </>
+            )}
           </p>
         </div>
 
+        {sale.important_info && (
+          <div className="mb-6">
+            <p className="font-semibold mb-2">3. Informações importantes</p>
+            <p className="whitespace-pre-wrap">{sale.important_info}</p>
+          </div>
+        )}
+
+        {sale.service_info && (
+          <div className="mb-6">
+            <p className="font-semibold mb-2">4. Informações de serviço</p>
+            <p className="whitespace-pre-wrap">{sale.service_info}</p>
+          </div>
+        )}
+
         {sale.notes && (
           <div className="mb-6">
-            <p className="font-semibold mb-2">3. Observações</p>
+            <p className="font-semibold mb-2">5. Observações</p>
             <p className="whitespace-pre-wrap">{sale.notes}</p>
           </div>
         )}

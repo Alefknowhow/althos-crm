@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft } from 'lucide-react'
+import { Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft, MessageCircle, Mail } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
 type OrgBranding = {
@@ -16,11 +16,13 @@ type OrgBranding = {
   website: string | null
 }
 
+type ContatoInfo = { phone: string | null; email: string | null } | null
+
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
 }
 
-export default function VoucherPrintView({ sale, org }: { sale: TravelSaleRow; org: OrgBranding }) {
+export default function VoucherPrintView({ sale, org, contato }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo }) {
   const accent = org.primary_color || '#0f62fe'
   const included: string[] = Array.isArray(sale.included_items) ? sale.included_items : []
   const hasTraslado = included.includes('transfer')
@@ -29,15 +31,38 @@ export default function VoucherPrintView({ sale, org }: { sale: TravelSaleRow; o
     ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(sale.airline_checkin_url)}`
     : null
 
+  const shareMessage = `Olá ${sale.client_name || ''}! Segue o voucher da sua viagem para ${sale.destination || 'sua viagem'} — anexo o PDF em seguida.`
+  const waDigits = contato?.phone ? contato.phone.replace(/\D/g, '') : null
+  const waUrl = waDigits ? `https://wa.me/${waDigits}?text=${encodeURIComponent(shareMessage)}` : null
+  const mailUrl = contato?.email
+    ? `mailto:${contato.email}?subject=${encodeURIComponent(`Voucher — ${sale.destination || 'sua viagem'}`)}&body=${encodeURIComponent(shareMessage)}`
+    : null
+
   return (
     <div className="min-h-screen bg-muted/30 py-8 print:bg-white print:py-0">
-      <div className="max-w-[210mm] mx-auto print:hidden mb-4 px-4 flex items-center justify-between">
-        <Link href={`/app`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={e => { e.preventDefault(); window.close() }}>
+      <div className="max-w-[210mm] mx-auto print:hidden mb-4 px-4 flex items-center justify-between gap-2 flex-wrap">
+        <Link href={`/app`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0" onClick={e => { e.preventDefault(); window.close() }}>
           <ArrowLeft className="w-3 h-3" /> Fechar
         </Link>
-        <Button onClick={() => window.print()}>
-          <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {waUrl && (
+            <a href={waUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" title="Abre o WhatsApp com uma mensagem pronta — anexe o PDF manualmente">
+                <MessageCircle className="w-4 h-4 mr-1.5 text-green-600" /> Enviar por WhatsApp
+              </Button>
+            </a>
+          )}
+          {mailUrl && (
+            <a href={mailUrl}>
+              <Button variant="outline" title="Abre seu cliente de e-mail com uma mensagem pronta — anexe o PDF manualmente">
+                <Mail className="w-4 h-4 mr-1.5" /> Enviar por e-mail
+              </Button>
+            </a>
+          )}
+          <Button onClick={() => window.print()}>
+            <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
+          </Button>
+        </div>
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm]">
@@ -128,6 +153,27 @@ export default function VoucherPrintView({ sale, org }: { sale: TravelSaleRow; o
             <p className="text-sm">{sale.payment_method || '—'}</p>
           </div>
         </div>
+
+        {sale.cancellation_policy && (
+          <div className="mb-6">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Política de cancelamento</p>
+            <p className="text-sm whitespace-pre-wrap">{sale.cancellation_policy}</p>
+          </div>
+        )}
+
+        {sale.important_info && (
+          <div className="mb-6">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Informações importantes</p>
+            <p className="text-sm whitespace-pre-wrap">{sale.important_info}</p>
+          </div>
+        )}
+
+        {sale.service_info && (
+          <div className="mb-6">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Informações de serviço</p>
+            <p className="text-sm whitespace-pre-wrap">{sale.service_info}</p>
+          </div>
+        )}
 
         {sale.notes && (
           <div className="mb-6">

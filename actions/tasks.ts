@@ -51,6 +51,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     priority:    v.priority || 'normal',
     contato_id:     v.contato_id  || null,
     assigned_to: v.assigned_to || user.id,
+    sale_id: v.sale_id || null,
     status: 'open',
     column_id: columnId,
   })
@@ -58,8 +59,30 @@ export async function createTask(orgSlug: string, input: TaskInput) {
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/tarefas`)
   if (v.contato_id) revalidatePath(`/app/${orgSlug}/contatos/${v.contato_id}`)
+  if (v.sale_id) revalidatePath(`/app/${orgSlug}/reservas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
+}
+
+export type SaleTaskRow = {
+  id: string
+  title: string
+  status: string
+  priority: string
+  due_date: string | null
+}
+
+/** Tarefas vinculadas a uma reserva específica (check-in, contatar hotel etc.). */
+export async function listTasksForSale(orgSlug: string, saleId: string): Promise<SaleTaskRow[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('tasks')
+    .select('id, title, status, priority, due_date')
+    .eq('organization_id', org.id)
+    .eq('sale_id', saleId)
+    .order('due_date', { ascending: true })
+  return (data as SaleTaskRow[]) ?? []
 }
 
 export type TaskUpdateInput = Partial<TaskInput>
@@ -75,6 +98,7 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.priority    !== undefined) updates.priority    = input.priority
   if (input.contato_id     !== undefined) updates.contato_id     = input.contato_id || null
   if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to || null
+  if (input.sale_id !== undefined) updates.sale_id = input.sale_id || null
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
 

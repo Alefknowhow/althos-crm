@@ -36,25 +36,25 @@ export type TravelSaleRow = {
   tasks_generated_at: string | null
   contrato_gerado_at: string | null
   contrato_assinado_at: string | null
-  pagamento_confirmado_at: string | null
   voucher_entregue_at: string | null
-  documentacao_enviada_at: string | null
   embarque_realizado_at: string | null
   posvenda_concluido_at: string | null
+  cancellation_policy: string | null
+  important_info: string | null
+  service_info: string | null
   created_at: string
   updated_at: string
 }
 
 export type ChecklistStep =
-  | 'contrato_assinado' | 'pagamento_confirmado' | 'voucher_entregue'
-  | 'documentacao_enviada' | 'embarque_realizado' | 'posvenda_concluido'
+  | 'contrato_assinado' | 'voucher_entregue' | 'embarque_realizado' | 'posvenda_concluido'
 
 const WRITABLE = [
   'status', 'client_name', 'destination', 'departure_date', 'return_date',
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
   'included_items', 'vouchers', 'travelers', 'travelers_note',
   'payment_method', 'package_locator', 'air_locator', 'airline_checkin_url',
-  'commission_cents', 'notes',
+  'commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
@@ -204,10 +204,9 @@ export async function cancelTravelSale(
 }
 
 /**
- * Alterna uma etapa do checklist da venda (Contratos Inteligentes). As 8
- * etapas são fixas — "venda registrada" é sempre `created_at`; "contrato
- * gerado" é setado por `markContractGenerated` (não por aqui); as 6
- * restantes são marcáveis/desmarcáveis manualmente pelo usuário.
+ * Alterna uma etapa do checklist da venda (Contratos Inteligentes).
+ * "Contrato gerado" é setado por `markContractGenerated` (não por aqui);
+ * as 4 restantes são marcáveis/desmarcáveis manualmente pelo usuário.
  */
 export async function toggleSaleChecklistStep(
   orgSlug: string,
@@ -221,8 +220,7 @@ export async function toggleSaleChecklistStep(
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const CHECKLIST_STEPS: ChecklistStep[] = [
-    'contrato_assinado', 'pagamento_confirmado', 'voucher_entregue',
-    'documentacao_enviada', 'embarque_realizado', 'posvenda_concluido',
+    'contrato_assinado', 'voucher_entregue', 'embarque_realizado', 'posvenda_concluido',
   ]
   if (!CHECKLIST_STEPS.includes(step)) return { ok: false as const, error: 'Etapa inválida.' }
   const column = `${step}_at`
@@ -264,6 +262,38 @@ export async function markContractGenerated(orgSlug: string, saleId: string) {
       .eq('id', saleId)
       .eq('organization_id', org.id)
   }
+}
+
+/**
+ * Anexa o contrato assinado (upload manual — assinatura eletrônica real
+ * fica pra uma leva futura) no mesmo array de vouchers/comprovantes já
+ * exibido em Reservas.
+ */
+export async function attachSignedContract(orgSlug: string, saleId: string, voucher: { url: string; name: string }) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+  const { data: sale } = await supabase
+    .from('travel_sales')
+    .select('vouchers')
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+
+  const vouchers = [...(Array.isArray((sale as any).vouchers) ? (sale as any).vouchers : []), voucher]
+  const { error } = await supabase
+    .from('travel_sales')
+    .update({ vouchers })
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message || 'Erro ao anexar contrato assinado' }
+
+  revalidatePath(`/app/${orgSlug}/reservas`)
+  return { ok: true as const }
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -473,6 +503,7 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
       tasks.map(t => ({
         organization_id: org.id,
         contato_id: s.contato_id,
+        sale_id: id,
         title: t.title,
         description: t.description,
         due_date: t.due_date,

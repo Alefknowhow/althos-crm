@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -12,20 +11,25 @@ import { Check, ListTodo } from 'lucide-react'
 
 const STEPS: { key: ChecklistStep; label: string }[] = [
   { key: 'contrato_assinado', label: 'Contrato assinado' },
-  { key: 'pagamento_confirmado', label: 'Pagamento confirmado' },
   { key: 'voucher_entregue', label: 'Voucher entregue' },
-  { key: 'documentacao_enviada', label: 'Documentação enviada' },
   { key: 'embarque_realizado', label: 'Embarque realizado' },
   { key: 'posvenda_concluido', label: 'Pós-venda concluído' },
 ]
 
-export default function SaleChecklist({ orgSlug, sale }: { orgSlug: string; sale: TravelSaleRow }) {
-  const router = useRouter()
+export default function SaleChecklist({
+  orgSlug, sale, onUpdated,
+}: {
+  orgSlug: string
+  sale: TravelSaleRow
+  /** Chamado com o patch já confirmado no servidor — o pai deve aplicar no
+   * estado local da venda. Sem isso, o toggle parece "não funcionar" porque
+   * o editor mantém seu próprio estado (`s`) independente do refresh. */
+  onUpdated: (patch: Partial<TravelSaleRow>) => void
+}) {
   const [busyStep, setBusyStep] = useState<ChecklistStep | null>(null)
   const [creatingTask, setCreatingTask] = useState(false)
 
   const allSteps = [
-    { key: 'venda_registrada' as const, label: 'Venda registrada', done: true, fixed: true },
     { key: 'contrato_gerado' as const, label: 'Contrato gerado', done: !!sale.contrato_gerado_at, fixed: true },
     ...STEPS.map(s => ({ ...s, done: !!sale[`${s.key}_at` as keyof TravelSaleRow], fixed: false })),
   ]
@@ -37,7 +41,7 @@ export default function SaleChecklist({ orgSlug, sale }: { orgSlug: string; sale
     const res = await toggleSaleChecklistStep(orgSlug, sale.id, step, done)
     setBusyStep(null)
     if (!res.ok) { toast.error(res.error); return }
-    router.refresh()
+    onUpdated({ [`${step}_at`]: done ? res.data[`${step}_at` as keyof TravelSaleRow] : null } as Partial<TravelSaleRow>)
   }
 
   async function handleCreateTaskForNext() {
@@ -48,11 +52,11 @@ export default function SaleChecklist({ orgSlug, sale }: { orgSlug: string; sale
       due_date: new Date().toISOString().slice(0, 10),
       priority: 'normal',
       contato_id: sale.contato_id || undefined,
+      sale_id: sale.id,
     } as any)
     setCreatingTask(false)
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Tarefa criada')
-    router.refresh()
   }
 
   return (
@@ -83,7 +87,7 @@ export default function SaleChecklist({ orgSlug, sale }: { orgSlug: string; sale
                 : 'bg-background hover:bg-muted text-muted-foreground border-border',
               s.fixed && 'cursor-default',
             )}
-            title={s.fixed ? undefined : (s.done ? 'Clique para desmarcar' : 'Clique para marcar como concluída')}
+            title={s.fixed ? 'Marcado automaticamente ao gerar o contrato' : (s.done ? 'Clique para desmarcar' : 'Clique para marcar como concluída')}
           >
             {s.done && <Check className="w-3.5 h-3.5" />}
             {s.label}

@@ -3,19 +3,20 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import DocumentTemplatesView from './DocumentTemplatesView'
 import GeneratedDocumentsView from './GeneratedDocumentsView'
-import MedifView from './MedifView'
+import AttachmentTemplateView from './AttachmentTemplateView'
+import MedifInfo from './MedifInfo'
+import FremecInfo from './FremecInfo'
 import type { DocumentTemplateRow } from '@/actions/document-templates'
 import type { GeneratedDocumentRow } from '@/actions/generated-documents'
-import type { MedifRecordRow } from '@/actions/medif'
 
 export default function DocumentosTabs({
-  orgSlug, templates, documents, medifRecords, medifTemplateInfo,
+  orgSlug, templates, documents, medifTemplateInfo, fremecTemplateInfo,
 }: {
   orgSlug: string
   templates: DocumentTemplateRow[]
   documents: GeneratedDocumentRow[]
-  medifRecords: MedifRecordRow[]
   medifTemplateInfo: { name: string } | null
+  fremecTemplateInfo: { name: string } | null
 }) {
   return (
     <Tabs defaultValue="gerados">
@@ -23,6 +24,7 @@ export default function DocumentosTabs({
         <TabsTrigger value="gerados">Gerados</TabsTrigger>
         <TabsTrigger value="modelos">Modelos</TabsTrigger>
         <TabsTrigger value="medif">MEDIF</TabsTrigger>
+        <TabsTrigger value="fremec">FREMEC</TabsTrigger>
       </TabsList>
       <TabsContent value="gerados">
         <GeneratedDocumentsView orgSlug={orgSlug} documents={documents} templates={templates} />
@@ -31,7 +33,14 @@ export default function DocumentosTabs({
         <DocumentTemplatesView orgSlug={orgSlug} templates={templates} />
       </TabsContent>
       <TabsContent value="medif">
-        <MedifView orgSlug={orgSlug} records={medifRecords} templateInfo={medifTemplateInfo} />
+        <AttachmentTemplateView orgSlug={orgSlug} documentType="medif" templateInfo={medifTemplateInfo}>
+          <MedifInfo />
+        </AttachmentTemplateView>
+      </TabsContent>
+      <TabsContent value="fremec">
+        <AttachmentTemplateView orgSlug={orgSlug} documentType="fremec" templateInfo={fremecTemplateInfo}>
+          <FremecInfo />
+        </AttachmentTemplateView>
       </TabsContent>
     </Tabs>
   )

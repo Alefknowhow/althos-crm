@@ -32,13 +32,15 @@ import {
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
-import VoucherAutofillDialog from '@/components/features/reservas/VoucherAutofillDialog'
 import SaleChecklist from '@/components/features/reservas/SaleChecklist'
+import SaleTasksList from '@/components/features/reservas/SaleTasksList'
+import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
+import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { toast } from 'sonner'
 import {
-  MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
+  MapPin, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, Sparkles, FileBadge, FileSignature,
+  Ban, Wallet, FileBadge, FileSignature, Sparkles,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -63,6 +65,8 @@ const INCLUDED_ITEMS: { key: string; label: string }[] = [
   { key: 'seguro', label: 'Seguro viagem' },
   { key: 'passeios', label: 'Passeios' },
   { key: 'carros', label: 'Locação de carro' },
+  { key: 'ingressos', label: 'Ingressos' },
+  { key: 'servicos', label: 'Serviços' },
 ]
 
 function centsToReais(c?: number | null) { return c ? String((c / 100).toFixed(2)).replace('.', ',') : '' }
@@ -161,6 +165,9 @@ export default function TravelSalesView({
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
   const [pickedContato, setPickedContato] = useState<string>('')
+  const [importOpen, setImportOpen] = useState(false)
+  const [importedPatch, setImportedPatch] = useState<Record<string, any> | null>(null)
+  const [importedFile, setImportedFile] = useState<File | null>(null)
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -200,14 +207,47 @@ export default function TravelSalesView({
     if (!pickedContato) { toast.error('Selecione o cliente (contato do CRM)'); return }
     setCreating(true)
     const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal, pickedContato)
+    if (!res.ok) { setCreating(false); toast.error(res.error); return }
+
+    if (importedPatch) {
+      await updateTravelSale(orgSlug, res.data.id, importedPatch)
+    }
+    if (importedFile) {
+      const fd = new FormData()
+      fd.append('file', importedFile)
+      const uploadRes = await uploadSaleVoucher(orgSlug, fd)
+      if (uploadRes.ok) {
+        await updateTravelSale(orgSlug, res.data.id, { vouchers: [{ url: uploadRes.url, name: uploadRes.name }] })
+      }
+    }
+
     setCreating(false)
-    if (!res.ok) { toast.error(res.error); return }
     setNewOpen(false)
     setPickedProposal('none')
     setPickedContato('')
+    setImportedPatch(null)
+    setImportedFile(null)
     toast.success('Venda criada')
     setSelectedId(res.data.id)
     router.refresh()
+  }
+
+  function handleImportApply(data: ExtractedTravelDocument, file: File) {
+    const patch: Record<string, any> = {}
+    if (data.destino) patch.destination = data.destino
+    if (data.hotel) patch.hotel_name = data.hotel
+    if (data.operadora) patch.operator = data.operadora
+    if (data.localizador_pacote) patch.package_locator = data.localizador_pacote
+    if (data.localizador_aereo) patch.air_locator = data.localizador_aereo
+    if (data.data_ida) patch.departure_date = data.data_ida
+    if (data.data_volta) patch.return_date = data.data_volta
+    if (data.voos[0]?.companhia) patch.airline = data.voos[0].companhia
+    if (data.observacoes) patch.notes = data.observacoes
+    if (data.informacoes_importantes) patch.important_info = data.informacoes_importantes
+    if (data.informacoes_servico) patch.service_info = data.informacoes_servico
+    setImportedPatch(patch)
+    setImportedFile(file)
+    toast.success('Documento importado. Os dados serão aplicados ao criar a venda.')
   }
 
   function handlePickProposal(v: string) {
@@ -247,10 +287,12 @@ export default function TravelSalesView({
           description="Crie uma venda manualmente com o botão 'Nova venda' (importando uma proposta), ou mova um lead com proposta vinculada para a etapa 'Fechado' no pipeline — a venda é gerada automaticamente."
         />
         <NewSaleDialog
-          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+          orgSlug={orgSlug}
+          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setImportedPatch(null); setImportedFile(null) } }}
           proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
           leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
           creating={creating} onCreate={handleCreate}
+          hasImported={!!importedFile} onImportApply={handleImportApply}
         />
       </>
     )
@@ -258,10 +300,9 @@ export default function TravelSalesView({
 
   return (
     <>
-      {/* Filters */}
-      <div className="flex flex-col gap-2 mb-4">
-        {/* Search on its own row so the buttons never overlap it on mobile. */}
-        <div className="relative w-full">
+      {/* Filters — tudo numa linha só (encolhe/quebra no mobile). */}
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={query}
@@ -271,42 +312,35 @@ export default function TravelSalesView({
           />
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Time filter: dropdown on mobile, pills on desktop. */}
-          <ResponsiveSelect
-            className="sm:hidden h-9 flex-1 min-w-0 text-xs"
-            aria-label="Filtrar por data"
-            value={dateBucket}
-            onValueChange={v => setDateBucket(v as DateBucket)}
-            options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
-          />
+        {members.length > 0 && (
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="h-9 text-xs w-[170px] shrink-0">
+              <SelectValue placeholder="Vendedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-          {members.length > 0 && (
-            <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="h-9 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os vendedores</SelectItem>
-                {members.map(m => (
-                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Button onClick={() => setNewOpen(true)} className="h-9 px-2.5 text-xs shrink-0">
-            <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Nova venda</span>
-          </Button>
-        </div>
-
-        {/* Date pills — desktop only. */}
-        <div className="hidden sm:flex flex-wrap items-center gap-1.5">
+        {/* Time filter: dropdown on mobile, pills on desktop. */}
+        <ResponsiveSelect
+          className="sm:hidden h-9 w-[110px] shrink-0 text-xs"
+          aria-label="Filtrar por data"
+          value={dateBucket}
+          onValueChange={v => setDateBucket(v as DateBucket)}
+          options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+        />
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
           {DATE_BUCKETS.map(b => (
             <button
               key={b.id}
               onClick={() => setDateBucket(b.id)}
               className={cn(
-                'px-3 h-7 rounded-full border text-xs font-medium transition-colors',
+                'px-3 h-9 rounded-full border text-xs font-medium transition-colors',
                 FOCUS_RING,
                 dateBucket === b.id
                   ? 'bg-primary text-primary-foreground border-primary'
@@ -317,6 +351,10 @@ export default function TravelSalesView({
             </button>
           ))}
         </div>
+
+        <Button onClick={() => setNewOpen(true)} className="h-9 px-2.5 text-xs shrink-0">
+          <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Nova venda</span>
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {sales.length} venda(s)</p>
@@ -400,10 +438,12 @@ export default function TravelSalesView({
       </div>
 
       <NewSaleDialog
-        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+        orgSlug={orgSlug}
+        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setImportedPatch(null); setImportedFile(null) } }}
         proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
         leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
         creating={creating} onCreate={handleCreate}
+        hasImported={!!importedFile} onImportApply={handleImportApply}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
@@ -424,8 +464,10 @@ export default function TravelSalesView({
 }
 
 function NewSaleDialog({
-  open, onOpenChange, proposals, picked, setPicked, leads, pickedContato, setPickedContato, creating, onCreate,
+  orgSlug, open, onOpenChange, proposals, picked, setPicked, leads, pickedContato, setPickedContato,
+  creating, onCreate, hasImported, onImportApply,
 }: {
+  orgSlug: string
   open: boolean
   onOpenChange: (o: boolean) => void
   proposals: ProposalOption[]
@@ -436,7 +478,11 @@ function NewSaleDialog({
   setPickedContato: (v: string) => void
   creating: boolean
   onCreate: () => void
+  hasImported: boolean
+  onImportApply: (data: ExtractedTravelDocument, file: File) => void
 }) {
+  const [importOpen, setImportOpen] = useState(false)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -474,6 +520,18 @@ function NewSaleDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Importar de Documento <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" /> {hasImported ? 'Documento importado — trocar' : 'Importar de PDF/imagem'}
+            </Button>
+            {hasImported && (
+              <p className="text-xs text-success flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Dados extraídos serão aplicados à venda ao criar.
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
@@ -483,6 +541,15 @@ function NewSaleDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <DocumentExtractDialog
+        orgSlug={orgSlug}
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importar de Documento"
+        description="Envie o voucher/reserva da operadora (PDF ou imagem) — a IA lê o documento e preenche os campos da venda para você revisar."
+        onApply={onImportApply}
+      />
     </Dialog>
   )
 }
@@ -509,12 +576,7 @@ function SaleEditor({
   const [uploading, setUploading] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
-  const [voucherAutofillOpen, setVoucherAutofillOpen] = useState(false)
   const router = useRouter()
-
-  function handleVoucherAutofillApply(patch: Record<string, any>, voucher: { url: string; name: string } | null) {
-    setS(prev => ({ ...prev, ...patch, ...(voucher ? { vouchers: [...(Array.isArray(prev.vouchers) ? prev.vouchers : []), voucher] } : {}) }))
-  }
 
   function toggleIncluded(key: string) {
     set('included_items', included.includes(key)
@@ -547,7 +609,8 @@ function SaleEditor({
     travelers, travelers_note: s.travelers_note,
     package_locator: s.package_locator, air_locator: s.air_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
-    notes: s.notes,
+    notes: s.notes, cancellation_policy: s.cancellation_policy, important_info: s.important_info,
+    service_info: s.service_info,
   })
 
   return (
@@ -581,20 +644,14 @@ function SaleEditor({
         {/* Actions relocated from the bottom of the form into the header bar */}
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" disabled={saving} onClick={() => onSave(patch(), false)} title="Salvar" aria-label="Salvar">
+            <Button size="sm" disabled={saving} onClick={() => onSave(patch(), true)} title="Salvar" aria-label="Salvar">
               <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
-            </Button>
-            <Button size="sm" disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)} title="Salvar e gerar tarefas" aria-label="Salvar e gerar tarefas">
-              <ListChecks className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Processando…' : 'Salvar e gerar tarefas'}</span>
             </Button>
             {s.contato_id && (
               <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">
                 <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setVoucherAutofillOpen(true)} title="Preencher com voucher" aria-label="Preencher com voucher">
-              <Sparkles className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Preencher com voucher</span>
-            </Button>
             <a href={`/app/${orgSlug}/reservas/${s.id}/voucher`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" title="Gerar voucher" aria-label="Gerar voucher">
                 <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
@@ -623,7 +680,8 @@ function SaleEditor({
       </div>
 
       <div className="p-4 space-y-4">
-        <SaleChecklist orgSlug={orgSlug} sale={s} />
+        <SaleChecklist orgSlug={orgSlug} sale={s} onUpdated={patch => setS(prev => ({ ...prev, ...patch }))} />
+        <SaleTasksList orgSlug={orgSlug} saleId={s.id} />
 
         {/* Auto-filled (editable) */}
         <div>
@@ -808,6 +866,19 @@ function SaleEditor({
 
         <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
 
+        <Field label="Política de cancelamento">
+          <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
+            placeholder="Aparece no voucher/contrato só se preenchido." />
+        </Field>
+        <Field label="Informações importantes">
+          <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
+            placeholder="Contatos de emergência, como buscar atendimento etc. Preenchido automaticamente ao importar de um voucher." />
+        </Field>
+        <Field label="Informações de serviço">
+          <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
+            placeholder="O que está incluso, horários, condições de uso etc. Preenchido automaticamente ao importar de um voucher." />
+        </Field>
+
         {s.tasks_generated_at && (
           <p className="text-xs text-success flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
@@ -834,13 +905,6 @@ function SaleEditor({
           onApplied={() => router.refresh()}
         />
       )}
-
-      <VoucherAutofillDialog
-        orgSlug={orgSlug}
-        open={voucherAutofillOpen}
-        onOpenChange={setVoucherAutofillOpen}
-        onApply={handleVoucherAutofillApply}
-      />
     </div>
   )
 }
