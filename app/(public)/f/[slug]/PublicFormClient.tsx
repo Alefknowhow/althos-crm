@@ -6,7 +6,7 @@ import { submitPublicForm } from '@/actions/public_forms'
 import { HONEYPOT_FIELD_NAME } from '@/lib/security/antispam-constants'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, MessageCircle, Calendar, Check, ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowRight, MessageCircle, Calendar, Check } from 'lucide-react'
 
 // Only one of these is ever rendered per submission. Split the bundle so
 // Meta Ads landings on mobile load just the active mode's code.
@@ -215,27 +215,6 @@ export default function PublicFormClient({
             </a>
           )}
         </div>
-
-        {/* Setas fixas na lateral direita, sempre centralizadas na tela
-            (fixed, não absolute — não se move com o scroll/conteúdo). */}
-        <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
-          <button
-            type="button"
-            disabled
-            aria-label="Início"
-            className="h-9 w-9 flex items-center justify-center border border-input bg-background text-muted-foreground/30 cursor-not-allowed"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setWelcomePassed(true)}
-            aria-label="Continuar"
-            className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors"
-          >
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
       </div>
     )
   }
@@ -294,29 +273,6 @@ export default function PublicFormClient({
             <MessageCircle className="w-4 h-4 text-green-600" />
             {schema.whatsapp?.label || 'Prefere falar no WhatsApp?'}
           </a>
-        </div>
-      )}
-
-      {/* Vertical step affordance — up volta pra tela de boas-vindas quando ela existe.
-          fixed: sempre centralizada verticalmente na tela, independente do scroll. */}
-      {showWelcome && (
-        <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
-          <button
-            type="button"
-            onClick={() => setWelcomePassed(false)}
-            aria-label="Voltar"
-            className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            disabled
-            aria-label="Fim"
-            className="h-9 w-9 flex items-center justify-center border border-input bg-background text-muted-foreground/30 cursor-not-allowed"
-          >
-            <ChevronDown className="w-4 h-4" />
-          </button>
         </div>
       )}
     </div>

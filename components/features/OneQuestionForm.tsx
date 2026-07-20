@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, MessageCircle, ChevronUp, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MessageCircle } from 'lucide-react'
 import type { FormField, FormSchema } from './PublicFormPreview'
 
 interface OneQuestionFormProps {
@@ -94,15 +94,8 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
     )
   }
 
-  const handleArrowDown = () => {
-    if (isWelcome) { handleAdvance(); return }
-    if (!canAdvance) return
-    if (isLastField) formRef.current?.requestSubmit()
-    else handleAdvance()
-  }
-
   return (
-    <div className="relative flex flex-col flex-1">
+    <div className="flex flex-col flex-1">
       {/* Progress bar */}
       {totalSteps > 1 && (
         <div className={`h-1 rounded-full overflow-hidden mb-8 ${dark ? 'bg-white/15' : 'bg-muted'}`}>
@@ -252,30 +245,6 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
           )}
         </div>
       )}
-
-      {/* Vertical step navigation — mesma ação dos botões Voltar/Continuar/Enviar.
-          fixed (não absolute): fica sempre centralizada verticalmente na tela,
-          independente do tamanho do conteúdo, igual pedido. */}
-      <div className="flex flex-col gap-2 fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-50">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={step === 0}
-          aria-label="Voltar"
-          className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors disabled:text-muted-foreground/30 disabled:cursor-not-allowed disabled:hover:bg-background"
-        >
-          <ChevronUp className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleArrowDown}
-          disabled={isWelcome ? isPreview : (loading || !canAdvance || isPreview)}
-          aria-label={isLastField ? 'Enviar' : 'Continuar'}
-          className="h-9 w-9 flex items-center justify-center border border-input bg-background hover:bg-accent text-foreground transition-colors disabled:text-muted-foreground/30 disabled:cursor-not-allowed disabled:hover:bg-background"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </div>
     </div>
   )
 }
