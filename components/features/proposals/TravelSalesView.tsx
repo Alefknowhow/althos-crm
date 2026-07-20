@@ -76,6 +76,15 @@ function reaisToCents(s: string) {
 }
 function fmtTimestamp(d?: string | null) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—' }
 
+function checklistStatus(s: TravelSaleRow): { label: string; variant: 'success' | 'warning' | 'secondary' } {
+  if (s.posvenda_concluido_at) return { label: 'Pós-venda concluído', variant: 'success' }
+  if (s.embarque_realizado_at) return { label: 'Embarque realizado', variant: 'success' }
+  if (s.voucher_entregue_at) return { label: 'Voucher entregue', variant: 'success' }
+  if (s.contrato_assinado_at) return { label: 'Contrato assinado', variant: 'success' }
+  if (s.contrato_gerado_at) return { label: 'Contrato gerado', variant: 'warning' }
+  return { label: 'Pendente', variant: 'warning' }
+}
+
 function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) => void }) {
   const [text, setText] = useState(centsToReais(value))
   return (
@@ -387,9 +396,9 @@ export default function TravelSalesView({
                   <span className="font-medium text-sm leading-tight truncate">
                     {s.client_name || 'Cliente'}
                   </span>
-                  {s.tasks_generated_at
-                    ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas</Badge>
-                    : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
+                  <Badge variant={checklistStatus(s).variant} className="shrink-0 text-[10px] px-1.5 py-0">
+                    {checklistStatus(s).label}
+                  </Badge>
                 </div>
                 {s.destination && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -644,8 +653,15 @@ function SaleEditor({
         {/* Actions relocated from the bottom of the form into the header bar */}
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-1.5">
-            <Button size="sm" disabled={saving} onClick={() => onSave(patch(), true)} title="Salvar" aria-label="Salvar">
+            <Button size="sm" disabled={saving} onClick={() => onSave(patch(), false)} title="Salvar" aria-label="Salvar">
               <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
+            </Button>
+            <Button
+              variant="outline" size="sm" disabled={saving}
+              onClick={() => onSave(patch(), true)}
+              title="Salvar e gerar tarefas operacionais" aria-label="Gerar tarefas"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
             </Button>
             {s.contato_id && (
               <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">

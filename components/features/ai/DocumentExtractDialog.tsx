@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Upload, Loader2, Sparkles, Plane, FileIcon, ImageIcon } from 'lucide-react'
+import { Upload, Loader2, Sparkles, Plane, FileIcon, ImageIcon, ClipboardPaste } from 'lucide-react'
 import { extractTravelDocument } from '@/actions/document-extract'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 
@@ -51,6 +51,41 @@ export default function DocumentExtractDialog({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  // Permite colar um print direto da área de transferência (Ctrl+V) enquanto
+  // o dialog está aberto e nenhum arquivo foi selecionado ainda.
+  useEffect(() => {
+    if (!open || file) return
+    function onWindowPaste(e: ClipboardEvent) {
+      const item = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'))
+      if (!item) return
+      const blob = item.getAsFile()
+      if (!blob) return
+      e.preventDefault()
+      const ext = item.type.split('/')[1] || 'png'
+      handleFile(new File([blob], `colado.${ext}`, { type: item.type }))
+    }
+    window.addEventListener('paste', onWindowPaste)
+    return () => window.removeEventListener('paste', onWindowPaste)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, file])
+
+  async function handlePasteButton() {
+    try {
+      const items = await navigator.clipboard.read()
+      for (const item of items) {
+        const type = item.types.find(t => t.startsWith('image/'))
+        if (!type) continue
+        const blob = await item.getType(type)
+        const ext = type.split('/')[1] || 'png'
+        handleFile(new File([blob], `colado.${ext}`, { type }))
+        return
+      }
+      toast.error('Nenhuma imagem encontrada na área de transferência')
+    } catch {
+      toast.error('Não foi possível acessar a área de transferência — tente Ctrl+V')
+    }
+  }
+
   async function handleFile(f: File) {
     if (!ACCEPTED_MIME[f.type]) { toast.error('Formato não suportado. Use PDF, JPG, PNG, WebP ou GIF.'); return }
     if (f.size > 15 * 1024 * 1024) { toast.error('Arquivo muito grande. O limite é 15 MB.'); return }
@@ -85,18 +120,23 @@ export default function DocumentExtractDialog({
         </DialogHeader>
 
         {!file ? (
-          <label className="block border-2 border-dashed border-border rounded-none p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,application/pdf,image/*"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
-            />
-            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-            <p className="font-medium mb-1">Clique para enviar o arquivo</p>
-            <p className="text-xs text-muted-foreground">PDF ou imagem, até 15 MB</p>
-          </label>
+          <div className="space-y-2">
+            <label className="block border-2 border-dashed border-border rounded-none p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,application/pdf,image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+              />
+              <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+              <p className="font-medium mb-1">Clique para enviar o arquivo</p>
+              <p className="text-xs text-muted-foreground">PDF ou imagem, até 15 MB — ou cole um print com Ctrl+V</p>
+            </label>
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={handlePasteButton}>
+              <ClipboardPaste className="w-3.5 h-3.5 mr-1.5" /> Colar da área de transferência
+            </Button>
+          </div>
         ) : extracting ? (
           <div className="py-10 flex flex-col items-center justify-center gap-3 text-muted-foreground text-sm">
             <Loader2 className="w-6 h-6 animate-spin" />

@@ -10,6 +10,7 @@ import EmptyState from '@/components/ui/empty-state'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
@@ -122,10 +123,9 @@ export default function ProposalsList({
 
   return (
     <>
-      {/* Filters — busca em cima; controles compactos numa única linha abaixo */}
-      <div className="flex flex-col gap-2 mb-4">
-        {/* Texto (busca) numa linha própria, acima dos botões */}
-        <div className="relative">
+      {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas. */}
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={query}
@@ -135,45 +135,55 @@ export default function ProposalsList({
           />
         </div>
 
-        {/* Controles compactos: filtro de data + vendedor + nova proposta */}
-        <div className="flex items-center gap-1.5">
-          <Select value={dateBucket} onValueChange={v => setDateBucket(v as DateBucket)}>
-            <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[150px]">
-              <SelectValue />
+        {members.length > 0 && (
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="h-9 text-xs w-[170px] shrink-0">
+              <SelectValue placeholder="Vendedor" />
             </SelectTrigger>
             <SelectContent>
-              {DATE_BUCKETS.map(b => (
-                <SelectItem key={b.id} value={b.id} className="text-xs">{b.label}</SelectItem>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )}
 
-          {members.length > 0 && (
-            <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="h-8 text-xs flex-1 min-w-0 sm:flex-none sm:w-[170px]">
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">Todos os vendedores</SelectItem>
-                {members.map(m => (
-                  <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          <Button
-            onClick={handleCreate}
-            disabled={creating}
-            size="sm"
-            className="h-8 px-2.5 text-xs shrink-0"
-            title="Nova proposta"
-            aria-label="Nova proposta"
-          >
-            <Plus className="w-3.5 h-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">{creating ? 'Criando…' : 'Nova proposta'}</span>
-          </Button>
+        {/* Time filter: dropdown on mobile, pills on desktop. */}
+        <ResponsiveSelect
+          className="sm:hidden h-9 w-[110px] shrink-0 text-xs"
+          aria-label="Filtrar por data"
+          value={dateBucket}
+          onValueChange={v => setDateBucket(v as DateBucket)}
+          options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+        />
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          {DATE_BUCKETS.map(b => (
+            <button
+              key={b.id}
+              onClick={() => setDateBucket(b.id)}
+              className={cn(
+                'px-3 h-9 rounded-full border text-xs font-medium transition-colors',
+                dateBucket === b.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
+              )}
+            >
+              {b.label}
+            </button>
+          ))}
         </div>
+
+        <Button
+          onClick={handleCreate}
+          disabled={creating}
+          className="h-9 px-2.5 text-xs shrink-0"
+          title="Nova proposta"
+          aria-label="Nova proposta"
+        >
+          <Plus className="w-4 h-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">{creating ? 'Criando…' : 'Nova proposta'}</span>
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {proposals.length} proposta(s)</p>
