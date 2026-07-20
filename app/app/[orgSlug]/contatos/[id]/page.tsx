@@ -8,7 +8,7 @@ import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Wallet } from 'lucide-react'
 import TaskCard from '@/components/features/TaskCard'
 import TaskDialog from '@/components/features/TaskDialog'
 import SendEmailDialog from '@/components/features/SendEmailDialog'
@@ -16,6 +16,8 @@ import CustomerProfileForm from '@/components/features/customers/CustomerProfile
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import { listRelationships } from '@/actions/relationships'
+import { listCreditsForContato } from '@/actions/travel-credits'
+import { isTravelNiche } from '@/lib/niche'
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   lead: { label: 'Lead', className: 'border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20' },
@@ -62,6 +64,7 @@ export default async function ContatoDetailPage({
     { data: sales },
     { data: documents },
     relationships,
+    travelCredits,
   ] = await Promise.all([
     supabase
       .from('contato_activities')
@@ -99,6 +102,7 @@ export default async function ContatoDetailPage({
       .eq('organization_id', org.id)
       .order('created_at', { ascending: false }),
     listRelationships(params.orgSlug, lead.id),
+    isTravelNiche(org.niche) ? listCreditsForContato(params.orgSlug, lead.id) : Promise.resolve([]),
   ])
 
   const stagesRes = defaultPipeline
@@ -171,11 +175,11 @@ export default async function ContatoDetailPage({
                 {activities?.map(act => (
                   <div key={act.id} className="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs">
-                      {act.type === 'manual_created' ? '🚀' : act.type === 'note' ? '📝' : act.type === 'ai_qualified' ? '✨' : act.type.startsWith('email') ? '✉️' : '⚙️'}
+                      {act.type === 'manual_created' ? '🚀' : act.type === 'note' ? '📝' : act.type === 'ai_qualified' ? '✨' : act.type.startsWith('email') ? '✉️' : act.type.startsWith('credit_') ? '🎫' : '⚙️'}
                     </div>
                     <div>
                       <div className="text-sm font-medium">
-                        {act.type === 'manual_created' ? 'Contato criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type}
+                        {act.type === 'manual_created' ? 'Contato criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type === 'credit_created' ? `Crédito de viagem gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})` : act.type === 'credit_used' ? `Crédito de viagem utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}` : act.type}
                       </div>
                       {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
                       {act.type === 'ai_qualified' && (
@@ -291,6 +295,55 @@ export default async function ContatoDetailPage({
             contatoId={lead.id}
             initial={relationships}
           />
+
+          {/* Créditos de Viagem — só para agências de viagem, gerados via cancelamento de reserva */}
+          {isTravelNiche(org.niche) && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-primary" /> Créditos de Viagem
+                </CardTitle>
+                <span className="text-sm font-bold tabular-nums">
+                  {fmtCurrency(travelCredits.reduce((a, c) => a + (c.status === 'available' ? c.valor_cents - c.valor_usado_cents : 0), 0))}
+                </span>
+              </CardHeader>
+              <CardContent>
+                {travelCredits.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Sem créditos de viagem. Créditos são gerados automaticamente ao cancelar uma reserva.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {travelCredits.map(c => {
+                      const saldo = c.valor_cents - c.valor_usado_cents
+                      const statusLabel = c.status === 'used' ? 'Utilizado' : c.status === 'cancelled' ? 'Cancelado' : c.validade && new Date(c.validade) < new Date() ? 'Expirado' : 'Disponível'
+                      return (
+                        <div key={c.id} className="border-l-2 border-primary/30 pl-3 py-1 text-sm">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{c.operadora}</span>
+                            <span className="text-xs tabular-nums font-semibold">{fmtCurrency(saldo)}</span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>{new Date(c.data_emissao).toLocaleDateString('pt-BR')}</span>
+                            {c.validade && <span>· Válido até {new Date(c.validade).toLocaleDateString('pt-BR')}</span>}
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">{statusLabel}</Badge>
+                            {c.origem_sale_id && (
+                              <Link href={`/app/${params.orgSlug}/reservas?venda=${c.origem_sale_id}`} className="text-primary hover:underline">
+                                Ver venda de origem
+                              </Link>
+                            )}
+                          </div>
+                          {c.observacoes && (
+                            <div className="text-xs text-muted-foreground mt-1">{c.observacoes}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Compras */}
           <Card>

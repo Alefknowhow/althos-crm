@@ -128,6 +128,70 @@ export async function deleteTravelSale(orgSlug: string, id: string) {
   return { ok: true as const }
 }
 
+/**
+ * Cancela a reserva e gera o crédito de viagem correspondente na mesma
+ * operação — cancelamento sem crédito não é uma opção neste fluxo, pois a
+ * operadora sempre retém o valor como crédito futuro (não devolve em
+ * dinheiro). Os 4 campos são obrigatórios.
+ */
+export async function cancelTravelSale(
+  orgSlug: string,
+  saleId: string,
+  input: { valorCredito: number; operadora: string; validade?: string | null; observacoes?: string | null },
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  if (!input.valorCredito || input.valorCredito <= 0) {
+    return { ok: false as const, error: 'Informe o valor do crédito gerado pela operadora.' }
+  }
+  if (!input.operadora?.trim()) {
+    return { ok: false as const, error: 'Informe a operadora responsável pelo crédito.' }
+  }
+
+  const supabase = createClient()
+  const { data: sale } = await supabase
+    .from('travel_sales')
+    .select('*')
+    .eq('organization_id', org.id)
+    .eq('id', saleId)
+    .maybeSingle()
+
+  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+  if (!(sale as TravelSaleRow).contato_id) {
+    return { ok: false as const, error: 'Esta venda não está vinculada a um contato — não é possível gerar o crédito.' }
+  }
+
+  const { data: updated, error } = await supabase
+    .from('travel_sales')
+    .update({ status: 'cancelled' })
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .select()
+    .single()
+
+  if (error || !updated) return { ok: false as const, error: error?.message || 'Erro ao cancelar venda' }
+
+  const { createCredit } = await import('@/actions/travel-credits')
+  const creditResult = await createCredit(orgSlug, {
+    contatoId: (sale as TravelSaleRow).contato_id as string,
+    valorCents: Math.round(input.valorCredito),
+    operadora: input.operadora,
+    validade: input.validade,
+    observacoes: input.observacoes,
+    origemSaleId: saleId,
+  })
+
+  if (!creditResult.ok) {
+    return { ok: false as const, error: `Venda cancelada, mas falhou ao gerar o crédito: ${creditResult.error}` }
+  }
+
+  revalidatePath(`/app/${orgSlug}/reservas`)
+  return { ok: true as const, data: updated as TravelSaleRow, credit: creditResult.data }
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 /**

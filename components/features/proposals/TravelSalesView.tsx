@@ -30,10 +30,13 @@ import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
 } from '@/actions/travel-sales'
 import { uploadSaleVoucher } from '@/actions/upload'
+import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
+import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, ListChecks, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
+  Ban, Wallet,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -502,6 +505,9 @@ function SaleEditor({
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [creditOpen, setCreditOpen] = useState(false)
+  const router = useRouter()
 
   function toggleIncluded(key: string) {
     set('included_items', included.includes(key)
@@ -574,13 +580,25 @@ function SaleEditor({
             <Button size="sm" disabled={saving || !!s.tasks_generated_at} onClick={() => onSave(patch(), true)} title="Salvar e gerar tarefas" aria-label="Salvar e gerar tarefas">
               <ListChecks className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Processando…' : 'Salvar e gerar tarefas'}</span>
             </Button>
+            {s.contato_id && (
+              <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">
+                <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
+              </Button>
+            )}
+            {s.status !== 'cancelled' && (
+              <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
+                <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
-          {s.tasks_generated_at
-            ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas geradas</Badge>
-            : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
+          {s.status === 'cancelled'
+            ? <Badge variant="destructive" className="shrink-0 text-[10px] px-1.5 py-0">Cancelada</Badge>
+            : s.tasks_generated_at
+              ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas geradas</Badge>
+              : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
         </div>
       </div>
 
@@ -774,6 +792,26 @@ function SaleEditor({
           </p>
         )}
       </div>
+
+      <CancelTravelSaleDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        orgSlug={orgSlug}
+        saleId={s.id}
+        onCancelled={() => { set('status', 'cancelled'); router.refresh() }}
+      />
+
+      {s.contato_id && (
+        <ApplyCreditDialog
+          open={creditOpen}
+          onOpenChange={setCreditOpen}
+          orgSlug={orgSlug}
+          contatoId={s.contato_id}
+          saleId={s.id}
+          remainingCents={s.total_cents || 0}
+          onApplied={() => router.refresh()}
+        />
+      )}
     </div>
   )
 }
