@@ -22,8 +22,9 @@ import { cn } from '@/lib/utils'
 import {
   createTravelBlock, updateTravelBlock, deleteTravelBlock, type TravelBlockRow,
 } from '@/actions/travel-blocks'
+import BlocksImporter from './BlocksImporter'
 import { toast } from 'sonner'
-import { Plane, Plus, Trash2, Search, Pencil, Minus } from 'lucide-react'
+import { Plane, Plus, Trash2, Search, Pencil, Minus, Upload } from 'lucide-react'
 
 function fmtDate(d?: string | null) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—' }
 
@@ -84,6 +85,7 @@ export default function BlocksView({
   const [destinoFilter, setDestinoFilter] = useState('all')
   const [editing, setEditing] = useState<TravelBlockRow | 'new' | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const destinos = useMemo(
     () => Array.from(new Set(blocks.map(b => b.destino))).sort(),
@@ -118,7 +120,10 @@ export default function BlocksView({
   if (blocks.length === 0) {
     return (
       <>
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end gap-2 mb-4">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="w-4 h-4 mr-1.5" /> Importar planilha
+          </Button>
           <Button onClick={() => setEditing('new')}>
             <Plus className="w-4 h-4 mr-1.5" /> Novo bloqueio
           </Button>
@@ -126,9 +131,10 @@ export default function BlocksView({
         <EmptyState
           icon={Plane}
           title="Nenhum bloqueio cadastrado"
-          description="Cadastre os lotes de assentos garantidos com a operadora — trecho, datas, voos, assentos disponíveis e prazo de release."
+          description="Cadastre os lotes de assentos garantidos com a operadora — ou importe de uma vez a planilha do mapa (CSV/XLSM)."
         />
         <BlockDialog orgSlug={orgSlug} editing={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); router.refresh() }} />
+        <BlocksImporter orgSlug={orgSlug} open={importOpen} onOpenChange={setImportOpen} />
       </>
     )
   }
@@ -148,6 +154,9 @@ export default function BlocksView({
             {destinos.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button variant="outline" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setImportOpen(true)}>
+          <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar planilha</span>
+        </Button>
         <Button className="h-9 px-2.5 text-xs shrink-0" onClick={() => setEditing('new')}>
           <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo bloqueio</span>
         </Button>
@@ -236,6 +245,7 @@ export default function BlocksView({
       </div>
 
       <BlockDialog orgSlug={orgSlug} editing={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); router.refresh() }} />
+      <BlocksImporter orgSlug={orgSlug} open={importOpen} onOpenChange={setImportOpen} />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
         <AlertDialogContent>

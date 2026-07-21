@@ -105,6 +105,33 @@ export async function updateTravelBlock(orgSlug: string, id: string, input: Reco
   return { ok: true as const, data: data as TravelBlockRow }
 }
 
+/** Import em lote (planilha CSV/XLSM do mapa de bloqueios). Linhas inválidas já foram filtradas no preview do importador. */
+export async function bulkCreateTravelBlocks(
+  orgSlug: string,
+  rows: Record<string, any>[],
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const valid = rows
+    .map(r => pick(r))
+    .filter(r => r.origem && r.destino && r.data_ida)
+  if (valid.length === 0) return { ok: false as const, error: 'Nenhuma linha válida para importar.' }
+
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('travel_blocks')
+    .insert(valid.map(r => ({ organization_id: org.id, created_by: user.id, ...r })))
+    .select('id')
+
+  if (error) return { ok: false as const, error: error.message || 'Erro ao importar bloqueios' }
+
+  revalidatePath(`/app/${orgSlug}/bloqueios`)
+  return { ok: true as const, count: data?.length ?? 0 }
+}
+
 export async function deleteTravelBlock(orgSlug: string, id: string) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
