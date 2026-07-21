@@ -27,7 +27,8 @@ import {
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
-  updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale, type TravelSaleRow,
+  updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
+  getContatoTravelerInfo, type TravelSaleRow,
 } from '@/actions/travel-sales'
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
@@ -40,7 +41,7 @@ import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, FileBadge, FileSignature, Sparkles,
+  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -433,6 +434,7 @@ export default function TravelSalesView({
                 sale={selected}
                 saving={saving}
                 sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
+                leads={leads}
                 onBack={() => setSelectedId(null)}
                 onDelete={() => setDeleteId(selected.id)}
                 onSave={(patch, generate) => handleSave(selected.id, patch, generate)}
@@ -564,12 +566,13 @@ function NewSaleDialog({
 }
 
 function SaleEditor({
-  orgSlug, sale, saving, sellerName, onSave, onBack, onDelete,
+  orgSlug, sale, saving, sellerName, leads = [], onSave, onBack, onDelete,
 }: {
   orgSlug: string
   sale: TravelSaleRow
   saving: boolean
   sellerName: string | null
+  leads?: LeadOption[]
   onSave: (patch: Record<string, any>, generate: boolean) => void
   onBack: () => void
   onDelete: () => void
@@ -756,9 +759,16 @@ function SaleEditor({
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
-            </Button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
+              </Button>
+              <TravelerFromContactPicker
+                orgSlug={orgSlug}
+                leads={leads}
+                onPick={t => set('travelers', [...travelers, t])}
+              />
+            </div>
           </div>
         </div>
 
@@ -922,5 +932,57 @@ function SaleEditor({
         />
       )}
     </div>
+  )
+}
+
+/** Popover de busca em Contatos pra adicionar como viajante — puxa nome, nascimento e CPF do cadastro. */
+function TravelerFromContactPicker({
+  orgSlug, leads, onPick,
+}: {
+  orgSlug: string
+  leads: LeadOption[]
+  onPick: (t: { name: string; birth_date: string; cpf: string }) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  async function handleSelect(contatoId: string) {
+    setLoadingId(contatoId)
+    const res = await getContatoTravelerInfo(orgSlug, contatoId)
+    setLoadingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    onPick(res.data)
+    setOpen(false)
+    if (!res.data.birth_date || !res.data.cpf) {
+      toast.info('Contato adicionado — complete data de nascimento/CPF se necessário.')
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Puxar de contatos
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar contato…" />
+          <CommandList>
+            <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
+            <CommandGroup>
+              {leads.map(l => (
+                <CommandItem key={l.id} value={l.name} onSelect={() => handleSelect(l.id)} disabled={loadingId !== null}>
+                  {loadingId === l.id
+                    ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin shrink-0" />
+                    : <UserCircle2 className="w-3.5 h-3.5 mr-2 shrink-0 text-muted-foreground" />}
+                  <span className="truncate">{l.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }

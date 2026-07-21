@@ -269,6 +269,27 @@ export async function markContractGenerated(orgSlug: string, saleId: string) {
  * fica pra uma leva futura) no mesmo array de vouchers/comprovantes já
  * exibido em Reservas.
  */
+/** Dados do contato usados pra preencher um viajante da venda (nome, nascimento, CPF). */
+export async function getContatoTravelerInfo(orgSlug: string, contatoId: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contatos')
+    .select('name, cpf, date_of_birth')
+    .eq('organization_id', org.id)
+    .eq('id', contatoId)
+    .maybeSingle()
+  if (!data) return { ok: false as const, error: 'Contato não encontrado.' }
+  return {
+    ok: true as const,
+    data: {
+      name: (data as any).name as string,
+      cpf: ((data as any).cpf as string | null) ?? '',
+      birth_date: ((data as any).date_of_birth as string | null) ?? '',
+    },
+  }
+}
+
 export async function attachSignedContract(orgSlug: string, saleId: string, voucher: { url: string; name: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

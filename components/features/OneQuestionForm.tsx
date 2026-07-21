@@ -183,6 +183,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
               }}
               isPreview={isPreview}
               loading={loading}
+              dark={dark}
             />
 
             <div className="flex items-center gap-2 pt-4">
@@ -193,6 +194,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
                   size="sm"
                   onClick={handleBack}
                   disabled={loading}
+                  className={dark ? 'text-gray-200 hover:text-white hover:bg-white/10' : ''}
                 >
                   <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
@@ -256,6 +258,7 @@ function FieldRenderer({
   onAutoAdvance,
   isPreview,
   loading,
+  dark = false,
 }: {
   field: FormField
   value: any
@@ -263,6 +266,7 @@ function FieldRenderer({
   onAutoAdvance: () => void
   isPreview: boolean
   loading: boolean
+  dark?: boolean
 }) {
   const common = {
     disabled: loading,
@@ -377,7 +381,7 @@ function FieldRenderer({
           onChange={e => onChange(e.target.checked)}
           className="w-5 h-5 mt-0.5 rounded border-gray-300 accent-primary"
         />
-        <span className="text-sm text-muted-foreground">{field.placeholder || 'Confirmo'}</span>
+        <span className={`text-sm ${dark ? 'text-gray-200' : 'text-muted-foreground'}`}>{field.placeholder || 'Confirmo'}</span>
       </label>
     )
   }
