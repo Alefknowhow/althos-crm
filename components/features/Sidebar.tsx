@@ -28,6 +28,7 @@ import {
   CalendarClock,
   Wallet,
   FileStack,
+  Armchair,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -222,6 +223,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Embarques</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('sales') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/bloqueios`}>
+            <span className="flex items-center gap-2.5">
+              <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Bloqueios</span>
             </span>
           </SidebarNavLink>
         )}
