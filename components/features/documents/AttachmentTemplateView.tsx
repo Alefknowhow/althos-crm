@@ -84,7 +84,7 @@ export default function AttachmentTemplateView({
 
       {children && (
         <Card>
-          <CardContent className="pt-6 prose prose-sm max-w-none">
+          <CardContent className="pt-6 prose prose-sm max-w-none dark:prose-invert">
             {children}
           </CardContent>
         </Card>
