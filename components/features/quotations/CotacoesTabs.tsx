@@ -28,7 +28,7 @@ export default function CotacoesTabs({
         <ProposalsList orgSlug={orgSlug} proposals={proposals} members={members} contatos={contatos} />
       </TabsContent>
       <TabsContent value="orcamento-ia">
-        <BudgetDocumentsView orgSlug={orgSlug} documents={budgetDocuments} />
+        <BudgetDocumentsView orgSlug={orgSlug} documents={budgetDocuments} members={members} />
       </TabsContent>
     </Tabs>
   )

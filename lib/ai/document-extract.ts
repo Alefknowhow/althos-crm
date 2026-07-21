@@ -19,7 +19,15 @@ export type ExtractedTravelDocument = {
   localizador_aereo: string | null
   data_ida: string | null
   data_volta: string | null
-  voos: { companhia: string | null; data: string | null; origem: string | null; destino: string | null }[]
+  voos: {
+    companhia: string | null
+    numero: string | null
+    data: string | null
+    origem: string | null
+    destino: string | null
+    horario: string | null
+    sentido: 'ida' | 'volta' | null
+  }[]
   traslado: boolean
   seguro: boolean
   valor_total_cents: number | null
@@ -48,11 +56,14 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
           type: 'object',
           properties: {
             companhia: { type: ['string', 'null'] },
+            numero: { type: ['string', 'null'], description: 'Número do voo, ex.: "AD 4657" ou "4185/2932"' },
             data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
             origem: { type: ['string', 'null'] },
             destino: { type: ['string', 'null'] },
+            horario: { type: ['string', 'null'], description: 'Horário de partida-chegada do trecho, ex.: "05:45 - 07:00"' },
+            sentido: { type: ['string', 'null'], enum: ['ida', 'volta', null], description: 'Se o trecho é da ida ou da volta' },
           },
-          required: ['companhia', 'data', 'origem', 'destino'],
+          required: ['companhia', 'numero', 'data', 'origem', 'destino', 'horario', 'sentido'],
         },
       },
       traslado: { type: 'boolean', description: 'true se o documento menciona traslado incluso' },
@@ -111,9 +122,12 @@ export async function extractTravelDocumentFromFile(
     voos: Array.isArray(parsed.voos)
       ? parsed.voos.slice(0, 10).map((v: any) => ({
           companhia: typeof v?.companhia === 'string' ? v.companhia.slice(0, 120) : null,
+          numero: typeof v?.numero === 'string' ? v.numero.slice(0, 40) : null,
           data: /^\d{4}-\d{2}-\d{2}$/.test(v?.data) ? v.data : null,
           origem: typeof v?.origem === 'string' ? v.origem.slice(0, 120) : null,
           destino: typeof v?.destino === 'string' ? v.destino.slice(0, 120) : null,
+          horario: typeof v?.horario === 'string' ? v.horario.slice(0, 40) : null,
+          sentido: v?.sentido === 'ida' || v?.sentido === 'volta' ? v.sentido : null,
         }))
       : [],
     traslado: !!parsed.traslado,

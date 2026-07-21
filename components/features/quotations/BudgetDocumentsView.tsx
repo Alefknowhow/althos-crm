@@ -16,7 +16,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { cn, formatCurrency } from '@/lib/utils'
+import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   createBudgetDocument, updateBudgetDocument, deleteBudgetDocument, getBudgetDocumentSourceUrl,
   type BudgetDocumentRow,
@@ -51,11 +53,14 @@ function Field({ label, children }: { label: React.ReactNode; children: React.Re
   return <div className="space-y-1"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>
 }
 
+type Member = { user_id: string; name: string; email: string }
+
 export default function BudgetDocumentsView({
-  orgSlug, documents,
+  orgSlug, documents, members = [],
 }: {
   orgSlug: string
   documents: BudgetDocumentRow[]
+  members?: Member[]
 }) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<string | null>(documents[0]?.id ?? null)
@@ -64,12 +69,18 @@ export default function BudgetDocumentsView({
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [query, setQuery] = useState('')
+  const [seller, setSeller] = useState<string>('all')
+  const [dateBucket, setDateBucket] = useState<DateBucket>('all')
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return documents
-    return documents.filter(d => [d.client_name, d.destination, d.hotel_name].filter(Boolean).join(' ').toLowerCase().includes(q))
-  }, [documents, query])
+    return documents.filter(d => {
+      if (seller !== 'all' && d.created_by !== seller) return false
+      if (!matchesDateBucket(d.created_at, dateBucket)) return false
+      if (q && ![d.client_name, d.destination, d.hotel_name].filter(Boolean).join(' ').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [documents, query, seller, dateBucket])
 
   const selected = documents.find(d => d.id === selectedId) ?? null
 
@@ -142,16 +153,56 @@ export default function BudgetDocumentsView({
 
   return (
     <>
-      <div className="flex flex-col gap-2 mb-4">
-        <div className="relative w-full">
+      {/* Filtros — tudo numa linha só, mesmo padrão da aba Cotações. */}
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por cliente, destino, hotel…" className="pl-8 h-9" />
         </div>
-        <div className="flex justify-end">
-          <Button size="sm" className="h-9" onClick={() => setExtractOpen(true)} disabled={creating}>
-            <Sparkles className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo orçamento com IA</span>
-          </Button>
+
+        {members.length > 0 && (
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="h-9 text-xs w-[170px] shrink-0">
+              <SelectValue placeholder="Vendedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Filtro de período: dropdown no mobile, pills no desktop. */}
+        <ResponsiveSelect
+          className="sm:hidden h-9 w-[110px] shrink-0 text-xs"
+          aria-label="Filtrar por data"
+          value={dateBucket}
+          onValueChange={v => setDateBucket(v as DateBucket)}
+          options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+        />
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          {DATE_BUCKETS.map(b => (
+            <button
+              key={b.id}
+              onClick={() => setDateBucket(b.id)}
+              className={cn(
+                'px-3 h-9 rounded-full border text-xs font-medium transition-colors',
+                FOCUS_RING,
+                dateBucket === b.id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
+              )}
+            >
+              {b.label}
+            </button>
+          ))}
         </div>
+
+        <Button className="h-9 px-2.5 text-xs shrink-0" onClick={() => setExtractOpen(true)} disabled={creating}>
+          <Sparkles className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo orçamento com IA</span>
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {documents.length} orçamento(s)</p>
