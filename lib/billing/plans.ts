@@ -9,8 +9,9 @@
  *   'agency'     – invite-only, unlimited, all features, billing_managed_externally
  *   'internal'   – Althos own accounts
  *
+ *   'trial'      – 15-day free trial with full Pro access (current self-signup default)
+ *
  * Legacy (grandfathered) keys kept so existing org rows / webhooks still resolve:
- *   'trial'      – 7-day free trial (old self-signup)
  *   'free_trial' – old name for trial (no expiry)
  *   'scale'      – old top tier, renamed to 'business' (hidden alias)
  */
@@ -76,22 +77,22 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
   },
   trial: {
     key:               'trial',
-    label:             'Trial Gratuito',
-    tagline:           'Teste por 7 dias',
-    description:       '7 dias para explorar tudo, sem compromisso.',
+    label:             'Teste grátis',
+    tagline:           'Teste por 15 dias',
+    description:       'Acesso completo ao plano Pro por 15 dias, sem cartão de crédito.',
     priceCents:         0,
     priceCentsSemestral:null,
     priceCentsAnnual:   null,
     maxLeads:          null,
-    maxUsers:          1,
-    hasAI:             false,
+    maxUsers:          6,        // espelha o limite do Pro durante o teste
+    hasAI:             true,
     hasAdvancedAI:     false,
-    hasAutomations:    false,
+    hasAutomations:    true,
     hasAdvancedAuto:   false,
     hasWhatsApp:       true,
-    hasInstagram:      false,
-    hasMetaAds:        false,
-    hasEmailMarketing: false,
+    hasInstagram:      true,
+    hasMetaAds:        true,
+    hasEmailMarketing: true,
     hasAPI:            false,
     hasDedicatedManager: false,
     isPublicPlan:      false,
@@ -276,8 +277,10 @@ export const PUBLIC_PLANS: PlanConfig[] = [PLANS.starter, PLANS.pro, PLANS.busin
 export const UNMANAGED_PLANS: PlanKey[] = ['free', 'agency', 'internal']
 
 /**
- * Determines whether an org's subscription is effectively blocked (expired
- * trial, canceled subscription, etc.).
+ * Determines whether an org is "frozen" (expired trial without a paid
+ * subscription, or a canceled subscription). A frozen org is NOT locked out —
+ * the app layout still renders normally (read access), but write actions must
+ * refuse via requireWritableOrg() below. See app/app/[orgSlug]/layout.tsx.
  */
 export function isAccessBlocked(org: {
   plan:                     string | null
@@ -298,6 +301,31 @@ export function isAccessBlocked(org: {
   if (org.subscription_status === 'canceled') return true
 
   return false
+}
+
+/**
+ * Guard for server actions that WRITE data. A frozen org (expired trial,
+ * canceled subscription) can still be viewed, but must not be able to
+ * create/update/delete anything until it upgrades. Call at the top of a
+ * mutating action, right after fetching the org:
+ *
+ *   const org = await getCurrentOrganization(orgSlug)
+ *   assertOrgWritable(org)
+ *
+ * Throws a plain Error with a user-facing PT-BR message — action handlers in
+ * this codebase already catch and surface thrown errors as { ok: false, error }.
+ */
+export function assertOrgWritable(org: {
+  plan:                     string | null
+  trial_ends_at:            string | null
+  subscription_status:      string | null
+  billing_managed_externally: boolean | null
+}): void {
+  if (isAccessBlocked(org)) {
+    throw new Error(
+      'Sua conta está congelada (teste expirado ou assinatura cancelada). Assine um plano para voltar a editar.',
+    )
+  }
 }
 
 /** Format price as BR currency string. */

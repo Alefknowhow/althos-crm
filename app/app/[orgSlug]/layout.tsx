@@ -14,9 +14,8 @@ import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
 import Link from 'next/link'
 import { Activity } from 'lucide-react'
-import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { isAccessBlocked } from '@/lib/billing/plans'
+import FrozenBanner from '@/components/features/billing/FrozenBanner'
 
 export default async function OrgLayout({
   children,
@@ -34,21 +33,18 @@ export default async function OrgLayout({
   ])
 
   // ── Billing gate ────────────────────────────────────────────────────────────
-  // Skip when the user is already on /upgrade (prevent infinite redirect).
-  const pathname      = headers().get('x-pathname') ?? ''
-  const isUpgradePage = pathname.endsWith('/upgrade')
-
-  if (!isUpgradePage) {
-    const orgFull = org as any
-    if (isAccessBlocked({
-      plan:                       orgFull.plan ?? null,
-      trial_ends_at:              orgFull.trial_ends_at ?? null,
-      subscription_status:        orgFull.subscription_status ?? null,
-      billing_managed_externally: orgFull.billing_managed_externally ?? null,
-    })) {
-      redirect(`/app/${params.orgSlug}/upgrade`)
-    }
-  }
+  // Frozen orgs (expired trial without a paid subscription, or a canceled
+  // subscription) are NOT locked out of the app — they keep read access to
+  // their data, but every mutating server action refuses via
+  // assertOrgWritable() (lib/billing/plans.ts). We just show a persistent
+  // banner here instead of the old hard redirect to /upgrade.
+  const orgFull = org as any
+  const isFrozen = isAccessBlocked({
+    plan:                       orgFull.plan ?? null,
+    trial_ends_at:              orgFull.trial_ends_at ?? null,
+    subscription_status:        orgFull.subscription_status ?? null,
+    billing_managed_externally: orgFull.billing_managed_externally ?? null,
+  })
 
   const supabase = createClient()
   // Filter by user.id explicitly so super-admins only see their OWN orgs
@@ -69,7 +65,11 @@ export default async function OrgLayout({
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-plex">
-      <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
+      {isFrozen ? (
+        <FrozenBanner orgSlug={params.orgSlug} />
+      ) : (
+        <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
+      )}
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
       <div className="flex flex-1 min-h-0">

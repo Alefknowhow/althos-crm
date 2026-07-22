@@ -3,6 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { taskSchema } from '@/lib/validators/task'
+import { isAccessBlocked } from '@/lib/billing/plans'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -32,6 +35,7 @@ async function ensureDefaultColumnId(supabase: ReturnType<typeof createClient>, 
 export async function createTask(orgSlug: string, input: TaskInput) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const validation = taskSchema.safeParse(input)
@@ -89,6 +93,7 @@ export type TaskUpdateInput = Partial<TaskInput>
 
 export async function updateTask(orgSlug: string, taskId: string, input: TaskUpdateInput) {
   const org      = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const updates: Record<string, unknown> = {}
@@ -110,6 +115,7 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
 
 export async function deleteTask(orgSlug: string, taskId: string) {
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
   
   const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('organization_id', org.id)

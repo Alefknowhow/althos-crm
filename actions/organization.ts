@@ -112,16 +112,20 @@ export async function createOrganization(formData: FormData) {
       slug,
       account_id: accountId,
       niche: accountNiche,            // mirror of the account niche
-      // New signups start on the free-forever plan. The 7-day paid trial only
-      // begins at checkout (with a payment method). 'free' is never billing-blocked.
-      plan: 'free',
+      // New signups start on a real 15-day trial with full Pro access, no card
+      // required (matches the marketing site's "teste grátis por 15 dias").
+      // If it lapses without a paid subscription, isAccessBlocked() flags the
+      // org and the app layout freezes it to read-only (see app/app/[orgSlug]/layout.tsx).
+      plan: 'trial',
       account_type: 'self_signup',
       subscription_status: 'active',
-      trial_ends_at: null,
-      limit_leads: 100,
-      limit_whatsapp_monthly: 100,
-      limit_email_monthly: 100,
-      limit_users: 3,
+      trial_ends_at: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+      // Limites amplos durante o trial (espelha o Pro) — ficam apertados só se
+      // a conta congelar ou assinar um plano com teto menor (Starter).
+      limit_leads: null,
+      limit_whatsapp_monthly: null,
+      limit_email_monthly: null,
+      limit_users: 6,
       onboarding_completed: true,   // wizard is replaced by the onboarding flow
     })
     .select()

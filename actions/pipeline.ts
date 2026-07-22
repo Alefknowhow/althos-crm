@@ -3,6 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
+import { isAccessBlocked } from '@/lib/billing/plans'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 /**
  * List all pipelines for an org with stage counts and lead counts — used by
@@ -43,6 +46,7 @@ export async function listPipelines(orgSlug: string) {
 export async function createPipeline(orgSlug: string, name: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const trimmed = (name || '').trim()
@@ -86,6 +90,7 @@ export async function createPipeline(orgSlug: string, name: string) {
 
 export async function renamePipeline(orgSlug: string, pipelineId: string, name: string) {
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const trimmed = (name || '').trim()
@@ -110,6 +115,7 @@ export async function renamePipeline(orgSlug: string, pipelineId: string, name: 
  */
 export async function setDefaultPipeline(orgSlug: string, pipelineId: string) {
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   // Clear current default first.
@@ -136,6 +142,7 @@ export async function deletePipeline(orgSlug: string, pipelineId: string) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   // Refuse to delete the default; user must promote another pipeline first.

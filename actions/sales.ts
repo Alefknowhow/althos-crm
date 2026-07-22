@@ -6,6 +6,9 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { saleInputSchema } from '@/lib/validators/sale'
+import { isAccessBlocked } from '@/lib/billing/plans'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 export async function listSales(orgSlug: string) {
   const org = await getCurrentOrganization(orgSlug)
@@ -42,6 +45,7 @@ export async function getSale(orgSlug: string, id: string) {
 export async function createSale(orgSlug: string, input: unknown) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
 
   const perm = await checkMemberPermission(org.id, user.id, 'sales')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
@@ -105,6 +109,7 @@ export async function createSale(orgSlug: string, input: unknown) {
 export async function updateSale(orgSlug: string, id: string, input: unknown) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
 
   const perm = await checkMemberPermission(org.id, user.id, 'sales')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
@@ -130,6 +135,7 @@ export async function updateSale(orgSlug: string, id: string, input: unknown) {
 export async function deleteSale(orgSlug: string, id: string) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
 
   const perm = await checkMemberPermission(org.id, user.id, 'sales')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }

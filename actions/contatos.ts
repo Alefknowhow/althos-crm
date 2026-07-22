@@ -5,6 +5,9 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { leadSchema } from '@/lib/validators/lead'
 import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
+import { isAccessBlocked } from '@/lib/billing/plans'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 import { CONTATO_STATUSES } from '@/lib/contatos'
 import { z } from 'zod'
 
@@ -21,6 +24,7 @@ import { z } from 'zod'
 export async function createLead(orgSlug: string, formData: FormData) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
 
   if (!(await canCreateLead(org.id))) {
     return { ok: false, error: 'Limite de contatos atingido para o seu plano.' }
@@ -114,6 +118,7 @@ import { inngest } from '@/lib/inngest/client'
 
 export async function updateLead(orgSlug: string, leadId: string, formData: FormData) {
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const { data: oldLead } = await supabase.from('contatos').select('tags').eq('id', leadId).maybeSingle()
@@ -160,6 +165,7 @@ export async function deleteLead(orgSlug: string, leadId: string) {
     return { ok: false, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const { error } = await supabase.from('contatos').delete().eq('id', leadId).eq('organization_id', org.id)
@@ -282,6 +288,7 @@ export async function assignLead(orgSlug: string, leadId: string, userId: string
 export async function updateLeadValue(orgSlug: string, leadId: string, valueCents: number) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const { error } = await supabase
@@ -299,6 +306,7 @@ export async function updateLeadValue(orgSlug: string, leadId: string, valueCent
 export async function updateLeadTags(orgSlug: string, leadId: string, tags: string[]) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const clean = Array.from(new Set(
@@ -655,6 +663,7 @@ const newCustomerSchema = z.object({
 export async function createCustomer(orgSlug: string, raw: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
   const parsed = newCustomerSchema.safeParse(raw)
@@ -714,6 +723,7 @@ const newContatoSchema = z.object({
 export async function createContato(orgSlug: string, raw: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
 
   if (!(await canCreateLead(org.id))) {
     return { ok: false as const, error: 'Limite de contatos atingido para o seu plano.' }
