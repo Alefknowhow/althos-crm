@@ -146,4 +146,30 @@ export const asaas = {
   async getInvoices(customerId: string) {
     return asaasFetch(`/payments?customer=${customerId}&limit=12`)
   },
+
+  /**
+   * One-off charge (not tied to a subscription) — used for add-ons that are
+   * a single purchase rather than a recurring line item, e.g. AI credit packs.
+   * `externalReference` lets the webhook map the payment back without a
+   * subscription id (see app/api/webhooks/asaas/route.ts).
+   */
+  async createPayment(
+    customerId: string,
+    valueReais: number,
+    description: string,
+    externalReference: string,
+    billingType: 'CREDIT_CARD' | 'PIX' = 'PIX',
+  ) {
+    return asaasFetch('/payments', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer:          customerId,
+        billingType,
+        value:             valueReais,
+        dueDate:           nextDueDate(),
+        description,
+        externalReference,
+      }),
+    })
+  },
 }

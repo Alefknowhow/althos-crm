@@ -47,6 +47,50 @@ export async function POST(req: NextRequest) {
   try {
     const subscriptionId: string | undefined =
       payload.payment?.subscription || payload.subscription?.id
+    const externalRef: string | undefined = payload.payment?.externalReference
+
+    // ── One-off add-on purchases (no subscription attached) ──────────────
+    // Créditos de IA avulsos: externalReference = "credit_pack:<accountId>:<credits>"
+    if (!subscriptionId && externalRef?.startsWith('credit_pack:')) {
+      const ev: string = payload.event
+      if (ev === 'PAYMENT_RECEIVED' || ev === 'PAYMENT_CONFIRMED') {
+        const [, accountId, creditsStr] = externalRef.split(':')
+        const credits = parseInt(creditsStr, 10)
+        if (accountId && Number.isFinite(credits)) {
+          const { currentPeriodMonth } = await import('@/lib/plans/server')
+          const periodMonth = currentPeriodMonth()
+
+          const { data: existing } = await adminSupabase
+            .from('ai_credits')
+            .select('id, credits_purchased')
+            .eq('account_id', accountId)
+            .eq('period_month', periodMonth)
+            .maybeSingle()
+
+          if (existing) {
+            await adminSupabase
+              .from('ai_credits')
+              .update({ credits_purchased: (existing.credits_purchased ?? 0) + credits })
+              .eq('id', existing.id)
+          } else {
+            await adminSupabase.from('ai_credits').insert({
+              account_id: accountId,
+              period_month: periodMonth,
+              credits_included: 0,
+              credits_purchased: credits,
+              credits_used: 0,
+            })
+          }
+        }
+      }
+
+      await adminSupabase
+        .from('billing_events')
+        .update({ processed_at: new Date().toISOString() })
+        .eq('id', event.id)
+
+      return NextResponse.json({ ok: true })
+    }
 
     if (subscriptionId) {
       const { data: org } = await adminSupabase

@@ -3,6 +3,7 @@ import { getPlan, formatPrice } from '@/lib/billing/plans'
 import { getUsageStatus, getTrialDaysRemaining } from '@/lib/billing/limits'
 import { asaas } from '@/lib/asaas/client'
 import SubscriptionActions from './SubscriptionActions'
+import AddonsSection from './AddonsSection'
 import ReferralCouponsSection from '@/components/features/billing/ReferralCouponsSection'
 import { getReferralOverview, getAppliedCoupons } from '@/actions/referrals'
 import { getSubscriptionByOrgSlug } from '@/lib/plans/server'
@@ -105,14 +106,14 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         {isTrial && trialDays !== null && (
           <div className="space-y-1.5 pt-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Período de trial (7 dias)</span>
-              <span className={trialDays <= 2 ? 'text-destructive font-medium' : ''}>
+              <span>Período de trial (15 dias)</span>
+              <span className={trialDays <= 3 ? 'text-destructive font-medium' : ''}>
                 {trialDays === 0 ? 'Expirado' : `${trialDays} dia${trialDays !== 1 ? 's' : ''} restante${trialDays !== 1 ? 's' : ''}`}
               </span>
             </div>
             <Progress
-              value={trialDays === 0 ? 100 : ((7 - trialDays) / 7) * 100}
-              className={trialDays <= 2 ? '[&>div]:bg-destructive' : ''}
+              value={trialDays === 0 ? 100 : ((15 - trialDays) / 15) * 100}
+              className={trialDays <= 3 ? '[&>div]:bg-destructive' : ''}
             />
           </div>
         )}
@@ -146,6 +147,9 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
           />
         )}
       </div>
+
+      {/* ── Complementos (add-ons) ──────────────────────────────────────────── */}
+      {!isManaged && <AddonsSection orgSlug={params.orgSlug} />}
 
       {/* ── Usage card ────────────────────────────────────────────────────── */}
       <div className="rounded-none border bg-card p-6 space-y-4">
