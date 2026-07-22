@@ -1,6 +1,10 @@
 # Inventário de Funcionalidades — Althos CRM
 
 > Documento-base para organizar o site institucional: o que o produto faz, módulo a módulo, com foco no que resolve pra quem usa. Reflete o estado real do código nesta data — não é copy de marketing, é a fonte de verdade pra escrever a copy.
+>
+> **Nichos estratégicos definidos:** Viagens, Clínicas, Imobiliárias, Advocacia e Corretoras de Seguros — escolhidos por dependerem de um CRM completo pra operar (não é ferramenta acessória) e por estarem entre os verticais de menor churn do mercado de SaaS (alto custo de troca por causa do histórico de caso/cliente/apólice acumulado no sistema).
+>
+> As seções 1–6 abaixo descrevem o que **já está construído** (genérico + módulo de Viagens). As seções 7 e 8 são **especificações de produto a construir** para os dois nichos novos (Advocacia e Seguros), no mesmo nível de profundidade do módulo de Viagens — servem de roteiro de desenvolvimento, não de funcionalidade já existente.
 
 ---
 
@@ -272,6 +276,116 @@
 
 ---
 
+## 7. Módulo de Advocacia *(especificação — a construir)*
+
+> Espelha o papel que o Módulo de Viagens tem hoje: um conjunto de telas exclusivas do nicho, gated por `isLawNiche(org.niche)` (ou equivalente), que faz o escritório operar 100% dentro do Althos — do primeiro contato do cliente até o arquivamento do processo. Reaproveita ao máximo a infraestrutura genérica já existente (Pipeline, Contatos, Tarefas, Financeiro, Documentos, Automações, IA Qualificadora) e cobre com telas próprias o que só existe em escritório de advocacia: processo, prazo fatal e honorários.
+
+### Processos
+**O que é:** Registro central de cada processo/caso do escritório — o equivalente direto à Reserva do módulo de viagens.
+**Recursos necessários:**
+- Cadastro do processo: número (CNJ), vara/comarca, área do direito, cliente (parte), parte contrária, advogado responsável, fase processual
+- Vínculo a um ou mais contatos do CRM (cliente e, quando relevante, parte contrária/testemunhas)
+- Linha do tempo de andamentos processuais (manual ou, numa fase futura, por integração com tribunais/Escavador/Judit)
+- Checklist do processo (petição inicial protocolada, citação, contestação, sentença, recurso, trânsito em julgado) — mesmo padrão do checklist de venda em Reservas
+- Tarefas geradas automaticamente a partir de eventos do processo (ex.: "protocolar contestação" ao registrar a citação)
+- Upload de documentos do processo com histórico de versões
+**Resolve:** substitui a planilha/caderno de acompanhamento processual, dando ao escritório uma visão única de "onde está cada processo" sem depender da memória do advogado responsável.
+
+### Prazos (Agenda Processual)
+**O que é:** Linha do tempo/alerta de prazos fatais e não-fatais vinculados a cada processo — o equivalente a Embarques + Bloqueios (visibilidade + contagem regressiva).
+**Recursos necessários:**
+- Cadastro de prazo vinculado ao processo (tipo, data fatal, responsável, se é prazo fatal ou preparatório)
+- Cálculo automático de prazo em dias úteis, considerando feriados forenses (nacionais + da comarca)
+- Alertas escalonados (ex.: 5 dias, 2 dias, véspera) por e-mail/WhatsApp pro advogado responsável
+- Dashboard "Próximos prazos" (mesmo padrão do card "Próximos vencimentos" já existente no Financeiro)
+- Marcação de prazo cumprido, com registro de quem cumpriu e quando
+**Resolve:** é o maior risco operacional de um escritório (perda de prazo = erro grave, responsabilidade civil) — automatizar esse controle é o principal motivo de adoção de um sistema jurídico.
+
+### Documentos & Modelos Jurídicos
+**O que é:** Geração de peças (petições, procurações, contratos de honorários) a partir de modelos com campos automáticos — reaproveita 100% a engine de merge-fields já construída em Documentos/Reservas.
+**Recursos necessários:**
+- Modelos editáveis por área do direito (cível, trabalhista, família, tributário etc.), com variáveis do processo/cliente resolvidas automaticamente
+- Geração de procuração e contrato de honorários assinável (upload do assinado, mesmo padrão do contrato de viagem)
+- Biblioteca de documentos gerados por processo, com busca
+**Resolve:** elimina o "abrir o Word e copiar da última petição parecida", com consistência e menos erro de digitação de dados do cliente/processo.
+
+### Honorários (Financeiro jurídico)
+**O que é:** Camada específica sobre o módulo Financeiro genérico para controlar as formas de cobrança típicas da advocacia.
+**Recursos necessários:**
+- Tipos de honorário: fixo, por hora, êxito (percentual sobre o valor da causa/ganho), contrato de risco
+- Parcelamento de honorários vinculado ao processo, com vencimentos e status (reaproveita Financeiro + "próximos vencimentos")
+- Registro de custas processuais e despesas reembolsáveis por processo (centro de custo = processo)
+- Relatório de honorários a receber por processo/cliente/advogado
+**Resolve:** dá ao escritório controle de fluxo de caixa ligado diretamente ao andamento de cada processo, sem depender de planilha paralela pro financeiro do escritório.
+
+### Propostas de Honorários (Cotações jurídicas)
+**O que é:** Equivalente a Cotações — proposta formal de prestação de serviço enviada ao cliente antes de fechar o contrato.
+**Recursos necessários:**
+- Montagem de proposta com escopo do serviço, forma de honorário e condições
+- Link público compartilhável + PDF com a marca do escritório
+- Conversão direta da proposta aceita em Processo + Contrato de Honorários
+**Resolve:** profissionaliza a captação de novos clientes, com um documento formal em vez de orçamento por WhatsApp.
+
+### Reaproveitados sem alteração
+Pipeline (funil de captação de clientes), Contatos (clientes/partes), Tarefas, Automações (lembretes automáticos), IA Qualificadora (priorizar consultas), Agendamentos (agenda de audiências e reuniões), Conversas/WhatsApp, Configurações/Permissões.
+
+---
+
+## 8. Módulo de Corretoras de Seguros *(especificação — a construir)*
+
+> Mesmo princípio: telas exclusivas gated por `isInsuranceNiche(org.niche)`, cobrindo o ciclo apólice → renovação → sinistro → comissão, reaproveitando toda a base genérica (Pipeline, Contatos, Financeiro, Documentos, Automações).
+
+### Apólices
+**O que é:** Registro central de cada apólice vendida — equivalente direto à Reserva/Processo.
+**Recursos necessários:**
+- Cadastro da apólice: seguradora, ramo (auto, vida, residencial, empresarial, saúde), número da apólice, vigência (início/fim), prêmio, forma de pagamento
+- Vínculo ao contato (segurado) e ao bem segurado (veículo, imóvel, etc. — campos por ramo)
+- Checklist da apólice (proposta enviada, aceita pela seguradora, emitida, boleto enviado, ativa)
+- Upload da apólice em PDF e endossos/aditivos vinculados
+- Histórico de alterações (endosso) com data e motivo
+**Resolve:** substitui a planilha de controle de apólices que praticamente toda corretora pequena/média usa hoje, com toda a informação vinculada ao cliente certo.
+
+### Renovações
+**O que é:** Painel de apólices a vencer — o ativo mais valioso de uma corretora, já que é o momento de maior risco de perda do cliente pra outra corretora.
+**Recursos necessários:**
+- Dashboard "Próximas renovações" (30/60/90 dias), mesmo padrão do "Próximos vencimentos" do Financeiro
+- Disparo automático de tarefa e/ou mensagem de WhatsApp ao entrar na janela de renovação
+- Comparação automática entre prêmio atual e cotação de renovação (quando integrado a cotador de seguradora, fase futura)
+- Marcação de renovada / não-renovada (com motivo de perda, pra métrica de retenção)
+**Resolve:** é a funcionalidade que mais protege a receita recorrente da corretora — não perder renovação por falta de acompanhamento é o principal argumento de venda desse módulo.
+
+### Sinistros
+**O que é:** Acompanhamento do processo de sinistro do segurado, do aviso até o pagamento/negativa.
+**Recursos necessários:**
+- Abertura de sinistro vinculado à apólice, com tipo, data do evento, status (aberto, em análise, aprovado, pago, negado)
+- Checklist de documentos exigidos pela seguradora, com upload
+- Linha do tempo de comunicação com a seguradora
+- Notificação ao cliente a cada mudança de status
+**Resolve:** o momento de sinistro é o de maior ansiedade do cliente — ter um processo claro e visível aumenta a percepção de valor da corretora (que muitas vezes só é lembrada nesse momento).
+
+### Comissões
+**O que é:** Camada específica sobre o Financeiro genérico pra controlar o repasse de comissão por apólice/seguradora.
+**Recursos necessários:**
+- Percentual de comissão por seguradora/ramo/produto
+- Cálculo automático da comissão esperada por apólice emitida
+- Conciliação entre comissão esperada x paga pela seguradora (identifica divergência/glosa)
+- Relatório de comissões por corretor (quando há equipe de vendas), por seguradora e por período
+**Resolve:** hoje esse controle costuma ser feito em planilha separada da seguradora — automatizar a conciliação evita perda de receita por comissão não paga/errada.
+
+### Cotações Comparativas
+**O que é:** Equivalente a Cotações — comparação de propostas de diferentes seguradoras antes de fechar com o cliente.
+**Recursos necessários:**
+- Registro de cotações recebidas de diferentes seguradoras pro mesmo perfil de risco
+- Comparativo lado a lado (prêmio, coberturas, franquia) pra apresentar ao cliente
+- Geração de proposta em PDF com a marca da corretora
+- Conversão da cotação escolhida em Apólice com um clique
+**Resolve:** demonstra o valor do corretor frente a comprar direto com uma seguradora — ele estuda e compara o mercado, algo que precisa ficar visível e organizado.
+
+### Reaproveitados sem alteração
+Pipeline (funil comercial de novos segurados), Contatos (segurados + bens segurados), Tarefas, Automações (lembretes de renovação), IA Qualificadora, Conversas/WhatsApp, Configurações/Permissões.
+
+---
+
 ## Como usar este documento
 
 Cada bloco acima pode virar:
@@ -280,3 +394,5 @@ Cada bloco acima pode virar:
 - Um item de FAQ respondendo "vocês têm X?"
 
 O ponto central pro cliente: **ele precisa ver o próprio fluxo de trabalho refletido aqui** — não uma lista de features genéricas. Isso significa organizar a comunicação do site por *jornada* (captação → atendimento → venda → operação → financeiro) em vez de por nome de tela, usando a linguagem de cada seção acima como munição.
+
+As seções 7 e 8 (Advocacia e Seguros) são o roteiro de desenvolvimento pros dois nichos novos — nenhuma linha de código foi alterada ainda. Quando entrarmos na implementação, cada bloco vira uma leva de trabalho no mesmo formato das demais (migração → actions → tela → verificação/deploy).
