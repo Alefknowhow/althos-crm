@@ -4,7 +4,9 @@
 >
 > **Nichos estratégicos definidos:** Viagens, Clínicas, Imobiliárias, Advocacia e Corretoras de Seguros — escolhidos por dependerem de um CRM completo pra operar (não é ferramenta acessória) e por estarem entre os verticais de menor churn do mercado de SaaS (alto custo de troca por causa do histórico de caso/cliente/apólice acumulado no sistema).
 >
-> As seções 1–6 abaixo descrevem o que **já está construído** (genérico + módulo de Viagens). As seções 7 e 8 são **especificações de produto a construir** para os dois nichos novos (Advocacia e Seguros), no mesmo nível de profundidade do módulo de Viagens — servem de roteiro de desenvolvimento, não de funcionalidade já existente.
+> As seções 1–6 abaixo descrevem o que **já está construído** (genérico + módulo de Viagens). As seções 7–10 são **especificações de produto a construir** — Advocacia e Seguros (nichos novos) e Clínicas/Imobiliárias (otimização dos nichos já existentes, hoje operando só com CRM genérico) — no mesmo nível de profundidade do módulo de Viagens. Servem de roteiro de desenvolvimento, não de funcionalidade já existente.
+>
+> **Financeiro deixa de ser exclusivo do módulo de Viagens** — vira módulo transversal, disponível como complemento pra qualquer nicho (ver seção 2 e o modelo de preços).
 
 ---
 
@@ -386,6 +388,97 @@ Pipeline (funil comercial de novos segurados), Contatos (segurados + bens segura
 
 ---
 
+## 9. Módulo de Clínicas *(especificação — a construir)*
+
+> Hoje Clínicas usa só CRM genérico + Agendamentos. Este módulo dá funcionalidade própria de clínica (estética, odontológica, saúde em geral) — gated por `isClinicNiche(org.niche)`, reaproveitando Contatos, Documentos, Financeiro e Automações já existentes.
+
+### Prontuário / Ficha de Atendimento
+**O que é:** Registro clínico do paciente, vinculado ao contato — histórico de procedimentos/consultas realizados.
+**Recursos necessários:**
+- Ficha por atendimento: procedimento realizado, profissional responsável, observações, data
+- Upload de fotos "antes/depois" vinculadas ao atendimento (uso comum em estética)
+- Termo de consentimento gerado a partir de modelo e assinado/anexado (reaproveita a engine de Documentos)
+- Linha do tempo de atendimentos do paciente na ficha do contato
+**Resolve:** substitui a pasta física/PDF solto de prontuário, com tudo vinculado ao histórico do paciente no CRM.
+
+### Pacotes de Sessões
+**O que é:** Controle de pacotes vendidos com múltiplas sessões (ex.: 10 sessões de laser, 5 de fisioterapia).
+**Recursos necessários:**
+- Cadastro do pacote (procedimento, nº de sessões, validade)
+- Baixa automática de sessão a cada atendimento registrado, com saldo visível na ficha do paciente
+- Alerta de pacote perto de vencer sem sessões usadas (gatilho de retorno automático)
+**Resolve:** hoje controlado em caderno/planilha — saldo errado de sessão é fonte comum de atrito com o paciente.
+
+### Estoque de Insumos
+**O que é:** Controle de produtos/insumos usados em procedimento (toxina botulínica, preenchedor, anestésico etc.).
+**Recursos necessários:**
+- Cadastro de insumo com quantidade em estoque e validade
+- Baixa automática de insumo ao registrar um atendimento que o consome
+- Alerta de estoque baixo e de validade próxima
+**Resolve:** evita ruptura de estoque em procedimento agendado e descarte por vencimento não percebido.
+
+### Comissão por Profissional
+**O que é:** Camada sobre o Financeiro genérico pra calcular comissão de cada profissional/esteticista por procedimento realizado.
+**Recursos necessários:**
+- Percentual de comissão por profissional e/ou por tipo de procedimento
+- Cálculo automático da comissão a partir do atendimento registrado
+- Relatório de comissões a pagar por profissional/período
+**Resolve:** hoje calculado à parte em planilha — automatizar evita erro e disputa sobre valor de repasse.
+
+### Reaproveitados sem alteração
+Pipeline, Contatos (ficha do paciente), Tarefas, Agendamentos (já genérico, aqui é o core do negócio), Automações (lembrete de retorno), Conversas/WhatsApp, IA Qualificadora, Financeiro (módulo transversal), Configurações/Permissões.
+
+---
+
+## 10. Módulo de Imobiliárias *(especificação — a construir)*
+
+> Hoje Imobiliárias usa só CRM genérico + Agendamentos + Pipeline. Este módulo adiciona o que só existe em imobiliária: o imóvel como entidade própria (não é só "produto de catálogo") e o match entre lead e imóvel.
+
+### Catálogo de Imóveis
+**O que é:** Cadastro de imóveis com campos próprios do setor — diferente do Catálogo genérico de produto/serviço.
+**Recursos necessários:**
+- Cadastro: endereço, tipo (apto/casa/comercial/terreno), metragem, quartos/vagas, valor (venda e/ou locação), status (disponível/reservado/vendido/alugado)
+- Fotos do imóvel com galeria
+- Vínculo do imóvel ao corretor responsável e ao proprietário (contato)
+- Busca/filtro por região, faixa de preço, tipo, nº de quartos
+**Resolve:** hoje controlado em planilha ou portal externo sem integração com o funil de vendas — aqui o imóvel já nasce conectado ao lead interessado.
+
+### Match Lead × Imóvel
+**O que é:** Cruzamento do perfil de busca do lead com os imóveis disponíveis no catálogo.
+**Recursos necessários:**
+- Perfil de busca no cadastro do lead (região, faixa de preço, tipo, quartos)
+- Sugestão automática de imóveis compatíveis ao lead (e vice-versa, quando entra imóvel novo)
+- Envio da sugestão por WhatsApp direto da ficha do imóvel
+**Resolve:** elimina o trabalho manual de "lembrar" quais imóveis combinam com qual cliente — o sistema cruza sozinho.
+
+### Controle de Visitas
+**O que é:** Histórico de visitas realizadas a cada imóvel, vinculado ao lead e ao corretor.
+**Recursos necessários:**
+- Agendamento de visita vinculado ao imóvel (reaproveita Agendamentos)
+- Registro de feedback pós-visita (interessado / não interessado / motivo)
+- Histórico de visitas por imóvel (quantas, por quem, quando)
+**Resolve:** dá ao gestor visão de quais imóveis têm alta procura e baixa conversão (possível problema de preço/condição), e evita agendar visita duplicada.
+
+### Documentos & Propostas
+**O que é:** Geração de proposta de compra/locação e contrato a partir de modelo — reaproveita a engine de Documentos.
+**Recursos necessários:**
+- Modelo de proposta/contrato com campos do imóvel e das partes resolvidos automaticamente
+- Histórico de propostas por imóvel (várias propostas concorrentes no mesmo imóvel)
+**Resolve:** substitui o contrato montado manualmente no Word a cada negociação.
+
+### Comissão por Corretor
+**O que é:** Camada sobre o Financeiro genérico pra calcular comissão por imóvel vendido/alugado.
+**Recursos necessários:**
+- Percentual de comissão por corretor e/ou por tipo de operação (venda/locação)
+- Cálculo automático a partir do fechamento registrado no imóvel
+- Relatório de comissões por corretor/período
+**Resolve:** dá transparência de repasse numa operação onde comissão é frequentemente motivo de atrito entre corretor e imobiliária.
+
+### Reaproveitados sem alteração
+Pipeline (funil por corretor), Contatos (leads/proprietários), Tarefas, Agendamentos (visitas), Automações, Conversas/WhatsApp, IA Qualificadora, Financeiro (módulo transversal), Relatórios, Configurações/Permissões.
+
+---
+
 ## Como usar este documento
 
 Cada bloco acima pode virar:
@@ -395,4 +488,4 @@ Cada bloco acima pode virar:
 
 O ponto central pro cliente: **ele precisa ver o próprio fluxo de trabalho refletido aqui** — não uma lista de features genéricas. Isso significa organizar a comunicação do site por *jornada* (captação → atendimento → venda → operação → financeiro) em vez de por nome de tela, usando a linguagem de cada seção acima como munição.
 
-As seções 7 e 8 (Advocacia e Seguros) são o roteiro de desenvolvimento pros dois nichos novos — nenhuma linha de código foi alterada ainda. Quando entrarmos na implementação, cada bloco vira uma leva de trabalho no mesmo formato das demais (migração → actions → tela → verificação/deploy).
+As seções 7–10 (Advocacia, Seguros, Clínicas, Imobiliárias) são roteiro de desenvolvimento — nenhuma linha de código foi alterada ainda. Quando entrarmos na implementação, cada bloco vira uma leva de trabalho no mesmo formato das demais (migração → actions → tela → verificação/deploy).
