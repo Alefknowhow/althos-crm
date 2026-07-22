@@ -116,9 +116,13 @@ export async function createOrganization(formData: FormData) {
       // required (matches the marketing site's "teste grátis por 15 dias").
       // If it lapses without a paid subscription, isAccessBlocked() flags the
       // org and the app layout freezes it to read-only (see app/app/[orgSlug]/layout.tsx).
+      // subscription_status='trialing' (não 'active') — o cron de e-mails de
+      // trial (lib/inngest/trial-emails.ts) pula orgs com status 'active' por
+      // entender que já são assinantes pagos; 'trialing' é o valor correto
+      // pra quem ainda não converteu (mesma convenção usada após checkout Asaas).
       plan: 'trial',
       account_type: 'self_signup',
-      subscription_status: 'active',
+      subscription_status: 'trialing',
       trial_ends_at: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       // Limites amplos durante o trial (espelha o Pro) — ficam apertados só se
       // a conta congelar ou assinar um plano com teto menor (Starter).

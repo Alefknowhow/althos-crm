@@ -37,6 +37,7 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/crm-whatsapp' ||    // feature LP: CRM com WhatsApp
     pathname === '/pricing' ||         // legado: redireciona para /planos via next.config
     pathname === '/faq' ||             // marketing: FAQ
+    pathname === '/fale-com-vendas' ||  // marketing: lead form (plano Business)
     pathname === '/robots.txt' ||      // SEO: crawler directives (must not 307→login)
     pathname === '/sitemap.xml' ||     // SEO: sitemap
     pathname === '/blog' ||            // marketing: blog index

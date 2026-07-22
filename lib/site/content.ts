@@ -353,7 +353,7 @@ export const DIFFERENTIATORS: Differentiator[] = [
   {
     icon: 'Wallet',
     title: 'Preço honesto',
-    body: 'Planos transparentes, sem pegadinha. Comece no plano Free, sem cartão. Pague mensal ou economize 18% no anual quando quiser evoluir.',
+    body: 'Planos transparentes, sem pegadinha. Teste grátis por 15 dias, sem cartão. Pague mensal ou economize 18% no anual quando quiser evoluir.',
   },
 ]
 
@@ -371,7 +371,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Começando',
     question: 'Preciso de cartão de crédito para começar?',
-    answer: 'Não. O plano Free é gratuito para sempre e não pede cartão. Nos planos pagos, você assina com uma forma de pagamento (cartão ou Pix) e tem 7 dias para testar o app por completo — se não ficar satisfeito, é só pedir o reembolso total dentro desse prazo.',
+    answer: 'Não. Você testa o app completo por 15 dias sem informar cartão — esse já é o seu período de satisfação garantida. Se decidir continuar depois do teste, aí sim assina com uma forma de pagamento (cartão ou Pix), sem período adicional de reembolso.',
   },
   {
     category: 'Começando',
@@ -396,7 +396,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Planos',
     question: 'Qual a diferença entre os planos?',
-    answer: 'O Free organiza seus leads e o pipeline, grátis. O Starter adiciona catálogo e WhatsApp. O Pro traz IA, agendamentos, Meta Ads e mais usuários. O Business libera tudo: insights com IA, white-label, API e usuários ilimitados.',
+    answer: 'O teste grátis de 15 dias já dá acesso completo ao Pro, incluindo o módulo do seu nicho. O Starter é o ponto de entrada pago (catálogo e WhatsApp), o Pro adiciona IA, agendamentos, Meta Ads e mais usuários, e o Business libera tudo: insights com IA, white-label, API e usuários ilimitados.',
   },
   {
     category: 'Planos',

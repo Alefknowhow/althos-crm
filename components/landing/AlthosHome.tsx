@@ -229,7 +229,7 @@ const CMP_ROWS: { feat: string; a: boolean | string; k: boolean | string; h: boo
   { feat: 'Feito para nichos brasileiros', a: true, k: false, h: false },
   { feat: 'Preço e cobrança em Real (R$)', a: true, k: false, h: false },
   { feat: 'Suporte humano em português', a: true, k: 'Limitado', h: 'Limitado' },
-  { feat: 'Plano gratuito de verdade', a: true, k: false, h: 'Limitado' },
+  { feat: 'Teste completo por 15 dias, sem cartão', a: true, k: 'Limitado', h: 'Limitado' },
   { feat: 'Pronto pra usar em minutos', a: true, k: 'Configuração longa', h: 'Implantação cara' },
   { feat: 'Sem fidelidade — cancele quando quiser', a: true, k: true, h: false },
 ]
@@ -577,7 +577,7 @@ function Pricing() {
               )}
               <p className="pdesc">{plan.description}</p>
               {isBusiness ? (
-                <a href="mailto:suporte@althoscrm.com.br?subject=Quero%20agendar%20uma%20reuni%C3%A3o%20-%20Plano%20Business" className="btn btn-outline">Agende uma reunião</a>
+                <a href="/fale-com-vendas" className="btn btn-outline">Falar com vendas</a>
               ) : (
                 <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
               )}
@@ -592,8 +592,8 @@ function Pricing() {
       </div>
 
       <p className="price-note reveal" data-d="0">
-        Teste <b>15 dias grátis</b>, sem cartão. Depois, você assina com uma forma de pagamento (Pix ou
-        cartão) — se não ficar satisfeito nos primeiros <b>7 dias de assinatura</b>, <b>reembolso total</b>.
+        Teste <b>15 dias grátis</b>, sem cartão — esse já é o seu período de satisfação garantida. Depois do
+        teste, você assina com uma forma de pagamento (Pix ou cartão) e a cobrança vale pra valer, sem reembolso.
         No semestral e no anual, pague à vista no Pix ou parcele no cartão de crédito.
         <b> Sem fidelidade</b> — cancele quando quiser.
       </p>

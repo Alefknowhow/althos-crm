@@ -89,17 +89,22 @@ export default function PlanosPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { t: 'Usuários extras', d: 'Além dos usuários inclusos no plano Pro, adicione mais assentos conforme sua equipe cresce.' },
-            { t: 'Lojas/agências extras', d: 'Pra redes e franquias: adicione mais unidades operacionais além das inclusas no plano.' },
-            { t: 'Módulos de nicho', d: 'Recursos específicos pro seu segmento (viagens, clínicas, imobiliárias e mais) além do CRM genérico.' },
-            { t: 'Créditos de IA', d: 'Pacotes avulsos além dos créditos mensais do plano, pra picos de uso do Agente IA e Insights.' },
+            { t: 'Usuários extras', price: 'R$ 47/usuário/mês', d: 'Além dos usuários inclusos no plano Pro, adicione mais assentos conforme sua equipe cresce.' },
+            { t: 'Lojas/agências extras', price: 'R$ 97/loja/mês', d: 'Pra redes e franquias: adicione mais unidades operacionais além das inclusas no plano.' },
+            { t: 'Módulos de nicho', price: 'R$ 147/mês', priceNote: 'Financeiro sozinho: R$ 67/mês', d: 'Recursos específicos pro seu segmento (viagens, clínicas, imobiliárias e mais) além do CRM genérico.' },
+            { t: 'Créditos de IA', price: 'a partir de R$ 13/100 créditos', d: 'Pacotes avulsos (100/500/1000) além dos créditos mensais do plano, pra picos de uso do Agente IA e Insights.' },
           ].map(item => (
             <div key={item.t} className="rounded-none border border-[#383838] bg-[#262626] p-5">
               <h3 className="text-[15px] font-semibold text-[#f4f4f4]">{item.t}</h3>
+              <p className="mt-2 text-lg font-bold text-[#78a9ff]">{item.price}</p>
+              {item.priceNote && <p className="text-[12px] text-[#8d8d8d]">{item.priceNote}</p>}
               <p className="mt-1.5 text-[13px] leading-relaxed text-[#a8a8a8]">{item.d}</p>
             </div>
           ))}
         </div>
+        <p className="mt-4 text-center text-[12px] text-[#8d8d8d]">
+          Usuários e lojas/agências extras disponíveis a partir do plano Pro. Módulos de nicho disponíveis a partir do Starter.
+        </p>
       </section>
 
       {/* CTA final */}

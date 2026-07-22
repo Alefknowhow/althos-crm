@@ -177,12 +177,12 @@ export function PricingPlans() {
               <p className="mt-4 text-[13px] leading-relaxed text-[#a8a8a8]">{plan.description}</p>
 
               {isBusiness ? (
-                <a
-                  href="mailto:suporte@althoscrm.com.br?subject=Quero%20agendar%20uma%20reuni%C3%A3o%20-%20Plano%20Business"
+                <Link
+                  href="/fale-com-vendas"
                   className="mt-6 rounded-none border border-[#525252] px-5 py-3 text-center text-[14px] font-semibold text-[#d4d4d4] transition-all hover:bg-[#1f1f1f]"
                 >
-                  Agende uma reunião
-                </a>
+                  Falar com vendas
+                </Link>
               ) : (
                 <Link
                   href="/signup"
@@ -218,8 +218,8 @@ export function PricingPlans() {
 
       {/* Nota de pagamento */}
       <p className="mt-8 text-center text-[13px] text-[#8d8d8d] sm:mt-10">
-        Teste <strong className="text-[#d4d4d4]">15 dias grátis</strong>, sem cartão. Depois, você assina com uma forma de pagamento (Pix ou cartão) — se não ficar satisfeito nos primeiros 7 dias de assinatura,{' '}
-        <strong className="text-[#d4d4d4]">reembolso total</strong>.
+        Teste <strong className="text-[#d4d4d4]">15 dias grátis</strong>, sem cartão — esse já é o seu período de satisfação garantida.
+        Depois do teste, você assina com uma forma de pagamento (Pix ou cartão) e a cobrança vale pra valer, sem reembolso.
         No semestral e no anual, pague à vista no <strong className="text-[#d4d4d4]">Pix</strong> ou parcele no{' '}
         <strong className="text-[#d4d4d4]">cartão de crédito</strong>. Sem fidelidade — cancele quando quiser.
       </p>

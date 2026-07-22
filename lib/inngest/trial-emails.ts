@@ -117,7 +117,7 @@ function trialExpiredHtml(orgName: string, orgSlug: string): string {
             Trial expirado
           </div>
           <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#1D1D1F;letter-spacing:-0.4px;">
-            Seu trial de 7 dias encerrou
+            Seu trial de 15 dias encerrou
           </h1>
           <p style="margin:0 0 24px;font-size:15px;color:#6E6E73;line-height:1.6;">
             O período gratuito de <strong style="color:#1D1D1F;">${orgName}</strong> chegou ao fim.<br><br>
