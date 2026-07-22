@@ -99,12 +99,18 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
                 <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{plan.description}</p>
               </div>
 
-              <div className="flex items-end gap-1 min-w-0 flex-wrap">
-                <span className="text-3xl sm:text-4xl font-bold tabular-nums whitespace-nowrap">
-                  {formatPrice(plan.priceCents!)}
-                </span>
-                <span className="text-muted-foreground mb-1 whitespace-nowrap">/mês</span>
-              </div>
+              {isBusiness ? (
+                <div className="flex items-end gap-1 min-w-0 flex-wrap">
+                  <span className="text-xl sm:text-2xl font-bold whitespace-nowrap">Sob consulta</span>
+                </div>
+              ) : (
+                <div className="flex items-end gap-1 min-w-0 flex-wrap">
+                  <span className="text-3xl sm:text-4xl font-bold tabular-nums whitespace-nowrap">
+                    {formatPrice(plan.priceCents!)}
+                  </span>
+                  <span className="text-muted-foreground mb-1 whitespace-nowrap">/mês</span>
+                </div>
+              )}
 
               <ul className="space-y-1.5 text-sm flex-1">
                 {features.filter(f => f.val !== '—' && f.val !== false).map(f => (
@@ -120,13 +126,24 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
                 ))}
               </ul>
 
-              <UpgradeCheckoutButton
-                orgSlug={params.orgSlug}
-                plan={plan.key as 'starter' | 'pro' | 'business'}
-                label={isCurrent ? 'Plano ativo' : `Assinar ${plan.label}`}
-                disabled={isCurrent}
-                highlight={isPro}
-              />
+              {isBusiness ? (
+                <a
+                  href="/fale-com-vendas"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  Falar com vendas
+                </a>
+              ) : (
+                <UpgradeCheckoutButton
+                  orgSlug={params.orgSlug}
+                  plan={plan.key as 'starter' | 'pro'}
+                  label={isCurrent ? 'Plano ativo' : `Assinar ${plan.label}`}
+                  disabled={isCurrent}
+                  highlight={isPro}
+                />
+              )}
             </div>
           )
         })}

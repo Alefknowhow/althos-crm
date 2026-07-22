@@ -8,7 +8,8 @@ import { createCheckoutSession } from '@/actions/billing'
 import { PLANS, getPlanPricing, ANNUAL_DISCOUNT_PCT, SEMESTRAL_DISCOUNT_PCT, type BillingCycle } from '@/lib/billing/plans'
 import { PLAN_FEATURES } from '@/lib/billing/plan-features'
 import { toast } from 'sonner'
-import { Loader2, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket } from 'lucide-react'
+import { Loader2, QrCode, CreditCard, CheckCircle2, XCircle, Zap, Users, Rocket, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 type Plan    = 'starter' | 'pro' | 'business'
@@ -151,16 +152,26 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
                   {active && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
                 </div>
 
-                <div className="flex items-end gap-0.5 sm:gap-1 min-w-0 flex-wrap">
-                  <span className={cn('text-base sm:text-xl font-bold tabular-nums whitespace-nowrap', active ? 'text-foreground' : 'text-muted-foreground')}>
-                    {pPrice.perMonthLabel}
-                  </span>
-                  <span className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 whitespace-nowrap">/mês</span>
-                </div>
-                {cycle !== 'monthly' && (
-                  <p className="text-[10px] text-muted-foreground -mt-1.5 truncate">
-                    {pPrice.totalLabel}/{cycle === 'annual' ? 'ano' : 'semestre'}
-                  </p>
+                {p === 'business' ? (
+                  <div className="flex items-end gap-0.5 sm:gap-1 min-w-0 flex-wrap">
+                    <span className={cn('text-xs sm:text-sm font-bold whitespace-nowrap', active ? 'text-foreground' : 'text-muted-foreground')}>
+                      Sob consulta
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-end gap-0.5 sm:gap-1 min-w-0 flex-wrap">
+                      <span className={cn('text-base sm:text-xl font-bold tabular-nums whitespace-nowrap', active ? 'text-foreground' : 'text-muted-foreground')}>
+                        {pPrice.perMonthLabel}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 whitespace-nowrap">/mês</span>
+                    </div>
+                    {cycle !== 'monthly' && (
+                      <p className="text-[10px] text-muted-foreground -mt-1.5 truncate">
+                        {pPrice.totalLabel}/{cycle === 'annual' ? 'ano' : 'semestre'}
+                      </p>
+                    )}
+                  </>
                 )}
 
                 <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug">{pi.tagline}</p>
@@ -205,7 +216,8 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
           ))}
         </div>
 
-        {/* ── Payment method selector ── */}
+        {/* ── Payment method selector (não aplicável ao Business — sob consulta) ── */}
+        {plan !== 'business' && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">Forma de pagamento</p>
           {METHODS.map(m => {
@@ -244,37 +256,55 @@ export default function CheckoutModal({ orgSlug, open, onClose, initialPlan }: P
             )
           })}
         </div>
+        )}
 
-        {/* ── Summary + CTA ── */}
-        <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between text-sm">
-          <div>
-            <span className="text-muted-foreground">
-              {cycle === 'annual' ? 'Total anual' : cycle === 'semestral' ? 'Total semestral' : 'Total mensal'} — {info.label}
-            </span>
-            {cycle !== 'monthly' && (
-              <p className="text-[11px] text-emerald-600">
-                Economia de {pricing.savedLabel} no {cycle === 'annual' ? 'ano' : 'semestre'} · equivale a {pricing.perMonthLabel}/mês
-              </p>
-            )}
-          </div>
-          <span className="font-bold text-base shrink-0 tabular-nums whitespace-nowrap">{pricing.totalLabel}</span>
-        </div>
+        {plan === 'business' ? (
+          <>
+            {/* ── Business: sob consulta, mesmo tratamento do site ── */}
+            <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+              Business é um plano sob medida pro seu volume de operação — multi-tenant ilimitado, insights de IA, API e gerente de conta dedicado. Fale com o nosso time pra montar sua proposta.
+            </div>
+            <Link href="/fale-com-vendas" target="_blank" rel="noopener noreferrer" className="block">
+              <Button className="w-full h-11" size="lg">
+                Falar com vendas <ExternalLink className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </>
+        ) : (
+          <>
+            {/* ── Summary + CTA ── */}
+            <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between text-sm">
+              <div>
+                <span className="text-muted-foreground">
+                  {cycle === 'annual' ? 'Total anual' : cycle === 'semestral' ? 'Total semestral' : 'Total mensal'} — {info.label}
+                </span>
+                {cycle !== 'monthly' && (
+                  <p className="text-[11px] text-emerald-600">
+                    Economia de {pricing.savedLabel} no {cycle === 'annual' ? 'ano' : 'semestre'} · equivale a {pricing.perMonthLabel}/mês
+                  </p>
+                )}
+              </div>
+              <span className="font-bold text-base shrink-0 tabular-nums whitespace-nowrap">{pricing.totalLabel}</span>
+            </div>
 
-        <Button
-          onClick={handlePay}
-          disabled={loading}
-          className="w-full h-11"
-          size="lg"
-        >
-          {loading
-            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aguarde...</>
-            : `Continuar para pagamento →`
-          }
-        </Button>
+            <Button
+              onClick={handlePay}
+              disabled={loading}
+              className="w-full h-11"
+              size="lg"
+            >
+              {loading
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aguarde...</>
+                : `Continuar para pagamento →`
+              }
+            </Button>
+          </>
+        )}
 
         <p className="text-center text-xs text-muted-foreground">
-          Você será redirecionado para a página segura do Asaas.
-          Sem fidelidade — cancele quando quiser.
+          {plan === 'business'
+            ? 'Sem fidelidade — cancele quando quiser.'
+            : 'Você será redirecionado para a página segura do Asaas. Sem fidelidade — cancele quando quiser. Precisa de mais usuários, lojas ou módulos de nicho? Veja os add-ons em /planos.'}
         </p>
       </DialogContent>
     </Dialog>
