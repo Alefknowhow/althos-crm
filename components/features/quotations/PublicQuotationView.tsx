@@ -146,7 +146,7 @@ function nightsBetween(a?: string | null, b?: string | null): number | null {
 }
 
 const PIN_COLORS: Record<string, string> = {
-  lodging: '#ff385c', attraction: '#222222', airport: '#3f3f3f', custom: '#222222',
+  lodging: '#0f62fe', attraction: '#222222', airport: '#3f3f3f', custom: '#222222',
 }
 const LEG_LABELS: Record<string, string> = { outbound: 'Ida', inbound: 'Volta', connection: 'Conexão' }
 
@@ -836,17 +836,6 @@ export default function PublicQuotationView({
           onIndex={i => setLightbox(lb => lb && { ...lb, index: i })}
           onClose={() => setLightbox(null)} />
       )}
-
-      {/* ───── Botão flutuante de WhatsApp ───── */}
-      {waNumber && (
-        <a className="wa-fab no-print" target="_blank" rel="noopener noreferrer"
-          onClick={() => trackCta('duvidas')}
-          href={waHref(`Oi! Vim pela proposta "${data.title || 'de viagem'}" e gostaria de falar com vocês.`)}
-          aria-label="Falar no WhatsApp">
-          <IcWa />
-          <span className="wa-fab-lbl">Falar no WhatsApp</span>
-        </a>
-      )}
     </div>
   )
 }
@@ -862,7 +851,7 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 .alq{
-  --navy:#222222; --navy-soft:#3f3f3f; --gold:#ff385c; --gold-soft:#ff8095;
+  --navy:#222222; --navy-soft:#3f3f3f; --gold:#0f62fe; --gold-soft:#4589ff;
   --ivory:#f7f7f7; --paper:#FFFFFF; --ink:#222222; --muted:#6a6a6a;
   --line:#dddddd; --sea:#222222; --ok:#2f7d5b; --no:#c13515; --body:#3f3f3f;
   --shadow:rgba(0,0,0,.02) 0 0 0 1px,rgba(0,0,0,.04) 0 2px 6px,rgba(0,0,0,.1) 0 4px 8px;
@@ -955,7 +944,7 @@ const CSS = `
 .alq .lodge .meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 14px}
 .alq .pill{font-size:12.5px;padding:5px 12px;border-radius:999px;background:var(--surface-strong,#f2f2f2);color:var(--body);
   border:1px solid var(--line);font-weight:500}
-.alq .pill.gold{background:#ffe1e6;color:#c13515;border-color:#ffb8c4}
+.alq .pill.gold{background:rgba(15,98,254,.1);color:#0f62fe;border-color:rgba(15,98,254,.3)}
 .alq .lodge p{margin:0 0 14px;color:var(--body);font-size:15px}
 .alq .gallery{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:repeat(2,90px);gap:8px}
 .alq .gallery .g{border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);position:relative;padding:0;border:0;cursor:zoom-in;display:block}
@@ -1056,7 +1045,7 @@ const CSS = `
 .alq .invest h3{color:#fff;font-size:21px;font-weight:700;margin:8px 0 24px}
 .alq .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:26px}
 .alq .price-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:20px}
-.alq .price-card.total{border-color:rgba(255,56,92,.55);background:rgba(255,56,92,.12)}
+.alq .price-card.total{border-color:rgba(15,98,254,.55);background:rgba(15,98,254,.12)}
 .alq .price-card .lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.66)}
 .alq .price-card .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:30px;margin-top:6px;line-height:1}
 .alq .price-card.total .amt{color:var(--gold-soft)}
@@ -1092,7 +1081,7 @@ const CSS = `
 .alq .foot .social svg{width:22px;height:22px}
 .alq .foot-sep{height:1px;background:rgba(255,255,255,.12);margin:24px 0}
 .alq .foot .logo{font-family:'Inter',sans-serif;font-weight:600;font-size:20px;color:#fff;letter-spacing:0}
-.alq .foot-logo-img{max-height:44px;width:auto;margin:0 auto;display:block;opacity:0;transition:opacity .6s}
+.alq .foot-logo-img{max-height:88px;width:auto;margin:0 auto;display:block;opacity:0;transition:opacity .6s}
 .alq .foot-logo-img.loaded{opacity:1}
 .alq .foot .legal{font-size:12.5px;margin-top:12px;line-height:1.8}
 .alq .foot .legal a{color:rgba(255,255,255,.8);text-decoration:underline;text-underline-offset:3px}
@@ -1180,19 +1169,6 @@ const CSS = `
   .alq .closing h3,.alq .closing-rich h1,.alq .closing-rich h2,.alq .closing-rich h3{font-size:21px}
   .alq .closing p,.alq .closing-rich p{font-size:14.5px}
   .alq .btn{padding:13px 22px;font-size:14px}
-}
-
-/* Botão flutuante de WhatsApp */
-.alq .wa-fab{position:fixed;z-index:900;right:20px;bottom:20px;display:inline-flex;align-items:center;gap:10px;
-  height:56px;padding:0 20px 0 16px;border-radius:999px;background:#25D366;color:#0a3d22;text-decoration:none;
-  font-weight:700;font-size:15px;box-shadow:0 10px 28px rgba(37,211,102,.42);
-  transition:transform .18s ease,box-shadow .18s ease}
-.alq .wa-fab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(37,211,102,.5)}
-.alq .wa-fab svg{width:26px;height:26px;flex:none}
-.alq .wa-fab-lbl{white-space:nowrap}
-@media(max-width:560px){
-  .alq .wa-fab{right:16px;bottom:16px;height:52px;padding:0 16px 0 14px;font-size:14px}
-  .alq .wa-fab svg{width:24px;height:24px}
 }
 
 /* Print */
