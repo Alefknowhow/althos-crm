@@ -236,7 +236,7 @@ const CMP_ROWS: { feat: string; a: boolean | string; k: boolean | string; h: boo
 
 const GUARANTEES = [
   { h: 'Sem fidelidade', p: 'Cancele quando quiser, direto pelo painel. Nada de multa ou letra miúda.' },
-  { h: 'Comece sem cartão', p: 'O plano Free é grátis para sempre. Você só paga quando decidir crescer.' },
+  { h: 'Comece sem cartão', p: 'Teste o app completo por 15 dias. Você só assina quando decidir continuar.' },
   { h: 'Suporte de gente', p: 'Atendimento humano em português, por quem conhece o seu tipo de negócio.' },
   { h: 'Seus dados protegidos', p: 'Hospedagem segura e conformidade com a LGPD. Seus contatos são só seus.' },
 ]
@@ -426,12 +426,11 @@ function AiBlock({ onZoom }: { onZoom: OnZoom }) {
 }
 
 const SEGMENTS = [
-  { lead: true, tag: 'Nicho-âncora', h: 'Agências de viagens', p: 'Cotações, roteiros e follow-ups de viagem automatizados — do primeiro "quanto custa?" ao embarque, sem perder o timing de venda.', href: '/viagens', icon: <><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /><circle cx="12" cy="12" r="10" /></> },
+  { lead: true, tag: 'Nicho-âncora', h: 'Agências de viagens', p: 'Cotações, contratos e financeiro de viagem num só lugar — do "quanto custa?" ao embarque, sem perder o timing de venda.', href: '/viagens', icon: <><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /><circle cx="12" cy="12" r="10" /></> },
+  { lead: false, h: 'Clínicas e consultórios', p: 'Agendamentos, confirmações e retorno de pacientes sem fila no WhatsApp.', href: '/clinicas', icon: <><path d="M12 3v18M3 12h18" /><rect x="4" y="4" width="16" height="16" rx="4" /></> },
   { lead: false, h: 'Imobiliárias', p: 'Captação de leads e agendamento de visitas no piloto automático.', href: '/imobiliarias', icon: <><path d="M3 21V9l9-6 9 6v12" /><path d="M9 21v-6h6v6" /></> },
-  { lead: false, h: 'Clínicas', p: 'Agendamentos, confirmações e retorno de pacientes sem fila no WhatsApp.', href: '/clinicas', icon: <><path d="M12 3v18M3 12h18" /><rect x="4" y="4" width="16" height="16" rx="4" /></> },
-  { lead: false, h: 'Lojas de veículos', p: 'Do test-drive ao financiamento, cada lead acompanhado até fechar.', href: '/veiculos', icon: <><path d="M3 13l2-5h14l2 5M5 13h14v5H5z" /><circle cx="7.5" cy="18" r="1.6" /><circle cx="16.5" cy="18" r="1.6" /></> },
-  { lead: false, h: 'Agências de tráfego', p: 'Leads de anúncios direto no funil, com ROI por campanha à vista.', href: '/trafego', icon: <><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></> },
-  { lead: false, h: 'Pequenas empresas', p: 'Organize clientes e vendas num lugar só, sem complicação nem custo alto.', href: '/pequenas-empresas', icon: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 4a3 3 0 010 6M22 20c0-2.5-1.5-4.7-3.7-5.6" /></> },
+  { lead: false, tag: 'Em breve', h: 'Escritórios de advocacia', p: 'Processos, prazos e honorários organizados — sem planilha, sem prazo perdido.', href: '/advocacia', icon: <><path d="M12 3v4M5 7l14 0M5 7l-3 8a4 4 0 008 0l-3-8M19 7l-3 8a4 4 0 008 0l-3-8M9 21h6" /></> },
+  { lead: false, tag: 'Em breve', h: 'Corretoras de seguros', p: 'Apólices, renovações e comissões sob controle, do fechamento à renovação.', href: '/seguros', icon: <><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" /></> },
 ]
 
 /* ----------------------------- Segments ----------------------------- */
@@ -493,14 +492,12 @@ function planFeats(plan: PlanConfig): [string, boolean][] {
 }
 
 const FREE_FEATS: [string, boolean][] = [
-  ['Até 100 leads', true],
-  ['Até 50 clientes', true],
-  ['Pipeline e oportunidades', true],
-  ['1 formulário de captação', true],
-  ['WhatsApp e Instagram', false],
-  ['Atendente de IA 24h', false],
-  ['Automações', false],
-  ['Relatórios e dashboards', false],
+  ['Todos os recursos do Pro', true],
+  ['Módulo do seu nicho incluso', true],
+  ['WhatsApp, Instagram e Meta Ads', true],
+  ['Atendente de IA 24h + score', true],
+  ['Automações e agendamentos', true],
+  ['Sem necessidade de cartão', true],
 ]
 
 /* ----------------------------- Pricing ----------------------------- */
@@ -529,18 +526,16 @@ function Pricing() {
       </div>
 
       <div className="plans">
-        {/* Free — não entra no checkout, é o ponto de partida grátis */}
+        {/* Trial — não entra no checkout, é o teste completo de 15 dias */}
         <article className="plan reveal">
-          <h3>Free</h3>
-          <p className="ptag">Para dar o primeiro passo</p>
+          <h3>Teste grátis</h3>
+          <p className="ptag">Experimente o app completo</p>
           <div className="price">
-            <span className="cur">R$</span>
-            <span className="val">0</span>
-            <span className="per">/mês</span>
+            <span className="val">15 dias</span>
           </div>
-          <p className="annual-note">Gratuito para sempre · sem cartão</p>
-          <p className="pdesc">Organize seus leads e o pipeline e comece a vender com método — sem pagar nada.</p>
-          <a href="/signup" className="btn btn-outline">Começar grátis</a>
+          <p className="annual-note">Sem cartão de crédito</p>
+          <p className="pdesc">Acesso completo ao plano Pro por 15 dias — incluindo o módulo do seu nicho, sem limitação.</p>
+          <a href="/signup" className="btn btn-outline">Começar teste grátis</a>
           <ul>
             {FREE_FEATS.map(([label, on], i) => (
               <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
@@ -597,9 +592,9 @@ function Pricing() {
       </div>
 
       <p className="price-note reveal" data-d="0">
-        Comece no <b>Free</b>, sem cartão. Nos planos pagos, você assina com uma forma de pagamento (Pix ou
-        cartão) e tem <b>7 dias para testar o app por completo</b> — se não ficar satisfeito, <b>reembolso total</b> nesse
-        prazo. No semestral e no anual, pague à vista no Pix ou parcele no cartão de crédito.
+        Teste <b>15 dias grátis</b>, sem cartão. Depois, você assina com uma forma de pagamento (Pix ou
+        cartão) — se não ficar satisfeito nos primeiros <b>7 dias de assinatura</b>, <b>reembolso total</b>.
+        No semestral e no anual, pague à vista no Pix ou parcele no cartão de crédito.
         <b> Sem fidelidade</b> — cancele quando quiser.
       </p>
 
@@ -703,9 +698,9 @@ function FinalCta() {
         <h2 className="reveal" data-d="0">Pronto para transformar seus <em>resultados</em>?</h2>
         <p className="reveal" data-d="1">Coloque a IA do Althos pra atender, qualificar e vender por você — hoje, em minutos.</p>
         <div className="reveal" data-d="2">
-          <a href="/signup" className="btn btn-solid">Testar grátis por 7 dias <span className="arrow">→</span></a>
+          <a href="/signup" className="btn btn-solid">Testar grátis por 15 dias <span className="arrow">→</span></a>
         </div>
-        <div className="micro reveal" data-d="3"><span className="check">✓</span> Plano Free grátis · sem cartão</div>
+        <div className="micro reveal" data-d="3"><span className="check">✓</span> Teste completo · sem cartão</div>
       </div>
     </section>
   )

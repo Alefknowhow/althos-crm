@@ -167,6 +167,12 @@ const securityHeaders = async () => [
  */
 const redirects = async () => [
   { source: '/pricing', destination: '/planos', permanent: true },
+  // Nichos descontinuados (substituídos por Advocacia e Corretoras de Seguros
+  // na reestruturação de nichos estratégicos) — redireciona pra home em vez
+  // de deixar 404 pra quem tinha o link salvo/indexado.
+  { source: '/veiculos', destination: '/', permanent: true },
+  { source: '/trafego', destination: '/', permanent: true },
+  { source: '/pequenas-empresas', destination: '/', permanent: true },
 ]
 
 const nextConfig = {

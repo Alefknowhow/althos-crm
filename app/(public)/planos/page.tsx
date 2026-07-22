@@ -6,7 +6,7 @@ import { PUBLIC_PLANS } from '@/lib/billing/plans'
 
 const TITLE = 'Planos e Preços — Althos CRM'
 const DESCRIPTION =
-  'Planos transparentes do Althos CRM. Comece de graça no plano Free, sem cartão. Pague mensal ou economize 18% no anual.'
+  'Planos transparentes do Althos CRM. Teste grátis por 15 dias, sem cartão. Pague mensal ou economize 18% no anual.'
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -36,7 +36,6 @@ function pricingJsonLd() {
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     offers: [
-      { '@type': 'Offer', name: 'Free', price: '0.00', priceCurrency: 'BRL' },
       ...PUBLIC_PLANS.map(p => ({
         '@type': 'Offer' as const,
         name: p.label,
@@ -68,14 +67,39 @@ export default function PlanosPage() {
             Um preço justo para cada fase do seu negócio
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-lg">
-            Comece de graça no plano Free, sem cartão. Mude de plano quando quiser. Sem pegadinha.
+            Teste o app completo por 15 dias, sem cartão. Mude de plano quando quiser. Sem pegadinha.
           </p>
         </div>
       </section>
 
       {/* Planos */}
-      <section className="relative mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+      <section className="relative mx-auto max-w-6xl px-4 pb-14 sm:px-6">
         <PricingPlans />
+      </section>
+
+      {/* Complementos (add-ons) */}
+      <section className="relative mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <div className="mx-auto max-w-2xl text-center mb-8">
+          <h2 className="text-xl font-bold tracking-tight text-[#f4f4f4] sm:text-2xl">
+            Complementos — pague só pelo que crescer
+          </h2>
+          <p className="mt-2 text-[14px] text-[#a8a8a8]">
+            Além dos planos, você pode adicionar o que precisar sob demanda.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { t: 'Usuários extras', d: 'Além dos usuários inclusos no plano Pro, adicione mais assentos conforme sua equipe cresce.' },
+            { t: 'Lojas/agências extras', d: 'Pra redes e franquias: adicione mais unidades operacionais além das inclusas no plano.' },
+            { t: 'Módulos de nicho', d: 'Recursos específicos pro seu segmento (viagens, clínicas, imobiliárias e mais) além do CRM genérico.' },
+            { t: 'Créditos de IA', d: 'Pacotes avulsos além dos créditos mensais do plano, pra picos de uso do Agente IA e Insights.' },
+          ].map(item => (
+            <div key={item.t} className="rounded-none border border-[#383838] bg-[#262626] p-5">
+              <h3 className="text-[15px] font-semibold text-[#f4f4f4]">{item.t}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-[#a8a8a8]">{item.d}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* CTA final */}

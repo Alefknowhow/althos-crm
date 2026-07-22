@@ -30,9 +30,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/viagens' ||         // niche LP: agências de viagens
     pathname === '/imobiliarias' ||    // niche LP: imobiliárias
     pathname === '/clinicas' ||        // niche LP: clínicas
-    pathname === '/veiculos' ||        // niche LP: lojas de veículos
-    pathname === '/trafego' ||         // niche LP: agências de tráfego
-    pathname === '/pequenas-empresas' || // niche LP: pequenas empresas
+    pathname === '/advocacia' ||       // niche LP: escritórios de advocacia
+    pathname === '/seguros' ||         // niche LP: corretoras de seguros
     pathname === '/atendimento-ia' ||    // feature LP: atendimento com IA
     pathname === '/automacao-instagram' || // feature LP: automação de Instagram
     pathname === '/crm-whatsapp' ||    // feature LP: CRM com WhatsApp

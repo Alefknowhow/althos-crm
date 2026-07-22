@@ -77,7 +77,7 @@ export function PricingPlans() {
 
       {/* Cards */}
       <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Free card (não entra no checkout — é o ponto de partida grátis) */}
+        {/* Trial card (não entra no checkout — é o teste completo de 15 dias) */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -85,48 +85,39 @@ export function PricingPlans() {
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="relative flex flex-col rounded-none border border-[#383838] bg-[#262626] p-5 sm:p-7"
         >
-          <h3 className="text-lg font-bold text-[#f4f4f4]">Free</h3>
-          <p className="mt-1 text-[13px] text-[#8d8d8d]">Para dar o primeiro passo</p>
+          <h3 className="text-lg font-bold text-[#f4f4f4]">Teste grátis</h3>
+          <p className="mt-1 text-[13px] text-[#8d8d8d]">Experimente o app completo</p>
 
           <div className="mt-5">
             <div className="flex items-end gap-1">
-              <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">R$ 0</span>
-              <span className="mb-1 text-[13px] text-[#8d8d8d]">/mês</span>
+              <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">15 dias</span>
             </div>
-            <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Gratuito para sempre · sem cartão</p>
+            <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Sem cartão de crédito</p>
           </div>
 
           <p className="mt-4 text-[13px] leading-relaxed text-[#a8a8a8]">
-            Organize seus leads e o pipeline e comece a vender com método — sem pagar nada.
+            Acesso completo ao plano Pro por 15 dias — pipeline, WhatsApp com Agente de IA, automações e o módulo do seu nicho, sem limitação.
           </p>
 
           <Link
             href="/signup"
             className="mt-6 rounded-none border border-[#525252] px-5 py-3 text-center text-[14px] font-semibold text-[#d4d4d4] transition-all hover:bg-[#1f1f1f]"
           >
-            Começar grátis
+            Começar teste grátis
           </Link>
 
           <ul className="mt-5 space-y-2 border-t border-[#383838] pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">
             {[
-              { label: 'Até 100 leads', on: true },
-              { label: 'Até 50 clientes', on: true },
-              { label: 'Pipeline e oportunidades', on: true },
-              { label: '1 formulário de captação', on: true },
-              { label: 'WhatsApp e Instagram', on: false },
-              { label: 'Atendente de IA 24h', on: false },
-              { label: 'Automações', on: false },
-              { label: 'Relatórios e dashboards', on: false },
+              { label: 'Todos os recursos do Pro', on: true },
+              { label: 'Módulo do seu nicho incluso', on: true },
+              { label: 'WhatsApp, Instagram e Meta Ads', on: true },
+              { label: 'Atendente de IA 24h + score', on: true },
+              { label: 'Automações e agendamentos', on: true },
+              { label: 'Sem necessidade de cartão', on: true },
             ].map(f => (
               <li key={f.label} className="flex items-start gap-2.5">
-                {f.on ? (
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                ) : (
-                  <X className="mt-0.5 h-4 w-4 shrink-0 text-[#525252]" />
-                )}
-                <span className={`text-[13px] ${f.on ? 'text-[#d4d4d4]' : 'text-[#707070] line-through'}`}>
-                  {f.label}
-                </span>
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                <span className="text-[13px] text-[#d4d4d4]">{f.label}</span>
               </li>
             ))}
           </ul>
@@ -227,9 +218,8 @@ export function PricingPlans() {
 
       {/* Nota de pagamento */}
       <p className="mt-8 text-center text-[13px] text-[#8d8d8d] sm:mt-10">
-        Comece no <strong className="text-[#d4d4d4]">Free</strong>, sem cartão. Nos planos pagos, você assina com uma forma de pagamento (Pix ou cartão) e tem{' '}
-        <strong className="text-[#d4d4d4]">7 dias para testar o app por completo</strong> — se não ficar satisfeito,{' '}
-        <strong className="text-[#d4d4d4]">reembolso total</strong> dentro desse prazo.
+        Teste <strong className="text-[#d4d4d4]">15 dias grátis</strong>, sem cartão. Depois, você assina com uma forma de pagamento (Pix ou cartão) — se não ficar satisfeito nos primeiros 7 dias de assinatura,{' '}
+        <strong className="text-[#d4d4d4]">reembolso total</strong>.
         No semestral e no anual, pague à vista no <strong className="text-[#d4d4d4]">Pix</strong> ou parcele no{' '}
         <strong className="text-[#d4d4d4]">cartão de crédito</strong>. Sem fidelidade — cancele quando quiser.
       </p>

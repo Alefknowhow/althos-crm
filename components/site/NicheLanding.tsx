@@ -78,7 +78,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
               Ver planos
             </Link>
           </div>
-          <p className="mt-4 text-xs text-[#707070]">✓ Grátis para sempre · sem cartão</p>
+          <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão</p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
             {c.heroChips.map((chip) => (
@@ -248,7 +248,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
               Como funciona
             </Link>
           </div>
-          <p className="mt-4 text-xs text-[#707070]">✓ Plano Free grátis · sem cartão · sem fidelidade</p>
+          <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão · sem fidelidade</p>
         </div>
       </section>
     </SiteShell>

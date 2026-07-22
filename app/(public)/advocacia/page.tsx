@@ -3,10 +3,10 @@ import { NicheLanding } from '@/components/site/NicheLanding'
 import { NICHES } from '@/lib/landing/niches'
 import { buildLandingMetadata } from '@/lib/landing/seo'
 
-const c = NICHES.veiculos
+const c = NICHES.advocacia
 
 export const metadata: Metadata = buildLandingMetadata(c)
 
-export default function VeiculosPage() {
+export default function AdvocaciaPage() {
   return <NicheLanding c={c} />
 }
