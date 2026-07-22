@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SiteShell } from '@/components/site/SiteShell'
 import { BRAND } from '@/lib/constants/brand'
 import type { NicheContent } from '@/lib/landing/niches'
+import { NicheWaitlistForm } from '@/components/site/NicheWaitlistForm'
 
 /**
  * Página de nicho data-driven. Recebe um objeto NicheContent e renderiza
@@ -55,6 +56,11 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#4589ff]/40 bg-[#0f62fe]/10 px-3 py-1 text-xs font-medium text-[#78a9ff]">
             {c.eyebrow}
           </span>
+          {c.emBreve && (
+            <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-amber-700/50 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
+              Módulo em construção
+            </span>
+          )}
           <h1 className="mt-4 text-[28px] font-bold leading-[1.1] tracking-tight text-[#f4f4f4] sm:mt-5 sm:text-5xl">
             {c.h1}{' '}
             <span className="bg-gradient-to-r from-[#0f62fe] to-blue-500 bg-clip-text text-transparent">
@@ -64,21 +70,33 @@ export function NicheLanding({ c }: { c: NicheContent }) {
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-[#a8a8a8] sm:mt-5 sm:text-lg">
             {c.sub}
           </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/signup"
-              className="inline-flex w-full justify-center rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
-            >
-              Começar grátis
-            </Link>
-            <Link
-              href="/planos"
-              className="inline-flex w-full justify-center rounded-none border border-[#525252] bg-[#262626] px-7 py-3 text-[15px] font-semibold text-[#d4d4d4] transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f] sm:w-auto"
-            >
-              Ver planos
-            </Link>
-          </div>
-          <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão</p>
+          {c.emBreve ? (
+            <div className="mt-7">
+              <NicheWaitlistForm niche={c.slug} />
+              <p className="mt-4 text-xs text-[#707070]">
+                Quer usar o Althos como CRM completo já hoje?{' '}
+                <Link href="/signup" className="text-[#78a9ff] hover:underline">Teste grátis por 15 dias →</Link>
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href="/signup"
+                  className="inline-flex w-full justify-center rounded-none bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
+                >
+                  Começar grátis
+                </Link>
+                <Link
+                  href="/planos"
+                  className="inline-flex w-full justify-center rounded-none border border-[#525252] bg-[#262626] px-7 py-3 text-[15px] font-semibold text-[#d4d4d4] transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f] sm:w-auto"
+                >
+                  Ver planos
+                </Link>
+              </div>
+              <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão</p>
+            </>
+          )}
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
             {c.heroChips.map((chip) => (
@@ -234,21 +252,29 @@ export function NicheLanding({ c }: { c: NicheContent }) {
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-24">
           <h2 className="text-2xl font-bold tracking-tight text-[#f4f4f4] sm:text-4xl">{c.ctaTitle}</h2>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-[#a8a8a8] sm:text-lg">{c.ctaSub}</p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/signup"
-              className="inline-flex w-full justify-center rounded-none bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
-            >
-              Começar grátis
-            </Link>
-            <Link
-              href="/como-funciona"
-              className="inline-flex w-full justify-center rounded-none border border-[#525252] bg-[#262626] px-8 py-3.5 text-[15px] font-semibold text-[#d4d4d4] transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f] sm:w-auto"
-            >
-              Como funciona
-            </Link>
-          </div>
-          <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão · sem fidelidade</p>
+          {c.emBreve ? (
+            <div className="mt-7">
+              <NicheWaitlistForm niche={c.slug} />
+            </div>
+          ) : (
+            <>
+              <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href="/signup"
+                  className="inline-flex w-full justify-center rounded-none bg-blue-600 px-8 py-3.5 text-[15px] font-semibold text-white   shadow-blue-600/30 transition-colors hover:bg-blue-500 sm:w-auto"
+                >
+                  Começar grátis
+                </Link>
+                <Link
+                  href="/como-funciona"
+                  className="inline-flex w-full justify-center rounded-none border border-[#525252] bg-[#262626] px-8 py-3.5 text-[15px] font-semibold text-[#d4d4d4] transition-colors hover:border-[#78a9ff] hover:bg-[#1f1f1f] sm:w-auto"
+                >
+                  Como funciona
+                </Link>
+              </div>
+              <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão · sem fidelidade</p>
+            </>
+          )}
         </div>
       </section>
     </SiteShell>

@@ -18,7 +18,11 @@ const SalesLeadSchema = z.object({
   message: z.string().trim().max(2000).optional().or(z.literal('')),
 })
 
-export async function submitBusinessLead(raw: unknown) {
+async function insertMarketingLead(
+  source: string,
+  subjectLabel: string,
+  raw: unknown,
+) {
   const parsed = SalesLeadSchema.safeParse(raw)
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0].message }
@@ -27,7 +31,7 @@ export async function submitBusinessLead(raw: unknown) {
 
   const admin = createAdminClient()
   const { error } = await admin.from('marketing_leads').insert({
-    source: 'business_plan',
+    source,
     name,
     email,
     phone: phone || null,
@@ -43,7 +47,7 @@ export async function submitBusinessLead(raw: unknown) {
     await getResend().emails.send({
       from: EMAIL_FROM,
       to: 'suporte@althoscrm.com.br',
-      subject: `Novo lead — Plano Business: ${name}`,
+      subject: `Novo lead — ${subjectLabel}: ${name}`,
       text: [
         `Nome: ${name}`,
         `E-mail: ${email}`,
@@ -53,8 +57,17 @@ export async function submitBusinessLead(raw: unknown) {
       ].filter(Boolean).join('\n'),
     })
   } catch (e) {
-    console.error('submitBusinessLead: falha ao notificar por e-mail', e)
+    console.error(`insertMarketingLead(${source}): falha ao notificar por e-mail`, e)
   }
 
   return { ok: true as const }
+}
+
+export async function submitBusinessLead(raw: unknown) {
+  return insertMarketingLead('business_plan', 'Plano Business', raw)
+}
+
+/** Lista de espera dos módulos de nicho ainda em construção (Advocacia, Seguros). */
+export async function submitNicheWaitlist(niche: string, raw: unknown) {
+  return insertMarketingLead(`waitlist_${niche}`, `Lista de espera — ${niche}`, raw)
 }

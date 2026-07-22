@@ -7,6 +7,10 @@
 
 export type NicheContent = {
   slug: string
+  /** true = módulo ainda em construção (spec em docs/inventario-funcionalidades.md
+   *  seções 7-10) — a página vira "lista de espera" em vez de prometer acesso
+   *  imediato a recursos que ainda não existem no produto. */
+  emBreve?: boolean
   /** rótulo curto para navegação/listagens */
   nav: string
   metaTitle: string
@@ -176,6 +180,7 @@ export const NICHES: Record<string, NicheContent> = {
 
   advocacia: {
     slug: 'advocacia',
+    emBreve: true,
     nav: 'Escritórios de advocacia',
     metaTitle: 'Sistema para Escritórios de Advocacia — Althos CRM',
     metaDescription:
@@ -183,7 +188,7 @@ export const NICHES: Record<string, NicheContent> = {
     eyebrow: 'Para escritórios de advocacia',
     h1: 'Nenhum prazo perdido,',
     h1Accent: 'nenhum processo esquecido',
-    sub: 'Escritório pequeno/médio vive de prazo e organização — perder um prazo fatal é o maior risco do negócio. O Althos centraliza processo, prazo, cliente e financeiro num só lugar, com alertas antes que seja tarde.',
+    sub: 'Escritório pequeno/médio vive de prazo e organização — perder um prazo fatal é o maior risco do negócio. Estamos construindo o módulo de Advocacia pra centralizar processo, prazo, cliente e financeiro num só lugar, com alertas antes que seja tarde. Entre na lista de espera pra ser avisado assim que lançar.',
     heroChips: ['Agenda de prazos com alerta', 'Processos organizados', 'Honorários e parcelamento', 'Propostas de honorários'],
     dores: [
       { t: 'Prazo perdido por falta de controle', d: 'Planilha ou agenda de papel não avisa a tempo; um prazo fatal perdido vira erro grave e responsabilidade civil.' },
@@ -211,18 +216,19 @@ export const NICHES: Record<string, NicheContent> = {
       'Consulta inicial vira proposta de honorários formal, enviada por link, sem digitar tudo nas mensagens do WhatsApp.',
     ],
     faq: [
-      { q: 'Serve pra escritório pequeno ou individual?', a: 'Sim. Você começa no plano de entrada e cresce conforme o escritório aumenta a equipe.' },
+      { q: 'O módulo de Advocacia já está disponível?', a: 'Está em construção. Enquanto isso, você já pode usar o Althos como CRM completo (pipeline, contatos, tarefas, financeiro, WhatsApp com IA) e entrar na lista de espera pra ser avisado no lançamento do módulo específico de processos e prazos.' },
       { q: 'Consigo controlar prazo de vários processos ao mesmo tempo?', a: 'Sim. Cada processo tem sua própria agenda de prazos, com alerta antes de cada vencimento.' },
       { q: 'Dá pra gerar petição automaticamente?', a: 'Você monta o modelo com as cláusulas do seu escritório, e os dados do processo/cliente são preenchidos automaticamente ao gerar.' },
       { q: 'O sistema calcula prazo em dias úteis considerando feriado forense?', a: 'Sim, essa é a lógica por trás do alerta de prazo — considerando dias úteis e feriados.' },
       { q: 'Tem fidelidade?', a: 'Não. Cancele quando quiser, sem multa.' },
     ],
-    ctaTitle: 'Pare de arriscar um prazo perdido',
-    ctaSub: 'Organize processos, prazos e honorários num só lugar.',
+    ctaTitle: 'Em construção — seja avisado no lançamento',
+    ctaSub: 'O módulo de Advocacia (processos, prazos e honorários) está sendo construído. Entre na lista de espera e garanta acesso antecipado.',
   },
 
   seguros: {
     slug: 'seguros',
+    emBreve: true,
     nav: 'Corretoras de seguros',
     metaTitle: 'Sistema para Corretoras de Seguros — Althos CRM',
     metaDescription:
@@ -230,7 +236,7 @@ export const NICHES: Record<string, NicheContent> = {
     eyebrow: 'Para corretoras de seguros',
     h1: 'Nenhuma renovação perdida,',
     h1Accent: 'nenhuma comissão esquecida',
-    sub: 'O maior risco de uma corretora não é vender a primeira apólice — é perder a renovação pra outra corretora por falta de acompanhamento. O Althos avisa antes, com cliente e apólice organizados num só lugar.',
+    sub: 'O maior risco de uma corretora não é vender a primeira apólice — é perder a renovação pra outra corretora por falta de acompanhamento. Estamos construindo o módulo de Corretoras de Seguros pra avisar antes, com cliente e apólice organizados num só lugar. Entre na lista de espera pra ser avisado assim que lançar.',
     heroChips: ['Painel de renovações', 'Controle de comissões', 'Sinistro acompanhado', 'Cotação comparativa'],
     dores: [
       { t: 'Renovação perdida por falta de aviso', d: 'Sem controle de vencimento, o cliente é abordado por outra corretora antes e a receita recorrente vai embora.' },
@@ -258,14 +264,14 @@ export const NICHES: Record<string, NicheContent> = {
       'Cliente pede cotação de seguro de carro — a corretora compara 3 seguradoras e manda a proposta em PDF em minutos.',
     ],
     faq: [
-      { q: 'Funciona pra corretora individual ou pequena equipe?', a: 'Sim. Você começa pequeno e escala conforme a carteira de clientes cresce.' },
+      { q: 'O módulo de Corretoras de Seguros já está disponível?', a: 'Está em construção. Enquanto isso, você já pode usar o Althos como CRM completo (pipeline, contatos, tarefas, financeiro, WhatsApp com IA) e entrar na lista de espera pra ser avisado no lançamento do módulo específico de apólices e renovações.' },
       { q: 'Consigo controlar comissão de mais de uma seguradora?', a: 'Sim. A conciliação funciona por seguradora, comparando o esperado com o efetivamente pago.' },
       { q: 'O sistema avisa a renovação automaticamente?', a: 'Sim. O painel de renovações mostra as apólices a vencer com antecedência configurável.' },
       { q: 'Dá pra acompanhar sinistro de dentro do sistema?', a: 'Sim. Cada sinistro tem checklist e status visível, com notificação ao cliente a cada mudança.' },
       { q: 'Tem fidelidade?', a: 'Não. Cancele quando quiser, sem multa.' },
     ],
-    ctaTitle: 'Não deixe nenhuma renovação passar batido',
-    ctaSub: 'Organize apólices, comissões e sinistros num só lugar.',
+    ctaTitle: 'Em construção — seja avisado no lançamento',
+    ctaSub: 'O módulo de Corretoras de Seguros (apólices, renovações, sinistros e comissões) está sendo construído. Entre na lista de espera e garanta acesso antecipado.',
   },
 }
 
