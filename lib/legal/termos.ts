@@ -1,6 +1,6 @@
 export const TERMOS_MD = String.raw`# Termos de Serviço — Althos CRM
 
-A **Althos CRM** é uma plataforma de gestão de relacionamento com clientes (CRM) em modelo SaaS multi-tenant, voltada principalmente a clínicas de estética e harmonização. A plataforma integra recursos de pipeline de vendas, atendimento automatizado por inteligência artificial, mensageria via API oficial do WhatsApp (Meta), integrações com Instagram e Meta Ads, gestão de leads e armazenamento de dados de contatos.
+A **Althos CRM** é uma plataforma de gestão de relacionamento com clientes (CRM) em modelo SaaS multi-tenant, voltada a empresas de diversos segmentos (como clínicas e consultórios, agências de viagens, imobiliárias, lojas de veículos, agências de tráfego pago e pequenos negócios em geral). A plataforma integra recursos de pipeline de vendas, atendimento automatizado por inteligência artificial, mensageria via API oficial do WhatsApp (Meta), integrações com Instagram e Meta Ads, gestão de leads e armazenamento de dados de contatos.
 
 Estes Termos de Serviço ("Termos") regem o uso da plataforma e constituem um contrato entre você ("Usuário") e a empresa identificada abaixo. A **Política de Uso Aceitável e Antifraude** (Anexo I) integra estes Termos.
 

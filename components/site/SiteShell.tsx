@@ -1,5 +1,6 @@
 import { SiteNav } from './SiteNav'
 import { SiteFooter } from './SiteFooter'
+import { CookieConsentBanner } from './CookieConsentBanner'
 
 /**
  * Casca padrão das páginas institucionais (marketing).
@@ -12,6 +13,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <SiteNav />
       <main className="pt-14">{children}</main>
       <SiteFooter />
+      <CookieConsentBanner />
     </div>
   )
 }
