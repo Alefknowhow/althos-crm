@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { LogoMark } from '@/components/brand/Logo'
 
 /** Inline Google "G" logo SVG */
 function GoogleIcon() {
@@ -106,21 +107,43 @@ function SignupForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#eef2f7] p-4 overflow-hidden">
-      {/* Imagem de fundo — apenas desktop, atrás da caixa de cadastro */}
-      <div
-        aria-hidden
-        className="hidden md:block absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url(/login-bg.png)' }}
-      />
-      <div className="relative z-10 w-full max-w-[400px] bg-white rounded-none   p-8 space-y-6">
+    <div className="flex min-h-screen">
+      {/* Painel de marca — metade esquerda, apenas desktop */}
+      <div className="hidden md:flex relative md:w-1/2 lg:w-3/5 shrink-0 items-center justify-center overflow-hidden bg-[#1a1a1a] text-[#f4f4f4] p-12">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-32 left-1/4 h-[480px] w-[480px] rounded-full bg-[#4589ff]/20 blur-[120px]" />
+          <div className="absolute bottom-0 right-1/4 h-[360px] w-[360px] rounded-full bg-violet-400/15 blur-[120px]" />
+        </div>
+        <div className="relative max-w-md">
+          <div className="flex items-center gap-2.5 mb-10">
+            <LogoMark className="h-10 w-10" />
+            <span className="text-2xl font-black tracking-tighter">Althos CRM</span>
+          </div>
+          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight">
+            Mais vendas fechadas.<br />
+            <span className="bg-gradient-to-r from-[#0f62fe] to-blue-500 bg-clip-text text-transparent">
+              Nenhum lead esquecido.
+            </span>
+          </h1>
+          <p className="mt-5 text-[15px] text-[#a8a8a8] leading-relaxed">
+            Pipeline, atendimento com IA e automações de vendas num só lugar.
+          </p>
+        </div>
+      </div>
 
-        {/* Logo + heading */}
-        <div className="flex flex-col items-center gap-1 text-center">
+      {/* Caixa de cadastro — metade direita, fora do painel de marca */}
+      <div className="flex flex-1 items-center justify-center bg-[#eef2f7] p-4">
+      <div className="w-full max-w-[400px] bg-white rounded-none p-8 space-y-6">
+
+        {/* Heading */}
+        <div className="flex flex-col items-center gap-1 text-center md:hidden">
           <div className="flex items-center gap-2 mb-1">
+            <LogoMark className="h-9 w-9" />
             <span className="text-2xl font-black tracking-tighter text-foreground">Althos CRM</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight mt-1">
+        </div>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="text-xl font-bold tracking-tight">
             {inviteToken ? 'Aceitar convite' : 'Criar conta'}
           </h1>
           <p className="text-sm text-muted-foreground leading-snug">
@@ -271,6 +294,7 @@ function SignupForm() {
           </Link>
         </p>
 
+      </div>
       </div>
     </div>
   )
