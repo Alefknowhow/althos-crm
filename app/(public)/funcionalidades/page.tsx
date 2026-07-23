@@ -39,7 +39,7 @@ export default function FuncionalidadesPage() {
       <section className="relative mx-auto max-w-3xl px-4 pb-24 text-center sm:px-6">
         <h2 className="text-2xl font-bold text-[#f4f4f4] sm:text-3xl">Pronto para ver na sua operação?</h2>
         <p className="mx-auto mt-3 max-w-md text-[14px] text-[#a8a8a8]">
-          Comece de graça no plano Free. Sem cartão, sem compromisso.
+          Teste grátis por 15 dias, sem cartão e sem compromisso.
         </p>
         <Link
           href="/signup"

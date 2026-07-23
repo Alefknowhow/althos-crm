@@ -87,10 +87,12 @@ export const FEATURES: Feature[] = [
     body: [
       'Conecte o WhatsApp (Cloud API oficial) e o Instagram direto no CRM. Toda mensagem vira um lead com histórico, e a equipe atende sem trocar de aplicativo.',
       'Conexão do WhatsApp em 1 clique pelo Embedded Signup da Meta — sem copiar tokens ou IDs.',
+      'No Instagram, monte a automação num único fluxo, estilo construtor de chatbot: escolha o tipo (DM, comentário, comentário + DM, menção ou resposta a story), o gatilho e a resposta — fixa ou por IA — com botões de resposta rápida ou de link.',
     ],
     bullets: [
       'Conexão do WhatsApp em 1 clique',
       'Caixa de entrada unificada da equipe',
+      'Automação de Instagram com botões de resposta rápida e link',
       'Cada conversa vira um lead rastreável',
     ],
   },
@@ -152,6 +154,37 @@ export const FEATURES: Feature[] = [
       'Formulários personalizáveis sem código',
       'Origem do lead identificada automaticamente',
       'Proteção anti-spam embutida',
+    ],
+  },
+  {
+    slug: 'financeiro',
+    icon: 'Wallet',
+    title: 'Financeiro completo',
+    tagline: 'Receitas, despesas e fluxo de caixa sem planilha paralela.',
+    body: [
+      'Controle financeiro completo, transversal a qualquer nicho: lançamentos de receita e despesa, categorias e centros de custo configuráveis, importação de extrato bancário e anexos por lançamento.',
+      'Despesas recorrentes (aluguel, assinaturas, folha) já geram os próximos 12 meses automaticamente — sem recadastrar todo mês. E quem trabalha com comissão de operadora/parceiro cadastra o dia de pagamento de cada uma: a receita da venda é lançada direto na data real do repasse, não no dia em que a venda foi fechada.',
+      'Dashboard com fluxo de caixa diário, despesas por categoria, DRE simplificado e lista de vencimentos próximos.',
+    ],
+    bullets: [
+      'Despesas recorrentes geradas automaticamente',
+      'Receita lançada na data de pagamento de cada operadora/parceiro',
+      'Dashboard com fluxo de caixa e DRE simplificado',
+    ],
+  },
+  {
+    slug: 'importacao-exportacao',
+    icon: 'ArrowDownUp',
+    title: 'Importação e exportação de dados',
+    tagline: 'Traga sua base existente ou tire seus dados quando quiser.',
+    body: [
+      'Migre contatos e reservas/vendas de uma planilha em poucos cliques — o sistema reconhece o cabeçalho automaticamente e, ao importar vendas, já localiza (ou cria) o contato pelo telefone, e-mail ou nome.',
+      'Exporte contatos e reservas/vendas em CSV a qualquer momento, e baixe um arquivo-modelo pronto pra preencher com o formato certo antes de importar.',
+    ],
+    bullets: [
+      'Importação de contatos e reservas/vendas via CSV',
+      'Arquivo-modelo com o formato correto pra download',
+      'Exportação completa a qualquer momento — seus dados são seus',
     ],
   },
 ]
