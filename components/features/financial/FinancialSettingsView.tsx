@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner'
 import { Plus, X, Loader2 } from 'lucide-react'
 import {
-  createFinancialSetting, deleteFinancialSetting,
+  createFinancialSetting, deleteFinancialSetting, updateFinancialSettingPaymentDay,
   type FinancialSettingType, type FinancialSettingRow,
 } from '@/actions/financial-settings'
 import { FINANCIAL_SETTING_TYPES } from '@/lib/financial-settings-types'
@@ -61,6 +61,15 @@ function SettingListCard({
     else toast.error(res.error)
   }
 
+  async function handlePaymentDay(id: string, day: string) {
+    const n = day ? parseInt(day, 10) : null
+    const res = await updateFinancialSettingPaymentDay(orgSlug, id, n)
+    if (res.ok) router.refresh()
+    else toast.error(res.error)
+  }
+
+  const isOperadora = type === 'operadora'
+
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">{label}</CardTitle></CardHeader>
@@ -77,6 +86,11 @@ function SettingListCard({
             {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           </Button>
         </div>
+        {isOperadora && (
+          <p className="text-[11px] text-muted-foreground -mt-1.5">
+            Informe o dia do mês em que cada operadora paga a comissão — a receita da venda é lançada nessa data.
+          </p>
+        )}
 
         {items.length === 0 ? (
           <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
@@ -85,14 +99,26 @@ function SettingListCard({
             {items.map(item => (
               <li key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 text-sm">
                 <span className="truncate">{item.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setDeleteId(item.id)}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  aria-label={`Remover ${item.name}`}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isOperadora && (
+                    <Input
+                      type="number" min={1} max={31}
+                      defaultValue={item.payment_day ?? ''}
+                      onBlur={e => handlePaymentDay(item.id, e.target.value)}
+                      placeholder="dia"
+                      title="Dia do mês em que a operadora paga"
+                      className="h-7 w-16 text-xs px-2"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(item.id)}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label={`Remover ${item.name}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

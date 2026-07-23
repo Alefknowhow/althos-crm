@@ -464,6 +464,14 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
   if (error || !sale) return { ok: false as const, error: error?.message || 'Erro ao salvar venda' }
   const s = sale as TravelSaleRow
 
+  // Lança/atualiza a receita de comissão em Financeiro na data de pagamento
+  // da operadora (não no dia da venda) — sem operadora/comissão, não faz nada.
+  const { syncSaleRevenueEntry } = await import('@/actions/financial')
+  await syncSaleRevenueEntry(orgSlug, {
+    id: s.id, contato_id: s.contato_id, client_name: s.client_name,
+    operator: s.operator, commission_cents: s.commission_cents ?? null,
+  })
+
   if (s.tasks_generated_at) {
     revalidatePath(`/app/${orgSlug}/reservas`)
     return { ok: true as const, data: s, tasksCreated: 0, alreadyGenerated: true }

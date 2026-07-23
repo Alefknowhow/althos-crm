@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
+import { nextOperatorPaymentDate } from '@/lib/financial/operator-payment'
 
 export type FinancialEntryRow = {
   id: string
@@ -44,6 +45,70 @@ function addMonthsIso(iso: string, months: number): string {
 
 /** Quantas ocorrências futuras gerar de uma vez ao marcar um lançamento como recorrente. */
 const RECURRING_MONTHS_AHEAD = 11
+
+
+/**
+ * Sincroniza a receita de comissão de uma venda de viagem com Financeiro,
+ * lançando o valor na PRÓXIMA data de pagamento da operadora (cadastrada em
+ * Configurações > Operadoras) em vez do dia em que a venda foi fechada. Uma
+ * venda sem operadora/comissão configurada simplesmente não gera lançamento.
+ * Idempotente: reaproveita o lançamento já vinculado à venda (venda_id) se
+ * a venda for salva de novo.
+ */
+export async function syncSaleRevenueEntry(
+  orgSlug: string,
+  sale: { id: string; contato_id: string | null; client_name: string | null; operator: string | null; commission_cents: number | null },
+) {
+  if (!sale.operator?.trim() || !sale.commission_cents || sale.commission_cents <= 0) return
+
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: opSetting } = await supabase
+    .from('financial_settings')
+    .select('payment_day')
+    .eq('organization_id', org.id)
+    .eq('type', 'operadora')
+    .ilike('name', sale.operator.trim())
+    .maybeSingle()
+
+  const paymentDay = opSetting?.payment_day ?? null
+  const vencimento = paymentDay ? nextOperatorPaymentDate(paymentDay) : null
+
+  const { data: existing } = await supabase
+    .from('financial_entries')
+    .select('id, status')
+    .eq('organization_id', org.id)
+    .eq('venda_id', sale.id)
+    .eq('tipo', 'receita')
+    .maybeSingle()
+
+  if (existing) {
+    // Não mexe em lançamento já pago/cancelado — só mantém pendente em dia.
+    if (existing.status === 'pendente' || existing.status === 'vencido') {
+      await supabase
+        .from('financial_entries')
+        .update({ valor_cents: sale.commission_cents, operadora: sale.operator, vencimento })
+        .eq('id', existing.id)
+    }
+    return
+  }
+
+  await supabase.from('financial_entries').insert({
+    organization_id: org.id,
+    tipo: 'receita',
+    categoria: 'Comissão',
+    valor_cents: sale.commission_cents,
+    competencia: new Date().toISOString().slice(0, 10),
+    vencimento,
+    status: 'pendente',
+    contato_id: sale.contato_id,
+    venda_id: sale.id,
+    operadora: sale.operator,
+    observacoes: `Comissão da venda de ${sale.client_name || 'cliente'}`,
+    tags: [],
+  })
+}
 
 /**
  * "Vencido" não é um status gravado por um cron — é derivado na leitura:
