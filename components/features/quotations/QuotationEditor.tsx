@@ -761,25 +761,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <PhotoGallery orgSlug={orgSlug} photos={l.photos}
                 onChange={p => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, photos: p } : x))} />
             </F>
-            <div className="rounded-lg border p-2.5 space-y-2 bg-muted/20">
-              <label className="flex items-center gap-2 text-xs font-medium">
-                <Switch checked={!!l.is_alternative_option}
-                  onCheckedChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, is_alternative_option: v } : x))} />
-                Esta é uma opção alternativa (cliente escolhe esta OU outra hospedagem)
-              </label>
-              {l.is_alternative_option && (
-                <div className="grid grid-cols-2 gap-2">
-                  <F label="Preço desta opção — por pessoa">
-                    <Input placeholder="0,00" value={centsToStr(l.option_price_per_person_cents)}
-                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_price_per_person_cents: strToCents(e.target.value) } : x))} />
-                  </F>
-                  <F label="Preço desta opção — total">
-                    <Input placeholder="0,00" value={centsToStr(l.option_total_cents)}
-                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_total_cents: strToCents(e.target.value) } : x))} />
-                  </F>
-                </div>
-              )}
-            </div>
+            <label className="flex items-center gap-2 text-xs font-medium rounded-lg border p-2.5 bg-muted/20">
+              <Switch checked={!!l.is_alternative_option}
+                onCheckedChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, is_alternative_option: v } : x))} />
+              Esta é uma opção alternativa (cliente escolhe esta OU outra hospedagem — preços editados em Investimento)
+            </label>
           </>
         )} />
       </EditBlock>
@@ -935,6 +921,27 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </div>
           </F>
         </div>
+        {lodgings.some(l => l.is_alternative_option) && (
+          <F label="Opções de hospedagem alternativa" hint="preço de cada opção — aparece na Vitrine como cards separados">
+            <div className="space-y-2">
+              {lodgings.filter(l => l.is_alternative_option).map((l, i) => (
+                <div key={l._key} className="rounded-lg border p-2.5 grid grid-cols-[1fr_1fr_1fr] gap-2 items-end">
+                  <span className="text-xs font-medium text-muted-foreground truncate col-span-3 sm:col-span-1">
+                    Opção {i + 1} · {l.name || 'sem nome'}
+                  </span>
+                  <F label="Por pessoa">
+                    <Input placeholder="0,00" value={centsToStr(l.option_price_per_person_cents)}
+                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_price_per_person_cents: strToCents(e.target.value) } : x))} />
+                  </F>
+                  <F label="Total">
+                    <Input placeholder="0,00" value={centsToStr(l.option_total_cents)}
+                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_total_cents: strToCents(e.target.value) } : x))} />
+                  </F>
+                </div>
+              ))}
+            </div>
+          </F>
+        )}
         <F label="Formas de pagamento">
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">

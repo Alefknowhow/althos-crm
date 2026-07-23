@@ -1086,7 +1086,7 @@ const CSS = `
 .alq .price-card.total .amt{color:var(--gold-soft)}
 .alq .price-card .note{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px}
 .alq .opt-note{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:18px}
-.alq .opt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:26px}
+.alq .opt-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:26px}
 .alq .opt-card{position:relative;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:22px 18px 18px}
 .alq .opt-badge{position:absolute;top:-10px;left:16px;background:var(--gold);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
 .alq .opt-name{font-family:'Inter',sans-serif;font-weight:600;font-size:16px;color:#fff;margin-top:4px}
@@ -1094,7 +1094,6 @@ const CSS = `
 .alq .opt-prices{display:flex;gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
 .alq .opt-prices .lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6)}
 .alq .opt-prices .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:20px;color:var(--gold-soft);margin-top:4px}
-@media(max-width:560px){.alq .opt-grid{grid-template-columns:1fr}}
 .alq .pay{border-top:1px solid rgba(255,255,255,.14);padding-top:20px}
 .alq .pay .row{display:flex;justify-content:space-between;padding:7px 0;font-size:14.5px;color:rgba(255,255,255,.9);gap:14px}
 .alq .pay .row b{color:var(--gold-soft);font-weight:600;text-align:right}
