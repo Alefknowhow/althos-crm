@@ -14,7 +14,7 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server'
-import { sendInstagramDM, privateReplyToComment } from '@/lib/social/instagram'
+import { sendInstagramDM, privateReplyToComment, type MessageButton } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 
@@ -41,6 +41,7 @@ type Step = {
   message_text: string | null
   ai_instructions: string | null
   wait_for_reply: boolean
+  buttons: MessageButton[] | null
 }
 
 async function renderStep(
@@ -83,9 +84,10 @@ async function runFrom(
   while (i < steps.length) {
     const step = steps[i]
     const text = await renderStep(admin, connection.organization_id, step, inbound)
-    if (text.trim()) {
+    const buttons = step.buttons || []
+    if (text.trim() || buttons.length) {
       try {
-        await sendInstagramDM(connection.page_id, connection.access_token, inbound.senderId, text)
+        await sendInstagramDM(connection.page_id, connection.access_token, inbound.senderId, text, buttons)
         if (conversationId) {
           await logOutboundMessage(admin, conversationId, connection.organization_id, text, 'funnel')
         }
@@ -130,8 +132,11 @@ export async function runFunnelForInbound(
     stateId = (state as any).id
   } else {
     // 2) Procura um funil ativo cujo gatilho case. Resposta a story tem
-    //    prioridade para funis 'story_reply'; senão, funis de 'dm'.
-    const triggerTypes = inbound.isStoryReply ? ['story_reply', 'dm'] : ['dm']
+    //    prioridade para funis 'story_reply'/'story'; senão, funis de 'dm'
+    //    (funis 'comment_and_dm' respondem tanto a comentário quanto a DM).
+    const triggerTypes = inbound.isStoryReply
+      ? ['story_reply', 'story', 'dm', 'comment_and_dm']
+      : ['dm', 'comment_and_dm']
     const { data: funnels } = await admin
       .from('social_funnels')
       .select('id, trigger_type, trigger_keywords')
@@ -150,7 +155,7 @@ export async function runFunnelForInbound(
   // 3) Carrega os passos do funil.
   const { data: stepsData } = await admin
     .from('social_funnel_steps')
-    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply')
+    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply, buttons')
     .eq('funnel_id', funnelId)
     .order('sort_order', { ascending: true })
   const steps = (stepsData || []) as Step[]
@@ -210,7 +215,7 @@ export async function startCommentFunnel(
     .from('social_funnels')
     .select('id, trigger_keywords')
     .eq('organization_id', connection.organization_id)
-    .eq('trigger_type', 'comment')
+    .in('trigger_type', ['comment', 'comment_and_dm'])
     .eq('is_active', true)
     .order('created_at', { ascending: true })
   const hit = (funnels || []).find((f: any) => funnelMatches(f.trigger_keywords, inbound.text))
@@ -219,7 +224,7 @@ export async function startCommentFunnel(
 
   const { data: stepsData } = await admin
     .from('social_funnel_steps')
-    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply')
+    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply, buttons')
     .eq('funnel_id', funnelId)
     .order('sort_order', { ascending: true })
   const steps = (stepsData || []) as Step[]

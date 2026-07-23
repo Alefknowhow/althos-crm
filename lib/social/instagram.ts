@@ -161,17 +161,42 @@ export async function subscribeInstagramWebhooks(token: string): Promise<void> {
 
 // ── Sending replies ──────────────────────────────────────────────────────────
 
-/** Send a direct message to a user (by their Instagram-scoped ID / IGSID). */
+export type MessageButton = { type: 'reply' | 'link'; label: string; value: string }
+
+/**
+ * Send a direct message to a user (by their Instagram-scoped ID / IGSID).
+ * With `buttons`, sends a generic button template instead of plain text —
+ * up to 3 buttons (Meta's limit): 'link' buttons open `value` as a URL,
+ * 'reply' buttons come back as a postback whose payload is `value` (the
+ * webhook maps it to inbound text so wait_for_reply steps advance normally).
+ */
 export async function sendInstagramDM(
   _igAccountId: string,
   token: string,
   recipientId: string,
   text: string,
+  buttons?: MessageButton[],
 ): Promise<void> {
+  const message = buttons?.length
+    ? {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text: text || '​', // Meta exige texto não-vazio no template
+            buttons: buttons.slice(0, 3).map(b =>
+              b.type === 'link'
+                ? { type: 'web_url', url: b.value, title: b.label.slice(0, 20) }
+                : { type: 'postback', title: b.label.slice(0, 20), payload: b.value }),
+          },
+        },
+      }
+    : { text }
+
   const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipient: { id: recipientId }, message: { text } }),
+    body: JSON.stringify({ recipient: { id: recipientId }, message }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

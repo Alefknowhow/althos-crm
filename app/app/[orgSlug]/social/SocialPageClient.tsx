@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import {
-  createSocialAutomation,
   deleteSocialAutomation,
   toggleSocialAutomation,
   type SocialAutomation,
@@ -14,24 +13,7 @@ import SocialFunnels from '@/components/features/social/SocialFunnels'
 import type { SocialFunnel } from '@/actions/social-funnels'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { MessageSquare, Trash2, Plus, Zap, Clock, Users, ChevronRight } from 'lucide-react'
+import { MessageSquare, Trash2, Zap, Clock, Users, ChevronRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -56,211 +38,13 @@ function responseColor(r: SocialAutomation['response_type']) {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyAutomations({ onNew }: { onNew: () => void }) {
+function EmptyAutomations() {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-20 px-6">
-      <div
-        className="w-16 h-16 rounded-none flex items-center justify-center text-3xl mb-5"
-        style={{ background: 'linear-gradient(135deg, #E1306C20, #833AB420)', border: '1px solid #E1306C30' }}
-      >
-        📸
-      </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma automação social ainda</h3>
-      <p className="text-sm text-muted-foreground max-w-xs mb-6">
-        Crie regras para responder DMs e comentários do Instagram automaticamente com IA.
+    <div className="flex flex-col items-center justify-center text-center py-12 px-6">
+      <p className="text-sm text-muted-foreground max-w-xs">
+        Nenhuma regra antiga cadastrada. Novas automações são criadas acima, em &ldquo;Automações do Instagram&rdquo;.
       </p>
-      <Button onClick={onNew} size="sm">
-        <Plus className="w-4 h-4 mr-1" />
-        Criar primeira automação
-      </Button>
     </div>
-  )
-}
-
-// ── New Automation Dialog ─────────────────────────────────────────────────────
-
-interface NewDialogProps {
-  orgSlug: string
-  open: boolean
-  onClose: () => void
-  onCreated: (auto: SocialAutomation) => void
-}
-
-function NewAutomationDialog({ orgSlug, open, onClose, onCreated }: NewDialogProps) {
-  const [pending, startTransition] = useTransition()
-  const [name, setName] = useState('')
-  const [triggerType, setTriggerType] = useState<SocialAutomation['trigger_type']>('dm_and_comment')
-  const [keywords, setKeywords] = useState('')
-  const [responseType, setResponseType] = useState<'ai' | 'fixed'>('ai')
-  const [fixedResponse, setFixedResponse] = useState('')
-  const [aiInstructions, setAiInstructions] = useState('')
-  const [createLead, setCreateLead] = useState(true)
-  const [sendDmAfterComment, setSendDmAfterComment] = useState(false)
-
-  function reset() {
-    setName('')
-    setTriggerType('dm_and_comment')
-    setKeywords('')
-    setResponseType('ai')
-    setFixedResponse('')
-    setAiInstructions('')
-    setCreateLead(true)
-    setSendDmAfterComment(false)
-  }
-
-  function handleClose() {
-    reset()
-    onClose()
-  }
-
-  function handleSubmit() {
-    if (!name.trim()) return toast.error('Informe o nome da automação')
-    if (responseType === 'fixed' && !fixedResponse.trim())
-      return toast.error('Informe a resposta fixa')
-
-    const kws = keywords
-      .split(',')
-      .map(k => k.trim())
-      .filter(Boolean)
-
-    startTransition(async () => {
-      try {
-        const result = await createSocialAutomation(orgSlug, {
-          name: name.trim(),
-          trigger_type: triggerType,
-          trigger_keywords: kws.length > 0 ? kws : undefined,
-          response_type: responseType,
-          fixed_response: responseType === 'fixed' ? fixedResponse.trim() : undefined,
-          ai_instructions: responseType === 'ai' && aiInstructions.trim() ? aiInstructions.trim() : undefined,
-          create_lead: createLead,
-          send_dm_after_comment: sendDmAfterComment,
-        })
-        if (result) onCreated(result as SocialAutomation)
-        toast.success('Automação criada!')
-        handleClose()
-      } catch (err: any) {
-        toast.error(err.message ?? 'Erro ao criar automação')
-      }
-    })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Nova automação social</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="sa-name">Nome</Label>
-            <Input
-              id="sa-name"
-              placeholder="ex: Responder perguntas de preço"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-          </div>
-
-          {/* Trigger type */}
-          <div className="space-y-1.5">
-            <Label>Disparar quando receber</Label>
-            <Select value={triggerType} onValueChange={v => setTriggerType(v as any)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dm_and_comment">DM + Comentário</SelectItem>
-                <SelectItem value="dm">Somente DM</SelectItem>
-                <SelectItem value="comment">Somente Comentário</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Keywords filter */}
-          <div className="space-y-1.5">
-            <Label htmlFor="sa-keywords">
-              Palavras-chave <span className="text-muted-foreground font-normal">(opcional)</span>
-            </Label>
-            <Input
-              id="sa-keywords"
-              placeholder="preço, valor, quanto custa (separadas por vírgula)"
-              value={keywords}
-              onChange={e => setKeywords(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Deixe vazio para responder a todas as mensagens</p>
-          </div>
-
-          {/* Response type */}
-          <div className="space-y-1.5">
-            <Label>Tipo de resposta</Label>
-            <Select value={responseType} onValueChange={v => setResponseType(v as any)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ai">IA (responde como humano)</SelectItem>
-                <SelectItem value="fixed">Resposta fixa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {responseType === 'ai' ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="sa-ai-inst">
-                Instruções para a IA <span className="text-muted-foreground font-normal">(opcional)</span>
-              </Label>
-              <Textarea
-                id="sa-ai-inst"
-                rows={3}
-                placeholder="ex: Sempre pergunte em qual cidade o cliente está. Mencione que temos suporte 24h."
-                value={aiInstructions}
-                onChange={e => setAiInstructions(e.target.value)}
-              />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="sa-fixed">Resposta fixa</Label>
-              <Textarea
-                id="sa-fixed"
-                rows={3}
-                placeholder="Oi! Obrigado pelo contato. Vou te mandar as informações no privado 😊"
-                value={fixedResponse}
-                onChange={e => setFixedResponse(e.target.value)}
-              />
-            </div>
-          )}
-
-          {/* Options */}
-          <div className="rounded-none border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Criar lead automaticamente</p>
-                <p className="text-xs text-muted-foreground">Adiciona o contato ao CRM ao interagir</p>
-              </div>
-              <Switch checked={createLead} onCheckedChange={setCreateLead} />
-            </div>
-            {(triggerType === 'comment' || triggerType === 'dm_and_comment') && (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Enviar DM após comentário</p>
-                  <p className="text-xs text-muted-foreground">Além de responder publicamente, envia um DM</p>
-                </div>
-                <Switch checked={sendDmAfterComment} onCheckedChange={setSendDmAfterComment} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={pending}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={pending}>
-            {pending ? 'Criando...' : 'Criar automação'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -283,7 +67,6 @@ export function SocialPageClient({
 }: Props) {
   const [automations, setAutomations] = useState(initialAutomations)
   const [interactions] = useState(initialInteractions)
-  const [showNew, setShowNew] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -337,10 +120,6 @@ export function SocialPageClient({
             Automatize respostas do Instagram com IA
           </p>
         </div>
-        <Button onClick={() => setShowNew(true)} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" />
-          Nova automação
-        </Button>
       </div>
 
       {/* Stats */}
@@ -406,21 +185,17 @@ export function SocialPageClient({
       {/* Funis de conversa em DM */}
       <SocialFunnels orgSlug={orgSlug} initialFunnels={initialFunnels} />
 
-      {/* Automations list */}
+      {/* Regras antigas (legado) — só aparece se existir alguma */}
+      {automations.length > 0 && (
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Regras rápidas (resposta única)
+            Regras antigas (legado)
           </h2>
           <span className="text-xs text-muted-foreground">{automations.length} regra{automations.length !== 1 ? 's' : ''}</span>
         </div>
 
-        {automations.length === 0 ? (
-          <div className="rounded-none border border-dashed border-border">
-            <EmptyAutomations onNew={() => setShowNew(true)} />
-          </div>
-        ) : (
-          <div className="space-y-2">
+        <div className="space-y-2">
             {automations.map(auto => (
               <div
                 key={auto.id}
@@ -473,9 +248,9 @@ export function SocialPageClient({
                 </Button>
               </div>
             ))}
-          </div>
-        )}
+        </div>
       </div>
+      )}
 
       {/* Recent interactions */}
       {interactions.length > 0 && (
@@ -534,13 +309,6 @@ export function SocialPageClient({
         </div>
       )}
 
-      {/* New automation dialog */}
-      <NewAutomationDialog
-        orgSlug={orgSlug}
-        open={showNew}
-        onClose={() => setShowNew(false)}
-        onCreated={auto => setAutomations(prev => [auto, ...prev])}
-      />
     </div>
     </div>
   )

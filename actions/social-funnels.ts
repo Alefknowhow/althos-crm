@@ -5,11 +5,14 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import type { FunnelTriggerType } from '@/lib/social/trigger-types'
 
 /**
  * CRUD dos funis de conversa em DM (Instagram). O motor (lib/social) usa o
  * admin client em runtime; aqui tudo passa por auth + permissão da org.
  */
+
+export type FunnelButton = { type: 'reply' | 'link'; label: string; value: string }
 
 export type FunnelStep = {
   id?: string
@@ -18,13 +21,16 @@ export type FunnelStep = {
   message_text: string | null
   ai_instructions: string | null
   wait_for_reply: boolean
+  buttons: FunnelButton[]
 }
+
+export type { FunnelTriggerType }
 
 export type SocialFunnel = {
   id: string
   organization_id: string
   name: string
-  trigger_type: 'dm' | 'comment' | 'story_reply'
+  trigger_type: FunnelTriggerType
   trigger_keywords: string[] | null
   create_lead: boolean
   is_active: boolean
@@ -32,16 +38,23 @@ export type SocialFunnel = {
   steps: FunnelStep[]
 }
 
+const ButtonSchema = z.object({
+  type: z.enum(['reply', 'link']),
+  label: z.string().max(20),
+  value: z.string().max(500),
+})
+
 const StepSchema = z.object({
   step_type: z.enum(['message', 'ai']),
   message_text: z.string().max(2000).nullable().optional(),
   ai_instructions: z.string().max(2000).nullable().optional(),
   wait_for_reply: z.boolean().default(true),
+  buttons: z.array(ButtonSchema).max(3).default([]),
 })
 
 const FunnelPatchSchema = z.object({
   name: z.string().max(120).optional(),
-  trigger_type: z.enum(['dm', 'comment', 'story_reply']).optional(),
+  trigger_type: z.enum(['dm', 'comment', 'comment_and_dm', 'story', 'story_reply']).optional(),
   trigger_keywords: z.array(z.string().max(60)).max(20).nullable().optional(),
   create_lead: z.boolean().optional(),
   is_active: z.boolean().optional(),
@@ -80,13 +93,13 @@ export async function getFunnels(orgSlug: string): Promise<SocialFunnel[]> {
   return (funnels as any[]).map(f => ({ ...f, steps: byFunnel.get(f.id) || [] }))
 }
 
-export async function createFunnel(orgSlug: string) {
+export async function createFunnel(orgSlug: string, triggerType: FunnelTriggerType = 'dm') {
   const g = await guard(orgSlug)
   if (!g.ok) return g
   const supabase = createClient()
   const { data, error } = await supabase
     .from('social_funnels')
-    .insert({ organization_id: g.org.id, name: 'Novo funil', trigger_type: 'dm' })
+    .insert({ organization_id: g.org.id, name: 'Nova automação', trigger_type: triggerType })
     .select('id')
     .single()
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar funil' }
@@ -156,6 +169,7 @@ export async function saveFunnelSteps(orgSlug: string, funnelId: string, steps: 
       message_text: s.step_type === 'message' ? (s.message_text || null) : null,
       ai_instructions: s.step_type === 'ai' ? (s.ai_instructions || null) : null,
       wait_for_reply: s.wait_for_reply,
+      buttons: s.buttons || [],
     }))
     const ins = await supabase.from('social_funnel_steps').insert(rows)
     if (ins.error) return { ok: false as const, error: ins.error.message }

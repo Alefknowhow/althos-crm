@@ -73,15 +73,21 @@ export async function POST(req: Request) {
         const recipientId = m.recipient?.id
         // Ignore echoes (messages we sent) and read receipts / reactions.
         if (m.message?.is_echo) continue
-        if (!m.message?.text || !senderId) continue
+        // Toque em botão: quick reply chega em message.quick_reply.payload,
+        // botão de template chega em m.postback.payload — em ambos os casos
+        // tratamos o payload como o texto da mensagem, pra casar com
+        // gatilhos/keywords e destravar passos com wait_for_reply.
+        const buttonPayload = m.message?.quick_reply?.payload ?? m.postback?.payload
+        const text = buttonPayload || m.message?.text
+        if (!text || !senderId) continue
         // Skip messages the business account sent to itself.
         if (senderId === igAccountId) continue
         inbounds.push({
           igAccountId,
           kind: 'dm',
           senderId,
-          text: m.message.text,
-          mid: m.message.mid ?? null,
+          text,
+          mid: m.message?.mid ?? null,
           // Respostas a stories chegam como DM com contexto reply_to.story.
           isStoryReply: !!m.message?.reply_to?.story,
         })
