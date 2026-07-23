@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import EmptyState from '@/components/ui/empty-state'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -32,7 +33,7 @@ import FinancialCsvImporter from './FinancialCsvImporter'
 import { toast } from 'sonner'
 import {
   Wallet, Plus, Trash2, ArrowLeft, Search, Save, Sparkles, Upload, Paperclip, FileIcon,
-  ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown,
+  ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown, Repeat,
 } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
@@ -257,6 +258,7 @@ export default function FinancialEntriesView({
                       ? <TrendingUp className="w-3.5 h-3.5 text-success shrink-0" />
                       : <TrendingDown className="w-3.5 h-3.5 text-destructive shrink-0" />}
                     {e.categoria}
+                    {e.is_recurring && <Repeat className="w-3 h-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
                   </span>
                   <StatusQuickMenu status={e.status} onChange={s => handleQuickStatus(e.id, s)} />
                 </div>
@@ -358,11 +360,13 @@ function NewEntryDialog({
   const [competencia, setCompetencia] = useState(() => new Date().toISOString().slice(0, 10))
   const [vencimento, setVencimento] = useState('')
   const [observacoes, setObservacoes] = useState('')
+  const [isRecurring, setIsRecurring] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
 
   function reset() {
     setTipo('despesa'); setCategoria(null); setExtraCategoria(null); setValorCents(0)
     setCompetencia(new Date().toISOString().slice(0, 10)); setVencimento(''); setObservacoes('')
+    setIsRecurring(false)
   }
 
   async function handleSuggest() {
@@ -386,6 +390,7 @@ function NewEntryDialog({
     const res = await createFinancialEntry(orgSlug, {
       tipo, categoria: categoria.trim(), valor_cents: valorCents, competencia,
       vencimento: vencimento || null, observacoes: observacoes.trim() || null,
+      is_recurring: isRecurring,
     })
     setCreating(false)
     if (!res.ok) { toast.error(res.error); return }
@@ -433,6 +438,16 @@ function NewEntryDialog({
               <Input type="date" value={vencimento} onChange={e => setVencimento(e.target.value)} />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={isRecurring} onCheckedChange={v => setIsRecurring(v === true)} />
+            <span className="flex items-center gap-1.5"><Repeat className="w-3.5 h-3.5 text-muted-foreground" /> Repetir todo mês (lançamento recorrente)</span>
+          </label>
+          {isRecurring && (
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Já cria os lançamentos dos próximos 12 meses, pendentes, no mesmo dia de cada mês.
+            </p>
+          )}
         </div>
 
         <DialogFooter>

@@ -25,10 +25,25 @@ export type FinancialEntryRow = {
   observacoes: string | null
   tags: string[]
   anexos: { path: string; name: string; size_bytes: number; mime_type: string }[]
+  is_recurring: boolean
+  recurrence_group_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string
 }
+
+/** Soma N meses a uma data ISO (YYYY-MM-DD), preservando o dia (clampado ao
+ *  último dia do mês de destino — ex.: 31/01 + 1 mês vira 28/02 ou 29/02). */
+function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1 + months, 1))
+  const lastDay = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate()
+  dt.setUTCDate(Math.min(d, lastDay))
+  return dt.toISOString().slice(0, 10)
+}
+
+/** Quantas ocorrências futuras gerar de uma vez ao marcar um lançamento como recorrente. */
+const RECURRING_MONTHS_AHEAD = 11
 
 /**
  * "Vencido" não é um status gravado por um cron — é derivado na leitura:
@@ -48,7 +63,7 @@ function withEffectiveStatus<T extends { status: FinancialEntryRow['status']; ve
 const WRITABLE = [
   'tipo', 'categoria', 'subcategoria', 'centro_custo', 'conta_bancaria', 'forma_pagamento',
   'valor_cents', 'competencia', 'vencimento', 'data_pagamento', 'status',
-  'contato_id', 'venda_id', 'operadora', 'observacoes', 'tags',
+  'contato_id', 'venda_id', 'operadora', 'observacoes', 'tags', 'is_recurring',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
@@ -135,6 +150,40 @@ export async function createFinancialEntry(orgSlug: string, input: Record<string
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar lançamento' }
+
+  // Despesa/receita recorrente: gera de uma vez as próximas ocorrências
+  // mensais (mesmo dia, mês seguinte em diante), já pendentes, agrupadas
+  // pelo id do lançamento original — assim aparecem prontas nos meses
+  // seguintes sem precisar recadastrar.
+  if (data.is_recurring) {
+    await supabase.from('financial_entries').update({ recurrence_group_id: data.id }).eq('id', data.id)
+
+    const future = Array.from({ length: RECURRING_MONTHS_AHEAD }, (_, i) => {
+      const offset = i + 1
+      return {
+        organization_id: org.id,
+        created_by: user.id,
+        recurrence_group_id: data.id,
+        is_recurring: true,
+        tipo: data.tipo,
+        categoria: data.categoria,
+        subcategoria: data.subcategoria,
+        centro_custo: data.centro_custo,
+        conta_bancaria: data.conta_bancaria,
+        forma_pagamento: data.forma_pagamento,
+        valor_cents: data.valor_cents,
+        competencia: addMonthsIso(data.competencia, offset),
+        vencimento: data.vencimento ? addMonthsIso(data.vencimento, offset) : null,
+        data_pagamento: null,
+        status: 'pendente' as const,
+        contato_id: data.contato_id,
+        operadora: data.operadora,
+        observacoes: data.observacoes,
+        tags: data.tags ?? [],
+      }
+    })
+    await supabase.from('financial_entries').insert(future)
+  }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)
   return { ok: true as const, data: withEffectiveStatus(data as FinancialEntryRow) }
