@@ -381,7 +381,7 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
 
 /* ═════════════ estado do editor ═════════════ */
 type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any }
-type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
+type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null; image_url?: string | null }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
@@ -815,6 +815,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
             </div>
+            <F label="Imagem do trecho (opcional)">
+              <CoverUpload orgSlug={orgSlug} url={f.image_url}
+                onChange={u => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, image_url: u } : x))} />
+              <p className="text-[11px] text-muted-foreground mt-1">Cole (Ctrl+V) ou arraste um print da passagem/cotação. Se não colar nada, esse trecho não mostra imagem na proposta.</p>
+            </F>
           </>
         )} />
       </EditBlock>

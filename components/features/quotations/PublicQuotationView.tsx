@@ -64,6 +64,7 @@ export type QuotationFlight = {
   stopover_label?: string | null
   baggage?: string[]
   cabin_class?: string | null
+  image_url?: string | null
 }
 
 export type QuotationDay = {
@@ -630,6 +631,12 @@ export default function PublicQuotationView({
                       })}
                     </div>
                   )}
+                  {f.image_url && (
+                    <button type="button" className="fl-img" aria-label="Ampliar imagem do trecho"
+                      onClick={() => setLightbox({ photos: [f.image_url!], index: 0 })}>
+                      <LazyImg src={f.image_url} alt="" />
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -990,6 +997,9 @@ const CSS = `
 .alq .fl-bags .bag{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#5a5140}
 .alq .fl-bags .bag svg{width:14px;height:14px;color:var(--gold);flex:none}
 .alq .fl-stop{font-size:12px;color:var(--muted);width:100%}
+.alq .fl-img{display:block;width:100%;margin-top:12px;border-radius:12px;overflow:hidden;border:0;padding:0;cursor:zoom-in;background:linear-gradient(135deg,#dfe6e3,#cdd8d6)}
+.alq .fl-img img{width:100%;max-height:340px;object-fit:cover;opacity:0;transition:opacity .6s}
+.alq .fl-img img.loaded{opacity:1}
 
 /* Mapa */
 .alq .alq-map{height:360px;border-radius:12px;z-index:0;border:1px solid var(--line);background:#eef0ec}

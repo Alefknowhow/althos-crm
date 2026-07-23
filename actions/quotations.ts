@@ -39,6 +39,7 @@ const FlightSchema = z.object({
   stopover_label: z.string().max(160).nullable().optional(),
   baggage: z.array(z.enum(['item_pessoal', 'mao', 'despachada'])).max(3).default([]),
   cabin_class: z.enum(['economica', 'premium', 'executiva', 'primeira']).nullable().optional(),
+  image_url: z.string().max(600).nullable().optional(),
 })
 
 const DaySchema = z.object({
