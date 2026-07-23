@@ -25,6 +25,9 @@ const LodgingSchema = z.object({
   lng: z.number().nullable().optional(),
   tripadvisor_location_id: z.string().max(40).nullable().optional(),
   tripadvisor_data: z.record(z.string(), z.any()).nullable().optional(),
+  is_alternative_option: z.boolean().default(false),
+  option_price_per_person_cents: z.number().int().nullable().optional(),
+  option_total_cents: z.number().int().nullable().optional(),
 })
 
 const FlightSchema = z.object({
@@ -39,7 +42,6 @@ const FlightSchema = z.object({
   stopover_label: z.string().max(160).nullable().optional(),
   baggage: z.array(z.enum(['item_pessoal', 'mao', 'despachada'])).max(3).default([]),
   cabin_class: z.enum(['economica', 'premium', 'executiva', 'primeira']).nullable().optional(),
-  image_url: z.string().max(600).nullable().optional(),
 })
 
 const DaySchema = z.object({
@@ -78,6 +80,7 @@ const QuotationSchema = z.object({
   closing_html: z.string().max(20000).nullable().optional(),
   cancellation_html: z.string().max(20000).nullable().optional(),
   itinerary_html: z.string().max(60000).nullable().optional(),
+  flights_html: z.string().max(60000).nullable().optional(),
   included: z.array(z.string().max(200)).max(40).optional(),
   not_included: z.array(z.string().max(200)).max(40).optional(),
   price_per_person_cents: z.number().int().min(0).nullable().optional(),

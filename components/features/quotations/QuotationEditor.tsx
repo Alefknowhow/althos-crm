@@ -380,8 +380,8 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
 }
 
 /* ═════════════ estado do editor ═════════════ */
-type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any }
-type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null; image_url?: string | null }
+type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any; is_alternative_option?: boolean; option_price_per_person_cents?: number | null; option_total_cents?: number | null }
+type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
@@ -405,6 +405,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     intro_html: q0.intro_html || '', important_html: q0.important_html || '', closing_html: q0.closing_html || '',
     cancellation_html: q0.cancellation_html || '',
     itinerary_html: q0.itinerary_html || '',
+    flights_html: (q0 as any).flights_html || '',
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
@@ -474,6 +475,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     intro_html: q.intro_html || null, important_html: q.important_html || null, closing_html: q.closing_html || null,
     cancellation_html: q.cancellation_html || null,
     itinerary_html: q.itinerary_html || null,
+    flights_html: q.flights_html || null,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
@@ -511,6 +513,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     occupancy_label: q.occupancy_label,
     intro_html: q.intro_html, important_html: q.important_html, closing_html: q.closing_html,
     cancellation_html: q.cancellation_html, itinerary_html: q.itinerary_html,
+    flights_html: q.flights_html,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions,
@@ -758,6 +761,25 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <PhotoGallery orgSlug={orgSlug} photos={l.photos}
                 onChange={p => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, photos: p } : x))} />
             </F>
+            <div className="rounded-lg border p-2.5 space-y-2 bg-muted/20">
+              <label className="flex items-center gap-2 text-xs font-medium">
+                <Switch checked={!!l.is_alternative_option}
+                  onCheckedChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, is_alternative_option: v } : x))} />
+                Esta é uma opção alternativa (cliente escolhe esta OU outra hospedagem)
+              </label>
+              {l.is_alternative_option && (
+                <div className="grid grid-cols-2 gap-2">
+                  <F label="Preço desta opção — por pessoa">
+                    <Input placeholder="0,00" value={centsToStr(l.option_price_per_person_cents)}
+                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_price_per_person_cents: strToCents(e.target.value) } : x))} />
+                  </F>
+                  <F label="Preço desta opção — total">
+                    <Input placeholder="0,00" value={centsToStr(l.option_total_cents)}
+                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_total_cents: strToCents(e.target.value) } : x))} />
+                  </F>
+                </div>
+              )}
+            </div>
           </>
         )} />
       </EditBlock>
@@ -815,13 +837,19 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
             </div>
-            <F label="Imagem do trecho (opcional)">
-              <CoverUpload orgSlug={orgSlug} url={f.image_url}
-                onChange={u => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, image_url: u } : x))} />
-              <p className="text-[11px] text-muted-foreground mt-1">Cole (Ctrl+V) ou arraste um print da passagem/cotação. Se não colar nada, esse trecho não mostra imagem na proposta.</p>
-            </F>
           </>
         )} />
+
+        <div className="mt-3 pt-3 border-t">
+          <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+            Alternativa: descreva o aéreo em texto livre (cole prints da passagem direto no texto)
+          </p>
+          <ItineraryEditor orgSlug={orgSlug} value={q.flights_html || ''}
+            onChange={html => setQ(s => ({ ...s, flights_html: html }))} />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Use os trechos estruturados acima OU este campo — se preenchido, ele aparece no lugar dos trechos na proposta.
+          </p>
+        </div>
       </EditBlock>
 
       {/* MAPA */}

@@ -49,6 +49,11 @@ export type QuotationLodging = {
     lng?: number
     address?: string
   } | null
+  /** Opção alternativa: quando 2+ hospedagens são "ou/ou" (não um circuito),
+   *  cada opção carrega seu próprio preço, exibido em Investimento. */
+  is_alternative_option?: boolean
+  option_price_per_person_cents?: number | null
+  option_total_cents?: number | null
 }
 
 export type QuotationFlight = {
@@ -64,7 +69,6 @@ export type QuotationFlight = {
   stopover_label?: string | null
   baggage?: string[]
   cabin_class?: string | null
-  image_url?: string | null
 }
 
 export type QuotationDay = {
@@ -99,6 +103,7 @@ export type PublicQuotation = {
   closing_html?: string | null
   cancellation_html?: string | null
   itinerary_html?: string | null
+  flights_html?: string | null
   included?: string[]
   not_included?: string[]
   price_per_person_cents?: number | null
@@ -330,6 +335,7 @@ export default function PublicQuotationView({
   const t = (v?: string | null, fallback = '') => v || (preview ? AC : fallback)
 
   const lodgings = data.lodgings || []
+  const altLodgings = lodgings.filter(l => l.is_alternative_option)
   const flights = data.flights || []
   const days = data.itinerary_days || []
   const included = data.included || []
@@ -569,6 +575,7 @@ export default function PublicQuotationView({
                     <span className="name static">{l.name || (preview ? AC : 'Hospedagem')}</span>
                   )}
                   <div className="meta">
+                    {l.is_alternative_option && <span className="pill gold">Opção alternativa</span>}
                     {(l.check_in || l.check_out) && (
                       <span className="pill">{fmtDayMonth(l.check_in)} → {fmtDayMonth(l.check_out)}{ln ? ` · ${ln} noites` : ''}</span>
                     )}
@@ -597,10 +604,12 @@ export default function PublicQuotationView({
         )}
 
         {/* ───── AÉREO ───── */}
-        {flights.length > 0 && (
+        {(flights.length > 0 || hasHtml(data.flights_html)) && (
           <Block num={num()} title="Aéreo"
             sub={flights.some(f => f.leg_type === 'inbound') ? 'Ida e volta' : 'Trechos da viagem'}>
-            {flights.map((f, i) => {
+            {hasHtml(data.flights_html) ? (
+              <Rich html={data.flights_html} className="rich-body" />
+            ) : flights.map((f, i) => {
               const bags = (f.baggage || []).filter(k => BAGGAGE_ICONS[k])
               return (
                 <div className="flight-wrap" key={f.id || i}>
@@ -630,12 +639,6 @@ export default function PublicQuotationView({
                         return <span key={k} className="bag"><Ic />{opt?.short}</span>
                       })}
                     </div>
-                  )}
-                  {f.image_url && (
-                    <button type="button" className="fl-img" aria-label="Ampliar imagem do trecho"
-                      onClick={() => setLightbox({ photos: [f.image_url!], index: 0 })}>
-                      <LazyImg src={f.image_url} alt="" />
-                    </button>
                   )}
                 </div>
               )
@@ -716,18 +719,43 @@ export default function PublicQuotationView({
         <section className="invest reveal">
           <div className="eyebrow">Investimento</div>
           <h3>Valores do pacote</h3>
-          <div className="price-grid">
-            <div className="price-card">
-              <div className="lbl">Por pessoa</div>
-              <div className="amt">{brl(data.price_per_person_cents) || (preview ? AC : '—')}</div>
-              {data.occupancy_label && <div className="note">em {data.occupancy_label}</div>}
+          {altLodgings.length > 1 ? (
+            <>
+              <p className="opt-note">Escolha uma das opções de hospedagem abaixo — o valor do pacote muda conforme a escolha.</p>
+              <div className="opt-grid">
+                {altLodgings.map((l, i) => (
+                  <div className="opt-card" key={l.id || i}>
+                    <span className="opt-badge">Opção {i + 1}</span>
+                    <div className="opt-name">{l.name || `Hospedagem ${i + 1}`}</div>
+                    {l.room_category && <div className="opt-room">{l.room_category}</div>}
+                    <div className="opt-prices">
+                      <div>
+                        <div className="lbl">Por pessoa</div>
+                        <div className="amt">{brl(l.option_price_per_person_cents) || (preview ? AC : '—')}</div>
+                      </div>
+                      <div>
+                        <div className="lbl">Total</div>
+                        <div className="amt">{brl(l.option_total_cents) || (preview ? AC : '—')}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="price-grid">
+              <div className="price-card">
+                <div className="lbl">Por pessoa</div>
+                <div className="amt">{brl(data.price_per_person_cents) || (preview ? AC : '—')}</div>
+                {data.occupancy_label && <div className="note">em {data.occupancy_label}</div>}
+              </div>
+              <div className="price-card total">
+                <div className="lbl">Total{paxTotal > 0 ? ` · ${paxTotal} ${paxTotal > 1 ? 'pessoas' : 'pessoa'}` : ''}</div>
+                <div className="amt">{brl(data.total_cents) || (preview ? AC : '—')}</div>
+                <div className="note">pacote completo</div>
+              </div>
             </div>
-            <div className="price-card total">
-              <div className="lbl">Total{paxTotal > 0 ? ` · ${paxTotal} ${paxTotal > 1 ? 'pessoas' : 'pessoa'}` : ''}</div>
-              <div className="amt">{brl(data.total_cents) || (preview ? AC : '—')}</div>
-              <div className="note">pacote completo</div>
-            </div>
-          </div>
+          )}
           {paymentConditions.length > 0 && (
             <div className="pay">
               {paymentConditions.map((p, i) => (
@@ -997,9 +1025,6 @@ const CSS = `
 .alq .fl-bags .bag{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#5a5140}
 .alq .fl-bags .bag svg{width:14px;height:14px;color:var(--gold);flex:none}
 .alq .fl-stop{font-size:12px;color:var(--muted);width:100%}
-.alq .fl-img{display:block;width:100%;margin-top:12px;border-radius:12px;overflow:hidden;border:0;padding:0;cursor:zoom-in;background:linear-gradient(135deg,#dfe6e3,#cdd8d6)}
-.alq .fl-img img{width:100%;max-height:340px;object-fit:cover;opacity:0;transition:opacity .6s}
-.alq .fl-img img.loaded{opacity:1}
 
 /* Mapa */
 .alq .alq-map{height:360px;border-radius:12px;z-index:0;border:1px solid var(--line);background:#eef0ec}
@@ -1060,6 +1085,16 @@ const CSS = `
 .alq .price-card .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:30px;margin-top:6px;line-height:1}
 .alq .price-card.total .amt{color:var(--gold-soft)}
 .alq .price-card .note{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px}
+.alq .opt-note{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:18px}
+.alq .opt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:26px}
+.alq .opt-card{position:relative;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:22px 18px 18px}
+.alq .opt-badge{position:absolute;top:-10px;left:16px;background:var(--gold);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+.alq .opt-name{font-family:'Inter',sans-serif;font-weight:600;font-size:16px;color:#fff;margin-top:4px}
+.alq .opt-room{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
+.alq .opt-prices{display:flex;gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
+.alq .opt-prices .lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.alq .opt-prices .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:20px;color:var(--gold-soft);margin-top:4px}
+@media(max-width:560px){.alq .opt-grid{grid-template-columns:1fr}}
 .alq .pay{border-top:1px solid rgba(255,255,255,.14);padding-top:20px}
 .alq .pay .row{display:flex;justify-content:space-between;padding:7px 0;font-size:14.5px;color:rgba(255,255,255,.9);gap:14px}
 .alq .pay .row b{color:var(--gold-soft);font-weight:600;text-align:right}
