@@ -14,16 +14,17 @@ export function isTravelNiche(niche?: string | null): boolean {
  * Selectable niches. `value` is what gets stored on organizations.niche;
  * `label` is the display name. The travel value (NICHE_TRAVEL) unlocks the
  * travel-agency tabs (Propostas, Vendas Viagem, etc.).
+ *
+ * Alinhado aos 5 nichos estratégicos definidos (ver docs/inventario-funcionalidades.md
+ * e lib/landing/niches.ts, usado no site institucional): Viagens, Clínicas,
+ * Imobiliárias, Advocacia e Corretoras de Seguros. "Outros" é o catch-all pra
+ * quem não se encaixa em nenhum — continua usando o CRM genérico.
  */
 export const NICHE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'E-commerce',              label: 'E-commerce' },
-  { value: 'Infoproduto',             label: 'Infoproduto' },
-  { value: 'Comércio de Vendas',      label: 'Comércio de Vendas' },
-  { value: 'Clínicas',                label: 'Clínicas' },
-  { value: 'Escritório de Advogados', label: 'Escritório de Advogados' },
-  { value: 'Agências',                label: 'Agências' },
-  { value: 'Educação',                label: 'Educação' },
-  { value: 'Imobiliária',             label: 'Imobiliária' },
-  { value: NICHE_TRAVEL,              label: 'Agência de Viagens' },
-  { value: 'Outros',                  label: 'Outros' },
+  { value: NICHE_TRAVEL,   label: 'Agência de Viagens' },
+  { value: 'Clínicas',     label: 'Clínicas' },
+  { value: 'Imobiliária',  label: 'Imobiliárias' },
+  { value: 'advocacia',    label: 'Advocacia' },
+  { value: 'seguros',      label: 'Corretora de Seguros' },
+  { value: 'Outros',       label: 'Outros' },
 ]
