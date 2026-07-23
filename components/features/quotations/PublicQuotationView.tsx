@@ -575,7 +575,7 @@ export default function PublicQuotationView({
                     <span className="name static">{l.name || (preview ? AC : 'Hospedagem')}</span>
                   )}
                   <div className="meta">
-                    {l.is_alternative_option && <span className="pill gold">Opção alternativa</span>}
+                    {l.is_alternative_option && <span className="pill gold">Opção {altLodgings.indexOf(l) + 1}</span>}
                     {(l.check_in || l.check_out) && (
                       <span className="pill">{fmtDayMonth(l.check_in)} → {fmtDayMonth(l.check_out)}{ln ? ` · ${ln} noites` : ''}</span>
                     )}
