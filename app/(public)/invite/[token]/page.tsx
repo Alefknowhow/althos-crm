@@ -1,6 +1,7 @@
 import { validateInvite } from '@/actions/invites'
 import { getPlan } from '@/lib/billing/plans'
 import { Button } from '@/components/ui/button'
+import { LogoMark } from '@/components/brand/Logo'
 import Link from 'next/link'
 import { CheckCircle2, XCircle } from 'lucide-react'
 
@@ -45,8 +46,7 @@ export default async function InvitePage({
 
         {/* Header */}
         <div className="text-center space-y-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.png" alt="Althos CRM" className="w-14 h-14 rounded-md object-cover mx-auto mb-3" />
+          <LogoMark className="w-14 h-14 mx-auto mb-3" />
           <h1 className="text-2xl font-bold">Você foi convidado</h1>
           <p className="text-muted-foreground">
             Acesso ao <strong>Althos CRM</strong> com o plano{' '}

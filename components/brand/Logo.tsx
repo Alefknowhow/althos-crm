@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { BRAND } from '@/lib/constants/brand'
 
@@ -13,10 +14,11 @@ export function LogoMark({
   gradient?: boolean
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src="/logo-mark.png"
       alt={`${BRAND.shortName} logo`}
+      width={64}
+      height={64}
       className={cn('h-7 w-7 shrink-0 rounded-md object-cover', className)}
     />
   )

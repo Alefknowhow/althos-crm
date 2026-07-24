@@ -23,11 +23,13 @@ export const metadata: Metadata = {
     siteName: 'Althos CRM',
     type: 'website',
     locale: 'pt_BR',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
     title: TITLE,
     description: DESCRIPTION,
+    images: ['/opengraph-image'],
   },
 }
 

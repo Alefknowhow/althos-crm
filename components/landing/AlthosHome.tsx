@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { HOME_CSS } from './althos-home.css'
 import {
   PUBLIC_PLANS,
@@ -150,14 +151,15 @@ function Hero({ onZoom }: { onZoom: OnZoom }) {
           <div className="browser-screen">
             {HERO_TABS.map((t, i) => (
               <div key={t.key} className={`panel${tab === t.key ? ' active' : ''}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={SHOTS[t.key]}
                   alt={t.alt}
+                  fill
+                  sizes="(max-width: 900px) 100vw, 1000px"
                   /* Só a 1ª aba (pipeline, o LCP) carrega com prioridade; as demais
                      ficam lazy para não competirem pela banda do hero. */
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={i === 0 ? 'high' : 'auto'}
+                  priority={i === 0}
+                  loading={i === 0 ? undefined : 'lazy'}
                   onClick={() => onZoom(SHOTS[t.key], t.alt)}
                 />
               </div>
@@ -356,8 +358,14 @@ function Solutions({ onZoom }: { onZoom: OnZoom }) {
           <div className="sol-frame">
             <div className="sol-frame-bar" aria-hidden="true"><i /><i /><i /></div>
             <div className="sol-shot">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={SHOTS[step.shot]} alt={step.h} onClick={() => onZoom(SHOTS[step.shot], step.h)} />
+              <Image
+                src={SHOTS[step.shot]}
+                alt={step.h}
+                fill
+                sizes="(max-width: 900px) 100vw, 700px"
+                loading="lazy"
+                onClick={() => onZoom(SHOTS[step.shot], step.h)}
+              />
             </div>
           </div>
         </div>
@@ -409,8 +417,15 @@ function AiBlock({ onZoom }: { onZoom: OnZoom }) {
                 <span className="tag"><span className="pulse" /> Gerando</span>
               </div>
               <div className="ai-shot">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={SHOTS.insights} alt="Insights gerados pela IA do Althos" loading="lazy" onClick={() => onZoom(SHOTS.insights, 'Insights gerados pela IA do Althos')} />
+                <Image
+                  src={SHOTS.insights}
+                  alt="Insights gerados pela IA do Althos"
+                  width={1821}
+                  height={864}
+                  sizes="(max-width: 900px) 100vw, 640px"
+                  loading="lazy"
+                  onClick={() => onZoom(SHOTS.insights, 'Insights gerados pela IA do Althos')}
+                />
                 <div className="ai-scan" aria-hidden="true" />
                 <div className="ai-typingbar">
                   <span className="spark">✦</span>

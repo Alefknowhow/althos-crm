@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SITE_NAV } from '@/lib/site/content'
+import { LogoMark } from '@/components/brand/Logo'
 import { NICHES } from '@/lib/landing/niches'
 import { FEATURES } from '@/lib/landing/features'
 
@@ -60,8 +61,7 @@ export function SiteFooter() {
           {/* Brand + CTA */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-mark.png" alt="Althos CRM" className="h-7 w-7 rounded-md object-cover" />
+              <LogoMark className="h-7 w-7" />
               <span className="text-base font-semibold tracking-tight text-[#f4f4f4]">
                 ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
               </span>

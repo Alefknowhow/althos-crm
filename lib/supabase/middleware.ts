@@ -40,6 +40,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname === '/fale-com-vendas' ||  // marketing: lead form (plano Business)
     pathname === '/robots.txt' ||      // SEO: crawler directives (must not 307→login)
     pathname === '/sitemap.xml' ||     // SEO: sitemap
+    pathname === '/opengraph-image' ||   // OG/Twitter card image (link previews, sem sessão)
+    pathname === '/twitter-image' ||
     pathname === '/blog' ||            // marketing: blog index
     pathname.startsWith('/blog/')   ||  // marketing: blog posts
     pathname.startsWith('/convite/') ||  // team invite acceptance (invitee has no account/session yet)

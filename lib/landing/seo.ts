@@ -35,11 +35,13 @@ export function buildPageMetadata({
       siteName: 'Althos CRM',
       type: 'website',
       locale: 'pt_BR',
+      images: ['/opengraph-image'],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: ['/opengraph-image'],
     },
   }
 }

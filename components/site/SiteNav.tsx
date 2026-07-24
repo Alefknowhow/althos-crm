@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { SITE_NAV } from '@/lib/site/content'
+import { LogoMark } from '@/components/brand/Logo'
 
 /**
  * Navegação do site institucional multi-página.
@@ -31,8 +32,7 @@ export function SiteNav() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.png" alt="Althos CRM" className="h-6 w-6 rounded-md object-cover" />
+          <LogoMark className="h-6 w-6" />
           <span className="text-sm sm:text-base font-semibold tracking-tight text-[#f4f4f4]">
             ALTHOS <span className="text-[#f4f4f4]/40 font-normal">CRM</span>
           </span>
