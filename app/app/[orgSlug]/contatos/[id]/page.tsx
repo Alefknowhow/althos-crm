@@ -142,7 +142,9 @@ export default async function ContatoDetailPage({
             <span>{lead.phone || 'Sem telefone'}</span>
           </div>
         </div>
-        <div className="flex items-center gap-4 flex-wrap">
+        {/* Some no mobile — a página cheia foca só no conteúdo do contato,
+            essas ações continuam disponíveis no desktop. */}
+        <div className="hidden md:flex items-center gap-4 flex-wrap">
           <AIScoreBadge score={lead.ai_score} tier={lead.ai_tier} summary={lead.ai_summary} />
           <Badge variant={lead.stage_id ? 'default' : 'outline'} className="text-sm px-3 py-1">
             {lead.stage_id

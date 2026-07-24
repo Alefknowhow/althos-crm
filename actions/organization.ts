@@ -101,6 +101,23 @@ export async function createOrganization(formData: FormData) {
       await admin
         .from('account_members')
         .insert({ account_id: accountId, user_id: user.id, role: 'admin' })
+
+      // Sem isso, `getAccountSubscription` (lib/plans/server.ts) não encontra
+      // linha nenhuma pra essa conta e trata como Free (0 créditos de IA) —
+      // o campo organizations.plan='trial' só alimenta o gate de congelamento
+      // (isAccessBlocked), não o gate de feature/crédito de IA, que é
+      // inteiramente baseado nesta tabela `subscriptions`. plan_id='pro'
+      // replica a promessa de "acesso completo ao Pro" do trial.
+      const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+      await admin
+        .from('subscriptions')
+        .upsert({
+          account_id: accountId,
+          plan_id: 'pro',
+          status: 'trialing',
+          trial_ends_at: trialEndsAt,
+          current_period_end: trialEndsAt,
+        }, { onConflict: 'account_id' })
     }
   }
 

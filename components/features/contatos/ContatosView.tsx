@@ -576,7 +576,9 @@ function DetailPanel({
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
           </p>
-          <div className="mt-2 w-44">
+          {/* Some no mobile — a tela cheia do contato foca só no conteúdo,
+              a classificação continua disponível no desktop. */}
+          <div className="hidden lg:block mt-2 w-44">
             <Select value={(c.status as string) || 'lead'} onValueChange={changeStatus} disabled={savingStatus}>
               <SelectTrigger className="h-8">
                 <SelectValue />
@@ -591,8 +593,8 @@ function DetailPanel({
         </div>
       </div>
 
-      {/* Ações */}
-      <div className="flex flex-wrap gap-2">
+      {/* Ações — some no mobile, só ficam no desktop. */}
+      <div className="hidden lg:flex flex-wrap gap-2">
         <Button size="sm" variant="outline" asChild>
           <Link href={`/app/${orgSlug}/contatos/${c.id}`}>
             <ExternalLink className="w-4 h-4 mr-1.5" /> Página completa
