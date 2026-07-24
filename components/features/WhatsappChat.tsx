@@ -280,7 +280,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.map((c: any) => (
-            <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
+            <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
+              <div className={`h-9 w-9 rounded-full shrink-0 ${agentColor(c.contact_phone || c.id)} text-white text-[11px] font-semibold flex items-center justify-center`}>
+                {memberInitials(c.contact_name, c.contact_phone)}
+              </div>
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
@@ -330,7 +333,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         </div>
       </div>
 
-      <div className={`flex-1 flex-col bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DckOUM5a.png')] bg-repeat ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col bg-secondary/40 ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
             <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0   z-10">
@@ -398,15 +401,21 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white/60">
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
                 const body = msgBody(m) || '[Mídia recebida]'
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[75%] rounded-none px-4 py-2   relative ${isInbound ? 'bg-white border text-black rounded-tl-none' : 'bg-[#dcf8c6] text-black border border-[#dcf8c6] rounded-tr-none'}`}>
+                    <div
+                      className={`max-w-[75%] rounded-[14px] px-4 py-2 relative ${
+                        isInbound
+                          ? 'bg-secondary text-foreground rounded-tl-[4px]'
+                          : 'bg-primary text-primary-foreground rounded-tr-[4px]'
+                      }`}
+                    >
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">{highlightText(body, msgQuery)}</div>
-                      <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-black/40`}>
+                      <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && <MessageTicks status={m.status} />}
                       </div>
@@ -507,7 +516,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                 onScheduled={() => setInput('')}
               />
 
-              <Input className="flex-1 bg-muted/50 rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
+              <Input className="flex-1 bg-secondary rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
 
               {input.trim() ? (
                 <Button type="submit" disabled={sending} className="rounded-full min-h-[44px] min-w-[44px] px-0 flex items-center justify-center" title="Enviar">
@@ -588,14 +597,14 @@ function MessageTicks({ status }: { status?: string }) {
   }
   if (!status || status === 'pending' || status === 'sending') {
     return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black/40" aria-label="Enviando">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground/60" aria-label="Enviando">
         <circle cx="12" cy="12" r="9" /><path d="M12 8v4l2.5 2.5" />
       </svg>
     )
   }
   const isRead = status === 'read'
   const isDouble = status === 'delivered' || status === 'read'
-  const cls = isRead ? 'text-sky-500' : 'text-black/40'
+  const cls = isRead ? 'text-sky-200' : 'text-primary-foreground/60'
   const label = isRead ? 'Lida' : isDouble ? 'Entregue' : 'Enviada'
   return (
     <svg

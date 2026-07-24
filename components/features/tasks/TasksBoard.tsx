@@ -126,6 +126,7 @@ export default function TasksBoard({
   const [editingColId, setEditingColId] = useState<string | null>(null)
   const [colDraft, setColDraft] = useState('')
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
+  const [openBucket, setOpenBucket] = useState<'overdue' | 'today' | 'upcoming' | null>('overdue')
 
   // Re-sync when the server sends fresh data (after router.refresh()).
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
@@ -201,6 +202,21 @@ export default function TasksBoard({
     }
     return c
   }, [tasks, bounds])
+
+  // Mobile: 3 seções sempre visíveis (Atrasadas/Hoje/Próximas), respeitando os
+  // filtros de prioridade/responsável mas ignorando o filtro de data (que na
+  // versão mobile deixa de ser exclusivo e vira agrupamento permanente).
+  const mobileBuckets = useMemo(() => {
+    const base = tasks.filter(t => (priority === 'all' || t.priority === priority) && matchesAssignee(t, assignee))
+    const overdue = base.filter(t => matchesDate(t, 'overdue'))
+    const today = base.filter(t => matchesDate(t, 'today'))
+    const upcoming = base.filter(t => !matchesDate(t, 'overdue') && !matchesDate(t, 'today'))
+    return {
+      overdue: doneLast(overdue),
+      today: doneLast(today),
+      upcoming: doneLast(upcoming),
+    }
+  }, [tasks, priority, assignee, bounds])
 
   // Group tasks by column. Tasks with no/unknown column fall into the first one.
   const byColumn = useMemo(() => {
@@ -378,13 +394,15 @@ export default function TasksBoard({
           )
         })}
       </div>
-      <ResponsiveSelect
-        className="sm:hidden w-full"
-        aria-label="Filtrar por data"
-        value={dateFilter}
-        onValueChange={v => setDateFilter(v as DateFilter)}
-        options={DATE_FILTERS.map(f => ({ value: f.id, label: `${f.label} (${dateCounts[f.id]})` }))}
-      />
+      {!isMobile && (
+        <ResponsiveSelect
+          className="sm:hidden w-full"
+          aria-label="Filtrar por data"
+          value={dateFilter}
+          onValueChange={v => setDateFilter(v as DateFilter)}
+          options={DATE_FILTERS.map(f => ({ value: f.id, label: `${f.label} (${dateCounts[f.id]})` }))}
+        />
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -624,6 +642,52 @@ export default function TasksBoard({
             })}
           </div>
         </div>
+      ) : isMobile ? (
+        <div className="space-y-2">
+          {([
+            { id: 'overdue', label: 'Atrasadas', danger: true },
+            { id: 'today', label: 'Hoje', danger: false },
+            { id: 'upcoming', label: 'Próximas', danger: false },
+          ] as { id: 'overdue' | 'today' | 'upcoming'; label: string; danger: boolean }[]).map(bucket => {
+            const list = mobileBuckets[bucket.id]
+            const isOpen = openBucket === bucket.id
+            return (
+              <div key={bucket.id} className="overflow-hidden rounded-[8px] border bg-card">
+                <button
+                  type="button"
+                  onClick={() => setOpenBucket(isOpen ? null : bucket.id)}
+                  className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
+                >
+                  <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
+                  <span className={cn('flex-1 text-sm font-semibold', bucket.danger && list.length > 0 && 'text-destructive')}>
+                    {bucket.label}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                    {list.length}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="divide-y border-t">
+                    {list.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
+                    ) : (
+                      list.map(task => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          orgSlug={orgSlug}
+                          columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
+                          onOpen={() => setEditing(task)}
+                          onToggleDone={() => handleToggleDone(task)}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <div className="rounded-none border divide-y bg-card">
           {doneLast(filtered).length === 0 ? (
@@ -792,12 +856,12 @@ function TaskRow({
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
       <button
         onClick={onToggleDone}
-        className="shrink-0 text-muted-foreground hover:text-green-600 transition-colors"
+        className="shrink-0 text-muted-foreground hover:text-success transition-colors"
         aria-label={task.status === 'done' ? 'Reabrir' : 'Concluir'}
       >
         {task.status === 'done'
-          ? <CheckCircle2 className="w-5 h-5 text-green-600" />
-          : <Circle className="w-5 h-5" />}
+          ? <CheckCircle2 className="w-[18px] h-[18px] text-success" />
+          : <Circle className="w-[18px] h-[18px]" />}
       </button>
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
         <p className={cn('text-sm font-medium truncate', task.status === 'done' && 'line-through text-muted-foreground')}>

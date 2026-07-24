@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  ChevronDown,
   ChevronRight,
   Plus,
   MessageCircle,
@@ -15,14 +14,7 @@ import {
 import { formatCurrency, cn } from '@/lib/utils'
 import LeadFormResponsesButton from '../LeadFormResponsesButton'
 import type { CardMember } from '../LeadCard'
-
-// ── Helpers (mirrored from LeadCard so the mobile card stays self-contained) ──
-function initials(name: string, email: string): string {
-  const base = name?.trim() || email?.split('@')[0] || '?'
-  const parts = base.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return base.slice(0, 2).toUpperCase()
-}
+import { agentColor, memberInitials } from '../ConversationDetailPanel'
 
 const TIER = {
   hot:    { label: 'Quente', cls: 'bg-rose-100 text-rose-700' },
@@ -68,7 +60,7 @@ function MobileLeadCard({
   return (
     <div
       onClick={onClick}
-      className="rounded-lg border bg-background p-3 active:bg-muted/40 transition-colors"
+      className="rounded-[8px] border bg-background p-3 active:bg-muted/40 transition-colors"
       style={{ boxShadow: `inset 3px 0 0 0 ${color}` }}
     >
       {/* Title + responsável */}
@@ -77,9 +69,9 @@ function MobileLeadCard({
         {owner && (
           <span
             title={owner.name || owner.email}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
+            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white text-[11px] font-semibold', agentColor(owner.id || owner.email))}
           >
-            {initials(owner.name, owner.email)}
+            {memberInitials(owner.name, owner.email)}
           </span>
         )}
       </div>
@@ -178,7 +170,7 @@ export default function MobilePipelineList({
         const isOpen = openStage === stage.id
 
         return (
-          <div key={stage.id} className="overflow-hidden rounded-none border bg-card">
+          <div key={stage.id} className="overflow-hidden rounded-[8px] border bg-card">
             {/* Stage row — colour matches the stage */}
             <button
               type="button"
@@ -186,8 +178,8 @@ export default function MobilePipelineList({
               className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
               style={{ backgroundColor: `${color}14`, boxShadow: `inset 4px 0 0 0 ${color}` }}
             >
-              <span className="text-muted-foreground shrink-0">
-                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <span className={cn('text-muted-foreground shrink-0 transition-transform duration-200', isOpen ? 'rotate-90' : 'rotate-0')}>
+                <ChevronRight className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm font-semibold">

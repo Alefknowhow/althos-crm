@@ -5,6 +5,7 @@ import { listTaskColumns } from '@/actions/tasks'
 import TaskDialog from '@/components/features/TaskDialog'
 import TasksBoard from '@/components/features/tasks/TasksBoard'
 import { PageHeader } from '@/components/ui/page-header'
+import { Plus } from 'lucide-react'
 
 export default async function TasksPage({ params }: { params: { orgSlug: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
@@ -39,7 +40,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
       <PageHeader
         title="Tarefas"
         hint="Organize seu trabalho em quadro Kanban, lista ou calendário."
-        actions={<TaskDialog orgSlug={params.orgSlug} members={members} />}
+        actions={<div className="hidden md:block"><TaskDialog orgSlug={params.orgSlug} members={members} /></div>}
       />
 
       <TasksBoard
@@ -48,6 +49,24 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
         orgSlug={params.orgSlug}
         members={members}
       />
+
+      {/* FAB mobile — mesma criação de tarefa do botão do cabeçalho (desktop),
+          só que ancorada no canto inferior direito, acima da bottom nav. */}
+      <div className="md:hidden fixed bottom-20 right-4 z-30">
+        <TaskDialog
+          orgSlug={params.orgSlug}
+          members={members}
+          trigger={
+            <button
+              type="button"
+              aria-label="Nova tarefa"
+              className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg active:scale-95 transition-transform"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+          }
+        />
+      </div>
     </div>
   )
 }

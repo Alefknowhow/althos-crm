@@ -58,7 +58,7 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col h-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="flex flex-col h-full w-full max-w-none sm:max-w-md overflow-y-auto">
 
         {!lead && !error && (
           <div className="p-8 text-center text-muted-foreground">Carregando...</div>

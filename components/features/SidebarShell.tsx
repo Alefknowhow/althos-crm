@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/brand/Logo'
 
 export default function SidebarShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen]   = useState(false)
@@ -110,18 +111,21 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
 
           {/* Panel */}
           <aside
-            className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-200 ease-out"
+            className="absolute inset-y-0 left-0 w-[78%] max-w-[320px] bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-200 ease-out shadow-xl"
             style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
           >
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Fechar menu"
-              className="absolute top-3 right-3 w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-4 shrink-0">
+              <Logo className="sidebar-brand" />
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fechar menu"
+                className="w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             {children}
           </aside>
         </div>

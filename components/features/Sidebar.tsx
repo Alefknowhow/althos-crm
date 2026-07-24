@@ -6,6 +6,7 @@ import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
+import BottomNav from './BottomNav'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { isTravelNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
@@ -34,7 +35,7 @@ import {
 /** Non-interactive section divider label. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50 select-none">
+    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-[0.06em] font-bold text-muted-foreground select-none">
       {children}
     </p>
   )
@@ -127,8 +128,12 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   const base = `/app/${orgSlug}`
 
   return (
+    <>
     <SidebarShell>
-      <div className="h-14 border-b border-sidebar-border flex items-center px-5">
+      {/* Desktop-only — a versão mobile do cabeçalho (logo + nome + X) é
+          renderizada direto pelo SidebarShell, pra não duplicar quando o
+          drawer mobile monta este mesmo children pela segunda vez. */}
+      <div className="hidden md:flex h-14 border-b border-sidebar-border items-center px-5">
         <Logo className="sidebar-brand" />
       </div>
 
@@ -367,5 +372,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         <SidebarUserMenu name={userName} email={userEmail} />
       </div>
     </SidebarShell>
+    <BottomNav
+      orgSlug={orgSlug}
+      showPipeline={can('pipeline')}
+      showContatos={can('leads') || can('clients')}
+      showTarefas={can('tasks')}
+      showConversas={can('conversations')}
+      overdueCount={overdueCount ?? 0}
+      unreadCount={unreadWhatsapp}
+    />
+    </>
   )
 }
