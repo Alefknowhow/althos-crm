@@ -121,6 +121,11 @@ export function SiteFooter() {
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-wider text-[#f4f4f4]/45">Por nicho</p>
             <ul className="mt-3 space-y-1.5">
+              <li>
+                <Link href="/para-quem-e" className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">
+                  Ver todos os nichos
+                </Link>
+              </li>
               {niches.map(n => (
                 <li key={n.slug}>
                   <Link href={`/${n.slug}`} className="inline-block py-0.5 text-[14px] text-[#f4f4f4]/70 hover:text-[#f4f4f4] transition-colors">

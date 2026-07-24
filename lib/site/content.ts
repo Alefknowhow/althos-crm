@@ -12,7 +12,6 @@ export interface NavItem {
 /** Links de navegação do site multi-página. */
 export const SITE_NAV: NavItem[] = [
   { label: 'Funcionalidades', href: '/funcionalidades' },
-  { label: 'Para quem é',     href: '/para-quem-e' },
   { label: 'Por que nós?',    href: '/por-que-nos' },
   { label: 'Como funciona',   href: '/como-funciona' },
   { label: 'Planos',          href: '/planos' },

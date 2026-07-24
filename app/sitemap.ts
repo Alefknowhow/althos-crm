@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { BRAND } from '@/lib/constants/brand'
-import { NICHE_SLUGS } from '@/lib/landing/niches'
+import { NICHES, NICHE_SLUGS } from '@/lib/landing/niches'
 import { FEATURE_SLUGS } from '@/lib/landing/features'
 import { POSTS } from '@/lib/blog/posts'
 
@@ -28,10 +28,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/exclusao-de-dados`, changeFrequency: 'yearly', priority: 0.2 },
   ]
 
+  // "Em breve" (advocacia, seguros) ainda não têm o módulo pronto — copy é
+  // lista de espera, não uma landing de conversão plena. Prioridade menor
+  // evita competir no ranking com os 3 nichos já ativos.
   const nicheRoutes: MetadataRoute.Sitemap = NICHE_SLUGS.map(slug => ({
     url: `${base}/${slug}`,
     changeFrequency: 'monthly',
-    priority: 0.85,
+    priority: NICHES[slug].emBreve ? 0.5 : 0.85,
   }))
 
   const featureRoutes: MetadataRoute.Sitemap = FEATURE_SLUGS.map(slug => ({

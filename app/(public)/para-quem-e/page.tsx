@@ -3,27 +3,28 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { SiteShell } from '@/components/site/SiteShell'
 import { SiteIcon } from '@/components/site/SiteIcon'
-import { NICHES } from '@/lib/site/content'
+import { NICHES, NICHE_SLUGS } from '@/lib/landing/niches'
 import { buildPageMetadata } from '@/lib/landing/seo'
 
 export const metadata: Metadata = buildPageMetadata({
-  title: 'Althos CRM | Para Cada Tipo de Time de Vendas',
+  title: 'Althos CRM | Para Cada Tipo de Negócio',
   description:
-    'Agências de viagens, imobiliárias, clínicas, lojas de veículos, agências de marketing e pequenas empresas. Veja como o Althos CRM se adapta ao seu negócio.',
+    'Agências de viagens, imobiliárias, clínicas, escritórios de advocacia e corretoras de seguros. Veja como o Althos CRM se adapta ao seu negócio.',
   path: '/para-quem-e',
 })
 
-/** Mapeia o slug do nicho (content.ts) para a landing page dedicada. */
-const NICHE_LANDING: Record<string, string> = {
-  'agencias-viagens': '/viagens',
-  imobiliarias: '/imobiliarias',
-  clinicas: '/clinicas',
-  veiculos: '/veiculos',
-  marketing: '/trafego',
-  'pequenas-empresas': '/pequenas-empresas',
+/** Ícone por nicho — alinhado ao mesmo slug usado em lib/landing/niches.ts. */
+const NICHE_ICON: Record<string, string> = {
+  viagens: 'Plane',
+  imobiliarias: 'Home',
+  clinicas: 'Stethoscope',
+  advocacia: 'Scale',
+  seguros: 'ShieldCheck',
 }
 
 export default function ParaQuemEPage() {
+  const niches = NICHE_SLUGS.map(slug => NICHES[slug])
+
   return (
     <SiteShell>
       <section className="relative overflow-hidden pt-10 pb-8 sm:pt-24 sm:pb-10">
@@ -46,14 +47,14 @@ export default function ParaQuemEPage() {
       {/* Atalhos de nicho */}
       <section className="relative mx-auto max-w-5xl px-4 pb-6 sm:px-6">
         <div className="flex flex-wrap justify-center gap-2">
-          {NICHES.map(n => (
+          {niches.map(n => (
             <a
               key={n.slug}
               href={`#${n.slug}`}
               className="inline-flex items-center gap-2 rounded-full border border-[#383838] bg-[#262626] px-4 py-2 text-[13px] font-medium text-[#a8a8a8]   hover:border-[#78a9ff] hover:text-[#f4f4f4] transition-colors"
             >
-              <SiteIcon name={n.icon} className="h-4 w-4 text-[#4589ff]" />
-              {n.name}
+              <SiteIcon name={NICHE_ICON[n.slug]} className="h-4 w-4 text-[#4589ff]" />
+              {n.nav}
             </a>
           ))}
         </div>
@@ -62,7 +63,7 @@ export default function ParaQuemEPage() {
       {/* Blocos por nicho */}
       <section className="relative mx-auto max-w-5xl px-4 pb-20 sm:px-6">
         <div className="space-y-6">
-          {NICHES.map((n, i) => (
+          {niches.map(n => (
             <div
               key={n.slug}
               id={n.slug}
@@ -72,21 +73,28 @@ export default function ParaQuemEPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 items-center justify-center rounded-none bg-blue-600 text-white   shadow-blue-600/30">
-                    <SiteIcon name={n.icon} className="h-5.5 w-5.5" />
+                    <SiteIcon name={NICHE_ICON[n.slug]} className="h-5.5 w-5.5" />
                   </span>
                   <div>
-                    <h2 className="text-xl font-bold text-[#f4f4f4]">{n.name}</h2>
-                    <p className="text-[12px] text-[#8d8d8d]">{n.audience}</p>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-[#f4f4f4]">{n.nav}</h2>
+                      {n.emBreve && (
+                        <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                          Em breve
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-[#8d8d8d]">{n.eyebrow}</p>
                   </div>
                 </div>
                 <p className="mt-5 text-[12px] font-semibold uppercase tracking-wider text-[#707070]">
                   As dores de sempre
                 </p>
                 <ul className="mt-3 space-y-2.5">
-                  {n.pains.map(p => (
-                    <li key={p} className="flex items-start gap-2.5 text-[13px] text-[#a8a8a8]">
+                  {n.dores.map(p => (
+                    <li key={p.t} className="flex items-start gap-2.5 text-[13px] text-[#a8a8a8]">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400/70" />
-                      {p}
+                      {p.t}
                     </li>
                   ))}
                 </ul>
@@ -97,23 +105,21 @@ export default function ParaQuemEPage() {
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-[#78a9ff]">
                   Como o Althos resolve
                 </p>
-                <p className="mt-3 text-[14px] leading-relaxed text-[#d4d4d4]">{n.solution}</p>
+                <p className="mt-3 text-[14px] leading-relaxed text-[#d4d4d4]">{n.sub}</p>
                 <ul className="mt-5 space-y-2.5 border-t border-[#4589ff]/40 pt-5">
-                  {n.highlights.map(h => (
-                    <li key={h} className="flex items-start gap-2.5">
+                  {n.recursos.map(h => (
+                    <li key={h.t} className="flex items-start gap-2.5">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                      <span className="text-[13px] text-[#d4d4d4]">{h}</span>
+                      <span className="text-[13px] text-[#d4d4d4]">{h.t}</span>
                     </li>
                   ))}
                 </ul>
-                {NICHE_LANDING[n.slug] && (
-                  <Link
-                    href={NICHE_LANDING[n.slug]}
-                    className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#78a9ff] hover:text-[#a6c8ff] transition-colors"
-                  >
-                    Ver página completa <span aria-hidden="true">→</span>
-                  </Link>
-                )}
+                <Link
+                  href={`/${n.slug}`}
+                  className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#78a9ff] hover:text-[#a6c8ff] transition-colors"
+                >
+                  Ver página completa <span aria-hidden="true">→</span>
+                </Link>
               </div>
             </div>
           ))}
