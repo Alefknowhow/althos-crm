@@ -39,7 +39,7 @@ export async function login(formData: FormData) {
     | undefined
   const slug = Array.isArray(firstOrg) ? firstOrg[0]?.slug : firstOrg?.slug
   if (slug) {
-    redirectTo = `/app/${slug}/pipeline`
+    redirectTo = `/app/${slug}`
   }
 
   // If the account has a verified 2FA factor, the password sign-in only yields

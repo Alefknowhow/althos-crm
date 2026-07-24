@@ -688,7 +688,7 @@ export async function acceptInvitation(token: string) {
   }
 
   const slug = await fanOutInvitation(admin, inv, user.id)
-  return { ok: true as const, redirectTo: `/app/${slug}/pipeline` }
+  return { ok: true as const, redirectTo: `/app/${slug}` }
 }
 
 // ── Status check for the acceptance page (new vs. existing user) ───────────────

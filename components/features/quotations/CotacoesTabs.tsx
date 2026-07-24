@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
 import ProposalsList from '@/components/features/proposals/ProposalsList'
 import BudgetDocumentsView from './BudgetDocumentsView'
 import type { BudgetDocumentRow } from '@/actions/budget-documents'
@@ -18,14 +20,24 @@ export default function CotacoesTabs({
   contatos: Contato
   budgetDocuments: BudgetDocumentRow[]
 }) {
+  // Some no mobile quando uma proposta está aberta — só faz sentido na tela
+  // de lista, igual ao resto da barra de filtros.
+  const [proposalOpen, setProposalOpen] = useState(false)
+
   return (
     <Tabs defaultValue="cotacoes">
-      <TabsList>
+      <TabsList className={cn(proposalOpen && 'hidden md:grid')}>
         <TabsTrigger value="cotacoes">Cotações</TabsTrigger>
         <TabsTrigger value="orcamento-ia">Orçamento IA</TabsTrigger>
       </TabsList>
       <TabsContent value="cotacoes">
-        <ProposalsList orgSlug={orgSlug} proposals={proposals} members={members} contatos={contatos} />
+        <ProposalsList
+          orgSlug={orgSlug}
+          proposals={proposals}
+          members={members}
+          contatos={contatos}
+          onSelectionChange={setProposalOpen}
+        />
       </TabsContent>
       <TabsContent value="orcamento-ia">
         <BudgetDocumentsView orgSlug={orgSlug} documents={budgetDocuments} members={members} />

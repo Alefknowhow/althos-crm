@@ -7,6 +7,7 @@ import { Users } from 'lucide-react'
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { isTravelNiche } from '@/lib/niche'
+import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 50
 
@@ -205,7 +206,7 @@ export default async function ContatosPage({
   )
 
   const header = (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', selId && 'hidden lg:block')}>
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Contatos</h1>
       </div>

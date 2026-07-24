@@ -49,17 +49,23 @@ export default function ProposalsList({
   proposals,
   members = [],
   contatos = [],
+  onSelectionChange,
 }: {
   orgSlug: string
   proposals: ProposalRow[]
   members?: Member[]
   contatos?: Contato[]
+  /** Notifica o pai (CotacoesTabs) quando uma proposta abre/fecha, pra
+   *  esconder as abas "Cotações/Orçamento IA" no mobile enquanto aberta. */
+  onSelectionChange?: (hasSelection: boolean) => void
 }) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [duplicateFor, setDuplicateFor] = useState<ProposalRow | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(proposals[0]?.id ?? null)
+  // Sem auto-seleção — abrir "Cotações" mostra a lista primeiro, nunca uma
+  // proposta já aberta direto.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -87,6 +93,11 @@ export default function ProposalsList({
   }, [proposals, query, seller, dateBucket])
 
   const selected = proposals.find(p => p.id === selectedId) ?? null
+
+  useEffect(() => {
+    onSelectionChange?.(!!selected)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected])
 
   async function handleCreate() {
     setCreating(true)
@@ -437,45 +448,41 @@ function ProposalDetail({
           <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          {/* Some no mobile — a tela cheia da proposta foca só no conteúdo,
-              essas ações continuam disponíveis no desktop. */}
-          <div className="hidden md:flex items-center gap-1.5 sm:gap-2">
-            <Button asChild size="sm" title="Abrir editor">
-              <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
-                <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
-              </Link>
-            </Button>
-            {p.public_token && (
-              <>
-                <Button type="button" variant="outline" size="sm" asChild title="Abrir / PDF">
-                  <a href={publicUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir / PDF">
-                    <ExternalLink className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir / PDF</span>
-                  </a>
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
-                  {copied ? <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 sm:mr-1.5" />}
-                  <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar link'}</span>
-                </Button>
-              </>
-            )}
-            <Button
-              type="button" variant="outline" size="sm"
-              onClick={onDuplicate}
-              title="Copiar proposta para outro lead/contato"
-              aria-label="Copiar proposta para outro lead/contato"
-            >
-              <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Copiar p/ lead</span>
-            </Button>
-            <Button
-              type="button" variant="outline" size="icon"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={onDelete}
-              aria-label="Excluir proposta"
-              title="Excluir proposta"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button asChild size="sm" title="Abrir editor">
+            <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
+              <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
+            </Link>
+          </Button>
+          {p.public_token && (
+            <>
+              <Button type="button" variant="outline" size="sm" asChild title="Abrir / PDF">
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir / PDF">
+                  <ExternalLink className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir / PDF</span>
+                </a>
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 sm:mr-1.5" />}
+                <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar link'}</span>
+              </Button>
+            </>
+          )}
+          <Button
+            type="button" variant="outline" size="sm"
+            onClick={onDuplicate}
+            title="Copiar proposta para outro lead/contato"
+            aria-label="Copiar proposta para outro lead/contato"
+          >
+            <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Copiar p/ lead</span>
+          </Button>
+          <Button
+            type="button" variant="outline" size="icon"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Excluir proposta"
+            title="Excluir proposta"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 

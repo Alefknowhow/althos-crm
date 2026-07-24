@@ -222,7 +222,7 @@ export async function createOrganization(formData: FormData) {
     ])
   }
 
-  return { ok: true as const, data: org, redirectTo: `/app/${slug}/pipeline` }
+  return { ok: true as const, data: org, redirectTo: `/app/${slug}` }
 }
 
 /**
