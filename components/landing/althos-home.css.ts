@@ -196,6 +196,9 @@ export const HOME_CSS = `
 .althos-home .sol-copy .kicker { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
 .althos-home .sol-copy h3 { font-weight: 800; font-size: clamp(26px,2.6vw,38px); line-height: 1.12; letter-spacing: -0.015em; color: var(--ink); text-wrap: balance; }
 .althos-home .sol-copy p { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--ink-dim); max-width: 34em; }
+.althos-home .sol-bullets { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+.althos-home .sol-bullets li { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; line-height: 1.4; color: var(--ink-dim); }
+.althos-home .sol-bullets svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; color: var(--accent); }
 .althos-home .sol-copy .btn { margin-top: 26px; }
 .althos-home .sol-media { position: relative; }
 .althos-home .sol-frame { position: relative; border-radius: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
@@ -291,41 +294,27 @@ export const HOME_CSS = `
   .althos-home .ai-mock { order: -1; }
 }
 
-/* Segments bento */
-.althos-home .seg { position: relative; max-width: 1280px; margin: 0 auto; padding: 96px 40px 110px; border-top: 1px solid var(--line); }
+/* Segments — nichos em abas dentro de uma caixa estilo navegador */
+.althos-home .seg { position: relative; max-width: 1180px; margin: 0 auto; padding: 96px 40px 110px; border-top: 1px solid var(--line); }
 .althos-home .seg-head { max-width: 760px; margin: 0 auto 52px; text-align: center; }
 .althos-home .seg-head .eyebrow { margin: 0 auto 22px; }
 .althos-home .seg-head h2 { font-weight: 800; font-size: clamp(36px,4.6vw,62px); line-height: 1.02; letter-spacing: -0.025em; color: var(--ink); text-wrap: balance; }
-.althos-home .bento { display: grid; grid-template-columns: repeat(3,1fr); grid-auto-rows: 1fr; gap: 16px; }
-.althos-home .bento-card { position: relative; overflow: hidden; border-radius: 0; padding: 28px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-sm); min-height: 200px; display: flex; flex-direction: column; transition: border-color 0.3s var(--ease), transform 0.3s var(--ease), box-shadow 0.3s var(--ease); }
-.althos-home .bento-card:hover { border-color: var(--line-strong); transform: translateY(-3px); box-shadow: var(--shadow-card); }
-.althos-home .bento-card::before { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.35s var(--ease); background: radial-gradient(260px circle at var(--mx,50%) var(--my,50%), rgba(15,98,254,0.10), transparent 60%); }
-.althos-home .bento-card:hover::before { opacity: 1; }
-.althos-home .bento-card > * { position: relative; z-index: 1; }
-.althos-home .bento-card.lead { grid-column: span 2; grid-row: span 2; background: radial-gradient(120% 90% at 80% 10%, rgba(15,98,254,0.08), transparent 55%), var(--surface); border-color: rgba(15,98,254,0.22); }
-.althos-home .seg-icon { width: 46px; height: 46px; border-radius: 0; display: grid; place-items: center; border: 1px solid rgba(15,98,254,0.18); background: rgba(15,98,254,0.08); color: var(--accent); margin-bottom: 18px; }
-.althos-home .bento-card.lead .seg-icon { width: 54px; height: 54px; }
-.althos-home .seg-icon svg { width: 22px; height: 22px; }
-.althos-home .bento-card.lead .seg-icon svg { width: 26px; height: 26px; }
-.althos-home .seg-tag { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; display: inline-block; }
-.althos-home .bento-card h3 { font-weight: 800; letter-spacing: -0.015em; font-size: 29px; line-height: 1.08; color: var(--ink); margin-bottom: 10px; }
-.althos-home .bento-card.lead h3 { font-size: clamp(34px,3.4vw,48px); }
-.althos-home .bento-card p { font-size: 16px; line-height: 1.55; color: var(--ink-dim); max-width: 32em; }
-.althos-home .bento-card.lead p { font-size: 17.5px; color: var(--ink-dim); max-width: 24em; margin-top: auto; }
-.althos-home .bento-card .spacer { flex: 1; }
-.althos-home a.bento-card { text-decoration: none; cursor: pointer; }
-.althos-home .seg-link { margin-top: 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--accent); opacity: 0; transform: translateY(4px); transition: opacity 0.3s var(--ease), transform 0.3s var(--ease); }
-.althos-home .bento-card:not(.lead) .seg-link { margin-top: auto; }
-.althos-home .bento-card:hover .seg-link { opacity: 1; transform: translateY(0); }
-.althos-home .seg-link span { transition: transform 0.25s var(--ease); }
-.althos-home .bento-card:hover .seg-link span { transform: translateX(3px); }
-@media (max-width: 900px) {
-  .althos-home .bento { grid-template-columns: repeat(2,1fr); }
-  .althos-home .bento-card.lead { grid-column: span 2; grid-row: span 1; }
-}
-@media (max-width: 580px) {
-  .althos-home .bento { grid-template-columns: 1fr; }
-  .althos-home .bento-card.lead { grid-column: span 1; }
+.althos-home .niche-browser { position: relative; border-radius: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
+.althos-home .niche-browser .sol-tabbar { padding: 0 6px; background: var(--surface-2); }
+.althos-home .niche-panel { padding: 40px; display: flex; flex-direction: column; align-items: flex-start; }
+.althos-home .niche-panel .seg-icon { margin-bottom: 18px; }
+.althos-home .niche-panel-title { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.althos-home .niche-panel-title h3 { font-weight: 800; letter-spacing: -0.015em; font-size: clamp(24px,2.4vw,32px); color: var(--ink); }
+.althos-home .niche-panel .seg-tag { margin-bottom: 0; }
+.althos-home .niche-panel p { margin-top: 10px; font-size: 15.5px; line-height: 1.6; color: var(--ink-dim); max-width: 42em; }
+.althos-home .niche-panel .sol-bullets { max-width: 34em; }
+.althos-home .niche-panel .btn { margin-top: 26px; }
+@media (max-width: 640px) {
+  .althos-home .seg { padding: 52px 16px 56px; }
+  .althos-home .seg-head { margin-bottom: 30px; }
+  .althos-home .seg-head h2 { font-size: clamp(26px, 7.5vw, 36px); }
+  .althos-home .niche-browser .sol-tab { padding: 11px 13px; font-size: 12.5px; }
+  .althos-home .niche-panel { padding: 22px 18px; }
 }
 
 /* Onboarding — passos numerados (estilo Attio "no ar em minutos") */
