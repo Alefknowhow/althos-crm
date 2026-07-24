@@ -193,7 +193,7 @@ export default function ContatosView({
   return (
     <div className="space-y-4">
       {/* ── Toolbar ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-wrap items-center gap-2', mobileDetail && 'hidden lg:flex')}>
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input

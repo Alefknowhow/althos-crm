@@ -113,7 +113,9 @@ export default function AutomationsShell({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Some no mobile quando uma automação está aberta — só fazem
+            sentido na tela de lista. */}
+        <div className={cn('flex items-center gap-2 shrink-0', isDetail && 'hidden md:flex')}>
           <Button asChild variant="outline" size="sm">
             <Link href={`/app/${orgSlug}/email-templates`}>
               <FileText className="w-4 h-4 mr-1.5" />

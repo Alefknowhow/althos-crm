@@ -205,8 +205,9 @@ export default function FinancialEntriesView({
 
   return (
     <>
-      {/* Filtros — tudo numa linha só (encolhe/quebra no mobile). */}
-      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+      {/* Filtros — tudo numa linha só (encolhe/quebra no mobile). Some no
+          mobile quando um lançamento está aberto. */}
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar…" className="pl-8 h-9" />
@@ -235,7 +236,9 @@ export default function FinancialEntriesView({
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {entries.length} lançamento(s)</p>
+      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
+        {filtered.length} de {entries.length} lançamento(s)
+      </p>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         <div className={cn('rounded-none border bg-card overflow-y-auto divide-y', selected && 'hidden md:block')}>
