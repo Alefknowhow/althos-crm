@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 
 export type TravelSaleRow = {
   id: string
+  sale_number: string
   organization_id: string
   contato_id: string | null
   proposal_id: string | null

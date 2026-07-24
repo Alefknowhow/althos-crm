@@ -194,7 +194,7 @@ export default function TravelSalesView({
       if (seller !== 'all' && s.created_by !== seller) return false
       if (!matchesDateBucket(s.created_at, dateBucket)) return false
       if (q) {
-        const hay = [s.client_name, s.destination, s.hotel_name, s.airline]
+        const hay = [s.client_name, s.destination, s.hotel_name, s.airline, s.sale_number]
           .filter(Boolean).join(' ').toLowerCase()
         if (!hay.includes(q)) return false
       }
@@ -310,14 +310,15 @@ export default function TravelSalesView({
 
   return (
     <>
-      {/* Filters — tudo numa linha só (encolhe/quebra no mobile). */}
-      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+      {/* Filters — tudo numa linha só (encolhe/quebra no mobile). Some no
+          mobile quando uma reserva está aberta: só fazem sentido na busca. */}
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscar por cliente, destino, hotel, cia…"
+            placeholder="Buscar por cliente, destino, hotel, cia, ID…"
             className="pl-8 h-9"
           />
         </div>
@@ -367,9 +368,14 @@ export default function TravelSalesView({
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {sales.length} venda(s)</p>
+      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
+        {filtered.length} de {sales.length} venda(s)
+      </p>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
+      <div className={cn(
+        'grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px]',
+        selected ? 'h-[calc(100dvh-8rem)] md:h-[calc(100dvh-19rem)]' : 'h-[calc(100dvh-19rem)]',
+      )}>
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
           'rounded-none border bg-card overflow-y-auto divide-y',
@@ -410,6 +416,7 @@ export default function TravelSalesView({
                   <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatCurrency(s.total_cents || 0)}</span>
                   <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>
                 </div>
+                <div className="mt-1 text-[10px] font-mono text-muted-foreground/70">#{s.sale_number}</div>
                 {seller && (
                   <div className="mt-1.5 flex">
                     <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
@@ -628,73 +635,95 @@ function SaleEditor({
   return (
     <div className="flex flex-col w-full">
       {/* header */}
-      <div className="sticky top-0 bg-card/90   border-b p-4 flex items-start gap-3 z-10">
-        <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold truncate flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
-          </h2>
-          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-            {sellerName && (
-              <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
-                <UserCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{sellerName}</span>
-              </Badge>
-            )}
-            {s.proposal_id && (
-              <Link
-                href={`/app/${orgSlug}/cotacoes/${s.proposal_id}`}
-                className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Ver proposta
-              </Link>
-            )}
-          </div>
-        </div>
+      <div className="sticky top-0 bg-card/90 border-b p-3 sm:p-4 flex flex-col gap-3 z-10">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
 
-        {/* Actions relocated from the bottom of the form into the header bar */}
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" disabled={saving} onClick={() => onSave(patch(), false)} title="Salvar" aria-label="Salvar">
-              <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
-            </Button>
-            <Button
-              variant="outline" size="sm" disabled={saving}
-              onClick={() => onSave(patch(), true)}
-              title="Salvar e gerar tarefas operacionais" aria-label="Gerar tarefas"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
-            </Button>
-            {s.contato_id && (
-              <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">
-                <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
-              </Button>
-            )}
-            <a href={`/app/${orgSlug}/reservas/${s.id}/voucher`} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" title="Gerar voucher" aria-label="Gerar voucher">
-                <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
-              </Button>
-            </a>
-            <a href={`/app/${orgSlug}/reservas/${s.id}/contrato`} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" title="Gerar contrato" aria-label="Gerar contrato">
-                <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar contrato</span>
-              </Button>
-            </a>
-            {s.status !== 'cancelled' && (
-              <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
-                <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
-              <Trash2 className="w-4 h-4" />
-            </Button>
+          {/* Desktop: título completo + selo/link. Mobile: resumo compacto
+              cliente · destino · data · ID, pra caber sem estourar a tela. */}
+          <div className="min-w-0 flex-1">
+            <h2 className="hidden md:flex font-semibold truncate items-center gap-2">
+              <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
+            </h2>
+            <div className="hidden md:flex mt-1.5 items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 font-mono">#{s.sale_number}</Badge>
+              {sellerName && (
+                <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
+                  <UserCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{sellerName}</span>
+                </Badge>
+              )}
+              {s.proposal_id && (
+                <Link
+                  href={`/app/${orgSlug}/cotacoes/${s.proposal_id}`}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Ver proposta
+                </Link>
+              )}
+            </div>
+
+            <div className="md:hidden min-w-0">
+              <h2 className="font-semibold truncate text-[15px] flex items-center gap-1.5">
+                <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                {s.destination && (
+                  <span className="inline-flex items-center gap-1 truncate max-w-[45%]">
+                    <MapPin className="w-3 h-3 shrink-0" /> {s.destination}
+                  </span>
+                )}
+                {(s.departure_date || s.return_date) && (
+                  <span>{s.departure_date ? new Date(s.departure_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'}</span>
+                )}
+                <span className="font-mono">#{s.sale_number}</span>
+              </div>
+            </div>
           </div>
+
           {s.status === 'cancelled'
             ? <Badge variant="destructive" className="shrink-0 text-[10px] px-1.5 py-0">Cancelada</Badge>
             : s.tasks_generated_at
               ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas geradas</Badge>
               : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
+        </div>
+
+        {/* Ações — quebra em várias linhas em vez de estourar a largura da tela. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" disabled={saving} onClick={() => onSave(patch(), false)} title="Salvar" aria-label="Salvar">
+            <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
+          </Button>
+          <Button
+            variant="outline" size="sm" disabled={saving}
+            onClick={() => onSave(patch(), true)}
+            title="Salvar e gerar tarefas operacionais" aria-label="Gerar tarefas"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
+          </Button>
+          {s.contato_id && (
+            <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">
+              <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
+            </Button>
+          )}
+          <a href={`/app/${orgSlug}/reservas/${s.id}/voucher`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" title="Gerar voucher" aria-label="Gerar voucher">
+              <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
+            </Button>
+          </a>
+          <a href={`/app/${orgSlug}/reservas/${s.id}/contrato`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" title="Gerar contrato" aria-label="Gerar contrato">
+              <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar contrato</span>
+            </Button>
+          </a>
+          {s.status !== 'cancelled' && (
+            <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
+              <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -743,12 +772,12 @@ function SaleEditor({
                   <Input placeholder="Nome completo" value={t.name || ''}
                     onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
                 </div>
-                <div className="w-36 space-y-1">
+                <div className="w-full sm:w-36 space-y-1">
                   <Label className="text-[11px] text-muted-foreground">Data de nascimento</Label>
                   <Input type="date" value={t.birth_date || ''}
                     onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
                 </div>
-                <div className="w-40 space-y-1">
+                <div className="w-full sm:w-40 space-y-1">
                   <Label className="text-[11px] text-muted-foreground">CPF</Label>
                   <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
                     onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
