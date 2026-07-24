@@ -59,12 +59,11 @@ export default function AlthosHome() {
 
       <div className="shell">
         <Hero onZoom={onZoom} />
-        <Ecosystem />
-        <Solutions onZoom={onZoom} />
-        <Segments />
         <Pains />
-        <Stats />
+        <Solutions onZoom={onZoom} />
         <AiBlock onZoom={onZoom} />
+        <Segments />
+        <Stats />
         <Compare />
         <Onboard />
         <Pricing />
@@ -255,10 +254,12 @@ function Compare() {
     <section className="compare" aria-label="Comparativo">
       <div className="compare-head">
         <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Por que a Althos</div>
-        <h2 className="reveal" data-d="1">O poder das grandes plataformas, sem a dor de cabeça</h2>
+        <h2 className="reveal" data-d="1">Mais do que planilha e WhatsApp solto — sem a complexidade das plataformas gringas</h2>
         <p className="reveal" data-d="2">
-          Ferramentas gringas são caras, complexas e não falam a língua do seu negócio. A Althos
-          entrega IA, automações e WhatsApp prontos pra vender — feita para o Brasil.
+          Se hoje o seu "sistema" é uma planilha e o WhatsApp do celular, qualquer automação já é um
+          salto. E se você já cogitou uma ferramenta gringa, sabe que são caras, complexas e não
+          falam a língua do seu negócio. A Althos entrega IA, automações e WhatsApp prontos pra
+          vender — feita para o Brasil.
         </p>
       </div>
 
@@ -295,26 +296,12 @@ function Compare() {
 }
 
 const FEAT_STEPS = [
-  { shot: 'pipeline', tabLabel: 'Funil', kicker: 'Lead perdido no meio do funil', h: 'Funil de vendas visual', p: 'Pare de descobrir tarde que uma negociação travou. Veja cada etapa, arraste com um clique e ataque os gargalos assim que aparecem — antes que virem lead perdido.', link: 'Conhecer o funil →' },
-  { shot: 'insights', tabLabel: 'Atendimento IA', kicker: 'Demora no primeiro atendimento', h: 'Atendimento 24h com IA', p: 'Enquanto sua equipe dorme (ou está ocupada), a IA já respondeu, entendeu o que o cliente quer e qualificou se vale a pena continuar — no seu tom de voz, sem parecer robô.', link: 'Ver a IA em ação →' },
-  { shot: 'automacoes', tabLabel: 'Automação', kicker: 'Follow-up que fica só na intenção', h: 'Automações sem código', p: 'Defina uma vez o que deve acontecer depois de cada ação e pare de depender da memória de alguém. Captação, retomada e pós-venda rodando sozinhos, sem programar.', link: 'Explorar automações →' },
-  { shot: 'dashboard', tabLabel: 'Dados', kicker: 'Decisão no escuro, sem dado', h: 'Relatórios e dashboards', p: 'Pare de adivinhar o que está funcionando. Veja conversão, receita e desempenho de cada vendedor em tempo real, sem montar planilha.', link: 'Ver dashboards →' },
-  { shot: 'tasks', tabLabel: 'Produtividade', kicker: 'Tarefa importante esquecida', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação, prazo e responsável definidos. Ninguém do time descobre depois que deixou dinheiro na mesa.', link: 'Organizar o time →' },
+  { shot: 'pipeline', tabLabel: 'Funil', kicker: 'Visão completa da negociação', h: 'Funil de vendas visual', p: 'Veja cada etapa, arraste com um clique e ataque os gargalos assim que aparecem — antes que virem lead perdido.', link: 'Conhecer o funil →' },
+  { shot: 'insights', tabLabel: 'Atendimento IA', kicker: 'Resposta em segundos, não em horas', h: 'Atendimento 24h com IA', p: 'A IA já respondeu, entendeu o que o cliente quer e qualificou se vale a pena continuar — no seu tom de voz, sem parecer robô.', link: 'Ver a IA em ação →' },
+  { shot: 'automacoes', tabLabel: 'Automação', kicker: 'Zero tarefa manual repetida', h: 'Automações sem código', p: 'Defina uma vez o que deve acontecer depois de cada ação. Captação, retomada e pós-venda rodando sozinhos, sem programar.', link: 'Explorar automações →' },
+  { shot: 'dashboard', tabLabel: 'Dados', kicker: 'Decisão com número, não achismo', h: 'Relatórios e dashboards', p: 'Veja conversão, receita e desempenho de cada vendedor em tempo real, sem montar planilha.', link: 'Ver dashboards →' },
+  { shot: 'tasks', tabLabel: 'Produtividade', kicker: 'Nada fica só na cabeça de alguém', h: 'Tarefas e produtividade', p: 'Cada lead com a próxima ação, prazo e responsável definidos. Ninguém do time descobre depois que deixou dinheiro na mesa.', link: 'Organizar o time →' },
 ] as const
-
-/* ----------------------------- Ecosystem (intro) ----------------------------- */
-function Ecosystem() {
-  return (
-    <section className="ecosystem" aria-label="Ecossistema Althos CRM">
-      <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Ecossistema Althos</div>
-      <h2 className="reveal" data-d="1">Conheça o ecossistema que ajuda o seu negócio a vender mais</h2>
-      <p className="reveal" data-d="2">
-        Funil, atendimento com IA, automações e dados — tudo conectado num só lugar, pra o seu
-        time parar de perder venda por falta de organização ou de resposta rápida.
-      </p>
-    </section>
-  )
-}
 
 /* ----------------------------- Solutions (abas) ----------------------------- */
 function Solutions({ onZoom }: { onZoom: OnZoom }) {
@@ -324,8 +311,8 @@ function Solutions({ onZoom }: { onZoom: OnZoom }) {
   return (
     <section className="solutions" aria-label="Soluções por área">
       <div className="solutions-head">
-        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Soluções sob medida</div>
-        <h2 className="reveal" data-d="1">Soluções sob medida para cada etapa da jornada do cliente</h2>
+        <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Como o Althos resolve</div>
+        <h2 className="reveal" data-d="1">Funil, atendimento com IA, automações e dados — conectados num só lugar</h2>
         <p className="reveal" data-d="2">
           Do primeiro contato ao pós-venda, o Althos CRM tem uma solução pronta pra cada ponto
           onde uma venda costuma travar.
@@ -375,10 +362,10 @@ function Solutions({ onZoom }: { onZoom: OnZoom }) {
 }
 
 const AI_CAPS = [
-  { h: 'Responde e qualifica leads 24/7', s: 'Entende a intenção, faz as perguntas certas e separa quem está pronto pra comprar.' },
-  { h: 'Cria follow-ups automáticos', s: 'Decide quando e como retomar cada conversa, sem ninguém lembrar de fazer isso.' },
-  { h: 'Identifica seus leads mais quentes', s: 'Pontua cada oportunidade em tempo real para o time atacar o que importa primeiro.' },
-  { h: 'Gera relatórios em português', s: 'Pergunte em linguagem natural e receba a análise pronta, com insights e recomendações.' },
+  { h: 'Raciocina sobre a conversa inteira', s: 'Não é um fluxo fixo de respostas — a IA lê o histórico completo e decide o próximo passo, como um vendedor faria.' },
+  { h: 'Aprende o tom da sua empresa', s: 'Você descreve como o seu negócio atende, e a IA responde nesse padrão, sem soar como um robô genérico.' },
+  { h: 'Prioriza sozinho quem está pronto pra comprar', s: 'Pontua cada oportunidade em tempo real para o time atacar o que importa primeiro.' },
+  { h: 'Analisa seus dados em português', s: 'Pergunte "como foi o mês?" e receba a resposta com números, tendência e recomendação, sem abrir planilha.' },
 ]
 
 /* ----------------------------- AI block ----------------------------- */
