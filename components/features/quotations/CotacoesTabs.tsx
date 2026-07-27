@@ -20,13 +20,13 @@ export default function CotacoesTabs({
   contatos: Contato
   budgetDocuments: BudgetDocumentRow[]
 }) {
-  // Some (em qualquer tela) quando uma proposta está aberta — só faz sentido
-  // na tela de lista, igual ao resto da barra de filtros.
+  // Some no mobile quando uma proposta está aberta — só faz sentido na tela
+  // de lista, igual ao resto da barra de filtros.
   const [proposalOpen, setProposalOpen] = useState(false)
 
   return (
     <Tabs defaultValue="cotacoes">
-      <TabsList className={cn(proposalOpen && 'hidden')}>
+      <TabsList className={cn(proposalOpen && 'hidden md:grid')}>
         <TabsTrigger value="cotacoes">Cotações</TabsTrigger>
         <TabsTrigger value="orcamento-ia">Orçamento IA</TabsTrigger>
       </TabsList>

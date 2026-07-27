@@ -135,8 +135,8 @@ export default function ProposalsList({
   return (
     <>
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
-          Some (em qualquer tela) quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden')}>
+          Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -198,15 +198,15 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden')}>
+      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
         {filtered.length} de {proposals.length} proposta(s)
       </p>
 
-      <div className={cn('grid gap-4 h-[calc(100dvh-19rem)] min-h-[440px]', !selected && 'md:grid-cols-[320px_1fr]')}>
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
           'rounded-none border bg-card overflow-y-auto divide-y',
-          selected && 'hidden',
+          selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
@@ -445,7 +445,7 @@ function ProposalDetail({
           {p.title || 'Proposta sem título'}
         </h2>
         <div className="order-2 flex items-center gap-1.5 sm:gap-2 shrink-0 overflow-x-auto">
-          <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack} title="Voltar para a lista" aria-label="Voltar para a lista">
+          <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <Button asChild size="sm" title="Abrir editor">
