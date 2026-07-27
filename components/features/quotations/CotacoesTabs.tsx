@@ -26,7 +26,7 @@ export default function CotacoesTabs({
 
   return (
     <Tabs defaultValue="cotacoes">
-      <TabsList className={cn(proposalOpen && 'hidden md:grid')}>
+      <TabsList className={cn(proposalOpen && 'hidden md:inline-flex')}>
         <TabsTrigger value="cotacoes">Cotações</TabsTrigger>
         <TabsTrigger value="orcamento-ia">Orçamento IA</TabsTrigger>
       </TabsList>
