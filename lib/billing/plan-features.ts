@@ -2,11 +2,13 @@
  * Canonical plan feature matrix — the single source of truth shown in both the
  * checkout popup (CheckoutModal) and the full-page upgrade screen (/upgrade).
  *
- * Starter, Pro e Business compartilham as MESMAS funcionalidades — a diferença
- * está na QUANTIDADE de uso. Dois recursos premium (Insights IA e Exportar
- * relatórios) ficam reservados a Pro/Business, e o gerente dedicado a Business.
+ * Starter, Pro e Business compartilham quase todas as funcionalidades — a
+ * diferença está na QUANTIDADE de uso. WhatsApp e Instagram, além de Insights
+ * IA e Exportar relatórios, ficam reservados a Pro/Business; o gerente
+ * dedicado é exclusivo do Business.
  *
- * Keep this in sync with lib/plans/config.ts (PLAN_META.aiCreditsMonthly etc.).
+ * Keep this in sync with lib/plans/config.ts (PLAN_META.aiCreditsMonthly etc.)
+ * e com o jsonb `plans.features` no Supabase (fonte de verdade server-side).
  */
 
 export type PaidPlan = 'starter' | 'pro' | 'business'
@@ -31,14 +33,15 @@ export const PLAN_FEATURES: PlanFeatureRow[] = [
   { label: 'Mensagens de social / mês',     starter: '500',        pro: '5.000',      business: 'Ilimitadas' },
   // ── Funcionalidades (iguais em todos) ──
   { label: 'Formulários de captação',       starter: true,         pro: true,         business: true         },
-  { label: 'WhatsApp centralizado',         starter: true,         pro: true,         business: true         },
   { label: 'Catálogo de produtos',          starter: true,         pro: true,         business: true         },
   { label: 'Tarefas e atividades',          starter: true,         pro: true,         business: true         },
   { label: 'Agendamentos online',           starter: true,         pro: true,         business: true         },
   { label: 'Atendimento com IA 24/7',       starter: true,         pro: true,         business: true         },
   { label: 'Score e qualificação por IA',   starter: true,         pro: true,         business: true         },
-  { label: 'Instagram (DMs e comentários)', starter: true,         pro: true,         business: true         },
   { label: 'Meta Ads + Pixel/CAPI',         starter: true,         pro: true,         business: true         },
+  // ── Premium (Pro/Business) ──
+  { label: 'WhatsApp centralizado',         starter: false,        pro: true,         business: true         },
+  { label: 'Instagram (DMs e comentários)', starter: false,        pro: true,         business: true         },
   // ── Premium (Pro/Business) ──
   { label: 'Insights de vendas com IA',     starter: false,        pro: true,         business: true         },
   { label: 'Exportar relatórios',           starter: false,        pro: true,         business: true         },
