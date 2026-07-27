@@ -65,6 +65,7 @@ export default function KanbanBoard({
   const [activeLead, setActiveLead] = useState<any | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [createStageId, setCreateStageId] = useState<string | null>(null)
+  const [newLeadSource, setNewLeadSource] = useState('manual')
   const [loading, setLoading] = useState(false)
 
   // Filters / sort
@@ -436,7 +437,10 @@ export default function KanbanBoard({
       />
 
       {/* New lead dialog */}
-      <Dialog open={!!createStageId} onOpenChange={(op: boolean) => !op && setCreateStageId(null)}>
+      <Dialog
+        open={!!createStageId}
+        onOpenChange={(op: boolean) => { if (!op) { setCreateStageId(null); setNewLeadSource('manual') } }}
+      >
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Lead</DialogTitle></DialogHeader>
           <form onSubmit={async e => {
@@ -446,12 +450,14 @@ export default function KanbanBoard({
             setLoading(false)
             if (res.ok) {
               setCreateStageId(null)
+              setNewLeadSource('manual')
               toast.success('Lead criado')
             } else {
               toast.error(traduzirErro(res.error))
             }
           }}>
             <input type="hidden" name="stage_id" value={createStageId || ''} />
+            <input type="hidden" name="source" value={newLeadSource} />
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Nome *</Label>
@@ -467,9 +473,25 @@ export default function KanbanBoard({
                   <Input name="phone" placeholder="(11) 99999-9999" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Valor</Label>
-                <CurrencyInput name="value_cents" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Valor</Label>
+                  <CurrencyInput name="value_cents" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Origem</Label>
+                  <Select value={newLeadSource} onValueChange={setNewLeadSource}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Cadastro manual</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="form">Formulário</SelectItem>
+                      <SelectItem value="meta_ads">Meta Ads</SelectItem>
+                      <SelectItem value="api">API</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Tags (separadas por vírgula)</Label>

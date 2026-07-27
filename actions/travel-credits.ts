@@ -88,7 +88,7 @@ export async function createCredit(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!input.contatoId) return { ok: false as const, error: 'Contato não informado.' }
@@ -140,7 +140,7 @@ export async function applyCreditToSale(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!input.valorCents || input.valorCents <= 0) {

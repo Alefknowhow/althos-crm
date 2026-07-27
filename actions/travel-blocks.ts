@@ -63,7 +63,7 @@ export async function listTravelBlocks(orgSlug: string): Promise<TravelBlockRow[
 export async function createTravelBlock(orgSlug: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'bloqueios')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!input.origem?.trim() || !input.destino?.trim()) {
@@ -87,7 +87,7 @@ export async function createTravelBlock(orgSlug: string, input: Record<string, a
 export async function updateTravelBlock(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'bloqueios')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -112,7 +112,7 @@ export async function bulkCreateTravelBlocks(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'bloqueios')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const valid = rows
@@ -138,7 +138,7 @@ export async function deleteTravelBlock(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'bloqueios')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

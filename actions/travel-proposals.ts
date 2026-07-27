@@ -95,7 +95,7 @@ export async function getProposal(orgSlug: string, id: string): Promise<Proposal
 export async function createProposal(orgSlug: string, input: Record<string, any> = {}) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -118,7 +118,7 @@ export async function createProposal(orgSlug: string, input: Record<string, any>
 export async function updateProposal(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -148,7 +148,7 @@ export async function deleteProposal(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -170,7 +170,7 @@ export async function deleteProposal(orgSlug: string, id: string) {
 export async function duplicateProposal(orgSlug: string, sourceId: string, targetContatoId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

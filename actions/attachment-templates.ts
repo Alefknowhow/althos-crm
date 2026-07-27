@@ -48,7 +48,7 @@ export async function getAttachmentTemplateUrl(orgSlug: string, documentType: At
 export async function uploadAttachmentTemplate(orgSlug: string, documentType: AttachmentDocumentType, formData: FormData) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const file = formData.get('file') as File | null
@@ -93,7 +93,7 @@ export async function uploadAttachmentTemplate(orgSlug: string, documentType: At
 export async function removeAttachmentTemplate(orgSlug: string, documentType: AttachmentDocumentType) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

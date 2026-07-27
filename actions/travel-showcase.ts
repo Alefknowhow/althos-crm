@@ -94,7 +94,7 @@ export async function getVitrineToken(orgSlug: string): Promise<string | null> {
 export async function createPackage(orgSlug: string, input: Record<string, any> = {}) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'ofertas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -117,7 +117,7 @@ export async function createPackage(orgSlug: string, input: Record<string, any> 
 export async function updatePackage(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'ofertas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -143,7 +143,7 @@ export async function deletePackage(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'ofertas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -164,7 +164,7 @@ export async function deletePackage(orgSlug: string, id: string) {
 export async function generateProposalFromPackage(orgSlug: string, packageId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'ofertas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

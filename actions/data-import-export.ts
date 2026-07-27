@@ -70,7 +70,7 @@ export type ImportContatoRow = {
 export async function bulkImportContatos(orgSlug: string, rows: ImportContatoRow[]) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'leads')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -117,7 +117,7 @@ function toCents(v?: string): number | null {
 export async function bulkImportTravelSales(orgSlug: string, rows: ImportSaleRow[]) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

@@ -142,7 +142,7 @@ export async function getQuotationFull(orgSlug: string, id: string): Promise<Quo
 export async function saveQuotation(orgSlug: string, id: string, input: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const parsed = QuotationSchema.safeParse(input)
@@ -204,7 +204,7 @@ export async function saveQuotation(orgSlug: string, id: string, input: unknown)
 export async function generateQuotationLink(orgSlug: string, id: string, rotate = false) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -254,7 +254,7 @@ export async function listOffers(orgSlug: string): Promise<OfferRow[]> {
 export async function createOffer(orgSlug: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
   const { data, error } = await supabase
@@ -273,7 +273,7 @@ export async function createOffer(orgSlug: string) {
 export async function convertOfferToQuotation(orgSlug: string, offerId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
@@ -317,7 +317,7 @@ export async function convertOfferToQuotation(orgSlug: string, offerId: string) 
 export async function createSaleFromQuotation(orgSlug: string, id: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

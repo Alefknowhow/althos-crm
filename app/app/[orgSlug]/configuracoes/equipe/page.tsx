@@ -42,6 +42,7 @@ export default async function EquipePage({
         orgSlug={params.orgSlug}
         currentUserId={user.id}
         currentUserRole={membership.role as 'owner' | 'admin'}
+        niche={org.niche}
         {...teamData}
       />
     </div>

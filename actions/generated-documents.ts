@@ -52,7 +52,7 @@ export async function generateDocument(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!input.title?.trim()) return { ok: false as const, error: 'Informe um título pro documento.' }
@@ -92,7 +92,7 @@ export async function deleteGeneratedDocument(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

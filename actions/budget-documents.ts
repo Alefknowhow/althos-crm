@@ -90,7 +90,7 @@ const ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024
 export async function createBudgetDocument(orgSlug: string, formData: FormData) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   let fields: Record<string, any> = {}
@@ -153,7 +153,7 @@ export async function createBudgetDocument(orgSlug: string, formData: FormData) 
 export async function updateBudgetDocument(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -176,7 +176,7 @@ export async function deleteBudgetDocument(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

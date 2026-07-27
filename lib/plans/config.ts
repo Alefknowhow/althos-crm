@@ -275,6 +275,9 @@ export const AI_CREDIT_COST = {
   ai_insights_query: 2,
   lead_scoring: 1, // doc spec was 0.5 — rounded up to 1 because credits are integer
   generate_proposal: 3,
+  // Leitura de imagem/PDF por visão (voucher, orçamento colado, etc.) — mais
+  // cara que uma chamada de texto simples por causa do custo de visão do modelo.
+  ocr_extract: 3,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST

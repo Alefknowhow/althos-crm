@@ -40,6 +40,7 @@ export async function createLead(orgSlug: string, formData: FormData) {
   const value_cents = value_cents_str ? parseInt(value_cents_str, 10) : 0
   const tags_str = formData.get('tags') as string
   const tags = tags_str ? tags_str.split(',').map(t => t.trim()).filter(Boolean) : []
+  const source = (formData.get('source') as string) || 'manual'
 
   if (!stage_id) {
     const { data: pipeline } = await supabase.from('pipelines').select('id').eq('organization_id', org.id).eq('is_default', true).maybeSingle()
@@ -73,6 +74,7 @@ export async function createLead(orgSlug: string, formData: FormData) {
     phone: phone || null,
     value_cents,
     tags,
+    source,
     assigned_to: user.id
   }).select().single()
 

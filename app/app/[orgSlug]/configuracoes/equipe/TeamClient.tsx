@@ -27,6 +27,7 @@ import {
   type Permissions,
   type PermissionKey,
 } from '@/lib/permissions'
+import { isTravelNiche } from '@/lib/niche'
 import {
   UserPlus,
   Users,
@@ -76,12 +77,14 @@ function PermissionsGrid({
   permissions,
   onChange,
   disabled,
+  isTravel,
 }: {
   permissions: Permissions
   onChange:    (p: Permissions) => void
   disabled?:   boolean
+  isTravel?:   boolean
 }) {
-  const groups = groupedModules()
+  const groups = groupedModules(isTravel)
 
   function toggle(key: PermissionKey) {
     onChange({ ...permissions, [key]: !permissions[key] })
@@ -126,9 +129,11 @@ function PermissionsGrid({
 function InviteDialog({
   orgSlug,
   onClose,
+  isTravel,
 }: {
   orgSlug:  string
   onClose:  () => void
+  isTravel: boolean
 }) {
   const router = useRouter()
   const [email,       setEmail]       = useState('')
@@ -224,6 +229,7 @@ function InviteDialog({
               permissions={permissions}
               onChange={setPermissions}
               disabled={role === 'admin'}
+              isTravel={isTravel}
             />
             {role === 'admin' && (
               <p className="text-xs text-muted-foreground">Admins têm acesso a todos os módulos.</p>
@@ -251,10 +257,12 @@ function EditPermissionsDialog({
   orgSlug,
   member,
   onClose,
+  isTravel,
 }: {
   orgSlug:  string
   member:   TeamMember
   onClose:  () => void
+  isTravel: boolean
 }) {
   const router = useRouter()
   const current = member.current_org
@@ -333,6 +341,7 @@ function EditPermissionsDialog({
               permissions={permissions}
               onChange={setPermissions}
               disabled={role === 'admin'}
+              isTravel={isTravel}
             />
             {role === 'admin' && (
               <p className="text-xs text-muted-foreground">Admins têm acesso a todos os módulos.</p>
@@ -430,6 +439,7 @@ export default function TeamClient({
   seatUsed,
   seatLimit,
   currentUserIsManager,
+  niche,
 }: {
   orgSlug:              string
   currentUserId:        string
@@ -442,8 +452,10 @@ export default function TeamClient({
   accountId?:           string | null
   currentUserIsManager: boolean
   org_id?:              string
+  niche?:               string | null
 }) {
   const router = useRouter()
+  const isTravel = isTravelNiche(niche)
   const [showInvite,  setShowInvite]  = useState(false)
   const [editMember,  setEditMember]  = useState<TeamMember | null>(null)
   const [removingId,  setRemovingId]  = useState<string | null>(null)
@@ -482,13 +494,14 @@ export default function TeamClient({
   return (
     <>
       {showInvite && (
-        <InviteDialog orgSlug={orgSlug} onClose={() => setShowInvite(false)} />
+        <InviteDialog orgSlug={orgSlug} onClose={() => setShowInvite(false)} isTravel={isTravel} />
       )}
       {editMember && (
         <EditPermissionsDialog
           orgSlug={orgSlug}
           member={editMember}
           onClose={() => setEditMember(null)}
+          isTravel={isTravel}
         />
       )}
 

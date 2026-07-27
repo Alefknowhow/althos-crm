@@ -181,7 +181,7 @@ export async function lookupFlight(
 ): Promise<{ ok: true; flight: FlightLookupResult } | { ok: false; error: string }> {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false, error: perm.reason }
 
   const key = process.env.AERODATABOX_KEY
@@ -230,7 +230,7 @@ export async function lookupFlightRoute(
 ): Promise<{ ok: true; flights: FlightLookupResult[] } | { ok: false; error: string }> {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
   if (!perm.allowed) return { ok: false, error: perm.reason }
 
   const key = process.env.AERODATABOX_KEY

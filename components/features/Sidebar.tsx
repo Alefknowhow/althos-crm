@@ -193,7 +193,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('cotacoes') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/cotacoes`}>
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -202,7 +202,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('explorar_voos') && isTravelNiche(org.niche) && (
           <a
             href="https://www.google.com/travel/explore"
             target="_blank"
@@ -216,7 +216,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </a>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('ofertas') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/ofertas`}>
             <span className="flex items-center gap-2.5">
               <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -225,7 +225,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('embarques') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/embarques`}>
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -234,7 +234,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('bloqueios') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/bloqueios`}>
             <span className="flex items-center gap-2.5">
               <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -261,7 +261,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('reservas') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/reservas`}>
             <span className="flex items-center gap-2.5">
               <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -270,7 +270,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('sales') && isTravelNiche(org.niche) && (
+        {can('documentos') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/documentos`}>
             <span className="flex items-center gap-2.5">
               <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />

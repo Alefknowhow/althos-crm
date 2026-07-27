@@ -102,7 +102,7 @@ export async function getTravelSale(orgSlug: string, id: string): Promise<Travel
 export async function updateTravelSale(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -125,7 +125,7 @@ export async function deleteTravelSale(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -153,7 +153,7 @@ export async function cancelTravelSale(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!input.valorCredito || input.valorCredito <= 0) {
@@ -217,7 +217,7 @@ export async function toggleSaleChecklistStep(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const CHECKLIST_STEPS: ChecklistStep[] = [
@@ -294,7 +294,7 @@ export async function getContatoTravelerInfo(orgSlug: string, contatoId: string)
 export async function attachSignedContract(orgSlug: string, saleId: string, voucher: { url: string; name: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -371,7 +371,7 @@ function mapProposalToSaleFields(proposal: any): Record<string, any> {
 export async function createTravelSale(orgSlug: string, proposalId: string | null | undefined, contatoId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!contatoId) {
@@ -450,7 +450,7 @@ function shiftDate(dateStr: string, deltaDays: number): string {
 export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string, input: Record<string, any>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()

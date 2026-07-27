@@ -13,6 +13,15 @@ export type PermissionKey =
   | 'catalog'
   | 'sales'
   | 'calendar'
+  // Nicho de viagens — substituem 'sales' com granularidade por módulo
+  // (uma agência pode dar acesso só a Reservas, sem liberar Cotações, etc).
+  | 'reservas'
+  | 'cotacoes'
+  | 'ofertas'
+  | 'embarques'
+  | 'bloqueios'
+  | 'explorar_voos'
+  | 'documentos'
   | 'conversations'
   | 'social'
   | 'insights'
@@ -36,7 +45,7 @@ export type PermissionModule = {
 }
 
 export const PERMISSION_MODULES: PermissionModule[] = [
-  // Vendas
+  // Vendas (nichos não-viagens)
   { key: 'pipeline',      label: 'Pipeline',         section: 'Vendas' },
   { key: 'leads',         label: 'Leads',             section: 'Vendas' },
   { key: 'clients',       label: 'Clientes',          section: 'Vendas' },
@@ -44,6 +53,14 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'catalog',       label: 'Catálogo',          section: 'Vendas' },
   { key: 'sales',         label: 'Vendas',            section: 'Vendas' },
   { key: 'calendar',      label: 'Agendamentos',      section: 'Vendas' },
+  // Viagens (só orgs do nicho de viagens)
+  { key: 'reservas',      label: 'Reservas',          section: 'Viagens' },
+  { key: 'cotacoes',      label: 'Cotações',          section: 'Viagens' },
+  { key: 'ofertas',       label: 'Ofertas',           section: 'Viagens' },
+  { key: 'embarques',     label: 'Embarques',         section: 'Viagens' },
+  { key: 'bloqueios',     label: 'Bloqueios',         section: 'Viagens' },
+  { key: 'explorar_voos', label: 'Explorar Voos',     section: 'Viagens' },
+  { key: 'documentos',    label: 'Documentos',        section: 'Viagens' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
@@ -97,6 +114,13 @@ export function defaultMemberPermissions(): Permissions {
     clients:       false,
     catalog:       false,
     sales:         false,
+    reservas:      false,
+    cotacoes:      false,
+    ofertas:       false,
+    embarques:     false,
+    bloqueios:     false,
+    explorar_voos: false,
+    documentos:    false,
     marketing:     false,
     automations:   false,
     templates:     false,
@@ -106,10 +130,22 @@ export function defaultMemberPermissions(): Permissions {
   }
 }
 
-/** Group modules by section for rendering. */
-export function groupedModules(): Record<string, PermissionModule[]> {
+const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
+  'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos',
+])
+const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar'])
+
+/**
+ * Group modules by section for rendering. Pass `isTravel` to hide the
+ * modules that don't apply to the org's nicho: orgs de viagens não veem
+ * Vendas/Agendamentos (usam Reservas/Cotações/etc no lugar), e o inverso
+ * pros demais nichos. Sem o argumento, devolve tudo (uso legado).
+ */
+export function groupedModules(isTravel?: boolean): Record<string, PermissionModule[]> {
   const out: Record<string, PermissionModule[]> = {}
   for (const m of PERMISSION_MODULES) {
+    if (isTravel === true && NON_TRAVEL_ONLY_KEYS.has(m.key)) continue
+    if (isTravel === false && TRAVEL_ONLY_KEYS.has(m.key)) continue
     if (!out[m.section]) out[m.section] = []
     out[m.section].push(m)
   }

@@ -42,7 +42,7 @@ export async function getDocumentTemplate(orgSlug: string, id: string): Promise<
 export async function createDocumentTemplate(orgSlug: string, name: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   if (!name?.trim()) return { ok: false as const, error: 'Informe um nome pro modelo.' }
@@ -67,7 +67,7 @@ export async function createDocumentTemplate(orgSlug: string, name: string) {
 export async function updateDocumentTemplate(orgSlug: string, id: string, input: { name?: string; category?: string | null; body_html?: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const patch: Record<string, any> = {}
@@ -121,7 +121,7 @@ export async function getOrgContractTemplate(orgSlug: string): Promise<DocumentT
 export async function saveOrgContractTemplate(orgSlug: string, bodyHtml: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
@@ -163,7 +163,7 @@ export async function deleteDocumentTemplate(orgSlug: string, id: string) {
   }
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  const perm = await checkMemberPermission(org.id, user.id, 'documentos')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
