@@ -6,6 +6,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { sendInstagramDM } from '@/lib/social/instagram'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
+import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 
 /**
  * Inbox manual de DM do Instagram: lista/lê conversas registradas por
@@ -41,6 +42,9 @@ async function guard(orgSlug: string) {
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'social')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'instagram_automation'))) {
+    return { ok: false as const, error: 'Instagram não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.' }
+  }
   return { ok: true as const, org }
 }
 

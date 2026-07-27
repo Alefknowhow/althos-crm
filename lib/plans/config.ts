@@ -75,7 +75,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
   starter: {
     tasks: true,
     catalogo: true,
-    whatsapp: true,
+    whatsapp: false,           // removido da oferta: só Pro/Business
     capi_pixel: true,
     ai_insights: false,        // premium: só Pro/Business
     white_label: false,        // removido da oferta
@@ -85,7 +85,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     multi_tenant: false,       // 1 org (ver PLAN_LIMITS.orgs)
     export_reports: false,     // premium: só Pro/Business
     meta_ads_panel: true,
-    instagram_automation: true,
+    instagram_automation: false, // removido da oferta: só Pro/Business
   },
   pro: {
     tasks: true,

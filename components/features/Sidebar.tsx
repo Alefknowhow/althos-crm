@@ -99,8 +99,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       ? Promise.all([
           checkFeatureAccess(accountId, 'ai_insights'),
           checkFeatureAccess(accountId, 'export_reports'),
+          checkFeatureAccess(accountId, 'whatsapp'),
+          checkFeatureAccess(accountId, 'instagram_automation'),
         ])
-      : Promise.resolve<[boolean, boolean]>([true, true]),
+      : Promise.resolve<[boolean, boolean, boolean, boolean]>([true, true, true, true]),
   ])
 
   // Membership → role + permissions
@@ -119,7 +121,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     return canAccess(userRole, userPermissions, key)
   }
 
-  const [, planReports] = planChecks as [boolean, boolean]
+  const [, planReports, planWhatsapp, planInstagram] = planChecks as [boolean, boolean, boolean, boolean]
 
   const overdueCount = (overdueRes as { count: number | null }).count
   const convs = (convsRes as { data: { unread_count: number }[] | null }).data
@@ -289,7 +291,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         {/* ── Comunicação ───────────────────────────── */}
         <SectionLabel>Comunicação</SectionLabel>
 
-        {can('conversations') && (
+        {can('conversations') && planWhatsapp && (
           <SidebarNavLink href={`${base}/conversas`}>
             <span className="flex items-center gap-2.5">
               <MessageSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -299,7 +301,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('social') && (
+        {can('social') && planInstagram && (
           <SidebarNavLink href={`${base}/social`}>
             <span className="flex items-center gap-2.5">
               <IgIcon />
@@ -377,7 +379,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       showPipeline={can('pipeline')}
       showContatos={can('leads') || can('clients')}
       showTarefas={can('tasks')}
-      showConversas={can('conversations')}
+      showConversas={can('conversations') && planWhatsapp}
       overdueCount={overdueCount ?? 0}
       unreadCount={unreadWhatsapp}
     />

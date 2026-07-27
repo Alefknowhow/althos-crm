@@ -428,7 +428,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Planos',
     question: 'Qual a diferença entre os planos?',
-    answer: 'O teste grátis de 15 dias já dá acesso completo ao Pro, incluindo o módulo do seu nicho. O Starter é o ponto de entrada pago (catálogo e WhatsApp), o Pro adiciona IA, agendamentos, Meta Ads e mais usuários, e o Business libera tudo: insights com IA, white-label, API e usuários ilimitados.',
+    answer: 'O teste grátis de 15 dias já dá acesso completo ao Pro, incluindo o módulo do seu nicho. O Starter é o ponto de entrada pago (catálogo, tarefas, agendamentos e Meta Ads, sem WhatsApp/Instagram), o Pro adiciona WhatsApp, Instagram, insights com IA e mais usuários, e o Business libera tudo, sem limites de uso.',
   },
   {
     category: 'Planos',

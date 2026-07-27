@@ -3,7 +3,7 @@
  *
  * plan column in organizations (NEW taxonomy — free/starter/pro/business):
  *   'free'       – Gratuito para sempre, recursos básicos, sem cartão
- *   'starter'    – R$ 197/mo, leads ilimitados, 1 user, catálogo + WhatsApp
+ *   'starter'    – R$ 137/mo, leads ilimitados, 1 user, catálogo (sem WhatsApp/Instagram)
  *   'pro'        – R$ 297/mo, IA (atendente/score) + agendamentos + Meta Ads, até 5 users
  *   'business'   – R$ 397/mo, tudo (insights IA, white-label, multi-tenant, API), users ilimitados
  *   'agency'     – invite-only, unlimited, all features, billing_managed_externally
@@ -135,8 +135,8 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     hasAdvancedAI:     false,
     hasAutomations:    false,
     hasAdvancedAuto:   false,
-    hasWhatsApp:       true,
-    hasInstagram:      false,
+    hasWhatsApp:       false,   // removido da oferta: só Pro/Business
+    hasInstagram:      false,   // removido da oferta: só Pro/Business
     hasMetaAds:        false,
     hasEmailMarketing: false,
     hasAPI:            false,

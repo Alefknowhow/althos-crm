@@ -5,14 +5,20 @@ import { requireAuth, getCurrentOrganization, isImpersonating, isSuperAdmin } fr
 import { revalidatePath } from 'next/cache'
 import { sendTextMessage } from '@/lib/whatsapp/meta-client'
 import { listOrgMembers } from '@/actions/team'
+import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+
+const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
 export async function saveWhatsappConfig(orgSlug: string, phone_id: string, token: string) {
   if (isImpersonating()) {
     return { ok: false, error: 'Alteração de credenciais críticas não permitida em modo de impersonação.' }
   }
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+  }
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  
+
   const { error } = await supabase.from('organizations').update({
     whatsapp_phone_number_id: phone_id,
     whatsapp_access_token: token
@@ -42,6 +48,9 @@ export async function connectWhatsappEmbedded(
 ) {
   if (isImpersonating()) {
     return { ok: false, error: 'Conexão de WhatsApp não permitida em modo de impersonação.' }
+  }
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
   }
 
   const appId = process.env.META_APP_ID
@@ -127,6 +136,9 @@ export async function testWhatsappConnection(orgSlug: string) {
 }
 
 export async function sendWhatsappMessage(orgSlug: string, conversationId: string, content: string) {
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+  }
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
