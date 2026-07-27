@@ -979,12 +979,8 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             })}
           </div>
         </F>
-        <div className="grid grid-cols-[1fr_120px] gap-3">
-          <F label="Disclaimer"><Textarea rows={2} placeholder="Preços sujeitos a alteração sem aviso prévio…" value={q.price_disclaimer}
-            onChange={e => setQ(s => ({ ...s, price_disclaimer: e.target.value }))} /></F>
-          <F label="Validade (dias)"><Input type="number" min={1} max={90} value={q.validity_days}
-            onChange={e => setQ(s => ({ ...s, validity_days: Math.max(1, parseInt(e.target.value) || 5) }))} /></F>
-        </div>
+        <F label="Disclaimer"><Textarea rows={2} placeholder="Preços sujeitos a alteração sem aviso prévio…" value={q.price_disclaimer}
+          onChange={e => setQ(s => ({ ...s, price_disclaimer: e.target.value }))} /></F>
         <div className="grid grid-cols-2 gap-3 border-t pt-3">
           <F label="Operadora (interno)"><Input value={q.operadora} onChange={e => setQ(s => ({ ...s, operadora: e.target.value }))} placeholder="Não aparece na proposta" /></F>
           <F label="Comissão total (interno)"><Input inputMode="decimal" defaultValue={centsToStr(q.commission_total_cents)}

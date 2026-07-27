@@ -39,7 +39,6 @@ function SectionRule() {
 
 export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocumentRow; org: OrgBranding }) {
   const accent = org.primary_color || '#0f62fe'
-  const validUntil = new Date(new Date(doc.created_at).getTime() + doc.validity_days * 86400000)
 
   const extracted = (doc.extracted_data || {}) as Record<string, any>
   const voos: ExtractedVoo[] = Array.isArray(extracted.voos) ? extracted.voos : []
@@ -234,10 +233,6 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
             <p className="text-[13px] whitespace-pre-wrap">{doc.observacoes}</p>
           </div>
         )}
-
-        <div className="border-2 p-3 text-center text-[13px] font-medium mb-8" style={{ borderColor: accent, color: accent }}>
-          Orçamento válido até {validUntil.toLocaleDateString('pt-BR')} ({doc.validity_days} dias a partir da emissão)
-        </div>
 
         {/* Rodapé de contato (estilo operadora) */}
         <div className="text-[12px] text-gray-500 space-y-2 text-center">

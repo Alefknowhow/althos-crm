@@ -361,7 +361,6 @@ function BudgetEditor({
           <Field label="Operadora"><Input value={d.operadora || ''} onChange={e => set('operadora', e.target.value)} /></Field>
           <Field label="Adultos"><Input type="number" min="0" value={d.pax_adults ?? ''} onChange={e => set('pax_adults', e.target.value ? parseInt(e.target.value) : null)} /></Field>
           <Field label="Crianças"><Input type="number" min="0" value={d.pax_children ?? ''} onChange={e => set('pax_children', e.target.value ? parseInt(e.target.value) : null)} /></Field>
-          <Field label="Validade (dias)"><Input type="number" min="1" value={d.validity_days} onChange={e => set('validity_days', parseInt(e.target.value) || 1)} /></Field>
           <Field label="Valor total"><MoneyInput value={d.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
           <Field label="Valor por pessoa"><MoneyInput value={d.price_per_person_cents || 0} onChange={c => set('price_per_person_cents', c)} /></Field>
           <Field label="Status">
