@@ -304,7 +304,6 @@ export default function TasksBoard({
     setColumns(prev => [...prev, res.column!])
     setEditingColId(res.column.id)
     setColDraft(res.column.name)
-    router.refresh()
   }
 
   function startEditCol(col: Column) {
@@ -324,9 +323,7 @@ export default function TasksBoard({
     if (!res.ok) {
       toast.error(res.error || 'Erro ao renomear coluna')
       if (current) setColumns(prev => prev.map(c => (c.id === id ? { ...c, name: current.name } : c)))
-      return
     }
-    router.refresh()
   }
 
   async function handleDeleteColumn(col: Column) {
@@ -351,7 +348,6 @@ export default function TasksBoard({
       router.refresh()
       return
     }
-    router.refresh()
   }
 
   const counts = { all: tasks.length, ...(['low', 'normal', 'high'] as const).reduce(
