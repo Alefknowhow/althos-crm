@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import LeadCombobox from '@/components/features/LeadCombobox'
@@ -938,9 +938,9 @@ function EditSheet({
   const defaultDate = task?.due_date ? task.due_date.split('T')[0] : ''
 
   return (
-    <Sheet open={!!task} onOpenChange={o => !o && onClose()}>
-      <SheetContent>
-        <SheetHeader><SheetTitle>Editar Tarefa</SheetTitle></SheetHeader>
+    <Dialog open={!!task} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Editar Tarefa</DialogTitle></DialogHeader>
         {task && (
           <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
@@ -982,15 +982,15 @@ function EditSheet({
                 </select>
               </div>
             )}
-            <SheetFooter>
+            <DialogFooter>
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir
               </Button>
               <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
-            </SheetFooter>
+            </DialogFooter>
           </form>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
