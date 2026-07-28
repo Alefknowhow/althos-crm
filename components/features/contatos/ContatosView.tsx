@@ -36,6 +36,7 @@ import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/action
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
+import CopyButton from '@/components/ui/copy-button'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -571,7 +572,10 @@ function DetailPanel({
         </button>
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
+            <CopyButton value={c.name} label="Nome" />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}

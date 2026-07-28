@@ -18,6 +18,7 @@ import ContatoRelationships from '@/components/features/contatos/ContatoRelation
 import { listRelationships } from '@/actions/relationships'
 import { listCreditsForContato } from '@/actions/travel-credits'
 import { isTravelNiche } from '@/lib/niche'
+import CopyButton from '@/components/ui/copy-button'
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   lead: { label: 'Lead', className: 'border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20' },
@@ -133,6 +134,7 @@ export default async function ContatoDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">{lead.name}</h1>
+            <CopyButton value={lead.name} label="Nome" />
             <Badge variant="outline" className={statusMeta.className}>
               {statusMeta.label}
             </Badge>

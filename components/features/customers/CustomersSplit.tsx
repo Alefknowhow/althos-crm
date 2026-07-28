@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import CopyButton from '@/components/ui/copy-button'
 import { cn } from '@/lib/utils'
 import {
   Search, MapPin, FileCheck2, ExternalLink, Mail, Phone, ChevronLeft,
@@ -218,6 +219,7 @@ function CustomerPreview({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold leading-tight">{c.name}</h2>
+            <CopyButton value={c.name} label="Nome" />
             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
               <UserCheck className="w-3 h-3 mr-1" /> Cliente
             </Badge>

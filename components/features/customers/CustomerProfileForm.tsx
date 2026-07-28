@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Search, Save, Loader2 } from 'lucide-react'
 import { upsertCustomerProfile } from '@/actions/contatos'
+import CopyButton from '@/components/ui/copy-button'
 
 type Profile = {
   cpf: string | null
@@ -136,7 +137,10 @@ export default function CustomerProfileForm({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">CPF</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs">CPF</Label>
+                <CopyButton value={form.cpf} label="CPF" />
+              </div>
               <Input
                 value={form.cpf}
                 onChange={e => setForm({ ...form, cpf: maskCpf(e.target.value) })}
@@ -153,7 +157,10 @@ export default function CustomerProfileForm({
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Data de nascimento</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs">Data de nascimento</Label>
+                <CopyButton value={form.date_of_birth} label="Data de nascimento" />
+              </div>
               <Input
                 type="date"
                 value={form.date_of_birth}
