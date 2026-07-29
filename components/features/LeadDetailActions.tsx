@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { updateLead, deleteLead } from '@/actions/contatos'
 
 export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any, orgSlug: string, stages: any[] }) {
@@ -74,10 +73,6 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
             <div className="space-y-2">
               <Label>Tags (separadas por vírgula)</Label>
               <Input name="tags" defaultValue={lead.tags?.join(', ') || ''} />
-            </div>
-            <div className="space-y-2">
-              <Label>Observações internas</Label>
-              <Textarea name="internal_notes" defaultValue={lead.internal_notes || ''} rows={3} />
             </div>
             <SheetFooter>
               <Button type="submit" disabled={loading}>Salvar</Button>

@@ -31,7 +31,6 @@ import {
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
   getContatoTravelLinks, reopenNegotiation, listContatoDeals, updateLeadTags,
-  updateContatoInternalNotes,
   type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal,
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
@@ -40,7 +39,6 @@ import CustomerProfileForm from '@/components/features/customers/CustomerProfile
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import CopyButton from '@/components/ui/copy-button'
-import { Textarea } from '@/components/ui/textarea'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -630,16 +628,6 @@ function DetailPanel({
     saveTags(tags.filter(x => x !== t))
   }
 
-  const [notes, setNotes] = useState(c.internal_notes || '')
-  const [savingNotes, setSavingNotes] = useState(false)
-  async function saveNotes() {
-    if (notes === (c.internal_notes || '')) return
-    setSavingNotes(true)
-    const res = await updateContatoInternalNotes(orgSlug, c.id, notes)
-    setSavingNotes(false)
-    if (!res.ok) toast.error(res.error)
-  }
-
   return (
     <div className="p-5 sm:p-6 space-y-6">
       {/* Header */}
@@ -760,19 +748,6 @@ function DetailPanel({
             className="h-7 w-32 text-xs"
           />
         </div>
-      </Field>
-
-      {/* Observações internas — substitui o antigo popup "Adicionar Nota" */}
-      <Field icon={FileCheck2} label="Observações internas">
-        <Textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          onBlur={saveNotes}
-          rows={3}
-          placeholder="Anotações da equipe sobre esse contato…"
-          className="text-sm"
-          disabled={savingNotes}
-        />
       </Field>
 
       {/* Histórico de negociações — cada passagem pelo funil, mesmo depois de virar cliente. */}

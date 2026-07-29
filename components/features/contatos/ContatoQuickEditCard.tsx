@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { updateLead, deleteLead } from '@/actions/contatos'
 import {
@@ -85,10 +84,6 @@ export default function ContatoQuickEditCard({
           <div className="space-y-1.5">
             <Label className="text-xs">Tags (separadas por vírgula)</Label>
             <Input name="tags" defaultValue={lead.tags?.join(', ') || ''} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Observações internas</Label>
-            <Textarea name="internal_notes" defaultValue={lead.internal_notes || ''} rows={3} placeholder="Anotações da equipe sobre esse contato…" />
           </div>
           <Button type="submit" size="sm" disabled={saving}>{saving ? 'Salvando…' : 'Salvar alterações'}</Button>
         </form>
