@@ -308,6 +308,47 @@ export async function convertOfferToQuotation(orgSlug: string, offerId: string) 
   return { ok: true as const, id: newId }
 }
 
+/**
+ * Inverso de convertOfferToQuotation: transforma uma cotação normal numa
+ * oferta (vitrine) — cria uma cópia como oferta em rascunho, sem apagar a
+ * cotação original nem os dados do cliente que gerou a venda.
+ */
+export async function convertQuotationToOffer(orgSlug: string, quotationId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: quotation } = await supabase
+    .from('travel_proposals').select('*')
+    .eq('id', quotationId).eq('organization_id', org.id).eq('is_offer', false).maybeSingle()
+  if (!quotation) return { ok: false as const, error: 'Cotação não encontrada' }
+
+  const q = quotation as Record<string, any>
+  const {
+    id: _id, created_at: _c, updated_at: _u, public_token: _t, is_offer: _o,
+    client_name: _cn, client_whatsapp: _cw, contato_id: _ct, quoted_at: _q, status: _st, ...rest
+  } = q
+  const { data: created, error } = await supabase
+    .from('travel_proposals')
+    .insert({ ...rest, organization_id: org.id, created_by: user.id, contato_id: null, is_offer: true, offer_published: false, status: 'draft' })
+    .select('id').single()
+  if (error || !created) return { ok: false as const, error: error?.message || 'Erro ao converter' }
+  const newId = (created as any).id
+
+  for (const table of ['quotation_lodgings', 'quotation_flights', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
+    const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', quotationId)
+    if (rows?.length) {
+      const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
+      await supabase.from(table).insert(copies)
+    }
+  }
+
+  revalidatePath(`/app/${orgSlug}/ofertas`)
+  return { ok: true as const, id: newId }
+}
+
 /* ─────────── gerar venda a partir da cotação ─────────── */
 /**
  * Cria uma venda (travel_sales) pré-preenchida com os dados atuais da

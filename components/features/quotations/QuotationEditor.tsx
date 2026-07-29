@@ -46,7 +46,7 @@ const PAYMENT_METHODS = [
   { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
 ] as const
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
+import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, convertOfferToQuotation, convertQuotationToOffer, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -645,6 +645,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     else toast.error(res.error)
   }
 
+  async function onConvertToOffer() {
+    setSaleBusy(true)
+    await saveQuotation(orgSlug, q0.id, payload)
+    const res = await convertQuotationToOffer(orgSlug, q0.id)
+    setSaleBusy(false)
+    if (res.ok) { toast.success('Cotação copiada para uma nova oferta'); router.push(`/app/${orgSlug}/ofertas/${res.id}`) }
+    else toast.error(res.error)
+  }
+
   async function onGenerateSale() {
     // Grava o estado atual antes para a venda nascer com os dados mais recentes.
     setSaleBusy(true)
@@ -1108,10 +1117,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             <span className="hidden sm:inline">Converter em cotação</span>
           </Button>
         ) : (
-          <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
-            {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
-            <span className="hidden sm:inline">Gerar venda</span>
-          </Button>
+          <>
+            <Button type="button" size="sm" variant="outline" onClick={onConvertToOffer} disabled={saleBusy}>
+              <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Transformar em oferta</span>
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
+              {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
+              <span className="hidden sm:inline">Gerar venda</span>
+            </Button>
+          </>
         )}
         {missing.length > 0 && (
           <span className="w-full sm:w-auto inline-flex items-center gap-1.5 text-[11px] text-amber-600">
