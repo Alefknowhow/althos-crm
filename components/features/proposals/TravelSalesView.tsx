@@ -683,7 +683,7 @@ function SaleEditor({
               <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
             </Button>
           )}
-          <a href={`/app/${orgSlug}/reservas/${s.id}/voucher`} target="_blank" rel="noopener noreferrer">
+          <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" title="Gerar voucher" aria-label="Gerar voucher">
               <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
             </Button>

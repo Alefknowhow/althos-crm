@@ -7,6 +7,11 @@ import VoucherPrintView from '@/components/features/reservas/VoucherPrintView'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Voucher imprimível. Fica FORA da árvore /app/[orgSlug] pra não herdar o
+ * sidebar/header do CRM — só o layout raiz (html/body). Aberto em nova aba;
+ * o botão "Imprimir" dispara o print → salvar como PDF do navegador.
+ */
 export default async function VoucherPrintPage({
   params,
 }: { params: { orgSlug: string; saleId: string } }) {
@@ -42,6 +47,10 @@ export default async function VoucherPrintPage({
         contact_phone: (org as any).contact_phone ?? null,
         contact_email: (org as any).contact_email ?? null,
         website: (org as any).website ?? null,
+        address_street: (org as any).address_street ?? null,
+        address_city: (org as any).address_city ?? null,
+        address_state: (org as any).address_state ?? null,
+        address_zip: (org as any).address_zip ?? null,
       }}
     />
   )

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft, MessageCircle, Mail,
-  Users, CalendarDays, Info, AlertTriangle, Compass, Ticket, Sparkles, Hash,
+  Users, CalendarDays, Info, AlertTriangle, Compass, Ticket, Sparkles, Hash, Phone, Globe,
 } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
@@ -17,6 +17,10 @@ type OrgBranding = {
   contact_phone: string | null
   contact_email: string | null
   website: string | null
+  address_street: string | null
+  address_city: string | null
+  address_state: string | null
+  address_zip: string | null
 }
 
 type ContatoInfo = { phone: string | null; email: string | null } | null
@@ -115,14 +119,24 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
             )}
             <div>
               <p className="text-lg font-bold">{org.name}</p>
-              <p className="text-[11px] text-gray-500">
-                {org.cnpj && <>CNPJ {org.cnpj}</>}
-                {org.cnpj && org.cadastur && ' · '}
-                {org.cadastur && <>CADASTUR {org.cadastur}</>}
-              </p>
-              <p className="text-[11px] text-gray-500">
-                {[org.contact_phone, org.contact_email, org.website].filter(Boolean).join(' · ')}
-              </p>
+              {(org.cnpj || org.cadastur) && (
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {org.cnpj && <>CNPJ {org.cnpj}</>}
+                  {org.cnpj && org.cadastur && ' · '}
+                  {org.cadastur && <>CADASTUR {org.cadastur}</>}
+                </p>
+              )}
+              <div className="mt-1 space-y-0.5">
+                {org.contact_phone && (
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3 shrink-0" /> {org.contact_phone}</p>
+                )}
+                {org.contact_email && (
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3 shrink-0" /> {org.contact_email}</p>
+                )}
+                {org.website && (
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1"><Globe className="w-3 h-3 shrink-0" /> {org.website}</p>
+                )}
+              </div>
             </div>
           </div>
           <div className="text-right rounded-md border p-3 min-w-[180px]">
@@ -315,8 +329,16 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           </div>
         )}
 
-        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 flex items-center justify-center gap-1">
-          <Hash className="w-3 h-3" /> Documento gerado por {org.name} — apresente este voucher junto a um documento de identificação.
+        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 space-y-1">
+          {(org.address_street || org.address_city) && (
+            <p className="flex items-center justify-center gap-1">
+              <MapPin className="w-3 h-3 shrink-0" />
+              {[org.address_street, org.address_city, org.address_state, org.address_zip].filter(Boolean).join(', ')}
+            </p>
+          )}
+          <p className="flex items-center justify-center gap-1">
+            <Hash className="w-3 h-3" /> Documento gerado por {org.name} — apresente este voucher junto a um documento de identificação.
+          </p>
         </div>
       </div>
 
