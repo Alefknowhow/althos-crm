@@ -28,7 +28,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
-  getContatoTravelerInfo, type TravelSaleRow,
+  getContatoTravelerInfo, type TravelSaleRow, type FlightSegment,
 } from '@/actions/travel-sales'
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
@@ -40,7 +40,7 @@ import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, FileText, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus,
+  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -532,6 +532,7 @@ function SaleEditor({
   const included: string[] = Array.isArray(s.included_items) ? s.included_items : []
   const vouchers: Voucher[] = Array.isArray(s.vouchers) ? s.vouchers : []
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
+  const flights: FlightSegment[] = Array.isArray(s.flights) ? s.flights : []
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -539,6 +540,7 @@ function SaleEditor({
   const [lastFile, setLastFile] = useState<File | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
+  const [flightsOpen, setFlightsOpen] = useState(false)
   const router = useRouter()
 
   function toggleIncluded(key: string) {
@@ -591,6 +593,7 @@ function SaleEditor({
         cancellation_policy: data.politica_cancelamento || prev.cancellation_policy,
         important_info: data.informacoes_importantes || prev.important_info,
         service_info: data.informacoes_servico || prev.service_info,
+        flights: data.voos.length > 0 ? data.voos : prev.flights,
       }))
       if (extractedTravelers.length > 0) set('travelers', extractedTravelers)
       toast.success('Dados extraídos — revise os campos antes de salvar.')
@@ -609,7 +612,7 @@ function SaleEditor({
     package_locator: s.package_locator, air_locator: s.air_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
     notes: s.notes, cancellation_policy: s.cancellation_policy, important_info: s.important_info,
-    service_info: s.service_info,
+    service_info: s.service_info, flights,
   })
 
   return (
@@ -792,6 +795,18 @@ function SaleEditor({
             <Field label="Companhia aérea"><Input value={s.airline || ''} onChange={e => set('airline', e.target.value)} /></Field>
             <Field label="Operadora"><Input value={s.operator || ''} onChange={e => set('operator', e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" /></Field>
           </div>
+          {/* Segmentos de voo (ida/volta com horários) — fica fora do
+              formulário principal pra não poluir; só um botão discreto
+              abrindo um popup, editável quando precisar corrigir algo. */}
+          <button
+            type="button"
+            onClick={() => setFlightsOpen(true)}
+            className="mt-2 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          >
+            <Plane className="w-3 h-3" />
+            {flights.length > 0 ? `${flights.length} segmento${flights.length > 1 ? 's' : ''} de voo cadastrado${flights.length > 1 ? 's' : ''}` : 'Nenhum segmento de voo detalhado'}
+            <span className="underline">· editar voos</span>
+          </button>
         </div>
 
         {/* Viajantes */}
@@ -946,7 +961,116 @@ function SaleEditor({
           onApplied={() => router.refresh()}
         />
       )}
+
+      <FlightsDialog
+        open={flightsOpen}
+        onOpenChange={setFlightsOpen}
+        flights={flights}
+        onChange={next => set('flights', next)}
+      />
     </div>
+  )
+}
+
+/** Popup discreto pra editar os segmentos de voo (ida/volta com horários) —
+    fora do formulário principal pra não poluir a tela por padrão. */
+function FlightsDialog({
+  open, onOpenChange, flights, onChange,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  flights: FlightSegment[]
+  onChange: (next: FlightSegment[]) => void
+}) {
+  function update(i: number, patch: Partial<FlightSegment>) {
+    const next = [...flights]
+    next[i] = { ...next[i], ...patch }
+    onChange(next)
+  }
+  function add(sentido: 'ida' | 'volta') {
+    onChange([...flights, { sentido, companhia: '', numero: '', data: '', origem: '', destino: '', horario: '' }])
+  }
+  function remove(i: number) {
+    onChange(flights.filter((_, j) => j !== i))
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Plane className="w-4 h-4 text-primary" /> Segmentos de voo</DialogTitle>
+          <DialogDescription>Cada trecho (ida ou volta) com companhia, número, data e horário — usado no voucher completo.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {flights.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum segmento cadastrado ainda.</p>
+          )}
+          {flights.map((f, i) => (
+            <div key={i} className="rounded-lg border p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-1.5">
+                  {(['ida', 'volta'] as const).map(dir => (
+                    <button
+                      key={dir}
+                      type="button"
+                      onClick={() => update(i, { sentido: dir })}
+                      className={cn(
+                        'px-2.5 h-7 rounded-md border text-xs font-medium capitalize',
+                        f.sentido === dir ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border',
+                      )}
+                    >
+                      {dir}
+                    </button>
+                  ))}
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(i)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Companhia</Label>
+                  <Input value={f.companhia || ''} onChange={e => update(i, { companhia: e.target.value })} placeholder="Ex.: Azul" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Número do voo</Label>
+                  <Input value={f.numero || ''} onChange={e => update(i, { numero: e.target.value })} placeholder="Ex.: AD 2416" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Data</Label>
+                  <Input type="date" value={f.data || ''} onChange={e => update(i, { data: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Origem</Label>
+                  <Input value={f.origem || ''} onChange={e => update(i, { origem: e.target.value })} placeholder="Ex.: GYN" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Destino</Label>
+                  <Input value={f.destino || ''} onChange={e => update(i, { destino: e.target.value })} placeholder="Ex.: BPS" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Horário</Label>
+                  <Input value={f.horario || ''} onChange={e => update(i, { horario: e.target.value })} placeholder="Ex.: 08:40 - 10:25" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-1.5">
+            <Button type="button" variant="outline" size="sm" onClick={() => add('ida')}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> Trecho de ida
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => add('volta')}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> Trecho de volta
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Concluído</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

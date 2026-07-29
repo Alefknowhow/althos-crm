@@ -64,6 +64,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
   const hasServicos = all.includes('servicos') || all.includes('carros') || all.includes('ingressos') || all.includes('car_rental')
   const hasSeguro = all.includes('seguro') || all.includes('insurance')
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(sale.travelers) ? sale.travelers : []
+  const flights = Array.isArray(sale.flights) ? sale.flights : []
   const n = nights(sale.departure_date, sale.return_date)
 
   const qrData = sale.airline_checkin_url
@@ -165,12 +166,52 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           {hasVoos && (
             <div className="border rounded-md overflow-hidden">
               <SectionBar icon={Plane} title="Voos" accent={accent} />
-              <div className="grid grid-cols-2 gap-4 p-3">
-                <InfoRow label="Companhia aérea" value={sale.airline} />
-                <InfoRow label="Localizador (PNR)" value={sale.air_locator} mono />
-                <InfoRow label="Data de ida" value={fmtDate(sale.departure_date)} />
-                <InfoRow label="Data de volta" value={fmtDate(sale.return_date)} />
-              </div>
+              {sale.air_locator && (
+                <div className="px-3 pt-3">
+                  <InfoRow label="Localizador (PNR)" value={sale.air_locator} mono />
+                </div>
+              )}
+              {flights.length > 0 ? (
+                <div className="divide-y">
+                  {(['ida', 'volta'] as const).map(dir => {
+                    const legs = flights.filter(f => f.sentido === dir)
+                    if (legs.length === 0) return null
+                    return (
+                      <div key={dir} className="p-3">
+                        <p className="text-[10px] uppercase tracking-wide font-bold mb-1.5" style={{ color: accent }}>{dir}</p>
+                        <div className="space-y-2">
+                          {legs.map((f, i) => (
+                            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
+                              <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
+                              <InfoRow label="Data" value={fmtDate(f.data)} />
+                              <InfoRow label="Horário" value={f.horario} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {flights.some(f => !f.sentido) && (
+                    <div className="p-3">
+                      {flights.filter(f => !f.sentido).map((f, i) => (
+                        <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
+                          <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
+                          <InfoRow label="Data" value={fmtDate(f.data)} />
+                          <InfoRow label="Horário" value={f.horario} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 p-3">
+                  <InfoRow label="Companhia aérea" value={sale.airline} />
+                  <InfoRow label="Data de ida" value={fmtDate(sale.departure_date)} />
+                  <InfoRow label="Data de volta" value={fmtDate(sale.return_date)} />
+                </div>
+              )}
             </div>
           )}
 

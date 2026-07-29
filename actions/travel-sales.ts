@@ -43,8 +43,19 @@ export type TravelSaleRow = {
   cancellation_policy: string | null
   important_info: string | null
   service_info: string | null
+  flights: FlightSegment[]
   created_at: string
   updated_at: string
+}
+
+export type FlightSegment = {
+  companhia?: string | null
+  numero?: string | null
+  data?: string | null
+  origem?: string | null
+  destino?: string | null
+  horario?: string | null
+  sentido?: 'ida' | 'volta' | null
 }
 
 export type ChecklistStep =
@@ -55,7 +66,7 @@ const WRITABLE = [
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
   'included_items', 'vouchers', 'travelers', 'travelers_note',
   'payment_method', 'package_locator', 'air_locator', 'airline_checkin_url',
-  'commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info',
+  'commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info', 'flights',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
