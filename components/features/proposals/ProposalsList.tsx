@@ -132,10 +132,10 @@ export default function ProposalsList({
   }
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
           Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden md:flex')}>
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -197,10 +197,10 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px] items-start">
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto divide-y max-h-[calc(100dvh-19rem)]',
+          'rounded-none border bg-card overflow-y-auto divide-y h-full',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -249,7 +249,7 @@ export default function ProposalsList({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto max-h-[calc(100dvh-19rem)]',
+          'rounded-none border bg-card overflow-y-auto h-full',
           !selected && 'hidden md:flex',
         )}>
           {selected
@@ -296,7 +296,7 @@ export default function ProposalsList({
         onClose={() => setDuplicateFor(null)}
         onDone={(newId) => { setDuplicateFor(null); setSelectedId(newId); router.refresh() }}
       />
-    </>
+    </div>
   )
 }
 

@@ -20,7 +20,7 @@ export default async function DocumentosPage({ params }: { params: { orgSlug: st
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full gap-4">
       <PageHeader
         title="Documentos"
         hint="Crie modelos de documentos, imprima preenchendo os campos manualmente, e mantenha os modelos de MEDIF/FREMEC em PDF disponíveis para download."

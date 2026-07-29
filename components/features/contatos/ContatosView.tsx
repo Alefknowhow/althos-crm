@@ -198,9 +198,9 @@ export default function ContatosView({
   const activeFilterCount = countActiveFilters(filters)
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col flex-1 min-h-0 gap-4">
       {/* ── Toolbar ─────────────────────────────────────────────── */}
-      <div className={cn('flex flex-wrap items-center gap-2', mobileDetail && 'hidden lg:flex')}>
+      <div className={cn('flex flex-wrap items-center gap-2 shrink-0', mobileDetail && 'hidden lg:flex')}>
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -243,11 +243,11 @@ export default function ContatosView({
       </div>
 
       {/* ── Master-detail ───────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:min-h-[480px]">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 lg:min-h-[480px]">
         {/* Master */}
         <div
           className={cn(
-            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden lg:max-h-[calc(100vh-260px)]',
+            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
             mobileDetail && 'hidden lg:flex',
           )}
         >
@@ -356,7 +356,7 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto lg:max-h-[calc(100vh-260px)]',
+            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto',
             !mobileDetail && 'hidden lg:block',
           )}
         >

@@ -16,13 +16,13 @@ export default function DocumentosTabs({
   fremecTemplateInfo: { name: string } | null
 }) {
   return (
-    <Tabs defaultValue="modelos">
-      <TabsList>
+    <Tabs defaultValue="modelos" className="flex flex-col flex-1 min-h-0">
+      <TabsList className="shrink-0">
         <TabsTrigger value="modelos">Modelos</TabsTrigger>
         <TabsTrigger value="medif">MEDIF</TabsTrigger>
         <TabsTrigger value="fremec">FREMEC</TabsTrigger>
       </TabsList>
-      <TabsContent value="modelos">
+      <TabsContent value="modelos" className="flex-1 min-h-0 flex flex-col">
         <DocumentTemplatesView orgSlug={orgSlug} templates={templates} />
       </TabsContent>
       <TabsContent value="medif">

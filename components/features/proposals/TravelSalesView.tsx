@@ -275,10 +275,10 @@ export default function TravelSalesView({
   }
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile). Some no
           mobile quando uma reserva está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap', selected && 'hidden md:flex')}>
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -337,12 +337,12 @@ export default function TravelSalesView({
       </div>
 
       <div className={cn(
-        'grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px] items-start',
+        'grid md:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0',
       )}>
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto divide-y',
-          selected ? 'hidden md:block md:max-h-[calc(100dvh-19rem)]' : 'max-h-[calc(100dvh-19rem)]',
+          'rounded-none border bg-card overflow-y-auto divide-y h-full',
+          selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
@@ -394,7 +394,7 @@ export default function TravelSalesView({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto max-h-[calc(100dvh-8rem)] md:max-h-[calc(100dvh-19rem)]',
+          'rounded-none border bg-card overflow-y-auto h-full',
           !selected && 'hidden md:flex',
         )}>
           {selected
@@ -439,7 +439,7 @@ export default function TravelSalesView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   )
 }
 
