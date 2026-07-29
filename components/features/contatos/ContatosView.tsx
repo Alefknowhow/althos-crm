@@ -23,14 +23,15 @@ import {
 import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Mail, Phone,
   MapPin, FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
-  Bookmark, X, MessageCircle, FileSignature, Plane,
+  Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
 } from '@/lib/contatos'
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
-  getContatoTravelLinks, type ContatoQuoteLink, type ContatoReservationLink,
+  getContatoTravelLinks, reopenNegotiation, listContatoDeals,
+  type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal,
 } from '@/actions/contatos'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
@@ -549,16 +550,38 @@ function DetailPanel({
   const c = selected.contato
   const stageName = c.pipeline_stages?.name as string | undefined
   const [savingStatus, startStatus] = useTransition()
+  const [reopening, startReopen] = useTransition()
+  const [deals, setDeals] = useState<ContatoDeal[]>([])
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
   const lastPurchase = completedSales[0]?.sale_date || null
+
+  useEffect(() => {
+    let active = true
+    if (c.status === 'cliente') {
+      listContatoDeals(orgSlug, c.id).then(d => { if (active) setDeals(d) })
+    } else {
+      setDeals([])
+    }
+    return () => { active = false }
+  }, [orgSlug, c.id, c.status])
 
   function changeStatus(value: string) {
     startStatus(async () => {
       const res = await setContatoStatus(orgSlug, c.id, value)
       if (!res.ok) { toast.error(res.error); return }
       toast.success('Classificação atualizada.')
+      router.refresh()
+    })
+  }
+
+  function handleReopen() {
+    if (!window.confirm('Arquivar a negociação atual e voltar esse cliente pro início do funil?')) return
+    startReopen(async () => {
+      const res = await reopenNegotiation(orgSlug, c.id)
+      if (!res.ok) { toast.error(res.error); return }
+      toast.success('Nova negociação iniciada.')
       router.refresh()
     })
   }
@@ -618,6 +641,11 @@ function DetailPanel({
             </a>
           </Button>
         )}
+        {c.status === 'cliente' && (
+          <Button size="sm" variant="outline" onClick={handleReopen} disabled={reopening}>
+            <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
+          </Button>
+        )}
       </div>
 
       {/* Métricas */}
@@ -655,6 +683,35 @@ function DetailPanel({
           {c.tags.map((t: string) => (
             <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>
           ))}
+        </div>
+      )}
+
+      {/* Histórico de negociações — cada passagem pelo funil, mesmo depois de virar cliente. */}
+      {deals.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+            Histórico de negociações
+          </p>
+          <div className="space-y-1.5">
+            {deals.map(d => (
+              <div key={d.id} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <span className={cn(
+                    'font-medium',
+                    d.status === 'won' && 'text-emerald-600',
+                    d.status === 'lost' && 'text-muted-foreground',
+                  )}>
+                    {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}
+                  </span>
+                  {d.stage_name && <span className="text-muted-foreground"> · {d.stage_name}</span>}
+                  <div className="text-xs text-muted-foreground">
+                    {fmtDate(d.won_at || d.lost_at || d.created_at)}
+                  </div>
+                </div>
+                <span className="font-semibold tabular-nums shrink-0">{fmtCurrency(d.value_cents || 0)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

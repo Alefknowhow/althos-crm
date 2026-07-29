@@ -82,6 +82,17 @@ export async function createLead(orgSlug: string, formData: FormData) {
     return { ok: false, error: error?.message || 'Erro ao criar contato' }
   }
 
+  await supabase.from('negocios').insert({
+    organization_id: org.id,
+    contato_id: lead.id,
+    pipeline_id: stageInfo?.pipeline_id,
+    stage_id,
+    value_cents,
+    status: 'open',
+    assigned_to: user.id,
+    created_by: user.id,
+  })
+
   await supabase.from('contato_activities').insert({
     contato_id: lead.id,
     organization_id: org.id,
@@ -192,19 +203,63 @@ export async function moveLeadToStage(orgSlug: string, leadId: string, newStageI
       .maybeSingle(),
     supabase
       .from('contatos')
-      .select('name, email, phone, value_cents')
+      .select('name, email, phone, value_cents, status, became_customer_at')
       .eq('id', leadId)
       .eq('organization_id', org.id)
       .maybeSingle(),
   ])
 
+  // Ganhou o negócio → vira cliente automaticamente (antes exigia uma ação
+  // manual separada que nada na tela disparava).
+  const updates: Record<string, any> = { stage_id: newStageId, updated_at: new Date().toISOString() }
+  if (stage?.is_won && lead?.status !== 'cliente') {
+    updates.status = 'cliente'
+    updates.became_customer_at = lead?.became_customer_at || new Date().toISOString()
+  }
+
   const { error } = await supabase
     .from('contatos')
-    .update({ stage_id: newStageId, updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', leadId)
     .eq('organization_id', org.id)
 
   if (error) return { ok: false, error: error.message }
+
+  // Espelha a mudança no negócio aberto correspondente (fonte de verdade do
+  // histórico) — se não houver um por algum motivo (contato criado antes
+  // desta tabela existir), cria um agora pra não perder o rastro daqui pra frente.
+  const negocioUpdates: Record<string, any> = { stage_id: newStageId, updated_at: new Date().toISOString() }
+  if (stage?.is_won) { negocioUpdates.status = 'won'; negocioUpdates.won_at = new Date().toISOString() }
+  else if (stage?.is_lost) { negocioUpdates.status = 'lost'; negocioUpdates.lost_at = new Date().toISOString() }
+
+  const { data: openNegocio } = await supabase
+    .from('negocios')
+    .select('id')
+    .eq('contato_id', leadId)
+    .eq('status', 'open')
+    .maybeSingle()
+
+  if (openNegocio) {
+    await supabase.from('negocios').update(negocioUpdates).eq('id', openNegocio.id)
+  } else {
+    const { data: contatoRow } = await supabase
+      .from('contatos')
+      .select('pipeline_id, value_cents')
+      .eq('id', leadId)
+      .maybeSingle()
+    if (contatoRow) {
+      await supabase.from('negocios').insert({
+        organization_id: org.id,
+        contato_id: leadId,
+        pipeline_id: contatoRow.pipeline_id,
+        stage_id: newStageId,
+        value_cents: contatoRow.value_cents || 0,
+        assigned_to: user.id,
+        created_by: user.id,
+        ...negocioUpdates,
+      })
+    }
+  }
 
   await supabase.from('contato_activities').insert({
     contato_id: leadId,
@@ -984,6 +1039,115 @@ export async function unmarkAsCustomer(orgSlug: string, leadId: string) {
     .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
+}
+
+export type ContatoDeal = {
+  id: string
+  status: 'open' | 'won' | 'lost'
+  stage_name: string | null
+  value_cents: number | null
+  won_at: string | null
+  lost_at: string | null
+  created_at: string
+}
+
+/** Histórico completo de negócios do contato (fonte: tabela `negocios`). */
+export async function listContatoDeals(orgSlug: string, contatoId: string): Promise<ContatoDeal[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('negocios')
+    .select('id, status, value_cents, won_at, lost_at, created_at, pipeline_stages(name)')
+    .eq('contato_id', contatoId)
+    .eq('organization_id', org.id)
+    .order('created_at', { ascending: false })
+  return (data || []).map((d: any) => ({
+    id: d.id,
+    status: d.status,
+    stage_name: d.pipeline_stages?.name ?? null,
+    value_cents: d.value_cents,
+    won_at: d.won_at,
+    lost_at: d.lost_at,
+    created_at: d.created_at,
+  }))
+}
+
+/**
+ * "Nova negociação" — pro cliente que já comprou antes e voltou. Segue o
+ * mesmo conceito usado por CRMs grandes (Salesforce/HubSpot): negócio é uma
+ * entidade própria, e um contato pode ter vários ao longo do tempo. O
+ * negócio anterior (ganho) permanece intacto na tabela `negocios` — cria-se
+ * um novo negócio aberto do zero, e o card do contato no Kanban passa a
+ * espelhar esse novo negócio (volta pra primeira etapa, valor zerado). O
+ * contato continua classificado como "cliente" — ele só está comprando de
+ * novo, não deixou de ser cliente.
+ */
+export async function reopenNegotiation(orgSlug: string, contatoId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
+  const supabase = createClient()
+
+  const { data: contato } = await supabase
+    .from('contatos')
+    .select('pipeline_id, status')
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado.' }
+  if (contato.status !== 'cliente') {
+    return { ok: false as const, error: 'Só é possível reabrir negociação para quem já é cliente.' }
+  }
+
+  const { data: firstStage } = await supabase
+    .from('pipeline_stages')
+    .select('id')
+    .eq('pipeline_id', contato.pipeline_id)
+    .order('position', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!firstStage) return { ok: false as const, error: 'Pipeline sem etapas configuradas.' }
+
+  // Fecha qualquer negócio ainda aberto (não deveria haver, mas por
+  // segurança — o índice único só permite 1 aberto por contato).
+  await supabase.from('negocios')
+    .update({ status: 'lost', lost_at: new Date().toISOString() })
+    .eq('contato_id', contatoId)
+    .eq('status', 'open')
+
+  const { error: insertError } = await supabase.from('negocios').insert({
+    organization_id: org.id,
+    contato_id: contatoId,
+    pipeline_id: contato.pipeline_id,
+    stage_id: firstStage.id,
+    value_cents: 0,
+    status: 'open',
+    assigned_to: user.id,
+    created_by: user.id,
+  })
+  if (insertError) return { ok: false as const, error: insertError.message }
+
+  const { error } = await supabase
+    .from('contatos')
+    .update({ stage_id: firstStage.id, value_cents: 0, updated_at: new Date().toISOString() })
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  await supabase.from('contato_activities').insert({
+    contato_id: contatoId,
+    organization_id: org.id,
+    type: 'negotiation_reopened',
+    payload: {},
+    created_by: user.id,
+  })
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
+  revalidatePath(`/app/${orgSlug}/pipeline`)
   return { ok: true as const }
 }
 
