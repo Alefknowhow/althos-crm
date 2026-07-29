@@ -89,15 +89,6 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-function checklistStatus(s: TravelSaleRow): { label: string; variant: 'success' | 'warning' | 'secondary' } {
-  if (s.posvenda_concluido_at) return { label: 'Pós-venda concluído', variant: 'success' }
-  if (s.embarque_realizado_at) return { label: 'Embarque realizado', variant: 'success' }
-  if (s.voucher_entregue_at) return { label: 'Voucher entregue', variant: 'success' }
-  if (s.contrato_assinado_at) return { label: 'Contrato assinado', variant: 'success' }
-  if (s.contrato_gerado_at) return { label: 'Contrato gerado', variant: 'warning' }
-  return { label: 'Pendente', variant: 'warning' }
-}
-
 function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) => void }) {
   const [text, setText] = useState(centsToReais(value))
   return (
@@ -379,9 +370,6 @@ export default function TravelSalesView({
                   <span className="font-medium text-sm leading-tight truncate">
                     {s.client_name || 'Cliente'}
                   </span>
-                  <Badge variant={checklistStatus(s).variant} className="shrink-0 text-[10px] px-1.5 py-0">
-                    {checklistStatus(s).label}
-                  </Badge>
                 </div>
                 {s.destination && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -667,12 +655,6 @@ function SaleEditor({
               </div>
             </div>
           </div>
-
-          {s.status === 'cancelled'
-            ? <Badge variant="destructive" className="shrink-0 text-[10px] px-1.5 py-0">Cancelada</Badge>
-            : s.tasks_generated_at
-              ? <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">Tarefas geradas</Badge>
-              : <Badge variant="warning" className="shrink-0 text-[10px] px-1.5 py-0">Pendente</Badge>}
         </div>
 
         {/* Ações — quebra em várias linhas em vez de estourar a largura da tela. */}
