@@ -243,11 +243,11 @@ export default function ContatosView({
       </div>
 
       {/* ── Master-detail ───────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-260px)] lg:min-h-[480px]">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:min-h-[480px]">
         {/* Master */}
         <div
           className={cn(
-            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
+            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden lg:max-h-[calc(100vh-260px)]',
             mobileDetail && 'hidden lg:flex',
           )}
         >
@@ -356,7 +356,7 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto',
+            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto lg:max-h-[calc(100vh-260px)]',
             !mobileDetail && 'hidden lg:block',
           )}
         >

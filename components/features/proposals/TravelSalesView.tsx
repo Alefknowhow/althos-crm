@@ -337,13 +337,12 @@ export default function TravelSalesView({
       </div>
 
       <div className={cn(
-        'grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px]',
-        selected ? 'h-[calc(100dvh-8rem)] md:h-[calc(100dvh-19rem)]' : 'h-[calc(100dvh-19rem)]',
+        'grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px] items-start',
       )}>
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
           'rounded-none border bg-card overflow-y-auto divide-y',
-          selected && 'hidden md:block',
+          selected ? 'hidden md:block md:max-h-[calc(100dvh-19rem)]' : 'max-h-[calc(100dvh-19rem)]',
         )}>
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
@@ -395,7 +394,7 @@ export default function TravelSalesView({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto',
+          'rounded-none border bg-card overflow-y-auto max-h-[calc(100dvh-8rem)] md:max-h-[calc(100dvh-19rem)]',
           !selected && 'hidden md:flex',
         )}>
           {selected

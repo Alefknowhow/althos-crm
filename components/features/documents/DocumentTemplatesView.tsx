@@ -107,8 +107,8 @@ export default function DocumentTemplatesView({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[380px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
-        <div className={cn('rounded-none border bg-card overflow-y-auto divide-y', selected && 'hidden md:block')}>
+      <div className="grid md:grid-cols-[380px_1fr] gap-4 min-h-[440px] items-start">
+        <div className={cn('rounded-none border bg-card overflow-y-auto divide-y max-h-[calc(100dvh-19rem)]', selected && 'hidden md:block')}>
           {templates.map(t => {
             const active = t.id === selectedId
             return (
@@ -138,7 +138,7 @@ export default function DocumentTemplatesView({
           })}
         </div>
 
-        <div className={cn('rounded-none border bg-card overflow-y-auto', !selected && 'hidden md:flex')}>
+        <div className={cn('rounded-none border bg-card overflow-y-auto max-h-[calc(100dvh-19rem)]', !selected && 'hidden md:flex')}>
           {selected
             ? <TemplateEditor
                 key={selected.id}

@@ -197,10 +197,10 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
+      <div className="grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px] items-start">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto divide-y',
+          'rounded-none border bg-card overflow-y-auto divide-y max-h-[calc(100dvh-19rem)]',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -249,7 +249,7 @@ export default function ProposalsList({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto',
+          'rounded-none border bg-card overflow-y-auto max-h-[calc(100dvh-19rem)]',
           !selected && 'hidden md:flex',
         )}>
           {selected
