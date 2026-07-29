@@ -34,6 +34,12 @@ export type ExtractedTravelDocument = {
   observacoes: string | null
   informacoes_importantes: string | null
   informacoes_servico: string | null
+  politica_cancelamento: string | null
+  viajantes: {
+    nome: string | null
+    data_nascimento: string | null
+    cpf: string | null
+  }[]
 }
 
 const EXTRACT_TOOL: Anthropic.Messages.Tool = {
@@ -72,8 +78,22 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
       observacoes: { type: ['string', 'null'], description: 'Outras informações relevantes não cobertas pelos campos acima, em 1-2 frases' },
       informacoes_importantes: { type: ['string', 'null'], description: 'Informações importantes do documento — contatos de emergência, telefone de assistência, como buscar atendimento durante a viagem, etc.' },
       informacoes_servico: { type: ['string', 'null'], description: 'Informações sobre os serviços contratados — o que está incluso, horários, condições de uso, etc.' },
+      politica_cancelamento: { type: ['string', 'null'], description: 'Texto da política/regras de cancelamento e multas, se houver' },
+      viajantes: {
+        type: 'array',
+        description: 'Lista de viajantes/passageiros mencionados no documento (nome, data de nascimento, CPF), sem duplicar a mesma pessoa',
+        items: {
+          type: 'object',
+          properties: {
+            nome: { type: ['string', 'null'] },
+            data_nascimento: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            cpf: { type: ['string', 'null'], description: 'Somente dígitos' },
+          },
+          required: ['nome', 'data_nascimento', 'cpf'],
+        },
+      },
     },
-    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico'],
+    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
   },
 }
 
@@ -138,5 +158,13 @@ export async function extractTravelDocumentFromFile(
     observacoes: typeof parsed.observacoes === 'string' ? parsed.observacoes.slice(0, 600) : null,
     informacoes_importantes: typeof parsed.informacoes_importantes === 'string' ? parsed.informacoes_importantes.slice(0, 1000) : null,
     informacoes_servico: typeof parsed.informacoes_servico === 'string' ? parsed.informacoes_servico.slice(0, 1000) : null,
+    politica_cancelamento: typeof parsed.politica_cancelamento === 'string' ? parsed.politica_cancelamento.slice(0, 1000) : null,
+    viajantes: Array.isArray(parsed.viajantes)
+      ? parsed.viajantes.slice(0, 20).map((v: any) => ({
+          nome: typeof v?.nome === 'string' ? v.nome.slice(0, 200) : null,
+          data_nascimento: /^\d{4}-\d{2}-\d{2}$/.test(v?.data_nascimento) ? v.data_nascimento : null,
+          cpf: typeof v?.cpf === 'string' ? v.cpf.replace(/\D/g, '').slice(0, 14) : null,
+        })).filter((v: any) => v.nome || v.cpf || v.data_nascimento)
+      : [],
   }
 }

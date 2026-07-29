@@ -573,8 +573,12 @@ function SaleEditor({
       const res = await extractTravelDocument(orgSlug, { base64, mediaType: lastFile.type })
       if (!res.ok) { toast.error(res.error); return }
       const data: ExtractedTravelDocument = res.data
+      const extractedTravelers = data.viajantes
+        .filter(v => v.nome || v.cpf || v.data_nascimento)
+        .map(v => ({ name: v.nome || '', birth_date: v.data_nascimento || '', cpf: v.cpf || '' }))
       setS(prev => ({
         ...prev,
+        client_name: prev.client_name || data.cliente || extractedTravelers[0]?.name || prev.client_name,
         destination: data.destino || prev.destination,
         hotel_name: data.hotel || prev.hotel_name,
         operator: data.operadora || prev.operator,
@@ -584,9 +588,11 @@ function SaleEditor({
         return_date: data.data_volta || prev.return_date,
         airline: data.voos[0]?.companhia || prev.airline,
         notes: data.observacoes || prev.notes,
+        cancellation_policy: data.politica_cancelamento || prev.cancellation_policy,
         important_info: data.informacoes_importantes || prev.important_info,
         service_info: data.informacoes_servico || prev.service_info,
       }))
+      if (extractedTravelers.length > 0) set('travelers', extractedTravelers)
       toast.success('Dados extraídos — revise os campos antes de salvar.')
     } finally {
       setExtracting(false)
