@@ -595,10 +595,7 @@ function DetailPanel({
         </button>
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
-            <CopyButton value={c.name} label="Nome" />
-          </div>
+          <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
@@ -660,8 +657,17 @@ function DetailPanel({
 
       {/* Contato + localização (complementar — sem duplicar a lista) */}
       <div className="grid grid-cols-2 gap-3">
+        <Field icon={Users} label="Nome completo">
+          <span className="flex items-center gap-1.5">
+            <span className="text-sm font-medium break-words">{c.name}</span>
+            <CopyButton value={c.name} label="Nome" />
+          </span>
+        </Field>
         <Field icon={Mail} label="E-mail">
-          <span className="text-sm font-medium break-all">{c.email || '—'}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-sm font-medium break-all">{c.email || '—'}</span>
+            <CopyButton value={c.email} label="E-mail" />
+          </span>
         </Field>
         <Field icon={Phone} label="Telefone">
           <span className="text-sm font-medium">{c.phone || '—'}</span>

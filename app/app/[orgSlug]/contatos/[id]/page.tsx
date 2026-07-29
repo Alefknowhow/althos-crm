@@ -134,13 +134,12 @@ export default async function ContatoDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">{lead.name}</h1>
-            <CopyButton value={lead.name} label="Nome" />
             <Badge variant="outline" className={statusMeta.className}>
               {statusMeta.label}
             </Badge>
           </div>
-          <div className="text-muted-foreground mt-1 space-x-4">
-            <span>{lead.email || 'Sem e-mail'}</span>
+          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1">{lead.email || 'Sem e-mail'}{lead.email && <CopyButton value={lead.email} label="E-mail" />}</span>
             <span>{lead.phone || 'Sem telefone'}</span>
           </div>
         </div>

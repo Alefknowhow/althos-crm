@@ -24,15 +24,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
-  createFinancialEntry, updateFinancialEntry, deleteFinancialEntry, suggestCategoryForEntry,
+  createFinancialEntry, updateFinancialEntry, deleteFinancialEntry,
   uploadFinancialAttachment, deleteFinancialAttachment, getFinancialAttachmentUrl,
   type FinancialEntryRow,
 } from '@/actions/financial'
-import { createFinancialSetting, type FinancialSettingType, type FinancialSettingRow } from '@/actions/financial-settings'
+import { type FinancialSettingType, type FinancialSettingRow } from '@/actions/financial-settings'
 import FinancialCsvImporter from './FinancialCsvImporter'
 import { toast } from 'sonner'
 import {
-  Wallet, Plus, Trash2, ArrowLeft, Search, Save, Sparkles, Upload, Paperclip, FileIcon,
+  Wallet, Plus, Trash2, ArrowLeft, Search, Save, Upload, Paperclip, FileIcon,
   ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown, Repeat,
 } from 'lucide-react'
 
@@ -364,26 +364,11 @@ function NewEntryDialog({
   const [vencimento, setVencimento] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [isRecurring, setIsRecurring] = useState(false)
-  const [suggesting, setSuggesting] = useState(false)
 
   function reset() {
     setTipo('despesa'); setCategoria(null); setExtraCategoria(null); setValorCents(0)
     setCompetencia(new Date().toISOString().slice(0, 10)); setVencimento(''); setObservacoes('')
     setIsRecurring(false)
-  }
-
-  async function handleSuggest() {
-    if (!observacoes.trim()) { toast.error('Escreva uma observação/descrição para eu sugerir a categoria.'); return }
-    setSuggesting(true)
-    const res = await suggestCategoryForEntry(orgSlug, { descricao: observacoes, tipo })
-    setSuggesting(false)
-    if (!res.ok) { toast.error(res.error); return }
-    setCategoria(res.categoria)
-    if (!settings.categoria.some(c => c.name.toLowerCase() === res.categoria.toLowerCase())) {
-      setExtraCategoria(res.categoria)
-      const created = await createFinancialSetting(orgSlug, 'categoria', res.categoria)
-      if (created.ok) router.refresh()
-    }
   }
 
   async function handleCreate() {
@@ -420,12 +405,7 @@ function NewEntryDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label className="text-xs flex items-center justify-between">
-                Categoria <span className="text-destructive">*</span>
-                <button type="button" onClick={handleSuggest} disabled={suggesting} className="text-primary hover:underline inline-flex items-center gap-1 text-[11px] font-normal">
-                  <Sparkles className="w-3 h-3" /> {suggesting ? 'Sugerindo…' : 'Sugerir com IA'}
-                </button>
-              </Label>
+              <Label className="text-xs">Categoria <span className="text-destructive">*</span></Label>
               <SettingSelect value={categoria} onChange={setCategoria} options={withExtra(settings.categoria, extraCategoria)} required placeholder="Selecione a categoria" />
             </div>
             <div className="space-y-1">
@@ -479,7 +459,6 @@ function EntryEditor({
   const [extraCategoria, setExtraCategoria] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-  const [suggesting, setSuggesting] = useState(false)
 
   const patch = () => ({
     tipo: e.tipo, categoria: e.categoria, subcategoria: e.subcategoria, centro_custo: e.centro_custo,
@@ -487,20 +466,6 @@ function EntryEditor({
     competencia: e.competencia, vencimento: e.vencimento, data_pagamento: e.data_pagamento,
     status: e.status, operadora: e.operadora, observacoes: e.observacoes,
   })
-
-  async function handleSuggest() {
-    if (!e.observacoes?.trim()) { toast.error('Escreva uma observação para eu sugerir a categoria.'); return }
-    setSuggesting(true)
-    const res = await suggestCategoryForEntry(orgSlug, { descricao: e.observacoes, tipo: e.tipo })
-    setSuggesting(false)
-    if (!res.ok) { toast.error(res.error); return }
-    set('categoria', res.categoria)
-    if (!settings.categoria.some(c => c.name.toLowerCase() === res.categoria.toLowerCase())) {
-      setExtraCategoria(res.categoria)
-      const created = await createFinancialSetting(orgSlug, 'categoria', res.categoria)
-      if (created.ok) router.refresh()
-    }
-  }
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
@@ -559,10 +524,7 @@ function EntryEditor({
         <Field label="Observações / descrição"><Textarea rows={2} value={e.observacoes || ''} onChange={ev => set('observacoes', ev.target.value)} /></Field>
 
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label={<span className="flex items-center justify-between w-full">Categoria
-            <button type="button" onClick={handleSuggest} disabled={suggesting} className="text-primary hover:underline inline-flex items-center gap-1 text-[11px] font-normal">
-              <Sparkles className="w-3 h-3" /> {suggesting ? 'Sugerindo…' : 'Sugerir com IA'}
-            </button></span>}>
+          <Field label="Categoria">
             <SettingSelect value={e.categoria} onChange={v => set('categoria', v)} options={withExtra(settings.categoria, extraCategoria)} required placeholder="Selecione a categoria" />
           </Field>
           <Field label="Subcategoria">

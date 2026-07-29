@@ -219,7 +219,6 @@ function CustomerPreview({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold leading-tight">{c.name}</h2>
-            <CopyButton value={c.name} label="Nome" />
             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
               <UserCheck className="w-3 h-3 mr-1" /> Cliente
             </Badge>
@@ -267,8 +266,17 @@ function CustomerPreview({
 
       {/* Contact + location */}
       <div className="grid grid-cols-2 gap-3 pt-1">
+        <Field icon={Users} label="Nome completo">
+          <span className="flex items-center gap-1.5">
+            <span className="text-sm font-medium break-words">{c.name}</span>
+            <CopyButton value={c.name} label="Nome" />
+          </span>
+        </Field>
         <Field icon={Mail} label="E-mail">
-          <span className="text-sm font-medium break-all">{c.email || '—'}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="text-sm font-medium break-all">{c.email || '—'}</span>
+            <CopyButton value={c.email} label="E-mail" />
+          </span>
         </Field>
         <Field icon={Phone} label="Telefone">
           <span className="text-sm font-medium">{c.phone || '—'}</span>
