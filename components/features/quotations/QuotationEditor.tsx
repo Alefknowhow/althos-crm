@@ -461,6 +461,24 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.price_per_person_cents, paxTotal, q.total_manual])
 
+  // Datas da viagem são a fonte única — check-in/check-out de hospedagem e as
+  // datas de voo (ida/volta) seguem a data da viagem automaticamente. Só não
+  // mexe se o campo já tiver sido customizado pra uma data diferente da viagem
+  // (ex.: check-in um dia antes do voo de ida).
+  const prevTripDates = useRef({ start: q.start_date, end: q.end_date })
+  useEffect(() => {
+    const prev = prevTripDates.current
+    if (prev.start !== q.start_date) {
+      setLodgings(ls => ls.map(l => (!l.check_in || l.check_in === prev.start) ? { ...l, check_in: q.start_date || null } : l))
+      setFlights(fs => fs.map(f => f.leg_type === 'outbound' && (!f.date || f.date === prev.start) ? { ...f, date: q.start_date || undefined } : f))
+    }
+    if (prev.end !== q.end_date) {
+      setLodgings(ls => ls.map(l => (!l.check_out || l.check_out === prev.end) ? { ...l, check_out: q.end_date || null } : l))
+      setFlights(fs => fs.map(f => f.leg_type === 'inbound' && (!f.date || f.date === prev.end) ? { ...f, date: q.end_date || undefined } : f))
+    }
+    prevTripDates.current = { start: q.start_date, end: q.end_date }
+  }, [q.start_date, q.end_date])
+
   /* ─────── payload + autosave ─────── */
   const payload = useMemo(() => ({
     title: q.title || null, subtitle: q.subtitle || null, status: q.status as any,
@@ -652,12 +670,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <F label="Nome do cliente"><Input value={q.client_name} onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" /></F>
-            <F label="Vincular ao contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring)">
+            <F label="Contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring) — o nome do cliente vem daqui">
               <Select value={q.contato_id || 'none'}
                 onValueChange={v => setQ(s => {
                   const lead = leads.find(l => l.id === v)
-                  return { ...s, contato_id: v === 'none' ? null : v, client_name: s.client_name || lead?.name || '' }
+                  return { ...s, contato_id: v === 'none' ? null : v, client_name: v === 'none' ? s.client_name : (lead?.name || s.client_name) }
                 })}>
                 <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
                 <SelectContent>
@@ -665,6 +682,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                   {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </F>
+            <F label="Nome do cliente" hint={q.contato_id ? 'vem do contato vinculado acima' : undefined}>
+              <Input value={q.client_name} disabled={!!q.contato_id}
+                onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" />
             </F>
           </div>
         )}
