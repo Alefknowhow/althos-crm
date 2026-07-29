@@ -55,8 +55,7 @@ export default function ProposalsList({
   proposals: ProposalRow[]
   members?: Member[]
   contatos?: Contato[]
-  /** Notifica o pai (CotacoesTabs) quando uma proposta abre/fecha, pra
-   *  esconder as abas "Cotações/Orçamento IA" no mobile enquanto aberta. */
+  /** Notifica o pai quando uma proposta abre/fecha, se precisar reagir. */
   onSelectionChange?: (hasSelection: boolean) => void
 }) {
   const router = useRouter()

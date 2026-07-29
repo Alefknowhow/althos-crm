@@ -1072,6 +1072,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         <Button type="button" variant="outline" size="sm" onClick={() => setExtractOpen(true)}>
           <Sparkles className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Autopreencher com IA</span>
         </Button>
+        {!isOffer && (
+          <Button type="button" variant="outline" size="sm" asChild>
+            <a href={`/app/${orgSlug}/cotacoes/${q0.id}/pdf`} target="_blank" rel="noopener noreferrer">
+              <FileText className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Gerar PDF</span>
+            </a>
+          </Button>
+        )}
         <span className={`text-[11px] ${saveState === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
           {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? '✓ Salvo' : saveState === 'error' ? 'Erro ao salvar' : ''}
         </span>
