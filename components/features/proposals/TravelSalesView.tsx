@@ -33,7 +33,6 @@ import {
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
-import SaleChecklist from '@/components/features/reservas/SaleChecklist'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
@@ -175,9 +174,6 @@ export default function TravelSalesView({
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
   const [pickedContato, setPickedContato] = useState<string>('')
-  const [importOpen, setImportOpen] = useState(false)
-  const [importedPatch, setImportedPatch] = useState<Record<string, any> | null>(null)
-  const [importedFile, setImportedFile] = useState<File | null>(null)
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -217,47 +213,15 @@ export default function TravelSalesView({
     if (!pickedContato) { toast.error('Selecione o cliente (contato do CRM)'); return }
     setCreating(true)
     const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal, pickedContato)
-    if (!res.ok) { setCreating(false); toast.error(res.error); return }
-
-    if (importedPatch) {
-      await updateTravelSale(orgSlug, res.data.id, importedPatch)
-    }
-    if (importedFile) {
-      const fd = new FormData()
-      fd.append('file', importedFile)
-      const uploadRes = await uploadSaleVoucher(orgSlug, fd)
-      if (uploadRes.ok) {
-        await updateTravelSale(orgSlug, res.data.id, { vouchers: [{ url: uploadRes.url, name: uploadRes.name }] })
-      }
-    }
-
     setCreating(false)
+    if (!res.ok) { toast.error(res.error); return }
+
     setNewOpen(false)
     setPickedProposal('none')
     setPickedContato('')
-    setImportedPatch(null)
-    setImportedFile(null)
     toast.success('Venda criada')
     setSelectedId(res.data.id)
     router.refresh()
-  }
-
-  function handleImportApply(data: ExtractedTravelDocument, file: File) {
-    const patch: Record<string, any> = {}
-    if (data.destino) patch.destination = data.destino
-    if (data.hotel) patch.hotel_name = data.hotel
-    if (data.operadora) patch.operator = data.operadora
-    if (data.localizador_pacote) patch.package_locator = data.localizador_pacote
-    if (data.localizador_aereo) patch.air_locator = data.localizador_aereo
-    if (data.data_ida) patch.departure_date = data.data_ida
-    if (data.data_volta) patch.return_date = data.data_volta
-    if (data.voos[0]?.companhia) patch.airline = data.voos[0].companhia
-    if (data.observacoes) patch.notes = data.observacoes
-    if (data.informacoes_importantes) patch.important_info = data.informacoes_importantes
-    if (data.informacoes_servico) patch.service_info = data.informacoes_servico
-    setImportedPatch(patch)
-    setImportedFile(file)
-    toast.success('Documento importado. Os dados serão aplicados ao criar a venda.')
   }
 
   function handlePickProposal(v: string) {
@@ -298,11 +262,10 @@ export default function TravelSalesView({
         />
         <NewSaleDialog
           orgSlug={orgSlug}
-          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setImportedPatch(null); setImportedFile(null) } }}
+          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
           proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
           leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
           creating={creating} onCreate={handleCreate}
-          hasImported={!!importedFile} onImportApply={handleImportApply}
         />
       </>
     )
@@ -457,11 +420,10 @@ export default function TravelSalesView({
 
       <NewSaleDialog
         orgSlug={orgSlug}
-        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setImportedPatch(null); setImportedFile(null) } }}
+        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
         proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
         leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
         creating={creating} onCreate={handleCreate}
-        hasImported={!!importedFile} onImportApply={handleImportApply}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
@@ -483,7 +445,7 @@ export default function TravelSalesView({
 
 function NewSaleDialog({
   orgSlug, open, onOpenChange, proposals, picked, setPicked, leads, pickedContato, setPickedContato,
-  creating, onCreate, hasImported, onImportApply,
+  creating, onCreate,
 }: {
   orgSlug: string
   open: boolean
@@ -496,11 +458,7 @@ function NewSaleDialog({
   setPickedContato: (v: string) => void
   creating: boolean
   onCreate: () => void
-  hasImported: boolean
-  onImportApply: (data: ExtractedTravelDocument, file: File) => void
 }) {
-  const [importOpen, setImportOpen] = useState(false)
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -539,17 +497,9 @@ function NewSaleDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs">Importar de Documento <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" /> {hasImported ? 'Documento importado — trocar' : 'Importar de PDF/imagem'}
-            </Button>
-            {hasImported && (
-              <p className="text-xs text-success flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Dados extraídos serão aplicados à venda ao criar.
-              </p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Depois de criar, você pode enviar o voucher e autopreencher os dados com IA na tela da venda.
+          </p>
         </div>
 
         <DialogFooter>
@@ -559,15 +509,6 @@ function NewSaleDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      <DocumentExtractDialog
-        orgSlug={orgSlug}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        title="Importar de Documento"
-        description="Envie o voucher/reserva da operadora (PDF ou imagem) — a IA lê o documento e preenche os campos da venda para você revisar."
-        onApply={onImportApply}
-      />
     </Dialog>
   )
 }
@@ -595,6 +536,7 @@ function SaleEditor({
   const [uploading, setUploading] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
+  const [extractOpen, setExtractOpen] = useState(false)
   const router = useRouter()
 
   function toggleIncluded(key: string) {
@@ -617,6 +559,30 @@ function SaleEditor({
     setUploading(false)
     set('vouchers', next)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function handleExtracted(data: ExtractedTravelDocument, file: File) {
+    setS(prev => ({
+      ...prev,
+      destination: data.destino || prev.destination,
+      hotel_name: data.hotel || prev.hotel_name,
+      operator: data.operadora || prev.operator,
+      package_locator: data.localizador_pacote || prev.package_locator,
+      air_locator: data.localizador_aereo || prev.air_locator,
+      departure_date: data.data_ida || prev.departure_date,
+      return_date: data.data_volta || prev.return_date,
+      airline: data.voos[0]?.companhia || prev.airline,
+      notes: data.observacoes || prev.notes,
+      important_info: data.informacoes_importantes || prev.important_info,
+      service_info: data.informacoes_servico || prev.service_info,
+    }))
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadSaleVoucher(orgSlug, fd)
+    setUploading(false)
+    if (res.ok) set('vouchers', [...vouchers, { url: res.url, name: res.name }])
+    toast.success('Dados extraídos — revise os campos antes de salvar.')
   }
 
   const patch = () => ({
@@ -728,7 +694,6 @@ function SaleEditor({
       </div>
 
       <div className="p-4 space-y-4">
-        <SaleChecklist orgSlug={orgSlug} sale={s} onUpdated={patch => setS(prev => ({ ...prev, ...patch }))} />
         <SaleTasksList orgSlug={orgSlug} saleId={s.id} />
 
         {/* Auto-filled (editable) */}
@@ -889,14 +854,22 @@ function SaleEditor({
               className="hidden"
               onChange={e => handleFiles(e.target.files)}
             />
-            <Button
-              type="button" variant="outline" size="sm" disabled={uploading}
-              onClick={() => fileRef.current?.click()}
-            >
-              {uploading
-                ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</>
-                : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Adicionar vouchers</>}
-            </Button>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                type="button" variant="outline" size="sm" disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading
+                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</>
+                  : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Adicionar vouchers</>}
+              </Button>
+              <Button
+                type="button" variant="outline" size="sm" disabled={uploading}
+                onClick={() => setExtractOpen(true)}
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Autopreencher com IA
+              </Button>
+            </div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
               <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. Vários arquivos permitidos.
             </p>
@@ -940,6 +913,15 @@ function SaleEditor({
           </p>
         )}
       </div>
+
+      <DocumentExtractDialog
+        orgSlug={orgSlug}
+        open={extractOpen}
+        onOpenChange={setExtractOpen}
+        title="Autopreencher com IA"
+        description="Envie o voucher/reserva da operadora (PDF ou imagem) — a IA lê o documento e preenche os campos da venda para você revisar."
+        onApply={handleExtracted}
+      />
 
       <CancelTravelSaleDialog
         open={cancelOpen}
