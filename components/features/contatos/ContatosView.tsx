@@ -699,8 +699,8 @@ function DetailPanel({
         )}
       </div>
 
-      {/* Métricas */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Métricas + contato + localização — grid único, até 4 por linha */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Field icon={Wallet} label="Total comprado">
           <span className="text-2xl font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
         </Field>
@@ -715,10 +715,6 @@ function DetailPanel({
         <Field icon={UserCircle2} label="Vendedor responsável">
           <span className="text-sm font-medium">{sellerName || '—'}</span>
         </Field>
-      </div>
-
-      {/* Contato + localização (complementar — sem duplicar a lista) */}
-      <div className="grid grid-cols-2 gap-3">
         <Field icon={Users} label="Nome completo">
           <span className="flex items-center gap-1.5">
             <span className="text-sm font-medium break-words">{c.name}</span>
