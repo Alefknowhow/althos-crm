@@ -14,13 +14,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
+import GenerateDocumentDialog from './GenerateDocumentDialog'
 import { cn } from '@/lib/utils'
 import {
   createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate,
   type DocumentTemplateRow,
 } from '@/actions/document-templates'
 import { toast } from 'sonner'
-import { FileText, Plus, Trash2, ArrowLeft, Save, Info } from 'lucide-react'
+import { FileText, Plus, Trash2, ArrowLeft, Save, Info, Printer } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
@@ -37,6 +38,7 @@ export default function DocumentTemplatesView({
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [printTemplateId, setPrintTemplateId] = useState<string | null>(null)
 
   const selected = templates.find(t => t.id === selectedId) ?? null
 
@@ -97,20 +99,32 @@ export default function DocumentTemplatesView({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[280px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
+      <div className="grid md:grid-cols-[380px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         <div className={cn('rounded-none border bg-card overflow-y-auto divide-y', selected && 'hidden md:block')}>
           {templates.map(t => {
             const active = t.id === selectedId
             return (
-              <button
+              <div
                 key={t.id}
-                type="button"
-                onClick={() => setSelectedId(t.id)}
-                className={cn('w-full text-left p-3 transition-colors', FOCUS_RING, active ? 'bg-primary/5' : 'hover:bg-muted/50')}
+                className={cn('w-full flex items-center gap-2 p-3 transition-colors', active ? 'bg-primary/5' : 'hover:bg-muted/50')}
               >
-                <p className="font-medium text-sm truncate">{t.name}</p>
-                {t.category && <p className="text-xs text-muted-foreground mt-0.5">{t.category}</p>}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(t.id)}
+                  className={cn('flex-1 min-w-0 text-left', FOCUS_RING)}
+                >
+                  <p className="font-medium text-sm truncate">{t.name}</p>
+                  {t.category && <p className="text-xs text-muted-foreground mt-0.5">{t.category}</p>}
+                </button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setPrintTemplateId(t.id)}
+                >
+                  <Printer className="w-3.5 h-3.5 mr-1.5" /> Imprimir
+                </Button>
+              </div>
             )
           })}
         </div>
@@ -136,6 +150,17 @@ export default function DocumentTemplatesView({
       </div>
 
       <NewTemplateDialog open={newOpen} onOpenChange={setNewOpen} name={newName} setName={setNewName} creating={creating} onCreate={handleCreate} />
+
+      <GenerateDocumentDialog
+        orgSlug={orgSlug}
+        templates={templates.filter(t => t.id === printTemplateId)}
+        open={!!printTemplateId}
+        onOpenChange={o => !o && setPrintTemplateId(null)}
+        onGenerated={id => {
+          setPrintTemplateId(null)
+          window.open(`/app/${orgSlug}/documentos/${id}/print`, '_blank', 'noopener,noreferrer')
+        }}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
         <AlertDialogContent>

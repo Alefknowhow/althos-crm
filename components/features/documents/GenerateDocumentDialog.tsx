@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
@@ -43,6 +43,11 @@ export default function GenerateDocumentDialog({
     if (t && !title) setTitle(t.name)
     setFieldValues({})
   }
+
+  useEffect(() => {
+    if (open && templates.length === 1 && !templateId) handlePickTemplate(templates[0].id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, templates])
 
   async function handleGenerate() {
     if (!templateId) { toast.error('Selecione um modelo.'); return }
