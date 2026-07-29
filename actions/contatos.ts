@@ -157,6 +157,9 @@ export async function updateLead(orgSlug: string, leadId: string, formData: Form
   const stage_id = formData.get('stage_id') as string
   if (stage_id) updates.stage_id = stage_id
 
+  const internal_notes = formData.get('internal_notes') as string
+  if (internal_notes !== null) updates.internal_notes = internal_notes || null
+
   const { error } = await supabase.from('contatos').update(updates).eq('id', leadId).eq('organization_id', org.id)
 
   if (error) return { ok: false, error: error.message }
@@ -384,6 +387,29 @@ export async function updateLeadTags(orgSlug: string, leadId: string, tags: stri
   revalidatePath(`/app/${orgSlug}/pipeline`)
   revalidatePath(`/app/${orgSlug}/contatos/${leadId}`)
   return { ok: true as const, tags: clean }
+}
+
+/**
+ * Observações internas — campo livre editável direto no perfil, substitui o
+ * antigo mecanismo de "Adicionar Nota" (popup + timeline de atividades).
+ */
+export async function updateContatoInternalNotes(orgSlug: string, contatoId: string, text: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('contatos')
+    .update({ internal_notes: text || null })
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
 }
 
 export async function requestLeadQualification(orgSlug: string, leadId: string) {

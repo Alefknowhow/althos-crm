@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/empty-state'
 import { Users } from 'lucide-react'
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
+import { listOrgMembers } from '@/actions/sales'
 import { isTravelNiche } from '@/lib/niche'
 import { cn } from '@/lib/utils'
 
@@ -101,7 +102,7 @@ export default async function ContatosPage({
   const from = page * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
-  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }] =
+  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members] =
     await Promise.all([
       q.order('updated_at', { ascending: false }).range(from, to),
       supabase
@@ -112,6 +113,7 @@ export default async function ContatosPage({
         .order('created_at', { ascending: true }),
       listSavedFilters(params.orgSlug, 'leads'),
       supabase.from('contatos').select('tags, source').eq('organization_id', org.id).limit(1000),
+      listOrgMembers(params.orgSlug),
     ])
 
   // Distinct tags + sources for the filter UI.
@@ -207,9 +209,6 @@ export default async function ContatosPage({
 
   const header = (
     <div className={cn('space-y-4', selId && 'hidden lg:block')}>
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Contatos</h1>
-      </div>
       <div className="flex flex-wrap gap-2">
         {STATUS_TABS.map(tab => {
           const active = status === tab.value
@@ -248,6 +247,7 @@ export default async function ContatosPage({
         savedFilters={savedFilters}
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
+        members={members}
       />
       {listRows.length === 0 && !isFiltered && (
         <EmptyState

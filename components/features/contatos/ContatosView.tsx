@@ -23,21 +23,24 @@ import {
 import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Mail, Phone,
   MapPin, FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
-  Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw,
+  Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
 } from '@/lib/contatos'
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
-  getContatoTravelLinks, reopenNegotiation, listContatoDeals,
+  getContatoTravelLinks, reopenNegotiation, listContatoDeals, updateLeadTags,
+  updateContatoInternalNotes,
   type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal,
 } from '@/actions/contatos'
+import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import CopyButton from '@/components/ui/copy-button'
+import { Textarea } from '@/components/ui/textarea'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -95,6 +98,7 @@ interface Props {
   savedFilters: SavedFilter[]
   filters: Filters
   isTravel: boolean
+  members: { id: string; name: string }[]
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -142,6 +146,7 @@ export default function ContatosView({
   savedFilters,
   filters,
   isTravel,
+  members,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -359,6 +364,8 @@ export default function ContatosView({
               orgSlug={orgSlug}
               selected={selected}
               onBack={() => setMobileDetail(false)}
+              members={members}
+              isTravel={isTravel}
             />
           ) : (
             <div className="h-full grid place-items-center p-10 text-center">
@@ -540,18 +547,22 @@ function ListAvatar({ name, url }: { name: string; url: string | null }) {
 
 // ── Painel de detalhe ────────────────────────────────────────────────
 function DetailPanel({
-  orgSlug, selected, onBack,
+  orgSlug, selected, onBack, members, isTravel,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
   onBack: () => void
+  members: { id: string; name: string }[]
+  isTravel: boolean
 }) {
   const router = useRouter()
   const c = selected.contato
   const stageName = c.pipeline_stages?.name as string | undefined
+  const sellerName = c.assigned_to ? members.find(m => m.id === c.assigned_to)?.name : null
   const [savingStatus, startStatus] = useTransition()
   const [reopening, startReopen] = useTransition()
   const [deals, setDeals] = useState<ContatoDeal[]>([])
+  const [credits, setCredits] = useState<TravelCreditRow[]>([])
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -566,6 +577,18 @@ function DetailPanel({
     }
     return () => { active = false }
   }, [orgSlug, c.id, c.status])
+
+  useEffect(() => {
+    let active = true
+    if (isTravel) {
+      listCreditsForContato(orgSlug, c.id).then(cr => { if (active) setCredits(cr) })
+    } else {
+      setCredits([])
+    }
+    return () => { active = false }
+  }, [orgSlug, c.id, isTravel])
+
+  const creditBalance = credits.reduce((a, cr) => a + (cr.status === 'available' ? cr.valor_cents - cr.valor_usado_cents : 0), 0)
 
   function changeStatus(value: string) {
     startStatus(async () => {
@@ -584,6 +607,33 @@ function DetailPanel({
       toast.success('Nova negociação iniciada.')
       router.refresh()
     })
+  }
+
+  const [tags, setTags] = useState<string[]>(Array.isArray(c.tags) ? c.tags : [])
+  const [tagInput, setTagInput] = useState('')
+  async function saveTags(next: string[]) {
+    setTags(next)
+    const res = await updateLeadTags(orgSlug, c.id, next)
+    if (!res.ok) toast.error(res.error)
+  }
+  function addTag() {
+    const v = tagInput.trim()
+    if (!v || tags.includes(v)) { setTagInput(''); return }
+    setTagInput('')
+    saveTags([...tags, v])
+  }
+  function removeTag(t: string) {
+    saveTags(tags.filter(x => x !== t))
+  }
+
+  const [notes, setNotes] = useState(c.internal_notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  async function saveNotes() {
+    if (notes === (c.internal_notes || '')) return
+    setSavingNotes(true)
+    const res = await updateContatoInternalNotes(orgSlug, c.id, notes)
+    setSavingNotes(false)
+    if (!res.ok) toast.error(res.error)
   }
 
   return (
@@ -653,6 +703,14 @@ function DetailPanel({
         <Field icon={CalendarClock} label="Última compra">
           <span className="text-2xl font-bold">{fmtDate(lastPurchase)}</span>
         </Field>
+        {isTravel && (
+          <Field icon={Wallet} label="Créditos de viagem">
+            <span className="text-2xl font-bold text-primary">{fmtCurrency(creditBalance)}</span>
+          </Field>
+        )}
+        <Field icon={UserCircle2} label="Vendedor responsável">
+          <span className="text-sm font-medium">{sellerName || '—'}</span>
+        </Field>
       </div>
 
       {/* Contato + localização (complementar — sem duplicar a lista) */}
@@ -682,15 +740,40 @@ function DetailPanel({
         </Field>
       </div>
 
-      {/* Tags */}
-      {Array.isArray(c.tags) && c.tags.length > 0 && (
+      {/* Tags — editável direto na prévia, sem precisar abrir a página completa */}
+      <Field icon={TagIcon} label="Tags">
         <div className="flex flex-wrap items-center gap-1.5">
-          <TagIcon className="w-3.5 h-3.5 text-muted-foreground" />
-          {c.tags.map((t: string) => (
-            <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>
+          {tags.map(t => (
+            <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
+              {t}
+              <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
           ))}
+          <Input
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+            onBlur={addTag}
+            placeholder="Adicionar tag…"
+            className="h-7 w-32 text-xs"
+          />
         </div>
-      )}
+      </Field>
+
+      {/* Observações internas — substitui o antigo popup "Adicionar Nota" */}
+      <Field icon={FileCheck2} label="Observações internas">
+        <Textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          onBlur={saveNotes}
+          rows={3}
+          placeholder="Anotações da equipe sobre esse contato…"
+          className="text-sm"
+          disabled={savingNotes}
+        />
+      </Field>
 
       {/* Histórico de negociações — cada passagem pelo funil, mesmo depois de virar cliente. */}
       {deals.length > 0 && (

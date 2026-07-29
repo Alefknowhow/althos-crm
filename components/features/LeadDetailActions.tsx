@@ -7,13 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { updateLead, deleteLead, addLeadNote } from '@/actions/contatos'
+import { Textarea } from '@/components/ui/textarea'
+import { updateLead, deleteLead } from '@/actions/contatos'
 
 export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any, orgSlug: string, stages: any[] }) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [noteOpen, setNoteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
@@ -31,21 +31,6 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
     router.refresh()
   }
 
-  async function handleAddNote(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    const res = await addLeadNote(orgSlug, lead.id, formData)
-    setLoading(false)
-    if (!res.ok) {
-      const { toast } = await import('sonner')
-      toast.error(res.error || 'Erro ao adicionar nota')
-      return
-    }
-    setNoteOpen(false)
-    router.refresh()
-  }
-
   async function handleDelete() {
     setLoading(true)
     const res = await deleteLead(orgSlug, lead.id)
@@ -60,7 +45,6 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" onClick={() => setNoteOpen(true)}>Adicionar Nota</Button>
       <Button variant="outline" onClick={() => setSheetOpen(true)}>Editar</Button>
       <Button variant="destructive" onClick={() => setDeleteOpen(true)}>Excluir</Button>
 
@@ -91,28 +75,16 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
               <Label>Tags (separadas por vírgula)</Label>
               <Input name="tags" defaultValue={lead.tags?.join(', ') || ''} />
             </div>
+            <div className="space-y-2">
+              <Label>Observações internas</Label>
+              <Textarea name="internal_notes" defaultValue={lead.internal_notes || ''} rows={3} />
+            </div>
             <SheetFooter>
               <Button type="submit" disabled={loading}>Salvar</Button>
             </SheetFooter>
           </form>
         </SheetContent>
       </Sheet>
-
-      {/* Dialog Add Note */}
-      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Nota</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddNote} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nota</Label>
-              <textarea name="text" required className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>Adicionar</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog Confirm Delete */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

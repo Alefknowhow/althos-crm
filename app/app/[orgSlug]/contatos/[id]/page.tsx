@@ -2,7 +2,7 @@ import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import LeadDetailActions from '@/components/features/LeadDetailActions'
+import ContatoQuickEditCard from '@/components/features/contatos/ContatoQuickEditCard'
 import RequalifyButton from '@/components/features/ai/RequalifyButton'
 import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -154,7 +154,6 @@ export default async function ContatoDetailPage({
           </Badge>
           <RequalifyButton orgSlug={params.orgSlug} leadId={lead.id} />
           <SendEmailDialog orgSlug={params.orgSlug} lead={lead} templates={templates || []} org={org} />
-          <LeadDetailActions lead={lead} orgSlug={params.orgSlug} stages={stages} />
         </div>
       </div>
 
@@ -272,25 +271,7 @@ export default async function ContatoDetailPage({
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Detalhes</CardTitle></CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <span className="text-muted-foreground block text-xs">Estágio Atual</span>
-                <Badge>{lead.pipeline_stages?.name || '-'}</Badge>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs">Valor</span>
-                <div>{lead.value_cents ? `R$ ${(lead.value_cents / 100).toFixed(2)}` : '-'}</div>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-xs">Tags</span>
-                <div className="flex gap-1 flex-wrap mt-1">
-                  {lead.tags?.length ? lead.tags.map((t: string) => <Badge key={t} variant="outline">{t}</Badge>) : '-'}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ContatoQuickEditCard lead={lead} orgSlug={params.orgSlug} stages={stages} />
 
           {/* Parentesco */}
           <ContatoRelationships
