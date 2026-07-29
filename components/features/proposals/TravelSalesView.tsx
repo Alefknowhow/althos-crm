@@ -155,7 +155,7 @@ function ContactCombobox({ leads, value, onChange }: {
 }
 
 export default function TravelSalesView({
-  orgSlug, sales, proposals = [], members = [], leads = [], initialSelectedId,
+  orgSlug, sales, proposals = [], members = [], leads = [], initialSelectedId, headerAction,
 }: {
   orgSlug: string
   sales: TravelSaleRow[]
@@ -163,6 +163,8 @@ export default function TravelSalesView({
   members?: Member[]
   leads?: LeadOption[]
   initialSelectedId?: string | null
+  /** Botão extra (ex.: "Configurar contrato padrão"), alinhado na mesma linha dos filtros. */
+  headerAction?: React.ReactNode
 }) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -250,7 +252,8 @@ export default function TravelSalesView({
   if (sales.length === 0) {
     return (
       <>
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end gap-2 mb-4">
+          {headerAction}
           <Button onClick={() => setNewOpen(true)}>
             <Plus className="w-4 h-4 mr-1.5" /> Nova venda
           </Button>
@@ -325,6 +328,8 @@ export default function TravelSalesView({
             </button>
           ))}
         </div>
+
+        {headerAction}
 
         <Button onClick={() => setNewOpen(true)} className="h-9 px-2.5 text-xs shrink-0">
           <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Nova venda</span>

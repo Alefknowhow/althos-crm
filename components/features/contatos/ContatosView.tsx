@@ -99,6 +99,7 @@ interface Props {
   filters: Filters
   isTravel: boolean
   members: { id: string; name: string }[]
+  statusTabs?: React.ReactNode
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ export default function ContatosView({
   filters,
   isTravel,
   members,
+  statusTabs,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -210,6 +212,8 @@ export default function ContatosView({
             className="pl-9"
           />
         </div>
+
+        {statusTabs}
 
         <FiltersSheet
           filters={filters}

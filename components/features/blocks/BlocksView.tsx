@@ -143,6 +143,12 @@ export default function BlocksView({
     <>
       {/* Filtros — uma linha só, mesmo padrão das outras telas. */}
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <Button variant="outline" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setImportOpen(true)}>
+          <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar planilha</span>
+        </Button>
+        <Button className="h-9 px-2.5 text-xs shrink-0" onClick={() => setEditing('new')}>
+          <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo bloqueio</span>
+        </Button>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por trecho, voo…" className="pl-8 h-9" />
@@ -154,12 +160,6 @@ export default function BlocksView({
             {destinos.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant="outline" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setImportOpen(true)}>
-          <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar planilha</span>
-        </Button>
-        <Button className="h-9 px-2.5 text-xs shrink-0" onClick={() => setEditing('new')}>
-          <Plus className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Novo bloqueio</span>
-        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {blocks.length} bloqueio(s)</p>

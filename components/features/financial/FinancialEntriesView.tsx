@@ -236,10 +236,6 @@ export default function FinancialEntriesView({
         </Button>
       </div>
 
-      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
-        {filtered.length} de {entries.length} lançamento(s)
-      </p>
-
       <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         <div className={cn('rounded-none border bg-card overflow-y-auto divide-y', selected && 'hidden md:block')}>
           {filtered.length === 0 ? (

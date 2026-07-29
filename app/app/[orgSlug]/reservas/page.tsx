@@ -37,16 +37,23 @@ export default async function TravelSalesPage({
       <PageHeader
         title="Reservas"
         hint={'Crie uma venda com "Nova venda" (importando uma proposta) ou deixe que ela seja gerada automaticamente quando um lead com proposta é movido para "Fechado". Complete os localizadores e a comissão, depois gere as tarefas operacionais.'}
-        actions={
+      />
+
+      <TravelSalesView
+        orgSlug={params.orgSlug}
+        sales={sales}
+        proposals={proposalOptions}
+        members={members}
+        leads={leads}
+        initialSelectedId={searchParams.sale ?? null}
+        headerAction={
           <Link href={`/app/${params.orgSlug}/reservas/contrato-padrao`}>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="h-9 text-xs">
               <FileSignature className="w-3.5 h-3.5 mr-1.5" /> Configurar contrato padrão
             </Button>
           </Link>
         }
       />
-
-      <TravelSalesView orgSlug={params.orgSlug} sales={sales} proposals={proposalOptions} members={members} leads={leads} initialSelectedId={searchParams.sale ?? null} />
     </div>
   )
 }

@@ -197,10 +197,6 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
-        {filtered.length} de {proposals.length} proposta(s)
-      </p>
-
       <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100dvh-19rem)] min-h-[440px]">
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(

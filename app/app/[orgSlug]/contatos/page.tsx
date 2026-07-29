@@ -8,7 +8,6 @@ import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
 import { isTravelNiche } from '@/lib/niche'
-import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 50
 
@@ -207,32 +206,29 @@ export default async function ContatosPage({
     status
   )
 
-  const header = (
-    <div className={cn('space-y-4', selId && 'hidden lg:block')}>
-      <div className="flex flex-wrap gap-2">
-        {STATUS_TABS.map(tab => {
-          const active = status === tab.value
-          return (
-            <Link
-              key={tab.value || 'all'}
-              href={buildStatusHref(tab.value)}
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
-              }`}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+  const statusTabs = (
+    <div className="flex flex-wrap gap-2">
+      {STATUS_TABS.map(tab => {
+        const active = status === tab.value
+        return (
+          <Link
+            key={tab.value || 'all'}
+            href={buildStatusHref(tab.value)}
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+              active
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/70'
+            }`}
+          >
+            {tab.label}
+          </Link>
+        )
+      })}
     </div>
   )
 
   return (
     <div className="space-y-6">
-      {header}
       <ContatosView
         orgSlug={params.orgSlug}
         contatos={listRows as any[]}
@@ -248,6 +244,7 @@ export default async function ContatosPage({
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
         members={members}
+        statusTabs={statusTabs}
       />
       {listRows.length === 0 && !isFiltered && (
         <EmptyState
