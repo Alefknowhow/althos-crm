@@ -34,7 +34,7 @@ import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
-import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
+import { extractTravelDocument } from '@/actions/document-extract'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { toast } from 'sonner'
 import {
@@ -75,6 +75,19 @@ function reaisToCents(s: string) {
   return Number.isFinite(n) ? Math.round(n * 100) : 0
 }
 function fmtTimestamp(d?: string | null) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—' }
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result || '')
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
 
 function checklistStatus(s: TravelSaleRow): { label: string; variant: 'success' | 'warning' | 'secondary' } {
   if (s.posvenda_concluido_at) return { label: 'Pós-venda concluído', variant: 'success' }
@@ -534,9 +547,10 @@ function SaleEditor({
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [lastFile, setLastFile] = useState<File | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
-  const [extractOpen, setExtractOpen] = useState(false)
   const router = useRouter()
 
   function toggleIncluded(key: string) {
@@ -549,40 +563,46 @@ function SaleEditor({
     if (!files || files.length === 0) return
     setUploading(true)
     const next: Voucher[] = [...vouchers]
+    let uploadedFile: File | null = null
     for (const file of Array.from(files)) {
       const fd = new FormData()
       fd.append('file', file)
       const res = await uploadSaleVoucher(orgSlug, fd)
-      if (res.ok) next.push({ url: res.url, name: res.name })
+      if (res.ok) { next.push({ url: res.url, name: res.name }); uploadedFile = file }
       else toast.error(`${file.name}: ${res.error}`)
     }
     setUploading(false)
     set('vouchers', next)
+    if (uploadedFile) setLastFile(uploadedFile)
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  async function handleExtracted(data: ExtractedTravelDocument, file: File) {
-    setS(prev => ({
-      ...prev,
-      destination: data.destino || prev.destination,
-      hotel_name: data.hotel || prev.hotel_name,
-      operator: data.operadora || prev.operator,
-      package_locator: data.localizador_pacote || prev.package_locator,
-      air_locator: data.localizador_aereo || prev.air_locator,
-      departure_date: data.data_ida || prev.departure_date,
-      return_date: data.data_volta || prev.return_date,
-      airline: data.voos[0]?.companhia || prev.airline,
-      notes: data.observacoes || prev.notes,
-      important_info: data.informacoes_importantes || prev.important_info,
-      service_info: data.informacoes_servico || prev.service_info,
-    }))
-    setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await uploadSaleVoucher(orgSlug, fd)
-    setUploading(false)
-    if (res.ok) set('vouchers', [...vouchers, { url: res.url, name: res.name }])
-    toast.success('Dados extraídos — revise os campos antes de salvar.')
+  async function handleAutofillFromVoucher() {
+    if (!lastFile) { toast.error('Envie um voucher primeiro.'); return }
+    setExtracting(true)
+    try {
+      const base64 = await fileToBase64(lastFile)
+      const res = await extractTravelDocument(orgSlug, { base64, mediaType: lastFile.type })
+      if (!res.ok) { toast.error(res.error); return }
+      const data: ExtractedTravelDocument = res.data
+      setS(prev => ({
+        ...prev,
+        destination: data.destino || prev.destination,
+        hotel_name: data.hotel || prev.hotel_name,
+        operator: data.operadora || prev.operator,
+        package_locator: data.localizador_pacote || prev.package_locator,
+        air_locator: data.localizador_aereo || prev.air_locator,
+        departure_date: data.data_ida || prev.departure_date,
+        return_date: data.data_volta || prev.return_date,
+        airline: data.voos[0]?.companhia || prev.airline,
+        notes: data.observacoes || prev.notes,
+        important_info: data.informacoes_importantes || prev.important_info,
+        service_info: data.informacoes_servico || prev.service_info,
+      }))
+      toast.success('Dados extraídos — revise os campos antes de salvar.')
+    } finally {
+      setExtracting(false)
+    }
   }
 
   const patch = () => ({
@@ -694,6 +714,69 @@ function SaleEditor({
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Vouchers — primeiro item da tela: envie o voucher e, com um clique,
+            deixe a IA ler esse mesmo arquivo pra preencher os campos abaixo. */}
+        <Field label="Vouchers / comprovantes">
+          <div className="space-y-2">
+            {vouchers.length > 0 && (
+              <ul className="space-y-1.5">
+                {vouchers.map((v, i) => {
+                  const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
+                  return (
+                    <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                      {isPdf
+                        ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
+                        : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
+                      <a href={v.url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
+                        {v.name || `Voucher ${i + 1}`}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remover voucher"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={e => handleFiles(e.target.files)}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                type="button" variant="outline" size="sm" disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading
+                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</>
+                  : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Adicionar vouchers</>}
+              </Button>
+              <Button
+                type="button" variant="outline" size="sm" disabled={extracting || !lastFile}
+                onClick={handleAutofillFromVoucher}
+                title={lastFile ? undefined : 'Envie um voucher primeiro'}
+              >
+                {extracting
+                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Lendo…</>
+                  : <><Sparkles className="w-3.5 h-3.5 mr-1.5" /> Preencher com IA</>}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. "Preencher com IA" lê o último voucher enviado.
+            </p>
+          </div>
+        </Field>
+
         <SaleTasksList orgSlug={orgSlug} saleId={s.id} />
 
         {/* Auto-filled (editable) */}
@@ -817,65 +900,6 @@ function SaleEditor({
           </div>
         </Field>
 
-        {/* Vouchers — multiple PDF/image upload */}
-        <Field label="Vouchers / comprovantes">
-          <div className="space-y-2">
-            {vouchers.length > 0 && (
-              <ul className="space-y-1.5">
-                {vouchers.map((v, i) => {
-                  const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
-                  return (
-                    <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
-                      {isPdf
-                        ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
-                        : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
-                      <a href={v.url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
-                        {v.name || `Voucher ${i + 1}`}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        aria-label="Remover voucher"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              accept="application/pdf,image/*"
-              className="hidden"
-              onChange={e => handleFiles(e.target.files)}
-            />
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                type="button" variant="outline" size="sm" disabled={uploading}
-                onClick={() => fileRef.current?.click()}
-              >
-                {uploading
-                  ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</>
-                  : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Adicionar vouchers</>}
-              </Button>
-              <Button
-                type="button" variant="outline" size="sm" disabled={uploading}
-                onClick={() => setExtractOpen(true)}
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Autopreencher com IA
-              </Button>
-            </div>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. Vários arquivos permitidos.
-            </p>
-          </div>
-        </Field>
-
         {services.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
@@ -914,14 +938,6 @@ function SaleEditor({
         )}
       </div>
 
-      <DocumentExtractDialog
-        orgSlug={orgSlug}
-        open={extractOpen}
-        onOpenChange={setExtractOpen}
-        title="Autopreencher com IA"
-        description="Envie o voucher/reserva da operadora (PDF ou imagem) — a IA lê o documento e preenche os campos da venda para você revisar."
-        onApply={handleExtracted}
-      />
 
       <CancelTravelSaleDialog
         open={cancelOpen}
