@@ -10,7 +10,7 @@
 import { useRef, useState, useTransition } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { updateOrgAppearance, setMonthlyRevenueGoal } from '@/actions/organization'
+import { updateOrgAppearance, setMonthlyRevenueGoal, updateOrgBrandAccent } from '@/actions/organization'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,15 +23,19 @@ export default function CompanyBrandingCard({
   orgId,
   initialLogoUrl,
   initialGoalCents,
+  initialBrandAccent,
 }: {
   orgSlug: string
   orgId: string
   initialLogoUrl: string | null
   initialGoalCents: number | null
+  initialBrandAccent: string | null
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
   const [uploading, setUploading] = useState(false)
+  const [brandAccent, setBrandAccent] = useState(initialBrandAccent ?? '#0f62fe')
+  const [savingAccent, setSavingAccent] = useState(false)
 
   const [goalInput, setGoalInput] = useState(
     initialGoalCents != null ? (initialGoalCents / 100).toFixed(2) : '',
@@ -71,6 +75,19 @@ export default function CompanyBrandingCard({
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function saveBrandAccent(color: string | null) {
+    setSavingAccent(true)
+    try {
+      const res = await updateOrgBrandAccent(orgSlug, color)
+      if (!res.ok) throw new Error((res as any).error || 'Não foi possível salvar a cor.')
+      toast.success(color ? 'Cor de destaque salva!' : 'Cor de destaque restaurada para o padrão.')
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Erro ao salvar cor.')
+    } finally {
+      setSavingAccent(false)
     }
   }
 
@@ -126,6 +143,45 @@ export default function CompanyBrandingCard({
             className="hidden"
             onChange={handleFileChange}
           />
+        </div>
+
+        <div className="space-y-3">
+          <Label>Cor de destaque</Label>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Usada no link público de cotações e no PDF gerado. Não afeta o painel interno.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={brandAccent}
+              onChange={e => setBrandAccent(e.target.value)}
+              onBlur={() => saveBrandAccent(brandAccent)}
+              className="w-10 h-10 border border-border cursor-pointer bg-transparent p-0"
+              disabled={savingAccent}
+            />
+            <Input
+              value={brandAccent}
+              onChange={e => setBrandAccent(e.target.value)}
+              onBlur={() => {
+                if (/^#[0-9a-fA-F]{6}$/.test(brandAccent)) saveBrandAccent(brandAccent)
+              }}
+              placeholder="#0f62fe"
+              className="max-w-[140px]"
+              disabled={savingAccent}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={savingAccent}
+              onClick={() => {
+                setBrandAccent('#0f62fe')
+                saveBrandAccent(null)
+              }}
+            >
+              Restaurar padrão
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2 max-w-xs">

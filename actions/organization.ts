@@ -402,6 +402,25 @@ export async function updateOrgAppearance(
   return { ok: true as const }
 }
 
+/**
+ * Cor de destaque usada no link público de cotações e na vitrine de ofertas
+ * (org_settings.brand_accent — hoje sem nenhuma tela pra editar, então toda
+ * cotação sai com o azul padrão). Upsert porque a linha pode nem existir
+ * ainda pra essa organização.
+ */
+export async function updateOrgBrandAccent(orgSlug: string, color: string | null) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('org_settings')
+    .upsert({ org_id: org.id, brand_accent: color }, { onConflict: 'org_id' })
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/configuracoes`)
+  revalidatePath(`/app/${orgSlug}/cotacoes`)
+  return { ok: true as const }
+}
+
 // ─── Company data (shown in proposal header/footer) ──────────────────────────
 
 const COMPANY_FIELDS = [

@@ -20,11 +20,10 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
   ])
 
   const supabase = createClient()
-  const { data: orgRow } = await supabase
-    .from('organizations')
-    .select('logo_url')
-    .eq('id', org.id)
-    .maybeSingle()
+  const [{ data: orgRow }, { data: settingsRow }] = await Promise.all([
+    supabase.from('organizations').select('logo_url').eq('id', org.id).maybeSingle(),
+    supabase.from('org_settings').select('brand_accent').eq('org_id', org.id).maybeSingle(),
+  ])
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -59,6 +58,7 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
         orgId={org.id}
         initialLogoUrl={orgRow?.logo_url ?? null}
         initialGoalCents={goalCents}
+        initialBrandAccent={settingsRow?.brand_accent ?? null}
       />
 
       <DataImportExportCard orgSlug={params.orgSlug} />
