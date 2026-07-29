@@ -51,6 +51,8 @@ import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
+import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
+import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 
 const INCLUDED_SUGGESTIONS = [
   'Aéreo ida e volta', 'Bagagem (23kg)', 'Bagagem de mão (10kg)', 'Marcação de assentos',
@@ -448,6 +450,42 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [geoBusy, setGeoBusy] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form')
   const [saleBusy, setSaleBusy] = useState(false)
+  const [extractOpen, setExtractOpen] = useState(false)
+
+  // Autopreenchimento com IA — lê um voucher/orçamento (PDF ou imagem) e
+  // preenche os campos da cotação. Não sobrescreve o nome do cliente quando
+  // já há um contato vinculado (o nome continua vindo de lá).
+  function handleExtracted(data: ExtractedTravelDocument) {
+    setQ(s => ({
+      ...s,
+      client_name: s.contato_id ? s.client_name : (data.cliente || s.client_name),
+      destinations: data.destino && !s.destinations.some(d => d.name)
+        ? [{ name: data.destino, country: '' }]
+        : s.destinations,
+      start_date: data.data_ida || s.start_date,
+      end_date: data.data_volta || s.end_date,
+      operadora: data.operadora || s.operadora,
+      total_cents: data.valor_total_cents || s.total_cents,
+      total_manual: data.valor_total_cents ? true : s.total_manual,
+    }))
+    if (data.hotel) {
+      setLodgings(ls => ls.length === 0
+        ? [{ _key: nk(), name: data.hotel!, photos: [], check_in: data.data_ida, check_out: data.data_volta }]
+        : ls.map((l, i) => i === 0 ? { ...l, name: l.name || data.hotel! } : l))
+    }
+    if (data.voos.length > 0) {
+      setFlights(fs => fs.length > 0 ? fs : data.voos.map((v, i) => ({
+        _key: nk(),
+        leg_type: v.sentido === 'volta' ? 'inbound' : v.sentido === 'ida' ? 'outbound' : (i === 0 ? 'outbound' : 'inbound'),
+        airline: v.companhia || undefined,
+        date: v.data || undefined,
+        from_city: v.origem || undefined,
+        to_city: v.destino || undefined,
+        baggage: [],
+      })))
+    }
+    toast.success('Campos preenchidos a partir do documento. Revise antes de salvar.')
+  }
 
   const paxTotal = (q.pax_adults || 0) + (q.pax_children || 0)
 
@@ -1031,6 +1069,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
         </Button>
         <span className="text-sm font-semibold truncate flex-1 min-w-[120px]">{q.title || 'Nova cotação'}</span>
+        <Button type="button" variant="outline" size="sm" onClick={() => setExtractOpen(true)}>
+          <Sparkles className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Autopreencher com IA</span>
+        </Button>
         <span className={`text-[11px] ${saveState === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
           {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? '✓ Salvo' : saveState === 'error' ? 'Erro ao salvar' : ''}
         </span>
@@ -1092,6 +1133,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </div>
         </div>
       </div>
+
+      <DocumentExtractDialog
+        orgSlug={orgSlug}
+        open={extractOpen}
+        onOpenChange={setExtractOpen}
+        title="Autopreencher com IA"
+        description="Envie o voucher/orçamento (PDF ou imagem) — a IA lê o documento e preenche cliente, destino, datas, hospedagem, voos e valor. Revise antes de salvar."
+        onApply={data => handleExtracted(data)}
+      />
     </div>
   )
 }
