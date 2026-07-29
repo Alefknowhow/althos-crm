@@ -40,7 +40,6 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
       <PageHeader
         title="Tarefas"
         hint="Organize seu trabalho em quadro Kanban, lista ou calendário."
-        actions={<div className="hidden md:block"><TaskDialog orgSlug={params.orgSlug} members={members} /></div>}
       />
 
       <TasksBoard
@@ -48,6 +47,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
         initialColumns={columns}
         orgSlug={params.orgSlug}
         members={members}
+        headerAction={<TaskDialog orgSlug={params.orgSlug} members={members} />}
       />
 
       {/* FAB mobile — mesma criação de tarefa do botão do cabeçalho (desktop),

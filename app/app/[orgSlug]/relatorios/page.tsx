@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Lock, FileBarChart } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { minimumPlanFor, getPlanMeta } from '@/lib/plans/config'
@@ -43,12 +43,7 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-          <FileBarChart className="h-5 w-5" />
-        </div>
-        <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." className="flex-1" />
-      </div>
+      <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." />
 
       <ReportsClient orgSlug={params.orgSlug} isTravel={isTravelNiche(org.niche)} />
     </div>

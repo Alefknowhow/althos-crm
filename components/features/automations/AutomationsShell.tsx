@@ -97,22 +97,14 @@ export default function AutomationsShell({
     <div className="-mx-6 -mt-8 -mb-8 flex flex-col" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-b bg-background flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          {isDetail && (
-            <Button asChild variant="ghost" size="icon" className="md:hidden shrink-0 -ml-2">
-              <Link href={`/app/${orgSlug}/automacoes`} aria-label="Voltar para a lista">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-            </Button>
-          )}
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold tracking-tight leading-tight">Automações</h1>
-            <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
-              Fluxos automáticos baseados em gatilhos e ações.
-            </p>
-          </div>
-        </div>
+      <div className="px-4 py-3 border-b bg-background flex items-center gap-2 shrink-0">
+        {isDetail && (
+          <Button asChild variant="ghost" size="icon" className="md:hidden shrink-0 -ml-2">
+            <Link href={`/app/${orgSlug}/automacoes`} aria-label="Voltar para a lista">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          </Button>
+        )}
         {/* Some no mobile quando uma automação está aberta — só fazem
             sentido na tela de lista. */}
         <div className={cn('flex items-center gap-2 shrink-0', isDetail && 'hidden md:flex')}>

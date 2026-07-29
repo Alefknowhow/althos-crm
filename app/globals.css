@@ -207,6 +207,13 @@
   transition: opacity 0.15s ease;
 }
 .sidebar-collapsed:hover .sidebar-brand { opacity: 0; }
+.sidebar-collapsed .sidebar-toggle-btn { display: none; }
+.sidebar-collapsed:hover .sidebar-toggle-btn {
+  display: inline-flex;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
 .sidebar-collapsed nav p { display: none; }                 /* SectionLabel */
 
 /* Nav links + group trigger: hide text, badges, chevron; center the icon. */

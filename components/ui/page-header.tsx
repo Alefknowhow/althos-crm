@@ -1,19 +1,14 @@
 'use client'
 
 import * as React from 'react'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
+import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { usePageHint } from '@/components/features/PageHintContext'
 
 interface PageHeaderProps {
   /** Page title rendered as an h1. */
   title: string
-  /** Optional hint shown on hover via an info (circle-i) icon next to the title. */
+  /** Optional hint — pushed up to the (!) icon in the top bar, next to the page title. */
   hint?: string
   /** Optional actions rendered on the right side of the header row. */
   actions?: React.ReactNode
@@ -21,36 +16,23 @@ interface PageHeaderProps {
 }
 
 /**
- * Standard page header for the CRM. O nome da página agora mora na barra
- * superior (primeira linha, ao lado do botão de recolher a sidebar) — este
- * componente só reserva espaço pro hint (tooltip) e pras ações, pra não
- * gastar mais uma linha inteira só com o título em cada tela.
+ * Standard page header for the CRM. O nome da página mora na barra superior
+ * (primeira linha, ao lado do botão de recolher a sidebar) e o hint (!)
+ * agora vai pra lá também — este componente só registra o hint no contexto
+ * e renderiza as ações, pra não gastar mais uma linha inteira em cada tela.
  */
 export function PageHeader({ title, hint, actions, className }: PageHeaderProps) {
-  if (!hint && !actions) return null
+  const { setHint } = usePageHint()
+
+  useEffect(() => {
+    setHint(hint || null)
+    return () => setHint(null)
+  }, [hint, setHint])
+
+  if (!actions) return null
   return (
-    <div className={cn('flex items-start justify-between gap-3', className)}>
-      <div className="flex items-center gap-1.5 min-w-0">
-        {hint && (
-          <TooltipProvider>
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="shrink-0 text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-0.5"
-                  aria-label={hint}
-                >
-                  <Info className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="start" className="max-w-[320px] text-xs leading-relaxed font-normal">
-                {hint}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
-      {actions && <div className="shrink-0 flex items-center gap-2 ml-auto">{actions}</div>}
+    <div className={cn('flex items-start justify-end gap-3', className)}>
+      <div className="shrink-0 flex items-center gap-2">{actions}</div>
     </div>
   )
 }

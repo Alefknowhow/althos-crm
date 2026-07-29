@@ -147,32 +147,34 @@ export default function ScheduleClient({
 
   return (
     <>
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        {([
-          { id: 'all', label: `Todas (${counts.all})` },
-          { id: 'upcoming', label: `Próximas (${counts.upcoming})` },
-          { id: 'ongoing', label: `Em andamento (${counts.ongoing})` },
-          { id: 'past', label: `Concluídas (${counts.past})` },
-        ] as const).map(b => (
-          <button
-            key={b.id}
-            onClick={() => setFilter(b.id)}
-            className={cn(
-              'px-3 h-8 rounded-full border text-xs font-medium transition-colors',
-              filter === b.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground border-border',
-            )}
-          >
-            {b.label}
-          </button>
-        ))}
-      </div>
-
       <Tabs defaultValue="gantt">
-        <TabsList>
-          <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
-          <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <TabsList>
+            <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
+            <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
+          </TabsList>
+
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              { id: 'all', label: `Todas (${counts.all})` },
+              { id: 'upcoming', label: `Próximas (${counts.upcoming})` },
+              { id: 'ongoing', label: `Em andamento (${counts.ongoing})` },
+              { id: 'past', label: `Concluídas (${counts.past})` },
+            ] as const).map(b => (
+              <button
+                key={b.id}
+                onClick={() => setFilter(b.id)}
+                className={cn(
+                  'px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                  filter === b.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                )}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* ── Gantt ───────────────────────────────────────────── */}
         <TabsContent value="gantt" className="mt-4">

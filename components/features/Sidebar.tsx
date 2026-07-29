@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
+import SidebarCollapseToggleButton from './SidebarCollapseToggleButton'
 import SidebarUserMenu from './SidebarUserMenu'
 import BottomNav from './BottomNav'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
@@ -135,8 +136,11 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       {/* Desktop-only — a versão mobile do cabeçalho (logo + nome + X) é
           renderizada direto pelo SidebarShell, pra não duplicar quando o
           drawer mobile monta este mesmo children pela segunda vez. */}
-      <div className="hidden md:flex h-14 border-b border-sidebar-border items-center px-5">
+      <div className="hidden md:flex h-14 border-b border-sidebar-border items-center justify-between px-5 relative">
         <Logo className="sidebar-brand" />
+        <div className="sidebar-toggle-btn shrink-0">
+          <SidebarCollapseToggleButton />
+        </div>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -362,7 +366,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <SidebarNavLink href={`${base}/configuracoes`} exact>
               <span className="flex items-center gap-2.5">
                 <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Geral</span>
+                <span>Configurações</span>
               </span>
             </SidebarNavLink>
           </>

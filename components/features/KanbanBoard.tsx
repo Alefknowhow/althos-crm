@@ -54,11 +54,14 @@ export default function KanbanBoard({
   initialStages,
   initialLeads,
   members = [],
+  toolbarStart,
 }: {
   orgSlug: string
   initialStages: any[]
   initialLeads: any[]
   members?: Member[]
+  /** Botões extras (switcher/config de pipeline) renderizados no início da barra de filtros. */
+  toolbarStart?: React.ReactNode
 }) {
   const [stages, setStages] = useState(initialStages)
   const [leads, setLeads] = useState(initialLeads)
@@ -210,6 +213,8 @@ export default function KanbanBoard({
     <div className="flex h-full flex-col gap-3">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
+        {toolbarStart}
+
         {/* Dashboard (KPIs) trigger — opens the metrics in a modal to free up
             vertical space for the board itself. */}
         <button

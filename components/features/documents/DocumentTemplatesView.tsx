@@ -14,12 +14,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
-import GenerateDocumentDialog from './GenerateDocumentDialog'
 import { cn } from '@/lib/utils'
 import {
   createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate,
   type DocumentTemplateRow,
 } from '@/actions/document-templates'
+import { generateDocument } from '@/actions/generated-documents'
 import { toast } from 'sonner'
 import { FileText, Plus, Trash2, ArrowLeft, Save, Info, Printer } from 'lucide-react'
 
@@ -38,9 +38,17 @@ export default function DocumentTemplatesView({
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [printTemplateId, setPrintTemplateId] = useState<string | null>(null)
+  const [printingId, setPrintingId] = useState<string | null>(null)
 
   const selected = templates.find(t => t.id === selectedId) ?? null
+
+  async function handlePrint(t: DocumentTemplateRow) {
+    setPrintingId(t.id)
+    const res = await generateDocument(orgSlug, { templateId: t.id, title: t.name, fieldValues: {} })
+    setPrintingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    window.open(`/app/${orgSlug}/documentos/${res.data.id}/print`, '_blank', 'noopener,noreferrer')
+  }
 
   async function handleCreate() {
     if (!newName.trim()) { toast.error('Informe um nome pro modelo.'); return }
@@ -120,9 +128,10 @@ export default function DocumentTemplatesView({
                   variant="outline"
                   size="sm"
                   className="shrink-0"
-                  onClick={() => setPrintTemplateId(t.id)}
+                  disabled={printingId === t.id}
+                  onClick={() => handlePrint(t)}
                 >
-                  <Printer className="w-3.5 h-3.5 mr-1.5" /> Imprimir
+                  <Printer className="w-3.5 h-3.5 mr-1.5" /> {printingId === t.id ? 'Gerando…' : 'Imprimir'}
                 </Button>
               </div>
             )
@@ -150,17 +159,6 @@ export default function DocumentTemplatesView({
       </div>
 
       <NewTemplateDialog open={newOpen} onOpenChange={setNewOpen} name={newName} setName={setNewName} creating={creating} onCreate={handleCreate} />
-
-      <GenerateDocumentDialog
-        orgSlug={orgSlug}
-        templates={templates.filter(t => t.id === printTemplateId)}
-        open={!!printTemplateId}
-        onOpenChange={o => !o && setPrintTemplateId(null)}
-        onGenerated={id => {
-          setPrintTemplateId(null)
-          window.open(`/app/${orgSlug}/documentos/${id}/print`, '_blank', 'noopener,noreferrer')
-        }}
-      />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
         <AlertDialogContent>

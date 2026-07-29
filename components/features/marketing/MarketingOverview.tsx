@@ -29,7 +29,6 @@ import {
   ChevronDown,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
 } from 'lucide-react'
 import {
   PieChart,
@@ -206,17 +205,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between gap-4 md:items-end">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            Marketing
-            <Sparkles className="w-4 h-4 text-primary" />
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Acompanhe o desempenho das suas campanhas e atraia mais clientes.
-          </p>
-        </div>
-
+      <div className="flex justify-end gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <PeriodTabs />
 

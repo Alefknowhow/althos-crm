@@ -21,8 +21,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Formulários</h1>
+      <div className="flex justify-end items-center">
         <NewFormButton orgSlug={params.orgSlug} />
       </div>
 

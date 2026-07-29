@@ -331,10 +331,6 @@ export default function TravelSalesView({
         </Button>
       </div>
 
-      <p className={cn('text-sm text-muted-foreground mb-2', selected && 'hidden md:block')}>
-        {filtered.length} de {sales.length} venda(s)
-      </p>
-
       <div className={cn(
         'grid md:grid-cols-[320px_1fr] gap-4 min-h-[440px]',
         selected ? 'h-[calc(100dvh-8rem)] md:h-[calc(100dvh-19rem)]' : 'h-[calc(100dvh-19rem)]',

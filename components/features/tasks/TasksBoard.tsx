@@ -107,11 +107,14 @@ export default function TasksBoard({
   initialColumns,
   orgSlug,
   members = [],
+  headerAction,
 }: {
   initialTasks: Task[]
   initialColumns: Column[]
   orgSlug: string
   members?: Member[]
+  /** Botão "Nova tarefa", renderizado ao lado dos filtros (desktop). */
+  headerAction?: React.ReactNode
 }) {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
@@ -402,10 +405,13 @@ export default function TasksBoard({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
-          <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
-          <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
-          <ViewBtn active={view === 'calendar'} onClick={() => pickView('calendar')} icon={CalendarDays} label="Calendário" />
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
+            <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
+            <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
+            <ViewBtn active={view === 'calendar'} onClick={() => pickView('calendar')} icon={CalendarDays} label="Calendário" />
+          </div>
+          {headerAction && <div className="hidden md:block">{headerAction}</div>}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">

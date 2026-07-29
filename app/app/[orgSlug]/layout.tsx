@@ -13,11 +13,12 @@ import PushNotificationToggle from '@/components/features/PushNotificationToggle
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
 import Link from 'next/link'
-import { Activity } from 'lucide-react'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
 import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
+import { PageHintProvider } from '@/components/features/PageHintContext'
 import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
+import HealthLinkConditional from '@/components/features/HealthLinkConditional'
 
 export default async function OrgLayout({
   children,
@@ -75,6 +76,7 @@ export default async function OrgLayout({
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
       <SidebarCollapseProvider>
+      <PageHintProvider>
       <div className="flex flex-1 min-h-0">
         <Sidebar orgSlug={params.orgSlug} />
 
@@ -99,27 +101,22 @@ export default async function OrgLayout({
 
             <div className="flex items-center gap-2 shrink-0">
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
-              <Link
-                href={`/app/${params.orgSlug}/configuracoes/integracoes/saude`}
-                aria-label="Saúde das integrações"
-                title="Saúde das integrações"
-                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors"
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Saúde</span>
-              </Link>
+              <HealthLinkConditional orgSlug={params.orgSlug} />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
-              <Link
-                href={`/app/${params.orgSlug}/ajuda`}
-                className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"
-              >
-                Central de Ajuda
-              </Link>
-              <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no ícone de balão aqui na barra." />
               <div className="w-px h-4 bg-border mx-1" />
               <PushNotificationToggle orgSlug={params.orgSlug} />
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-              <SupportHeaderButton />
+              <div className="w-px h-4 bg-border mx-1" />
+              <div className="flex items-center gap-1">
+                <Link
+                  href={`/app/${params.orgSlug}/ajuda`}
+                  className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"
+                >
+                  Central de Ajuda
+                </Link>
+                <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no ícone de balão aqui na barra." />
+                <SupportHeaderButton />
+              </div>
               <ModeToggle />
             </div>
           </header>
@@ -131,6 +128,7 @@ export default async function OrgLayout({
           </main>
         </div>
       </div>
+      </PageHintProvider>
       </SidebarCollapseProvider>
 
       <SupportWidget orgSlug={params.orgSlug} />
