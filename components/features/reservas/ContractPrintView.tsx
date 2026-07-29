@@ -42,7 +42,7 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm leading-relaxed">
-        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6" style={{ borderColor: accent }}>
+        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6 break-inside-avoid" style={{ borderColor: accent }}>
           {org.logo_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={org.logo_url} alt={org.name} className="h-12 w-auto object-contain" />
@@ -61,7 +61,7 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
         <p className="text-center text-xs text-gray-500 mb-6">#{sale.id.slice(0, 8).toUpperCase()} — {today}</p>
 
         {/* Partes */}
-        <table className="w-full border-collapse mb-6">
+        <table className="w-full border-collapse mb-6 break-inside-avoid">
           <tbody>
             <tr>
               <td className="border px-3 py-2 bg-gray-50 font-semibold w-1/4">Contratada</td>
@@ -80,7 +80,7 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
         </table>
 
         {/* Objeto */}
-        <div className="mb-6">
+        <div className="mb-6 break-inside-avoid">
           <p className="font-semibold mb-2">1. Objeto do contrato</p>
           <p>
             O presente contrato tem como objeto a prestação de serviços de intermediação de viagem
@@ -94,7 +94,7 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
         </div>
 
         {/* Valor e pagamento */}
-        <table className="w-full border-collapse mb-6">
+        <table className="w-full border-collapse mb-6 break-inside-avoid">
           <tbody>
             <tr>
               <td className="border px-3 py-2 bg-gray-50 font-semibold w-1/4">Valor total</td>
@@ -114,7 +114,7 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
         </table>
 
         {/* Cláusula de cancelamento — usa o texto da venda quando preenchido, senão um texto genérico padrão. */}
-        <div className="mb-6">
+        <div className="mb-6 break-inside-avoid">
           <p className="font-semibold mb-2">2. Cancelamento e reembolso</p>
           <p className="whitespace-pre-wrap">
             {sale.cancellation_policy || (
@@ -130,28 +130,28 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
         </div>
 
         {sale.important_info && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="font-semibold mb-2">3. Informações importantes</p>
             <p className="whitespace-pre-wrap">{sale.important_info}</p>
           </div>
         )}
 
         {sale.service_info && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="font-semibold mb-2">4. Informações de serviço</p>
             <p className="whitespace-pre-wrap">{sale.service_info}</p>
           </div>
         )}
 
         {sale.notes && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="font-semibold mb-2">5. Observações</p>
             <p className="whitespace-pre-wrap">{sale.notes}</p>
           </div>
         )}
 
         {/* Assinaturas */}
-        <div className="grid grid-cols-2 gap-8 mt-16">
+        <div className="grid grid-cols-2 gap-8 mt-16 break-inside-avoid">
           <div className="text-center">
             <div className="border-t border-black pt-2">
               <p className="font-semibold">{org.name}</p>
@@ -166,15 +166,16 @@ export default function ContractPrintView({ sale, org, orgSlug }: { sale: Travel
           </div>
         </div>
 
-        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400">
+        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 break-inside-avoid">
           Documento gerado por {org.name} em {today}
         </div>
       </div>
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
     </div>

@@ -69,25 +69,27 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm">
         {/* Cabeçalho: logo + linha de contatos (estilo operadora) */}
-        <div className="pb-4">
-          <div className="flex items-center gap-3">
-            {org.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt={org.name} className="h-14 w-auto object-contain" />
-            )}
-            <p className="text-2xl font-bold" style={{ color: accent }}>{org.name}</p>
+        <div className="break-inside-avoid">
+          <div className="pb-4">
+            <div className="flex items-center gap-3">
+              {org.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={org.logo_url} alt={org.name} className="h-14 w-auto object-contain" />
+              )}
+              <p className="text-2xl font-bold" style={{ color: accent }}>{org.name}</p>
+            </div>
           </div>
-        </div>
-        <div className="border-t-2 pt-2 pb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500" style={{ borderColor: accent }}>
-          {org.cnpj && <span>CNPJ {org.cnpj}</span>}
-          {org.cadastur && <span>CADASTUR {org.cadastur}</span>}
-          {org.contact_phone && <span>{org.contact_phone}</span>}
-          {org.contact_email && <span>{org.contact_email}</span>}
-          {org.website && <span>{org.website}</span>}
+          <div className="border-t-2 pt-2 pb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500" style={{ borderColor: accent }}>
+            {org.cnpj && <span>CNPJ {org.cnpj}</span>}
+            {org.cadastur && <span>CADASTUR {org.cadastur}</span>}
+            {org.contact_phone && <span>{org.contact_phone}</span>}
+            {org.contact_email && <span>{org.contact_email}</span>}
+            {org.website && <span>{org.website}</span>}
+          </div>
         </div>
 
         {/* Aviso de cotação (box verde, como no modelo da operadora) */}
-        <div className="border-2 border-green-600 p-4 mb-6">
+        <div className="border-2 border-green-600 p-4 mb-6 break-inside-avoid">
           <p className="font-bold text-red-600 mb-1">Atenção!!</p>
           <p className="text-[13px] leading-relaxed">
             Esta é uma simples cotação. Nenhum dos componentes selecionados está confirmado até que
@@ -102,7 +104,7 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
         </p>
 
         {/* Agência emissora × total da compra */}
-        <div className="border-2 p-4 mb-8" style={{ borderColor: accent }}>
+        <div className="border-2 p-4 mb-8 break-inside-avoid" style={{ borderColor: accent }}>
           <div className="flex items-center justify-between text-gray-400 text-[12px] border-b pb-2 mb-3">
             <span>Agência Emissora</span>
             <span>Total da compra</span>
@@ -124,38 +126,38 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
 
         {/* Hotel */}
         {doc.hotel_name && (
-          <>
+          <div className="break-inside-avoid">
             <p className="font-bold text-[13px] mb-2">Hotel: {doc.hotel_name}</p>
             <p className="text-[13px]">Check-in: {fmtDate(doc.start_date)} | Check-out: {fmtDate(doc.end_date)}</p>
             <p className="text-[13px]">{paxLine}</p>
             {doc.destination && <p className="text-[13px]">Destino: {doc.destination}</p>}
             <SectionRule />
-          </>
+          </div>
         )}
 
         {/* Traslado */}
         {hasTraslado && (
-          <>
+          <div className="break-inside-avoid">
             <p className="font-bold text-[13px] mb-2">Traslado: incluso no pacote</p>
             <p className="text-[13px]"><span className="font-bold">Origem:</span> {fmtDate(doc.start_date)} | <span className="font-bold">Volta:</span> {fmtDate(doc.end_date)}</p>
             <p className="text-[13px]">{paxLine}</p>
             <SectionRule />
-          </>
+          </div>
         )}
 
         {/* Seguro / assistência */}
         {hasSeguro && (
-          <>
+          <div className="break-inside-avoid">
             <p className="font-bold text-[13px] mb-2">Seguro viagem / assistência: incluso no pacote</p>
             <p className="text-[13px]"><span className="font-bold">Origem:</span> {fmtDate(doc.start_date)} | <span className="font-bold">Volta:</span> {fmtDate(doc.end_date)}</p>
             <p className="text-[13px]">{paxLine}</p>
             <SectionRule />
-          </>
+          </div>
         )}
 
         {/* Voos */}
         {voos.length > 0 && (
-          <>
+          <div>
             <p className="font-bold text-[13px] mb-2">
               Voo{doc.start_date ? ` (${fmtDate(doc.start_date)} - ${fmtDate(doc.end_date)})` : ''}
             </p>
@@ -166,7 +168,7 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
               .map(group => (
                 <div key={group.label} className="mb-3">
                   {group.legs.map((v, i) => (
-                    <div key={i} className="mb-2.5">
+                    <div key={i} className="mb-2.5 break-inside-avoid">
                       <p className="font-bold text-[13px]">{group.label}</p>
                       <p className="text-[13px]">{[v.origem, v.destino].filter(Boolean).join(' - ') || '—'}</p>
                       {(v.companhia || v.numero) && (
@@ -180,12 +182,12 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
                 </div>
               ))}
             <SectionRule />
-          </>
+          </div>
         )}
 
         {/* Incluso / não incluso */}
         {(doc.included.length > 0 || doc.not_included.length > 0) && (
-          <>
+          <div className="break-inside-avoid">
             <div className="grid grid-cols-2 gap-4 mb-2">
               <div>
                 <p className="font-bold text-[13px] mb-1.5">Incluso</p>
@@ -209,7 +211,7 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
               </div>
             </div>
             <SectionRule />
-          </>
+          </div>
         )}
 
         {/* Valores por pessoa + condições */}
@@ -217,7 +219,7 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
           <p className="text-[13px] mb-2"><span className="font-bold">Valor por pessoa:</span> <span className="tabular-nums">{fmtCurrency(doc.price_per_person_cents)}</span></p>
         )}
         {doc.payment_conditions.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-4 break-inside-avoid">
             <p className="font-bold text-[13px] mb-1.5">Condições de pagamento</p>
             <ul className="space-y-1">
               {doc.payment_conditions.map((p, i) => (
@@ -228,14 +230,14 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
         )}
 
         {doc.observacoes && (
-          <div className="mb-4">
+          <div className="mb-4 break-inside-avoid">
             <p className="font-bold text-[13px] mb-1">Observações</p>
             <p className="text-[13px] whitespace-pre-wrap">{doc.observacoes}</p>
           </div>
         )}
 
         {/* Rodapé de contato (estilo operadora) */}
-        <div className="text-[12px] text-gray-500 space-y-2 text-center">
+        <div className="text-[12px] text-gray-500 space-y-2 text-center break-inside-avoid">
           {(org.contact_email || org.contact_phone) && (
             <p>
               Em caso de dúvidas entre em contato
@@ -255,8 +257,9 @@ export default function BudgetDocumentPrintView({ doc, org }: { doc: BudgetDocum
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
     </div>

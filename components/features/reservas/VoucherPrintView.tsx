@@ -111,7 +111,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm]">
         {/* Cabeçalho da agência + caixa de referência */}
-        <div className="flex items-start justify-between gap-4 border-b-2 pb-6 mb-6" style={{ borderColor: accent }}>
+        <div className="flex items-start justify-between gap-4 border-b-2 pb-6 mb-6 break-inside-avoid" style={{ borderColor: accent }}>
           <div className="flex items-center gap-3">
             {org.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -150,7 +150,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         </div>
 
         {/* Cliente + resumo rápido */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6 break-inside-avoid">
           <InfoRow label="Cliente" value={<span className="font-semibold">{sale.client_name || '—'}</span>} />
           <InfoRow label="Destino" value={sale.destination} />
           <InfoRow
@@ -161,11 +161,11 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
 
         {/* Viajantes */}
         {travelers.length > 0 && (
-          <div className="mb-6 border rounded-md overflow-hidden">
+          <div className="mb-6 border rounded-md overflow-hidden break-inside-avoid">
             <SectionBar icon={Users} title="Viajantes" accent={accent} />
             <div className="divide-y">
               {travelers.map((t, i) => (
-                <div key={i} className="grid grid-cols-3 gap-4 px-3 py-2">
+                <div key={i} className="grid grid-cols-3 gap-4 px-3 py-2 break-inside-avoid">
                   <InfoRow label="Nome" value={t.name} />
                   <InfoRow label="Data de nascimento" value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
                   <InfoRow label="CPF" value={t.cpf} mono />
@@ -178,7 +178,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         {/* Seções de serviços — cada bloco só aparece se contratado */}
         <div className="space-y-4 mb-6">
           {hasVoos && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Plane} title="Voos" accent={accent} />
               {sale.air_locator && (
                 <div className="px-3 pt-3">
@@ -191,11 +191,11 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
                     const legs = flights.filter(f => f.sentido === dir)
                     if (legs.length === 0) return null
                     return (
-                      <div key={dir} className="p-3">
+                      <div key={dir} className="p-3 break-inside-avoid">
                         <p className="text-[10px] uppercase tracking-wide font-bold mb-1.5" style={{ color: accent }}>{dir}</p>
                         <div className="space-y-2">
                           {legs.map((f, i) => (
-                            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3 break-inside-avoid">
                               <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
                               <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
                               <InfoRow label="Data" value={fmtDate(f.data)} />
@@ -207,9 +207,9 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
                     )
                   })}
                   {flights.some(f => !f.sentido) && (
-                    <div className="p-3">
+                    <div className="p-3 break-inside-avoid">
                       {flights.filter(f => !f.sentido).map((f, i) => (
-                        <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3 break-inside-avoid">
                           <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
                           <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
                           <InfoRow label="Data" value={fmtDate(f.data)} />
@@ -230,7 +230,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           )}
 
           {hasHotel && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Hotel} title="Hospedagem" accent={accent} />
               <div className="grid grid-cols-2 gap-4 p-3">
                 <InfoRow label="Hotel" value={sale.hotel_name} />
@@ -242,7 +242,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           )}
 
           {hasTraslado && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Car} title="Traslados" accent={accent} />
               <div className="p-3 text-sm text-gray-600">
                 Traslado incluso no pacote — chegada e saída conforme itinerário combinado.
@@ -251,7 +251,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           )}
 
           {hasPasseios && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Compass} title="Passeios" accent={accent} />
               <div className="p-3 text-sm text-gray-600">
                 Passeios inclusos no pacote — consulte roteiro e horários com o guia local.
@@ -260,7 +260,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           )}
 
           {hasServicos && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Ticket} title="Serviços" accent={accent} />
               <div className="flex gap-1.5 flex-wrap p-3">
                 {(all.includes('carros') || all.includes('car_rental')) && <span className="text-xs px-2 py-1 rounded-full bg-gray-100">Locação de carro</span>}
@@ -271,7 +271,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           )}
 
           {hasSeguro && (
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={ShieldCheck} title="Seguro viagem" accent={accent} />
               <div className="p-3 text-sm text-gray-600">
                 Seguro viagem incluso — mantenha este voucher e o cartão do seguro em mãos durante a viagem.
@@ -281,14 +281,14 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         </div>
 
         {/* Operadora / pagamento */}
-        <div className="grid grid-cols-2 gap-4 mb-6 rounded-md border p-4">
+        <div className="grid grid-cols-2 gap-4 mb-6 rounded-md border p-4 break-inside-avoid">
           <InfoRow label="Operadora" value={sale.operator} />
           <InfoRow label="Forma de pagamento" value={sale.payment_method} />
         </div>
 
         {/* Política de cancelamento — bloco em destaque, igual ao modelo de referência */}
         {sale.cancellation_policy && (
-          <div className="mb-6 rounded-md border-2 p-4" style={{ borderColor: '#f59e0b' }}>
+          <div className="mb-6 rounded-md border-2 p-4 break-inside-avoid" style={{ borderColor: '#f59e0b' }}>
             <p className="text-xs uppercase tracking-wide font-bold mb-1.5 flex items-center gap-1.5" style={{ color: '#b45309' }}>
               <AlertTriangle className="w-3.5 h-3.5" /> Política de cancelamento
             </p>
@@ -297,7 +297,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         )}
 
         {sale.important_info && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1 flex items-center gap-1.5">
               <Info className="w-3.5 h-3.5" /> Informações importantes
             </p>
@@ -306,7 +306,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         )}
 
         {sale.service_info && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Informações de serviço
             </p>
@@ -315,7 +315,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
         )}
 
         {sale.notes && (
-          <div className="mb-6">
+          <div className="mb-6 break-inside-avoid">
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Observações</p>
             <p className="text-sm whitespace-pre-wrap">{sale.notes}</p>
           </div>
@@ -329,7 +329,7 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           </div>
         )}
 
-        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 space-y-1">
+        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 space-y-1 break-inside-avoid">
           {(org.address_street || org.address_city) && (
             <p className="flex items-center justify-center gap-1">
               <MapPin className="w-3 h-3 shrink-0" />
@@ -344,8 +344,11 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          /* Margem de segurança no fim de cada página impressa, pra
+             nenhum bloco encostar no corte físico do papel. */
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
     </div>

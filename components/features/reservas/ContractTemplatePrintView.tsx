@@ -37,7 +37,7 @@ export default function ContractTemplatePrintView({
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm leading-relaxed">
-        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6" style={{ borderColor: accent }}>
+        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6 break-inside-avoid" style={{ borderColor: accent }}>
           {org.logo_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={org.logo_url} alt={org.name} className="h-12 w-auto object-contain" />
@@ -55,7 +55,7 @@ export default function ContractTemplatePrintView({
         {/* Conteúdo autoral da própria agência (editado no Tiptap em "Contrato padrão"). */}
         <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
 
-        <div className="grid grid-cols-2 gap-8 mt-16">
+        <div className="grid grid-cols-2 gap-8 mt-16 break-inside-avoid">
           <div className="text-center">
             <div className="border-t border-black pt-2">
               <p className="font-semibold">{org.name}</p>
@@ -73,8 +73,16 @@ export default function ContractTemplatePrintView({
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+          .prose table, .prose blockquote, .prose pre, .prose figure, .prose ul, .prose ol {
+            break-inside: avoid; page-break-inside: avoid;
+          }
+          .prose h1, .prose h2, .prose h3, .prose h4 {
+            break-after: avoid; page-break-after: avoid;
+          }
+          .prose p { orphans: 3; widows: 3; }
         }
       `}</style>
     </div>

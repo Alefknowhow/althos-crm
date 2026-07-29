@@ -102,24 +102,26 @@ export default function QuotationPrintView({
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm">
-        <div className="pb-4">
-          <div className="flex items-center gap-3">
-            {org.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt={org.name} className="h-14 w-auto object-contain" />
-            )}
-            <p className="text-2xl font-bold" style={{ color: accent }}>{org.name}</p>
+        <div className="break-inside-avoid">
+          <div className="pb-4">
+            <div className="flex items-center gap-3">
+              {org.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={org.logo_url} alt={org.name} className="h-14 w-auto object-contain" />
+              )}
+              <p className="text-2xl font-bold" style={{ color: accent }}>{org.name}</p>
+            </div>
+          </div>
+          <div className="border-t-2 pt-2 pb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500" style={{ borderColor: accent }}>
+            {org.cnpj && <span>CNPJ {org.cnpj}</span>}
+            {org.cadastur && <span>CADASTUR {org.cadastur}</span>}
+            {org.contact_phone && <span>{org.contact_phone}</span>}
+            {org.contact_email && <span>{org.contact_email}</span>}
+            {org.website && <span>{org.website}</span>}
           </div>
         </div>
-        <div className="border-t-2 pt-2 pb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500" style={{ borderColor: accent }}>
-          {org.cnpj && <span>CNPJ {org.cnpj}</span>}
-          {org.cadastur && <span>CADASTUR {org.cadastur}</span>}
-          {org.contact_phone && <span>{org.contact_phone}</span>}
-          {org.contact_email && <span>{org.contact_email}</span>}
-          {org.website && <span>{org.website}</span>}
-        </div>
 
-        <div className="border-2 border-green-600 p-4 mb-6">
+        <div className="border-2 border-green-600 p-4 mb-6 break-inside-avoid">
           <p className="font-bold text-red-600 mb-1">Atenção!!</p>
           <p className="text-[13px] leading-relaxed">
             Esta é uma simples cotação. Nenhum dos componentes selecionados está confirmado até que
@@ -132,7 +134,7 @@ export default function QuotationPrintView({
           Código da Cotação: <span className="font-bold text-black">#{quotation.id.slice(0, 8).toUpperCase()}</span>
         </p>
 
-        <div className="border-2 p-4 mb-8" style={{ borderColor: accent }}>
+        <div className="border-2 p-4 mb-8 break-inside-avoid" style={{ borderColor: accent }}>
           <div className="flex items-center justify-between text-gray-400 text-[12px] border-b pb-2 mb-3">
             <span>Agência Emissora</span>
             <span>Total da compra</span>
@@ -157,7 +159,7 @@ export default function QuotationPrintView({
         <SectionRule />
 
         {lodgings.map((l, i) => (
-          <div key={i}>
+          <div key={i} className="break-inside-avoid">
             <p className="font-bold text-[13px] mb-2">Hotel: {l.name}</p>
             <p className="text-[13px]">Check-in: {fmtDate(l.check_in)} | Check-out: {fmtDate(l.check_out)}</p>
             {(l.room_category || l.board) && (
@@ -168,14 +170,14 @@ export default function QuotationPrintView({
         ))}
 
         {legGroups.length > 0 && (
-          <>
+          <div>
             <p className="font-bold text-[13px] mb-2">
               Voo{quotation.start_date ? ` (${fmtDate(quotation.start_date)} - ${fmtDate(quotation.end_date)})` : ''}
             </p>
             {legGroups.map(group => (
               <div key={group.label} className="mb-3">
                 {group.legs.map((f, i) => (
-                  <div key={i} className="mb-2.5">
+                  <div key={i} className="mb-2.5 break-inside-avoid">
                     <p className="font-bold text-[13px]">{group.label}</p>
                     <p className="text-[13px]">
                       {[f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' - ') || '—'}
@@ -188,19 +190,19 @@ export default function QuotationPrintView({
               </div>
             ))}
             <SectionRule />
-          </>
+          </div>
         )}
 
         {flightsHtmlText && legGroups.length === 0 && (
-          <>
+          <div className="break-inside-avoid">
             <p className="font-bold text-[13px] mb-2">Aéreo</p>
             <p className="text-[13px] whitespace-pre-wrap">{flightsHtmlText}</p>
             <SectionRule />
-          </>
+          </div>
         )}
 
         {((quotation.included?.length ?? 0) > 0 || (quotation.not_included?.length ?? 0) > 0) && (
-          <>
+          <div className="break-inside-avoid">
             <div className="grid grid-cols-2 gap-4 mb-2">
               <div>
                 <p className="font-bold text-[13px] mb-1.5">Incluso</p>
@@ -224,14 +226,14 @@ export default function QuotationPrintView({
               </div>
             </div>
             <SectionRule />
-          </>
+          </div>
         )}
 
         {quotation.price_per_person_cents != null && quotation.price_per_person_cents > 0 && (
           <p className="text-[13px] mb-2"><span className="font-bold">Valor por pessoa:</span> <span className="tabular-nums">{fmtCurrency(quotation.price_per_person_cents)}</span></p>
         )}
         {(quotation.payment_conditions?.length ?? 0) > 0 && (
-          <div className="mb-4">
+          <div className="mb-4 break-inside-avoid">
             <p className="font-bold text-[13px] mb-1.5">Condições de pagamento</p>
             <ul className="space-y-1">
               {quotation.payment_conditions!.map((p, i) => (
@@ -246,13 +248,13 @@ export default function QuotationPrintView({
         )}
 
         {cancellationText && (
-          <div className="mb-4">
+          <div className="mb-4 break-inside-avoid">
             <p className="font-bold text-[13px] mb-1">Política de cancelamento</p>
             <p className="text-[13px] whitespace-pre-wrap">{cancellationText}</p>
           </div>
         )}
 
-        <div className="text-[12px] text-gray-500 space-y-2 text-center">
+        <div className="text-[12px] text-gray-500 space-y-2 text-center break-inside-avoid">
           {(org.contact_email || org.contact_phone) && (
             <p>
               Em caso de dúvidas entre em contato
@@ -272,8 +274,9 @@ export default function QuotationPrintView({
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
     </div>

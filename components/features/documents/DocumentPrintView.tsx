@@ -27,7 +27,7 @@ export default function DocumentPrintView({ doc, org }: { doc: GeneratedDocument
       </div>
 
       <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm] text-sm">
-        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6" style={{ borderColor: accent }}>
+        <div className="flex items-center gap-3 border-b-2 pb-4 mb-6 break-inside-avoid" style={{ borderColor: accent }}>
           {org.logo_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={org.logo_url} alt={org.name} className="h-12 w-auto object-contain" />
@@ -47,15 +47,26 @@ export default function DocumentPrintView({ doc, org }: { doc: GeneratedDocument
         {/* Conteúdo autoral do próprio operador do CRM (editado no Tiptap), não input externo. */}
         <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: doc.body_html }} />
 
-        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400">
+        <div className="mt-10 pt-4 border-t text-center text-[10px] text-gray-400 break-inside-avoid">
           Documento gerado por {org.name} em {new Date(doc.created_at).toLocaleDateString('pt-BR')}
         </div>
       </div>
 
       <style>{`
         @media print {
-          @page { size: A4; margin: 0; }
+          /* Margem de segurança no fim de cada página impressa. */
+          @page { size: A4; margin: 0 0 14mm 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+          /* Conteúdo autoral (Tiptap) — evita cortar tabelas/listas/citações
+             ao meio e evita título isolado no fim da página. */
+          .prose table, .prose blockquote, .prose pre, .prose figure, .prose ul, .prose ol {
+            break-inside: avoid; page-break-inside: avoid;
+          }
+          .prose h1, .prose h2, .prose h3, .prose h4 {
+            break-after: avoid; page-break-after: avoid;
+          }
+          .prose p { orphans: 3; widows: 3; }
         }
       `}</style>
     </div>
