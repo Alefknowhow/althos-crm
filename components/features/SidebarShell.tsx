@@ -2,33 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
+import { useSidebarCollapse } from './SidebarCollapseContext'
 
 export default function SidebarShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen]   = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const { collapsed } = useSidebarCollapse()
   const pathname          = usePathname()
   const closeRef          = useRef<HTMLButtonElement>(null)
 
   // Auto-close on route change
   useEffect(() => { setOpen(false) }, [pathname])
 
-  // Mount after hydration to avoid SSR mismatch + restore collapsed preference
-  useEffect(() => {
-    setMounted(true)
-    try { setCollapsed(localStorage.getItem('sidebar-collapsed') === '1') } catch {}
-  }, [])
-
-  function toggleCollapsed() {
-    setCollapsed(v => {
-      const next = !v
-      try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0') } catch {}
-      return next
-    })
-  }
+  // Mount after hydration to avoid SSR mismatch
+  useEffect(() => { setMounted(true) }, [])
 
   // Lock body scroll while drawer is open (iOS fix)
   useEffect(() => {
@@ -54,26 +44,6 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
         )}
       >
         {children}
-
-        {/* Collapse / expand toggle — pinned to the header row (h-14). */}
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          title={collapsed ? 'Expandir' : 'Recolher'}
-          className={cn(
-            'absolute top-3.5 w-7 h-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all z-10',
-            collapsed
-              // Collapsed: center the toggle and reveal it only on hover so it
-              // never overlaps the centered logo mark (logo fades out on hover).
-              ? 'left-1/2 -translate-x-1/2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
-              : 'right-2',
-          )}
-        >
-          {collapsed
-            ? <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
-            : <PanelLeftClose className="w-4 h-4" strokeWidth={1.75} />}
-        </button>
       </aside>
 
       {/* Mobile hamburger — only after hydration to avoid flash */}

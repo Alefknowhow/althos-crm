@@ -16,6 +16,8 @@ import Link from 'next/link'
 import { Activity } from 'lucide-react'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
+import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
+import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 
 export default async function OrgLayout({
   children,
@@ -72,6 +74,7 @@ export default async function OrgLayout({
       )}
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
+      <SidebarCollapseProvider>
       <div className="flex flex-1 min-h-0">
         <Sidebar orgSlug={params.orgSlug} />
 
@@ -81,9 +84,11 @@ export default async function OrgLayout({
               desktop aside occupies its own column. */}
           <header className="h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
+              <HeaderSidebarToggle orgSlug={params.orgSlug} />
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
               {orgs.length > 1 && (
                 <>
+                  <div className="hidden md:block w-px h-4 bg-border" />
                   <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
                     Organização
                   </span>
@@ -126,6 +131,7 @@ export default async function OrgLayout({
           </main>
         </div>
       </div>
+      </SidebarCollapseProvider>
 
       <SupportWidget orgSlug={params.orgSlug} />
     </div>
