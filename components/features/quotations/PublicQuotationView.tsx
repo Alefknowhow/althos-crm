@@ -104,6 +104,7 @@ export type PublicQuotation = {
   cancellation_html?: string | null
   itinerary_html?: string | null
   flights_html?: string | null
+  tours_html?: string | null
   included?: string[]
   not_included?: string[]
   price_per_person_cents?: number | null
@@ -682,6 +683,13 @@ export default function PublicQuotationView({
             </div>
           </Block>
         ) : null}
+
+        {/* ───── PASSEIOS E INGRESSOS ───── */}
+        {hasHtml(data.tours_html) && (
+          <Block num={num()} title="Passeios e Ingressos" sub="Atrações e experiências da viagem">
+            <Rich html={data.tours_html} className="rich-body" />
+          </Block>
+        )}
 
         {/* ───── IMPORTANTE ───── */}
         {hasHtml(data.important_html) && (

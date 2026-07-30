@@ -36,7 +36,7 @@ import {
   Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, Eye, Pencil, ShoppingBag,
-  CreditCard, QrCode, Receipt,
+  CreditCard, QrCode, Receipt, Ticket,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -408,6 +408,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     cancellation_html: q0.cancellation_html || '',
     itinerary_html: q0.itinerary_html || '',
     flights_html: (q0 as any).flights_html || '',
+    tours_html: (q0 as any).tours_html || '',
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
@@ -532,6 +533,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     cancellation_html: q.cancellation_html || null,
     itinerary_html: q.itinerary_html || null,
     flights_html: q.flights_html || null,
+    tours_html: q.tours_html || null,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
@@ -570,6 +572,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     intro_html: q.intro_html, important_html: q.important_html, closing_html: q.closing_html,
     cancellation_html: q.cancellation_html, itinerary_html: q.itinerary_html,
     flights_html: q.flights_html,
+    tours_html: q.tours_html,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
     payment_conditions: q.payment_conditions,
@@ -959,6 +962,16 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         </p>
         <ItineraryEditor orgSlug={orgSlug} value={q.itinerary_html}
           onChange={html => setQ(s => ({ ...s, itinerary_html: html }))} />
+      </EditBlock>
+
+      {/* PASSEIOS E INGRESSOS — texto livre rico, mesmo padrão do Itinerário */}
+      <EditBlock icon={Ticket} title="Passeios e Ingressos">
+        <p className="text-[11px] text-muted-foreground">
+          Descreva passeios, ingressos de parques etc. Cole prints (Ctrl+V) ou arraste
+          imagens, e formate o texto como preferir.
+        </p>
+        <ItineraryEditor orgSlug={orgSlug} value={q.tours_html}
+          onChange={html => setQ(s => ({ ...s, tours_html: html }))} />
       </EditBlock>
 
       {/* IMPORTANTE */}
