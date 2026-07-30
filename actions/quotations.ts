@@ -472,6 +472,8 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
       lat: det.latitude ? Number(det.latitude) : undefined,
       lng: det.longitude ? Number(det.longitude) : undefined,
       address: det.address_obj?.address_string || undefined,
+      ranking_string: det.ranking_data?.ranking_string || undefined,
+      category: det.category?.name || det.subcategory?.[0]?.name || undefined,
     }
     return {
       ok: true as const,

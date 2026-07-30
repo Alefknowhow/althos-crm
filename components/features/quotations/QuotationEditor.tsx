@@ -672,14 +672,29 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     const res = await tripadvisorLookup(orgSlug, l.name)
     setTaBusy(null)
     if (res.ok) {
-      setLodgings(ls => ls.map(x => x._key === l._key ? {
-        ...x,
-        tripadvisor_location_id: res.location_id,
-        tripadvisor_data: res.data,
-        lat: x.lat ?? res.data.lat ?? null,
-        lng: x.lng ?? res.data.lng ?? null,
-        photos: x.photos.length ? x.photos : (res.data.photos || []).slice(0, 5),
-      } : x))
+      setLodgings(ls => ls.map(x => {
+        if (x._key !== l._key) return x
+        // Rascunho de descrição só quando o campo ainda está vazio — nunca
+        // sobrescreve um texto que o usuário já escreveu.
+        const draftParts = [
+          res.data.rating && res.data.reviews_count
+            ? `Avaliado com nota ${res.data.rating} no TripAdvisor (${res.data.reviews_count} avaliações).`
+            : null,
+          res.data.ranking_string || null,
+          res.data.category ? `Categoria: ${res.data.category}.` : null,
+        ].filter(Boolean)
+        const draftDescription = draftParts.length ? `<p>${draftParts.join(' ')}</p>` : x.description_html
+        return {
+          ...x,
+          name: res.name || x.name, // corrige pro nome oficial do TripAdvisor
+          tripadvisor_location_id: res.location_id,
+          tripadvisor_data: res.data,
+          lat: x.lat ?? res.data.lat ?? null,
+          lng: x.lng ?? res.data.lng ?? null,
+          photos: x.photos.length ? x.photos : (res.data.photos || []).slice(0, 5),
+          description_html: x.description_html?.trim() ? x.description_html : draftDescription,
+        }
+      }))
       toast.success(`TripAdvisor vinculado: ${res.name}`)
     } else toast.error(res.error)
   }
@@ -813,7 +828,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 onClick={() => setLodgings(ls => ls.filter(x => x._key !== l._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
             {l.tripadvisor_data && (
-              <p className="text-[11px] text-emerald-600">✓ TripAdvisor vinculado{l.tripadvisor_data.rating ? ` · nota ${l.tripadvisor_data.rating}` : ''}{l.tripadvisor_data.reviews_count ? ` · ${l.tripadvisor_data.reviews_count} avaliações` : ''}</p>
+              <>
+                <p className="text-[11px] text-emerald-600">✓ TripAdvisor vinculado{l.tripadvisor_data.rating ? ` · nota ${l.tripadvisor_data.rating}` : ''}{l.tripadvisor_data.reviews_count ? ` · ${l.tripadvisor_data.reviews_count} avaliações` : ''}</p>
+                {l.tripadvisor_data.address && (
+                  <p className="text-[11px] text-muted-foreground">📍 {l.tripadvisor_data.address}</p>
+                )}
+              </>
             )}
             <div className="grid grid-cols-2 gap-2">
               <F label="Check-in"><Input type="date" value={l.check_in || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_in: e.target.value } : x))} /></F>
