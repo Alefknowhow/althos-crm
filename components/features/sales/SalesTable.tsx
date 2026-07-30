@@ -99,6 +99,16 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                   <div className="sm:hidden text-xs text-muted-foreground mt-0.5">
                     {s.leads?.name || '—'}
                   </div>
+                  <div className="lg:hidden text-xs text-muted-foreground mt-0.5">
+                    {memberName(s.seller_id)}
+                    {s.payment_method && (
+                      <>
+                        {' · '}
+                        <span className="capitalize">{s.payment_method}</span>
+                        {s.installments > 1 && ` (${s.installments}x)`}
+                      </>
+                    )}
+                  </div>
                   <div className="md:hidden mt-1">
                     <Badge variant="outline" className={status.className}>{status.label}</Badge>
                   </div>

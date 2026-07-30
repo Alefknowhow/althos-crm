@@ -151,7 +151,10 @@ export async function listFinancialEntries(
   orgSlug: string,
   filters?: { tipo?: string; categoria?: string; status?: string; from?: string; to?: string; contatoId?: string },
 ): Promise<FinancialEntryRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) return []
   const supabase = createClient()
   let query = supabase
     .from('financial_entries')
@@ -178,7 +181,10 @@ export async function listFinancialEntries(
 }
 
 export async function getFinancialEntry(orgSlug: string, id: string): Promise<FinancialEntryRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) return null
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -490,7 +496,10 @@ export async function deleteFinancialAttachment(orgSlug: string, entryId: string
 }
 
 export async function getFinancialAttachmentUrl(orgSlug: string, entryId: string, path: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { data: entry } = await supabase
@@ -694,6 +703,19 @@ export async function getUpcomingDueEntries(orgSlug: string, days = 30): Promise
 }
 
 export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) {
+    return {
+      summary: { receitas_cents: 0, despesas_cents: 0, saldo_cents: 0 },
+      monthlyCashFlow: [],
+      dailyCashFlow: [],
+      expensesByCategory: [],
+      dre: { receita_total_cents: 0, despesas_por_categoria: [], resultado_cents: 0 },
+      upcomingDue: [],
+    }
+  }
   const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),

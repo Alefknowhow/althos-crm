@@ -20,7 +20,12 @@ export type FinancialSettingRow = {
 }
 
 export async function listFinancialSettings(orgSlug: string): Promise<Record<FinancialSettingType, FinancialSettingRow[]>> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) {
+    return FINANCIAL_SETTING_TYPES.reduce((acc, t) => { acc[t.type] = []; return acc }, {} as Record<FinancialSettingType, FinancialSettingRow[]>)
+  }
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_settings')

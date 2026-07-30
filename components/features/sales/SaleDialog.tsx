@@ -136,7 +136,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1.5">
               <Label>Data</Label>
               <Input type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} required />
@@ -145,7 +145,7 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
               <Label>Qtd.</Label>
               <Input type="number" min={1} value={quantity} onChange={e => handleQuantityChange(parseInt(e.target.value || '1'))} />
             </div>
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5 sm:col-span-2 md:col-span-2">
               <Label>Valor praticado (total)</Label>
               <Input value={amountDisplay} onChange={e => handleAmountChange(e.target.value)} placeholder="R$ 0,00" />
             </div>

@@ -11,7 +11,10 @@ import { isAccessBlocked } from '@/lib/billing/plans'
 const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 export async function listSales(orgSlug: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return []
   const supabase = createClient()
 
   const { data, error } = await supabase
@@ -29,7 +32,10 @@ export async function listSales(orgSlug: string) {
 }
 
 export async function getSale(orgSlug: string, id: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   const supabase = createClient()
   const { data, error } = await supabase
     .from('sales')
@@ -155,7 +161,10 @@ export async function deleteSale(orgSlug: string, id: string) {
 
 // Returns active products for the sale dialog selector.
 export async function listActiveProducts(orgSlug: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('products')
@@ -170,7 +179,10 @@ export async function listActiveProducts(orgSlug: string) {
 // "Vendedor" selector. Uses admin client to read auth.users emails since
 // we don't keep a profiles table yet.
 export async function listOrgMembers(orgSlug: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'sales')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data: memberships } = await supabase
     .from('memberships')

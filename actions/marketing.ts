@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 
@@ -19,7 +20,10 @@ const adAccountInput = z.object({
 })
 
 export async function listAdAccounts(orgSlug: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('ad_accounts')
@@ -30,8 +34,10 @@ export async function listAdAccounts(orgSlug: string) {
 }
 
 export async function createAdAccount(orgSlug: string, raw: unknown) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const parsed = adAccountInput.safeParse(raw)
@@ -59,7 +65,10 @@ export async function createAdAccount(orgSlug: string, raw: unknown) {
 }
 
 export async function updateAdAccount(orgSlug: string, id: string, raw: unknown) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
   const parsed = adAccountInput.partial().safeParse(raw)
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
@@ -79,7 +88,10 @@ export async function deleteAdAccount(orgSlug: string, id: string) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { count } = await supabase
@@ -120,7 +132,10 @@ const campaignInput = z.object({
 })
 
 export async function listCampaigns(orgSlug: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('campaigns')
@@ -133,8 +148,10 @@ export async function listCampaigns(orgSlug: string) {
 }
 
 export async function createCampaign(orgSlug: string, raw: unknown) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const parsed = campaignInput.safeParse(raw)
@@ -166,7 +183,10 @@ export async function createCampaign(orgSlug: string, raw: unknown) {
 }
 
 export async function updateCampaign(orgSlug: string, id: string, raw: unknown) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
   const parsed = campaignInput.partial().extend({ status: z.string().optional() }).safeParse(raw)
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
@@ -186,7 +206,10 @@ export async function deleteCampaign(orgSlug: string, id: string) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { error } = await supabase
@@ -218,7 +241,10 @@ const metricInput = z.object({
  * in the DB; this function handles the conflict gracefully.
  */
 export async function recordCampaignMetric(orgSlug: string, raw: unknown) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const parsed = metricInput.safeParse(raw)
@@ -273,8 +299,10 @@ export async function bulkRecordCampaignMetrics(
   }>,
   source: 'csv' | 'manual' = 'csv',
 ) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   // Build a lowercased name→id map so we can resolve campaigns by name (CSVs
@@ -329,7 +357,10 @@ export async function bulkRecordCampaignMetrics(
 }
 
 export async function listCampaignMetrics(orgSlug: string, campaignId: string, from?: string, to?: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return []
   const supabase = createClient()
 
   let q = supabase
@@ -367,7 +398,12 @@ function periodStart(period: MarketingPeriod): string {
  * for the chart. Returns null if no data — caller renders an empty state.
  */
 export async function getMarketingOverview(orgSlug: string, period: MarketingPeriod = '30d') {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) {
+    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [] }
+  }
   const supabase = createClient()
   const start = periodStart(period)
 
@@ -401,11 +437,16 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   // Match by leads.source LIKE '%form:<...>%' OR by joining with form_submissions.utm_campaign.
   // For simplicity: query form_submissions in the window, group by utm_campaign.
   const startIso = new Date(start).toISOString()
-  const { data: subs } = await supabase
-    .from('form_submissions')
-    .select('utm_campaign, contato_id')
-    .gte('created_at', startIso)
-    .not('utm_campaign', 'is', null)
+  const { data: orgForms } = await supabase.from('forms').select('id').eq('organization_id', org.id)
+  const orgFormIds = (orgForms || []).map(f => f.id)
+  const { data: subs } = orgFormIds.length
+    ? await supabase
+        .from('form_submissions')
+        .select('utm_campaign, contato_id')
+        .in('form_id', orgFormIds)
+        .gte('created_at', startIso)
+        .not('utm_campaign', 'is', null)
+    : { data: [] as { utm_campaign: string | null; contato_id: string | null }[] }
 
   // 3) Aggregate metrics per campaign.
   const metricsByCampaign = new Map<string, { spend: number; imp: number; clicks: number }>()
