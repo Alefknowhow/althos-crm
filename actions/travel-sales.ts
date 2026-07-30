@@ -256,7 +256,10 @@ export async function toggleSaleChecklistStep(
  * vez). Chamado pela rota de impressão do contrato ao carregar.
  */
 export async function markContractGenerated(orgSlug: string, saleId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return
   const supabase = createClient()
 
   const { data: sale } = await supabase

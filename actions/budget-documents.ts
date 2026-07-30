@@ -56,7 +56,10 @@ function pick(input: Record<string, any>): Record<string, any> {
 }
 
 export async function listBudgetDocuments(orgSlug: string): Promise<BudgetDocumentRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('budget_documents')
@@ -68,7 +71,10 @@ export async function listBudgetDocuments(orgSlug: string): Promise<BudgetDocume
 }
 
 export async function getBudgetDocument(orgSlug: string, id: string): Promise<BudgetDocumentRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return null
   const supabase = createClient()
   const { data } = await supabase
     .from('budget_documents')

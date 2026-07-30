@@ -111,8 +111,10 @@ export type QuotationFull = {
 
 /* ─────────── leitura completa (editor) ─────────── */
 export async function getQuotationFull(orgSlug: string, id: string): Promise<QuotationFull | null> {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return null
   const supabase = createClient()
 
   const { data: q } = await supabase

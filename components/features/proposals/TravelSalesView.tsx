@@ -912,7 +912,7 @@ function SaleEditor({
         {/* Manual fields */}
         <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
           <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">Dados operacionais (preencha manualmente)</p>
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
             <Field label="Localizador aéreo"><Input value={s.air_locator || ''} onChange={e => set('air_locator', e.target.value)} placeholder="Ex.: ABC123" /></Field>
             <Field label="Comissão"><MoneyInput value={s.commission_cents || 0} onChange={c => set('commission_cents', c)} /></Field>

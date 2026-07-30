@@ -69,7 +69,10 @@ function pick(input: Record<string, any>): Record<string, any> {
 }
 
 export async function listProposals(orgSlug: string): Promise<ProposalRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_proposals')

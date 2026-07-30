@@ -312,7 +312,7 @@ export default async function ContatoDetailPage({
                             {c.validade && <span>· Válido até {new Date(c.validade).toLocaleDateString('pt-BR')}</span>}
                             <Badge variant="outline" className="text-[9px] px-1 py-0">{statusLabel}</Badge>
                             {c.origem_sale_id && (
-                              <Link href={`/app/${params.orgSlug}/reservas?venda=${c.origem_sale_id}`} className="text-primary hover:underline">
+                              <Link href={`/app/${params.orgSlug}/reservas?sale=${c.origem_sale_id}`} className="text-primary hover:underline">
                                 Ver venda de origem
                               </Link>
                             )}
