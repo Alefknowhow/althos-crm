@@ -6,8 +6,24 @@ import { leadSchema } from '@/lib/validators/lead'
 import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
+import { checkMemberPermission } from '@/lib/permissions.server'
 
 const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
+
+/**
+ * Contatos serve tanto a tela de Pipeline (leads) quanto a de Contatos/
+ * Clientes — libera se o membro tiver acesso a QUALQUER um dos módulos que
+ * dependem desta tabela.
+ */
+async function checkContatoPermission(orgId: string, userId: string) {
+  const [pipeline, leads, clients] = await Promise.all([
+    checkMemberPermission(orgId, userId, 'pipeline'),
+    checkMemberPermission(orgId, userId, 'leads'),
+    checkMemberPermission(orgId, userId, 'clients'),
+  ])
+  if (pipeline.allowed || leads.allowed || clients.allowed) return { allowed: true as const }
+  return { allowed: false as const, reason: pipeline.reason }
+}
 import { CONTATO_STATUSES } from '@/lib/contatos'
 import { z } from 'zod'
 
@@ -24,6 +40,8 @@ import { z } from 'zod'
 export async function createLead(orgSlug: string, formData: FormData) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
 
   if (!(await canCreateLead(org.id))) {
@@ -130,7 +148,10 @@ export async function addLeadNote(orgSlug: string, leadId: string, formData: For
 import { inngest } from '@/lib/inngest/client'
 
 export async function updateLead(orgSlug: string, leadId: string, formData: FormData) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -180,7 +201,10 @@ export async function deleteLead(orgSlug: string, leadId: string) {
   if (isImpersonating()) {
     return { ok: false, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -194,6 +218,8 @@ export async function deleteLead(orgSlug: string, leadId: string) {
 export async function moveLeadToStage(orgSlug: string, leadId: string, newStageId: string, oldStageId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   const supabase = createClient()
 
   if (newStageId === oldStageId) return { ok: true }
@@ -328,8 +354,10 @@ export async function getLead(orgSlug: string, leadId: string) {
 }
 
 export async function assignLead(orgSlug: string, leadId: string, userId: string | null) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { error } = await supabase
@@ -346,8 +374,10 @@ export async function assignLead(orgSlug: string, leadId: string, userId: string
 }
 
 export async function updateLeadValue(orgSlug: string, leadId: string, valueCents: number) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -364,8 +394,10 @@ export async function updateLeadValue(orgSlug: string, leadId: string, valueCent
 }
 
 export async function updateLeadTags(orgSlug: string, leadId: string, tags: string[]) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -394,8 +426,10 @@ export async function updateLeadTags(orgSlug: string, leadId: string, tags: stri
  * antigo mecanismo de "Adicionar Nota" (popup + timeline de atividades).
  */
 export async function updateContatoInternalNotes(orgSlug: string, contatoId: string, text: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -433,6 +467,8 @@ export async function bulkUpdateLeads(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   if (!leadIds.length) return { ok: true as const, count: 0 }
@@ -487,7 +523,10 @@ export async function bulkDeleteLeads(orgSlug: string, leadIds: string[]) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   if (!leadIds.length) return { ok: true as const, count: 0 }
@@ -711,8 +750,10 @@ const profileSchema = z.object({
  * contato. Mantém o nome `upsertCustomerProfile` por compatibilidade.
  */
 export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw: unknown) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const parsed = profileSchema.safeParse(raw)
@@ -746,6 +787,8 @@ const newCustomerSchema = z.object({
 export async function createCustomer(orgSlug: string, raw: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -806,6 +849,8 @@ const newContatoSchema = z.object({
 export async function createContato(orgSlug: string, raw: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
 
   if (!(await canCreateLead(org.id))) {
@@ -898,8 +943,10 @@ const setStatusSchema = z.object({ status: z.enum(CONTATO_STATUSES) })
  * became_customer_at na primeira vez que vira cliente; limpa ao sair de cliente.
  */
 export async function setContatoStatus(orgSlug: string, contatoId: string, rawStatus: unknown) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const parsed = setStatusSchema.safeParse({ status: rawStatus })
@@ -942,8 +989,10 @@ export async function uploadContatoAvatar(
   contatoId: string,
   formData: FormData,
 ) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const file = formData.get('file') as File | null
@@ -1003,8 +1052,10 @@ export async function uploadContatoAvatar(
 }
 
 export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { data: contato } = await supabase
@@ -1039,8 +1090,10 @@ export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
 /* -------- Status de cliente (marcar / desmarcar) -------- */
 
 export async function markAsCustomer(orgSlug: string, leadId: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
   const { error } = await supabase
     .from('contatos')
@@ -1056,7 +1109,10 @@ export async function unmarkAsCustomer(orgSlug: string, leadId: string) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
   const { error } = await supabase
     .from('contatos')
@@ -1112,6 +1168,8 @@ export async function listContatoDeals(orgSlug: string, contatoId: string): Prom
 export async function reopenNegotiation(orgSlug: string, contatoId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -1188,6 +1246,8 @@ export async function uploadCustomerDocument(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const file = formData.get('file') as File | null
@@ -1257,7 +1317,10 @@ export async function deleteCustomerDocument(orgSlug: string, documentId: string
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
 
   const { data: doc } = await supabase
