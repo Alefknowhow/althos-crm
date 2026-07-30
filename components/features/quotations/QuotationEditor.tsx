@@ -692,7 +692,8 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         const mergedPhotos = Array.from(new Set([...(x.photos || []), ...((res.data.photos || []) as string[])])).slice(0, 10)
         return {
           ...x,
-          name: res.name || x.name, // corrige pro nome oficial do TripAdvisor
+          // Nome mantido do jeito que o usuário digitou — não sobrescreve
+          // com o nome oficial do TripAdvisor.
           tripadvisor_location_id: res.location_id,
           tripadvisor_data: res.data,
           lat: x.lat ?? res.data.lat ?? null,

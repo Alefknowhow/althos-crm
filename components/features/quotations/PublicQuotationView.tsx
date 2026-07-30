@@ -582,7 +582,9 @@ export default function PublicQuotationView({
                     {l.room_category && <span className="pill gold">{l.room_category}</span>}
                     {l.board && <span className="pill">{l.board}</span>}
                   </div>
-                  {hasHtml(l.description_html) && <Rich html={l.description_html} />}
+                  {/* Descrição só some do card quando há popup (clickable) pra vê-la lá —
+                      sem TripAdvisor vinculado, não existe onde mais mostrá-la. */}
+                  {!clickable && hasHtml(l.description_html) && <Rich html={l.description_html} />}
                   {(l.photos || []).length > 0 && (
                     <div className="gallery">
                       {(l.photos || []).slice(0, 5).map((src, k) => (
@@ -849,6 +851,9 @@ export default function PublicQuotationView({
                   {rating > 0 && <span className="stars">{'●'.repeat(filled)}{'○'.repeat(Math.max(0, 5 - filled))}</span>}
                   {ta.reviews_count ? <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{ta.reviews_count.toLocaleString('pt-BR')} avaliações</span> : null}
                 </div>
+                {hasHtml(modalLodge.description_html) && (
+                  <div style={{ margin: '14px 0' }}><Rich html={modalLodge.description_html} /></div>
+                )}
                 {(ta.photos || []).length > 1 && (
                   <div className="mini-gal">
                     {(ta.photos || []).slice(1, 5).map((src, i) => <div key={i}><LazyImg src={src} alt="" /></div>)}
@@ -924,12 +929,12 @@ const CSS = `
 .alq .hero-meta{margin-top:14px;font-size:13px;letter-spacing:.02em;color:rgba(255,255,255,.75)}
 
 .alq .countdown{position:absolute;z-index:3;top:20px;right:20px;
-  background:rgba(255,255,255,.10);backdrop-filter:blur(12px);
-  border:1px solid rgba(255,255,255,.22);border-radius:14px;
-  padding:14px 18px;text-align:center;color:#fff;min-width:132px}
-.alq .countdown .cd-num{font-family:'Inter',sans-serif;font-size:38px;font-weight:700;line-height:1;color:var(--gold-soft)}
-.alq .countdown .cd-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;margin-top:4px}
-.alq .countdown .cd-date{font-size:11px;opacity:.7;margin-top:6px}
+  background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.5);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.18);
+  padding:14px 18px;text-align:center;color:#1a1a1a;min-width:132px}
+.alq .countdown .cd-num{font-family:'Inter',sans-serif;font-size:38px;font-weight:700;line-height:1;color:var(--gold)}
+.alq .countdown .cd-lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-top:4px;color:#1a1a1a}
+.alq .countdown .cd-date{font-size:11px;opacity:.65;margin-top:6px;color:#1a1a1a}
 @media(max-width:560px){.alq .countdown{top:14px;right:14px;padding:10px 14px;min-width:104px}.alq .countdown .cd-num{font-size:28px}}
 
 /* 3 CARDS */
