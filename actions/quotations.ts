@@ -431,7 +431,21 @@ export async function createSaleFromQuotation(orgSlug: string, id: string) {
   return { ok: true as const, saleId: (sale as any).id, existed: false }
 }
 
-/* ─────────── TripAdvisor (Content API, cacheado na montagem) ─────────── */
+/* ─────────── TripAdvisor (Terra API — terra.tripadvisor.com, cacheado na montagem) ───────────
+ * A API antiga (api.content.tripadvisor.com, autenticada via ?key=) está sendo descontinuada.
+ * A Terra API usa outro host e autentica por header X-API-Key. */
+const TRIPADVISOR_BASE = 'https://terra.tripadvisor.com/api'
+
+function taHeaders(key: string) {
+  return { Accept: 'application/json', 'X-API-Key': key }
+}
+
+/** Extrai o texto na localidade preferida (pt) de uma lista de Translation[], com fallback pro primeiro item. */
+function pickTranslation(items: any[] | undefined, preferred = 'pt'): string | undefined {
+  if (!Array.isArray(items) || items.length === 0) return undefined
+  return items.find(i => i?.language === preferred)?.value || items[0]?.value
+}
+
 export async function tripadvisorLookup(orgSlug: string, query: string) {
   await requireAuth()
   await getCurrentOrganization(orgSlug)
@@ -445,40 +459,35 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
 
   try {
     const search = await fetch(
-      `https://api.content.tripadvisor.com/api/v1/location/search?key=${key}&searchQuery=${encodeURIComponent(q)}&category=hotels&language=pt`,
-      { headers: { Accept: 'application/json' }, cache: 'no-store' },
+      `${TRIPADVISOR_BASE}/catalog/locations/search?query=${encodeURIComponent(q)}&category=HOTEL&locale=pt-BR&size=1`,
+      { headers: taHeaders(key), cache: 'no-store' },
     )
     if (!search.ok) return { ok: false as const, error: `TripAdvisor indisponível (${search.status})` }
     const sr = await search.json()
-    const loc = sr?.data?.[0]
-    if (!loc?.location_id) return { ok: false as const, error: 'Hotel não encontrado no TripAdvisor' }
+    const loc = sr?.data?.[0]?.location
+    if (!loc?.id) return { ok: false as const, error: 'Hotel não encontrado no TripAdvisor' }
 
-    const [detRes, photoRes] = await Promise.all([
-      fetch(`https://api.content.tripadvisor.com/api/v1/location/${loc.location_id}/details?key=${key}&language=pt&currency=BRL`,
-        { headers: { Accept: 'application/json' }, cache: 'no-store' }),
-      fetch(`https://api.content.tripadvisor.com/api/v1/location/${loc.location_id}/photos?key=${key}&language=pt&limit=5`,
-        { headers: { Accept: 'application/json' }, cache: 'no-store' }),
-    ])
-    const det = detRes.ok ? await detRes.json() : {}
-    const photos = photoRes.ok ? await photoRes.json() : {}
+    const photoRes = await fetch(
+      `${TRIPADVISOR_BASE}/locations/${loc.id}/photos?locale=pt&size=5`,
+      { headers: taHeaders(key), cache: 'no-store' },
+    )
+    const photosJson = photoRes.ok ? await photoRes.json() : { data: [] }
 
     const data = {
-      rating: det.rating ? Number(det.rating) : undefined,
-      reviews_count: det.num_reviews ? Number(det.num_reviews) : undefined,
-      url: det.web_url || undefined,
-      photos: Array.isArray(photos?.data)
-        ? photos.data.map((p: any) => p?.images?.large?.url || p?.images?.original?.url).filter(Boolean)
+      rating: loc.overall_rating?.rating ? Number(loc.overall_rating.rating) : undefined,
+      reviews_count: loc.overall_rating?.count ? Number(loc.overall_rating.count) : undefined,
+      url: loc.urls?.official || loc.urls?.tripadvisor?.main || undefined,
+      photos: Array.isArray(photosJson?.data)
+        ? photosJson.data.map((p: any) => p?.photo?.original_size_url).filter(Boolean)
         : [],
-      lat: det.latitude ? Number(det.latitude) : undefined,
-      lng: det.longitude ? Number(det.longitude) : undefined,
-      address: det.address_obj?.address_string || undefined,
-      ranking_string: det.ranking_data?.ranking_string || undefined,
-      category: det.category?.name || det.subcategory?.[0]?.name || undefined,
+      lat: loc.coordinates?.latitude != null ? Number(loc.coordinates.latitude) : undefined,
+      lng: loc.coordinates?.longitude != null ? Number(loc.coordinates.longitude) : undefined,
+      address: pickTranslation(loc.addresses?.map((a: any) => ({ language: a.language, value: a.formatted }))),
     }
     return {
       ok: true as const,
-      location_id: String(loc.location_id),
-      name: det.name || loc.name || q,
+      location_id: String(loc.id),
+      name: pickTranslation(loc.names) || q,
       data,
     }
   } catch {

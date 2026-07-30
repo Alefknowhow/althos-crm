@@ -680,8 +680,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           res.data.rating && res.data.reviews_count
             ? `Avaliado com nota ${res.data.rating} no TripAdvisor (${res.data.reviews_count} avaliações).`
             : null,
-          res.data.ranking_string || null,
-          res.data.category ? `Categoria: ${res.data.category}.` : null,
+          res.data.address ? `Endereço: ${res.data.address}.` : null,
         ].filter(Boolean)
         const draftDescription = draftParts.length ? `<p>${draftParts.join(' ')}</p>` : x.description_html
         return {
