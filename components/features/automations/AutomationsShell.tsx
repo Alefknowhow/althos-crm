@@ -173,7 +173,7 @@ export default function AutomationsShell({
                         </span>
 
                         {/* Action buttons — visible on hover */}
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
                           {/* Toggle on/off */}
                           <button
                             type="button"

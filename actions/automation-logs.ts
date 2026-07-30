@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 
 export type RunStatus = 'running' | 'completed' | 'failed' | 'cancelled'
 
@@ -48,7 +49,10 @@ function pickFirst<T>(x: T | T[] | null | undefined): T | null {
 
 /** Paginated, filterable list of automation runs for the org. */
 export async function getAutomationRunsPage(orgSlug: string, filter: RunsFilter = {}): Promise<RunsPage> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return { rows: [], total: 0, page: filter.page ?? 1, pageSize: filter.pageSize ?? 20 }
   const supabase = createClient()
 
   const page = Math.max(1, filter.page ?? 1)
@@ -133,7 +137,10 @@ export interface RunDetail {
 
 /** Full execution detail + ordered step logs for the timeline. */
 export async function getRunDetail(orgSlug: string, runId: string): Promise<RunDetail | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return null
   const supabase = createClient()
 
   const { data: run } = await supabase
@@ -192,7 +199,10 @@ export async function getRunDetail(orgSlug: string, runId: string): Promise<RunD
 
 /** Automations list for the filter dropdown. */
 export async function getAutomationsForFilter(orgSlug: string): Promise<Array<{ id: string; name: string }>> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('automations')

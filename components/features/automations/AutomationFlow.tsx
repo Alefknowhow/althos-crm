@@ -1004,7 +1004,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
             return (
               <div
                 key={`mid-${edge.source}-${edge.target}`}
-                className="absolute z-20 flex items-center gap-1 opacity-40 hover:opacity-100 transition-opacity"
+                className="absolute z-20 flex items-center gap-1 opacity-40 hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                 style={{ left: mx - 22, top: my - 14 }}
               >
                 <DropdownMenu>

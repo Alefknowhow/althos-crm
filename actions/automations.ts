@@ -1,12 +1,16 @@
 'use server'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 
 export async function getAutomations(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return []
   const supabase = createClient()
-  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return []
 
   const { data, error } = await supabase
     .from('automations')
@@ -39,9 +43,11 @@ export async function getAutomations(orgSlug: string) {
 }
 
 export async function getAutomation(orgSlug: string, id: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return null
   const supabase = createClient()
-  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return null
 
   const { data, error } = await supabase
     .from('automations')
@@ -58,9 +64,11 @@ export async function getAutomation(orgSlug: string, id: string) {
 }
 
 export async function getAutomationRuns(orgSlug: string, automationId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return []
   const supabase = createClient()
-  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return []
 
   const { data } = await supabase
     .from('automation_runs')
@@ -74,9 +82,11 @@ export async function getAutomationRuns(orgSlug: string, automationId: string) {
 }
 
 export async function getLeadAutomationRuns(orgSlug: string, leadId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return []
   const supabase = createClient()
-  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return []
 
   const { data } = await supabase
     .from('automation_runs')
@@ -89,15 +99,10 @@ export async function getLeadAutomationRuns(orgSlug: string, leadId: string) {
 }
 
 export async function createAutomation(orgSlug: string, payload: any) {
-  // Use regular client for org lookup (validates user has access)
-  const supabase = createClient()
-  const { data: org, error: orgError } = await supabase
-    .from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (orgError) {
-    console.error('createAutomation org lookup error:', orgError)
-    throw new Error(orgError.message)
-  }
-  if (!org) throw new Error('Organização não encontrada')
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) throw new Error(perm.reason)
 
   // Use admin client for the write to bypass RLS (access already verified above)
   const admin = createAdminClient()
@@ -122,10 +127,10 @@ export async function createAutomation(orgSlug: string, payload: any) {
 }
 
 export async function updateAutomation(orgSlug: string, id: string, payload: any) {
-  const supabase = createClient()
-  const { data: org } = await supabase
-    .from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return { ok: false, error: 'Organização não encontrada' }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return { ok: false, error: perm.reason }
 
   const allowed: any = {}
   if (payload.name !== undefined) allowed.name = payload.name
@@ -153,9 +158,11 @@ export async function updateAutomation(orgSlug: string, id: string, payload: any
 /** Returns a map of stepIndex → { success, errors } for all historical runs of an automation. */
 export async function getStepStats(orgSlug: string, automationId: string): Promise<Record<number, { success: number; errors: number }>> {
   try {
+    const user = await requireAuth()
+    const org = await getCurrentOrganization(orgSlug)
+    const perm = await checkMemberPermission(org.id, user.id, 'automations')
+    if (!perm.allowed) return {}
     const supabase = createClient()
-    const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-    if (!org) return {}
 
     const { data, error } = await supabase
       .from('automation_step_logs')
@@ -178,9 +185,10 @@ export async function getStepStats(orgSlug: string, automationId: string): Promi
 }
 
 export async function deleteAutomation(orgSlug: string, id: string) {
-  const supabase = createClient()
-  const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return { ok: false, error: 'Organização não encontrada' }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return { ok: false, error: perm.reason }
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -195,10 +203,10 @@ export async function deleteAutomation(orgSlug: string, id: string) {
 }
 
 export async function toggleAutomation(orgSlug: string, id: string, isActive: boolean) {
-  const supabase = createClient()
-  const { data: org } = await supabase
-    .from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
-  if (!org) return { ok: false, error: 'Organização não encontrada' }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return { ok: false, error: perm.reason }
 
   const admin = createAdminClient()
   const { error } = await admin
