@@ -391,6 +391,7 @@ export default function LeadCard({
   members,
   stages,
   onStageChange,
+  staleDays = 7,
 }: {
   lead: any
   orgSlug: string
@@ -400,6 +401,7 @@ export default function LeadCard({
   members?: CardMember[]
   stages?: any[]
   onStageChange?: (stageId: string) => void
+  staleDays?: number
 }) {
   const {
     setNodeRef,
@@ -418,7 +420,7 @@ export default function LeadCard({
 
   const refDate = lead.last_activity_at || lead.updated_at
   const isStalled = refDate
-    ? Date.now() - new Date(refDate).getTime() > 7 * 24 * 60 * 60 * 1000
+    ? Date.now() - new Date(refDate).getTime() > staleDays * 24 * 60 * 60 * 1000
     : false
 
   const [tags, setTags] = useState<string[]>(lead.tags || [])

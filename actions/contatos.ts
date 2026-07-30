@@ -215,7 +215,17 @@ export async function deleteLead(orgSlug: string, leadId: string) {
   return { ok: true }
 }
 
-export async function moveLeadToStage(orgSlug: string, leadId: string, newStageId: string, oldStageId: string) {
+export async function moveLeadToStage(
+  orgSlug: string,
+  leadId: string,
+  newStageId: string,
+  oldStageId: string,
+  /** Só relevante ao entrar numa etapa is_lost — distingue perdido de
+   * desqualificado e registra o motivo. Se omitido ao cair numa etapa
+   * is_lost, assume 'perdido' com motivo genérico (fallback — nunca bloqueia
+   * o drag-and-drop por falta dessa informação). */
+  closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkContatoPermission(org.id, user.id)
@@ -244,6 +254,28 @@ export async function moveLeadToStage(orgSlug: string, leadId: string, newStageI
   if (stage?.is_won && lead?.status !== 'cliente') {
     updates.status = 'cliente'
     updates.became_customer_at = lead?.became_customer_at || new Date().toISOString()
+  }
+
+  // Separa deal_status (aberto/ganho/perdido/desqualificado) do estágio —
+  // o board (pipeline/page.tsx) filtra por deal_status='aberto', então isso
+  // é o que efetivamente tira o lead do quadro ao fechar.
+  const nowIso = new Date().toISOString()
+  if (stage?.is_won) {
+    updates.deal_status = 'ganho'
+    updates.closed_at = nowIso
+    updates.close_reason = closeInfo?.reason ?? null
+    updates.closed_by = user.id
+  } else if (stage?.is_lost) {
+    updates.deal_status = closeInfo?.dealStatus ?? 'perdido'
+    updates.closed_at = nowIso
+    updates.close_reason = closeInfo?.reason ?? 'Motivo não informado'
+    updates.closed_by = user.id
+  } else {
+    // Reabrir: mover pra fora de uma etapa terminal volta o lead pro board.
+    updates.deal_status = 'aberto'
+    updates.closed_at = null
+    updates.close_reason = null
+    updates.closed_by = null
   }
 
   const { error } = await supabase

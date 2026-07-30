@@ -29,8 +29,6 @@ function onlyDigits(s?: string | null) {
   return (s || '').replace(/\D/g, '')
 }
 
-const STALL_MS = 7 * 24 * 60 * 60 * 1000
-
 // ── Compact lead card (mobile) ───────────────────────────────────────────────
 function MobileLeadCard({
   lead,
@@ -38,15 +36,17 @@ function MobileLeadCard({
   owner,
   color,
   onClick,
+  staleDays = 7,
 }: {
   lead: any
   orgSlug: string
   owner?: CardMember | null
   color: string
   onClick: () => void
+  staleDays?: number
 }) {
   const refDate = lead.last_activity_at || lead.updated_at
-  const isStalled = refDate ? Date.now() - new Date(refDate).getTime() > STALL_MS : false
+  const isStalled = refDate ? Date.now() - new Date(refDate).getTime() > staleDays * 24 * 60 * 60 * 1000 : false
   const tags: string[] = lead.tags || []
   const visibleTags = tags.slice(0, 3)
   const extraTags = tags.length - visibleTags.length
@@ -150,6 +150,7 @@ export default function MobilePipelineList({
   membersById,
   onLeadClick,
   onAddLead,
+  staleDays = 7,
 }: {
   stages: any[]
   leads: any[]
@@ -157,6 +158,7 @@ export default function MobilePipelineList({
   membersById: Record<string, CardMember>
   onLeadClick: (id: string) => void
   onAddLead: (stageId: string) => void
+  staleDays?: number
 }) {
   // First stage open by default so the screen isn't empty on entry.
   const [openStage, setOpenStage] = useState<string | null>(stages[0]?.id ?? null)
@@ -215,6 +217,7 @@ export default function MobilePipelineList({
                         owner={lead.assigned_to ? membersById[lead.assigned_to] : null}
                         color={color}
                         onClick={() => onLeadClick(lead.id)}
+                        staleDays={staleDays}
                       />
                     ))}
                     <button

@@ -59,10 +59,11 @@ export default async function PipelinePage({
     supabase
       .from('contatos')
       .select(
-        'id, name, stage_id, value_cents, tags, updated_at, created_at, last_activity_at, email, phone, assigned_to, ai_score, ai_tier, status, source',
+        'id, name, stage_id, value_cents, tags, updated_at, created_at, last_activity_at, email, phone, assigned_to, ai_score, ai_tier, status, source, deal_status',
       )
       .eq('pipeline_id', pipeline.id)
       .eq('organization_id', org.id)
+      .eq('deal_status', 'aberto')
       .order('updated_at', { ascending: false }),
   ])
 
@@ -85,6 +86,13 @@ export default async function PipelinePage({
     members = []
   }
 
+  const { data: settings } = await supabase
+    .from('org_settings')
+    .select('stale_lead_days')
+    .eq('org_id', org.id)
+    .maybeSingle()
+  const staleDays = settings?.stale_lead_days ?? 7
+
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
       <div className="flex-1 overflow-hidden">
@@ -93,6 +101,7 @@ export default async function PipelinePage({
           initialStages={stages || []}
           initialLeads={leads || []}
           members={members}
+          staleDays={staleDays}
           toolbarStart={
             <div className="flex items-center gap-2">
               <PipelineSwitcher

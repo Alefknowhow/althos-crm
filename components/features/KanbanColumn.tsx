@@ -14,6 +14,7 @@ export default function KanbanColumn({
   members = [],
   stages = [],
   onStageChange,
+  staleDays = 7,
 }: {
   stage: any
   leads: any[]
@@ -24,6 +25,7 @@ export default function KanbanColumn({
   members?: CardMember[]
   stages?: any[]
   onStageChange?: (leadId: string, stageId: string) => void
+  staleDays?: number
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { type: 'Column', stage } })
   const totalValue = leads.reduce((acc, lead) => acc + (lead.value_cents || 0), 0)
@@ -73,6 +75,7 @@ export default function KanbanColumn({
               stages={stages}
               onStageChange={onStageChange ? sid => onStageChange(lead.id, sid) : undefined}
               onClick={() => onLeadClick(lead.id)}
+              staleDays={staleDays}
             />
           ))}
         </SortableContext>

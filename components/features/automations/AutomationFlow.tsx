@@ -33,6 +33,7 @@ import {
   Bell,
   Webhook,
   GripVertical,
+  XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -53,6 +54,7 @@ const STEP_TYPES = [
   { id: 'send_whatsapp', label: 'WhatsApp',         icon: MessageSquare,  color: '#10b981', desc: 'Envia uma mensagem via WhatsApp Business' },
   { id: 'create_task',   label: 'Criar Tarefa',     icon: CheckSquare,    color: '#f59e0b', desc: 'Cria uma tarefa vinculada ao lead' },
   { id: 'move_stage',    label: 'Mover Estágio',    icon: ArrowRightLeft, color: '#3b82f6', desc: 'Move o lead para outro estágio do pipeline' },
+  { id: 'close_deal',    label: 'Fechar Negociação', icon: XCircle,       color: '#dc2626', desc: 'Marca o lead como perdido ou desqualificado, tirando-o do board' },
   { id: 'add_tag',       label: 'Adicionar Tag',    icon: Tag,            color: '#a855f7', desc: 'Adiciona uma tag ao perfil do lead' },
   { id: 'send_push',     label: 'Notificação Push', icon: Bell,           color: '#0ea5e9', desc: 'Envia push notification para a equipe' },
   { id: 'webhook',       label: 'Webhook Externo',  icon: Webhook,        color: '#d946ef', desc: 'Chama uma URL externa com dados do lead' },
@@ -116,6 +118,7 @@ function describeStep(step: Step, stages: Props['stages']): string {
     case 'send_whatsapp': return c.templateName || 'Sem template configurado'
     case 'create_task':   return c.title || 'Nova Tarefa'
     case 'move_stage':    return stages.find(s => s.id === c.stageId)?.name ?? 'Sem estágio'
+    case 'close_deal':    return c.dealStatus === 'desqualificado' ? 'Desqualificado' : 'Perdido'
     case 'add_tag':       return c.tag ? `Tag: ${c.tag}` : 'Sem tag configurada'
     case 'send_push':     return c.title || 'Sem título configurado'
     case 'webhook':       return c.url ? c.url.replace(/^https?:\/\//, '').slice(0, 32) : 'Sem URL configurada'
@@ -520,6 +523,24 @@ function StepConfig({
             <option value="">Selecione...</option>
             {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
+        </div>
+      )
+    case 'close_deal':
+      return (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className={labelClass}>Resultado</Label>
+            <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              value={step.config.dealStatus || 'perdido'} onChange={e => patch({ dealStatus: e.target.value })}>
+              <option value="perdido">Perdido</option>
+              <option value="desqualificado">Desqualificado</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label className={labelClass}>Motivo</Label>
+            <Input placeholder="Ex: Sem resposta" value={step.config.reason || ''}
+              onChange={e => patch({ reason: e.target.value })} />
+          </div>
         </div>
       )
     case 'add_tag':

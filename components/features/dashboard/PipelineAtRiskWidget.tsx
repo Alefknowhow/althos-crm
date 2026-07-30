@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { getAtRiskLeads } from '@/actions/dashboard'
+import { createClient } from '@/lib/supabase/server'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -15,8 +16,10 @@ function fmtCurrency(cents: number): string {
  * by stage with a clear visual hierarchy: stage header (with risk count)
  * and per-lead row (with days stuck + value + link to detail).
  *
- * Threshold is currently a constant (7 days) — could be made user-editable
- * by lifting to a client wrapper and adding a select; deferred for v1.
+ * Threshold vem de org_settings.stale_lead_days (configurável por
+ * organização; 7 é só o default da coluna) — o mesmo valor usado pelo badge
+ * "parado" no card do Pipeline (LeadCard.tsx), pra não ter dois números
+ * diferentes de "lead parado" no mesmo app.
  */
 export default async function PipelineAtRiskWidget({
   orgSlug,
@@ -27,7 +30,15 @@ export default async function PipelineAtRiskWidget({
   orgId: string
   pipelineId: string | null
 }) {
-  const stages = await getAtRiskLeads(orgId, { thresholdDays: 7, pipelineId, perStageLimit: 5 })
+  const supabase = createClient()
+  const { data: settings } = await supabase
+    .from('org_settings')
+    .select('stale_lead_days')
+    .eq('org_id', orgId)
+    .maybeSingle()
+  const thresholdDays = settings?.stale_lead_days ?? 7
+
+  const stages = await getAtRiskLeads(orgId, { thresholdDays, pipelineId, perStageLimit: 5 })
 
   const totalAtRisk = stages.reduce((a, s) => a + s.at_risk_count, 0)
 

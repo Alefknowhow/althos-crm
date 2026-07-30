@@ -23,6 +23,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -39,8 +41,6 @@ import { cn, formatCurrency } from '@/lib/utils'
 type Member = { id: string; name: string; email: string }
 type SortKey = 'recent' | 'value_desc' | 'name'
 
-const STALL_MS = 7 * 24 * 60 * 60 * 1000
-
 function tierBucket(t?: string | null): 'hot' | 'warm' | 'cold' | null {
   const v = (t || '').toLowerCase()
   if (v === 'hot' || v === 'quente') return 'hot'
@@ -55,6 +55,7 @@ export default function KanbanBoard({
   initialLeads,
   members = [],
   toolbarStart,
+  staleDays = 7,
 }: {
   orgSlug: string
   initialStages: any[]
@@ -62,6 +63,8 @@ export default function KanbanBoard({
   members?: Member[]
   /** Botões extras (switcher/config de pipeline) renderizados no início da barra de filtros. */
   toolbarStart?: React.ReactNode
+  /** Dias sem atividade pra um lead ser considerado "parado" (org_settings.stale_lead_days). */
+  staleDays?: number
 }) {
   const [stages, setStages] = useState(initialStages)
   const [leads, setLeads] = useState(initialLeads)
@@ -122,7 +125,7 @@ export default function KanbanBoard({
       if (tierFilter !== 'all' && tierBucket(l.ai_tier) !== tierFilter) return false
       if (stalledOnly) {
         const ref = l.last_activity_at || l.updated_at
-        if (!ref || Date.now() - new Date(ref).getTime() <= STALL_MS) return false
+        if (!ref || Date.now() - new Date(ref).getTime() <= staleDays * 24 * 60 * 60 * 1000) return false
       }
       return true
     })
@@ -183,17 +186,40 @@ export default function KanbanBoard({
     }
   }
 
+  // ── Movimentação de estágio (compartilhada por drag-and-drop e seletor) ────────
+  // Ao cair numa etapa is_lost, pede pra distinguir Perdido de Desqualificado
+  // (+ motivo) antes de confirmar — o card já foi movido otimisticamente, mas
+  // só efetiva a chamada ao servidor (e o fechamento de fato) após a escolha.
+  const [lostMovePrompt, setLostMovePrompt] = useState<{ leadId: string; newStageId: string; oldStageId: string } | null>(null)
+
+  async function commitStageMove(
+    leadId: string,
+    newStageId: string,
+    oldStageId: string,
+    closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+  ) {
+    const res = await moveLeadToStage(orgSlug, leadId, newStageId, oldStageId, closeInfo)
+    if (!res.ok) {
+      setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: oldStageId } : l)))
+      toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
+    }
+  }
+
+  function requestStageMove(leadId: string, newStageId: string, oldStageId: string) {
+    if (stagesById[newStageId]?.is_lost) {
+      setLostMovePrompt({ leadId, newStageId, oldStageId })
+      return
+    }
+    commitStageMove(leadId, newStageId, oldStageId)
+  }
+
   // ── Direct stage change from a card's stage picker ─────────────────────────────
   async function handleStageChange(leadId: string, newStageId: string) {
     const lead = leads.find(l => l.id === leadId)
     if (!lead || lead.stage_id === newStageId) return
     const oldStageId = lead.stage_id
     setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: newStageId } : l)))
-    const res = await moveLeadToStage(orgSlug, leadId, newStageId, oldStageId)
-    if (!res.ok) {
-      setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: oldStageId } : l)))
-      toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
-    }
+    requestStageMove(leadId, newStageId, oldStageId)
   }
 
   async function handleDragEnd(event: any) {
@@ -206,11 +232,7 @@ export default function KanbanBoard({
     const lead = leads.find(l => l.id === activeId)
     if (!lead) return
     if (lead.stage_id !== oldStageId && oldStageId) {
-      const res = await moveLeadToStage(orgSlug, activeId, lead.stage_id, oldStageId)
-      if (!res.ok) {
-        setLeads(prev => prev.map(l => (l.id === activeId ? { ...l, stage_id: oldStageId } : l)))
-        toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
-      }
+      requestStageMove(activeId, lead.stage_id, oldStageId)
     }
   }
 
@@ -336,6 +358,7 @@ export default function KanbanBoard({
           membersById={membersById}
           onLeadClick={id => setSelectedLeadId(id)}
           onAddLead={id => setCreateStageId(id)}
+          staleDays={staleDays}
         />
       </div>
 
@@ -364,6 +387,7 @@ export default function KanbanBoard({
                   onStageChange={handleStageChange}
                   onLeadClick={id => setSelectedLeadId(id)}
                   onAddLead={id => setCreateStageId(id)}
+                  staleDays={staleDays}
                 />
               )
             })}
@@ -437,6 +461,22 @@ export default function KanbanBoard({
           <PipelineKpiBar leads={visibleLeads} />
         </DialogContent>
       </Dialog>
+
+      <LostMoveDialog
+        open={!!lostMovePrompt}
+        onCancel={() => {
+          if (lostMovePrompt) {
+            setLeads(prev => prev.map(l => (l.id === lostMovePrompt.leadId ? { ...l, stage_id: lostMovePrompt.oldStageId } : l)))
+          }
+          setLostMovePrompt(null)
+        }}
+        onConfirm={(dealStatus, reason) => {
+          if (lostMovePrompt) {
+            commitStageMove(lostMovePrompt.leadId, lostMovePrompt.newStageId, lostMovePrompt.oldStageId, { dealStatus, reason })
+          }
+          setLostMovePrompt(null)
+        }}
+      />
 
       <LeadDetailDrawer
         open={!!selectedLeadId}
@@ -515,5 +555,57 @@ export default function KanbanBoard({
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+/** Pede pra distinguir Perdido de Desqualificado (+ motivo) ao mover um card
+ * pra uma etapa is_lost. Perdido = negociação real que não avançou;
+ * Desqualificado = nunca foi um lead viável — são conversões diferentes
+ * pro relatório, por isso não usam o mesmo rótulo por padrão. */
+function LostMoveDialog({
+  open, onCancel, onConfirm,
+}: {
+  open: boolean
+  onCancel: () => void
+  onConfirm: (dealStatus: 'perdido' | 'desqualificado', reason: string) => void
+}) {
+  const [dealStatus, setDealStatus] = useState<'perdido' | 'desqualificado'>('perdido')
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (open) { setDealStatus('perdido'); setReason('') }
+  }, [open])
+
+  return (
+    <Dialog open={open} onOpenChange={op => { if (!op) onCancel() }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Encerrar negociação</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <RadioGroup value={dealStatus} onValueChange={v => setDealStatus(v as 'perdido' | 'desqualificado')}>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="perdido" id="lost-perdido" />
+              <Label htmlFor="lost-perdido">Perdido — negociação real que não avançou</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="desqualificado" id="lost-desqualificado" />
+              <Label htmlFor="lost-desqualificado">Desqualificado — nunca foi um lead viável</Label>
+            </div>
+          </RadioGroup>
+          <div className="space-y-2">
+            <Label>Motivo</Label>
+            <Textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Ex.: sem resposta, orçamento incompatível, fora do perfil…"
+              rows={3}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button onClick={() => onConfirm(dealStatus, reason.trim() || 'Motivo não informado')}>Confirmar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

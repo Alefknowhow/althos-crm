@@ -232,6 +232,36 @@ export const executeAutomationRun = inngest.createFunction(
                     })
                   }
                   break;
+                case 'close_deal': {
+                  // Fecha a negociação automaticamente — pensado pra ser
+                  // encadeado no gatilho "Lead parado" (lead.stale), que já
+                  // dispara com o prazo configurado em trigger_config.staleDays
+                  // (extensão do alerta existente, não um novo cron). Só age
+                  // sobre leads ainda abertos, pra não reabrir/duplicar efeito
+                  // em quem já foi fechado manualmente nesse meio-tempo.
+                  const dealStatus: 'perdido' | 'desqualificado' =
+                    stepDef.config.dealStatus === 'desqualificado' ? 'desqualificado' : 'perdido'
+                  const closeReason = stepDef.config.reason || 'Sem resposta (fechamento automático)'
+                  sent = { dealStatus, reason: closeReason }
+                  await supabase
+                    .from('contatos')
+                    .update({
+                      deal_status: dealStatus,
+                      close_reason: closeReason,
+                      closed_at: new Date().toISOString(),
+                      closed_by: null, // ação do sistema, não de um usuário
+                    })
+                    .eq('id', lead.id)
+                    .eq('organization_id', orgId)
+                    .eq('deal_status', 'aberto')
+                  await supabase.from('contato_activities').insert({
+                    contato_id: lead.id,
+                    organization_id: orgId,
+                    type: 'deal_closed',
+                    payload: { automation: auto.name, dealStatus, reason: closeReason },
+                  })
+                  break;
+                }
                 case 'add_tag':
                   if (stepDef.config.tag) {
                     sent = { tag: stepDef.config.tag }
