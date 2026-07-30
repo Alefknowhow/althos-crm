@@ -763,37 +763,20 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       {/* VIAGEM */}
       <EditBlock icon={MapPin} title="Viagem">
         <div className="grid grid-cols-2 gap-3">
-          <F label="Saída (cidade)"><Input value={q.origin_label} onChange={e => setQ(s => ({ ...s, origin_label: e.target.value }))} placeholder="Florianópolis" /></F>
-          <F label="Nota da saída"><Input value={q.origin_note} onChange={e => setQ(s => ({ ...s, origin_note: e.target.value }))} placeholder="FLN · conexão em GRU" /></F>
+          <F label="Origem"><Input value={q.origin_label} onChange={e => setQ(s => ({ ...s, origin_label: e.target.value }))} placeholder="Florianópolis" /></F>
+          <F label="Destino"><Input placeholder="Ilhéus, Brasil" value={q.destinations[0]?.name || ''}
+            onChange={e => setQ(s => ({ ...s, destinations: [{ name: e.target.value, country: '' }] }))} /></F>
         </div>
-        <F label="Destino(s)">
-          <div className="space-y-1.5">
-            {q.destinations.map((d, i) => (
-              <div key={i} className="flex gap-1.5">
-                <Input className="flex-1" placeholder="Punta Cana" value={d.name}
-                  onChange={e => setQ(s => { const n = [...s.destinations]; n[i] = { ...n[i], name: e.target.value }; return { ...s, destinations: n } })} />
-                <Input className="w-40" placeholder="País" value={d.country || ''}
-                  onChange={e => setQ(s => { const n = [...s.destinations]; n[i] = { ...n[i], country: e.target.value }; return { ...s, destinations: n } })} />
-                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => setQ(s => ({ ...s, destinations: s.destinations.filter((_, j) => j !== i) }))}><Trash2 className="w-3.5 h-3.5" /></Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => setQ(s => ({ ...s, destinations: [...s.destinations, { name: '', country: '' }] }))}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Destino
-            </Button>
-          </div>
-        </F>
         <div className="grid grid-cols-2 gap-3">
           <F label="Data de ida"><Input type="date" value={q.start_date} onChange={e => setQ(s => ({ ...s, start_date: e.target.value }))} /></F>
           <F label="Data de volta"><Input type="date" value={q.end_date} onChange={e => setQ(s => ({ ...s, end_date: e.target.value }))} /></F>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <F label="Adultos"><Input type="number" min={0} value={q.pax_adults} onChange={e => setQ(s => ({ ...s, pax_adults: Math.max(0, parseInt(e.target.value) || 0) }))} /></F>
           <F label="Crianças"><Input type="number" min={0} value={q.pax_children} onChange={e => {
             const n = Math.max(0, parseInt(e.target.value) || 0)
             setQ(s => ({ ...s, pax_children: n, children_ages: s.children_ages.slice(0, n) }))
           }} /></F>
-          <F label="Ocupação"><Input value={q.occupancy_label} onChange={e => setQ(s => ({ ...s, occupancy_label: e.target.value }))} placeholder="ocupação dupla" /></F>
         </div>
         {q.pax_children > 0 && (
           <F label="Idades das crianças">
