@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
 import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
+import { HeaderMobileMenu } from '@/components/features/HeaderMobileMenu'
 import { PageHintProvider } from '@/components/features/PageHintContext'
 import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 import HealthLinkConditional from '@/components/features/HealthLinkConditional'
@@ -103,11 +104,13 @@ export default async function OrgLayout({
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
               <HealthLinkConditional orgSlug={params.orgSlug} />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
-              <div className="w-px h-4 bg-border mx-1" />
-              <PushNotificationToggle orgSlug={params.orgSlug} />
+              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:inline-flex">
+                <PushNotificationToggle orgSlug={params.orgSlug} />
+              </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-              <div className="w-px h-4 bg-border mx-1" />
-              <div className="flex items-center gap-1">
+              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:flex items-center gap-1">
                 <Link
                   href={`/app/${params.orgSlug}/ajuda`}
                   className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"
@@ -117,7 +120,10 @@ export default async function OrgLayout({
                 <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no ícone de balão aqui na barra." />
                 <SupportHeaderButton />
               </div>
-              <ModeToggle />
+              <div className="hidden md:inline-flex">
+                <ModeToggle />
+              </div>
+              <HeaderMobileMenu orgSlug={params.orgSlug} />
             </div>
           </header>
 

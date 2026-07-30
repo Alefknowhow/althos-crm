@@ -3,129 +3,22 @@
 /**
  * PushNotificationToggle
  *
- * One-click opt-in/opt-out for Web Push notifications. Lives in the org
- * layout header (next to the notification bell) so it's always reachable.
+ * One-click opt-in/opt-out for Web Push notifications, rendered as an icon
+ * button. Lives in the org header (desktop only — md+; on mobile the same
+ * action moves into HeaderMobileMenu to save header space).
  *
- * State machine:
- *   unsupported  — browser / OS / SW doesn't support Push API. Button hidden.
- *   denied       — user blocked notifications in browser settings. Show hint.
- *   unsubscribed — default. Bell icon invites to enable.
- *   loading      — subscribing / unsubscribing in flight.
- *   subscribed   — active. Bell-filled icon + tooltip to disable.
- *
- * VAPID public key is read from NEXT_PUBLIC_VAPID_PUBLIC_KEY. If unset the
- * component renders nothing (same as unsupported) — safe for deployments
- * without push configured.
+ * State machine lives in `usePushNotification` (lib/hooks/use-push-notification)
+ * so the desktop icon button and the mobile menu item share one source of truth.
  */
 
-import { useEffect, useState } from 'react'
 import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react'
-import { subscribeToPush, unsubscribeFromPush } from '@/actions/push'
 import { cn } from '@/lib/utils'
-
-type PushState = 'unsupported' | 'denied' | 'unsubscribed' | 'loading' | 'subscribed'
+import { usePushNotification } from '@/lib/hooks/use-push-notification'
 
 export default function PushNotificationToggle({ orgSlug }: { orgSlug: string }) {
-  const [state, setState] = useState<PushState>('unsupported')
-  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null)
+  const { state, enable, disable, supported } = usePushNotification(orgSlug)
 
-  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-
-  useEffect(() => {
-    if (!vapidPublicKey) return
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-    const permission = Notification.permission
-    if (permission === 'denied') {
-      setState('denied')
-      return
-    }
-
-    // Check if we already have an active subscription. Don't rely on
-    // navigator.serviceWorker.ready here (it hangs forever when no SW is
-    // active) — register/await with a timeout and fall back to 'unsubscribed'
-    // so the bell always becomes actionable.
-    let cancelled = false
-    getRegistration()
-      .then(reg => reg.pushManager.getSubscription())
-      .then(sub => {
-        if (cancelled) return
-        if (sub) {
-          setState('subscribed')
-          setCurrentEndpoint(sub.endpoint)
-        } else {
-          setState('unsubscribed')
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setState('unsubscribed')
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [vapidPublicKey])
-
-  if (state === 'unsupported' || !vapidPublicKey) return null
-
-  async function enable() {
-    setState('loading')
-    try {
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') {
-        setState(permission === 'denied' ? 'denied' : 'unsubscribed')
-        return
-      }
-
-      const reg = await getRegistration()
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        // Cast needed: TS PushSubscriptionOptionsInit expects BufferSource but
-        // Uint8Array<ArrayBufferLike> from urlBase64ToUint8Array doesn't satisfy
-        // the stricter ArrayBuffer constraint in some TS lib versions.
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey!) as unknown as BufferSource,
-      })
-
-      const res = await subscribeToPush(
-        orgSlug,
-        {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: arrayBufferToBase64(sub.getKey('p256dh')!),
-            auth:   arrayBufferToBase64(sub.getKey('auth')!),
-          },
-        },
-        navigator.userAgent,
-      )
-
-      if (res.ok) {
-        setCurrentEndpoint(sub.endpoint)
-        setState('subscribed')
-      } else {
-        console.error('[push] subscribe action failed:', res.error)
-        setState('unsubscribed')
-      }
-    } catch (err) {
-      console.error('[push] enable error:', err)
-      setState('unsubscribed')
-    }
-  }
-
-  async function disable() {
-    if (!currentEndpoint) return
-    setState('loading')
-    try {
-      const reg = await getRegistration()
-      const sub = await reg.pushManager.getSubscription()
-      if (sub) await sub.unsubscribe()
-      await unsubscribeFromPush(currentEndpoint)
-      setCurrentEndpoint(null)
-      setState('unsubscribed')
-    } catch (err) {
-      console.error('[push] disable error:', err)
-      setState('subscribed')
-    }
-  }
+  if (!supported || state === 'unsupported') return null
 
   if (state === 'denied') {
     return (
@@ -179,61 +72,4 @@ export default function PushNotificationToggle({ orgSlug }: { orgSlug: string })
       <Bell className="w-4 h-4" />
     </button>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve an active ServiceWorkerRegistration without ever hanging.
- *
- * `navigator.serviceWorker.ready` only resolves once a worker is *active*. If
- * the SW was never registered (PWARegister only runs in production and swallows
- * errors) it never resolves, which is what froze the bell in "loading" forever.
- *
- * Strategy: explicitly register /sw.js (idempotent — returns the existing
- * registration if already registered), then race `.ready` against a timeout so
- * a stuck activation can't block the UI. On timeout we fall back to whatever
- * registration we already have so subscribe() can still proceed.
- */
-async function getRegistration(): Promise<ServiceWorkerRegistration> {
-  const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-
-  // If a worker is already active we're done immediately.
-  if (reg.active) return reg
-
-  // Otherwise wait for readiness, but never longer than 10s.
-  const ready = navigator.serviceWorker.ready
-  const timeout = new Promise<ServiceWorkerRegistration>((_, reject) =>
-    setTimeout(() => reject(new Error('service worker activation timed out')), 10_000),
-  )
-  try {
-    return await Promise.race([ready, timeout])
-  } catch {
-    // Fall back to the registration we have — subscribe() can still work once
-    // the worker activates, and at worst the caller surfaces a real error
-    // instead of hanging.
-    return reg
-  }
-}
-
-/** Convert VAPID public key from URL-safe base64 to Uint8Array. */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64   = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw      = window.atob(base64)
-  const output   = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) {
-    output[i] = raw.charCodeAt(i)
-  }
-  return output
-}
-
-/** Convert ArrayBuffer (from PushSubscription.getKey) to base64 string. */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  const chars: string[] = []
-  bytes.forEach(b => chars.push(String.fromCharCode(b)))
-  return btoa(chars.join(''))
 }
