@@ -66,6 +66,7 @@ export default function KanbanBoard({
   const [stages, setStages] = useState(initialStages)
   const [leads, setLeads] = useState(initialLeads)
   const [activeLead, setActiveLead] = useState<any | null>(null)
+  const [dragStartStageId, setDragStartStageId] = useState<string | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [createStageId, setCreateStageId] = useState<string | null>(null)
   const [newLeadSource, setNewLeadSource] = useState('manual')
@@ -147,7 +148,10 @@ export default function KanbanBoard({
   // ── DnD ───────────────────────────────────────────────────────────────────────
   function handleDragStart(event: any) {
     const lead = leads.find(l => l.id === event.active.id)
-    if (lead) setActiveLead(lead)
+    if (lead) {
+      setActiveLead(lead)
+      setDragStartStageId(lead.stage_id)
+    }
   }
 
   function handleDragOver(event: any) {
@@ -195,15 +199,16 @@ export default function KanbanBoard({
   async function handleDragEnd(event: any) {
     const { active, over } = event
     setActiveLead(null)
+    const oldStageId = dragStartStageId
+    setDragStartStageId(null)
     if (!over) return
     const activeId = active.id
     const lead = leads.find(l => l.id === activeId)
     if (!lead) return
-    const oldStageId = initialLeads.find(l => l.id === activeId)?.stage_id
     if (lead.stage_id !== oldStageId && oldStageId) {
       const res = await moveLeadToStage(orgSlug, activeId, lead.stage_id, oldStageId)
       if (!res.ok) {
-        setLeads(initialLeads)
+        setLeads(prev => prev.map(l => (l.id === activeId ? { ...l, stage_id: oldStageId } : l)))
         toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
       }
     }
@@ -220,7 +225,7 @@ export default function KanbanBoard({
         <button
           type="button"
           onClick={() => setDashOpen(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary md:hidden"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary"
         >
           <BarChart3 className="h-4 w-4" />
           <span className="hidden sm:inline">Dashboard</span>

@@ -200,7 +200,7 @@ export default function ContatosView({
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
       {/* ── Toolbar ─────────────────────────────────────────────── */}
-      <div className={cn('flex flex-wrap items-center gap-2 shrink-0', mobileDetail && 'hidden lg:flex')}>
+      <div className={cn('flex flex-wrap items-center gap-2 shrink-0', mobileDetail && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -243,12 +243,12 @@ export default function ContatosView({
       </div>
 
       {/* ── Master-detail ───────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 lg:min-h-[480px]">
+      <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 md:min-h-[480px]">
         {/* Master */}
         <div
           className={cn(
-            'lg:w-[360px] lg:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
-            mobileDetail && 'hidden lg:flex',
+            'md:w-[300px] lg:w-[360px] md:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
+            mobileDetail && 'hidden md:flex',
           )}
         >
           <div className="flex-1 overflow-y-auto divide-y">
@@ -356,8 +356,8 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'lg:flex-1 lg:min-w-0 rounded-none border bg-card overflow-y-auto',
-            !mobileDetail && 'hidden lg:block',
+            'md:flex-1 md:min-w-0 rounded-none border bg-card overflow-y-auto',
+            !mobileDetail && 'hidden md:block',
           )}
         >
           {selected ? (
@@ -632,7 +632,7 @@ function DetailPanel({
     <div className="p-5 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <button onClick={onBack} className="lg:hidden mt-1 text-muted-foreground hover:text-foreground" aria-label="Voltar">
+        <button onClick={onBack} className="md:hidden mt-1 text-muted-foreground hover:text-foreground" aria-label="Voltar">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
@@ -642,9 +642,7 @@ function DetailPanel({
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
           </p>
-          {/* Some no mobile — a tela cheia do contato foca só no conteúdo,
-              a classificação continua disponível no desktop. */}
-          <div className="hidden lg:block mt-2 w-44">
+          <div className="mt-2 w-44">
             <Select value={(c.status as string) || 'lead'} onValueChange={changeStatus} disabled={savingStatus}>
               <SelectTrigger className="h-8">
                 <SelectValue />
@@ -659,8 +657,7 @@ function DetailPanel({
         </div>
       </div>
 
-      {/* Ações — some no mobile, só ficam no desktop. */}
-      <div className="hidden lg:flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" asChild>
           <Link href={`/app/${orgSlug}/contatos/${c.id}`}>
             <ExternalLink className="w-4 h-4 mr-1.5" /> Página completa
