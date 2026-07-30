@@ -173,7 +173,7 @@ function hasHtml(html?: string | null): boolean {
 }
 
 /** HTML rico do agente, sanitizado no cliente antes de renderizar. */
-function Rich({ html, className }: { html?: string | null; className?: string }) {
+function Rich({ html, className, onImageClick }: { html?: string | null; className?: string; onImageClick?: (src: string) => void }) {
   const [clean, setClean] = useState('')
   useEffect(() => {
     let on = true
@@ -182,7 +182,17 @@ function Rich({ html, className }: { html?: string | null; className?: string })
     return () => { on = false }
   }, [html])
   if (!clean) return null
-  return <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />
+  return (
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: clean }}
+      onClick={onImageClick ? (e) => {
+        const target = e.target as HTMLElement
+        if (target.tagName === 'IMG') onImageClick((target as HTMLImageElement).src)
+      } : undefined}
+      style={onImageClick ? { cursor: 'default' } : undefined}
+    />
+  )
 }
 
 /* ─────────────────────── ícones (inline, iguais ao anexo) ─────────────────────── */
@@ -611,7 +621,8 @@ export default function PublicQuotationView({
           <Block num={num()} title="Aéreo"
             sub={flights.some(f => f.leg_type === 'inbound') ? 'Ida e volta' : 'Trechos da viagem'}>
             {hasHtml(data.flights_html) ? (
-              <Rich html={data.flights_html} className="rich-body" />
+              <Rich html={data.flights_html} className="rich-body zoomable"
+                onImageClick={src => setLightbox({ photos: [src], index: 0 })} />
             ) : flights.map((f, i) => {
               const bags = (f.baggage || []).filter(k => BAGGAGE_ICONS[k])
               return (
@@ -1052,6 +1063,7 @@ const CSS = `
 .alq .rich-body h3{font-family:'Inter',sans-serif;font-weight:600;font-size:16px;color:var(--navy);margin:6px 0 6px}
 .alq .rich-body p{margin:0 0 12px}
 .alq .rich-body img{max-width:100%;height:auto;border-radius:12px;margin:10px 0}
+.alq .rich-body.zoomable img{cursor:zoom-in}
 .alq .rich-body ul,.alq .rich-body ol{margin:0 0 12px;padding-left:22px}
 .alq .rich-body li{margin:4px 0}
 .alq .rich-body a{color:var(--gold);text-decoration:underline}
