@@ -25,6 +25,7 @@ import {
   ChevronRight,
   BookOpen,
   LifeBuoy,
+  Plane,
 } from 'lucide-react'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -37,6 +38,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
   Settings,
   BookOpen,
+  Plane,
 }
 
 function CategoryIcon({ name, className }: { name: string; className?: string }) {

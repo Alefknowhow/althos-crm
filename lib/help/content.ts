@@ -75,6 +75,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
               'Comunicação: WhatsApp e Instagram conectados ao CRM, com atendente de IA opcional.',
               'Automações: regras que agem sozinhas (ex.: criar tarefa, enviar mensagem) quando algo acontece.',
               'IA: Atendente que responde clientes e Insights que analisam seus números.',
+              'Para agências de viagem: módulos extras de Cotações, Ofertas, Reservas, Embarques, Bloqueios, Documentos e Financeiro (veja a categoria "Vendas de Viagem").',
             ],
           },
           {
@@ -97,6 +98,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
             type: 'list',
             items: [
               'Vendas: Dashboard, Pipeline, Leads, Clientes, Tarefas, Agendamentos.',
+              'Vendas de Viagem (só em contas de agência de viagem): Cotações, Ofertas, Reservas, Embarques, Bloqueios, Documentos, Financeiro.',
               'Comunicação: Conversas (WhatsApp), Social DMs (Instagram), Atendente IA.',
               'Marketing: Campanhas, E-mail, Formulários, Catálogo/Vendas.',
               'Operações: Automações, Insights IA, Central de Ajuda.',
@@ -209,6 +211,165 @@ export const HELP_CATEGORIES: HelpCategory[] = [
               'Ele passa a aparecer também na lista de Clientes.',
               'Na ficha, anexe documentos e complete o perfil para o pós-venda.',
             ],
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    slug: 'vendas-viagem',
+    title: 'Vendas de Viagem',
+    icon: 'Plane',
+    description:
+      'Módulos exclusivos de agências de viagem: cotações, ofertas, reservas, embarques, bloqueios, documentos e financeiro.',
+    articles: [
+      {
+        slug: 'cotacoes',
+        title: 'Cotações',
+        summary: 'Monte propostas de viagem para enviar ao cliente.',
+        keywords: ['proposta', 'orçamento', 'roteiro', 'pdf', 'link público', 'preço'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Em Cotações você monta uma proposta de viagem completa — capa, roteiro dia a dia, hospedagem (com fotos e nota do TripAdvisor), voos, condições de pagamento e investimento — num editor com preview ao vivo.',
+          },
+          {
+            type: 'steps',
+            items: [
+              'Crie a cotação vinculada a um lead/contato.',
+              'Preencha as seções (Viagem, Hospedagem, Aéreo, Investimento).',
+              'Gere o link público para o cliente ver a proposta com a marca da sua agência.',
+              'Baixe o PDF whitelabel se preferir enviar por WhatsApp/e-mail.',
+            ],
+          },
+          {
+            type: 'tip',
+            text: 'Depois que o cliente fecha, use o botão "Gerar venda" na própria cotação para criar a reserva já preenchida — sem digitar tudo de novo.',
+          },
+        ],
+      },
+      {
+        slug: 'ofertas',
+        title: 'Ofertas',
+        summary: 'Pacotes prontos publicados numa vitrine pública.',
+        keywords: ['vitrine', 'pacote', 'promoção', 'catálogo de viagens'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Ofertas são pacotes de viagem prontos (sem cliente vinculado) que aparecem numa vitrine pública da sua agência — útil para divulgar promoções nas redes sociais.',
+          },
+          {
+            type: 'list',
+            items: [
+              'É montada com o mesmo editor de Cotações, só que sem dados de cliente.',
+              'Publique para liberar o link da vitrine; despublique para tirar de circulação sem perder o conteúdo.',
+              'Copie o link da vitrine para divulgar em bio do Instagram, WhatsApp Status, etc.',
+            ],
+          },
+        ],
+      },
+      {
+        slug: 'reservas',
+        title: 'Reservas',
+        summary: 'Gerencie a venda fechada: viajantes, checklist, contrato e voucher.',
+        keywords: ['venda', 'viagem vendida', 'contrato', 'voucher', 'viajantes', 'checklist'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Reservas é a tela de operação da viagem já vendida: dados do cliente e destino, datas, hotel, companhia aérea, operadora, viajantes (com CPF/data de nascimento) e um checklist do que falta providenciar.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Preencha manualmente, ou importe os dados de um voucher/PDF da operadora com "Preencher com IA".',
+              'Gere o contrato (usa o template padrão da sua agência, se configurado) e o voucher para o cliente.',
+              'Ao salvar, o CRM pode gerar automaticamente as tarefas operacionais da viagem (documentação, pagamento, envio de voucher).',
+            ],
+          },
+          {
+            type: 'tip',
+            text: 'Uma venda criada aqui também pode nascer automaticamente quando você move um lead com cotação vinculada para a etapa de "Ganho" no Pipeline.',
+          },
+        ],
+      },
+      {
+        slug: 'embarques',
+        title: 'Embarques',
+        summary: 'Linha do tempo visual das viagens vendidas por data de partida.',
+        keywords: ['linha do tempo', 'gantt', 'partida', 'retorno', 'programação'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Embarques mostra, num gráfico de linha do tempo (estilo Gantt) e numa lista, todas as reservas com data de partida definida — para você enxergar de relance o que vem por aí.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Filtre por Todas, Próximas, Em andamento ou Concluídas.',
+              'Filtre também por responsável pela venda.',
+              'Clique num embarque para ver as tarefas ligadas e abrir o WhatsApp do cliente direto.',
+            ],
+          },
+        ],
+      },
+      {
+        slug: 'bloqueios',
+        title: 'Bloqueios',
+        summary: 'Controle lotes de assentos/vagas garantidos com a operadora.',
+        keywords: ['assentos', 'vagas', 'lote', 'operadora', 'garantido'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Bloqueios cadastra os lotes de assentos ou vagas que sua agência garantiu com uma operadora para um trecho/data — útil para acompanhar quanto ainda resta vender de cada bloqueio.',
+          },
+          {
+            type: 'tip',
+            text: 'Você pode importar de uma vez a planilha (CSV/XLSM) do mapa de assentos da operadora em vez de cadastrar linha por linha.',
+          },
+        ],
+      },
+      {
+        slug: 'documentos',
+        title: 'Documentos',
+        summary: 'Modelos de documento reutilizáveis, MEDIF e FREMEC.',
+        keywords: ['modelo', 'template', 'contrato padrão', 'medif', 'fremec', 'autorização'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Em Documentos você cria modelos reutilizáveis (contrato padrão, autorização de menor viajando, declarações) com campos entre {{chaves}} que viram campos de preenchimento na hora de gerar o documento pra um cliente.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Aba Modelos: crie e edite os modelos de texto da sua agência.',
+              'Aba MEDIF: informações de assistência médica para embarque de passageiros com necessidades especiais.',
+              'Aba FREMEC: informações de equipamento/cadeira de rodas para companhias aéreas.',
+            ],
+          },
+        ],
+      },
+      {
+        slug: 'financeiro',
+        title: 'Financeiro',
+        summary: 'Lançamentos de receita/despesa, comissões e fluxo de caixa.',
+        keywords: ['receita', 'despesa', 'comissão', 'fluxo de caixa', 'dre', 'vencimento', 'operadora'],
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'O Financeiro registra receitas e despesas da agência, com categorias, contas e formas de pagamento configuráveis. Quando uma reserva é salva, a comissão da venda pode ser lançada automaticamente na data de pagamento configurada para a operadora.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Aba Lançamentos: lista e edita receitas/despesas, inclusive recorrentes (repetem todo mês).',
+              'Aba Dashboard: fluxo de caixa, DRE simplificado e próximos vencimentos.',
+              'Aba Configurações: cadastre categorias, centros de custo, contas bancárias e operadoras (com o dia do mês em que cada uma paga comissão).',
+            ],
+          },
+          {
+            type: 'tip',
+            text: 'Cadastre o nome da operadora em Financeiro exatamente como aparece em Reservas — é esse nome que o CRM usa para saber quando a comissão daquela venda deve ser paga.',
           },
         ],
       },
