@@ -120,7 +120,7 @@ export default function BlocksView({
   if (blocks.length === 0) {
     return (
       <>
-        <div className="flex items-center justify-end gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4">
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="w-4 h-4 mr-1.5" /> Importar planilha
           </Button>

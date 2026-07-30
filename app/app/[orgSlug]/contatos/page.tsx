@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ContatosView from '@/components/features/contatos/ContatosView'
 import EmptyState from '@/components/ui/empty-state'
-import { Users } from 'lucide-react'
+import { Users, ChevronDown } from 'lucide-react'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
@@ -206,25 +207,27 @@ export default async function ContatosPage({
     status
   )
 
+  const activeStatusTab = STATUS_TABS.find(t => t.value === status) || STATUS_TABS[0]
+
   const statusTabs = (
-    <div className="flex flex-wrap gap-2">
-      {STATUS_TABS.map(tab => {
-        const active = status === tab.value
-        return (
-          <Link
-            key={tab.value || 'all'}
-            href={buildStatusHref(tab.value)}
-            className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              active
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            {tab.label}
-          </Link>
-        )
-      })}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary"
+        >
+          {activeStatusTab.label}
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {STATUS_TABS.map(tab => (
+          <DropdownMenuItem key={tab.value || 'all'} asChild>
+            <Link href={buildStatusHref(tab.value)}>{tab.label}</Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 
   return (

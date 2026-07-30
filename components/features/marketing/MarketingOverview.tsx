@@ -205,7 +205,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-end gap-4">
+      <div className="flex gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <PeriodTabs />
 

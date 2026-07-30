@@ -307,31 +307,13 @@ export default function TravelSalesView({
           </Select>
         )}
 
-        {/* Time filter: dropdown on mobile, pills on desktop. */}
         <ResponsiveSelect
-          className="sm:hidden h-9 w-[110px] shrink-0 text-xs"
+          className="h-9 w-[150px] shrink-0 text-xs"
           aria-label="Filtrar por data"
           value={dateBucket}
           onValueChange={v => setDateBucket(v as DateBucket)}
           options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
         />
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-          {DATE_BUCKETS.map(b => (
-            <button
-              key={b.id}
-              onClick={() => setDateBucket(b.id)}
-              className={cn(
-                'px-3 h-9 rounded-full border text-xs font-medium transition-colors',
-                FOCUS_RING,
-                dateBucket === b.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
-              )}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
 
         {headerAction}
 

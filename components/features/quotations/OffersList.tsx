@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Copy, ExternalLink, ImageIcon, Loader2, Store } from 'lucide-react'
+import { Plus, Copy, ExternalLink, ImageIcon, Loader2, Store, Trash2 } from 'lucide-react'
 import { createOffer, type OfferRow } from '@/actions/quotations'
+import { deleteProposal } from '@/actions/travel-proposals'
 
 function brl(cents?: number | null) {
   if (!cents) return '—'
@@ -19,12 +20,26 @@ export default function OffersList({
 }: { orgSlug: string; offers: OfferRow[]; vitrineToken: string | null }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const vitrineUrl = vitrineToken ? `/v/${vitrineToken}` : null
 
   function handleNew() {
     startTransition(async () => {
       const res = await createOffer(orgSlug)
       if (res.ok) router.push(`/app/${orgSlug}/ofertas/${res.id}`)
+      else toast.error(res.error)
+    })
+  }
+
+  function handleDelete(e: React.MouseEvent, id: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm('Excluir esta oferta definitivamente? Essa ação não pode ser desfeita.')) return
+    setDeletingId(id)
+    startTransition(async () => {
+      const res = await deleteProposal(orgSlug, id)
+      setDeletingId(null)
+      if (res.ok) { toast.success('Oferta excluída'); router.refresh() }
       else toast.error(res.error)
     })
   }
@@ -69,6 +84,16 @@ export default function OffersList({
                   </Badge>
                   {o.offer_category && <Badge variant="secondary">{o.offer_category}</Badge>}
                 </div>
+                <button
+                  type="button"
+                  onClick={e => handleDelete(e, o.id)}
+                  disabled={deletingId === o.id}
+                  title="Excluir oferta"
+                  aria-label="Excluir oferta"
+                  className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground hover:text-destructive hover:bg-background transition-colors"
+                >
+                  {deletingId === o.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
               <div className="p-3">
                 <p className="text-sm font-semibold truncate">{o.title || 'Oferta sem título'}</p>

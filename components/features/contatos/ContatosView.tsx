@@ -230,16 +230,12 @@ export default function ContatosView({
           onApply={config => router.push(buildUrl({ ...config, page: null, sel: null }))}
         />
 
-        <div className="flex-1" />
-
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {total} contato(s)
-        </span>
-
         <NewContatoDialog
           orgSlug={orgSlug}
           onCreated={id => selectRow(id)}
         />
+
+        <div className="flex-1" />
       </div>
 
       {/* ── Master-detail ───────────────────────────────────────── */}

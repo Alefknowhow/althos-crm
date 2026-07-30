@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
 import {
   CalendarClock, ChevronLeft, ChevronRight, MapPin, Plane, Hotel, MessageCircle,
@@ -58,22 +59,26 @@ function whatsappLink(phone?: string | null): string | null {
 }
 
 export default function ScheduleClient({
-  orgSlug, trips,
+  orgSlug, trips, members = [],
 }: {
   orgSlug: string
   trips: ScheduledTrip[]
+  members?: { user_id: string; name: string }[]
 }) {
   const today = useMemo(() => startOfDay(new Date()), [])
   const [filter, setFilter] = useState<'all' | TripState>('all')
+  const [owner, setOwner] = useState<string>('all')
   const [monthOffset, setMonthOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return trips
-    return trips.filter(t => tripState(t, today) === filter)
-  }, [trips, filter, today])
+    let out = trips
+    if (filter !== 'all') out = out.filter(t => tripState(t, today) === filter)
+    if (owner !== 'all') out = out.filter(t => t.created_by === owner)
+    return out
+  }, [trips, filter, owner, today])
 
   // Janela do gantt: 3 meses a partir do mês atual (+ offset)
   const windowStart = useMemo(() => firstOfMonth(addMonths(today, monthOffset)), [today, monthOffset])
@@ -148,7 +153,7 @@ export default function ScheduleClient({
   return (
     <>
       <Tabs defaultValue="gantt">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           <TabsList>
             <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
             <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
@@ -174,6 +179,18 @@ export default function ScheduleClient({
               </button>
             ))}
           </div>
+
+          {members.length > 0 && (
+            <Select value={owner} onValueChange={setOwner}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos responsáveis</SelectItem>
+                {members.map(m => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* ── Gantt ───────────────────────────────────────────── */}

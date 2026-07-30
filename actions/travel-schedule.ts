@@ -21,6 +21,7 @@ export type ScheduledTrip = {
   notes: string | null
   lead_name: string | null
   lead_phone: string | null
+  created_by: string | null
 }
 
 export type TripTask = {
@@ -41,7 +42,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
   const { data: sales } = await supabase
     .from('travel_sales')
-    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes')
+    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes, created_by')
     .eq('organization_id', org.id)
     .not('departure_date', 'is', null)
     .order('departure_date', { ascending: true })

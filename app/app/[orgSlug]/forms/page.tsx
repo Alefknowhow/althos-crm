@@ -21,7 +21,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end items-center">
+      <div className="flex items-center">
         <NewFormButton orgSlug={params.orgSlug} />
       </div>
 

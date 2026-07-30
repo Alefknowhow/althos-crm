@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, forwardRef, useImperativeHandle } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,16 +25,19 @@ import { FileText, Plus, Trash2, ArrowLeft, Save, Info, Printer } from 'lucide-r
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
-export default function DocumentTemplatesView({
-  orgSlug, templates,
-}: {
+export type DocumentTemplatesViewHandle = { openNew: () => void }
+
+const DocumentTemplatesView = forwardRef<DocumentTemplatesViewHandle, {
   orgSlug: string
   templates: DocumentTemplateRow[]
-}) {
+}>(function DocumentTemplatesView({
+  orgSlug, templates,
+}, ref) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id ?? null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [newOpen, setNewOpen] = useState(false)
+  useImperativeHandle(ref, () => ({ openNew: () => setNewOpen(true) }))
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -84,11 +87,6 @@ export default function DocumentTemplatesView({
   if (templates.length === 0) {
     return (
       <>
-        <div className="flex items-center justify-end mb-4">
-          <Button onClick={() => setNewOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Novo modelo
-          </Button>
-        </div>
         <EmptyState
           icon={FileText}
           title="Nenhum modelo de documento ainda"
@@ -101,12 +99,6 @@ export default function DocumentTemplatesView({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex items-center justify-end mb-4 shrink-0">
-        <Button onClick={() => setNewOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Novo modelo
-        </Button>
-      </div>
-
       <div className="grid md:grid-cols-[380px_1fr] gap-4 flex-1 min-h-0">
         <div className={cn('rounded-none border bg-card overflow-y-auto divide-y h-full', selected && 'hidden md:block')}>
           {templates.map(t => {
@@ -175,7 +167,9 @@ export default function DocumentTemplatesView({
       </AlertDialog>
     </div>
   )
-}
+})
+
+export default DocumentTemplatesView
 
 function NewTemplateDialog({
   open, onOpenChange, name, setName, creating, onCreate,

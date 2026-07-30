@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTravelNiche } from '@/lib/niche'
 import { listScheduledTrips } from '@/actions/travel-schedule'
+import { listOrgMembers } from '@/actions/team'
 import ScheduleClient from '@/components/features/schedule/ScheduleClient'
 import { PageHeader } from '@/components/ui/page-header'
 
@@ -16,7 +17,10 @@ export default async function ViagensProgramadasPage({ params }: { params: { org
     redirect(`/app/${params.orgSlug}`)
   }
 
-  const trips = await listScheduledTrips(params.orgSlug)
+  const [trips, members] = await Promise.all([
+    listScheduledTrips(params.orgSlug),
+    listOrgMembers(params.orgSlug),
+  ])
 
   return (
     <div className="space-y-6">
@@ -25,7 +29,7 @@ export default async function ViagensProgramadasPage({ params }: { params: { org
         hint="Acompanhe visualmente as viagens vendidas — datas de partida e retorno, tarefas relacionadas e atalho direto para o WhatsApp do cliente."
       />
 
-      <ScheduleClient orgSlug={params.orgSlug} trips={trips} />
+      <ScheduleClient orgSlug={params.orgSlug} trips={trips} members={members} />
     </div>
   )
 }

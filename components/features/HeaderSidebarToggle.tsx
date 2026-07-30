@@ -18,14 +18,14 @@ export function HeaderSidebarToggle({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="flex items-center gap-1.5 min-w-0">
-      <h1 className="text-sm font-semibold tracking-apple-snug truncate">{title}</h1>
+      <h1 className="text-base md:text-sm font-semibold tracking-apple-snug truncate">{title}</h1>
       {hint && (
         <TooltipProvider>
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="shrink-0 text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-0.5"
+                className="hidden md:inline-flex shrink-0 text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-0.5"
                 aria-label={hint}
               >
                 <Info className="h-4 w-4" />

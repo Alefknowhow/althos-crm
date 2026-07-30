@@ -259,16 +259,6 @@ export default function KanbanBoard({
           </button>
         </div>
 
-        <div className="relative min-w-[180px] flex-1 max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar negócios…"
-            className="h-9 pl-9"
-          />
-        </div>
-
         {members.length > 0 && (
           <Select value={ownerFilter} onValueChange={setOwnerFilter}>
             <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Responsável" /></SelectTrigger>
@@ -300,6 +290,16 @@ export default function KanbanBoard({
             <SelectItem value="name">Nome (A-Z)</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="relative min-w-[180px] flex-1 max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar negócios…"
+            className="h-9 pl-9"
+          />
+        </div>
 
         <button
           type="button"
