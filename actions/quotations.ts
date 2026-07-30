@@ -468,7 +468,7 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
     if (!loc?.id) return { ok: false as const, error: 'Hotel não encontrado no TripAdvisor' }
 
     const photoRes = await fetch(
-      `${TRIPADVISOR_BASE}/locations/${loc.id}/photos?locale=pt&size=5`,
+      `${TRIPADVISOR_BASE}/locations/${loc.id}/photos?locale=pt-BR&size=10`,
       { headers: taHeaders(key), cache: 'no-store' },
     )
     const photosJson = photoRes.ok ? await photoRes.json() : { data: [] }
@@ -483,6 +483,7 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
       lat: loc.coordinates?.latitude != null ? Number(loc.coordinates.latitude) : undefined,
       lng: loc.coordinates?.longitude != null ? Number(loc.coordinates.longitude) : undefined,
       address: pickTranslation(loc.addresses?.map((a: any) => ({ language: a.language, value: a.formatted }))),
+      description: pickTranslation(loc.descriptions),
     }
     return {
       ok: true as const,

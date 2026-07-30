@@ -674,15 +674,22 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     if (res.ok) {
       setLodgings(ls => ls.map(x => {
         if (x._key !== l._key) return x
-        // Rascunho de descrição só quando o campo ainda está vazio — nunca
-        // sobrescreve um texto que o usuário já escreveu.
+        // Descrição: prioriza o texto editorial real do TripAdvisor; se não
+        // vier, monta um rascunho com nota/endereço. Só quando o campo ainda
+        // está vazio — nunca sobrescreve um texto que o usuário já escreveu.
         const draftParts = [
           res.data.rating && res.data.reviews_count
             ? `Avaliado com nota ${res.data.rating} no TripAdvisor (${res.data.reviews_count} avaliações).`
             : null,
           res.data.address ? `Endereço: ${res.data.address}.` : null,
         ].filter(Boolean)
-        const draftDescription = draftParts.length ? `<p>${draftParts.join(' ')}</p>` : x.description_html
+        const draftDescription = res.data.description
+          ? `<p>${res.data.description}</p>`
+          : draftParts.length ? `<p>${draftParts.join(' ')}</p>` : x.description_html
+        // Fotos: junta as já cadastradas com as novas do TripAdvisor,
+        // sem duplicar, até 10 no total — buscar de novo deve trazer mais
+        // fotos, não travar em quem já tinha alguma.
+        const mergedPhotos = Array.from(new Set([...(x.photos || []), ...((res.data.photos || []) as string[])])).slice(0, 10)
         return {
           ...x,
           name: res.name || x.name, // corrige pro nome oficial do TripAdvisor
@@ -690,7 +697,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           tripadvisor_data: res.data,
           lat: x.lat ?? res.data.lat ?? null,
           lng: x.lng ?? res.data.lng ?? null,
-          photos: x.photos.length ? x.photos : (res.data.photos || []).slice(0, 5),
+          photos: mergedPhotos,
           description_html: x.description_html?.trim() ? x.description_html : draftDescription,
         }
       }))
