@@ -282,6 +282,121 @@ export async function recordCampaignMetric(orgSlug: string, raw: unknown) {
 }
 
 /**
+ * Puxa campanhas + métricas diárias (últimos 30 dias) de uma conta de
+ * anúncios Meta via Marketing API (read-only, mesmo token do CAPI) e grava
+ * em campaigns/campaign_metrics_daily (source='api'). Campanhas já
+ * existentes (por external_id) são atualizadas, não duplicadas.
+ */
+export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: account } = await supabase
+    .from('ad_accounts')
+    .select('id, provider, external_id')
+    .eq('id', adAccountId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!account) return { ok: false as const, error: 'Conta não encontrada' }
+  if (account.provider !== 'meta') return { ok: false as const, error: 'Sincronização automática só disponível para contas Meta por enquanto' }
+  if (!account.external_id) return { ok: false as const, error: 'Preencha o ID da conta de anúncios (act_XXXXXXXXX) antes de sincronizar' }
+
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('meta_access_token')
+    .eq('id', org.id)
+    .maybeSingle()
+  if (!orgRow?.meta_access_token) {
+    return { ok: false as const, error: 'Configure o Access Token da Meta em Configurações → Integrações antes de sincronizar' }
+  }
+
+  const { fetchMetaCampaigns, fetchMetaCampaignDailyInsights } = await import('@/lib/meta/ads')
+
+  let metaCampaigns
+  try {
+    metaCampaigns = await fetchMetaCampaigns(account.external_id, orgRow.meta_access_token)
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao buscar campanhas na Meta' }
+  }
+
+  const until = new Date().toISOString().slice(0, 10)
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+
+  // A Meta usa ACTIVE/PAUSED/DELETED/ARCHIVED/PENDING_REVIEW/etc — o CRM só
+  // aceita active/paused/archived (campaigns_status_check); tudo que não é
+  // ACTIVE ou PAUSED cai em 'archived'.
+  const mapStatus = (s: string | undefined | null): 'active' | 'paused' | 'archived' => {
+    const up = (s || '').toUpperCase()
+    if (up === 'ACTIVE') return 'active'
+    if (up === 'PAUSED') return 'paused'
+    return 'archived'
+  }
+
+  let campaignsSynced = 0
+  let metricsSynced = 0
+  const errors: string[] = []
+
+  for (const mc of metaCampaigns) {
+    const { data: localCampaign, error: upsertErr } = await supabase
+      .from('campaigns')
+      .upsert(
+        {
+          organization_id: org.id,
+          ad_account_id: account.id,
+          external_id: mc.id,
+          name: mc.name,
+          objective: mc.objective || null,
+          status: mapStatus(mc.status),
+          started_at: mc.start_time ? mc.start_time.slice(0, 10) : null,
+          ended_at: mc.stop_time ? mc.stop_time.slice(0, 10) : null,
+        },
+        { onConflict: 'ad_account_id,external_id' },
+      )
+      .select('id')
+      .maybeSingle()
+    if (upsertErr || !localCampaign) {
+      errors.push(`${mc.name}: ${upsertErr?.message || 'falha ao salvar campanha'}`)
+      continue
+    }
+    campaignsSynced++
+
+    try {
+      const insights = await fetchMetaCampaignDailyInsights(mc.id, orgRow.meta_access_token, since, until)
+      for (const row of insights) {
+        const { error: metricErr } = await supabase
+          .from('campaign_metrics_daily')
+          .upsert(
+            {
+              organization_id: org.id,
+              campaign_id: localCampaign.id,
+              date: row.date,
+              impressions: row.impressions,
+              clicks: row.clicks,
+              spend_cents: row.spend_cents,
+              source: 'api',
+            },
+            { onConflict: 'campaign_id,date,source' },
+          )
+        if (!metricErr) metricsSynced++
+      }
+    } catch (e: any) {
+      errors.push(`${mc.name}: ${e?.message || 'falha ao buscar métricas'}`)
+    }
+  }
+
+  revalidatePath(`/app/${orgSlug}/marketing`)
+  return {
+    ok: true as const,
+    campaignsSynced,
+    metricsSynced,
+    error: errors.length ? errors.slice(0, 3).join('; ') : null,
+  }
+}
+
+/**
  * Bulk import of daily metrics rows. Used by CSV upload — the row format is
  * intentionally minimal (campaign_name OR campaign_id + date + spend + optional
  * counters), so we can ingest exports from Meta, Google Ads, etc. with the same

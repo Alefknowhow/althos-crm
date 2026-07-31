@@ -58,6 +58,11 @@ const ContentSecurityPolicy = [
   // perfil do contato no inbox de DM).
   `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com`,
 
+  // Áudio/vídeo (elementos <audio>/<video>) — mídia recebida via WhatsApp,
+  // baixada e salva no Storage (bucket whatsapp-media, mesmo host acima).
+  // Não é coberto por img-src; sem isso, cai no default-src 'self' e bloqueia.
+  `media-src 'self' blob: https://${supabaseHostname}`,
+
   // Fetch / XHR / WebSocket connections allowed to known external services.
   // This is the most impactful restriction — exfiltrating data to an
   // attacker-controlled server requires it to be in this list.

@@ -281,9 +281,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.map((c: any) => (
             <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
-              <div className={`h-9 w-9 rounded-full shrink-0 ${agentColor(c.contact_phone || c.id)} text-white text-[11px] font-semibold flex items-center justify-center`}>
-                {memberInitials(c.contact_name, c.contact_phone)}
-              </div>
+              {c.contatos?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.contatos.avatar_url} alt="" className="h-9 w-9 rounded-full shrink-0 object-cover" />
+              ) : (
+                <div className={`h-9 w-9 rounded-full shrink-0 ${agentColor(c.contact_phone || c.id)} text-white text-[11px] font-semibold flex items-center justify-center`}>
+                  {memberInitials(c.contact_name, c.contact_phone)}
+                </div>
+              )}
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
@@ -404,7 +409,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
-                const body = msgBody(m) || '[Mídia recebida]'
+                const media = renderWhatsappMedia(m)
+                const text = msgBody(m)
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <div
@@ -414,8 +420,11 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                           : 'bg-primary text-primary-foreground rounded-tr-[4px]'
                       }`}
                     >
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">{highlightText(body, msgQuery)}</div>
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {media || (text ? highlightText(text, msgQuery) : '[Mídia recebida]')}
+                      </div>
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
+                        {!isInbound && m.sent_by_name && <span className="truncate max-w-[120px]">{m.sent_by_name} ·</span>}
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && <MessageTicks status={m.status} />}
                       </div>
@@ -564,6 +573,55 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 // Extrai o texto de uma mensagem (cobre os dois formatos de content).
 function msgBody(m: any): string {
   return m?.content?.text?.body || m?.content?.body || ''
+}
+
+// Renderiza a mídia de uma mensagem (o webhook baixa e salva a URL
+// permanente em content.media_url — ver app/api/webhooks/whatsapp/route.ts).
+// Retorna null pra mensagens de texto puro, deixando o texto normal aparecer.
+function renderWhatsappMedia(m: any): React.ReactNode {
+  const mediaUrl: string | undefined = m?.content?.media_url
+  const caption: string | undefined = m?.content?.[m.type]?.caption
+  if (!mediaUrl) return null
+
+  if (m.type === 'image') {
+    return (
+      <div className="space-y-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-72 object-cover cursor-pointer"
+          onClick={() => window.open(mediaUrl, '_blank')}
+        />
+        {caption && <div className="whitespace-pre-wrap">{caption}</div>}
+      </div>
+    )
+  }
+  if (m.type === 'sticker') {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={mediaUrl} alt="" className="w-32 h-32 object-contain" />
+  }
+  if (m.type === 'video') {
+    return (
+      <div className="space-y-1.5">
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <video controls src={mediaUrl} className="rounded-lg max-w-full max-h-72" />
+        {caption && <div className="whitespace-pre-wrap">{caption}</div>}
+      </div>
+    )
+  }
+  if (m.type === 'audio') {
+    // eslint-disable-next-line jsx-a11y/media-has-caption
+    return <audio controls src={mediaUrl} className="max-w-[220px]" />
+  }
+  if (m.type === 'document') {
+    const filename = m?.content?.document?.filename || 'Documento'
+    return (
+      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 underline">
+        <FileText className="w-4 h-4 shrink-0" />
+        <span className="truncate">{filename}</span>
+      </a>
+    )
+  }
+  return <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="underline">Abrir mídia</a>
 }
 
 // Destaca todas as ocorrências do termo de busca dentro de um texto.

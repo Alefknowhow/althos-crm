@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { sendTextMessage } from '@/lib/whatsapp/meta-client'
 import { listOrgMembers } from '@/actions/team'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+import { getProfilesMap } from '@/lib/profiles'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -139,11 +140,14 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
   if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
     return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
   }
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('id', conversationId).eq('organization_id', org.id).maybeSingle()
   if (!conv) return { ok: false, error: 'Conversa não encontrada' }
+
+  const agentName = (await getProfilesMap([user.id])).get(user.id)?.full_name || null
 
   const { data: msg, error: insertError } = await supabase.from('whatsapp_messages').insert({
     conversation_id: conv.id,
@@ -151,7 +155,8 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
     direction: 'outbound',
     type: 'text',
     content: { body: content },
-    status: 'sending'
+    status: 'sending',
+    sent_by_name: agentName,
   }).select().single()
 
   if (insertError) return { ok: false, error: insertError.message }

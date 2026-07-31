@@ -34,6 +34,54 @@ export async function GET(req: Request) {
   return new NextResponse('Forbidden', { status: 403 })
 }
 
+const MEDIA_MESSAGE_TYPES = new Set(['image', 'audio', 'video', 'document', 'sticker'])
+
+/**
+ * A mensagem de mídia do WhatsApp só traz um media_id — a URL real é
+ * temporária (expira em minutos) e exige o token de acesso pra baixar.
+ * Baixa o arquivo e sobe no bucket `whatsapp-media` pra ter uma URL
+ * permanente que o CRM consegue exibir depois. Retorna null em qualquer
+ * falha (a mensagem ainda é salva, só sem mídia — não trava o webhook).
+ */
+async function downloadAndStoreMedia(
+  supabase: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  mediaId: string,
+  accessToken: string,
+): Promise<string | null> {
+  try {
+    const metaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!metaRes.ok) return null
+    const meta = await metaRes.json()
+    if (!meta.url) return null
+
+    const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${accessToken}` } })
+    if (!fileRes.ok) return null
+    const bytes = await fileRes.arrayBuffer()
+
+    const mimeType: string = meta.mime_type || 'application/octet-stream'
+    const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin'
+    const path = `${orgId}/${mediaId}.${ext}`
+
+    const { error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, {
+      contentType: mimeType,
+      upsert: true,
+    })
+    if (error) {
+      console.error('[whatsapp webhook] media upload failed:', error.message)
+      return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('whatsapp-media').getPublicUrl(path)
+    return publicUrl
+  } catch (e: any) {
+    console.error('[whatsapp webhook] media download failed:', e?.message)
+    return null
+  }
+}
+
 /** Verify Meta's X-Hub-Signature-256 header against the raw body. */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.META_APP_SECRET
@@ -81,7 +129,7 @@ export async function POST(req: Request) {
         // seu via Embedded Signup, salvando o phone_number_id na tabela.
         const { data: org } = await supabase
           .from('organizations')
-          .select('id')
+          .select('id, whatsapp_access_token')
           .eq('whatsapp_phone_number_id', phoneNumberId)
           .maybeSingle()
         if (!org) {
@@ -161,12 +209,20 @@ export async function POST(req: Request) {
               }).eq('id', conv.id)
             }
 
+            // Mídia (foto, áudio, vídeo, documento, figurinha): baixa e sobe
+            // pro Storage antes de salvar, pra ter uma URL permanente.
+            let messageContent: any = msg
+            if (MEDIA_MESSAGE_TYPES.has(msg.type) && msg[msg.type]?.id && org.whatsapp_access_token) {
+              const mediaUrl = await downloadAndStoreMedia(supabase, orgId, msg[msg.type].id, org.whatsapp_access_token)
+              if (mediaUrl) messageContent = { ...msg, media_url: mediaUrl }
+            }
+
             await supabase.from('whatsapp_messages').insert({
               conversation_id: conv.id,
               organization_id: orgId,
               direction: 'inbound',
               type: msg.type,
-              content: msg,
+              content: messageContent,
               meta_message_id: msg.id,
               status: 'delivered'
             })

@@ -64,6 +64,7 @@ async function maybeCreateLead(
   supabase: ReturnType<typeof createAdminClient>,
   orgId: string,
   inbound: InboundInteraction,
+  accessToken?: string,
 ): Promise<string | null> {
   const externalRef = inbound.senderUsername ? `@${inbound.senderUsername}` : inbound.senderId
   // De-dupe: don't create a second lead for the same Instagram sender.
@@ -74,6 +75,16 @@ async function maybeCreateLead(
     .eq('source', `instagram:${externalRef}`)
     .maybeSingle()
   if (existing) return existing.id
+
+  // Foto do perfil do Instagram (best-effort — a criação do lead não falha
+  // se isso der erro, só fica sem foto).
+  let avatarUrl: string | null = null
+  if (accessToken) {
+    try {
+      const profile = await getInstagramUserProfile(inbound.senderId, accessToken)
+      avatarUrl = profile?.profilePic ?? null
+    } catch { /* best-effort */ }
+  }
 
   const { data: defaultPipeline } = await supabase
     .from('pipelines')
@@ -99,6 +110,7 @@ async function maybeCreateLead(
       stage_id: defaultStage?.id ?? null,
       name: inbound.senderUsername ? `@${inbound.senderUsername}` : 'Lead do Instagram',
       source: `instagram:${externalRef}`,
+      avatar_url: avatarUrl,
     })
     .select('id')
     .single()
@@ -278,7 +290,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   let leadId: string | null = null
   if (auto.create_lead) {
     try {
-      leadId = await maybeCreateLead(supabase, orgId, inbound)
+      leadId = await maybeCreateLead(supabase, orgId, inbound, connection.access_token)
     } catch (e: any) {
       console.error('[social engine] lead creation failed:', e?.message)
     }

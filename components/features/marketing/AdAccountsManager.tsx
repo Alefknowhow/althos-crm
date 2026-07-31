@@ -6,8 +6,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Trash2 } from 'lucide-react'
-import { deleteAdAccount } from '@/actions/marketing'
+import { Trash2, RefreshCw } from 'lucide-react'
+import { deleteAdAccount, syncAdAccountCampaigns } from '@/actions/marketing'
 import NewAdAccountDialog from './NewAdAccountDialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -47,6 +47,7 @@ export default function AdAccountsManager({
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [busy, setBusy] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState<string | null>(null)
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null)
 
   function refresh() {
@@ -63,6 +64,16 @@ export default function AdAccountsManager({
     } else {
       toast.error(res.error)
     }
+  }
+
+  async function sync(a: Account) {
+    setSyncing(a.id)
+    const res = await syncAdAccountCampaigns(orgSlug, a.id)
+    setSyncing(null)
+    if (!res.ok) { toast.error(res.error); return }
+    if (res.error) toast.warning(`Sincronizado com avisos: ${res.error}`)
+    toast.success(`${res.campaignsSynced} campanha(s), ${res.metricsSynced} métrica(s) atualizadas`)
+    refresh()
   }
 
   return (
@@ -98,15 +109,29 @@ export default function AdAccountsManager({
                   )}
                   {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={() => setAccountToDelete(a)}
-                  disabled={busy === a.id}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  {a.provider === 'meta' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => sync(a)}
+                      disabled={syncing === a.id}
+                      title="Puxar campanhas e métricas dos últimos 30 dias"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing === a.id ? 'animate-spin' : ''}`} />
+                      Sincronizar
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => setAccountToDelete(a)}
+                    disabled={busy === a.id}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardHeader>
             </Card>
           ))}
