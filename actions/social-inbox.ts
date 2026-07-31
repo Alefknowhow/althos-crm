@@ -38,6 +38,7 @@ export type SocialMessageRow = {
   media_url: string | null
   sent_by: 'user' | 'automation' | 'funnel' | 'agent'
   sent_by_name: string | null
+  buttons: { type: 'reply' | 'link'; label: string; value: string }[] | null
   created_at: string
 }
 
@@ -78,7 +79,7 @@ export async function getConversationMessages(
   if (!conv) return []
   const { data } = await supabase
     .from('social_messages')
-    .select('id, direction, message_text, media_url, sent_by, sent_by_name, created_at')
+    .select('id, direction, message_text, media_url, sent_by, sent_by_name, buttons, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
   return (data as SocialMessageRow[] | null) || []

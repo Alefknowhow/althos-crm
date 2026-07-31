@@ -73,7 +73,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   // Todas as queries do sidebar dependem só de org/user (já resolvidos), então
   // disparam JUNTAS em vez de em cascata: membership, tarefas vencidas,
   // conversas não lidas e os 3 checks de plano. Colapsa ~5 round-trips em 1 fase.
-  const [membershipRes, overdueRes, convsRes, planChecks] = await Promise.all([
+  const [membershipRes, overdueRes, convsRes, socialConvsRes, planChecks] = await Promise.all([
     user
       ? supabase
           .from('memberships')
@@ -90,6 +90,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       .lt('due_date', today.toISOString()),
     supabase
       .from('whatsapp_conversations')
+      .select('unread_count')
+      .eq('organization_id', org.id),
+    supabase
+      .from('social_conversations')
       .select('unread_count')
       .eq('organization_id', org.id),
     // Plan entitlements (per account). Super-admins bypass in SQL, so the owner
@@ -127,6 +131,8 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   const overdueCount = (overdueRes as { count: number | null }).count
   const convs = (convsRes as { data: { unread_count: number }[] | null }).data
   const unreadWhatsapp = convs?.reduce((a, b) => a + (b.unread_count || 0), 0) || 0
+  const socialConvs = (socialConvsRes as { data: { unread_count: number }[] | null }).data
+  const unreadInstagram = socialConvs?.reduce((a, b) => a + (b.unread_count || 0), 0) || 0
 
   const base = `/app/${orgSlug}`
 
@@ -310,6 +316,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <IgIcon />
               <span>Instagram</span>
+              <SidebarUnreadBadge orgId={org.id} initialCount={unreadInstagram} table="social_conversations" />
             </span>
           </SidebarNavLink>
         )}

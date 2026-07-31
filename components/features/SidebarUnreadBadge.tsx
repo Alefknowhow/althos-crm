@@ -3,7 +3,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: string, initialCount: number }) {
+export default function SidebarUnreadBadge({
+  orgId, initialCount, table = 'whatsapp_conversations',
+}: { orgId: string, initialCount: number, table?: 'whatsapp_conversations' | 'social_conversations' }) {
   const [count, setCount] = useState(initialCount)
 
   // createBrowserClient (@supabase/ssr) is a singleton — every call returns the
@@ -28,13 +30,13 @@ export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: str
     // contain colons.
     const safeSuffix = instanceId.replace(/:/g, '')
     const channel = supabase
-      .channel(`whatsapp_sidebar_${orgId}_${safeSuffix}`)
+      .channel(`${table}_sidebar_${orgId}_${safeSuffix}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_conversations', filter: `organization_id=eq.${orgId}` },
+        { event: '*', schema: 'public', table, filter: `organization_id=eq.${orgId}` },
         () => {
           supabase
-            .from('whatsapp_conversations')
+            .from(table)
             .select('unread_count')
             .eq('organization_id', orgId)
             .then(({ data }) => {
@@ -45,7 +47,7 @@ export default function SidebarUnreadBadge({ orgId, initialCount }: { orgId: str
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [orgId]) // supabase is stable via ref — not a dependency
+  }, [orgId, table]) // supabase is stable via ref — not a dependency
 
   if (count === 0) return null
   return <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1 py-0">{count}</Badge>

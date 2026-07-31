@@ -89,7 +89,7 @@ async function runFrom(
       try {
         await sendInstagramDM(connection.page_id, connection.access_token, inbound.senderId, text, buttons)
         if (conversationId) {
-          await logOutboundMessage(admin, conversationId, connection.organization_id, text, 'funnel')
+          await logOutboundMessage(admin, conversationId, connection.organization_id, text, 'funnel', null, null, buttons)
         }
       } catch (e: any) {
         console.error('[funnel] send failed:', e?.message)

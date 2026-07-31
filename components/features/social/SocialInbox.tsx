@@ -174,6 +174,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {c.last_message_direction === 'outbound' && c.last_message_preview && <span>Você: </span>}
                   {c.last_message_preview || '—'}
                 </div>
               </div>
@@ -238,6 +239,23 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                         <img src={m.media_url} alt="" className="max-w-full rounded-none mb-1 max-h-64 object-cover" />
                       )}
                       {m.message_text && <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text}</div>}
+                      {m.buttons && m.buttons.length > 0 && (
+                        <div className="flex flex-col gap-1 mt-2">
+                          {m.buttons.map((b, k) => (
+                            b.type === 'link' ? (
+                              <a key={k} href={b.value} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-center px-3 py-1.5 rounded-full border border-primary-foreground/40 hover:bg-primary-foreground/10 truncate">
+                                {b.label}
+                              </a>
+                            ) : (
+                              <span key={k}
+                                className="text-xs text-center px-3 py-1.5 rounded-full border border-primary-foreground/40 truncate">
+                                {b.label}
+                              </span>
+                            )
+                          ))}
+                        </div>
+                      )}
                       <div className={`text-[10px] mt-1 text-right ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && m.sent_by === 'agent' && m.sent_by_name && ` · ${m.sent_by_name}`}
