@@ -401,7 +401,7 @@ const BLOCK_NAV = [
 
 function BlockNav() {
   return (
-    <div className="sticky top-[48px] z-10 -mx-3 sm:-mx-5 px-3 sm:px-5 py-1.5 bg-background/95 backdrop-blur border-b overflow-x-auto">
+    <div className="px-3 sm:px-5 py-1.5 border-t overflow-x-auto">
       <div className="flex gap-1 w-max">
         {BLOCK_NAV.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button"
@@ -1169,8 +1169,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
 
   return (
     <div className="pb-8">
-      {/* Toolbar */}
-      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 px-3 sm:px-5 py-2.5 bg-background/85   border-b flex items-center gap-2 flex-wrap">
+      {/* Toolbar + navegação entre blocos — um único bloco sticky, sem espaço entre as duas linhas */}
+      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 bg-background/95 backdrop-blur border-b">
+      <div className="px-3 sm:px-5 py-2.5 flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
         </Button>
@@ -1230,10 +1231,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </span>
         )}
       </div>
-
       <BlockNav />
+      </div>
 
-      <div className="mt-4">{form}</div>
+      <div className="mt-4 max-w-4xl mx-auto">{form}</div>
 
       <DocumentExtractDialog
         orgSlug={orgSlug}

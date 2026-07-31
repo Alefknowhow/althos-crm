@@ -282,7 +282,9 @@ function Block({
 
   useEffect(() => {
     if (defaultOpen && onFirstOpen) onFirstOpen()
-    if (defaultOpen) requestAnimationFrame(sync)
+    // NÃO chama sync() aqui: maxH já nasce 'none' (totalmente aberto) quando
+    // defaultOpen — travar num valor em px medido antes das imagens carregarem
+    // cortava o conteúdo depois que elas terminavam de carregar ("meia-fase").
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
