@@ -554,7 +554,9 @@ export default function PublicQuotationView({
             <IcCal />
             <div className="k">Período</div>
             <div className="v">
-              {fmtShort(data.departure_date) || (preview ? AC : '—')}
+              {data.departure_date || data.return_date
+                ? <>de {fmtShort(data.departure_date) || '—'} até {fmtShort(data.return_date) || '—'}</>
+                : (preview ? AC : '—')}
               {daysCount != null && <small>{daysCount} dias · {nights} noites</small>}
             </div>
           </div>
