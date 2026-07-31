@@ -39,7 +39,9 @@ const ContentSecurityPolicy = [
 
   // Scripts: same-origin + inline (needed for Next.js RSC hydration chunks).
   // Cloudflare Turnstile script is loaded client-side from their CDN.
-  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com`,
+  // connect.facebook.net serves the Meta JS SDK used by the WhatsApp
+  // Embedded Signup button (Conectar WhatsApp em Configurações).
+  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net`,
 
   // Styles: same-origin + inline (Tailwind / shadcn inject style tags).
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
@@ -69,14 +71,17 @@ const ContentSecurityPolicy = [
     `https://viacep.com.br`,
     `https://challenges.cloudflare.com`,
     `https://graph.facebook.com`,
+    `https://www.facebook.com`,
     // Inngest Dev Server in local dev
     isDev ? 'http://localhost:8288' : '',
   ]
     .filter(Boolean)
     .join(' '),
 
-  // Iframe embeds: Turnstile challenge widget + YouTube (vídeos da Vitrine).
-  `frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com`,
+  // Iframe embeds: Turnstile challenge widget + YouTube (vídeos da Vitrine)
+  // + www.facebook.com (iframe oculto do SDK da Meta pro Embedded Signup
+  // do WhatsApp se comunicar entre domínios).
+  `frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.facebook.com`,
 
   // Block <object>, <embed>, <applet> — vectors for plugin exploits.
   `object-src 'none'`,
