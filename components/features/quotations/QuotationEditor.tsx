@@ -1,9 +1,8 @@
 'use client'
 
 /**
- * Editor da Cotação reformulada — split view com paridade total:
- * coluna esquerda = blocos de formulário (1:1 com a entrega),
- * coluna direita = preview ao vivo do MESMO componente da rota pública.
+ * Editor da Cotação — formulário em largura total (1:1 com a entrega).
+ * Use o botão "Abrir" pra ver a proposta pública real em nova aba.
  *
  * Autosave com debounce (~800ms). Repeaters reordenáveis via dnd-kit.
  * Imagens: upload/colar/arrastar com compressão client-side.
@@ -35,7 +34,7 @@ import {
   CheckCircle2, Link2, Image as ImageIcon, Search, Bold, Italic, List, ListOrdered,
   Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
-  ChevronLeft, ChevronRight, Eye, Pencil, ShoppingBag,
+  ChevronLeft, ChevronRight, Pencil, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket,
 } from 'lucide-react'
 
@@ -46,10 +45,10 @@ const PAYMENT_METHODS = [
   { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
 ] as const
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, createSaleFromQuotation, convertOfferToQuotation, convertQuotationToOffer, type QuotationFull } from '@/actions/quotations'
+import { saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, createSaleFromQuotation, convertOfferToQuotation, convertQuotationToOffer, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
-import PublicQuotationView, { type PublicQuotation, BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
+import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
@@ -148,7 +147,9 @@ function RichField({ value, onChange, placeholder, minH = 120 }: {
 }
 
 /* ═════════════ upload de imagem (única) com colar/arrastar ═════════════ */
-function CoverUpload({ orgSlug, url, onChange }: { orgSlug: string; url?: string | null; onChange: (u: string | null) => void }) {
+function CoverUpload({
+  orgSlug, url, onChange, unsplashHint,
+}: { orgSlug: string; url?: string | null; onChange: (u: string | null) => void; unsplashHint?: string }) {
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const handle = useCallback(async (file?: File | null) => {
@@ -159,30 +160,100 @@ function CoverUpload({ orgSlug, url, onChange }: { orgSlug: string; url?: string
     if (u) onChange(u)
   }, [orgSlug, onChange])
   return (
-    <div
-      className="relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 min-h-[120px] flex items-center justify-center text-center"
-      onDragOver={e => e.preventDefault()}
-      onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files?.[0]) }}
-      onPaste={e => { const f = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))?.getAsFile(); if (f) { e.preventDefault(); handle(f) } }}
-      tabIndex={0}
-    >
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handle(e.target.files?.[0])} />
-      {url ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="Capa" className="w-full h-40 object-cover" />
-          <div className="absolute bottom-2 right-2 flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            </Button>
-            <Button type="button" size="sm" variant="destructive" onClick={() => onChange(null)}><Trash2 className="w-3.5 h-3.5" /></Button>
-          </div>
-        </>
-      ) : (
-        <button type="button" className="p-6 text-sm text-muted-foreground w-full" onClick={() => inputRef.current?.click()}>
-          {busy ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : <><ImageIcon className="w-6 h-6 mx-auto mb-2" />Clique, cole (Ctrl+V) ou arraste a imagem de capa</>}
-        </button>
+    <div className="space-y-2">
+      <div
+        className="relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 min-h-[120px] flex items-center justify-center text-center"
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files?.[0]) }}
+        onPaste={e => { const f = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))?.getAsFile(); if (f) { e.preventDefault(); handle(f) } }}
+        tabIndex={0}
+      >
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handle(e.target.files?.[0])} />
+        {url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="Capa" className="w-full h-40 object-cover" />
+            <div className="absolute bottom-2 right-2 flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              </Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => onChange(null)}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+          </>
+        ) : (
+          <button type="button" className="p-6 text-sm text-muted-foreground w-full" onClick={() => inputRef.current?.click()}>
+            {busy ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : <><ImageIcon className="w-6 h-6 mx-auto mb-2" />Clique, cole (Ctrl+V) ou arraste a imagem de capa</>}
+          </button>
+        )}
+      </div>
+      <UnsplashPicker orgSlug={orgSlug} hint={unsplashHint} onPick={onChange} />
+    </div>
+  )
+}
+
+/* ═════════════ busca de foto de capa no Unsplash ═════════════ */
+function UnsplashPicker({
+  orgSlug, hint, onPick,
+}: { orgSlug: string; hint?: string; onPick: (url: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [results, setResults] = useState<{ id: string; thumbUrl: string; fullUrl: string; downloadLocation: string; author: string; authorUrl: string }[] | null>(null)
+
+  async function search(q: string) {
+    if (!q.trim()) return
+    setBusy(true)
+    const res = await unsplashSearch(orgSlug, q)
+    setBusy(false)
+    if (res.ok) setResults(res.photos)
+    else { const { toast } = await import('sonner'); toast.error(res.error) }
+  }
+
+  function openPicker() {
+    setOpen(true)
+    if (!results) { const q = hint || ''; setQuery(q); if (q) search(q) }
+  }
+
+  async function pick(p: { fullUrl: string; downloadLocation: string }) {
+    onPick(p.fullUrl)
+    setOpen(false)
+    unsplashTrackDownload(orgSlug, p.downloadLocation)
+  }
+
+  if (!open) {
+    return (
+      <Button type="button" size="sm" variant="outline" onClick={openPicker} className="w-full">
+        <Search className="w-3.5 h-3.5 mr-1.5" /> Buscar foto no Unsplash
+      </Button>
+    )
+  }
+
+  return (
+    <div className="border rounded-lg p-2.5 space-y-2 bg-muted/20">
+      <div className="flex gap-1.5">
+        <Input value={query} onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search(query) } }}
+          placeholder="Ex.: praia caribe, montanha, cidade europeia…" className="h-8 text-xs" />
+        <Button type="button" size="sm" className="h-8" onClick={() => search(query)} disabled={busy}>
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setOpen(false)}>Fechar</Button>
+      </div>
+      {results && results.length > 0 && (
+        <div className="grid grid-cols-4 gap-1.5">
+          {results.map(p => (
+            <button key={p.id} type="button" onClick={() => pick(p)}
+              className="relative rounded overflow-hidden aspect-square group border hover:ring-2 hover:ring-primary">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.thumbUrl} alt={p.author} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
       )}
+      {results && results.length === 0 && !busy && (
+        <p className="text-[11px] text-muted-foreground">Nenhuma foto encontrada. Tente outro termo.</p>
+      )}
+      <p className="text-[10px] text-muted-foreground">Fotos via Unsplash — atribuição registrada automaticamente.</p>
     </div>
   )
 }
@@ -296,9 +367,9 @@ function F({ label, children, hint }: { label: string; children: React.ReactNode
   )
 }
 
-function EditBlock({ icon: Icon, title, children, action }: { icon: any; title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function EditBlock({ id, icon: Icon, title, children, action }: { id?: string; icon: any; title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <Card>
+    <Card id={id} className={id ? 'scroll-mt-[104px]' : undefined}>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <Icon className="w-4 h-4 text-primary" /> {title}
@@ -307,6 +378,40 @@ function EditBlock({ icon: Icon, title, children, action }: { icon: any; title: 
       </CardHeader>
       <CardContent className="space-y-3">{children}</CardContent>
     </Card>
+  )
+}
+
+/** Barra de navegação entre blocos — pula direto pro bloco clicado (evita
+ *  scroll cego numa cotação grande). Fica sticky logo abaixo da toolbar. */
+const BLOCK_NAV = [
+  { id: 'blk-capa', label: 'Capa', icon: ImageIcon },
+  { id: 'blk-viagem', label: 'Viagem', icon: MapPin },
+  { id: 'blk-intro', label: 'Introdução', icon: Sparkles },
+  { id: 'blk-hospedagens', label: 'Hospedagens', icon: BedDouble },
+  { id: 'blk-aereo', label: 'Aéreo', icon: Plane },
+  { id: 'blk-mapa', label: 'Mapa', icon: MapIcon },
+  { id: 'blk-itinerario', label: 'Itinerário', icon: Route },
+  { id: 'blk-passeios', label: 'Passeios', icon: Ticket },
+  { id: 'blk-importante', label: 'Importante', icon: AlertTriangle },
+  { id: 'blk-inclui', label: 'O que inclui', icon: CheckCircle2 },
+  { id: 'blk-cancelamento', label: 'Cancelamento', icon: AlertTriangle },
+  { id: 'blk-investimento', label: 'Investimento', icon: Wallet },
+  { id: 'blk-fechamento', label: 'Fechamento', icon: MessageCircle },
+] as const
+
+function BlockNav() {
+  return (
+    <div className="sticky top-[48px] z-10 -mx-3 sm:-mx-5 px-3 sm:px-5 py-1.5 bg-background/95 backdrop-blur border-b overflow-x-auto">
+      <div className="flex gap-1 w-max">
+        {BLOCK_NAV.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button"
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="inline-flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <Icon className="w-3 h-3" /> {label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -449,7 +554,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [taBusy, setTaBusy] = useState<string | null>(null)
   const [geoBusy, setGeoBusy] = useState<string | null>(null)
-  const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form')
   const [saleBusy, setSaleBusy] = useState(false)
   const [extractOpen, setExtractOpen] = useState(false)
 
@@ -558,39 +662,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payloadJson])
-
-  /* ─────── preview ─────── */
-  const previewData: PublicQuotation = useMemo(() => ({
-    id: q0.id, status: q.status, expired: false,
-    client_name: q.client_name, title: q.title, subtitle: q.subtitle,
-    cover_image_url: q.cover_image_url,
-    origin_label: q.origin_label, origin_note: q.origin_note,
-    destinations: q.destinations,
-    departure_date: q.start_date || null, return_date: q.end_date || null,
-    pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
-    occupancy_label: q.occupancy_label,
-    intro_html: q.intro_html, important_html: q.important_html, closing_html: q.closing_html,
-    cancellation_html: q.cancellation_html, itinerary_html: q.itinerary_html,
-    flights_html: q.flights_html,
-    tours_html: q.tours_html,
-    included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
-    price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
-    payment_conditions: q.payment_conditions,
-    price_disclaimer: q.price_disclaimer, quoted_at: q0.quoted_at || q0.updated_at,
-    validity_days: q.validity_days,
-    lodgings: lodgings.map(l => ({ ...l })),
-    flights: flights.map(f => ({ ...f })),
-    map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type, lat: p.lat!, lng: p.lng! })),
-    org: {
-      legal_name: initial.org_settings?.legal_name, brand_logo_url: initial.org_settings?.brand_logo_url,
-      brand_accent: initial.org_settings?.brand_accent, instagram_url: initial.org_settings?.instagram_url,
-      site_url: initial.org_settings?.site_url, terms_url: initial.org_settings?.terms_url,
-      privacy_url: initial.org_settings?.privacy_url, whatsapp_number: initial.org_settings?.whatsapp_number,
-      city_state: initial.org_settings?.city_state, cnpj: initial.org_settings?.cnpj,
-    },
-  }), [q, lodgings, flights, pins, q0, initial.org_settings])
-  // preview remonta quando dados estruturais mudam (mapa/accordion medem o DOM)
-  const previewKey = useMemo(() => payloadJson.length + ':' + lodgings.length + ':' + flights.length, [payloadJson, lodgings, flights])
 
   /* ─────── ações ─────── */
   const missing: string[] = []
@@ -727,7 +798,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const form = (
     <div className="space-y-4 pb-24">
       {/* CAPA */}
-      <EditBlock icon={ImageIcon} title="Capa">
+      <EditBlock id="blk-capa" icon={ImageIcon} title="Capa">
         <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
         <F label="Subtítulo (H2)"><Input value={q.subtitle} onChange={e => setQ(s => ({ ...s, subtitle: e.target.value }))} placeholder="Ex.: All-inclusive no Caribe — sol, mar e descanso" /></F>
         {isOffer ? (
@@ -761,11 +832,14 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </F>
           </div>
         )}
-        <F label="Imagem de capa"><CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))} /></F>
+        <F label="Imagem de capa">
+          <CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))}
+            unsplashHint={q.destinations[0]?.name || ''} />
+        </F>
       </EditBlock>
 
       {/* VIAGEM */}
-      <EditBlock icon={MapPin} title="Viagem">
+      <EditBlock id="blk-viagem" icon={MapPin} title="Viagem">
         <div className="grid grid-cols-2 gap-3">
           <F label="Origem"><Input value={q.origin_label} onChange={e => setQ(s => ({ ...s, origin_label: e.target.value }))} placeholder="Florianópolis" /></F>
           <F label="Destino"><Input placeholder="Ilhéus, Brasil" value={q.destinations[0]?.name || ''}
@@ -795,13 +869,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* INTRODUÇÃO */}
-      <EditBlock icon={Sparkles} title="Introdução">
+      <EditBlock id="blk-intro" icon={Sparkles} title="Introdução">
         <RichField value={q.intro_html} onChange={html => setQ(s => ({ ...s, intro_html: html }))}
           placeholder="Mensagem pessoal de abertura para o cliente (com sua assinatura)…" />
       </EditBlock>
 
       {/* HOSPEDAGENS */}
-      <EditBlock icon={BedDouble} title="Hospedagens"
+      <EditBlock id="blk-hospedagens" icon={BedDouble} title="Hospedagens"
         action={<Button type="button" variant="outline" size="sm"
           onClick={() => setLodgings(ls => [...ls, { _key: nk(), name: '', photos: [], check_in: q.start_date || null, check_out: q.end_date || null }])}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Hospedagem
@@ -852,7 +926,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* AÉREO */}
-      <EditBlock icon={Plane} title="Aéreo"
+      <EditBlock id="blk-aereo" icon={Plane} title="Aéreo"
         action={<Button type="button" variant="outline" size="sm"
           onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [] }])}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
@@ -920,7 +994,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* MAPA */}
-      <EditBlock icon={MapIcon} title="Mapa"
+      <EditBlock id="blk-mapa" icon={MapIcon} title="Mapa"
         action={<Button type="button" variant="outline" size="sm"
           onClick={() => setPins(ps => [...ps, { _key: nk(), label: '', type: 'attraction' }])}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Pin
@@ -955,7 +1029,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* ITINERÁRIO — texto livre rico (fonte, cor, imagens) */}
-      <EditBlock icon={Route} title="Itinerário">
+      <EditBlock id="blk-itinerario" icon={Route} title="Itinerário">
         <p className="text-[11px] text-muted-foreground">
           Escreva o roteiro do jeito que preferir. Formate a letra (fonte, tamanho, cor),
           e insira imagens pelo botão, colando (Ctrl+V) ou arrastando para o texto.
@@ -965,7 +1039,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* PASSEIOS E INGRESSOS — texto livre rico, mesmo padrão do Itinerário */}
-      <EditBlock icon={Ticket} title="Passeios e Ingressos">
+      <EditBlock id="blk-passeios" icon={Ticket} title="Passeios e Ingressos">
         <p className="text-[11px] text-muted-foreground">
           Descreva passeios, ingressos de parques etc. Cole prints (Ctrl+V) ou arraste
           imagens, e formate o texto como preferir.
@@ -975,13 +1049,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* IMPORTANTE */}
-      <EditBlock icon={AlertTriangle} title="Importante">
+      <EditBlock id="blk-importante" icon={AlertTriangle} title="Importante">
         <RichField value={q.important_html} onChange={html => setQ(s => ({ ...s, important_html: html }))}
           placeholder="Documentos, vacinas, clima, seguro, dicas — o que o cliente precisa saber antes de fechar…" />
       </EditBlock>
 
       {/* O QUE INCLUI */}
-      <EditBlock icon={CheckCircle2} title="O que inclui">
+      <EditBlock id="blk-inclui" icon={CheckCircle2} title="O que inclui">
         <div className="grid sm:grid-cols-2 gap-4">
           <F label="Incluso"><StringList items={q.included} placeholder="Passagem aérea ida e volta" suggestions={INCLUDED_SUGGESTIONS} onChange={v => setQ(s => ({ ...s, included: v }))} /></F>
           <F label="Não incluso"><StringList items={q.not_included} placeholder="Seguro viagem" suggestions={NOT_INCLUDED_SUGGESTIONS} onChange={v => setQ(s => ({ ...s, not_included: v }))} /></F>
@@ -989,13 +1063,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* POLÍTICAS DE CANCELAMENTO */}
-      <EditBlock icon={AlertTriangle} title="Políticas de cancelamento">
+      <EditBlock id="blk-cancelamento" icon={AlertTriangle} title="Políticas de cancelamento">
         <RichField value={q.cancellation_html} onChange={html => setQ(s => ({ ...s, cancellation_html: html }))}
           placeholder="Condições de alteração, cancelamento e reembolso — escreva do jeito que preferir…" />
       </EditBlock>
 
       {/* INVESTIMENTO */}
-      <EditBlock icon={Wallet} title="Investimento">
+      <EditBlock id="blk-investimento" icon={Wallet} title="Investimento">
         <div className="grid grid-cols-2 gap-3">
           <F label="Valor por pessoa (R$)">
             <Input inputMode="decimal" placeholder="8.900,00" defaultValue={centsToStr(q.price_per_person_cents)}
@@ -1080,7 +1154,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
 
       {/* FECHAMENTO */}
-      <EditBlock icon={MessageCircle} title="Fechamento">
+      <EditBlock id="blk-fechamento" icon={MessageCircle} title="Fechamento">
         <RichField value={q.closing_html} onChange={html => setQ(s => ({ ...s, closing_html: html }))}
           placeholder="Texto final de convite à reserva (título + parágrafo)…" minH={80} />
         <p className="text-[11px] text-muted-foreground">
@@ -1157,26 +1231,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         )}
       </div>
 
-      {/* Mobile: alternador form/preview */}
-      <div className="lg:hidden flex gap-1 mt-3">
-        <Button size="sm" variant={mobileTab === 'form' ? 'default' : 'outline'} onClick={() => setMobileTab('form')}><Pencil className="w-3.5 h-3.5 mr-1" /> Editar</Button>
-        <Button size="sm" variant={mobileTab === 'preview' ? 'default' : 'outline'} onClick={() => setMobileTab('preview')}><Eye className="w-3.5 h-3.5 mr-1" /> Preview</Button>
-      </div>
+      <BlockNav />
 
-      {/* Split view */}
-      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(380px,44%)_1fr] items-start">
-        <div className={mobileTab === 'form' ? '' : 'hidden lg:block'}>{form}</div>
-        <div className={`${mobileTab === 'preview' ? '' : 'hidden lg:block'} lg:sticky lg:top-[52px]`}>
-          <div className="rounded-none border overflow-hidden   bg-white">
-            <div className="px-3 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-2">
-              <Eye className="w-3.5 h-3.5" /> Preview ao vivo — é exatamente o que o cliente verá
-            </div>
-            <div className="h-[calc(100vh-140px)] overflow-y-auto">
-              <PublicQuotationView key={previewKey} data={previewData} preview />
-            </div>
-          </div>
-        </div>
-      </div>
+      <div className="mt-4">{form}</div>
 
       <DocumentExtractDialog
         orgSlug={orgSlug}

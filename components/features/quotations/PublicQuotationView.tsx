@@ -266,7 +266,7 @@ function Lightbox({
 
 /* ─────────────────────── bloco retrátil ─────────────────────── */
 function Block({
-  num, title, sub, defaultOpen = false, onFirstOpen, children,
+  num, title, sub, defaultOpen = true, onFirstOpen, children,
 }: {
   num: string; title: string; sub?: string; defaultOpen?: boolean
   onFirstOpen?: () => void; children: React.ReactNode

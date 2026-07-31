@@ -496,3 +496,53 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
     return { ok: false as const, error: 'Erro ao consultar o TripAdvisor. Tente novamente.' }
   }
 }
+
+/* ─────────── Unsplash (busca de foto de capa) ─────────── */
+export async function unsplashSearch(orgSlug: string, query: string) {
+  await requireAuth()
+  await getCurrentOrganization(orgSlug)
+
+  const key = process.env.UNSPLASH_ACCESS_KEY
+  if (!key) {
+    return { ok: false as const, error: 'Unsplash não configurado. Adicione UNSPLASH_ACCESS_KEY nas variáveis de ambiente.' }
+  }
+  const q = (query || '').trim()
+  if (!q) return { ok: false as const, error: 'Digite o que buscar (ex.: nome do destino)' }
+
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=12&orientation=landscape`,
+      { headers: { Authorization: `Client-ID ${key}` }, cache: 'no-store' },
+    )
+    if (!res.ok) return { ok: false as const, error: `Unsplash indisponível (${res.status})` }
+    const json = await res.json()
+    const results = Array.isArray(json?.results) ? json.results : []
+    return {
+      ok: true as const,
+      photos: results.map((p: any) => ({
+        id: p.id as string,
+        thumbUrl: p.urls?.small as string,
+        fullUrl: (p.urls?.regular || p.urls?.full) as string,
+        downloadLocation: p.links?.download_location as string,
+        author: p.user?.name as string,
+        authorUrl: p.user?.links?.html as string,
+      })).filter((p: any) => p.thumbUrl && p.fullUrl),
+    }
+  } catch {
+    return { ok: false as const, error: 'Erro ao consultar o Unsplash. Tente novamente.' }
+  }
+}
+
+/** Aciona o endpoint de download da Unsplash (obrigatório pelos termos de uso ao usar uma foto). */
+export async function unsplashTrackDownload(orgSlug: string, downloadLocation: string) {
+  await requireAuth()
+  await getCurrentOrganization(orgSlug)
+  const key = process.env.UNSPLASH_ACCESS_KEY
+  if (!key || !downloadLocation) return { ok: false as const }
+  try {
+    await fetch(downloadLocation, { headers: { Authorization: `Client-ID ${key}` }, cache: 'no-store' })
+    return { ok: true as const }
+  } catch {
+    return { ok: false as const }
+  }
+}
