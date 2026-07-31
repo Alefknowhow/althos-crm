@@ -28,6 +28,18 @@ export async function GET(req: Request) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
+  // DIAGNÓSTICO TEMPORÁRIO — remover depois de resolver o 403 na verificação.
+  // Não loga os valores inteiros, só formato/tamanho, pra achar espaço/quebra
+  // de linha escondidos sem expor o segredo nos logs.
+  console.log('[whatsapp webhook][diag]', {
+    mode,
+    receivedLen: token?.length,
+    receivedPreview: token ? `${token.slice(0, 4)}...${token.slice(-4)}` : null,
+    envLen: verifyToken.length,
+    envPreview: `${verifyToken.slice(0, 4)}...${verifyToken.slice(-4)}`,
+    match: token === verifyToken,
+  })
+
   if (mode === 'subscribe' && token === verifyToken) {
     return new NextResponse(challenge, { status: 200 })
   }
