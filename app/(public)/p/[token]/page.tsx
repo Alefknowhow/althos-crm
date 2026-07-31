@@ -32,10 +32,21 @@ async function fetchQuotation(token: string): Promise<PublicQuotation | null> {
 export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
   const q = await fetchQuotation(params.token)
   const title = q?.title || 'Proposta de viagem'
+  const fullTitle = q?.org?.legal_name ? `${title} — ${q.org.legal_name}` : title
+  const description = q?.client_name ? `Proposta de viagem para ${q.client_name}` : 'Proposta de viagem personalizada'
+  const image = q?.cover_image_url || undefined
   return {
-    title: q?.org?.legal_name ? `${title} — ${q.org.legal_name}` : title,
-    description: q?.client_name ? `Proposta de viagem para ${q.client_name}` : 'Proposta de viagem personalizada',
+    title: fullTitle,
+    description,
     robots: { index: false, follow: false },
+    // og:title/og:description/og:image — é isso que o WhatsApp lê pra montar
+    // o card de preview quando o link da proposta é compartilhado.
+    openGraph: {
+      title: fullTitle,
+      description,
+      type: 'website',
+      images: image ? [{ url: image, width: 1200, height: 630, alt: fullTitle }] : undefined,
+    },
   }
 }
 

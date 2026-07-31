@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { deleteSocialConnection, type SocialConnection } from '@/actions/social-automations'
 import { toast } from 'sonner'
-import { AtSign, Plus, Trash2, Check, Copy, AlertTriangle, ExternalLink } from 'lucide-react'
+import { AtSign, Plus, Trash2, Check, AlertTriangle } from 'lucide-react'
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: 'A integração ainda não foi configurada no servidor (faltam as credenciais do App Meta).',
@@ -26,13 +26,11 @@ export default function SocialConnectClient({
   orgSlug,
   connections,
   configured,
-  webhookUrl,
   flash,
 }: {
   orgSlug: string
   connections: SocialConnection[]
   configured: boolean
-  webhookUrl: string
   flash: { connected?: string; error?: string; msg?: string }
 }) {
   const router = useRouter()
@@ -136,14 +134,11 @@ export default function SocialConnectClient({
             <p className="mt-1 text-amber-700">
               As variáveis <code className="text-xs bg-amber-100 px-1 rounded">META_APP_ID</code> e{' '}
               <code className="text-xs bg-amber-100 px-1 rounded">META_APP_SECRET</code> precisam ser definidas
-              no ambiente (Vercel) para o botão de conexão funcionar. Veja o passo a passo abaixo.
+              no ambiente (Vercel) para o botão de conexão funcionar.
             </p>
           </div>
         </div>
       )}
-
-      {/* Setup guide */}
-      <SetupGuide webhookUrl={webhookUrl} />
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
         <AlertDialogContent>
@@ -164,100 +159,6 @@ export default function SocialConnectClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  )
-}
-
-function SetupGuide({ webhookUrl }: { webhookUrl: string }) {
-  function copy(text: string) {
-    navigator.clipboard.writeText(text)
-    toast.success('Copiado!')
-  }
-  const steps: { title: string; body: React.ReactNode }[] = [
-    {
-      title: '1. Conta Instagram Profissional',
-      body: (
-        <>Transforme seu Instagram em conta <b>Profissional</b> (Business ou Creator) no app do Instagram:
-        Configurações → Conta → Mudar para conta profissional. (Não é necessária Página do Facebook.)</>
-      ),
-    },
-    {
-      title: '2. Crie um App no Meta for Developers',
-      body: (
-        <>Acesse{' '}
-          <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
-            developers.facebook.com/apps <ExternalLink className="w-3 h-3" />
-          </a>{' '}
-          → <b>Criar App</b> → tipo <b>Empresa (Business)</b>. Adicione o produto{' '}
-          <b>Instagram</b> e abra <b>“Configuração da API com login do Instagram”</b>.</>
-      ),
-    },
-    {
-      title: '3. Configure o redirecionamento OAuth',
-      body: (
-        <>Em <b>Instagram → Configuração da API → Login do negócio</b>, adicione esta URL em “URIs de redirecionamento do OAuth”:
-          <CopyRow value={`${webhookUrl.replace('/api/webhooks/instagram', '')}/api/social/instagram/callback`} onCopy={copy} /></>
-      ),
-    },
-    {
-      title: '4. Configure o Webhook',
-      body: (
-        <>Em <b>Instagram → Configuração da API → Webhooks</b>, use a URL de callback e o token de verificação:
-          <CopyRow label="Callback URL" value={webhookUrl} onCopy={copy} />
-          <CopyRow label="Verify token" value="(o valor de META_WEBHOOK_VERIFY_TOKEN do seu ambiente)" onCopy={copy} />
-          <span className="block mt-2">Inscreva os campos: <b>messages</b>, <b>comments</b>, <b>mentions</b>.</span></>
-      ),
-    },
-    {
-      title: '5. Permissões (App Review)',
-      body: (
-        <>Solicite a aprovação destas permissões no <b>App Review</b> (para responder ao público geral):
-          <code className="block mt-1 text-xs bg-muted rounded p-2 leading-relaxed">
-            instagram_business_basic · instagram_business_manage_messages · instagram_business_manage_comments
-          </code>
-          <span className="block mt-1 text-xs">Em modo de desenvolvimento você já pode testar com a sua própria conta (admin/testador) antes da aprovação.</span></>
-      ),
-    },
-    {
-      title: '6. Defina as variáveis de ambiente',
-      body: (
-        <>No painel da Vercel (Settings → Environment Variables), defina (estas são do <b>app do Instagram</b>, na tela “Configuração da API com login do Instagram”):
-          <code className="block mt-1 text-xs bg-muted rounded p-2 leading-relaxed">
-            INSTAGRAM_APP_ID = (ID do app do Instagram)<br />
-            INSTAGRAM_APP_SECRET = (Chave secreta do app do Instagram){'  '}<br />
-            META_WEBHOOK_VERIFY_TOKEN = (uma frase aleatória que você define)
-          </code>
-          <span className="block mt-1 text-xs">Faça um novo deploy após salvar. Depois é só clicar em “Conectar Instagram”.</span></>
-      ),
-    },
-  ]
-
-  return (
-    <div className="rounded-none border bg-card p-5">
-      <h2 className="text-sm font-semibold mb-1">Como conectar — passo a passo</h2>
-      <p className="text-xs text-muted-foreground mb-4">
-        Conectar o Instagram para automação de DMs/comentários usa OAuth + App Review do Meta — não é uma “chave” única.
-      </p>
-      <ol className="space-y-4">
-        {steps.map(s => (
-          <li key={s.title} className="text-sm">
-            <p className="font-medium text-foreground">{s.title}</p>
-            <div className="text-muted-foreground mt-1 leading-relaxed">{s.body}</div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
-function CopyRow({ label, value, onCopy }: { label?: string; value: string; onCopy: (v: string) => void }) {
-  return (
-    <div className="mt-1.5 flex items-center gap-2">
-      {label && <span className="text-[11px] uppercase tracking-wide text-muted-foreground shrink-0 w-24">{label}</span>}
-      <code className="flex-1 text-xs bg-muted rounded px-2 py-1 truncate">{value}</code>
-      <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0" onClick={() => onCopy(value)}>
-        <Copy className="w-3.5 h-3.5" />
-      </Button>
     </div>
   )
 }

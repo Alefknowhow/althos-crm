@@ -5,7 +5,6 @@ import {
   deleteSocialAutomation,
   toggleSocialAutomation,
   type SocialAutomation,
-  type SocialConnection,
   type SocialInteraction,
 } from '@/actions/social-automations'
 import { Button } from '@/components/ui/button'
@@ -13,7 +12,7 @@ import SocialFunnels from '@/components/features/social/SocialFunnels'
 import type { SocialFunnel } from '@/actions/social-funnels'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { MessageSquare, Trash2, Zap, Clock, Users, ChevronRight } from 'lucide-react'
+import { MessageSquare, Trash2, Zap, Clock, Users } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -53,7 +52,6 @@ function EmptyAutomations() {
 interface Props {
   orgSlug: string
   initialAutomations: SocialAutomation[]
-  initialConnections: SocialConnection[]
   initialInteractions: SocialInteraction[]
   initialFunnels: SocialFunnel[]
 }
@@ -61,7 +59,6 @@ interface Props {
 export function SocialPageClient({
   orgSlug,
   initialAutomations,
-  initialConnections,
   initialInteractions,
   initialFunnels,
 }: Props) {
@@ -137,49 +134,6 @@ export function SocialPageClient({
             <p className="text-2xl font-bold text-foreground">{s.value}</p>
           </div>
         ))}
-      </div>
-
-      {/* Connection status */}
-      <div className="rounded-none border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-none flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: 'linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' }}
-            >
-              IG
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Instagram</p>
-              {initialConnections.length > 0 ? (
-                <p className="text-xs text-emerald-600 font-medium">
-                  ● {initialConnections[0].page_name ?? initialConnections[0].username ?? 'Conta conectada'}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Não conectado</p>
-              )}
-            </div>
-          </div>
-          {initialConnections.length > 0 ? (
-            <Button variant="outline" size="sm" asChild>
-              <a href={`/app/${orgSlug}/configuracoes/social`}>
-                Gerenciar <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </a>
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => { window.location.href = `/api/social/instagram/connect?org=${encodeURIComponent(orgSlug)}` }}
-            >
-              Conectar Instagram
-            </Button>
-          )}
-        </div>
-        {initialConnections.length === 0 && (
-          <p className="mt-3 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
-            ⚠ Conecte sua conta do Instagram para ativar as automações. Vá em Configurações → Social.
-          </p>
-        )}
       </div>
 
       {/* Funis de conversa em DM */}
