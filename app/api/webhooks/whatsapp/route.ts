@@ -3,7 +3,20 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 
-export async function GET(req: Request, { params }: { params: { orgId: string } }) {
+/**
+ * Webhook global do WhatsApp — UMA única URL por App da Meta (não dá pra
+ * registrar uma URL por org: a Meta só aceita um callback por App).
+ *
+ * Cada organização conecta seu próprio número via Embedded Signup
+ * (actions/whatsapp.ts::connectWhatsappEmbedded), que assina o App nos
+ * webhooks da WABA do cliente e salva o phone_number_id em
+ * organizations.whatsapp_phone_number_id. Toda mensagem recebida aqui vem
+ * com esse mesmo phone_number_id no payload (change.value.metadata), então
+ * é isso que usamos pra descobrir de qual organização é a mensagem —
+ * a URL não carrega mais o orgId.
+ */
+
+export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const mode = searchParams.get('hub.mode')
   const token = searchParams.get('hub.verify_token')
@@ -21,12 +34,7 @@ export async function GET(req: Request, { params }: { params: { orgId: string } 
   return new NextResponse('Forbidden', { status: 403 })
 }
 
-/**
- * Verify Meta's X-Hub-Signature-256 header against the raw body.
- * Returns true if META_APP_SECRET is unset (fail-open) so the webhook keeps
- * working until the secret is configured — at which point it becomes mandatory.
- * The fail-open path logs a warning so it can't go unnoticed in production.
- */
+/** Verify Meta's X-Hub-Signature-256 header against the raw body. */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.META_APP_SECRET
   if (!appSecret) {
@@ -46,7 +54,7 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   }
 }
 
-export async function POST(req: Request, { params }: { params: { orgId: string } }) {
+export async function POST(req: Request) {
   try {
     // We need the RAW body to validate the HMAC signature, then parse manually.
     const rawBody = await req.text()
@@ -66,6 +74,22 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
 
     for (const entry of payload.entry) {
       for (const change of entry.changes) {
+        const phoneNumberId: string | undefined = change.value?.metadata?.phone_number_id
+        if (!phoneNumberId) continue
+
+        // Resolve qual organização é dona desse número — cada org conecta o
+        // seu via Embedded Signup, salvando o phone_number_id na tabela.
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('whatsapp_phone_number_id', phoneNumberId)
+          .maybeSingle()
+        if (!org) {
+          console.warn(`[whatsapp webhook] nenhuma org encontrada pro phone_number_id ${phoneNumberId}`)
+          continue
+        }
+        const orgId = org.id
+
         if (change.value.messages) {
           for (const msg of change.value.messages) {
             const phone = msg.from
@@ -81,17 +105,17 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
               .maybeSingle()
             if (existing) continue
 
-            let { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('organization_id', params.orgId).eq('contact_phone', phone).single()
+            let { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('organization_id', orgId).eq('contact_phone', phone).single()
 
             let leadId = conv?.contato_id
 
             if (!leadId) {
-              const { data: leads } = await supabase.from('contatos').select('id').eq('organization_id', params.orgId).eq('phone', phone).limit(1)
+              const { data: leads } = await supabase.from('contatos').select('id').eq('organization_id', orgId).eq('phone', phone).limit(1)
               if (leads && leads.length > 0) leadId = leads[0].id
             }
 
             if (!leadId) {
-              const { data: defaultPipeline } = await supabase.from('pipelines').select('id').eq('organization_id', params.orgId).eq('is_default', true).single()
+              const { data: defaultPipeline } = await supabase.from('pipelines').select('id').eq('organization_id', orgId).eq('is_default', true).single()
               let stageId = null
               if (defaultPipeline) {
                 const { data: stage } = await supabase.from('pipeline_stages').select('id').eq('pipeline_id', defaultPipeline.id).order('position').limit(1).single()
@@ -99,7 +123,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
               }
 
               const { data: newLead } = await supabase.from('contatos').insert({
-                organization_id: params.orgId,
+                organization_id: orgId,
                 name: contactName,
                 phone: phone,
                 source: 'whatsapp',
@@ -117,7 +141,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
 
             if (!conv) {
               const { data: newConv } = await supabase.from('whatsapp_conversations').insert({
-                organization_id: params.orgId,
+                organization_id: orgId,
                 contact_phone: phone,
                 contact_name: contactName,
                 contato_id: leadId,
@@ -139,7 +163,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
 
             await supabase.from('whatsapp_messages').insert({
               conversation_id: conv.id,
-              organization_id: params.orgId,
+              organization_id: orgId,
               direction: 'inbound',
               type: msg.type,
               content: msg,
@@ -150,7 +174,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
             if (leadId) {
               await supabase.from('contato_activities').insert({
                 contato_id: leadId,
-                organization_id: params.orgId,
+                organization_id: orgId,
                 type: 'whatsapp_received',
                 payload: { body: msg.text?.body || '[Mídia]', message_id: msg.id }
               })
@@ -160,7 +184,7 @@ export async function POST(req: Request, { params }: { params: { orgId: string }
             await inngest.send({
               name: 'whatsapp/message.received',
               data: {
-                orgId:       params.orgId,
+                orgId,
                 contactName,
                 messageBody: msg.text?.body || null,
               },

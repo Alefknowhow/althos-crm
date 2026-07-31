@@ -52,10 +52,13 @@ export default function WhatsappConfigForm({
     }
   }
 
+  // URL única e global — a Meta só aceita um callback por App. A organização
+  // dona da mensagem é resolvida no servidor pelo phone_number_id do payload,
+  // não pela URL (ver app/api/webhooks/whatsapp/route.ts).
   const webhookUrl =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/api/webhooks/whatsapp/${orgId}`
-      : `https://[seu-dominio]/api/webhooks/whatsapp/${orgId}`
+      ? `${window.location.origin}/api/webhooks/whatsapp`
+      : `https://[seu-dominio]/api/webhooks/whatsapp`
 
   function copyWebhook() {
     navigator.clipboard.writeText(webhookUrl)
