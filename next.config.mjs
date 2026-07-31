@@ -52,8 +52,9 @@ const ContentSecurityPolicy = [
   // (user-uploaded avatars/documents served from the bucket) + OpenStreetMap
   // tiles (mapa interativo da proposta pública) + TripAdvisor photo CDN
   // (fotos de hospedagem puxadas via Terra API em Cotações) + Unsplash
-  // photo CDN (busca de foto de capa em Cotações).
-  `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com`,
+  // photo CDN (busca de foto de capa em Cotações) + Instagram CDN (foto de
+  // perfil do contato no inbox de DM).
+  `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com`,
 
   // Fetch / XHR / WebSocket connections allowed to known external services.
   // This is the most impactful restriction — exfiltrating data to an

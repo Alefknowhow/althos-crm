@@ -30,7 +30,7 @@ import {
 } from '@/lib/contatos'
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
-  getContatoTravelLinks, reopenNegotiation, listContatoDeals, updateLeadTags,
+  getContatoTravelLinks, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead,
   type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal,
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
@@ -559,6 +559,7 @@ function DetailPanel({
   const sellerName = c.assigned_to ? members.find(m => m.id === c.assigned_to)?.name : null
   const [savingStatus, startStatus] = useTransition()
   const [reopening, startReopen] = useTransition()
+  const [deleting, startDelete] = useTransition()
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
 
@@ -594,6 +595,16 @@ function DetailPanel({
       if (!res.ok) { toast.error(res.error); return }
       toast.success('Classificação atualizada.')
       router.refresh()
+    })
+  }
+
+  function handleDelete() {
+    if (!window.confirm('Excluir este contato? Essa ação não pode ser desfeita — o contato e todas as suas atividades serão perdidos.')) return
+    startDelete(async () => {
+      const res = await deleteLead(orgSlug, c.id)
+      if (!res.ok) { toast.error(res.error || 'Erro ao excluir contato'); return }
+      toast.success('Contato excluído.')
+      router.push(`/app/${orgSlug}/contatos`)
     })
   }
 
@@ -678,6 +689,9 @@ function DetailPanel({
             <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
           </Button>
         )}
+        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleting}>
+          <Trash2 className="w-4 h-4 mr-1.5" /> Excluir contato
+        </Button>
       </div>
 
       {/* Métricas + contato + localização — grid único, até 4 por linha */}
