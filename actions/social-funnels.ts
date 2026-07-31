@@ -50,7 +50,15 @@ const StepSchema = z.object({
   ai_instructions: z.string().max(2000).nullable().optional(),
   wait_for_reply: z.boolean().default(true),
   buttons: z.array(ButtonSchema).max(3).default([]),
-})
+}).refine(
+  s => s.step_type === 'message' ? !!s.message_text?.trim() : !!s.ai_instructions?.trim(),
+  {
+    // Passo sem texto (fixo ou instruções de IA) fica mudo em produção: o
+    // motor do funil pula o envio silenciosamente e trava esperando uma
+    // resposta que nunca vem, sem erro nenhum visível. Bloqueia aqui.
+    message: 'Preencha o texto ou as instruções de IA deste passo',
+  },
+)
 
 const FunnelPatchSchema = z.object({
   name: z.string().max(120).optional(),
@@ -149,7 +157,14 @@ export async function saveFunnelSteps(orgSlug: string, funnelId: string, steps: 
   const g = await guard(orgSlug)
   if (!g.ok) return g
   const parsed = z.array(StepSchema).max(20).safeParse(steps)
-  if (!parsed.success) return { ok: false as const, error: 'Passos inválidos' }
+  if (!parsed.success) {
+    const idx = parsed.error.issues[0]?.path[0]
+    const stepNum = typeof idx === 'number' ? idx + 1 : null
+    return {
+      ok: false as const,
+      error: stepNum ? `Passo ${stepNum}: preencha o texto ou as instruções de IA antes de salvar.` : 'Passos inválidos',
+    }
+  }
 
   const supabase = createClient()
   // Confere que o funil é da org antes de mexer nos filhos.
