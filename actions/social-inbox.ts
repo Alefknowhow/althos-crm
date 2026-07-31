@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
-import { sendInstagramDM } from '@/lib/social/instagram'
+import { sendInstagramDM, sendInstagramImage } from '@/lib/social/instagram'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 
@@ -21,6 +21,7 @@ export type SocialConversationRow = {
   sender_external_id: string
   sender_username: string | null
   sender_name: string | null
+  sender_avatar_url: string | null
   contato_id: string | null
   last_message_at: string | null
   last_message_preview: string | null
@@ -33,6 +34,7 @@ export type SocialMessageRow = {
   id: string
   direction: 'inbound' | 'outbound'
   message_text: string | null
+  media_url: string | null
   sent_by: 'user' | 'automation' | 'funnel' | 'agent'
   created_at: string
 }
@@ -53,7 +55,7 @@ export async function listConversations(orgSlug: string): Promise<SocialConversa
   const supabase = createClient()
   const { data } = await supabase
     .from('social_conversations')
-    .select('id, sender_external_id, sender_username, sender_name, contato_id, last_message_at, last_message_preview, last_message_direction, unread_count, automation_paused')
+    .select('id, sender_external_id, sender_username, sender_name, sender_avatar_url, contato_id, last_message_at, last_message_preview, last_message_direction, unread_count, automation_paused')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false, nullsFirst: false })
   return (data as SocialConversationRow[] | null) || []
@@ -74,7 +76,7 @@ export async function getConversationMessages(
   if (!conv) return []
   const { data } = await supabase
     .from('social_messages')
-    .select('id, direction, message_text, sent_by, created_at')
+    .select('id, direction, message_text, media_url, sent_by, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
   return (data as SocialMessageRow[] | null) || []
@@ -87,18 +89,16 @@ function withinMessagingWindow(lastInboundAt: string | null): boolean {
   return Date.now() - new Date(lastInboundAt).getTime() < 24 * 60 * 60 * 1000
 }
 
-export async function sendManualMessage(orgSlug: string, conversationId: string, text: string) {
-  const g = await guard(orgSlug)
-  if (!g.ok) return g
-  const body = text.trim()
-  if (!body) return { ok: false as const, error: 'Mensagem vazia' }
-
+/** Busca a conversa + conexão e valida a janela de 24h (a partir da última
+ *  mensagem INBOUND de verdade, não da última mensagem da conversa — que
+ *  pode já ser uma resposta nossa). Compartilhado por texto e imagem. */
+async function loadConversationForSend(orgId: string, conversationId: string) {
   const supabase = createClient()
   const { data: conv } = await supabase
     .from('social_conversations')
-    .select('id, sender_external_id, social_connection_id, last_message_at, last_message_direction')
+    .select('id, sender_external_id, social_connection_id')
     .eq('id', conversationId)
-    .eq('organization_id', g.org.id)
+    .eq('organization_id', orgId)
     .maybeSingle()
   if (!conv) return { ok: false as const, error: 'Conversa não encontrada' }
 
@@ -109,13 +109,33 @@ export async function sendManualMessage(orgSlug: string, conversationId: string,
     .maybeSingle()
   if (!connection?.access_token) return { ok: false as const, error: 'Conexão do Instagram não encontrada' }
 
-  const lastInbound = conv.last_message_direction === 'inbound' ? conv.last_message_at : null
-  if (!withinMessagingWindow(lastInbound)) {
+  const { data: lastInboundMsg } = await supabase
+    .from('social_messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'inbound')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!withinMessagingWindow(lastInboundMsg?.created_at ?? null)) {
     return {
       ok: false as const,
       error: 'Fora da janela de 24h da Meta — só é possível responder até 24h após a última mensagem do cliente.',
     }
   }
+
+  return { ok: true as const, supabase, conv, connection }
+}
+
+export async function sendManualMessage(orgSlug: string, conversationId: string, text: string) {
+  const g = await guard(orgSlug)
+  if (!g.ok) return g
+  const body = text.trim()
+  if (!body) return { ok: false as const, error: 'Mensagem vazia' }
+
+  const loaded = await loadConversationForSend(g.org.id, conversationId)
+  if (!loaded.ok) return loaded
+  const { supabase, conv, connection } = loaded
 
   try {
     await sendInstagramDM(connection.page_id, connection.access_token, conv.sender_external_id, body)
@@ -124,6 +144,28 @@ export async function sendManualMessage(orgSlug: string, conversationId: string,
   }
 
   await logOutboundMessage(supabase as any, conv.id, g.org.id, body, 'agent')
+  await supabase.from('social_conversations').update({ automation_paused: true }).eq('id', conv.id)
+
+  revalidatePath(`/app/${orgSlug}/social`)
+  return { ok: true as const }
+}
+
+export async function sendManualImageMessage(orgSlug: string, conversationId: string, imageUrl: string) {
+  const g = await guard(orgSlug)
+  if (!g.ok) return g
+  if (!imageUrl) return { ok: false as const, error: 'Imagem inválida' }
+
+  const loaded = await loadConversationForSend(g.org.id, conversationId)
+  if (!loaded.ok) return loaded
+  const { supabase, conv, connection } = loaded
+
+  try {
+    await sendInstagramImage(connection.access_token, conv.sender_external_id, imageUrl)
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao enviar imagem no Instagram' }
+  }
+
+  await logOutboundMessage(supabase as any, conv.id, g.org.id, '', 'agent', imageUrl)
   await supabase.from('social_conversations').update({ automation_paused: true }).eq('id', conv.id)
 
   revalidatePath(`/app/${orgSlug}/social`)

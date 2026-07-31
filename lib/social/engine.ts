@@ -11,6 +11,7 @@ import {
   sendInstagramDM,
   replyToComment,
   privateReplyToComment,
+  getInstagramUserProfile,
 } from '@/lib/social/instagram'
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
@@ -145,6 +146,11 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
         connectionId: connection.id,
         senderId: inbound.senderId,
         senderUsername: inbound.senderUsername,
+        fetchProfile: async () => {
+          const profile = await getInstagramUserProfile(inbound.senderId, connection.access_token)
+          if (!profile) return null
+          return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
+        },
       })
       await logInboundMessage(supabase, conversation.id, orgId, inbound.text)
       conversationId = conversation.id

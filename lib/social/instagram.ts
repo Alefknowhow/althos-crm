@@ -204,6 +204,42 @@ export async function sendInstagramDM(
   }
 }
 
+/** Send an image message (attachment) to a user (by IGSID). `imageUrl` must
+ *  be a public URL — the Instagram Send API downloads it server-side. */
+export async function sendInstagramImage(
+  token: string,
+  recipientId: string,
+  imageUrl: string,
+): Promise<void> {
+  const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message: { attachment: { type: 'image', payload: { url: imageUrl, is_reusable: true } } },
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Falha ao enviar imagem no Instagram')
+  }
+}
+
+export type IgUserProfile = { name: string | null; username: string | null; profilePic: string | null }
+
+/** Fetch basic profile info (name/username/avatar) for a DM sender (IGSID). */
+export async function getInstagramUserProfile(igsid: string, token: string): Promise<IgUserProfile | null> {
+  try {
+    const params = new URLSearchParams({ fields: 'name,username,profile_pic', access_token: token })
+    const res = await fetch(`${IG_GRAPH_V}/${igsid}?${params.toString()}`)
+    if (!res.ok) return null
+    const json = await res.json()
+    return { name: json.name ?? null, username: json.username ?? null, profilePic: json.profile_pic ?? null }
+  } catch {
+    return null
+  }
+}
+
 /** Public reply under a comment. */
 export async function replyToComment(commentId: string, token: string, text: string): Promise<void> {
   const res = await fetch(`${IG_GRAPH_V}/${commentId}/replies?access_token=${encodeURIComponent(token)}`, {

@@ -12,7 +12,11 @@ type Admin = ReturnType<typeof createAdminClient>
 export type ConversationRef = { id: string; automationPaused: boolean }
 
 /** Busca (ou cria) a conversa do remetente nesta conexão, sem tocar em
- *  automation_paused/unread_count/last_message_* de uma conversa existente. */
+ *  automation_paused/unread_count/last_message_* de uma conversa existente.
+ *
+ *  Se a conversa ainda não tem nome/foto de perfil salvos, chama
+ *  `fetchProfile` (uma consulta à API do Instagram) pra preenchê-los —
+ *  evita sobrescrever com null um nome já conhecido em mensagens seguintes. */
 export async function getOrCreateConversation(
   admin: Admin,
   params: {
@@ -21,8 +25,29 @@ export async function getOrCreateConversation(
     senderId: string
     senderUsername?: string | null
     senderName?: string | null
+    fetchProfile?: () => Promise<{ name: string | null; username: string | null; avatarUrl: string | null } | null>
   },
 ): Promise<ConversationRef> {
+  const { data: existing } = await admin
+    .from('social_conversations')
+    .select('id, automation_paused, sender_username, sender_name, sender_avatar_url')
+    .eq('social_connection_id', params.connectionId)
+    .eq('sender_external_id', params.senderId)
+    .maybeSingle()
+
+  let senderUsername = params.senderUsername ?? existing?.sender_username ?? null
+  let senderName = params.senderName ?? existing?.sender_name ?? null
+  let senderAvatarUrl = existing?.sender_avatar_url ?? null
+
+  if (!existing?.sender_name && params.fetchProfile) {
+    const profile = await params.fetchProfile()
+    if (profile) {
+      senderName = profile.name ?? senderName
+      senderUsername = profile.username ?? senderUsername
+      senderAvatarUrl = profile.avatarUrl ?? senderAvatarUrl
+    }
+  }
+
   const { data, error } = await admin
     .from('social_conversations')
     .upsert(
@@ -30,8 +55,9 @@ export async function getOrCreateConversation(
         organization_id: params.organizationId,
         social_connection_id: params.connectionId,
         sender_external_id: params.senderId,
-        sender_username: params.senderUsername ?? null,
-        sender_name: params.senderName ?? null,
+        sender_username: senderUsername,
+        sender_name: senderName,
+        sender_avatar_url: senderAvatarUrl,
       },
       { onConflict: 'social_connection_id,sender_external_id' },
     )
@@ -86,13 +112,15 @@ export async function logOutboundMessage(
   organizationId: string,
   text: string,
   sentBy: 'automation' | 'funnel' | 'agent',
+  mediaUrl?: string | null,
 ) {
   await admin.from('social_messages').insert({
     conversation_id: conversationId,
     organization_id: organizationId,
     direction: 'outbound',
-    message_text: text,
+    message_text: text || null,
+    media_url: mediaUrl ?? null,
     sent_by: sentBy,
   })
-  await touchConversation(admin, conversationId, text, 'outbound', false)
+  await touchConversation(admin, conversationId, mediaUrl ? '📷 Foto' : text, 'outbound', false)
 }
