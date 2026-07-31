@@ -240,6 +240,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                       {m.message_text && <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text}</div>}
                       <div className={`text-[10px] mt-1 text-right ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {!isInbound && m.sent_by === 'agent' && m.sent_by_name && ` · ${m.sent_by_name}`}
                         {!isInbound && m.sent_by !== 'agent' && ` · ${m.sent_by === 'funnel' ? 'funil' : 'automação'}`}
                       </div>
                     </div>

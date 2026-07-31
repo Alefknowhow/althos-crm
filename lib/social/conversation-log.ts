@@ -113,6 +113,7 @@ export async function logOutboundMessage(
   text: string,
   sentBy: 'automation' | 'funnel' | 'agent',
   mediaUrl?: string | null,
+  sentByName?: string | null,
 ) {
   await admin.from('social_messages').insert({
     conversation_id: conversationId,
@@ -121,6 +122,7 @@ export async function logOutboundMessage(
     message_text: text || null,
     media_url: mediaUrl ?? null,
     sent_by: sentBy,
+    sent_by_name: sentByName ?? null,
   })
   await touchConversation(admin, conversationId, mediaUrl ? '📷 Foto' : text, 'outbound', false)
 }

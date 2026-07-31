@@ -6,6 +6,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { sendInstagramDM, sendInstagramImage } from '@/lib/social/instagram'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
+import { getProfilesMap } from '@/lib/profiles'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 
 /**
@@ -36,6 +37,7 @@ export type SocialMessageRow = {
   message_text: string | null
   media_url: string | null
   sent_by: 'user' | 'automation' | 'funnel' | 'agent'
+  sent_by_name: string | null
   created_at: string
 }
 
@@ -47,7 +49,7 @@ async function guard(orgSlug: string) {
   if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'instagram_automation'))) {
     return { ok: false as const, error: 'Instagram não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.' }
   }
-  return { ok: true as const, org }
+  return { ok: true as const, org, user }
 }
 
 export async function listConversations(orgSlug: string): Promise<SocialConversationRow[]> {
@@ -76,7 +78,7 @@ export async function getConversationMessages(
   if (!conv) return []
   const { data } = await supabase
     .from('social_messages')
-    .select('id, direction, message_text, media_url, sent_by, created_at')
+    .select('id, direction, message_text, media_url, sent_by, sent_by_name, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
   return (data as SocialMessageRow[] | null) || []
@@ -143,7 +145,8 @@ export async function sendManualMessage(orgSlug: string, conversationId: string,
     return { ok: false as const, error: e?.message || 'Falha ao enviar mensagem no Instagram' }
   }
 
-  await logOutboundMessage(supabase as any, conv.id, g.org.id, body, 'agent')
+  const agentName = (await getProfilesMap([g.user.id])).get(g.user.id)?.full_name || null
+  await logOutboundMessage(supabase as any, conv.id, g.org.id, body, 'agent', null, agentName)
   await supabase.from('social_conversations').update({ automation_paused: true }).eq('id', conv.id)
 
   revalidatePath(`/app/${orgSlug}/social`)
@@ -165,7 +168,8 @@ export async function sendManualImageMessage(orgSlug: string, conversationId: st
     return { ok: false as const, error: e?.message || 'Falha ao enviar imagem no Instagram' }
   }
 
-  await logOutboundMessage(supabase as any, conv.id, g.org.id, '', 'agent', imageUrl)
+  const agentName = (await getProfilesMap([g.user.id])).get(g.user.id)?.full_name || null
+  await logOutboundMessage(supabase as any, conv.id, g.org.id, '', 'agent', imageUrl, agentName)
   await supabase.from('social_conversations').update({ automation_paused: true }).eq('id', conv.id)
 
   revalidatePath(`/app/${orgSlug}/social`)
