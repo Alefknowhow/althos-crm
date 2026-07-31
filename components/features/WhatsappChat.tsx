@@ -56,7 +56,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   const stageOptions = useMemo(() => {
     const set = new Set<string>()
     for (const c of conversations) {
-      const n = c.leads?.pipeline_stages?.name
+      const n = c.contatos?.pipeline_stages?.name
       if (n) set.add(n)
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -66,7 +66,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   const sellerOptions = useMemo(() => {
     const ids = new Set<string>()
     for (const c of conversations) {
-      const owner = c.assigned_to ?? c.leads?.assigned_to
+      const owner = c.assigned_to ?? c.contatos?.assigned_to
       if (owner) ids.add(owner)
     }
     return Array.from(ids).map(id => ({ id, member: memberById[id] }))
@@ -83,11 +83,11 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         if (!hay.includes(q)) return false
       }
       if (filterSeller) {
-        const owner = c.assigned_to ?? c.leads?.assigned_to ?? null
+        const owner = c.assigned_to ?? c.contatos?.assigned_to ?? null
         if (filterSeller === '__none' ? !!owner : owner !== filterSeller) return false
       }
       if (filterStage) {
-        if ((c.leads?.pipeline_stages?.name || '') !== filterStage) return false
+        if ((c.contatos?.pipeline_stages?.name || '') !== filterStage) return false
       }
       return true
     })
@@ -287,10 +287,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
-                  {c.leads?.pipeline_stages?.name && (
-                    <span className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px]" title={`Etapa: ${c.leads.pipeline_stages.name}`}>
+                  {c.contatos?.pipeline_stages?.name && (
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px]" title={`Etapa: ${c.contatos.pipeline_stages.name}`}>
                       <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
-                      <span className="truncate">{c.leads.pipeline_stages.name}</span>
+                      <span className="truncate">{c.contatos.pipeline_stages.name}</span>
                     </span>
                   )}
                 </div>
@@ -307,7 +307,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                   {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
                   {(() => {
                     // Híbrido: responsável do atendimento, com fallback no dono do lead.
-                    const ownerId = c.assigned_to ?? c.leads?.assigned_to ?? null
+                    const ownerId = c.assigned_to ?? c.contatos?.assigned_to ?? null
                     if (!ownerId) return null
                     const m = memberById[ownerId]
                     return (
