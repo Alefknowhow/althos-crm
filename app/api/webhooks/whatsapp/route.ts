@@ -53,12 +53,21 @@ async function downloadAndStoreMedia(
     const metaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-    if (!metaRes.ok) return null
+    if (!metaRes.ok) {
+      console.error(`[whatsapp webhook] media metadata fetch failed (${metaRes.status}):`, await metaRes.text().catch(() => ''))
+      return null
+    }
     const meta = await metaRes.json()
-    if (!meta.url) return null
+    if (!meta.url) {
+      console.error('[whatsapp webhook] media metadata has no url:', JSON.stringify(meta))
+      return null
+    }
 
     const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${accessToken}` } })
-    if (!fileRes.ok) return null
+    if (!fileRes.ok) {
+      console.error(`[whatsapp webhook] media file fetch failed (${fileRes.status})`)
+      return null
+    }
     const bytes = await fileRes.arrayBuffer()
 
     const mimeType: string = meta.mime_type || 'application/octet-stream'
