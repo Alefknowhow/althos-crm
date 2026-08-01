@@ -16,11 +16,11 @@ export default function DashboardTabsShell({
 }) {
   return (
     <Tabs defaultValue="visao-geral" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
-        <TabsTrigger value="comercial">Comercial</TabsTrigger>
-        <TabsTrigger value="vendas-clientes">Vendas e Clientes</TabsTrigger>
-        <TabsTrigger value="equipe-atendimento">Equipe</TabsTrigger>
+      <TabsList className="flex-wrap h-auto w-full sm:w-auto">
+        <TabsTrigger value="visao-geral" className="flex-1 sm:flex-none">Visão Geral</TabsTrigger>
+        <TabsTrigger value="comercial" className="flex-1 sm:flex-none">Comercial</TabsTrigger>
+        <TabsTrigger value="vendas-clientes" className="flex-1 sm:flex-none">Vendas e Clientes</TabsTrigger>
+        <TabsTrigger value="equipe-atendimento" className="flex-1 sm:flex-none">Equipe</TabsTrigger>
       </TabsList>
       <TabsContent value="visao-geral" className="space-y-4">
         {visaoGeral}
