@@ -804,6 +804,67 @@ export async function getUpcomingDueEntries(orgSlug: string, days = 30): Promise
   return ((data as UpcomingDueEntry[]) ?? []).map(e => withEffectiveStatus(e as any)) as UpcomingDueEntry[]
 }
 
+export type CashFlowProjectionPoint = { day: string; saldo_previsto_cents: number }
+export type CashFlowProjection = {
+  startingBalance_cents: number
+  series: CashFlowProjectionPoint[]
+  checkpoints: { d30: number; d60: number; d90: number }
+}
+
+/**
+ * Projeção de caixa pros próximos 90 dias: parte do saldo em caixa atual (só
+ * pago) e soma dia a dia os lançamentos pendentes/vencidos por vencimento —
+ * "se nada mais entrar além do que já está lançado, como fica o caixa".
+ */
+export async function getCashFlowProjection(orgSlug: string, horizonDays = 90): Promise<CashFlowProjection> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const today = new Date()
+  const todayIso = today.toISOString().slice(0, 10)
+  const limit = new Date(today)
+  limit.setDate(limit.getDate() + horizonDays)
+
+  const [{ data: paid }, { data: pending }] = await Promise.all([
+    supabase
+      .from('financial_entries')
+      .select('tipo, valor_cents')
+      .eq('organization_id', org.id)
+      .eq('status', 'pago')
+      .lte('data_pagamento', todayIso),
+    supabase
+      .from('financial_entries')
+      .select('tipo, valor_cents, vencimento')
+      .eq('organization_id', org.id)
+      .in('status', ['pendente', 'vencido'])
+      .not('vencimento', 'is', null)
+      .lte('vencimento', limit.toISOString().slice(0, 10)),
+  ])
+
+  const startingBalance = (paid || []).reduce((a, r) => a + (r.tipo === 'receita' ? r.valor_cents : -r.valor_cents), 0)
+
+  const byDay = new Map<string, number>()
+  for (const row of pending || []) {
+    const v = row.tipo === 'receita' ? row.valor_cents : -row.valor_cents
+    byDay.set(row.vencimento!, (byDay.get(row.vencimento!) || 0) + v)
+  }
+
+  const series: CashFlowProjectionPoint[] = []
+  let running = startingBalance
+  const checkpoints = { d30: startingBalance, d60: startingBalance, d90: startingBalance }
+  for (let i = 1; i <= horizonDays; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i)
+    const key = d.toISOString().slice(0, 10)
+    running += byDay.get(key) || 0
+    series.push({ day: key, saldo_previsto_cents: running })
+    if (i === 30) checkpoints.d30 = running
+    if (i === 60) checkpoints.d60 = running
+    if (i === 90) checkpoints.d90 = running
+  }
+
+  return { startingBalance_cents: startingBalance, series, checkpoints }
+}
+
 export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -827,9 +888,14 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
         contasAReceberCents: 0,
         contasAPagarCents: 0,
       },
+      cashFlowProjection: {
+        startingBalance_cents: 0,
+        series: [],
+        checkpoints: { d30: 0, d60: 0, d90: 0 },
+      },
     }
   }
-  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis] = await Promise.all([
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),
     getDailyCashFlow(orgSlug, range),
@@ -837,6 +903,7 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
     getSimpleDRE(orgSlug, range),
     getUpcomingDueEntries(orgSlug),
     getFinancialKpis(orgSlug, range),
+    getCashFlowProjection(orgSlug, 90),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis }
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection }
 }

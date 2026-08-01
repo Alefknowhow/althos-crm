@@ -10,6 +10,7 @@ import {
 import KpiCard from '@/components/features/dashboard/KpiCard'
 import CashFlowChart from './CashFlowChart'
 import DailyCashFlowChart from './DailyCashFlowChart'
+import CashFlowProjectionChart from './CashFlowProjectionChart'
 import ExpensesByCategoryChart from './ExpensesByCategoryChart'
 import { getFinancialDashboardData } from '@/actions/financial'
 import { PERIOD_OPTIONS, periodToRange, type PeriodId } from '@/lib/utils/period-range'
@@ -142,6 +143,37 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               <CardContent><CashFlowChart data={data.monthlyCashFlow} /></CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Projeção de caixa (próximos 90 dias)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <KpiCard
+                  label="Saldo previsto em 30 dias"
+                  value={fmtCurrency(data.cashFlowProjection.checkpoints.d30)}
+                  help="Saldo em caixa atual somado às receitas e despesas já lançadas (pendentes/vencidas) com vencimento até 30 dias."
+                  trend={data.cashFlowProjection.checkpoints.d30 >= 0 ? 'up' : 'down'}
+                />
+                <KpiCard
+                  label="Saldo previsto em 60 dias"
+                  value={fmtCurrency(data.cashFlowProjection.checkpoints.d60)}
+                  help="Mesma projeção, horizonte de 60 dias."
+                  trend={data.cashFlowProjection.checkpoints.d60 >= 0 ? 'up' : 'down'}
+                />
+                <KpiCard
+                  label="Saldo previsto em 90 dias"
+                  value={fmtCurrency(data.cashFlowProjection.checkpoints.d90)}
+                  help="Mesma projeção, horizonte de 90 dias."
+                  trend={data.cashFlowProjection.checkpoints.d90 >= 0 ? 'up' : 'down'}
+                />
+              </div>
+              {data.cashFlowProjection.series.length === 0 ? (
+                <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
+                  Sem lançamentos pendentes pra projetar.
+                </div>
+              ) : <CashFlowProjectionChart data={data.cashFlowProjection.series} />}
+            </CardContent>
+          </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
