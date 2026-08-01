@@ -24,7 +24,7 @@ export default function FinancialSettingsView({
   settings: Record<FinancialSettingType, FinancialSettingRow[]>
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="max-w-5xl mx-auto grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {FINANCIAL_SETTING_TYPES.map(({ type, label }) => (
         <SettingListCard key={type} orgSlug={orgSlug} type={type} label={label} items={settings[type] || []} />
       ))}

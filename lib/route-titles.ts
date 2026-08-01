@@ -16,10 +16,11 @@ const ROUTE_TITLES: Record<string, string> = {
   agendamentos: 'Agendamentos',
   conversas: 'Conversas',
   social: 'Instagram',
-  marketing: 'Campanhas',
+  marketing: 'Anúncios',
   forms: 'Formulários',
   financeiro: 'Financeiro',
   automacoes: 'Automações',
+  'email-templates': 'Templates de Email',
   configuracoes: 'Configurações',
   ajuda: 'Central de Ajuda',
 }

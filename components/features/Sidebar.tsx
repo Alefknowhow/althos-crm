@@ -329,7 +329,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <SidebarNavLink href={`${base}/marketing`} exact dataTour="forms">
               <span className="flex items-center gap-2.5">
                 <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Campanhas</span>
+                <span>Anúncios</span>
               </span>
             </SidebarNavLink>
           </>

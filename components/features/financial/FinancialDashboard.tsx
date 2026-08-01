@@ -4,9 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import KpiCard from '@/components/features/dashboard/KpiCard'
 import CashFlowChart from './CashFlowChart'
 import DailyCashFlowChart from './DailyCashFlowChart'
@@ -139,13 +136,19 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Select value={period} onValueChange={v => setPeriod(v as PeriodId)}>
-          <SelectTrigger className="h-9 text-xs w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="flex justify-end flex-wrap gap-1.5">
+        {PERIOD_OPTIONS.map(p => (
+          <Button
+            key={p.id}
+            type="button"
+            size="sm"
+            variant={period === p.id ? 'default' : 'outline'}
+            className="h-8 text-xs"
+            onClick={() => setPeriod(p.id)}
+          >
+            {p.label}
+          </Button>
+        ))}
       </div>
 
       {loading || !data ? (

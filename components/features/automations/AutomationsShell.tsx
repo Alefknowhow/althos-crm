@@ -94,7 +94,7 @@ export default function AutomationsShell({
   const isDetail = pathname !== `/app/${orgSlug}/automacoes`
 
   return (
-    <div className="-mx-6 -mt-8 -mb-8 flex flex-col" style={{ minHeight: 'calc(100vh - 56px)' }}>
+    <div className="-mx-6 mt-2 -mb-8 flex flex-col" style={{ minHeight: 'calc(100vh - 56px)' }}>
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="px-4 py-3 border-b bg-background flex items-center gap-2 shrink-0">
@@ -111,7 +111,7 @@ export default function AutomationsShell({
           <Button asChild variant="outline" size="sm">
             <Link href={`/app/${orgSlug}/email-templates`}>
               <FileText className="w-4 h-4 mr-1.5" />
-              Templates
+              Templates de Email
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">

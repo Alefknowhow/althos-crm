@@ -68,24 +68,30 @@ export default async function OrgLayout({
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-plex">
-      {isFrozen ? (
-        <FrozenBanner orgSlug={params.orgSlug} />
-      ) : (
-        <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
-      )}
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-plex print:static print:h-auto print:overflow-visible print:block">
+      <div className="print:hidden">
+        {isFrozen ? (
+          <FrozenBanner orgSlug={params.orgSlug} />
+        ) : (
+          <TrialBanner orgId={org.id} orgSlug={params.orgSlug} plan={(org as any).plan ?? null} />
+        )}
+      </div>
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
       <SidebarCollapseProvider>
       <PageHintProvider>
-      <div className="flex flex-1 min-h-0">
-        <Sidebar orgSlug={params.orgSlug} />
+      <div className="flex flex-1 min-h-0 print:block">
+        <div className="print:hidden">
+          <Sidebar orgSlug={params.orgSlug} />
+        </div>
 
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 print:block">
           {/* pl-14 on mobile leaves space for the fixed sidebar hamburger
               rendered by SidebarShell. md+ uses normal padding since the
-              desktop aside occupies its own column. */}
-          <header className="h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
+              desktop aside occupies its own column. Hidden entirely on
+              print so only the page's own content (ex.: DocumentPrintView)
+              shows up — nunca a chrome do CRM. */}
+          <header className="print:hidden h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
               <HeaderSidebarToggle orgSlug={params.orgSlug} />
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
@@ -127,8 +133,8 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 py-5 pb-20 md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40">
-            <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0">
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 py-5 pb-20 md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+            <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>
           </main>
@@ -137,7 +143,9 @@ export default async function OrgLayout({
       </PageHintProvider>
       </SidebarCollapseProvider>
 
-      <SupportWidget orgSlug={params.orgSlug} />
+      <div className="print:hidden">
+        <SupportWidget orgSlug={params.orgSlug} />
+      </div>
     </div>
   )
 }

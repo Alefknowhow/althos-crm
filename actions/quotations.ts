@@ -168,6 +168,15 @@ export async function saveQuotation(orgSlug: string, id: string, input: unknown)
     updated_at: new Date().toISOString(),
   }
 
+  // Ofertas marcadas como "Publicada na vitrine" precisam de um public_token —
+  // a RPC get_public_vitrine só retorna ofertas com offer_published=true E
+  // public_token preenchido. Sem isso, o toggle "Publicada" não tinha efeito
+  // nenhum na vitrine pública se o usuário nunca tivesse gerado o link antes.
+  if (parentPatch.offer_published === true && !existing.public_token) {
+    parentPatch.public_token = Array.from(crypto.getRandomValues(new Uint8Array(12)))
+      .map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
   const { error: upErr } = await supabase
     .from('travel_proposals').update(parentPatch)
     .eq('id', id).eq('organization_id', org.id)

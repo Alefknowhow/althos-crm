@@ -23,8 +23,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Templates de E-mail</h1>
+      <div className="flex justify-end items-center">
         <NewTemplateButton orgSlug={params.orgSlug} />
       </div>
 
