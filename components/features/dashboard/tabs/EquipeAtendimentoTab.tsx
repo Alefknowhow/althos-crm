@@ -2,17 +2,34 @@ import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getAiCreditsStatus, getAccountIdForOrgSlug } from '@/lib/plans/server'
+import { getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore } from '@/actions/dashboard-tabs'
+import { getMonthlyRevenueGoal } from '@/actions/organization'
+import { listOrgMembers } from '@/actions/sales'
 import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
-import MockBarListCard from '../mocks/MockBarListCard'
-import { MOCK_CONVERSION_BY_SELLER, MOCK_ASSIGNED_VS_WORKED } from '../mocks/mockData'
-import { UserCheck, ListChecks } from 'lucide-react'
+import TasksTodayWidget from '../TasksTodayWidget'
+import BarListCard from '../BarListCard'
+import { UserCheck, ListChecks, Award } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
+function fmtCurrency(cents: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
+}
+
 export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) {
   const accountId = await getAccountIdForOrgSlug(ctx.orgSlug)
-  const credits = accountId ? await getAiCreditsStatus(accountId) : null
+  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members] = await Promise.all([
+    accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
+    getSellerConversionRates(ctx.orgId),
+    getSellerOpenDeals(ctx.orgId),
+    getSellerPerformanceScore(ctx.orgId),
+    getMonthlyRevenueGoal(ctx.orgSlug),
+    listOrgMembers(ctx.orgSlug),
+  ])
+  const nameById = new Map(members.map((m: any) => [m.id, m.name]))
+  const activeSellers = new Set([...conversionRates.map(c => c.seller_id), ...openDeals.map(o => o.seller_id)]).size
+  const individualGoalCents = monthlyGoalCents && activeSellers > 0 ? Math.round(monthlyGoalCents / activeSellers) : null
 
   return (
     <div className="space-y-4">
@@ -42,6 +59,15 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
         />
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard
+          label="Meta individual (média)"
+          value={individualGoalCents === null ? '—' : fmtCurrency(individualGoalCents)}
+          help="Meta mensal da empresa dividida igualmente entre os vendedores ativos — não há meta individual configurável por vendedor ainda."
+          mock
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         <div className="md:col-span-4">
           <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
@@ -49,23 +75,51 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
           </Suspense>
         </div>
         <div className="md:col-span-4">
-          <MockBarListCard
+          <BarListCard
             title="Conversão por vendedor"
-            help="Percentual de leads atribuídos a cada vendedor que chegaram a um estágio de fechamento."
+            help="Percentual de leads atribuídos a cada vendedor (últimos 30 dias) que chegaram a um estágio de fechamento."
             icon={UserCheck}
-            rows={MOCK_CONVERSION_BY_SELLER}
+            rows={conversionRates.map(c => ({
+              label: nameById.get(c.seller_id) || 'Usuário removido',
+              value: c.conversion_pct,
+              valueLabel: `${c.conversion_pct.toFixed(0)}%`,
+            }))}
             color="#24a148"
+            emptyText="Nenhum lead atribuído nos últimos 30 dias."
           />
         </div>
         <div className="md:col-span-4">
-          <MockBarListCard
-            title="Leads atribuídos vs. trabalhados"
-            help="Percentual de leads atribuídos a cada vendedor que já tiveram alguma interação registrada."
+          <BarListCard
+            title="Negociações abertas por vendedor"
+            help="Quantidade de negócios em aberto atribuídos a cada vendedor no momento."
             icon={ListChecks}
-            rows={MOCK_ASSIGNED_VS_WORKED}
+            rows={openDeals.map(o => ({
+              label: nameById.get(o.seller_id) || 'Usuário removido',
+              value: o.open_deals,
+              valueLabel: String(o.open_deals),
+            }))}
             color="#8a3ffc"
+            emptyText="Nenhuma negociação aberta atribuída."
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <BarListCard
+          title="Score de performance"
+          help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
+          icon={Award}
+          rows={scores.map(s => ({
+            label: nameById.get(s.seller_id) || 'Usuário removido',
+            value: s.score,
+            valueLabel: `${s.score}`,
+          }))}
+          color="#0f62fe"
+          emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
+        />
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <TasksTodayWidget orgId={ctx.orgId} orgSlug={ctx.orgSlug} />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">

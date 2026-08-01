@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { fetchNormalizedSales, isOrgTravelNiche } from '@/lib/dashboard/sales-source'
+import { getSellersRanking } from '@/actions/dashboard'
 
 /* -------- Ticket médio (receita ÷ nº de vendas concluídas) -------- */
 
@@ -190,4 +191,85 @@ export async function getAtRiskCustomers(orgId: string, thresholdDays = 90, limi
     if (days >= thresholdDays) atRisk.push({ contato_id: c.id, name: c.name, days_since_last_sale: days })
   }
   return atRisk.sort((a, b) => b.days_since_last_sale - a.days_since_last_sale).slice(0, limit)
+}
+
+/* -------- Equipe: conversão por vendedor, negociações abertas, score -------- */
+
+export type SellerConversionRow = { seller_id: string; leads: number; won: number; conversion_pct: number }
+
+/** Conversão por vendedor = leads atribuídos (assigned_to) no período vs. quantos chegaram a "ganho" (deal_status). */
+export async function getSellerConversionRates(orgId: string, windowDays = 30): Promise<SellerConversionRow[]> {
+  const supabase = createClient()
+  const since = new Date()
+  since.setDate(since.getDate() - windowDays)
+
+  const { data } = await supabase
+    .from('contatos')
+    .select('assigned_to, deal_status')
+    .eq('organization_id', orgId)
+    .not('assigned_to', 'is', null)
+    .gte('created_at', since.toISOString())
+
+  const bySeller = new Map<string, { leads: number; won: number }>()
+  for (const r of data || []) {
+    const cur = bySeller.get(r.assigned_to as string) || { leads: 0, won: 0 }
+    cur.leads += 1
+    if (r.deal_status === 'ganho') cur.won += 1
+    bySeller.set(r.assigned_to as string, cur)
+  }
+
+  return Array.from(bySeller.entries())
+    .map(([seller_id, v]) => ({ seller_id, leads: v.leads, won: v.won, conversion_pct: v.leads > 0 ? (v.won / v.leads) * 100 : 0 }))
+    .sort((a, b) => b.conversion_pct - a.conversion_pct)
+}
+
+export type SellerOpenDealsRow = { seller_id: string; open_deals: number }
+
+/** Negociações abertas por vendedor — contatos com deal_status='aberto' atribuídos a cada um. */
+export async function getSellerOpenDeals(orgId: string): Promise<SellerOpenDealsRow[]> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contatos')
+    .select('assigned_to')
+    .eq('organization_id', orgId)
+    .eq('deal_status', 'aberto')
+    .not('assigned_to', 'is', null)
+
+  const bySeller = new Map<string, number>()
+  for (const r of data || []) {
+    const k = r.assigned_to as string
+    bySeller.set(k, (bySeller.get(k) || 0) + 1)
+  }
+  return Array.from(bySeller.entries())
+    .map(([seller_id, open_deals]) => ({ seller_id, open_deals }))
+    .sort((a, b) => b.open_deals - a.open_deals)
+}
+
+export type SellerScoreRow = { seller_id: string; score: number }
+
+/**
+ * Score de performance (0-100) = média entre a posição relativa em valor
+ * vendido e a posição relativa em taxa de conversão, ambas normalizadas
+ * pelo melhor vendedor do período — sem pesos "mágicos" arbitrários, é
+ * simplesmente "o quão perto você está do topo em cada critério".
+ */
+export async function getSellerPerformanceScore(orgId: string, windowDays = 30): Promise<SellerScoreRow[]> {
+  const [ranking, conversion] = await Promise.all([
+    getSellersRanking(orgId, { windowDays }),
+    getSellerConversionRates(orgId, windowDays),
+  ])
+  const maxValue = Math.max(1, ...ranking.map(r => r.total_value_cents))
+  const maxConversion = Math.max(1, ...conversion.map(c => c.conversion_pct))
+  const conversionBySeller = new Map(conversion.map(c => [c.seller_id, c.conversion_pct]))
+
+  const sellerIds = new Set([...ranking.map(r => r.seller_id), ...conversion.map(c => c.seller_id)])
+  const valueBySeller = new Map(ranking.map(r => [r.seller_id, r.total_value_cents]))
+
+  return Array.from(sellerIds)
+    .map(seller_id => {
+      const valueScore = ((valueBySeller.get(seller_id) || 0) / maxValue) * 100
+      const conversionScore = ((conversionBySeller.get(seller_id) || 0) / maxConversion) * 100
+      return { seller_id, score: Math.round((valueScore + conversionScore) / 2) }
+    })
+    .sort((a, b) => b.score - a.score)
 }
