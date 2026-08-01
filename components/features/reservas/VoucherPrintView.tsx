@@ -232,6 +232,11 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           {hasHotel && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Hotel} title="Hospedagem" accent={accent} />
+              {sale.hotel_locator && (
+                <div className="px-3 pt-3">
+                  <InfoRow label="Localizador" value={sale.hotel_locator} mono />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 p-3">
                 <InfoRow label="Hotel" value={sale.hotel_name} />
                 <InfoRow label="Localização" value={sale.destination} />

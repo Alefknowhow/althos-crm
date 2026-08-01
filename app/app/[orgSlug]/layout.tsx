@@ -19,6 +19,7 @@ import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseCo
 import { HeaderMobileMenu } from '@/components/features/HeaderMobileMenu'
 import { PageHintProvider } from '@/components/features/PageHintContext'
 import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
+import { GlobalBackButton } from '@/components/features/GlobalBackButton'
 import HealthLinkConditional from '@/components/features/HealthLinkConditional'
 
 export default async function OrgLayout({
@@ -93,6 +94,7 @@ export default async function OrgLayout({
               shows up — nunca a chrome do CRM. */}
           <header className="print:hidden h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
+              <GlobalBackButton orgSlug={params.orgSlug} />
               <HeaderSidebarToggle orgSlug={params.orgSlug} />
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
               {orgs.length > 1 && (

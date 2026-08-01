@@ -62,6 +62,7 @@ const INCLUDED_ITEMS: { key: string; label: string }[] = [
   { key: 'voos', label: 'Voos' },
   { key: 'hospedagem', label: 'Hospedagem' },
   { key: 'transfer', label: 'Transfer' },
+  { key: 'cruzeiros', label: 'Cruzeiros' },
   { key: 'seguro', label: 'Seguro viagem' },
   { key: 'passeios', label: 'Passeios' },
   { key: 'carros', label: 'Locação de carro' },
@@ -591,7 +592,7 @@ function SaleEditor({
     hotel_name: s.hotel_name, airline: s.airline, operator: s.operator,
     payment_method: s.payment_method, included_items: included, vouchers,
     travelers, travelers_note: s.travelers_note,
-    package_locator: s.package_locator, air_locator: s.air_locator,
+    package_locator: s.package_locator, air_locator: s.air_locator, hotel_locator: s.hotel_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
     notes: s.notes, cancellation_policy: s.cancellation_policy, important_info: s.important_info,
     service_info: s.service_info, flights,
@@ -897,6 +898,7 @@ function SaleEditor({
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
             <Field label="Localizador aéreo"><Input value={s.air_locator || ''} onChange={e => set('air_locator', e.target.value)} placeholder="Ex.: ABC123" /></Field>
+            <Field label="Localizador da hospedagem"><Input value={s.hotel_locator || ''} onChange={e => set('hotel_locator', e.target.value)} placeholder="Ex.: RES12345" /></Field>
             <Field label="Comissão"><MoneyInput value={s.commission_cents || 0} onChange={c => set('commission_cents', c)} /></Field>
           </div>
         </div>

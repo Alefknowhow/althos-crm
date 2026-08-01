@@ -109,18 +109,20 @@ export default async function OrgDashboard({
         <OnboardingChecklistCard orgId={org.id} orgSlug={params.orgSlug} />
       </Suspense>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <DashboardHeader userName={userName} />
-        <div className="flex items-center gap-3 flex-wrap">
-          <PipelineFilter pipelines={pipelines || []} />
-          <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
-          <PeriodFilter orgSlug={params.orgSlug} />
-        </div>
-      </div>
-
-      <InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />
-
       <DashboardTabsShell
+        stickyHeader={
+          <>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <DashboardHeader userName={userName} />
+              <div className="flex items-center gap-3 flex-wrap">
+                <PipelineFilter pipelines={pipelines || []} />
+                <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
+                <PeriodFilter orgSlug={params.orgSlug} />
+              </div>
+            </div>
+            <InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />
+          </>
+        }
         visaoGeral={
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
             <VisaoGeralTab ctx={ctx} />

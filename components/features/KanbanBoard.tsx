@@ -456,7 +456,7 @@ export default function KanbanBoard({
 
       {/* Dashboard (KPIs) modal */}
       <Dialog open={dashOpen} onOpenChange={setDashOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-5xl w-[95vw]">
           <DialogHeader><DialogTitle>Dashboard do Pipeline</DialogTitle></DialogHeader>
           <PipelineKpiBar leads={visibleLeads} />
         </DialogContent>
