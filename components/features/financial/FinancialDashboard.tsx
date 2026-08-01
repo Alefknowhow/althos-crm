@@ -302,6 +302,48 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
           </div>
 
           <Card>
+            <CardHeader><CardTitle className="text-base">Indicadores estratégicos</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <KpiCard
+                  label="Burn rate"
+                  value={fmtCurrency(data.strategicIndicators.burnRateCents)}
+                  help="Média de despesas mensais nos últimos 3 meses."
+                />
+                <KpiCard
+                  label="Runway"
+                  value={data.strategicIndicators.runwayMonths === null ? '—' : `${data.strategicIndicators.runwayMonths.toFixed(1)} meses`}
+                  help="Saldo em caixa dividido pelo burn rate — quanto tempo o caixa dura no ritmo de gasto atual."
+                  trend={data.strategicIndicators.runwayMonths !== null && data.strategicIndicators.runwayMonths < 3 ? 'down' : 'neutral'}
+                />
+                <KpiCard
+                  label="EBITDA (aprox.)"
+                  value={fmtCurrency(data.strategicIndicators.ebitdaCents)}
+                  help="Aproximação pelo resultado do período — ainda não separa depreciação, juros e impostos."
+                  mock
+                />
+                <KpiCard
+                  label="Ponto de equilíbrio"
+                  value={data.strategicIndicators.pontoEquilibrioCents === null ? '—' : fmtCurrency(data.strategicIndicators.pontoEquilibrioCents)}
+                  help="Receita necessária no período pra cobrir custos fixos, dado o custo variável atual."
+                />
+                <KpiCard
+                  label="Inadimplência"
+                  value={data.strategicIndicators.inadimplenciaPct === null ? '—' : `${data.strategicIndicators.inadimplenciaPct.toFixed(1)}%`}
+                  help="Percentual das contas a receber em aberto que já estão vencidas."
+                  trend={data.strategicIndicators.inadimplenciaPct !== null && data.strategicIndicators.inadimplenciaPct > 15 ? 'down' : 'neutral'}
+                />
+                <KpiCard
+                  label="Receita prevista (CRM)"
+                  value={fmtCurrency(data.strategicIndicators.receitaPrevistaCrmCents)}
+                  help="Soma do valor dos negócios em aberto no funil de vendas — estimativa, não confirmada."
+                  mock
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle className="text-base">Contas</CardTitle></CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

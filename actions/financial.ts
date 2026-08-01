@@ -1014,6 +1014,74 @@ export async function getAccountsOverview(orgSlug: string): Promise<AccountsOver
   return overview
 }
 
+export type StrategicIndicators = {
+  burnRateCents: number
+  runwayMonths: number | null
+  ebitdaCents: number
+  pontoEquilibrioCents: number | null
+  inadimplenciaPct: number | null
+  receitaPrevistaCrmCents: number
+}
+
+/**
+ * Indicadores estratégicos (fase 5 do redesenho). Onde o dado real não é
+ * granular o bastante (EBITDA sem depreciação/juros/impostos separados),
+ * usamos a melhor aproximação disponível a partir de financial_entries e
+ * sinalizamos isso na UI — não bloqueia a entrega enquanto a granularidade
+ * completa não existir.
+ */
+export async function getStrategicIndicators(orgSlug: string, range: { from: string; to: string }): Promise<StrategicIndicators> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const [monthly, dre, expenseBreakdown, kpis] = await Promise.all([
+    getCashFlowSeries(orgSlug, 3),
+    getSimpleDRE(orgSlug, range),
+    getExpenseBreakdown(orgSlug, range),
+    getFinancialKpis(orgSlug, range),
+  ])
+
+  // Burn rate = média das despesas mensais líquidas dos últimos 3 meses.
+  const burnRateCents = monthly.length > 0
+    ? Math.round(monthly.reduce((a, m) => a + m.despesas_cents, 0) / monthly.length)
+    : 0
+  const runwayMonths = burnRateCents > 0 ? kpis.saldoEmCaixa.value_cents / burnRateCents : null
+
+  // EBITDA aproximado: resultado do período (não separa depreciação/juros/
+  // impostos, que não existem como campos próprios em financial_entries).
+  const ebitdaCents = dre.resultado_cents
+
+  // Ponto de equilíbrio: receita necessária pra cobrir custos fixos, dado o
+  // percentual de custo variável sobre a receita do período.
+  const variableCostRatio = dre.receita_total_cents > 0 ? expenseBreakdown.variaveisCents / dre.receita_total_cents : null
+  const pontoEquilibrioCents = variableCostRatio !== null && variableCostRatio < 1
+    ? Math.round(expenseBreakdown.fixasCents / (1 - variableCostRatio))
+    : null
+
+  // Inadimplência: % das contas a receber em aberto que já estão vencidas.
+  const { data: openReceivables } = await supabase
+    .from('financial_entries')
+    .select('valor_cents, status, vencimento')
+    .eq('organization_id', org.id)
+    .eq('tipo', 'receita')
+    .in('status', ['pendente', 'vencido'])
+  const openRows = (openReceivables || []).map(r => withEffectiveStatus(r as any))
+  const totalAbertoCents = openRows.reduce((a, r: any) => a + r.valor_cents, 0)
+  const vencidoCents = openRows.filter((r: any) => r.status === 'vencido').reduce((a, r: any) => a + r.valor_cents, 0)
+  const inadimplenciaPct = totalAbertoCents > 0 ? (vencidoCents / totalAbertoCents) * 100 : null
+
+  // Receita prevista via CRM: soma do valor dos negócios em aberto no funil
+  // (estimativa, não uma previsão financeira confirmada).
+  const { data: openDeals } = await supabase
+    .from('contatos')
+    .select('value_cents')
+    .eq('organization_id', org.id)
+    .eq('deal_status', 'aberto')
+  const receitaPrevistaCrmCents = (openDeals || []).reduce((a, d) => a + (d.value_cents || 0), 0)
+
+  return { burnRateCents, runwayMonths, ebitdaCents, pontoEquilibrioCents, inadimplenciaPct, receitaPrevistaCrmCents }
+}
+
 export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -1050,9 +1118,13 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
         porSubcategoria: [], porCentroCusto: [], fixasCents: 0, variaveisCents: 0, despesaTotalCents: 0,
       },
       accountsOverview: { vencidas: [], hoje: [], estaSemana: [], esteMes: [] },
+      strategicIndicators: {
+        burnRateCents: 0, runwayMonths: null, ebitdaCents: 0, pontoEquilibrioCents: null,
+        inadimplenciaPct: null, receitaPrevistaCrmCents: 0,
+      },
     }
   }
-  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview] = await Promise.all([
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview, strategicIndicators] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),
     getDailyCashFlow(orgSlug, range),
@@ -1064,6 +1136,7 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
     getRevenueBreakdown(orgSlug, range),
     getExpenseBreakdown(orgSlug, range),
     getAccountsOverview(orgSlug),
+    getStrategicIndicators(orgSlug, range),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview }
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview, strategicIndicators }
 }
