@@ -182,9 +182,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 
   return (
     <div className="flex w-full h-full border-t">
-      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b bg-background font-semibold shrink-0 h-16 flex items-center justify-between gap-2">
-          <span>Inbox WhatsApp</span>
+      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r border-[#e9edef] dark:border-[#2a3942] flex-col bg-white dark:bg-[#111b21] ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-4 border-b border-[#e9edef] dark:border-[#2a3942] shrink-0 h-16 flex items-center justify-end gap-2">
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href={`/app/${orgSlug}/whatsapp-templates`}
@@ -280,7 +279,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.map((c: any) => (
-            <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex justify-between items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}>
+            <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex justify-between items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
               {c.contatos?.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={c.contatos.avatar_url} alt="" className="h-9 w-9 rounded-full shrink-0 object-cover" />
@@ -338,10 +337,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         </div>
       </div>
 
-      <div className={`flex-1 flex-col bg-secondary/40 ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0   z-10">
+            <div className="px-4 md:px-6 py-3 border-b border-[#e9edef] dark:border-[#2a3942] bg-white dark:bg-[#202c33] flex justify-between items-center gap-2 h-16 shrink-0   z-10">
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
@@ -414,16 +413,16 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <div
-                      className={`max-w-[75%] rounded-[14px] px-4 py-2 relative ${
+                      className={`max-w-[75%] rounded-[7px] px-2.5 py-1.5 relative shadow-sm ${
                         isInbound
-                          ? 'bg-secondary text-foreground rounded-tl-[4px]'
-                          : 'bg-primary text-primary-foreground rounded-tr-[4px]'
+                          ? 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-[2px]'
+                          : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-[2px]'
                       }`}
                     >
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">
                         {media || (text ? highlightText(text, msgQuery) : '[Mídia recebida]')}
                       </div>
-                      <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
+                      <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-[#667781] dark:text-[#8696a0]`}>
                         {!isInbound && m.sent_by_name && <span className="truncate max-w-[120px]">{m.sent_by_name} ·</span>}
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && <MessageTicks status={m.status} />}
@@ -461,7 +460,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
             )}
 
-            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 z-10 relative">
+            <form onSubmit={handleSend} className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex gap-2 items-end shrink-0 z-10 relative">
               {isMock && (
                 <Button
                   type="button"
