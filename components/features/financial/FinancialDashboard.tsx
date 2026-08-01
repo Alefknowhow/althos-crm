@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -12,9 +12,10 @@ import CashFlowChart from './CashFlowChart'
 import DailyCashFlowChart from './DailyCashFlowChart'
 import CashFlowProjectionChart from './CashFlowProjectionChart'
 import ExpensesByCategoryChart from './ExpensesByCategoryChart'
-import { getFinancialDashboardData } from '@/actions/financial'
+import { getFinancialDashboardData, updateFinancialEntry, type AccountsBucketEntry } from '@/actions/financial'
 import { PERIOD_OPTIONS, periodToRange, type PeriodId } from '@/lib/utils/period-range'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { Loader2, Check } from 'lucide-react'
+import { toast } from 'sonner'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -72,6 +73,42 @@ function BreakdownList({ title, items, total, tone = 'success' }: {
   )
 }
 
+function AccountsBucket({ title, entries, onQuickPay, tone = 'muted' }: {
+  title: string
+  entries: AccountsBucketEntry[]
+  onQuickPay: (id: string) => void
+  tone?: 'destructive' | 'warning' | 'muted'
+}) {
+  const toneClass = tone === 'destructive' ? 'text-destructive' : tone === 'warning' ? 'text-warning' : 'text-foreground'
+  return (
+    <div>
+      <p className={`text-xs font-semibold mb-1.5 ${toneClass}`}>{title} ({entries.length})</p>
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum lançamento.</p>
+      ) : (
+        <ul className="divide-y max-h-[220px] overflow-y-auto">
+          {entries.slice(0, 20).map(e => (
+            <li key={e.id} className="py-1.5 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium truncate">{e.categoria}</p>
+                <p className="text-[11px] text-muted-foreground">{fmtDate(e.vencimento)}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`text-xs font-semibold tabular-nums ${e.tipo === 'receita' ? 'text-success' : 'text-destructive'}`}>
+                  {e.tipo === 'despesa' ? '- ' : ''}{fmtCurrency(e.valor_cents)}
+                </span>
+                <Button size="icon" variant="outline" className="h-6 w-6" title="Marcar como pago" onClick={() => onQuickPay(e.id)}>
+                  <Check className="w-3 h-3" />
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 type DashboardData = Awaited<ReturnType<typeof getFinancialDashboardData>>
 
 export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
@@ -80,6 +117,16 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
   const [loading, setLoading] = useState(true)
 
   const range = useMemo(() => periodToRange(period), [period])
+
+  function reload() {
+    getFinancialDashboardData(orgSlug, range).then(res => setData(res))
+  }
+
+  async function handleQuickPay(id: string) {
+    const res = await updateFinancialEntry(orgSlug, id, { status: 'pago', data_pagamento: new Date().toISOString().slice(0, 10) })
+    if (res.ok) { toast.success('Marcado como pago'); reload() }
+    else toast.error(res.error)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -252,38 +299,19 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Próximos vencimentos</CardTitle></CardHeader>
-              <CardContent>
-                {data.upcomingDue.length === 0 ? (
-                  <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
-                    Nenhum lançamento pendente com vencimento nos próximos 30 dias.
-                  </div>
-                ) : (
-                  <ul className="divide-y max-h-[280px] overflow-y-auto">
-                    {data.upcomingDue.map(e => (
-                      <li key={e.id} className="py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{e.categoria}</p>
-                          <p className="text-xs text-muted-foreground">{fmtDate(e.vencimento)}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`text-xs font-semibold tabular-nums ${e.tipo === 'receita' ? 'text-success' : 'text-destructive'}`}>
-                            {e.tipo === 'despesa' ? '- ' : ''}{fmtCurrency(e.valor_cents)}
-                          </span>
-                          {e.status === 'vencido' && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1">
-                              <AlertTriangle className="w-3 h-3" /> Vencido
-                            </Badge>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
           </div>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Contas</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <AccountsBucket title="Vencidas" entries={data.accountsOverview.vencidas} onQuickPay={handleQuickPay} tone="destructive" />
+                <AccountsBucket title="Vencem hoje" entries={data.accountsOverview.hoje} onQuickPay={handleQuickPay} tone="warning" />
+                <AccountsBucket title="Esta semana" entries={data.accountsOverview.estaSemana} onQuickPay={handleQuickPay} />
+                <AccountsBucket title="Este mês" entries={data.accountsOverview.esteMes} onQuickPay={handleQuickPay} />
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader><CardTitle className="text-base">DRE simplificado (período selecionado)</CardTitle></CardHeader>

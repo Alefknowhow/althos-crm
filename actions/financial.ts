@@ -963,6 +963,57 @@ export async function getCashFlowProjection(orgSlug: string, horizonDays = 90): 
   return { startingBalance_cents: startingBalance, series, checkpoints }
 }
 
+export type AccountsBucketEntry = {
+  id: string
+  tipo: 'receita' | 'despesa'
+  categoria: string
+  valor_cents: number
+  vencimento: string
+  status: FinancialEntryRow['status']
+}
+export type AccountsOverview = {
+  vencidas: AccountsBucketEntry[]
+  hoje: AccountsBucketEntry[]
+  estaSemana: AccountsBucketEntry[]
+  esteMes: AccountsBucketEntry[]
+}
+
+/**
+ * Contas em 4 baldes por vencimento (vencidas / hoje / esta semana / este
+ * mês) — cada lançamento aparece em só um balde, o mais urgente que se
+ * aplica, pra dar uma leitura rápida de "o que precisa de ação agora".
+ */
+export async function getAccountsOverview(orgSlug: string): Promise<AccountsOverview> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const today = new Date()
+  const todayIso = today.toISOString().slice(0, 10)
+  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + (7 - today.getDay()))
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+
+  const { data } = await supabase
+    .from('financial_entries')
+    .select('id, tipo, categoria, valor_cents, vencimento, status')
+    .eq('organization_id', org.id)
+    .in('status', ['pendente', 'vencido'])
+    .not('vencimento', 'is', null)
+    .lte('vencimento', monthEnd.toISOString().slice(0, 10))
+    .order('vencimento', { ascending: true })
+    .limit(500)
+
+  const rows = ((data as AccountsBucketEntry[]) ?? []).map(e => withEffectiveStatus(e as any)) as AccountsBucketEntry[]
+
+  const overview: AccountsOverview = { vencidas: [], hoje: [], estaSemana: [], esteMes: [] }
+  for (const row of rows) {
+    if (row.vencimento < todayIso) overview.vencidas.push(row)
+    else if (row.vencimento === todayIso) overview.hoje.push(row)
+    else if (row.vencimento <= weekEnd.toISOString().slice(0, 10)) overview.estaSemana.push(row)
+    else overview.esteMes.push(row)
+  }
+  return overview
+}
+
 export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -998,9 +1049,10 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
       expenseBreakdown: {
         porSubcategoria: [], porCentroCusto: [], fixasCents: 0, variaveisCents: 0, despesaTotalCents: 0,
       },
+      accountsOverview: { vencidas: [], hoje: [], estaSemana: [], esteMes: [] },
     }
   }
-  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown] = await Promise.all([
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),
     getDailyCashFlow(orgSlug, range),
@@ -1011,6 +1063,7 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
     getCashFlowProjection(orgSlug, 90),
     getRevenueBreakdown(orgSlug, range),
     getExpenseBreakdown(orgSlug, range),
+    getAccountsOverview(orgSlug),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown }
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview }
 }
