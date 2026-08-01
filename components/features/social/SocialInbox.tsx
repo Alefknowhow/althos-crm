@@ -27,15 +27,16 @@ const EMOJIS = [
   '✅','❌','⚠️','📌','📎','📷','🎁','💰','💳','🛫','🏨','🌴','🗺️','📅','⏰','📞',
 ]
 
-function Avatar({ name, username, avatarUrl }: { name: string | null; username: string | null; avatarUrl: string | null }) {
+function Avatar({ name, username, avatarUrl, size = 'md' }: { name: string | null; username: string | null; avatarUrl: string | null; size?: 'md' | 'lg' }) {
   const label = name || username || '?'
   const initials = label.slice(0, 2).toUpperCase()
+  const dim = size === 'lg' ? 'h-14 w-14' : 'h-11 w-11'
   if (avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avatarUrl} alt={label} className="h-9 w-9 rounded-full object-cover shrink-0" />
+    return <img src={avatarUrl} alt={label} className={`${dim} rounded-full object-cover shrink-0`} />
   }
   return (
-    <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+    <div className={`${dim} rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white flex items-center justify-center text-xs font-semibold shrink-0`}>
       {initials}
     </div>
   )
@@ -144,14 +145,14 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
   }
 
   return (
-    <div className="flex w-full h-full border-t">
-      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r flex-col bg-muted/10 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="px-3 py-2 border-b bg-background shrink-0">
+    <div className="flex w-full h-full border-t border-[#efefef] dark:border-[#262626]">
+      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r border-[#efefef] dark:border-[#262626] flex-col bg-white dark:bg-black ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+        <div className="px-3 py-2 border-b border-[#efefef] dark:border-[#262626] shrink-0">
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Pesquisar conversas..."
-            className="h-9 text-sm rounded-full bg-muted/50"
+            placeholder="Pesquisar"
+            className="h-9 text-sm rounded-xl bg-[#efefef] dark:bg-[#262626] border-none"
           />
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -159,9 +160,9 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
             <div
               key={c.id}
               onClick={() => router.push(`/app/${orgSlug}/social/inbox?id=${c.id}`)}
-              className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors flex gap-3 justify-between items-start ${selectedConversation?.id === c.id ? 'bg-muted/50' : ''}`}
+              className={`p-3 cursor-pointer hover:bg-[#fafafa] dark:hover:bg-[#121212] transition-colors flex gap-3 justify-between items-center ${selectedConversation?.id === c.id ? 'bg-[#efefef] dark:bg-[#1a1a1a]' : ''}`}
             >
-              <Avatar name={c.sender_name} username={c.sender_username} avatarUrl={c.sender_avatar_url} />
+              <Avatar name={c.sender_name} username={c.sender_username} avatarUrl={c.sender_avatar_url} size="lg" />
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate">
@@ -195,10 +196,10 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
         </div>
       </div>
 
-      <div className={`flex-1 flex-col bg-secondary/20 ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col bg-white dark:bg-black ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b bg-background flex justify-between items-center gap-2 h-16 shrink-0   z-10">
+            <div className="px-4 md:px-6 py-3 border-b border-[#efefef] dark:border-[#262626] bg-white dark:bg-black flex justify-between items-center gap-2 h-[72px] shrink-0 z-10">
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
@@ -210,9 +211,12 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                 </button>
                 <Avatar name={selectedConversation.sender_name} username={selectedConversation.sender_username} avatarUrl={selectedConversation.sender_avatar_url} />
                 <div className="min-w-0">
-                  <span className="font-semibold truncate block">
+                  <span className="font-semibold text-sm truncate block">
                     {selectedConversation.sender_name || (selectedConversation.sender_username ? `@${selectedConversation.sender_username}` : 'Instagram')}
                   </span>
+                  {selectedConversation.sender_username && selectedConversation.sender_name && (
+                    <span className="text-xs text-[#8e8e8e] truncate block">@{selectedConversation.sender_username}</span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -233,10 +237,10 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                 const isInbound = m.direction === 'inbound'
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[75%] rounded-none px-4 py-2   ${isInbound ? 'bg-background border rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'}`}>
+                    <div className={`max-w-[65%] rounded-[22px] px-4 py-2 ${isInbound ? 'bg-[#efefef] dark:bg-[#262626] text-black dark:text-white' : 'bg-[#3797f0] text-white'}`}>
                       {m.media_url && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={m.media_url} alt="" className="max-w-full rounded-none mb-1 max-h-64 object-cover" />
+                        <img src={m.media_url} alt="" className="max-w-full rounded-2xl mb-1 max-h-64 object-cover" />
                       )}
                       {m.message_text && <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text}</div>}
                       {m.buttons && m.buttons.length > 0 && (
@@ -244,19 +248,19 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                           {m.buttons.map((b, k) => (
                             b.type === 'link' ? (
                               <a key={k} href={b.value} target="_blank" rel="noopener noreferrer"
-                                className="text-xs text-center px-3 py-1.5 rounded-full border border-primary-foreground/40 hover:bg-primary-foreground/10 truncate">
+                                className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 hover:bg-white/10 truncate">
                                 {b.label}
                               </a>
                             ) : (
                               <span key={k}
-                                className="text-xs text-center px-3 py-1.5 rounded-full border border-primary-foreground/40 truncate">
+                                className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 truncate">
                                 {b.label}
                               </span>
                             )
                           ))}
                         </div>
                       )}
-                      <div className={`text-[10px] mt-1 text-right ${isInbound ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}>
+                      <div className={`text-[10px] mt-1 text-right ${isInbound ? 'text-[#8e8e8e]' : 'text-white/70'}`}>
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         {!isInbound && m.sent_by === 'agent' && m.sent_by_name && ` · ${m.sent_by_name}`}
                         {!isInbound && m.sent_by !== 'agent' && ` · ${m.sent_by === 'funnel' ? 'funil' : 'automação'}`}
@@ -268,7 +272,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
               <div ref={messagesEndRef} className="h-1" />
             </div>
 
-            <form onSubmit={handleSend} className="p-4 bg-background border-t flex gap-2 items-end shrink-0 relative">
+            <form onSubmit={handleSend} className="p-4 bg-white dark:bg-black border-t border-[#efefef] dark:border-[#262626] flex gap-2 items-end shrink-0 relative">
               {/* Emojis */}
               <div className="relative shrink-0">
                 <button
@@ -283,7 +287,7 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
                 {showEmoji && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-none p-2 grid grid-cols-8 gap-0.5">
+                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-2xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
                       {EMOJIS.map(e => (
                         <button
                           key={e}
@@ -315,24 +319,27 @@ export default function SocialInbox({ orgSlug, conversations, selectedConversati
               </button>
 
               <Input
-                className="flex-1 bg-muted/50 rounded-full px-5 min-h-[44px]"
-                placeholder="Digite uma mensagem..."
+                className="flex-1 bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-full px-5 min-h-[44px] focus-visible:ring-0"
+                placeholder="Mensagem..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 disabled={sending}
               />
-              <Button type="submit" disabled={sending || !input.trim()} className="rounded-full min-h-[44px] min-w-[44px] px-0" title="Enviar">
+              <Button type="submit" disabled={sending || !input.trim()} variant="ghost" className="rounded-full min-h-[44px] min-w-[44px] px-0 text-[#3797f0] hover:bg-[#efefef] dark:hover:bg-[#262626] disabled:opacity-40" title="Enviar">
                 {sending ? '...' : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
                 )}
               </Button>
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-8 bg-background/80 rounded-none   border max-w-sm">
-              <h3 className="font-semibold text-lg mb-2">Inbox do Instagram</h3>
-              <p className="text-muted-foreground text-sm">Selecione uma conversa na barra lateral para atender manualmente.</p>
+          <div className="flex-1 flex items-center justify-center bg-white dark:bg-black">
+            <div className="text-center p-8 max-w-sm">
+              <div className="mx-auto mb-4 h-16 w-16 rounded-full border-2 border-black dark:border-white flex items-center justify-center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
+              </div>
+              <h3 className="font-normal text-xl mb-1">Suas mensagens</h3>
+              <p className="text-[#8e8e8e] text-sm">Selecione uma conversa para atender manualmente.</p>
             </div>
           </div>
         )}
