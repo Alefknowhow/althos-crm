@@ -210,37 +210,6 @@ export async function getLeadsTimeSeries(
   return Object.values(timeData)
 }
 
-export async function getFunnelData(orgId: string, pipelineId?: string | null) {
-  const supabase = createClient()
-
-  // Aggregated server-side: GROUP BY stage instead of fetching all leads.
-  const { data: rows } = await supabase.rpc('dashboard_funnel', {
-    p_org_id: orgId,
-    p_pipeline_id: pipelineId || null,
-  })
-  type Row = { stage_id: string; name: string; position: number; count: number }
-
-  const funnel = ((rows as Row[] | null) || []).map(r => ({
-    name: r.name,
-    value: Number(r.count) || 0,
-    stageId: r.stage_id
-  }))
-
-  const funnelWithConversion = funnel.map((step, index) => {
-    const prevStep = funnel[index - 1]
-    const conversionRate = prevStep && prevStep.value > 0
-      ? (step.value / prevStep.value) * 100
-      : 100
-
-    return {
-      ...step,
-      conversionRate: index === 0 ? 100 : conversionRate
-    }
-  })
-
-  return funnelWithConversion
-}
-
 export async function getRecentActivities(orgId: string) {
   const supabase = createClient()
 

@@ -19,8 +19,8 @@ export default function DashboardTabsShell({
       <TabsList>
         <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
         <TabsTrigger value="comercial">Comercial</TabsTrigger>
-        <TabsTrigger value="vendas-clientes">Vendas & Clientes</TabsTrigger>
-        <TabsTrigger value="equipe-atendimento">Equipe & Atendimento</TabsTrigger>
+        <TabsTrigger value="vendas-clientes">Vendas e Clientes</TabsTrigger>
+        <TabsTrigger value="equipe-atendimento">Equipe</TabsTrigger>
       </TabsList>
       <TabsContent value="visao-geral" className="space-y-4">
         {visaoGeral}
