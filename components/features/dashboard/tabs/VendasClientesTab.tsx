@@ -1,15 +1,13 @@
 import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
-import { getTicketMedio } from '@/actions/dashboard-tabs'
+import { getTicketMedio, getCustomerLTV, getCustomersByCity, getVipCustomers, getAtRiskCustomers } from '@/actions/dashboard-tabs'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import TopProductsWidget from '../TopProductsWidget'
-import MockDonutCard from '../mocks/MockDonutCard'
-import MockBarListCard from '../mocks/MockBarListCard'
+import BarListCard from '../BarListCard'
 import MockScatterCard from '../mocks/MockScatterCard'
-import { MOCK_CUSTOMER_SEGMENTS, MOCK_NEW_VS_RETURNING, MOCK_TOP_CUSTOMERS } from '../mocks/mockData'
-import { Crown } from 'lucide-react'
+import { Crown, MapPin, AlertTriangle } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -18,7 +16,13 @@ function fmtCurrency(cents: number): string {
 }
 
 export default async function VendasClientesTab({ ctx }: { ctx: WidgetCtx }) {
-  const ticket = await getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period))
+  const [ticket, ltv, cities, vipCustomers, atRiskCustomers] = await Promise.all([
+    getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
+    getCustomerLTV(ctx.orgId),
+    getCustomersByCity(ctx.orgId),
+    getVipCustomers(ctx.orgId),
+    getAtRiskCustomers(ctx.orgId),
+  ])
 
   return (
     <div className="space-y-4">
@@ -40,9 +44,8 @@ export default async function VendasClientesTab({ ctx }: { ctx: WidgetCtx }) {
         />
         <KpiCard
           label="LTV médio"
-          value={fmtCurrency(280000)}
-          help="Valor total médio que um cliente gera durante todo o relacionamento com a empresa."
-          mock
+          value={fmtCurrency(ltv.avgLtvCents)}
+          help={`Receita total histórica por cliente, média entre ${ltv.customersWithSales} cliente(s) com ao menos uma venda concluída.`}
         />
       </div>
 
@@ -59,26 +62,33 @@ export default async function VendasClientesTab({ ctx }: { ctx: WidgetCtx }) {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         <div className="md:col-span-4">
-          <MockDonutCard
-            title="Segmentos de cliente"
-            help="Distribuição da carteira de clientes por segmento de valor."
-            segments={MOCK_CUSTOMER_SEGMENTS}
+          <BarListCard
+            title="Clientes por cidade"
+            help="Clientes ativos agrupados por cidade cadastrada."
+            icon={MapPin}
+            rows={cities.map(c => ({ label: c.city, value: c.customers, valueLabel: String(c.customers) }))}
+            color="#0f62fe"
+            emptyText="Nenhum cliente com cidade cadastrada."
           />
         </div>
         <div className="md:col-span-4">
-          <MockDonutCard
-            title="Novos vs. recorrentes"
-            help="Proporção de clientes na primeira compra vs. clientes que já compraram antes, no período."
-            segments={MOCK_NEW_VS_RETURNING}
-          />
-        </div>
-        <div className="md:col-span-4">
-          <MockBarListCard
-            title="Clientes que mais compram"
-            help="Clientes com mais compras registradas no período."
+          <BarListCard
+            title="Clientes VIP"
+            help="Top 5 clientes por valor total histórico comprado."
             icon={Crown}
-            rows={MOCK_TOP_CUSTOMERS}
+            rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
             color="#f1c21b"
+            emptyText="Nenhuma venda concluída registrada ainda."
+          />
+        </div>
+        <div className="md:col-span-4">
+          <BarListCard
+            title="Clientes em risco"
+            help="Clientes sem nenhuma compra há mais de 90 dias."
+            icon={AlertTriangle}
+            rows={atRiskCustomers.map(c => ({ label: c.name, value: c.days_since_last_sale, valueLabel: `${c.days_since_last_sale}d` }))}
+            color="#da1e28"
+            emptyText="Nenhum cliente parado há mais de 90 dias."
           />
         </div>
       </div>
