@@ -301,6 +301,24 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
 
           </div>
 
+          {data.alerts.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Alertas inteligentes</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {data.alerts.map((a, i) => (
+                    <li key={i} className={`flex items-start gap-2 text-sm p-2.5 border ${a.kind === 'risk' ? 'border-destructive/30 bg-destructive/5' : 'border-success/30 bg-success/5'}`}>
+                      <span className={`mt-0.5 shrink-0 ${a.kind === 'risk' ? 'text-destructive' : 'text-success'}`}>
+                        {a.kind === 'risk' ? '⚠' : '↑'}
+                      </span>
+                      <span>{a.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle className="text-base">Indicadores estratégicos</CardTitle></CardHeader>
             <CardContent>

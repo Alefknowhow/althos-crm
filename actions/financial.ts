@@ -566,6 +566,8 @@ function trendOf(delta: number | null, higherIsBetter: boolean): 'up' | 'down' |
  * (lib/utils/period-range.ts::previousRange) — não é só sinal de saldo, é
  * delta percentual de verdade calculado a partir dos mesmos lançamentos.
  */
+export type FinancialKpis = Awaited<ReturnType<typeof getFinancialKpis>>
+
 export async function getFinancialKpis(orgSlug: string, range: { from: string; to: string }) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -1082,6 +1084,53 @@ export async function getStrategicIndicators(orgSlug: string, range: { from: str
   return { burnRateCents, runwayMonths, ebitdaCents, pontoEquilibrioCents, inadimplenciaPct, receitaPrevistaCrmCents }
 }
 
+export type FinancialAlert = { kind: 'risk' | 'opportunity'; text: string }
+
+/**
+ * Deriva os alertas a partir dos dados já buscados pra dashboard (zero
+ * queries extras) — cada regra é um limiar simples e explicável, priorizando
+ * o que exige ação (risco) antes do que é só uma boa notícia (oportunidade).
+ */
+function computeFinancialAlerts(d: {
+  kpis: FinancialKpis
+  cashFlowProjection: CashFlowProjection
+  accountsOverview: AccountsOverview
+  revenueBreakdown: RevenueBreakdown
+  strategicIndicators: StrategicIndicators
+}): FinancialAlert[] {
+  const alerts: FinancialAlert[] = []
+
+  if (d.cashFlowProjection.checkpoints.d30 < 0) {
+    alerts.push({ kind: 'risk', text: 'O fluxo de caixa previsto fica negativo dentro de 30 dias.' })
+  }
+  if (d.accountsOverview.vencidas.length > 0) {
+    alerts.push({ kind: 'risk', text: `${d.accountsOverview.vencidas.length} conta(s) vencida(s) precisam de atenção.` })
+  }
+  if (d.strategicIndicators.inadimplenciaPct !== null && d.strategicIndicators.inadimplenciaPct > 20) {
+    alerts.push({ kind: 'risk', text: `Inadimplência em ${d.strategicIndicators.inadimplenciaPct.toFixed(0)}% das contas a receber em aberto.` })
+  }
+  if (d.kpis.margemLucroPct !== null && d.kpis.margemLucroPctPrev !== null && d.kpis.margemLucroPct < d.kpis.margemLucroPctPrev - 5) {
+    alerts.push({ kind: 'risk', text: `Margem de lucro caiu ${(d.kpis.margemLucroPctPrev - d.kpis.margemLucroPct).toFixed(1)} pontos percentuais vs. período anterior.` })
+  }
+  if (d.kpis.despesaDoMes.delta_pct !== null && d.kpis.despesaDoMes.delta_pct > 30) {
+    alerts.push({ kind: 'risk', text: `Despesas subiram ${d.kpis.despesaDoMes.delta_pct.toFixed(0)}% vs. período anterior.` })
+  }
+  if (d.kpis.receitaDoMes.delta_pct !== null && d.kpis.receitaDoMes.delta_pct <= -30) {
+    alerts.push({ kind: 'risk', text: `Receita caiu ${Math.abs(d.kpis.receitaDoMes.delta_pct).toFixed(0)}% vs. período anterior.` })
+  }
+  if (d.revenueBreakdown.receitaTotalCents > 0 && d.revenueBreakdown.porCliente.length > 0) {
+    const topShare = (d.revenueBreakdown.porCliente[0].valor_cents / d.revenueBreakdown.receitaTotalCents) * 100
+    if (topShare > 40) {
+      alerts.push({ kind: 'risk', text: `${topShare.toFixed(0)}% da receita do período vem de um único cliente (${d.revenueBreakdown.porCliente[0].label}).` })
+    }
+  }
+  if (d.kpis.receitaDoMes.delta_pct !== null && d.kpis.receitaDoMes.delta_pct >= 40) {
+    alerts.push({ kind: 'opportunity', text: `Receita cresceu ${d.kpis.receitaDoMes.delta_pct.toFixed(0)}% vs. período anterior.` })
+  }
+
+  return alerts
+}
+
 export async function getFinancialDashboardData(orgSlug: string, range: { from: string; to: string }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -1122,6 +1171,7 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
         burnRateCents: 0, runwayMonths: null, ebitdaCents: 0, pontoEquilibrioCents: null,
         inadimplenciaPct: null, receitaPrevistaCrmCents: 0,
       },
+      alerts: [] as FinancialAlert[],
     }
   }
   const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview, strategicIndicators] = await Promise.all([
@@ -1138,5 +1188,6 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
     getAccountsOverview(orgSlug),
     getStrategicIndicators(orgSlug, range),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview, strategicIndicators }
+  const alerts = computeFinancialAlerts({ kpis, cashFlowProjection, accountsOverview, revenueBreakdown, strategicIndicators })
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown, accountsOverview, strategicIndicators, alerts }
 }
