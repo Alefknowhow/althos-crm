@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, RefreshCw, Link2 } from 'lucide-react'
+import { Trash2, RefreshCw } from 'lucide-react'
 import { deleteAdAccount, syncAdAccountCampaigns } from '@/actions/marketing'
 import NewAdAccountDialog from './NewAdAccountDialog'
 import {
@@ -78,22 +78,13 @@ export default function AdAccountsManager({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end">
         <NewAdAccountDialog
           orgSlug={orgSlug}
           onDone={refresh}
-          trigger={<Button variant="outline">+ Conta manual (Google/TikTok/Outro)</Button>}
+          trigger={<Button>+ Nova conta</Button>}
         />
-        <Button asChild>
-          <a href={`/api/meta-ads/connect?orgSlug=${orgSlug}`}>
-            <Link2 className="w-4 h-4 mr-1.5" />
-            Conectar com Facebook
-          </a>
-        </Button>
       </div>
-      <p className="text-xs text-muted-foreground text-right -mt-2">
-        Contas Meta (Facebook/Instagram) se conectam via login — sem precisar colar ID ou token.
-      </p>
 
       {initial.length === 0 ? (
         <Card>

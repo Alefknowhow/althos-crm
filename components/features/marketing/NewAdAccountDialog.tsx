@@ -14,10 +14,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Link2 } from 'lucide-react'
 import { createAdAccount } from '@/actions/marketing'
 
 // Meta não aparece aqui de propósito — contas Meta se conectam via OAuth
-// (botão "Conectar com Facebook" em AdAccountsManager), não por ID manual.
+// (botão "Conectar com Facebook" logo acima do formulário), não por ID manual.
 const PROVIDERS = [
   { value: 'google', label: 'Google Ads' },
   { value: 'tiktok', label: 'TikTok Ads' },
@@ -62,6 +63,23 @@ export default function NewAdAccountDialog({
             Uma "conta" é o agrupador das suas campanhas em uma plataforma (Meta Business, Google Ads, etc).
           </DialogDescription>
         </DialogHeader>
+
+        <Button asChild className="w-full">
+          <a href={`/api/meta-ads/connect?orgSlug=${orgSlug}`}>
+            <Link2 className="w-4 h-4 mr-1.5" />
+            Conectar com Facebook (Meta Ads)
+          </a>
+        </Button>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Recomendado para Meta/Instagram: escolhe as contas com login, sem colar ID ou token.
+        </p>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">ou cadastre manualmente</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label>Plataforma *</Label>
