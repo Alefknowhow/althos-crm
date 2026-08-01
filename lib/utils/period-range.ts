@@ -19,6 +19,18 @@ function toISO(d: Date): string {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0, 10)
 }
 
+/** Janela imediatamente anterior, com a mesma duração (em dias) do range dado —
+ *  base pra qualquer comparação "vs. período anterior" independente do
+ *  PeriodId escolhido (semana, mês, trimestre, ano...). */
+export function previousRange(range: { from: string; to: string }): { from: string; to: string } {
+  const from = new Date(range.from + 'T12:00:00')
+  const to = new Date(range.to + 'T12:00:00')
+  const spanDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
+  const prevTo = new Date(from); prevTo.setDate(from.getDate() - 1)
+  const prevFrom = new Date(prevTo); prevFrom.setDate(prevTo.getDate() - spanDays + 1)
+  return { from: toISO(prevFrom), to: toISO(prevTo) }
+}
+
 export function periodToRange(id: PeriodId, now = new Date()): { from: string; to: string } {
   switch (id) {
     case 'this_week': {

@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { nextOperatorPaymentDate } from '@/lib/financial/operator-payment'
+import { previousRange } from '@/lib/utils/period-range'
 
 export type FinancialEntryRow = {
   id: string
@@ -546,6 +547,107 @@ export async function getFinancialSummary(
   return { receitas_cents, despesas_cents, saldo_cents: receitas_cents - despesas_cents }
 }
 
+export type KpiValue = { value_cents: number; delta_pct: number | null; trend: 'up' | 'down' | 'neutral' }
+
+function pctDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? null : null // sem base de comparação — não inventa %
+  return ((current - previous) / Math.abs(previous)) * 100
+}
+
+function trendOf(delta: number | null, higherIsBetter: boolean): 'up' | 'down' | 'neutral' {
+  if (delta === null || Math.abs(delta) < 0.5) return 'neutral'
+  const up = delta > 0
+  return (higherIsBetter ? up : !up) ? 'up' : 'down'
+}
+
+/**
+ * Os 8 indicadores do "Resumo Financeiro" (topo da dashboard), cada um com
+ * comparação real vs. o período imediatamente anterior de mesma duração
+ * (lib/utils/period-range.ts::previousRange) — não é só sinal de saldo, é
+ * delta percentual de verdade calculado a partir dos mesmos lançamentos.
+ */
+export async function getFinancialKpis(orgSlug: string, range: { from: string; to: string }) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const prev = previousRange(range)
+
+  const [curr, prevData, openReceivables, openPayables] = await Promise.all([
+    getFinancialSummary(orgSlug, range),
+    getFinancialSummary(orgSlug, prev),
+    // Contas a receber/pagar em aberto — posição atual, não limitada ao período
+    // selecionado (é "quanto tenho pra receber/pagar agora", não "no período").
+    supabase
+      .from('financial_entries')
+      .select('tipo, valor_cents, status')
+      .eq('organization_id', org.id)
+      .eq('tipo', 'receita')
+      .in('status', ['pendente', 'vencido']),
+    supabase
+      .from('financial_entries')
+      .select('tipo, valor_cents, status')
+      .eq('organization_id', org.id)
+      .eq('tipo', 'despesa')
+      .in('status', ['pendente', 'vencido']),
+  ])
+
+  // Saldo em caixa = posição acumulada desde sempre até o fim do período (só
+  // lançamentos efetivamente pagos — é caixa de verdade, não competência).
+  const { data: paidToDate } = await supabase
+    .from('financial_entries')
+    .select('tipo, valor_cents')
+    .eq('organization_id', org.id)
+    .eq('status', 'pago')
+    .lte('data_pagamento', range.to)
+  const { data: paidToDatePrev } = await supabase
+    .from('financial_entries')
+    .select('tipo, valor_cents')
+    .eq('organization_id', org.id)
+    .eq('status', 'pago')
+    .lte('data_pagamento', prev.to)
+
+  const sumCaixa = (rows: { tipo: string; valor_cents: number }[] | null) =>
+    (rows || []).reduce((a, r) => a + (r.tipo === 'receita' ? r.valor_cents : -r.valor_cents), 0)
+  const saldoCaixa = sumCaixa(paidToDate)
+  const saldoCaixaPrev = sumCaixa(paidToDatePrev)
+
+  const contasReceberCents = (openReceivables.data || []).reduce((a, r) => a + r.valor_cents, 0)
+  const contasPagarCents = (openPayables.data || []).reduce((a, r) => a + r.valor_cents, 0)
+
+  const lucroLiquido = curr.saldo_cents
+  const lucroLiquidoPrev = prevData.saldo_cents
+  const margem = curr.receitas_cents > 0 ? (lucroLiquido / curr.receitas_cents) * 100 : null
+  const margemPrev = prevData.receitas_cents > 0 ? (lucroLiquidoPrev / prevData.receitas_cents) * 100 : null
+
+  // Fluxo de caixa previsto = receitas pendentes - despesas pendentes que
+  // vencem dentro do próprio período selecionado (o que ainda deve entrar/
+  // sair de caixa até o fim do período, distinto do que já foi pago).
+  const { data: pendingInRange } = await supabase
+    .from('financial_entries')
+    .select('tipo, valor_cents')
+    .eq('organization_id', org.id)
+    .in('status', ['pendente', 'vencido'])
+    .gte('vencimento', range.from)
+    .lte('vencimento', range.to)
+  const fluxoPrevisto = (pendingInRange || []).reduce((a, r) => a + (r.tipo === 'receita' ? r.valor_cents : -r.valor_cents), 0)
+
+  function kpi(current: number, previous: number, higherIsBetter = true): KpiValue {
+    const delta = pctDelta(current, previous)
+    return { value_cents: current, delta_pct: delta, trend: trendOf(delta, higherIsBetter) }
+  }
+
+  return {
+    saldoEmCaixa: kpi(saldoCaixa, saldoCaixaPrev),
+    receitaDoMes: kpi(curr.receitas_cents, prevData.receitas_cents),
+    despesaDoMes: kpi(curr.despesas_cents, prevData.despesas_cents, false),
+    lucroLiquido: kpi(lucroLiquido, lucroLiquidoPrev),
+    margemLucroPct: margem,
+    margemLucroPctPrev: margemPrev,
+    fluxoCaixaPrevistoCents: fluxoPrevisto,
+    contasAReceberCents: contasReceberCents,
+    contasAPagarCents: contasPagarCents,
+  }
+}
+
 export async function getCashFlowSeries(
   orgSlug: string,
   months = 6,
@@ -714,15 +816,27 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
       expensesByCategory: [],
       dre: { receita_total_cents: 0, despesas_por_categoria: [], resultado_cents: 0 },
       upcomingDue: [],
+      kpis: {
+        saldoEmCaixa: { value_cents: 0, delta_pct: null, trend: 'neutral' as const },
+        receitaDoMes: { value_cents: 0, delta_pct: null, trend: 'neutral' as const },
+        despesaDoMes: { value_cents: 0, delta_pct: null, trend: 'neutral' as const },
+        lucroLiquido: { value_cents: 0, delta_pct: null, trend: 'neutral' as const },
+        margemLucroPct: null,
+        margemLucroPctPrev: null,
+        fluxoCaixaPrevistoCents: 0,
+        contasAReceberCents: 0,
+        contasAPagarCents: 0,
+      },
     }
   }
-  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue] = await Promise.all([
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),
     getDailyCashFlow(orgSlug, range),
     getExpensesByCategory(orgSlug, range),
     getSimpleDRE(orgSlug, range),
     getUpcomingDueEntries(orgSlug),
+    getFinancialKpis(orgSlug, range),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue }
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis }
 }

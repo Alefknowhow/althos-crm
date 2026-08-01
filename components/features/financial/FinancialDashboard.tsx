@@ -21,6 +21,17 @@ function fmtCurrency(cents: number): string {
 function fmtDate(d: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR')
 }
+function fmtPct(pct: number | null): string | undefined {
+  if (pct === null) return undefined
+  const sign = pct > 0 ? '+' : ''
+  return `${sign}${pct.toFixed(1)}% vs. período anterior`
+}
+function fmtPctPoints(curr: number | null, prev: number | null): string | undefined {
+  if (curr === null || prev === null) return undefined
+  const diff = curr - prev
+  const sign = diff > 0 ? '+' : ''
+  return `${sign}${diff.toFixed(1)}p.p. vs. período anterior`
+}
 
 type DashboardData = Awaited<ReturnType<typeof getFinancialDashboardData>>
 
@@ -57,23 +68,61 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              label="Receita no período"
-              value={fmtCurrency(data.summary.receitas_cents)}
+              label="Saldo em caixa"
+              value={fmtCurrency(data.kpis.saldoEmCaixa.value_cents)}
+              help="Posição acumulada de caixa (só lançamentos efetivamente pagos) até o fim do período selecionado."
+              trend={data.kpis.saldoEmCaixa.trend}
+              trendLabel={fmtPct(data.kpis.saldoEmCaixa.delta_pct)}
+            />
+            <KpiCard
+              label="Receita do período"
+              value={fmtCurrency(data.kpis.receitaDoMes.value_cents)}
               help="Soma de todos os lançamentos de receita com competência no período selecionado."
+              trend={data.kpis.receitaDoMes.trend}
+              trendLabel={fmtPct(data.kpis.receitaDoMes.delta_pct)}
             />
             <KpiCard
-              label="Despesa no período"
-              value={fmtCurrency(data.summary.despesas_cents)}
+              label="Despesa do período"
+              value={fmtCurrency(data.kpis.despesaDoMes.value_cents)}
               help="Soma de todos os lançamentos de despesa com competência no período selecionado."
+              trend={data.kpis.despesaDoMes.trend}
+              trendLabel={fmtPct(data.kpis.despesaDoMes.delta_pct)}
             />
             <KpiCard
-              label="Saldo do período"
-              value={fmtCurrency(data.summary.saldo_cents)}
+              label="Lucro líquido"
+              value={fmtCurrency(data.kpis.lucroLiquido.value_cents)}
               help="Receita menos despesa do período selecionado."
-              trend={data.summary.saldo_cents >= 0 ? 'up' : 'down'}
-              trendLabel={data.summary.saldo_cents >= 0 ? 'Positivo' : 'Negativo'}
+              trend={data.kpis.lucroLiquido.trend}
+              trendLabel={fmtPct(data.kpis.lucroLiquido.delta_pct)}
+            />
+            <KpiCard
+              label="Margem de lucro"
+              value={data.kpis.margemLucroPct === null ? '—' : `${data.kpis.margemLucroPct.toFixed(1)}%`}
+              help="Lucro líquido dividido pela receita do período."
+              trend={
+                data.kpis.margemLucroPct === null || data.kpis.margemLucroPctPrev === null
+                  ? 'neutral'
+                  : data.kpis.margemLucroPct >= data.kpis.margemLucroPctPrev ? 'up' : 'down'
+              }
+              trendLabel={fmtPctPoints(data.kpis.margemLucroPct, data.kpis.margemLucroPctPrev)}
+            />
+            <KpiCard
+              label="Fluxo de caixa previsto"
+              value={fmtCurrency(data.kpis.fluxoCaixaPrevistoCents)}
+              help="Receitas pendentes menos despesas pendentes com vencimento dentro do período selecionado."
+              trend={data.kpis.fluxoCaixaPrevistoCents >= 0 ? 'up' : 'down'}
+            />
+            <KpiCard
+              label="Contas a receber"
+              value={fmtCurrency(data.kpis.contasAReceberCents)}
+              help="Total de receitas pendentes ou vencidas em aberto, na posição atual."
+            />
+            <KpiCard
+              label="Contas a pagar"
+              value={fmtCurrency(data.kpis.contasAPagarCents)}
+              help="Total de despesas pendentes ou vencidas em aberto, na posição atual."
             />
           </div>
 
