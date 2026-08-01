@@ -708,6 +708,104 @@ export async function getExpensesByCategory(
     .sort((a, b) => b.valor_cents - a.valor_cents)
 }
 
+export type RevenueBreakdown = {
+  porCategoria: { label: string; valor_cents: number }[]
+  porFormaPagamento: { label: string; valor_cents: number }[]
+  porOperadora: { label: string; valor_cents: number }[]
+  porCliente: { label: string; valor_cents: number }[]
+  ticketMedioCents: number
+  receitaRecorrenteCents: number
+  receitaTotalCents: number
+}
+
+function groupSum(rows: { label: string | null; valor_cents: number }[]): { label: string; valor_cents: number }[] {
+  const map = new Map<string, number>()
+  for (const r of rows) {
+    const key = r.label || 'Não informado'
+    map.set(key, (map.get(key) || 0) + r.valor_cents)
+  }
+  return Array.from(map.entries()).map(([label, valor_cents]) => ({ label, valor_cents })).sort((a, b) => b.valor_cents - a.valor_cents)
+}
+
+/**
+ * Receita segmentada por produto/categoria, forma de pagamento, operadora
+ * (proxy de "origem" — de onde vem a receita) e cliente, além de ticket
+ * médio e receita recorrente (lançamentos com is_recurring) — tudo a partir
+ * dos campos já existentes em financial_entries, sem precisar de novas
+ * colunas nem joins pesados com travel_sales.
+ */
+export async function getRevenueBreakdown(orgSlug: string, range: { from: string; to: string }): Promise<RevenueBreakdown> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('financial_entries')
+    .select('categoria, forma_pagamento, operadora, contato_id, valor_cents, is_recurring')
+    .eq('organization_id', org.id)
+    .eq('tipo', 'receita')
+    .neq('status', 'cancelado')
+    .gte('competencia', range.from)
+    .lte('competencia', range.to)
+
+  const rows = data || []
+  const contatoIds = Array.from(new Set(rows.map(r => r.contato_id).filter(Boolean))) as string[]
+  const contatoNames = new Map<string, string>()
+  if (contatoIds.length > 0) {
+    const { data: contatos } = await supabase.from('contatos').select('id, name').in('id', contatoIds)
+    for (const c of contatos || []) contatoNames.set(c.id, c.name)
+  }
+
+  const receitaTotalCents = rows.reduce((a, r) => a + r.valor_cents, 0)
+  const receitaRecorrenteCents = rows.filter(r => r.is_recurring).reduce((a, r) => a + r.valor_cents, 0)
+  const ticketMedioCents = rows.length > 0 ? Math.round(receitaTotalCents / rows.length) : 0
+
+  return {
+    porCategoria: groupSum(rows.map(r => ({ label: r.categoria, valor_cents: r.valor_cents }))),
+    porFormaPagamento: groupSum(rows.map(r => ({ label: r.forma_pagamento, valor_cents: r.valor_cents }))),
+    porOperadora: groupSum(rows.map(r => ({ label: r.operadora, valor_cents: r.valor_cents }))),
+    porCliente: groupSum(rows.map(r => ({ label: r.contato_id ? contatoNames.get(r.contato_id) || 'Cliente removido' : null, valor_cents: r.valor_cents }))),
+    ticketMedioCents,
+    receitaRecorrenteCents,
+    receitaTotalCents,
+  }
+}
+
+export type ExpenseBreakdown = {
+  porSubcategoria: { label: string; valor_cents: number }[]
+  porCentroCusto: { label: string; valor_cents: number }[]
+  fixasCents: number
+  variaveisCents: number
+  despesaTotalCents: number
+}
+
+/**
+ * Despesas por subcategoria e centro de custo, e separação fixas
+ * (is_recurring — lançamentos recorrentes materializados) vs. variáveis.
+ */
+export async function getExpenseBreakdown(orgSlug: string, range: { from: string; to: string }): Promise<ExpenseBreakdown> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('financial_entries')
+    .select('subcategoria, centro_custo, valor_cents, is_recurring')
+    .eq('organization_id', org.id)
+    .eq('tipo', 'despesa')
+    .neq('status', 'cancelado')
+    .gte('competencia', range.from)
+    .lte('competencia', range.to)
+
+  const rows = data || []
+  const despesaTotalCents = rows.reduce((a, r) => a + r.valor_cents, 0)
+  const fixasCents = rows.filter(r => r.is_recurring).reduce((a, r) => a + r.valor_cents, 0)
+
+  return {
+    porSubcategoria: groupSum(rows.map(r => ({ label: r.subcategoria, valor_cents: r.valor_cents }))),
+    porCentroCusto: groupSum(rows.map(r => ({ label: r.centro_custo, valor_cents: r.valor_cents }))),
+    fixasCents,
+    variaveisCents: despesaTotalCents - fixasCents,
+    despesaTotalCents,
+  }
+}
+
 export async function getSimpleDRE(
   orgSlug: string,
   range: { from: string; to: string },
@@ -893,9 +991,16 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
         series: [],
         checkpoints: { d30: 0, d60: 0, d90: 0 },
       },
+      revenueBreakdown: {
+        porCategoria: [], porFormaPagamento: [], porOperadora: [], porCliente: [],
+        ticketMedioCents: 0, receitaRecorrenteCents: 0, receitaTotalCents: 0,
+      },
+      expenseBreakdown: {
+        porSubcategoria: [], porCentroCusto: [], fixasCents: 0, variaveisCents: 0, despesaTotalCents: 0,
+      },
     }
   }
-  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection] = await Promise.all([
+  const [summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown] = await Promise.all([
     getFinancialSummary(orgSlug, range),
     getCashFlowSeries(orgSlug, 6),
     getDailyCashFlow(orgSlug, range),
@@ -904,6 +1009,8 @@ export async function getFinancialDashboardData(orgSlug: string, range: { from: 
     getUpcomingDueEntries(orgSlug),
     getFinancialKpis(orgSlug, range),
     getCashFlowProjection(orgSlug, 90),
+    getRevenueBreakdown(orgSlug, range),
+    getExpenseBreakdown(orgSlug, range),
   ])
-  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection }
+  return { summary, monthlyCashFlow, dailyCashFlow, expensesByCategory, dre, upcomingDue, kpis, cashFlowProjection, revenueBreakdown, expenseBreakdown }
 }

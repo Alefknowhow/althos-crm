@@ -34,6 +34,44 @@ function fmtPctPoints(curr: number | null, prev: number | null): string | undefi
   return `${sign}${diff.toFixed(1)}p.p. vs. período anterior`
 }
 
+function BreakdownList({ title, items, total, tone = 'success' }: {
+  title: string
+  items: { label: string; valor_cents: number }[]
+  total: number
+  tone?: 'success' | 'destructive'
+}) {
+  const top = items.slice(0, 5)
+  if (top.length === 0) {
+    return (
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-1.5">{title}</p>
+        <p className="text-xs text-muted-foreground">Sem dados no período.</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground mb-1.5">{title}</p>
+      <ul className="space-y-1.5">
+        {top.map(item => {
+          const pct = total > 0 ? (item.valor_cents / total) * 100 : 0
+          return (
+            <li key={item.label}>
+              <div className="flex items-center justify-between gap-2 text-xs mb-0.5">
+                <span className="truncate">{item.label}</span>
+                <span className="tabular-nums font-medium shrink-0">{fmtCurrency(item.valor_cents)}</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted overflow-hidden">
+                <div className={`h-full ${tone === 'success' ? 'bg-success' : 'bg-destructive'}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 type DashboardData = Awaited<ReturnType<typeof getFinancialDashboardData>>
 
 export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
@@ -174,6 +212,33 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               ) : <CashFlowProjectionChart data={data.cashFlowProjection.series} />}
             </CardContent>
           </Card>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Receitas segmentadas (período selecionado)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <KpiCard label="Ticket médio" value={fmtCurrency(data.revenueBreakdown.ticketMedioCents)} help="Receita total dividida pelo número de lançamentos de receita no período." />
+                  <KpiCard label="Receita recorrente" value={fmtCurrency(data.revenueBreakdown.receitaRecorrenteCents)} help="Soma dos lançamentos de receita marcados como recorrentes." />
+                </div>
+                <BreakdownList title="Por categoria" items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} />
+                <BreakdownList title="Por cliente" items={data.revenueBreakdown.porCliente} total={data.revenueBreakdown.receitaTotalCents} />
+                <BreakdownList title="Por forma de pagamento" items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} />
+                <BreakdownList title="Por operadora" items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Despesas segmentadas (período selecionado)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <KpiCard label="Despesas fixas" value={fmtCurrency(data.expenseBreakdown.fixasCents)} help="Soma dos lançamentos de despesa recorrentes." />
+                  <KpiCard label="Despesas variáveis" value={fmtCurrency(data.expenseBreakdown.variaveisCents)} help="Soma dos lançamentos de despesa não recorrentes." />
+                </div>
+                <BreakdownList title="Por subcategoria" items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} tone="destructive" />
+                <BreakdownList title="Por centro de custo" items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} tone="destructive" />
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
