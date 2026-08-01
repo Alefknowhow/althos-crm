@@ -10,9 +10,9 @@ import ConversionFunnelWidget from '../ConversionFunnelWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
 import TopProductsWidget from '../TopProductsWidget'
 import SellersRankingWidget from '../SellersRankingWidget'
-import MockDonutCard from '../mocks/MockDonutCard'
+import PipelineAtRiskWidget from '../PipelineAtRiskWidget'
+import TasksTodayWidget from '../TasksTodayWidget'
 import MockInsightCard from '../mocks/MockInsightCard'
-import { MOCK_CUSTOMER_SEGMENTS } from '../mocks/mockData'
 import InsightCard from '../InsightCard'
 
 function fmtCurrency(cents: number): string {
@@ -90,28 +90,30 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
             <LeadSourcesWidget orgId={ctx.orgId} period={ctx.period} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
             <TopProductsWidget orgId={ctx.orgId} since={sinceFromPeriod(ctx.period)} />
           </Suspense>
         </div>
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
             <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
           </Suspense>
         </div>
-        <div className="md:col-span-3">
-          <MockDonutCard
-            title="Segmentos de cliente"
-            help="Distribuição da carteira de clientes por segmento de valor."
-            segments={MOCK_CUSTOMER_SEGMENTS}
-          />
-        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <TasksTodayWidget orgId={ctx.orgId} orgSlug={ctx.orgSlug} />
+        </Suspense>
       </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
