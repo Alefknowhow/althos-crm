@@ -8,6 +8,8 @@ import LeadSourcesWidget from '../LeadSourcesWidget'
 import MetricChartWidget from '../MetricChartWidget'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
 import RevenueForecastWidget from '../RevenueForecastWidget'
+import SourcePerformanceWidget from '../SourcePerformanceWidget'
+import TimeInStageWidget from '../TimeInStageWidget'
 import MockBarListCard from '../mocks/MockBarListCard'
 import { MOCK_CAMPAIGN_ROAS } from '../mocks/mockData'
 import { Target } from 'lucide-react'
@@ -100,6 +102,15 @@ export default async function ComercialTab({ ctx }: { ctx: WidgetCtx }) {
             <RevenueForecastWidget orgId={ctx.orgId} orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <SourcePerformanceWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
+          <TimeInStageWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
+        </Suspense>
       </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
