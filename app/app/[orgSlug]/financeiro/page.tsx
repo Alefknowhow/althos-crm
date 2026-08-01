@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listFinancialEntries } from '@/actions/financial'
 import { listFinancialSettings } from '@/actions/financial-settings'
 import FinanceiroTabs from '@/components/features/financial/FinanceiroTabs'
@@ -13,8 +11,7 @@ export default async function FinanceiroPage({
   params,
 }: { params: { orgSlug: string } }) {
   await requireAuth()
-  const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await getCurrentOrganization(params.orgSlug)
 
   const [entries, settings] = await Promise.all([
     listFinancialEntries(params.orgSlug),

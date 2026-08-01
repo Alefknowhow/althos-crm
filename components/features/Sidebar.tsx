@@ -347,7 +347,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         {/* ── Operações ─────────────────────────────── */}
         <SectionLabel>Operações</SectionLabel>
 
-        {can('financial') && isTravelNiche(org.niche) && (
+        {can('financial') && (
           <SidebarNavLink href={`${base}/financeiro`}>
             <span className="flex items-center gap-2.5">
               <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
