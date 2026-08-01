@@ -44,10 +44,10 @@ export const marketingSyncCronFn = inngest.createFunction(
     const tokenByOrg: [string, string][] = await step.run('fetch-org-tokens', async () => {
       const { data } = await admin
         .from('organizations')
-        .select('id, meta_access_token')
+        .select('id, meta_ads_access_token')
         .in('id', orgIds)
       const pairs: [string, string][] = []
-      for (const o of data || []) if (o.meta_access_token) pairs.push([o.id as string, o.meta_access_token as string])
+      for (const o of data || []) if (o.meta_ads_access_token) pairs.push([o.id as string, o.meta_ads_access_token as string])
       return pairs
     })
     const tokens = new Map<string, string>(tokenByOrg)

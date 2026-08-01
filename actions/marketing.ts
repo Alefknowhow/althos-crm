@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 
 /* -------- Types -------- */
 
@@ -306,18 +307,18 @@ export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: strin
 
   const { data: orgRow } = await supabase
     .from('organizations')
-    .select('meta_access_token')
+    .select('meta_ads_access_token')
     .eq('id', org.id)
     .maybeSingle()
-  if (!orgRow?.meta_access_token) {
-    return { ok: false as const, error: 'Configure o Access Token da Meta em Configurações → Integrações antes de sincronizar' }
+  if (!orgRow?.meta_ads_access_token) {
+    return { ok: false as const, error: 'Conecte sua conta do Facebook em Campanhas → Contas antes de sincronizar' }
   }
 
   const { fetchMetaCampaigns, fetchMetaCampaignDailyInsights } = await import('@/lib/meta/ads')
 
   let metaCampaigns
   try {
-    metaCampaigns = await fetchMetaCampaigns(account.external_id, orgRow.meta_access_token)
+    metaCampaigns = await fetchMetaCampaigns(account.external_id, orgRow.meta_ads_access_token)
   } catch (e: any) {
     return { ok: false as const, error: e?.message || 'Falha ao buscar campanhas na Meta' }
   }
@@ -364,7 +365,7 @@ export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: strin
     campaignsSynced++
 
     try {
-      const insights = await fetchMetaCampaignDailyInsights(mc.id, orgRow.meta_access_token, since, until)
+      const insights = await fetchMetaCampaignDailyInsights(mc.id, orgRow.meta_ads_access_token, since, until)
       for (const row of insights) {
         const { error: metricErr } = await supabase
           .from('campaign_metrics_daily')
@@ -394,6 +395,65 @@ export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: strin
     metricsSynced,
     error: errors.length ? errors.slice(0, 3).join('; ') : null,
   }
+}
+
+/**
+ * Confirma a conexão via OAuth: lê o token pendente da cookie httpOnly
+ * (setada pelo callback em app/api/meta-ads/callback), revalida contra a
+ * própria Meta (evita aceitar IDs forjados vindos do client) e grava o
+ * token em organizations.meta_ads_access_token + uma ad_accounts por conta
+ * selecionada.
+ */
+export async function connectMetaAdsAccounts(orgSlug: string, selectedAccountIds: string[]) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const cookieStore = cookies()
+  const token = cookieStore.get('meta_ads_pending_token')?.value
+  const pendingOrg = cookieStore.get('meta_ads_pending_org')?.value
+  if (!token || pendingOrg !== orgSlug) {
+    return { ok: false as const, error: 'Sessão de conexão expirada, tente conectar novamente' }
+  }
+
+  const { listAdAccountsForToken, getLongLivedToken } = await import('@/lib/meta/ads-oauth')
+  let available
+  try {
+    available = await listAdAccountsForToken(token)
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao validar contas de anúncio' }
+  }
+  const availableIds = new Set(available.map(a => a.id))
+  const validSelected = selectedAccountIds.filter(id => availableIds.has(id))
+  if (validSelected.length === 0) {
+    return { ok: false as const, error: 'Nenhuma conta válida selecionada' }
+  }
+
+  const supabase = createClient()
+  const expiresAt = new Date(Date.now() + 55 * 24 * 3600 * 1000).toISOString() // ~55 dias
+  await supabase
+    .from('organizations')
+    .update({ meta_ads_access_token: token, meta_ads_token_expires_at: expiresAt })
+    .eq('id', org.id)
+
+  let accountsConnected = 0
+  for (const accountId of validSelected) {
+    const meta = available.find(a => a.id === accountId)
+    if (!meta) continue
+    const { error } = await supabase
+      .from('ad_accounts')
+      .upsert(
+        { organization_id: org.id, provider: 'meta', name: meta.name, external_id: meta.id, status: 'active' },
+        { onConflict: 'organization_id,provider,external_id' },
+      )
+    if (!error) accountsConnected++
+  }
+
+  cookieStore.delete('meta_ads_pending_token')
+  cookieStore.delete('meta_ads_pending_org')
+  revalidatePath(`/app/${orgSlug}/marketing/contas`)
+  return { ok: true as const, accountsConnected }
 }
 
 /**

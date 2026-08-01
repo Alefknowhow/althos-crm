@@ -16,8 +16,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createAdAccount } from '@/actions/marketing'
 
+// Meta não aparece aqui de propósito — contas Meta se conectam via OAuth
+// (botão "Conectar com Facebook" em AdAccountsManager), não por ID manual.
 const PROVIDERS = [
-  { value: 'meta', label: 'Meta (Facebook/Instagram)' },
   { value: 'google', label: 'Google Ads' },
   { value: 'tiktok', label: 'TikTok Ads' },
   { value: 'other', label: 'Outro' },
@@ -34,7 +35,7 @@ export default function NewAdAccountDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ provider: 'meta', name: '', external_id: '', notes: '' })
+  const [form, setForm] = useState({ provider: 'google', name: '', external_id: '', notes: '' })
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,7 +45,7 @@ export default function NewAdAccountDialog({
     if (res.ok) {
       toast.success('Conta de anúncio criada')
       setOpen(false)
-      setForm({ provider: 'meta', name: '', external_id: '', notes: '' })
+      setForm({ provider: 'google', name: '', external_id: '', notes: '' })
       onDone()
     } else {
       toast.error(res.error)
