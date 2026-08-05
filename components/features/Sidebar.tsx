@@ -31,6 +31,7 @@ import {
   Wallet,
   FileStack,
   Armchair,
+  Sparkles,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -208,6 +209,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Cotações</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('roteirista') && isTravelNiche(org.niche) && (
+          <SidebarNavLink href={`${base}/roteirista`}>
+            <span className="flex items-center gap-2.5">
+              <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Roteirista IA</span>
             </span>
           </SidebarNavLink>
         )}

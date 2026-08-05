@@ -22,6 +22,7 @@ export type PermissionKey =
   | 'bloqueios'
   | 'explorar_voos'
   | 'documentos'
+  | 'roteirista'
   | 'conversations'
   | 'social'
   | 'insights'
@@ -61,6 +62,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'bloqueios',     label: 'Bloqueios',         section: 'Viagens' },
   { key: 'explorar_voos', label: 'Explorar Voos',     section: 'Viagens' },
   { key: 'documentos',    label: 'Documentos',        section: 'Viagens' },
+  { key: 'roteirista',    label: 'Roteirista IA',     section: 'Viagens' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
@@ -121,6 +123,7 @@ export function defaultMemberPermissions(): Permissions {
     bloqueios:     false,
     explorar_voos: false,
     documentos:    false,
+    roteirista:    false,
     marketing:     false,
     automations:   false,
     templates:     false,
@@ -131,7 +134,7 @@ export function defaultMemberPermissions(): Permissions {
 }
 
 const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
-  'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos',
+  'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos', 'roteirista',
 ])
 const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar'])
 

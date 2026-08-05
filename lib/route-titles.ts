@@ -6,6 +6,7 @@ const ROUTE_TITLES: Record<string, string> = {
   contatos: 'Contatos',
   tarefas: 'Tarefas',
   cotacoes: 'Cotações',
+  roteirista: 'Roteirista IA',
   ofertas: 'Ofertas',
   embarques: 'Embarques',
   bloqueios: 'Bloqueios',
