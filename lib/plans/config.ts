@@ -234,6 +234,7 @@ export const MODEL_CREDIT_MULTIPLIER: Record<string, number> = {
   'claude-haiku-4-5': 1,
   'gemini-1.5-flash': 1,
   'gemini-2.5-flash': 1,
+  'gemini-2.5-flash-lite': 1,
   'deepseek-chat': 1,
   'claude-sonnet-4-6': 3,
   'gpt-4o': 3,
