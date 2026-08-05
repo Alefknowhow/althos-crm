@@ -6,6 +6,10 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { nextOperatorPaymentDate } from '@/lib/financial/operator-payment'
 import { previousRange } from '@/lib/utils/period-range'
+import {
+  addMonthsIso, computeRecurrenceDates, computeInstallmentDates,
+  type RecurrenceFrequency,
+} from '@/lib/financial/recurrence'
 
 export type FinancialEntryRow = {
   id: string
@@ -29,22 +33,25 @@ export type FinancialEntryRow = {
   anexos: { path: string; name: string; size_bytes: number; mime_type: string }[]
   is_recurring: boolean
   recurrence_group_id: string | null
+  recurrence_frequency: RecurrenceFrequency | null
+  recurrence_count: number | null
+  recurrence_until: string | null
+  recurrence_infinite: boolean
+  installment_group_id: string | null
+  parcela_numero: number | null
+  parcela_total: number | null
+  nota_fiscal: string | null
+  numero_documento: string | null
+  projeto: string | null
+  unidade_negocio: string | null
   created_by: string | null
   created_at: string
   updated_at: string
 }
 
-/** Soma N meses a uma data ISO (YYYY-MM-DD), preservando o dia (clampado ao
- *  último dia do mês de destino — ex.: 31/01 + 1 mês vira 28/02 ou 29/02). */
-function addMonthsIso(iso: string, months: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y, m - 1 + months, 1))
-  const lastDay = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate()
-  dt.setUTCDate(Math.min(d, lastDay))
-  return dt.toISOString().slice(0, 10)
-}
-
-/** Quantas ocorrências futuras gerar de uma vez ao marcar um lançamento como recorrente. */
+/** Quantas ocorrências futuras gerar quando a recorrência não informa
+ *  frequência explícita (retrocompatibilidade com o antigo checkbox binário
+ *  "todo mês, 12x"). */
 const RECURRING_MONTHS_AHEAD = 11
 
 
@@ -130,6 +137,8 @@ const WRITABLE = [
   'tipo', 'categoria', 'subcategoria', 'centro_custo', 'conta_bancaria', 'forma_pagamento',
   'valor_cents', 'competencia', 'vencimento', 'data_pagamento', 'status',
   'contato_id', 'venda_id', 'operadora', 'observacoes', 'tags', 'is_recurring',
+  'recurrence_frequency', 'recurrence_count', 'recurrence_until', 'recurrence_infinite',
+  'nota_fiscal', 'numero_documento', 'projeto', 'unidade_negocio',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
@@ -223,38 +232,96 @@ export async function createFinancialEntry(orgSlug: string, input: Record<string
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar lançamento' }
 
-  // Despesa/receita recorrente: gera de uma vez as próximas ocorrências
-  // mensais (mesmo dia, mês seguinte em diante), já pendentes, agrupadas
-  // pelo id do lançamento original — assim aparecem prontas nos meses
-  // seguintes sem precisar recadastrar.
+  // Despesa/receita recorrente: gera de uma vez as próximas ocorrências,
+  // já pendentes, agrupadas pelo id do lançamento original — assim aparecem
+  // prontas sem precisar recadastrar. Frequência explícita (recurrence_*)
+  // tem prioridade; sem ela, cai no comportamento legado (mensal, 11x).
   if (data.is_recurring) {
     await supabase.from('financial_entries').update({ recurrence_group_id: data.id }).eq('id', data.id)
 
-    const future = Array.from({ length: RECURRING_MONTHS_AHEAD }, (_, i) => {
-      const offset = i + 1
-      return {
-        organization_id: org.id,
-        created_by: user.id,
-        recurrence_group_id: data.id,
-        is_recurring: true,
-        tipo: data.tipo,
-        categoria: data.categoria,
-        subcategoria: data.subcategoria,
-        centro_custo: data.centro_custo,
-        conta_bancaria: data.conta_bancaria,
-        forma_pagamento: data.forma_pagamento,
-        valor_cents: data.valor_cents,
-        competencia: addMonthsIso(data.competencia, offset),
-        vencimento: data.vencimento ? addMonthsIso(data.vencimento, offset) : null,
-        data_pagamento: null,
-        status: 'pendente' as const,
-        contato_id: data.contato_id,
-        operadora: data.operadora,
-        observacoes: data.observacoes,
-        tags: data.tags ?? [],
-      }
-    })
-    await supabase.from('financial_entries').insert(future)
+    const baseVencimento = data.vencimento || data.competencia
+    const futureDates = data.recurrence_frequency
+      ? computeRecurrenceDates(baseVencimento, {
+          frequency: data.recurrence_frequency,
+          count: data.recurrence_count,
+          until: data.recurrence_until,
+          infinite: data.recurrence_infinite,
+        })
+      : Array.from({ length: RECURRING_MONTHS_AHEAD }, (_, i) => addMonthsIso(baseVencimento, i + 1))
+
+    const monthsFromVencimento = (target: string) => {
+      // Desloca competência pelo mesmo número de dias que o vencimento andou,
+      // pra manter o "mês de referência" coerente com o vencimento gerado.
+      const diffDays = Math.round((new Date(target).getTime() - new Date(baseVencimento).getTime()) / 86_400_000)
+      const d = new Date(data.competencia); d.setDate(d.getDate() + diffDays)
+      return d.toISOString().slice(0, 10)
+    }
+
+    const future = futureDates.map(vencIso => ({
+      organization_id: org.id,
+      created_by: user.id,
+      recurrence_group_id: data.id,
+      is_recurring: true,
+      recurrence_frequency: data.recurrence_frequency,
+      recurrence_count: data.recurrence_count,
+      recurrence_until: data.recurrence_until,
+      recurrence_infinite: data.recurrence_infinite,
+      tipo: data.tipo,
+      categoria: data.categoria,
+      subcategoria: data.subcategoria,
+      centro_custo: data.centro_custo,
+      conta_bancaria: data.conta_bancaria,
+      forma_pagamento: data.forma_pagamento,
+      valor_cents: data.valor_cents,
+      competencia: monthsFromVencimento(vencIso),
+      vencimento: data.vencimento ? vencIso : null,
+      data_pagamento: null,
+      status: 'pendente' as const,
+      contato_id: data.contato_id,
+      operadora: data.operadora,
+      observacoes: data.observacoes,
+      tags: data.tags ?? [],
+    }))
+    if (future.length > 0) await supabase.from('financial_entries').insert(future)
+  }
+
+  // Parcelamento — independente de recorrência. parcela_total vem preenchido
+  // pelo formulário quando o usuário ativa "compra parcelada"; intervalo em
+  // dias é passado à parte (não persiste, só usado na hora de gerar).
+  const installmentTotal = Number(input.parcela_total) || 0
+  if (installmentTotal > 1) {
+    const groupId = data.id
+    const intervalDays = Number(input.installment_interval_days) || 30
+    const baseDate = data.vencimento || data.competencia
+    const futureDates = computeInstallmentDates(baseDate, installmentTotal, intervalDays)
+
+    await supabase.from('financial_entries').update({
+      installment_group_id: groupId, parcela_numero: 1, parcela_total: installmentTotal,
+    }).eq('id', data.id)
+
+    const future = futureDates.map((vencIso, idx) => ({
+      organization_id: org.id,
+      created_by: user.id,
+      installment_group_id: groupId,
+      parcela_numero: idx + 2,
+      parcela_total: installmentTotal,
+      tipo: data.tipo,
+      categoria: data.categoria,
+      subcategoria: data.subcategoria,
+      centro_custo: data.centro_custo,
+      conta_bancaria: data.conta_bancaria,
+      forma_pagamento: data.forma_pagamento,
+      valor_cents: data.valor_cents,
+      competencia: vencIso,
+      vencimento: vencIso,
+      data_pagamento: null,
+      status: 'pendente' as const,
+      contato_id: data.contato_id,
+      operadora: data.operadora,
+      observacoes: data.observacoes,
+      tags: data.tags ?? [],
+    }))
+    if (future.length > 0) await supabase.from('financial_entries').insert(future)
   }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)

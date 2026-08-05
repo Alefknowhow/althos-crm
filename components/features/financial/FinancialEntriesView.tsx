@@ -30,10 +30,16 @@ import {
 } from '@/actions/financial'
 import { type FinancialSettingType, type FinancialSettingRow } from '@/actions/financial-settings'
 import FinancialCsvImporter from './FinancialCsvImporter'
+import LeadCombobox from '@/components/features/LeadCombobox'
+import {
+  FREQUENCY_LABELS, computeRecurrenceDates, computeInstallmentDates,
+  type RecurrenceFrequency,
+} from '@/lib/financial/recurrence'
 import { toast } from 'sonner'
 import {
   Wallet, Plus, Trash2, ArrowLeft, Search, Save, Upload, Paperclip, FileIcon,
-  ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown, Repeat,
+  ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown, Repeat, CreditCard,
+  AlertTriangle,
 } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
@@ -340,6 +346,51 @@ function TipoToggle({ value, onChange }: { value: 'receita' | 'despesa'; onChang
   )
 }
 
+const FREQUENCY_OPTIONS = Object.entries(FREQUENCY_LABELS) as [RecurrenceFrequency, string][]
+
+function RecurrenceFields({
+  frequency, setFrequency, count, setCount, until, setUntil, infinite, setInfinite,
+}: {
+  frequency: RecurrenceFrequency
+  setFrequency: (f: RecurrenceFrequency) => void
+  count: number
+  setCount: (n: number) => void
+  until: string
+  setUntil: (v: string) => void
+  infinite: boolean
+  setInfinite: (b: boolean) => void
+}) {
+  return (
+    <div className="space-y-2.5 rounded-lg border bg-muted/20 p-3">
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <Field label="Frequência">
+          <Select value={frequency} onValueChange={v => setFrequency(v as RecurrenceFrequency)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {FREQUENCY_OPTIONS.map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label={infinite ? 'Repetições (ignorado — infinita)' : 'Quantidade de repetições'}>
+          <Input type="number" min={1} max={60} disabled={infinite} value={count} onChange={e => setCount(Math.max(1, Number(e.target.value) || 1))} />
+        </Field>
+      </div>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <Field label="Ou repetir até a data (opcional)">
+          <Input type="date" value={until} onChange={e => setUntil(e.target.value)} disabled={infinite} />
+        </Field>
+        <label className="flex items-center gap-2 text-sm cursor-pointer pt-5">
+          <Checkbox checked={infinite} onCheckedChange={v => setInfinite(v === true)} />
+          Recorrência infinita
+        </label>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Gera até 60 ocorrências de uma vez (trava de segurança) — se marcar "infinita", uma nova leva precisa ser gerada mais adiante.
+      </p>
+    </div>
+  )
+}
+
 function NewEntryDialog({
   orgSlug, settings, open, onOpenChange, creating, setCreating, onCreated,
 }: {
@@ -351,30 +402,72 @@ function NewEntryDialog({
   setCreating: (b: boolean) => void
   onCreated: (id: string) => void
 }) {
-  const router = useRouter()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [categoria, setCategoria] = useState<string | null>(null)
-  const [extraCategoria, setExtraCategoria] = useState<string | null>(null)
+  const [subcategoria, setSubcategoria] = useState<string | null>(null)
+  const [centroCusto, setCentroCusto] = useState<string | null>(null)
+  const [contaBancaria, setContaBancaria] = useState<string | null>(null)
+  const [formaPagamento, setFormaPagamento] = useState<string | null>(null)
+  const [contatoId, setContatoId] = useState<string | null>(null)
   const [valorCents, setValorCents] = useState(0)
   const [competencia, setCompetencia] = useState(() => new Date().toISOString().slice(0, 10))
   const [vencimento, setVencimento] = useState('')
   const [observacoes, setObservacoes] = useState('')
+
   const [isRecurring, setIsRecurring] = useState(false)
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>('mensal')
+  const [recCount, setRecCount] = useState(11)
+  const [recUntil, setRecUntil] = useState('')
+  const [recInfinite, setRecInfinite] = useState(false)
+
+  const [isInstallment, setIsInstallment] = useState(false)
+  const [installmentTotal, setInstallmentTotal] = useState(2)
+  const [installmentInterval, setInstallmentInterval] = useState(30)
+
+  const [showMore, setShowMore] = useState(false)
+  const [notaFiscal, setNotaFiscal] = useState('')
+  const [numeroDocumento, setNumeroDocumento] = useState('')
+  const [projeto, setProjeto] = useState('')
+  const [unidadeNegocio, setUnidadeNegocio] = useState('')
 
   function reset() {
-    setTipo('despesa'); setCategoria(null); setExtraCategoria(null); setValorCents(0)
+    setTipo('despesa'); setCategoria(null); setSubcategoria(null); setCentroCusto(null)
+    setContaBancaria(null); setFormaPagamento(null); setContatoId(null); setValorCents(0)
     setCompetencia(new Date().toISOString().slice(0, 10)); setVencimento(''); setObservacoes('')
-    setIsRecurring(false)
+    setIsRecurring(false); setFrequency('mensal'); setRecCount(11); setRecUntil(''); setRecInfinite(false)
+    setIsInstallment(false); setInstallmentTotal(2); setInstallmentInterval(30)
+    setShowMore(false); setNotaFiscal(''); setNumeroDocumento(''); setProjeto(''); setUnidadeNegocio('')
   }
+
+  const previewDates = useMemo(() => {
+    const base = vencimento || competencia
+    if (isInstallment && installmentTotal > 1) return computeInstallmentDates(base, installmentTotal, installmentInterval)
+    if (isRecurring) return computeRecurrenceDates(base, { frequency, count: recCount, until: recUntil || null, infinite: recInfinite })
+    return []
+  }, [isRecurring, isInstallment, frequency, recCount, recUntil, recInfinite, installmentTotal, installmentInterval, vencimento, competencia])
 
   async function handleCreate() {
     if (!categoria?.trim()) { toast.error('Informe a categoria.'); return }
     if (!valorCents) { toast.error('Informe o valor.'); return }
+    if (isRecurring && isInstallment) { toast.error('Escolha recorrência OU parcelamento, não os dois.'); return }
+    if (previewDates.length > 20 && !confirm(`Isso vai gerar ${previewDates.length + 1} lançamentos. Confirmar?`)) return
     setCreating(true)
     const res = await createFinancialEntry(orgSlug, {
-      tipo, categoria: categoria.trim(), valor_cents: valorCents, competencia,
-      vencimento: vencimento || null, observacoes: observacoes.trim() || null,
+      tipo, categoria: categoria.trim(), subcategoria, centro_custo: centroCusto,
+      conta_bancaria: contaBancaria, forma_pagamento: formaPagamento, contato_id: contatoId,
+      valor_cents: valorCents, competencia, vencimento: vencimento || null,
+      observacoes: observacoes.trim() || null,
       is_recurring: isRecurring,
+      recurrence_frequency: isRecurring ? frequency : null,
+      recurrence_count: isRecurring && !recInfinite ? recCount : null,
+      recurrence_until: isRecurring && recUntil ? recUntil : null,
+      recurrence_infinite: isRecurring ? recInfinite : false,
+      parcela_total: isInstallment ? installmentTotal : null,
+      installment_interval_days: isInstallment ? installmentInterval : null,
+      nota_fiscal: notaFiscal.trim() || null,
+      numero_documento: numeroDocumento.trim() || null,
+      projeto: projeto.trim() || null,
+      unidade_negocio: unidadeNegocio.trim() || null,
     })
     setCreating(false)
     if (!res.ok) { toast.error(res.error); return }
@@ -385,48 +478,128 @@ function NewEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) reset() }}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Novo lançamento</DialogTitle>
           <DialogDescription>Registre uma receita ou despesa financeira.</DialogDescription>
         </DialogHeader>
 
-        <div className="py-2 space-y-3">
-          <TipoToggle value={tipo} onChange={setTipo} />
+        <div className="grid gap-5 md:grid-cols-[1fr_260px]">
+          <div className="space-y-3 py-2">
+            <TipoToggle value={tipo} onChange={setTipo} />
 
-          <div className="space-y-1">
-            <Label className="text-xs">Observações / descrição</Label>
-            <Textarea rows={2} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Ex.: pagamento de comissão do consultor X" />
+            <div className="space-y-1">
+              <Label className="text-xs">Observações / descrição</Label>
+              <Textarea rows={2} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Ex.: pagamento de comissão do consultor X" />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Categoria <span className="text-destructive">*</span></Label>
+                <SettingSelect value={categoria} onChange={setCategoria} options={withExtra(settings.categoria, null)} required placeholder="Selecione a categoria" />
+              </div>
+              <Field label="Subcategoria">
+                <SettingSelect value={subcategoria} onChange={setSubcategoria} options={withExtra(settings.subcategoria, null)} />
+              </Field>
+              <Field label="Centro de custo">
+                <SettingSelect value={centroCusto} onChange={setCentroCusto} options={withExtra(settings.centro_custo, null)} />
+              </Field>
+              <div className="space-y-1">
+                <Label className="text-xs">Valor <span className="text-destructive">*</span></Label>
+                <MoneyInput value={valorCents} onChange={setValorCents} />
+              </div>
+              <Field label="Conta bancária">
+                <SettingSelect value={contaBancaria} onChange={setContaBancaria} options={withExtra(settings.conta_bancaria, null)} />
+              </Field>
+              <Field label="Forma de pagamento">
+                <SettingSelect value={formaPagamento} onChange={setFormaPagamento} options={withExtra(settings.forma_pagamento, null)} />
+              </Field>
+              <div className="space-y-1">
+                <Label className="text-xs">Competência</Label>
+                <Input type="date" value={competencia} onChange={e => setCompetencia(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Vencimento</Label>
+                <Input type="date" value={vencimento} onChange={e => setVencimento(e.target.value)} />
+              </div>
+            </div>
+
+            <Field label="Cliente ou fornecedor">
+              <LeadCombobox orgSlug={orgSlug} name="contato_id" placeholder="Buscar contato…" onChange={lead => setContatoId(lead?.id ?? null)} />
+            </Field>
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={isRecurring} onCheckedChange={v => { setIsRecurring(v === true); if (v) setIsInstallment(false) }} />
+              <span className="flex items-center gap-1.5"><Repeat className="w-3.5 h-3.5 text-muted-foreground" /> Possui recorrência?</span>
+            </label>
+            {isRecurring && (
+              <RecurrenceFields
+                frequency={frequency} setFrequency={setFrequency}
+                count={recCount} setCount={setRecCount}
+                until={recUntil} setUntil={setRecUntil}
+                infinite={recInfinite} setInfinite={setRecInfinite}
+              />
+            )}
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={isInstallment} onCheckedChange={v => { setIsInstallment(v === true); if (v) setIsRecurring(false) }} />
+              <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-muted-foreground" /> Compra parcelada (cartão de crédito, etc.)</span>
+            </label>
+            {isInstallment && (
+              <div className="grid gap-2.5 sm:grid-cols-2 rounded-lg border bg-muted/20 p-3">
+                <Field label="Quantidade de parcelas">
+                  <Input type="number" min={2} max={60} value={installmentTotal} onChange={e => setInstallmentTotal(Math.max(2, Number(e.target.value) || 2))} />
+                </Field>
+                <Field label="Intervalo entre parcelas (dias)">
+                  <Input type="number" min={1} value={installmentInterval} onChange={e => setInstallmentInterval(Math.max(1, Number(e.target.value) || 30))} />
+                </Field>
+                <p className="text-[11px] text-muted-foreground sm:col-span-2">
+                  Valor por parcela: {formatCurrency(Math.round(valorCents / installmentTotal))} × {installmentTotal} (1ª parcela em {fmtDate(vencimento || competencia)}).
+                </p>
+              </div>
+            )}
+
+            <button type="button" className="text-xs text-muted-foreground hover:text-foreground underline" onClick={() => setShowMore(v => !v)}>
+              {showMore ? 'Ocultar informações complementares' : 'Informações complementares (opcional)'}
+            </button>
+            {showMore && (
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <Field label="Número do documento"><Input value={numeroDocumento} onChange={e => setNumeroDocumento(e.target.value)} /></Field>
+                <Field label="Nota fiscal"><Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} /></Field>
+                <Field label="Projeto"><Input value={projeto} onChange={e => setProjeto(e.target.value)} /></Field>
+                <Field label="Unidade de negócio"><Input value={unidadeNegocio} onChange={e => setUnidadeNegocio(e.target.value)} /></Field>
+              </div>
+            )}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Categoria <span className="text-destructive">*</span></Label>
-              <SettingSelect value={categoria} onChange={setCategoria} options={withExtra(settings.categoria, extraCategoria)} required placeholder="Selecione a categoria" />
+          <div className="border-l pl-4 py-2 space-y-3 text-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumo</p>
+            <div className="flex items-center gap-1.5">
+              {tipo === 'receita' ? <TrendingUp className="w-4 h-4 text-success" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
+              <span className={cn('font-semibold tabular-nums', tipo === 'receita' ? 'text-success' : 'text-destructive')}>
+                {formatCurrency(valorCents)}
+              </span>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Valor <span className="text-destructive">*</span></Label>
-              <MoneyInput value={valorCents} onChange={setValorCents} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Competência</Label>
-              <Input type="date" value={competencia} onChange={e => setCompetencia(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Vencimento</Label>
-              <Input type="date" value={vencimento} onChange={e => setVencimento(e.target.value)} />
-            </div>
+            <dl className="space-y-1.5 text-xs">
+              <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Categoria</dt><dd className="text-right truncate">{categoria || '—'}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Vencimento</dt><dd>{fmtDate(vencimento || competencia)}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Status</dt><dd>Pendente</dd></div>
+            </dl>
+            {previewDates.length > 0 && (
+              <div>
+                <p className="text-xs font-medium mb-1 flex items-center gap-1">
+                  {isInstallment ? `${installmentTotal} parcelas` : 'Próximas ocorrências'}
+                </p>
+                <ul className="text-[11px] text-muted-foreground space-y-0.5 max-h-32 overflow-y-auto">
+                  {previewDates.slice(0, 12).map(d => <li key={d}>{fmtDate(d)}</li>)}
+                  {previewDates.length > 12 && <li>+ {previewDates.length - 12} mais…</li>}
+                </ul>
+              </div>
+            )}
+            {previewDates.length > 20 && (
+              <p className="text-[11px] text-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> Isso vai gerar {previewDates.length + 1} lançamentos.</p>
+            )}
           </div>
-
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <Checkbox checked={isRecurring} onCheckedChange={v => setIsRecurring(v === true)} />
-            <span className="flex items-center gap-1.5"><Repeat className="w-3.5 h-3.5 text-muted-foreground" /> Repetir todo mês (lançamento recorrente)</span>
-          </label>
-          {isRecurring && (
-            <p className="text-[11px] text-muted-foreground -mt-1">
-              Já cria os lançamentos dos próximos 12 meses, pendentes, no mesmo dia de cada mês.
-            </p>
-          )}
         </div>
 
         <DialogFooter>
@@ -456,11 +629,16 @@ function EntryEditor({
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
+  const [tagsText, setTagsText] = useState((entry.tags || []).join(', '))
+
   const patch = () => ({
     tipo: e.tipo, categoria: e.categoria, subcategoria: e.subcategoria, centro_custo: e.centro_custo,
     conta_bancaria: e.conta_bancaria, forma_pagamento: e.forma_pagamento, valor_cents: e.valor_cents,
     competencia: e.competencia, vencimento: e.vencimento, data_pagamento: e.data_pagamento,
-    status: e.status, operadora: e.operadora, observacoes: e.observacoes,
+    status: e.status, operadora: e.operadora, observacoes: e.observacoes, contato_id: e.contato_id,
+    tags: tagsText.split(',').map(t => t.trim()).filter(Boolean),
+    nota_fiscal: e.nota_fiscal, numero_documento: e.numero_documento,
+    projeto: e.projeto, unidade_negocio: e.unidade_negocio,
   })
 
   async function handleFiles(files: FileList | null) {
@@ -550,6 +728,29 @@ function EntryEditor({
               </SelectContent>
             </Select>
           </Field>
+        </div>
+
+        {(e.is_recurring || e.installment_group_id) && (
+          <div className="rounded-lg border bg-muted/20 p-2.5 text-xs text-muted-foreground flex items-center gap-1.5">
+            {e.is_recurring && <span className="flex items-center gap-1"><Repeat className="w-3.5 h-3.5" /> Faz parte de uma série recorrente.</span>}
+            {e.installment_group_id && <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" /> Parcela {e.parcela_numero}/{e.parcela_total}.</span>}
+            <span className="ml-auto">Edite só esta ocorrência — as demais da série não são afetadas.</span>
+          </div>
+        )}
+
+        <Field label="Cliente ou fornecedor">
+          <LeadCombobox orgSlug={orgSlug} name="contato_id" placeholder="Buscar contato…" onChange={lead => set('contato_id', lead?.id ?? null)} />
+        </Field>
+
+        <Field label="Tags (separadas por vírgula)">
+          <Input value={tagsText} onChange={ev => setTagsText(ev.target.value)} placeholder="ex.: urgente, reembolsável" />
+        </Field>
+
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <Field label="Número do documento"><Input value={e.numero_documento || ''} onChange={ev => set('numero_documento', ev.target.value)} /></Field>
+          <Field label="Nota fiscal"><Input value={e.nota_fiscal || ''} onChange={ev => set('nota_fiscal', ev.target.value)} /></Field>
+          <Field label="Projeto"><Input value={e.projeto || ''} onChange={ev => set('projeto', ev.target.value)} /></Field>
+          <Field label="Unidade de negócio"><Input value={e.unidade_negocio || ''} onChange={ev => set('unidade_negocio', ev.target.value)} /></Field>
         </div>
 
         <Field label="Anexos">
