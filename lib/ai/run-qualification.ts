@@ -123,7 +123,7 @@ export async function runLeadQualification(
       {
         apiKey,
         model: provider === 'gemini'
-          ? (orgConfig.ai_qualifier_model?.startsWith('gemini') ? orgConfig.ai_qualifier_model : 'gemini-2.5-flash')
+          ? (orgConfig.ai_qualifier_model?.startsWith('gemini') ? orgConfig.ai_qualifier_model : 'gemini-3.6-flash')
           : (orgConfig.ai_qualifier_model || 'claude-haiku-4-5'),
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,

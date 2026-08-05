@@ -27,7 +27,7 @@ type Initial = {
 
 const OCR_PROVIDER_OPTIONS: { id: 'claude' | 'gemini'; label: string }[] = [
   { id: 'claude', label: 'Claude (Anthropic) — padrão' },
-  { id: 'gemini', label: 'Gemini Flash 2.5 (Google)' },
+  { id: 'gemini', label: 'Gemini 3.5 Flash-Lite (Google)' },
 ]
 
 const CLAUDE_MODEL_OPTIONS = [
@@ -35,8 +35,8 @@ const CLAUDE_MODEL_OPTIONS = [
   { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (mais preciso, mais caro)' },
 ]
 const GEMINI_MODEL_OPTIONS = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (recomendado)' },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite (mais rápido e barato, menos preciso)' },
+  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (recomendado)' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (mais rápido e barato, menos preciso)' },
 ]
 
 const PROVIDER_OPTIONS: { id: 'claude' | 'gemini'; label: string }[] = [
@@ -59,7 +59,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
 
   function handleProviderChange(next: 'claude' | 'gemini') {
     setProvider(next)
-    setModel(next === 'gemini' ? 'gemini-2.5-flash' : 'claude-haiku-4-5')
+    setModel(next === 'gemini' ? 'gemini-3.6-flash' : 'claude-haiku-4-5')
   }
 
   async function save() {

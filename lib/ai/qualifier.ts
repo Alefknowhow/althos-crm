@@ -177,7 +177,7 @@ async function qualifyLeadGemini(
   config: QualifierConfig,
 ): Promise<{ result: QualifierResult; usage: null; modelUsed: string }> {
   const ai = new GoogleGenAI({ apiKey: config.apiKey })
-  const model = config.model || 'gemini-2.5-flash'
+  const model = config.model || 'gemini-3.6-flash'
 
   let systemInstruction = config.systemPrompt || DEFAULT_QUALIFIER_PROMPT
   if (config.businessContext?.trim()) {
