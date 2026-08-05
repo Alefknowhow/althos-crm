@@ -7,7 +7,7 @@
  * resposta, e a conversa continua turno a turno.
  */
 
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI, Type } from '@google/genai'
 
 export type RoteiroMode = 'completo' | 'hoteis' | 'voos'
 export type RoteiroTurno = 'manha' | 'tarde' | 'noite'
@@ -113,4 +113,94 @@ export async function sendRoteiroChatMessage(
   const text = response.text
   if (!text) throw new Error('IA não retornou uma resposta')
   return text
+}
+
+export type QuotationDraft = {
+  origem: string | null
+  destino: string | null
+  data_ida: string | null
+  data_volta: string | null
+  flights_html: string | null
+  lodgings: Array<{
+    name: string
+    room_category: string | null
+    board: string | null
+    description_html: string | null
+    price_per_person_cents: number | null
+  }>
+  itinerary_html: string | null
+  price_per_person_cents: number | null
+  total_cents: number | null
+}
+
+const QUOTATION_EXTRACT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    origem: { type: Type.STRING, nullable: true, description: 'Cidade de origem da viagem' },
+    destino: { type: Type.STRING, nullable: true, description: 'Cidade/destino principal' },
+    data_ida: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
+    data_volta: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
+    flights_html: { type: Type.STRING, nullable: true, description: 'HTML dos cartões de voos (ida e volta) mencionados na conversa, no mesmo formato de cartão já usado, com style inline' },
+    lodgings: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          room_category: { type: Type.STRING, nullable: true },
+          board: { type: Type.STRING, nullable: true, description: 'Regime de alimentação, ex.: "Café da manhã", "All inclusive"' },
+          description_html: { type: Type.STRING, nullable: true },
+          price_per_person_cents: { type: Type.INTEGER, nullable: true },
+        },
+        required: ['name'],
+      },
+    },
+    itinerary_html: { type: Type.STRING, nullable: true, description: 'HTML do roteiro dia a dia / atividades, SEM repetir os cartões de voo ou a lista de hotéis (esses já vão em campos separados)' },
+    price_per_person_cents: { type: Type.INTEGER, nullable: true },
+    total_cents: { type: Type.INTEGER, nullable: true },
+  },
+  required: ['origem', 'destino', 'data_ida', 'data_volta', 'flights_html', 'lodgings', 'itinerary_html', 'price_per_person_cents', 'total_cents'],
+}
+
+/**
+ * Lê a conversa inteira do Roteirista e extrai os campos estruturados de uma
+ * cotação (origem, destino, voos, hospedagem, roteiro) — usado só quando o
+ * usuário clica "Transformar em cotação". Sem busca na web aqui: é só
+ * interpretar o que já foi conversado, então pode usar responseSchema.
+ */
+export async function extractQuotationDraft(apiKey: string, conversationText: string): Promise<QuotationDraft> {
+  const ai = new GoogleGenAI({ apiKey })
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.6-flash',
+    contents: [{ role: 'user', parts: [{ text: conversationText }] }],
+    config: {
+      systemInstruction: 'Você extrai dados estruturados de uma conversa entre um atendente de agência de viagens e uma IA de planejamento. Preencha os campos com o que foi efetivamente discutido/decidido na conversa (use a opção de voo/hotel mais recente ou mais claramente escolhida, se houver várias). Quando um dado não aparecer na conversa, use null. HTML deve usar apenas style inline, nunca class.',
+      responseMimeType: 'application/json',
+      responseSchema: QUOTATION_EXTRACT_SCHEMA,
+    },
+  })
+
+  const text = response.text
+  if (!text) throw new Error('IA não retornou os dados extraídos')
+  const parsed = JSON.parse(text)
+  return {
+    origem: parsed.origem || null,
+    destino: parsed.destino || null,
+    data_ida: /^\d{4}-\d{2}-\d{2}$/.test(parsed.data_ida) ? parsed.data_ida : null,
+    data_volta: /^\d{4}-\d{2}-\d{2}$/.test(parsed.data_volta) ? parsed.data_volta : null,
+    flights_html: parsed.flights_html || null,
+    lodgings: Array.isArray(parsed.lodgings)
+      ? parsed.lodgings.slice(0, 10).map((l: any) => ({
+          name: typeof l?.name === 'string' ? l.name.slice(0, 200) : 'Hospedagem',
+          room_category: typeof l?.room_category === 'string' ? l.room_category.slice(0, 160) : null,
+          board: typeof l?.board === 'string' ? l.board.slice(0, 80) : null,
+          description_html: typeof l?.description_html === 'string' ? l.description_html : null,
+          price_per_person_cents: Number.isFinite(Number(l?.price_per_person_cents)) ? Math.round(Number(l.price_per_person_cents)) : null,
+        }))
+      : [],
+    itinerary_html: parsed.itinerary_html || null,
+    price_per_person_cents: Number.isFinite(Number(parsed.price_per_person_cents)) ? Math.round(Number(parsed.price_per_person_cents)) : null,
+    total_cents: Number.isFinite(Number(parsed.total_cents)) ? Math.round(Number(parsed.total_cents)) : null,
+  }
 }
