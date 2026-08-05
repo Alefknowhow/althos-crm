@@ -236,6 +236,7 @@ export async function updateOrgAI(
     ai_enabled?: boolean
     ai_provider?: 'claude' | 'gemini'
     ai_qualifier_model?: string
+    ai_qualifier_model_gemini?: string
     ai_qualifier_prompt?: string
     ai_business_context?: string
     ocr_provider?: 'claude' | 'gemini'
@@ -249,7 +250,14 @@ export async function updateOrgAI(
   if (typeof payload.ai_enabled === 'boolean') updates.ai_enabled = payload.ai_enabled
   if (payload.ai_provider === 'claude' || payload.ai_provider === 'gemini')
     updates.ai_provider = payload.ai_provider
-  if (payload.ai_qualifier_model) updates.ai_qualifier_model = payload.ai_qualifier_model
+  // ai_qualifier_model é lido como o modelo Claude compartilhado por outras
+  // features (copiloto, chat financeiro, social, funil, suporte — todas
+  // presas à API da Anthropic). Só grava aqui quando o modelo informado é
+  // mesmo um modelo Claude, pra nunca vazar um valor "gemini-*" pra essas
+  // outras chamadas; o modelo Gemini do qualificador vive em coluna própria.
+  if (payload.ai_qualifier_model && !payload.ai_qualifier_model.startsWith('gemini'))
+    updates.ai_qualifier_model = payload.ai_qualifier_model
+  if (payload.ai_qualifier_model_gemini) updates.ai_qualifier_model_gemini = payload.ai_qualifier_model_gemini
   if (typeof payload.ai_qualifier_prompt === 'string')
     updates.ai_qualifier_prompt = payload.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT
   if (typeof payload.ai_business_context === 'string')
@@ -280,7 +288,7 @@ export async function getOrgAIConfig(orgSlug: string) {
 
   const { data } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, ocr_provider')
+    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_model_gemini, ai_qualifier_prompt, ai_business_context, ocr_provider')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -289,6 +297,7 @@ export async function getOrgAIConfig(orgSlug: string) {
     ocr_provider: (data?.ocr_provider === 'gemini' ? 'gemini' : 'claude') as 'claude' | 'gemini',
     ai_provider: data?.ai_provider ?? 'anthropic',
     ai_qualifier_model: data?.ai_qualifier_model ?? 'claude-haiku-4-5',
+    ai_qualifier_model_gemini: data?.ai_qualifier_model_gemini ?? 'gemini-3.6-flash',
     ai_qualifier_prompt: data?.ai_qualifier_prompt ?? DEFAULT_QUALIFIER_PROMPT,
     ai_business_context: data?.ai_business_context ?? '',
   }

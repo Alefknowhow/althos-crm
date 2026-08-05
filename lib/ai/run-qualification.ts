@@ -25,7 +25,7 @@ export async function runLeadQualification(
   // 1) Org config
   const { data: orgConfig } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
+    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_model_gemini, ai_qualifier_prompt, ai_business_context, account_id')
     .eq('id', orgId)
     .maybeSingle()
 
@@ -123,7 +123,7 @@ export async function runLeadQualification(
       {
         apiKey,
         model: provider === 'gemini'
-          ? (orgConfig.ai_qualifier_model?.startsWith('gemini') ? orgConfig.ai_qualifier_model : 'gemini-3.6-flash')
+          ? (orgConfig.ai_qualifier_model_gemini || 'gemini-3.6-flash')
           : (orgConfig.ai_qualifier_model || 'claude-haiku-4-5'),
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,

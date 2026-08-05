@@ -20,6 +20,7 @@ type Initial = {
   ai_enabled: boolean
   ai_provider: string
   ai_qualifier_model: string
+  ai_qualifier_model_gemini: string
   ai_qualifier_prompt: string
   ai_business_context: string
   ocr_provider: 'claude' | 'gemini'
@@ -48,7 +49,8 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const router = useRouter()
   const [enabled, setEnabled] = useState(initial.ai_enabled)
   const [provider, setProvider] = useState<'claude' | 'gemini'>(initial.ai_provider === 'gemini' ? 'gemini' : 'claude')
-  const [model, setModel] = useState(initial.ai_qualifier_model)
+  const [claudeModel, setClaudeModel] = useState(initial.ai_qualifier_model || 'claude-haiku-4-5')
+  const [geminiModel, setGeminiModel] = useState(initial.ai_qualifier_model_gemini || 'gemini-3.6-flash')
   const [prompt, setPrompt] = useState(initial.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT)
   const [businessContext, setBusinessContext] = useState(initial.ai_business_context || '')
   const [ocrProvider, setOcrProvider] = useState<'claude' | 'gemini'>(initial.ocr_provider)
@@ -56,18 +58,16 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const modelOptions = provider === 'gemini' ? GEMINI_MODEL_OPTIONS : CLAUDE_MODEL_OPTIONS
-
-  function handleProviderChange(next: 'claude' | 'gemini') {
-    setProvider(next)
-    setModel(next === 'gemini' ? 'gemini-3.6-flash' : 'claude-haiku-4-5')
-  }
+  const model = provider === 'gemini' ? geminiModel : claudeModel
+  const setModel = provider === 'gemini' ? setGeminiModel : setClaudeModel
 
   async function save() {
     setSaving(true)
     const res = await updateOrgAI(orgSlug, {
       ai_enabled: enabled,
       ai_provider: provider,
-      ai_qualifier_model: model,
+      ai_qualifier_model: claudeModel,
+      ai_qualifier_model_gemini: geminiModel,
       ai_qualifier_prompt: prompt,
       ai_business_context: businessContext,
       ocr_provider: ocrProvider,
@@ -124,7 +124,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
             <select
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               value={provider}
-              onChange={e => handleProviderChange(e.target.value as 'claude' | 'gemini')}
+              onChange={e => setProvider(e.target.value as 'claude' | 'gemini')}
             >
               {PROVIDER_OPTIONS.map(p => (
                 <option key={p.id} value={p.id}>{p.label}</option>
