@@ -46,9 +46,9 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       actionLabel: 'Conectar',
     },
     {
-      title: 'IA Qualificadora',
-      description: 'Score automático de leads com Claude.',
-      detail: 'Cada lead recém-capturado é avaliado pela IA: score 0–100, tier (hot/warm/cold), tags e razões.',
+      title: 'Parâmetros de IA',
+      description: 'Motor de IA e score automático de leads.',
+      detail: 'Escolha o motor de IA (Claude ou Gemini) e configure a qualificação automática: score 0–100, tier (hot/warm/cold), tags e razões.',
       icon: Sparkles,
       iconClass: 'bg-purple-100 text-purple-600',
       actionLabel: 'Configurar',

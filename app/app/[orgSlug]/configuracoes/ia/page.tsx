@@ -10,9 +10,9 @@ export default async function IAConfigPage({ params }: { params: { orgSlug: stri
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">IA Qualificadora</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Parâmetros de IA</h1>
         <p className="text-muted-foreground text-sm">
-          Configura a IA que classifica seus leads automaticamente quando chegam por formulário.
+          Escolha o motor de IA (Claude ou Gemini) e configure a qualificação automática de leads.
         </p>
       </div>
 

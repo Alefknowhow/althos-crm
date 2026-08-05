@@ -234,6 +234,7 @@ export async function updateOrgAI(
   orgSlug: string,
   payload: {
     ai_enabled?: boolean
+    ai_provider?: 'claude' | 'gemini'
     ai_qualifier_model?: string
     ai_qualifier_prompt?: string
     ai_business_context?: string
@@ -246,6 +247,8 @@ export async function updateOrgAI(
 
   const updates: any = {}
   if (typeof payload.ai_enabled === 'boolean') updates.ai_enabled = payload.ai_enabled
+  if (payload.ai_provider === 'claude' || payload.ai_provider === 'gemini')
+    updates.ai_provider = payload.ai_provider
   if (payload.ai_qualifier_model) updates.ai_qualifier_model = payload.ai_qualifier_model
   if (typeof payload.ai_qualifier_prompt === 'string')
     updates.ai_qualifier_prompt = payload.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT

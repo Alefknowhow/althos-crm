@@ -30,14 +30,24 @@ const OCR_PROVIDER_OPTIONS: { id: 'claude' | 'gemini'; label: string }[] = [
   { id: 'gemini', label: 'Gemini Flash 2.5 (Google)' },
 ]
 
-const MODEL_OPTIONS = [
+const CLAUDE_MODEL_OPTIONS = [
   { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (rápido, barato — recomendado)' },
   { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (mais preciso, mais caro)' },
+]
+const GEMINI_MODEL_OPTIONS = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (recomendado)' },
+  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite (mais rápido e barato, menos preciso)' },
+]
+
+const PROVIDER_OPTIONS: { id: 'claude' | 'gemini'; label: string }[] = [
+  { id: 'claude', label: 'Claude (Anthropic) — padrão' },
+  { id: 'gemini', label: 'Gemini (Google)' },
 ]
 
 export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; initial: Initial }) {
   const router = useRouter()
   const [enabled, setEnabled] = useState(initial.ai_enabled)
+  const [provider, setProvider] = useState<'claude' | 'gemini'>(initial.ai_provider === 'gemini' ? 'gemini' : 'claude')
   const [model, setModel] = useState(initial.ai_qualifier_model)
   const [prompt, setPrompt] = useState(initial.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT)
   const [businessContext, setBusinessContext] = useState(initial.ai_business_context || '')
@@ -45,10 +55,18 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const [saving, setSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
+  const modelOptions = provider === 'gemini' ? GEMINI_MODEL_OPTIONS : CLAUDE_MODEL_OPTIONS
+
+  function handleProviderChange(next: 'claude' | 'gemini') {
+    setProvider(next)
+    setModel(next === 'gemini' ? 'gemini-2.5-flash' : 'claude-haiku-4-5')
+  }
+
   async function save() {
     setSaving(true)
     const res = await updateOrgAI(orgSlug, {
       ai_enabled: enabled,
+      ai_provider: provider,
       ai_qualifier_model: model,
       ai_qualifier_prompt: prompt,
       ai_business_context: businessContext,
@@ -93,7 +111,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
 
       <Card>
         <CardHeader>
-          <CardTitle>Modelo de IA</CardTitle>
+          <CardTitle>Motor de IA — qualificação de leads</CardTitle>
           <CardDescription>
             A IA do {' '}
             <span className="font-medium">Althos</span> já vem pronta para usar — você não precisa
@@ -102,13 +120,25 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label>Provedor</Label>
+            <select
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              value={provider}
+              onChange={e => handleProviderChange(e.target.value as 'claude' | 'gemini')}
+            >
+              {PROVIDER_OPTIONS.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
             <Label>Modelo</Label>
             <select
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               value={model}
               onChange={e => setModel(e.target.value)}
             >
-              {MODEL_OPTIONS.map(m => (
+              {modelOptions.map(m => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>

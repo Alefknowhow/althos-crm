@@ -9,7 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { qualifyLead } from './qualifier'
-import { getPlatformAiKey } from './api-key'
+import { getPlatformAiKey, getGeminiKey, hasGeminiKey } from './api-key'
 
 export type RunQualificationResult =
   | { ok: true; score: number; tier: string }
@@ -25,14 +25,16 @@ export async function runLeadQualification(
   // 1) Org config
   const { data: orgConfig } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
+    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, account_id')
     .eq('id', orgId)
     .maybeSingle()
 
   if (!orgConfig?.ai_enabled)  return { ok: false, reason: 'AI desabilitada para esta organização' }
   // AI runs on the platform's centralized token (env), metered per account by
   // the credit system below — no per-org API key required.
-  const apiKey = getPlatformAiKey()
+  const provider = orgConfig.ai_provider === 'gemini' ? 'gemini' : 'claude'
+  const apiKey = provider === 'gemini' ? getGeminiKey() : getPlatformAiKey()
+  if (provider === 'gemini' && !hasGeminiKey()) return { ok: false, reason: 'IA (Gemini) não configurada.' }
   if (!apiKey) return { ok: false, reason: 'IA temporariamente indisponível. Tente novamente em instantes.' }
 
   // 1b) Plan gate (per account). This runs in a service-role/background context
@@ -120,9 +122,12 @@ export async function runLeadQualification(
       },
       {
         apiKey,
-        model: orgConfig.ai_qualifier_model || 'claude-haiku-4-5',
+        model: provider === 'gemini'
+          ? (orgConfig.ai_qualifier_model?.startsWith('gemini') ? orgConfig.ai_qualifier_model : 'gemini-2.5-flash')
+          : (orgConfig.ai_qualifier_model || 'claude-haiku-4-5'),
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,
+        provider,
       },
     )
   } catch (err: any) {

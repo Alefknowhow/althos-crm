@@ -5,6 +5,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenAI, Type } from '@google/genai'
 import { DEFAULT_QUALIFIER_PROMPT } from './qualifier-prompt'
 
 export type QualifierInput = {
@@ -36,6 +37,20 @@ export type QualifierConfig = {
   model: string
   systemPrompt?: string | null
   businessContext?: string | null
+  /** Motor a usar. Padrão 'claude' (comportamento histórico). */
+  provider?: 'claude' | 'gemini'
+}
+
+function normalizeQualification(parsed: any): QualifierResult {
+  const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score) || 0)))
+  const tier: QualifierResult['tier'] =
+    parsed.tier === 'hot' || parsed.tier === 'warm' || parsed.tier === 'cold'
+      ? parsed.tier
+      : score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold'
+  const tags     = Array.isArray(parsed.tags)     ? (parsed.tags     as string[]).filter(t => typeof t === 'string').slice(0, 10) : []
+  const concerns = Array.isArray(parsed.concerns) ? (parsed.concerns as string[]).filter(c => typeof c === 'string').slice(0, 10) : []
+  const reason   = typeof parsed.reason === 'string' ? parsed.reason.slice(0, 500) : ''
+  return { score, tier, reason, tags, concerns }
 }
 
 // Tool schema — tool_use guarantees Claude returns this exact shape (no markdown wrapping)
@@ -95,6 +110,14 @@ function formatLeadForModel(input: QualifierInput): string {
 export async function qualifyLead(
   input: QualifierInput,
   config: QualifierConfig,
+): Promise<{ result: QualifierResult; usage: Anthropic.Messages.Usage | null; modelUsed: string }> {
+  if (config.provider === 'gemini') return qualifyLeadGemini(input, config)
+  return qualifyLeadClaude(input, config)
+}
+
+async function qualifyLeadClaude(
+  input: QualifierInput,
+  config: QualifierConfig,
 ): Promise<{ result: QualifierResult; usage: Anthropic.Messages.Usage; modelUsed: string }> {
   const client = new Anthropic({ apiKey: config.apiKey })
 
@@ -130,21 +153,49 @@ export async function qualifyLead(
   )
   if (!toolBlock) throw new Error('IA não retornou bloco de tool_use')
 
-  const parsed = toolBlock.input as any
-
-  // Clamp + validate (numerical constraints not enforced by schema)
-  const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score) || 0)))
-  const tier: QualifierResult['tier'] =
-    parsed.tier === 'hot' || parsed.tier === 'warm' || parsed.tier === 'cold'
-      ? parsed.tier
-      : score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold'
-  const tags     = Array.isArray(parsed.tags)     ? (parsed.tags     as string[]).filter(t => typeof t === 'string').slice(0, 10) : []
-  const concerns = Array.isArray(parsed.concerns) ? (parsed.concerns as string[]).filter(c => typeof c === 'string').slice(0, 10) : []
-  const reason   = typeof parsed.reason === 'string' ? parsed.reason.slice(0, 500) : ''
-
   return {
-    result: { score, tier, reason, tags, concerns },
+    result: normalizeQualification(toolBlock.input),
     usage: response.usage,
     modelUsed: response.model,
   }
+}
+
+const GEMINI_QUALIFY_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    score: { type: Type.INTEGER, description: 'Score de 0 a 100' },
+    tier: { type: Type.STRING, enum: ['hot', 'warm', 'cold'] },
+    reason: { type: Type.STRING, description: 'Explicação do score em 1-2 frases em português' },
+    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+    concerns: { type: Type.ARRAY, items: { type: Type.STRING } },
+  },
+  required: ['score', 'tier', 'reason', 'tags', 'concerns'],
+}
+
+async function qualifyLeadGemini(
+  input: QualifierInput,
+  config: QualifierConfig,
+): Promise<{ result: QualifierResult; usage: null; modelUsed: string }> {
+  const ai = new GoogleGenAI({ apiKey: config.apiKey })
+  const model = config.model || 'gemini-2.5-flash'
+
+  let systemInstruction = config.systemPrompt || DEFAULT_QUALIFIER_PROMPT
+  if (config.businessContext?.trim()) {
+    systemInstruction += `\n\n## Contexto do negócio\n${config.businessContext.trim()}`
+  }
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: [{ role: 'user', parts: [{ text: formatLeadForModel(input) }] }],
+    config: {
+      systemInstruction,
+      responseMimeType: 'application/json',
+      responseSchema: GEMINI_QUALIFY_SCHEMA,
+    },
+  })
+
+  const text = response.text
+  if (!text) throw new Error('IA não retornou a qualificação')
+
+  return { result: normalizeQualification(JSON.parse(text)), usage: null, modelUsed: model }
 }
