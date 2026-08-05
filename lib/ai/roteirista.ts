@@ -10,12 +10,18 @@
 import { GoogleGenAI } from '@google/genai'
 
 export type RoteiroMode = 'completo' | 'hoteis' | 'voos'
+export type RoteiroTurno = 'manha' | 'tarde' | 'noite'
+
+const TURNO_LABEL: Record<RoteiroTurno, string> = { manha: 'manhã', tarde: 'tarde', noite: 'noite' }
 
 export type RoteiroQuickStartInput = {
   mode: RoteiroMode
+  origem: string | null
   destino: string
   dataIda: string | null
   dataVolta: string | null
+  turnoIda: RoteiroTurno | null
+  turnoVolta: RoteiroTurno | null
   periodoFlexivel: boolean
   mesReferencia: string | null
   paxAdults: number
@@ -37,9 +43,10 @@ export function buildQuickStartMessage(input: RoteiroQuickStartInput): string {
   const paxLine = `${input.paxAdults} adulto(s)${input.paxChildren > 0 ? ` + ${input.paxChildren} criança(s)` : ''}`
   const dateLine = input.periodoFlexivel
     ? `Período flexível — buscar a janela mais barata${input.mesReferencia ? ` em torno de ${input.mesReferencia}` : ''}.`
-    : `Ida: ${input.dataIda ?? 'não informado'} · Volta: ${input.dataVolta ?? 'não informado'}.`
+    : `Ida: ${input.dataIda ?? 'não informado'}${input.turnoIda ? ` (turno preferido: ${TURNO_LABEL[input.turnoIda]})` : ''} · Volta: ${input.dataVolta ?? 'não informado'}${input.turnoVolta ? ` (turno preferido: ${TURNO_LABEL[input.turnoVolta]})` : ''}.`
 
   const lines = [
+    input.origem ? `Origem: ${input.origem}` : null,
     `Destino: ${input.destino}`,
     dateLine,
     `Viajantes: ${paxLine}`,
@@ -70,7 +77,22 @@ export async function sendRoteiroChatMessage(
   const systemInstruction = [
     'Você é um especialista em planejamento de viagens que trabalha para uma agência de viagens brasileira, conversando em um chat com um atendente da agência. Responda em português do Brasil.',
     'Seja específico, cite nomes de hotéis/companhias reais quando encontrar via busca, e nunca invente preços exatos sem sinalizar que são estimativas. Use a busca na web pra trazer preços e avaliações o mais reais possível.',
-    'Responda em HTML simples (use <h3>, <p>, <ul>/<li>, <strong> — sem <html>/<body>/<style>), pronto pra ser exibido direto numa página.',
+    'Responda em HTML simples (use <h3>, <p>, <ul>/<li>, <strong> — sem <html>/<body>/<style>), pronto pra ser exibido direto numa página. NUNCA use classes CSS (class="...") — o HTML é salvo no banco e renderizado fora do build, então qualquer classe fica sem estilo. Para qualquer destaque visual, use APENAS atributo style="..." inline.',
+    '',
+    'Quando responder com opções de VOOS, monte um "cartão de voos" estruturado (não uma lista de texto corrido), seguindo exatamente este padrão HTML — repita o bloco de linha (<div style="display:flex...">) uma vez por opção de voo encontrada (pelo menos 3, se houver), preenchendo com dados reais da busca:',
+    `<div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:12px 0;font-family:inherit;">
+  <div style="background:#eef2ff;padding:10px 14px;font-size:13px;color:#374151;display:flex;align-items:center;gap:8px;">
+    <strong>Ida</strong> · Origem (XXX) → Destino (YYY) · DD/MM · N adultos, M crianças
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid #e5e7eb;">
+    <div style="min-width:100px;font-weight:600;font-size:14px;">05:00 – 09:20</div>
+    <div style="flex:1;text-align:center;color:#6b7280;font-size:13px;">GYN – NAT</div>
+    <div style="min-width:120px;text-align:center;color:#6b7280;font-size:13px;">1 escala · 4h20</div>
+    <div style="min-width:90px;text-align:right;font-weight:600;font-size:14px;">R$ 3.457</div>
+  </div>
+  <!-- repita a linha acima para cada opção de voo -->
+</div>`,
+    'Use um bloco desses pra "Ida" e outro pra "Volta" quando a busca for de ida e volta. Se não encontrar preço exato, escreva "~R$ X.XXX" e mencione no texto ao redor que é uma estimativa.',
     knowledgeContext ? `\nConhecimento interno da agência (considere essas informações quando relevantes):\n${knowledgeContext}` : '',
   ].join('\n')
 

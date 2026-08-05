@@ -22,7 +22,13 @@ import {
   addRoteiristaKnowledge, deleteRoteiristaKnowledge,
   type RoteiroGeneration, type RoteiroMessage, type RoteiristaKnowledgeItem,
 } from '@/actions/roteirista'
-import type { RoteiroMode } from '@/lib/ai/roteirista'
+import type { RoteiroMode, RoteiroTurno } from '@/lib/ai/roteirista'
+
+const TURNO_OPTIONS: { id: RoteiroTurno; label: string }[] = [
+  { id: 'manha', label: 'Manhã' },
+  { id: 'tarde', label: 'Tarde' },
+  { id: 'noite', label: 'Noite' },
+]
 
 const MODE_OPTIONS: { id: RoteiroMode; label: string }[] = [
   { id: 'completo', label: 'Roteiro completo' },
@@ -298,10 +304,13 @@ function QuickStartDialog({
   onCreated: (id: string) => void
 }) {
   const [mode, setMode] = useState<RoteiroMode>('completo')
+  const [origem, setOrigem] = useState('')
   const [destino, setDestino] = useState('')
   const [periodoFlexivel, setPeriodoFlexivel] = useState(false)
   const [dataIda, setDataIda] = useState('')
   const [dataVolta, setDataVolta] = useState('')
+  const [turnoIda, setTurnoIda] = useState<RoteiroTurno | ''>('')
+  const [turnoVolta, setTurnoVolta] = useState<RoteiroTurno | ''>('')
   const [mesReferencia, setMesReferencia] = useState('')
   const [paxAdults, setPaxAdults] = useState(2)
   const [paxChildren, setPaxChildren] = useState(0)
@@ -312,8 +321,8 @@ function QuickStartDialog({
   const [generating, setGenerating] = useState(false)
 
   function reset() {
-    setMode('completo'); setDestino(''); setPeriodoFlexivel(false)
-    setDataIda(''); setDataVolta(''); setMesReferencia('')
+    setMode('completo'); setOrigem(''); setDestino(''); setPeriodoFlexivel(false)
+    setDataIda(''); setDataVolta(''); setTurnoIda(''); setTurnoVolta(''); setMesReferencia('')
     setPaxAdults(2); setPaxChildren(0); setNivelConforto('padrao')
     setOrcamento(''); setInteresses(''); setObservacoes('')
   }
@@ -324,9 +333,12 @@ function QuickStartDialog({
     const res = await startRoteiro(orgSlug, {
       quickStart: {
         mode,
+        origem: origem.trim() || null,
         destino,
         dataIda: periodoFlexivel ? null : (dataIda || null),
         dataVolta: periodoFlexivel ? null : (dataVolta || null),
+        turnoIda: periodoFlexivel ? null : (turnoIda || null),
+        turnoVolta: periodoFlexivel ? null : (turnoVolta || null),
         periodoFlexivel,
         mesReferencia: periodoFlexivel ? (mesReferencia || null) : null,
         paxAdults,
@@ -365,9 +377,15 @@ function QuickStartDialog({
             ))}
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs">Destino <span className="text-destructive">*</span></Label>
-            <Input value={destino} onChange={e => setDestino(e.target.value)} placeholder="Ex.: Porto de Galinhas, PE" />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Origem</Label>
+              <Input value={origem} onChange={e => setOrigem(e.target.value)} placeholder="Ex.: São Paulo, SP" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Destino <span className="text-destructive">*</span></Label>
+              <Input value={destino} onChange={e => setDestino(e.target.value)} placeholder="Ex.: Porto de Galinhas, PE" />
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -387,8 +405,26 @@ function QuickStartDialog({
                 <Input type="date" value={dataIda} onChange={e => setDataIda(e.target.value)} />
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">Turno da ida</Label>
+                <Select value={turnoIda} onValueChange={v => setTurnoIda(v as RoteiroTurno)}>
+                  <SelectTrigger><SelectValue placeholder="Sem preferência" /></SelectTrigger>
+                  <SelectContent>
+                    {TURNO_OPTIONS.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">Volta</Label>
                 <Input type="date" value={dataVolta} onChange={e => setDataVolta(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Turno da volta</Label>
+                <Select value={turnoVolta} onValueChange={v => setTurnoVolta(v as RoteiroTurno)}>
+                  <SelectTrigger><SelectValue placeholder="Sem preferência" /></SelectTrigger>
+                  <SelectContent>
+                    {TURNO_OPTIONS.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
