@@ -193,7 +193,7 @@ export default function RoteiristaView({
           <div className="flex-1 flex flex-col">
             <EmptyState
               icon={Sparkles}
-              title="Roteirista IA"
+              title="Travel Planner"
               description="Digite abaixo pra começar uma conversa, ou use o formulário-atalho pra estruturar sua primeira pergunta."
             />
             <form onSubmit={handleSubmit} className="border-t bg-card p-3 flex gap-2 shrink-0">

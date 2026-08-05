@@ -62,7 +62,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'bloqueios',     label: 'Bloqueios',         section: 'Viagens' },
   { key: 'explorar_voos', label: 'Explorar Voos',     section: 'Viagens' },
   { key: 'documentos',    label: 'Documentos',        section: 'Viagens' },
-  { key: 'roteirista',    label: 'Roteirista IA',     section: 'Viagens' },
+  { key: 'roteirista',    label: 'Travel Planner',    section: 'Viagens' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },

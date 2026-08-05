@@ -9,6 +9,14 @@
 
 import { GoogleGenAI, Type } from '@google/genai'
 
+/**
+ * Desativado temporariamente — consumo de tokens (grounding + geração de
+ * texto longo) tinha custo alto pra um resultado que o usuário consegue
+ * reproduzir de graça pesquisando direto no chat do Gemini. Mantém o
+ * código intacto pra religar depois.
+ */
+export const TRAVEL_PLANNER_ENABLED = false
+
 export type RoteiroMode = 'completo' | 'hoteis' | 'voos'
 export type RoteiroTurno = 'manha' | 'tarde' | 'noite'
 

@@ -11,6 +11,7 @@ import BottomNav from './BottomNav'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { isTravelNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
+import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import {
   LayoutDashboard,
   Kanban,
@@ -213,11 +214,11 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('roteirista') && isTravelNiche(org.niche) && (
+        {TRAVEL_PLANNER_ENABLED && can('roteirista') && isTravelNiche(org.niche) && (
           <SidebarNavLink href={`${base}/roteirista`}>
             <span className="flex items-center gap-2.5">
               <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Roteirista IA</span>
+              <span>Travel Planner</span>
             </span>
           </SidebarNavLink>
         )}

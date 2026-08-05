@@ -4,7 +4,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { isTravelNiche } from '@/lib/niche'
-import { sendRoteiroChatMessage, buildQuickStartMessage, extractQuotationDraft, type RoteiroMode, type RoteiroQuickStartInput, type RoteiroChatTurn } from '@/lib/ai/roteirista'
+import { sendRoteiroChatMessage, buildQuickStartMessage, extractQuotationDraft, TRAVEL_PLANNER_ENABLED, type RoteiroMode, type RoteiroQuickStartInput, type RoteiroChatTurn } from '@/lib/ai/roteirista'
 import { getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 import { revalidatePath } from 'next/cache'
@@ -35,6 +35,9 @@ export type RoteiroMessage = {
 async function requireRoteiristaAccess(orgSlug: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (!TRAVEL_PLANNER_ENABLED) {
+    return { ok: false as const, error: 'Travel Planner está temporariamente desativado.' }
+  }
   if (!isTravelNiche(org.niche)) {
     return { ok: false as const, error: 'Módulo disponível apenas para o nicho de viagens.' }
   }
