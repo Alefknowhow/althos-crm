@@ -3,6 +3,7 @@ import { listFinancialEntries } from '@/actions/financial'
 import { listFinancialSettings } from '@/actions/financial-settings'
 import FinanceiroTabs from '@/components/features/financial/FinanceiroTabs'
 import FinancialDashboard from '@/components/features/financial/FinancialDashboard'
+import FinancialAiChat from '@/components/features/financial/FinancialAiChat'
 import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
@@ -31,6 +32,8 @@ export default async function FinanceiroPage({
         settings={settings}
         dashboard={<FinancialDashboard orgSlug={params.orgSlug} />}
       />
+
+      <FinancialAiChat orgSlug={params.orgSlug} />
     </div>
   )
 }

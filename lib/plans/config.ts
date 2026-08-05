@@ -282,6 +282,10 @@ export const AI_CREDIT_COST = {
   // Geração de roteiro com Gemini Flash 2.5 + busca na web — chamada mais
   // pesada que um OCR (grounding, prompt maior, saída longa).
   roteirista_generate: 4,
+  // Chat de IA analítica do Financeiro — mesmo custo-base do copiloto da
+  // Inicial (ai_insights_query), mantido separado pra métricas de uso e
+  // gating de plano independentes.
+  financial_ai_chat: 2,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST
