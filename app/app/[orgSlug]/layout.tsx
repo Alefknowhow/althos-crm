@@ -135,7 +135,7 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 py-5 pb-20 md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-20 md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>

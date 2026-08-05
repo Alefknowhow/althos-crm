@@ -102,7 +102,7 @@ export default async function OrgDashboard({
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-10">
+    <div className="space-y-3 sm:space-y-4 pb-10">
       <UpgradeBanner orgSlug={params.orgSlug} />
 
       <Suspense fallback={null}>

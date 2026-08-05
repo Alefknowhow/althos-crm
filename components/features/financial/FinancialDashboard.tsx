@@ -136,7 +136,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end flex-wrap gap-1.5">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 py-2 -mt-2 flex justify-end flex-wrap gap-1.5 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
         {PERIOD_OPTIONS.map(p => (
           <Button
             key={p.id}

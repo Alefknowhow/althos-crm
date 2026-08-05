@@ -20,7 +20,7 @@ export default function DashboardTabsShell({
 }) {
   return (
     <Tabs defaultValue="visao-geral" className="space-y-4">
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-5 -mt-5 pb-3 space-y-4 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 space-y-2 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
         {stickyHeader}
         <TabsList className="flex-wrap h-auto w-full sm:w-auto">
           <TabsTrigger value="visao-geral" className="flex-1 sm:flex-none">Visão Geral</TabsTrigger>

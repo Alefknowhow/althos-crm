@@ -130,6 +130,7 @@ export default function TasksBoard({
   const [colDraft, setColDraft] = useState('')
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
   const [openBucket, setOpenBucket] = useState<'overdue' | 'today' | 'upcoming' | null>('overdue')
+  const [openColumnId, setOpenColumnId] = useState<string | null>(null)
 
   // Re-sync when the server sends fresh data (after router.refresh()).
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
@@ -692,20 +693,47 @@ export default function TasksBoard({
           })}
         </div>
       ) : (
-        <div className="rounded-none border divide-y bg-card">
-          {doneLast(filtered).length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">Nenhuma tarefa nesta visão.</div>
+        <div className="space-y-2">
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground border rounded-none">Nenhuma tarefa nesta visão.</div>
           ) : (
-            doneLast(filtered).map(task => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                orgSlug={orgSlug}
-                columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
-                onOpen={() => setEditing(task)}
-                onToggleDone={() => handleToggleDone(task)}
-              />
-            ))
+            columns.map(col => {
+              const list = byColumn[col.id] ?? []
+              const isOpen = openColumnId === col.id
+              return (
+                <div key={col.id} className="overflow-hidden rounded-[8px] border bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setOpenColumnId(isOpen ? null : col.id)}
+                    className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
+                  >
+                    <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
+                    <span className="flex-1 text-sm font-semibold">{col.name}</span>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                      {list.length}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="divide-y border-t">
+                      {list.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
+                      ) : (
+                        list.map(task => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            orgSlug={orgSlug}
+                            columnName={col.name}
+                            onOpen={() => setEditing(task)}
+                            onToggleDone={() => handleToggleDone(task)}
+                          />
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
       )}
