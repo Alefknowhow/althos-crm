@@ -264,6 +264,7 @@ export default function FinancialEntriesView({
                       : <TrendingDown className="w-3.5 h-3.5 text-destructive shrink-0" />}
                     {e.categoria}
                     {e.is_recurring && <Repeat className="w-3 h-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
+                    {e.installment_group_id && <CreditCard className="w-3 h-3 text-muted-foreground shrink-0" aria-label={`Parcela ${e.parcela_numero}/${e.parcela_total}`} />}
                   </span>
                   <StatusQuickMenu status={e.status} onChange={s => handleQuickStatus(e.id, s)} />
                 </div>
