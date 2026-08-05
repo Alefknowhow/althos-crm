@@ -431,6 +431,8 @@ function NewEntryDialog({
   const [projeto, setProjeto] = useState('')
   const [unidadeNegocio, setUnidadeNegocio] = useState('')
 
+  const [step, setStep] = useState(0)
+
   function reset() {
     setTipo('despesa'); setCategoria(null); setSubcategoria(null); setCentroCusto(null)
     setContaBancaria(null); setFormaPagamento(null); setContatoId(null); setValorCents(0)
@@ -438,6 +440,7 @@ function NewEntryDialog({
     setIsRecurring(false); setFrequency('mensal'); setRecCount(11); setRecUntil(''); setRecInfinite(false)
     setIsInstallment(false); setInstallmentTotal(2); setInstallmentInterval(30)
     setShowMore(false); setNotaFiscal(''); setNumeroDocumento(''); setProjeto(''); setUnidadeNegocio('')
+    setStep(0)
   }
 
   const previewDates = useMemo(() => {
@@ -446,6 +449,19 @@ function NewEntryDialog({
     if (isRecurring) return computeRecurrenceDates(base, { frequency, count: recCount, until: recUntil || null, infinite: recInfinite })
     return []
   }, [isRecurring, isInstallment, frequency, recCount, recUntil, recInfinite, installmentTotal, installmentInterval, vencimento, competencia])
+
+  const WIZARD_STEPS = ['Tipo', 'Informações básicas', 'Datas', 'Pagamento', 'Recorrência', 'Parcelamento', 'Resumo']
+
+  function goNext() {
+    if (step === 1 && (!categoria?.trim() || !valorCents)) {
+      toast.error('Informe categoria e valor para continuar.')
+      return
+    }
+    setStep(s => Math.min(s + 1, WIZARD_STEPS.length - 1))
+  }
+  function goBack() {
+    setStep(s => Math.max(s - 1, 0))
+  }
 
   async function handleCreate(keepOpen = false) {
     if (!categoria?.trim()) { toast.error('Informe a categoria.'); return }
@@ -492,7 +508,172 @@ function NewEntryDialog({
           <DialogDescription>Registre uma receita ou despesa financeira.</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-5 md:grid-cols-[1fr_260px]">
+        {/* Mobile: 7-step wizard */}
+        <div className="md:hidden -mx-6 px-6">
+          <div className="flex items-center gap-1 mb-3">
+            {WIZARD_STEPS.map((_, i) => (
+              <div key={i} className={cn('h-1 flex-1 rounded-full', i <= step ? 'bg-primary' : 'bg-muted')} />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">Passo {step + 1} de {WIZARD_STEPS.length} — {WIZARD_STEPS[step]}</p>
+
+          <div className="space-y-4 pb-24">
+            {step === 0 && (
+              <div className="space-y-4">
+                <TipoToggle value={tipo} onChange={setTipo} />
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Valor <span className="text-destructive">*</span></Label>
+                  <MoneyInput value={valorCents} onChange={setValorCents} />
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Categoria <span className="text-destructive">*</span></Label>
+                  <SettingSelect value={categoria} onChange={setCategoria} options={withExtra(settings.categoria, null)} required placeholder="Selecione a categoria" />
+                </div>
+                <Field label="Subcategoria">
+                  <SettingSelect value={subcategoria} onChange={setSubcategoria} options={withExtra(settings.subcategoria, null)} />
+                </Field>
+                <Field label="Centro de custo">
+                  <SettingSelect value={centroCusto} onChange={setCentroCusto} options={withExtra(settings.centro_custo, null)} />
+                </Field>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Observações / descrição</Label>
+                  <Textarea rows={3} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Ex.: pagamento de comissão do consultor X" />
+                </div>
+                <Field label="Cliente ou fornecedor">
+                  <LeadCombobox orgSlug={orgSlug} name="contato_id" placeholder="Buscar contato…" onChange={lead => setContatoId(lead?.id ?? null)} />
+                </Field>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Competência</Label>
+                  <Input type="date" inputMode="none" className="h-12 text-base" value={competencia} onChange={e => setCompetencia(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Vencimento</Label>
+                  <Input type="date" inputMode="none" className="h-12 text-base" value={vencimento} onChange={e => setVencimento(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <Field label="Conta bancária">
+                  <SettingSelect value={contaBancaria} onChange={setContaBancaria} options={withExtra(settings.conta_bancaria, null)} />
+                </Field>
+                <Field label="Forma de pagamento">
+                  <SettingSelect value={formaPagamento} onChange={setFormaPagamento} options={withExtra(settings.forma_pagamento, null)} />
+                </Field>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-base py-2 cursor-pointer">
+                  <Checkbox className="h-5 w-5" checked={isRecurring} onCheckedChange={v => { setIsRecurring(v === true); if (v) setIsInstallment(false) }} />
+                  <span className="flex items-center gap-1.5"><Repeat className="w-4 h-4 text-muted-foreground" /> Possui recorrência?</span>
+                </label>
+                {isRecurring && (
+                  <RecurrenceFields
+                    frequency={frequency} setFrequency={setFrequency}
+                    count={recCount} setCount={setRecCount}
+                    until={recUntil} setUntil={setRecUntil}
+                    infinite={recInfinite} setInfinite={setRecInfinite}
+                  />
+                )}
+                {!isRecurring && <p className="text-xs text-muted-foreground">Deixe desmarcado se for um lançamento único.</p>}
+              </div>
+            )}
+
+            {step === 5 && (
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-base py-2 cursor-pointer">
+                  <Checkbox className="h-5 w-5" checked={isInstallment} onCheckedChange={v => { setIsInstallment(v === true); if (v) setIsRecurring(false) }} />
+                  <span className="flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-muted-foreground" /> Compra parcelada?</span>
+                </label>
+                {isInstallment && (
+                  <div className="grid gap-3 rounded-lg border bg-muted/20 p-3">
+                    <Field label="Quantidade de parcelas">
+                      <Input type="number" inputMode="numeric" className="h-12 text-base" min={2} max={60} value={installmentTotal} onChange={e => setInstallmentTotal(Math.max(2, Number(e.target.value) || 2))} />
+                    </Field>
+                    <Field label="Intervalo entre parcelas (dias)">
+                      <Input type="number" inputMode="numeric" className="h-12 text-base" min={1} value={installmentInterval} onChange={e => setInstallmentInterval(Math.max(1, Number(e.target.value) || 30))} />
+                    </Field>
+                    <p className="text-[11px] text-muted-foreground">
+                      Valor por parcela: {formatCurrency(Math.round(valorCents / installmentTotal))} × {installmentTotal} (1ª parcela em {fmtDate(vencimento || competencia)}).
+                    </p>
+                  </div>
+                )}
+                {!isInstallment && <p className="text-xs text-muted-foreground">Deixe desmarcado se não for uma compra parcelada.</p>}
+              </div>
+            )}
+
+            {step === 6 && (
+              <div className="space-y-4">
+                <div className="rounded-lg border p-3 space-y-2.5 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    {tipo === 'receita' ? <TrendingUp className="w-4 h-4 text-success" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
+                    <span className={cn('font-semibold text-lg tabular-nums', tipo === 'receita' ? 'text-success' : 'text-destructive')}>
+                      {formatCurrency(valorCents)}
+                    </span>
+                  </div>
+                  <dl className="space-y-1.5 text-xs">
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Categoria</dt><dd className="text-right truncate">{categoria || '—'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Vencimento</dt><dd>{fmtDate(vencimento || competencia)}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Status</dt><dd>Pendente</dd></div>
+                  </dl>
+                  {previewDates.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">{isInstallment ? `${installmentTotal} parcelas` : 'Próximas ocorrências'}</p>
+                      <ul className="text-[11px] text-muted-foreground space-y-0.5 max-h-24 overflow-y-auto">
+                        {previewDates.slice(0, 8).map(d => <li key={d}>{fmtDate(d)}</li>)}
+                        {previewDates.length > 8 && <li>+ {previewDates.length - 8} mais…</li>}
+                      </ul>
+                    </div>
+                  )}
+                  {previewDates.length > 20 && (
+                    <p className="text-[11px] text-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> Isso vai gerar {previewDates.length + 1} lançamentos.</p>
+                  )}
+                </div>
+
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground underline" onClick={() => setShowMore(v => !v)}>
+                  {showMore ? 'Ocultar informações complementares' : 'Informações complementares (opcional)'}
+                </button>
+                {showMore && (
+                  <div className="space-y-3">
+                    <Field label="Número do documento"><Input value={numeroDocumento} onChange={e => setNumeroDocumento(e.target.value)} /></Field>
+                    <Field label="Nota fiscal"><Input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} /></Field>
+                    <Field label="Projeto"><Input value={projeto} onChange={e => setProjeto(e.target.value)} /></Field>
+                    <Field label="Unidade de negócio"><Input value={unidadeNegocio} onChange={e => setUnidadeNegocio(e.target.value)} /></Field>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-3 flex gap-2 z-50">
+            {step > 0 && (
+              <Button type="button" variant="outline" className="h-12" disabled={creating} onClick={goBack}>Voltar</Button>
+            )}
+            {step < WIZARD_STEPS.length - 1 ? (
+              <Button type="button" className="flex-1 h-12 text-base" onClick={goNext}>Avançar</Button>
+            ) : (
+              <Button type="button" className="flex-1 h-12 text-base" disabled={creating} onClick={() => handleCreate(false)}>
+                {creating ? 'Criando…' : 'Confirmar lançamento'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop: single-page two-column form */}
+        <div className="hidden md:grid gap-5 md:grid-cols-[1fr_260px]">
           <div className="space-y-3 py-2">
             <TipoToggle value={tipo} onChange={setTipo} />
 
@@ -610,7 +791,7 @@ function NewEntryDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="hidden md:flex">
           <Button variant="outline" disabled={creating} onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button variant="outline" disabled={creating} onClick={() => handleCreate(true)}>Salvar e criar outro</Button>
           <Button disabled={creating} onClick={() => handleCreate(false)}>{creating ? 'Criando…' : 'Criar lançamento'}</Button>
