@@ -112,9 +112,9 @@ export default async function OrgDashboard({
       <DashboardTabsShell
         stickyHeader={
           <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
               <DashboardHeader userName={userName} />
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-3 flex-nowrap overflow-x-auto w-full md:w-auto [&_[data-radix-select-trigger]]:shrink-0">
                 <PipelineFilter pipelines={pipelines || []} />
                 <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
                 <PeriodFilter orgSlug={params.orgSlug} />

@@ -30,7 +30,7 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <KpiCard
           label="Receita no mês"
           value={fmtCurrency(metrics.revenue.value * 100)}

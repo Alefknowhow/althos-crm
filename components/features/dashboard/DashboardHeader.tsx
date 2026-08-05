@@ -14,11 +14,11 @@ export default function DashboardHeader({ userName }: DashboardHeaderProps) {
   const dateStr = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })
 
   return (
-    <div className="flex flex-col gap-1.5 reveal">
-      <h1 className="text-3xl md:text-4xl font-semibold tracking-apple-tight text-foreground">
+    <div className="flex flex-col gap-0.5 sm:gap-1.5 reveal">
+      <h1 className="text-lg sm:text-3xl md:text-4xl font-semibold tracking-apple-tight text-foreground truncate">
         {greeting}, <span className="text-muted-foreground font-semibold">{userName}</span>
       </h1>
-      <p className="text-base text-muted-foreground capitalize tracking-apple-snug">
+      <p className="hidden sm:block text-base text-muted-foreground capitalize tracking-apple-snug">
         {dateStr}
       </p>
     </div>

@@ -31,7 +31,7 @@ export default function PipelineFilter({ pipelines }: { pipelines: Pipeline[] })
 
   return (
     <Select value={current} onValueChange={handleChange}>
-      <SelectTrigger className="w-[200px] h-9">
+      <SelectTrigger className="w-[130px] sm:w-[200px] h-9 shrink-0">
         <Kanban className="w-4 h-4 mr-1 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>
