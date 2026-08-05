@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,25 +16,19 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Sparkles, Plus, Loader2, Trash2, ArrowRight, BookOpen, MapPin, Hotel, Plane } from 'lucide-react'
+import { Sparkles, Plus, Loader2, Trash2, ArrowRight, BookOpen, Wand2, Send, User as UserIcon } from 'lucide-react'
 import {
-  generateRoteiroAction, deleteRoteiro, convertRoteiroToQuotation,
+  startRoteiro, sendRoteiroMessage, listRoteiroMessages, getRoteiro, deleteRoteiro, convertRoteiroToQuotation,
   addRoteiristaKnowledge, deleteRoteiristaKnowledge,
-  type RoteiroGeneration, type RoteiristaKnowledgeItem,
+  type RoteiroGeneration, type RoteiroMessage, type RoteiristaKnowledgeItem,
 } from '@/actions/roteirista'
 import type { RoteiroMode } from '@/lib/ai/roteirista'
 
-const MODE_OPTIONS: { id: RoteiroMode; label: string; icon: typeof MapPin }[] = [
-  { id: 'completo', label: 'Roteiro completo', icon: MapPin },
-  { id: 'hoteis', label: 'Só hotéis', icon: Hotel },
-  { id: 'voos', label: 'Só voos', icon: Plane },
+const MODE_OPTIONS: { id: RoteiroMode; label: string }[] = [
+  { id: 'completo', label: 'Roteiro completo' },
+  { id: 'hoteis', label: 'Só hotéis' },
+  { id: 'voos', label: 'Só voos' },
 ]
-
-const MODE_LABEL: Record<RoteiroMode, string> = {
-  completo: 'Roteiro completo',
-  hoteis: 'Só hotéis',
-  voos: 'Só voos',
-}
 
 const STATUS_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
   generating: { label: 'Gerando…', variant: 'secondary' },
@@ -52,24 +46,91 @@ export default function RoteiristaView({
   const router = useRouter()
   const [roteiros, setRoteiros] = useState(initialRoteiros)
   const [selectedId, setSelectedId] = useState<string | null>(initialRoteiros[0]?.id ?? null)
-  const [newOpen, setNewOpen] = useState(false)
+  const [messages, setMessages] = useState<RoteiroMessage[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [quickStartOpen, setQuickStartOpen] = useState(false)
   const [knowledgeOpen, setKnowledgeOpen] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [, startTransition] = useTransition()
+  const endRef = useRef<HTMLDivElement>(null)
 
   const selected = roteiros.find(r => r.id === selectedId) ?? null
 
-  function refreshAndSelect(id?: string) {
-    router.refresh()
-    if (id) setSelectedId(id)
+  useEffect(() => {
+    if (!selectedId) { setMessages([]); return }
+    setLoadingMessages(true)
+    startTransition(async () => {
+      const msgs = await listRoteiroMessages(orgSlug, selectedId)
+      setMessages(msgs)
+      setLoadingMessages(false)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, sending])
+
+  async function pushOrUpdateRoteiro(id: string) {
+    const row = await getRoteiro(orgSlug, id)
+    if (!row) return
+    setRoteiros(prev => {
+      const exists = prev.some(r => r.id === id)
+      return exists ? prev.map(r => (r.id === id ? row : r)) : [row, ...prev]
+    })
+  }
+
+  async function handleNewConversation() {
+    const res = await startRoteiro(orgSlug, {})
+    if (!res.ok) { toast.error(res.error); return }
+    await pushOrUpdateRoteiro(res.id)
+    setSelectedId(res.id)
+    setMessages([])
+  }
+
+  async function handleSend(text: string) {
+    const message = text.trim()
+    if (!message || sending) return
+    setInput('')
+    setSending(true)
+
+    let targetId = selectedId
+    try {
+      if (!targetId) {
+        const res = await startRoteiro(orgSlug, { firstMessage: message })
+        if (!res.ok) { toast.error(res.error); setSending(false); return }
+        targetId = res.id
+        setSelectedId(targetId)
+        await pushOrUpdateRoteiro(targetId)
+        const msgs = await listRoteiroMessages(orgSlug, targetId)
+        setMessages(msgs)
+      } else {
+        setMessages(prev => [...prev, { id: `tmp-${Date.now()}`, role: 'user', content: message, created_at: new Date().toISOString() }])
+        const res = await sendRoteiroMessage(orgSlug, targetId, message)
+        if (!res.ok) { toast.error(res.error); setSending(false); return }
+        await pushOrUpdateRoteiro(targetId)
+        const msgs = await listRoteiroMessages(orgSlug, targetId)
+        setMessages(msgs)
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    handleSend(input)
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Excluir este roteiro?')) return
+    if (!confirm('Excluir esta conversa?')) return
     const res = await deleteRoteiro(orgSlug, id)
     if (!res.ok) { toast.error(res.error); return }
     setRoteiros(prev => prev.filter(r => r.id !== id))
-    if (selectedId === id) setSelectedId(null)
-    toast.success('Roteiro excluído')
+    if (selectedId === id) { setSelectedId(null); setMessages([]) }
+    toast.success('Conversa excluída')
   }
 
   async function handleConvert(id: string) {
@@ -83,10 +144,13 @@ export default function RoteiristaView({
 
   return (
     <div className="flex flex-1 min-h-0 gap-4">
-      <div className="w-full md:w-[340px] shrink-0 flex flex-col border rounded-none bg-card">
+      <div className="w-full md:w-[300px] shrink-0 flex flex-col border rounded-none bg-card">
         <div className="p-3 border-b flex items-center gap-2">
-          <Button size="sm" className="flex-1" onClick={() => setNewOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Novo roteiro
+          <Button size="sm" className="flex-1" onClick={handleNewConversation}>
+            <Plus className="w-4 h-4 mr-1.5" /> Nova conversa
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setQuickStartOpen(true)} title="Começar com formulário">
+            <Wand2 className="w-4 h-4" />
           </Button>
           <Button size="sm" variant="outline" onClick={() => setKnowledgeOpen(true)} title="Base de conhecimento">
             <BookOpen className="w-4 h-4" />
@@ -94,7 +158,7 @@ export default function RoteiristaView({
         </div>
         <div className="flex-1 overflow-y-auto divide-y">
           {roteiros.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Nenhum roteiro gerado ainda.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma conversa ainda.</div>
           ) : (
             roteiros.map(r => (
               <button
@@ -109,65 +173,111 @@ export default function RoteiristaView({
                     {STATUS_LABEL[r.status]?.label ?? r.status}
                   </Badge>
                 </div>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span>{MODE_LABEL[r.mode]}</span>
-                  {r.converted_quotation_id && <Badge variant="outline" className="text-[10px] px-1 py-0">Virou cotação</Badge>}
-                </div>
+                {r.converted_quotation_id && (
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 mt-1">Virou cotação</Badge>
+                )}
               </button>
             ))
           )}
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 border rounded-none bg-card overflow-y-auto">
-        {!selected ? (
-          <EmptyState
-            icon={Sparkles}
-            title="Selecione ou gere um roteiro"
-            description="Preencha o formulário de um novo roteiro pra pesquisar destino, hotéis e voos com IA."
-          />
+      <div className="flex-1 min-w-0 border rounded-none bg-card flex flex-col">
+        {!selected && !sending ? (
+          <div className="flex-1 flex flex-col">
+            <EmptyState
+              icon={Sparkles}
+              title="Roteirista IA"
+              description="Digite abaixo pra começar uma conversa, ou use o formulário-atalho pra estruturar sua primeira pergunta."
+            />
+            <form onSubmit={handleSubmit} className="border-t bg-card p-3 flex gap-2 shrink-0">
+              <Input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Ex.: Quero um roteiro de 5 dias em Fernando de Noronha, saindo de SP…"
+                disabled={sending}
+                className="flex-1 h-10 text-sm"
+              />
+              <Button type="submit" size="icon" disabled={sending || !input.trim()} className="h-10 w-10 shrink-0">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </form>
+          </div>
         ) : (
           <div className="flex flex-col h-full">
             <div className="sticky top-0 bg-card/90 border-b p-4 flex items-start justify-between gap-3 z-10">
               <div className="min-w-0">
-                <h2 className="font-semibold truncate">{selected.title}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{MODE_LABEL[selected.mode]}</p>
+                <h2 className="font-semibold truncate">{selected?.title || 'Nova conversa'}</h2>
               </div>
-              <div className="shrink-0 flex items-center gap-1.5">
-                {selected.status === 'done' && !selected.converted_quotation_id && (
-                  <Button size="sm" disabled={converting} onClick={() => handleConvert(selected.id)}>
-                    {converting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <ArrowRight className="w-3.5 h-3.5 mr-1.5" />}
-                    Transformar em cotação
+              {selected && (
+                <div className="shrink-0 flex items-center gap-1.5">
+                  {selected.status === 'done' && !selected.converted_quotation_id && (
+                    <Button size="sm" disabled={converting} onClick={() => handleConvert(selected.id)}>
+                      {converting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <ArrowRight className="w-3.5 h-3.5 mr-1.5" />}
+                      Transformar em cotação
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(selected.id)}>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                )}
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(selected.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="p-4">
-              {selected.status === 'generating' && (
-                <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Pesquisando e montando o roteiro com IA…</p>
                 </div>
               )}
-              {selected.status === 'error' && (
-                <div className="text-sm text-destructive">{selected.error_message || 'Erro ao gerar o roteiro.'}</div>
-              )}
-              {selected.status === 'done' && selected.result_html && (
-                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selected.result_html }} />
-              )}
             </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {loadingMessages ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+              ) : (
+                messages.map(m => (
+                  <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${m.role === 'user' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-primary/10 text-primary'}`}>
+                      {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    </div>
+                    {m.role === 'user' ? (
+                      <div className="max-w-[80%] rounded-none px-3.5 py-2 text-sm bg-primary text-primary-foreground inline-block whitespace-pre-wrap">
+                        {m.content}
+                      </div>
+                    ) : (
+                      <div className="max-w-[88%] flex-1 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: m.content }} />
+                    )}
+                  </div>
+                ))
+              )}
+              {sending && (
+                <div className="flex gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="text-muted-foreground text-xs">pesquisando e escrevendo…</span>
+                  </div>
+                </div>
+              )}
+              <div ref={endRef} />
+            </div>
+
+            <form onSubmit={handleSubmit} className="border-t bg-card p-3 flex gap-2 shrink-0">
+              <Input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Continue a conversa…"
+                disabled={sending}
+                className="flex-1 h-10 text-sm"
+              />
+              <Button type="submit" size="icon" disabled={sending || !input.trim()} className="h-10 w-10 shrink-0">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </form>
           </div>
         )}
       </div>
 
-      <NewRoteiroDialog
+      <QuickStartDialog
         orgSlug={orgSlug}
-        open={newOpen}
-        onOpenChange={setNewOpen}
-        onCreated={id => { setNewOpen(false); refreshAndSelect(id) }}
+        open={quickStartOpen}
+        onOpenChange={setQuickStartOpen}
+        onCreated={async id => { setQuickStartOpen(false); await pushOrUpdateRoteiro(id); setSelectedId(id) }}
       />
       <KnowledgeDialog
         orgSlug={orgSlug}
@@ -179,7 +289,7 @@ export default function RoteiristaView({
   )
 }
 
-function NewRoteiroDialog({
+function QuickStartDialog({
   orgSlug, open, onOpenChange, onCreated,
 }: {
   orgSlug: string
@@ -208,26 +318,27 @@ function NewRoteiroDialog({
     setOrcamento(''); setInteresses(''); setObservacoes('')
   }
 
-  async function handleGenerate() {
+  async function handleStart() {
     if (!destino.trim()) { toast.error('Informe o destino.'); return }
     setGenerating(true)
-    const res = await generateRoteiroAction(orgSlug, {
-      mode,
-      destino,
-      dataIda: periodoFlexivel ? null : (dataIda || null),
-      dataVolta: periodoFlexivel ? null : (dataVolta || null),
-      periodoFlexivel,
-      mesReferencia: periodoFlexivel ? (mesReferencia || null) : null,
-      paxAdults,
-      paxChildren,
-      nivelConforto,
-      orcamentoCents: orcamento ? Math.round(Number(orcamento.replace(',', '.')) * 100) : null,
-      interesses: interesses.trim() || null,
-      observacoes: observacoes.trim() || null,
+    const res = await startRoteiro(orgSlug, {
+      quickStart: {
+        mode,
+        destino,
+        dataIda: periodoFlexivel ? null : (dataIda || null),
+        dataVolta: periodoFlexivel ? null : (dataVolta || null),
+        periodoFlexivel,
+        mesReferencia: periodoFlexivel ? (mesReferencia || null) : null,
+        paxAdults,
+        paxChildren,
+        nivelConforto,
+        orcamentoCents: orcamento ? Math.round(Number(orcamento.replace(',', '.')) * 100) : null,
+        interesses: interesses.trim() || null,
+        observacoes: observacoes.trim() || null,
+      },
     })
     setGenerating(false)
     if (!res.ok) { toast.error(res.error); return }
-    toast.success('Roteiro sendo gerado — acompanhe na lista.')
     reset()
     onCreated(res.id)
   }
@@ -236,26 +347,22 @@ function NewRoteiroDialog({
     <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) reset() }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Novo roteiro</DialogTitle>
-          <DialogDescription>Preencha as informações — a IA pesquisa na web e monta o resultado.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><Wand2 className="w-4 h-4 text-primary" /> Começar com formulário</DialogTitle>
+          <DialogDescription>Atalho opcional — monta a primeira mensagem da conversa pra você. Você pode continuar digitando livremente depois.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
           <div className="grid grid-cols-3 gap-2">
-            {MODE_OPTIONS.map(m => {
-              const Icon = m.icon
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMode(m.id)}
-                  className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs ${mode === m.id ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground'}`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {m.label}
-                </button>
-              )
-            })}
+            {MODE_OPTIONS.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMode(m.id)}
+                className={`rounded-lg border p-2.5 text-xs ${mode === m.id ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground'}`}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
 
           <div className="space-y-1">
@@ -328,9 +435,9 @@ function NewRoteiroDialog({
 
         <DialogFooter>
           <Button variant="outline" disabled={generating} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={generating} onClick={handleGenerate}>
+          <Button disabled={generating} onClick={handleStart}>
             {generating ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-            {generating ? 'Gerando…' : 'Gerar roteiro'}
+            {generating ? 'Gerando…' : 'Iniciar conversa'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -373,7 +480,7 @@ function KnowledgeDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-primary" /> Base de conhecimento</DialogTitle>
           <DialogDescription>
-            Fatos que a IA considera ao gerar roteiros — ex.: "Grand Palladium tem gratuidade para até 2 CHD de até 17 anos por quarto, acompanhado de adultos pagantes."
+            Fatos que a IA considera ao conversar — ex.: "Grand Palladium tem gratuidade para até 2 CHD de até 17 anos por quarto, acompanhado de adultos pagantes."
           </DialogDescription>
         </DialogHeader>
 

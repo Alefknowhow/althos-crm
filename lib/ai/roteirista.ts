@@ -1,17 +1,17 @@
 /**
- * Geração de roteiro de viagem via Gemini Flash 2.5, com busca na web
+ * Roteirista: chat de viagem via Gemini 3.6 Flash, com busca na web
  * (grounding) pra estimar período mais barato, preços de passagem e
  * avaliações de hotéis. Sem responseSchema: a API do Gemini não permite
  * combinar googleSearch com saída JSON estruturada, então o modelo escreve
- * um único bloco de HTML rico (mesmo padrão de itinerary_html em
- * travel_proposals), com seções conforme o modo escolhido.
+ * HTML rico (mesmo padrão de itinerary_html em travel_proposals) em cada
+ * resposta, e a conversa continua turno a turno.
  */
 
 import { GoogleGenAI } from '@google/genai'
 
 export type RoteiroMode = 'completo' | 'hoteis' | 'voos'
 
-export type RoteiroInput = {
+export type RoteiroQuickStartInput = {
   mode: RoteiroMode
   destino: string
   dataIda: string | null
@@ -24,7 +24,6 @@ export type RoteiroInput = {
   orcamentoCents: number | null
   interesses: string | null
   observacoes: string | null
-  knowledgeContext: string
 }
 
 const MODE_INSTRUCTIONS: Record<RoteiroMode, string> = {
@@ -33,7 +32,8 @@ const MODE_INSTRUCTIONS: Record<RoteiroMode, string> = {
   voos: 'Foque SOMENTE em passagens aéreas: estimativa de preço, companhias que operam a rota, e — se o período for flexível — qual janela de datas tende a ser mais barata. Não gere roteiro dia a dia nem sugestões de hotel.',
 }
 
-function buildPrompt(input: RoteiroInput): string {
+/** Compõe a primeira mensagem do chat a partir do formulário-atalho — texto puro, sem chamar a IA. */
+export function buildQuickStartMessage(input: RoteiroQuickStartInput): string {
   const paxLine = `${input.paxAdults} adulto(s)${input.paxChildren > 0 ? ` + ${input.paxChildren} criança(s)` : ''}`
   const dateLine = input.periodoFlexivel
     ? `Período flexível — buscar a janela mais barata${input.mesReferencia ? ` em torno de ${input.mesReferencia}` : ''}.`
@@ -54,25 +54,41 @@ function buildPrompt(input: RoteiroInput): string {
     '',
     'Dados da solicitação:',
     ...lines.map(l => `- ${l}`),
-    input.knowledgeContext ? `\nConhecimento interno da agência (considere essas informações quando relevantes):\n${input.knowledgeContext}` : '',
-    '',
-    'Responda em HTML simples (use <h3>, <p>, <ul>/<li>, <strong> — sem <html>/<body>/<style>), em português do Brasil, pronto pra ser exibido direto numa página. Use a busca na web pra trazer preços e avaliações o mais reais possível, e deixe claro quando um valor é uma estimativa.',
   ].join('\n')
 }
 
-export async function generateRoteiro(apiKey: string, input: RoteiroInput): Promise<string> {
+export type RoteiroChatTurn = { role: 'user' | 'assistant'; content: string }
+
+/** Envia o histórico completo da conversa e retorna a resposta do turno atual. */
+export async function sendRoteiroChatMessage(
+  apiKey: string,
+  history: RoteiroChatTurn[],
+  knowledgeContext: string,
+): Promise<string> {
   const ai = new GoogleGenAI({ apiKey })
+
+  const systemInstruction = [
+    'Você é um especialista em planejamento de viagens que trabalha para uma agência de viagens brasileira, conversando em um chat com um atendente da agência. Responda em português do Brasil.',
+    'Seja específico, cite nomes de hotéis/companhias reais quando encontrar via busca, e nunca invente preços exatos sem sinalizar que são estimativas. Use a busca na web pra trazer preços e avaliações o mais reais possível.',
+    'Responda em HTML simples (use <h3>, <p>, <ul>/<li>, <strong> — sem <html>/<body>/<style>), pronto pra ser exibido direto numa página.',
+    knowledgeContext ? `\nConhecimento interno da agência (considere essas informações quando relevantes):\n${knowledgeContext}` : '',
+  ].join('\n')
+
+  const contents = history.map(turn => ({
+    role: turn.role === 'assistant' ? 'model' as const : 'user' as const,
+    parts: [{ text: turn.content }],
+  }))
 
   const response = await ai.models.generateContent({
     model: 'gemini-3.6-flash',
-    contents: [{ role: 'user', parts: [{ text: buildPrompt(input) }] }],
+    contents,
     config: {
       tools: [{ googleSearch: {} }],
-      systemInstruction: 'Você é um especialista em planejamento de viagens que trabalha para uma agência de viagens brasileira. Seja específico, cite nomes de hotéis/companhias reais quando encontrar via busca, e nunca invente preços exatos sem sinalizar que são estimativas.',
+      systemInstruction,
     },
   })
 
   const text = response.text
-  if (!text) throw new Error('IA não retornou o roteiro')
+  if (!text) throw new Error('IA não retornou uma resposta')
   return text
 }

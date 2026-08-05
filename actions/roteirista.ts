@@ -4,7 +4,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { isTravelNiche } from '@/lib/niche'
-import { generateRoteiro, type RoteiroMode } from '@/lib/ai/roteirista'
+import { sendRoteiroChatMessage, buildQuickStartMessage, type RoteiroMode, type RoteiroQuickStartInput, type RoteiroChatTurn } from '@/lib/ai/roteirista'
 import { getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 import { revalidatePath } from 'next/cache'
@@ -12,22 +12,23 @@ import { revalidatePath } from 'next/cache'
 export type RoteiroGeneration = {
   id: string
   title: string
-  mode: RoteiroMode
-  destino: string
+  mode: RoteiroMode | null
+  destino: string | null
   data_ida: string | null
   data_volta: string | null
-  periodo_flexivel: boolean
-  mes_referencia: string | null
   pax_adults: number
   pax_children: number
-  nivel_conforto: string | null
-  orcamento_cents: number | null
-  interesses: string | null
-  observacoes: string | null
   result_html: string | null
   status: 'generating' | 'done' | 'error'
   error_message: string | null
   converted_quotation_id: string | null
+  created_at: string
+}
+
+export type RoteiroMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
   created_at: string
 }
 
@@ -82,31 +83,99 @@ export async function deleteRoteiro(orgSlug: string, id: string) {
   return { ok: true as const }
 }
 
-export async function generateRoteiroAction(
+export async function listRoteiroMessages(orgSlug: string, roteiroId: string): Promise<RoteiroMessage[]> {
+  const access = await requireRoteiristaAccess(orgSlug)
+  if (!access.ok) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('roteiro_messages')
+    .select('id, role, content, created_at')
+    .eq('organization_id', access.org.id)
+    .eq('roteiro_id', roteiroId)
+    .order('created_at', { ascending: true })
+  return (data || []) as RoteiroMessage[]
+}
+
+async function loadKnowledgeContext(supabase: ReturnType<typeof createClient>, orgId: string): Promise<string> {
+  const { data: knowledgeRows } = await supabase
+    .from('roteirista_knowledge_items')
+    .select('content')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(200)
+  return (knowledgeRows || []).map(r => `- ${r.content}`).join('\n')
+}
+
+/**
+ * Inicia uma conversa nova. `quickStart` é opcional — quando presente, monta
+ * a primeira mensagem a partir do formulário-atalho; quando ausente, usa
+ * `firstMessage` (texto livre) ou apenas cria a conversa vazia (sem 1ª
+ * mensagem) pra o usuário digitar depois.
+ */
+export async function startRoteiro(
   orgSlug: string,
-  input: {
-    mode: RoteiroMode
-    destino: string
-    dataIda: string | null
-    dataVolta: string | null
-    periodoFlexivel: boolean
-    mesReferencia: string | null
-    paxAdults: number
-    paxChildren: number
-    nivelConforto: string | null
-    orcamentoCents: number | null
-    interesses: string | null
-    observacoes: string | null
-  },
+  input: { quickStart?: RoteiroQuickStartInput; firstMessage?: string },
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const access = await requireRoteiristaAccess(orgSlug)
   if (!access.ok) return access
   const { user, org } = access
-
-  if (!input.destino?.trim()) return { ok: false, error: 'Informe o destino.' }
   if (!hasGeminiKey()) return { ok: false, error: 'IA (Gemini) não configurada.' }
 
   const supabase = createClient()
+  const firstMessage = input.quickStart ? buildQuickStartMessage(input.quickStart) : (input.firstMessage?.trim() || null)
+
+  const title = input.quickStart
+    ? `${input.quickStart.destino}${input.quickStart.dataIda ? ` · ${input.quickStart.dataIda}` : ''}`
+    : (firstMessage ? firstMessage.slice(0, 60) : 'Nova conversa')
+
+  const { data: row, error: insertError } = await supabase
+    .from('roteiro_generations')
+    .insert({
+      organization_id: org.id,
+      created_by: user.id,
+      title,
+      mode: input.quickStart?.mode || null,
+      destino: input.quickStart?.destino?.trim() || null,
+      data_ida: input.quickStart?.dataIda || null,
+      data_volta: input.quickStart?.dataVolta || null,
+      pax_adults: input.quickStart?.paxAdults ?? 2,
+      pax_children: input.quickStart?.paxChildren ?? 0,
+      status: firstMessage ? 'generating' : 'done',
+    })
+    .select('id')
+    .single()
+
+  if (insertError || !row) return { ok: false, error: insertError?.message || 'Erro ao criar o roteiro.' }
+
+  if (firstMessage) {
+    const res = await sendRoteiroMessage(orgSlug, row.id, firstMessage)
+    if (!res.ok) return { ok: false, error: res.error }
+  }
+
+  return { ok: true, id: row.id }
+}
+
+/** Envia uma mensagem na conversa (nova ou existente) e retorna a resposta da IA. */
+export async function sendRoteiroMessage(
+  orgSlug: string,
+  roteiroId: string,
+  message: string,
+): Promise<{ ok: true; reply: string } | { ok: false; error: string }> {
+  const access = await requireRoteiristaAccess(orgSlug)
+  if (!access.ok) return access
+  const { org } = access
+  if (!message?.trim()) return { ok: false, error: 'Escreva uma mensagem.' }
+  if (!hasGeminiKey()) return { ok: false, error: 'IA (Gemini) não configurada.' }
+
+  const supabase = createClient()
+  const { data: roteiro } = await supabase
+    .from('roteiro_generations')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('id', roteiroId)
+    .maybeSingle()
+  if (!roteiro) return { ok: false, error: 'Conversa não encontrada.' }
 
   const accountId = (org as any).account_id as string | null
   if (accountId) {
@@ -121,68 +190,34 @@ export async function generateRoteiroAction(
     }
   }
 
-  const { data: knowledgeRows } = await supabase
-    .from('roteirista_knowledge_items')
-    .select('content')
-    .eq('organization_id', org.id)
-    .eq('is_active', true)
+  await supabase.from('roteiro_generations').update({ status: 'generating' }).eq('id', roteiroId)
+  await supabase.from('roteiro_messages').insert({
+    roteiro_id: roteiroId, organization_id: org.id, role: 'user', content: message.trim(),
+  })
+
+  const { data: priorMessages } = await supabase
+    .from('roteiro_messages')
+    .select('role, content')
+    .eq('roteiro_id', roteiroId)
     .order('created_at', { ascending: true })
-    .limit(200)
-  const knowledgeContext = (knowledgeRows || []).map(r => `- ${r.content}`).join('\n')
 
-  const title = `${input.destino}${input.dataIda ? ` · ${input.dataIda}` : ''}`
-
-  const { data: row, error: insertError } = await supabase
-    .from('roteiro_generations')
-    .insert({
-      organization_id: org.id,
-      created_by: user.id,
-      title,
-      mode: input.mode,
-      destino: input.destino.trim(),
-      data_ida: input.dataIda || null,
-      data_volta: input.dataVolta || null,
-      periodo_flexivel: input.periodoFlexivel,
-      mes_referencia: input.mesReferencia || null,
-      pax_adults: input.paxAdults,
-      pax_children: input.paxChildren,
-      nivel_conforto: input.nivelConforto || null,
-      orcamento_cents: input.orcamentoCents || null,
-      interesses: input.interesses || null,
-      observacoes: input.observacoes || null,
-      status: 'generating',
-    })
-    .select('id')
-    .single()
-
-  if (insertError || !row) return { ok: false, error: insertError?.message || 'Erro ao criar o roteiro.' }
+  const history: RoteiroChatTurn[] = (priorMessages || []) as RoteiroChatTurn[]
+  const knowledgeContext = await loadKnowledgeContext(supabase, org.id)
 
   try {
-    const resultHtml = await generateRoteiro(getGeminiKey(), {
-      mode: input.mode,
-      destino: input.destino.trim(),
-      dataIda: input.dataIda,
-      dataVolta: input.dataVolta,
-      periodoFlexivel: input.periodoFlexivel,
-      mesReferencia: input.mesReferencia,
-      paxAdults: input.paxAdults,
-      paxChildren: input.paxChildren,
-      nivelConforto: input.nivelConforto,
-      orcamentoCents: input.orcamentoCents,
-      interesses: input.interesses,
-      observacoes: input.observacoes,
-      knowledgeContext,
+    const reply = await sendRoteiroChatMessage(getGeminiKey(), history, knowledgeContext)
+    await supabase.from('roteiro_messages').insert({
+      roteiro_id: roteiroId, organization_id: org.id, role: 'assistant', content: reply,
     })
-    await supabase.from('roteiro_generations').update({ result_html: resultHtml, status: 'done' }).eq('id', row.id)
+    await supabase.from('roteiro_generations').update({ result_html: reply, status: 'done' }).eq('id', roteiroId)
+    revalidatePath(`/app/${orgSlug}/roteirista`)
+    return { ok: true, reply }
   } catch (err: any) {
-    await supabase.from('roteiro_generations').update({
-      status: 'error',
-      error_message: err?.message || 'Erro ao gerar o roteiro com IA.',
-    }).eq('id', row.id)
+    const errorMessage = err?.message || 'Erro ao gerar a resposta com IA.'
+    await supabase.from('roteiro_generations').update({ status: 'error', error_message: errorMessage }).eq('id', roteiroId)
+    revalidatePath(`/app/${orgSlug}/roteirista`)
+    return { ok: false, error: errorMessage }
   }
-
-  revalidatePath(`/app/${orgSlug}/roteirista`)
-  return { ok: true, id: row.id }
 }
 
 export async function convertRoteiroToQuotation(orgSlug: string, roteiroId: string): Promise<{ ok: true; quotationId: string } | { ok: false; error: string }> {
@@ -207,7 +242,7 @@ export async function convertRoteiroToQuotation(orgSlug: string, roteiroId: stri
       created_by: access.user.id,
       contato_id: null,
       title: roteiro.title,
-      destinations: roteiro.destino,
+      destinations: roteiro.destino || roteiro.title,
       start_date: roteiro.data_ida,
       end_date: roteiro.data_volta,
       pax_count: roteiro.pax_adults + roteiro.pax_children,
