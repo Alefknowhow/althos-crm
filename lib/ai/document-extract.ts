@@ -9,6 +9,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenAI, Type } from '@google/genai'
 
 export type ExtractedTravelDocument = {
   cliente: string | null
@@ -129,7 +130,90 @@ export async function extractTravelDocumentFromFile(
   )
   if (!toolBlock) throw new Error('IA não retornou bloco de tool_use')
 
-  const parsed = toolBlock.input as any
+  return normalizeExtractedDocument(toolBlock.input)
+}
+
+const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (vouchers de operadora, reservas, orçamentos) em português do Brasil. Quando um campo não estiver presente no documento, use null (ou array vazio para voos, ou false para traslado/seguro).'
+
+const GEMINI_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    cliente: { type: Type.STRING, nullable: true },
+    destino: { type: Type.STRING, nullable: true },
+    hotel: { type: Type.STRING, nullable: true },
+    operadora: { type: Type.STRING, nullable: true },
+    localizador_pacote: { type: Type.STRING, nullable: true },
+    localizador_aereo: { type: Type.STRING, nullable: true },
+    data_ida: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
+    data_volta: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
+    voos: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          companhia: { type: Type.STRING, nullable: true },
+          numero: { type: Type.STRING, nullable: true },
+          data: { type: Type.STRING, nullable: true },
+          origem: { type: Type.STRING, nullable: true },
+          destino: { type: Type.STRING, nullable: true },
+          horario: { type: Type.STRING, nullable: true },
+          sentido: { type: Type.STRING, nullable: true, enum: ['ida', 'volta'] },
+        },
+      },
+    },
+    traslado: { type: Type.BOOLEAN },
+    seguro: { type: Type.BOOLEAN },
+    valor_total_cents: { type: Type.INTEGER, nullable: true },
+    observacoes: { type: Type.STRING, nullable: true },
+    informacoes_importantes: { type: Type.STRING, nullable: true },
+    informacoes_servico: { type: Type.STRING, nullable: true },
+    politica_cancelamento: { type: Type.STRING, nullable: true },
+    viajantes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          nome: { type: Type.STRING, nullable: true },
+          data_nascimento: { type: Type.STRING, nullable: true },
+          cpf: { type: Type.STRING, nullable: true },
+        },
+      },
+    },
+  },
+  required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
+}
+
+/** Mesma extração, via Gemini Flash 2.5 (visão nativa a imagem/PDF inline). */
+export async function extractTravelDocumentFromFileGemini(
+  apiKey: string,
+  base64: string,
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf',
+): Promise<ExtractedTravelDocument> {
+  const ai = new GoogleGenAI({ apiKey })
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType: mediaType, data: base64 } },
+        { text: 'Extraia os dados deste documento de viagem.' },
+      ],
+    }],
+    config: {
+      systemInstruction: EXTRACT_SYSTEM_PROMPT,
+      responseMimeType: 'application/json',
+      responseSchema: GEMINI_RESPONSE_SCHEMA,
+    },
+  })
+
+  const text = response.text
+  if (!text) throw new Error('IA não retornou dados extraídos')
+
+  return normalizeExtractedDocument(JSON.parse(text))
+}
+
+function normalizeExtractedDocument(parsed: any): ExtractedTravelDocument {
   return {
     cliente: typeof parsed.cliente === 'string' ? parsed.cliente.slice(0, 200) : null,
     destino: typeof parsed.destino === 'string' ? parsed.destino.slice(0, 200) : null,

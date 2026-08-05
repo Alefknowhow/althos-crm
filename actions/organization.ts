@@ -237,6 +237,7 @@ export async function updateOrgAI(
     ai_qualifier_model?: string
     ai_qualifier_prompt?: string
     ai_business_context?: string
+    ocr_provider?: 'claude' | 'gemini'
   },
 ) {
   await requireAuth()
@@ -250,6 +251,8 @@ export async function updateOrgAI(
     updates.ai_qualifier_prompt = payload.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT
   if (typeof payload.ai_business_context === 'string')
     updates.ai_business_context = payload.ai_business_context
+  if (payload.ocr_provider === 'claude' || payload.ocr_provider === 'gemini')
+    updates.ocr_provider = payload.ocr_provider
 
   if (Object.keys(updates).length === 0) return { ok: true as const }
 
@@ -274,12 +277,13 @@ export async function getOrgAIConfig(orgSlug: string) {
 
   const { data } = await supabase
     .from('organizations')
-    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context')
+    .select('ai_enabled, ai_provider, ai_qualifier_model, ai_qualifier_prompt, ai_business_context, ocr_provider')
     .eq('id', org.id)
     .maybeSingle()
 
   return {
     ai_enabled: data?.ai_enabled ?? false,
+    ocr_provider: (data?.ocr_provider === 'gemini' ? 'gemini' : 'claude') as 'claude' | 'gemini',
     ai_provider: data?.ai_provider ?? 'anthropic',
     ai_qualifier_model: data?.ai_qualifier_model ?? 'claude-haiku-4-5',
     ai_qualifier_prompt: data?.ai_qualifier_prompt ?? DEFAULT_QUALIFIER_PROMPT,

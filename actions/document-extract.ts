@@ -1,9 +1,10 @@
 'use server'
 
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
-import { extractTravelDocumentFromFile, type ExtractedTravelDocument } from '@/lib/ai/document-extract'
-import { getPlatformAiKey, hasPlatformAiKey } from '@/lib/ai/api-key'
+import { extractTravelDocumentFromFile, extractTravelDocumentFromFileGemini, type ExtractedTravelDocument } from '@/lib/ai/document-extract'
+import { getPlatformAiKey, hasPlatformAiKey, getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 
 const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'] as const
@@ -34,7 +35,17 @@ export async function extractTravelDocument(
   if (!(ALLOWED_MEDIA_TYPES as readonly string[]).includes(input.mediaType)) {
     return { ok: false, error: 'Formato não suportado. Use PDF, JPG, PNG, WebP ou GIF.' }
   }
-  if (!hasPlatformAiKey()) return { ok: false, error: 'IA não configurada.' }
+
+  const supabase = createClient()
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('ocr_provider')
+    .eq('id', org.id)
+    .maybeSingle()
+  const provider = orgRow?.ocr_provider === 'gemini' ? 'gemini' : 'claude'
+
+  if (provider === 'gemini' && !hasGeminiKey()) return { ok: false, error: 'IA (Gemini) não configurada.' }
+  if (provider === 'claude' && !hasPlatformAiKey()) return { ok: false, error: 'IA não configurada.' }
 
   // Créditos: leitura de imagem/PDF por visão custa mais que uma chamada de
   // texto simples (ver lib/plans/config.ts AI_CREDIT_COST.ocr_extract).
@@ -52,11 +63,9 @@ export async function extractTravelDocument(
   }
 
   try {
-    const data = await extractTravelDocumentFromFile(
-      getPlatformAiKey(),
-      input.base64,
-      input.mediaType as any,
-    )
+    const data = provider === 'gemini'
+      ? await extractTravelDocumentFromFileGemini(getGeminiKey(), input.base64, input.mediaType as any)
+      : await extractTravelDocumentFromFile(getPlatformAiKey(), input.base64, input.mediaType as any)
     return { ok: true, data }
   } catch (err: any) {
     return { ok: false, error: err?.message || 'Erro ao processar o documento com IA.' }

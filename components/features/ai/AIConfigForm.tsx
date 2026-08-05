@@ -22,7 +22,13 @@ type Initial = {
   ai_qualifier_model: string
   ai_qualifier_prompt: string
   ai_business_context: string
+  ocr_provider: 'claude' | 'gemini'
 }
+
+const OCR_PROVIDER_OPTIONS: { id: 'claude' | 'gemini'; label: string }[] = [
+  { id: 'claude', label: 'Claude (Anthropic) — padrão' },
+  { id: 'gemini', label: 'Gemini Flash 2.5 (Google)' },
+]
 
 const MODEL_OPTIONS = [
   { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (rápido, barato — recomendado)' },
@@ -35,6 +41,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
   const [model, setModel] = useState(initial.ai_qualifier_model)
   const [prompt, setPrompt] = useState(initial.ai_qualifier_prompt || DEFAULT_QUALIFIER_PROMPT)
   const [businessContext, setBusinessContext] = useState(initial.ai_business_context || '')
+  const [ocrProvider, setOcrProvider] = useState<'claude' | 'gemini'>(initial.ocr_provider)
   const [saving, setSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -45,6 +52,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
       ai_qualifier_model: model,
       ai_qualifier_prompt: prompt,
       ai_business_context: businessContext,
+      ocr_provider: ocrProvider,
     })
     setSaving(false)
     if (res.ok) {
@@ -110,6 +118,27 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
               Modelos mais precisos consomem mais créditos por qualificação.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Motor de IA — leitura de documentos (OCR)</CardTitle>
+          <CardDescription>
+            Escolha qual motor de IA processa a extração de dados de vouchers, orçamentos e reservas
+            (PDF/imagem) em Reservas e Cotações. Não afeta a qualificação de leads acima.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <select
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            value={ocrProvider}
+            onChange={e => setOcrProvider(e.target.value as 'claude' | 'gemini')}
+          >
+            {OCR_PROVIDER_OPTIONS.map(o => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
         </CardContent>
       </Card>
 
