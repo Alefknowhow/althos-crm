@@ -39,7 +39,7 @@ import { toast } from 'sonner'
 import {
   Wallet, Plus, Trash2, ArrowLeft, Search, Save, Upload, Paperclip, FileIcon,
   ImageIcon, X, Loader2, TrendingUp, TrendingDown, ChevronDown, Repeat, CreditCard,
-  AlertTriangle,
+  AlertTriangle, Copy,
 } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
@@ -402,6 +402,7 @@ function NewEntryDialog({
   setCreating: (b: boolean) => void
   onCreated: (id: string) => void
 }) {
+  const router = useRouter()
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa')
   const [categoria, setCategoria] = useState<string | null>(null)
   const [subcategoria, setSubcategoria] = useState<string | null>(null)
@@ -446,7 +447,7 @@ function NewEntryDialog({
     return []
   }, [isRecurring, isInstallment, frequency, recCount, recUntil, recInfinite, installmentTotal, installmentInterval, vencimento, competencia])
 
-  async function handleCreate() {
+  async function handleCreate(keepOpen = false) {
     if (!categoria?.trim()) { toast.error('Informe a categoria.'); return }
     if (!valorCents) { toast.error('Informe o valor.'); return }
     if (isRecurring && isInstallment) { toast.error('Escolha recorrência OU parcelamento, não os dois.'); return }
@@ -472,8 +473,15 @@ function NewEntryDialog({
     setCreating(false)
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Lançamento criado')
-    reset()
-    onCreated(res.data.id)
+    if (keepOpen) {
+      const keepType = tipo
+      reset()
+      setTipo(keepType)
+      router.refresh()
+    } else {
+      reset()
+      onCreated(res.data.id)
+    }
   }
 
   return (
@@ -604,7 +612,8 @@ function NewEntryDialog({
 
         <DialogFooter>
           <Button variant="outline" disabled={creating} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={creating} onClick={handleCreate}>{creating ? 'Criando…' : 'Criar lançamento'}</Button>
+          <Button variant="outline" disabled={creating} onClick={() => handleCreate(true)}>Salvar e criar outro</Button>
+          <Button disabled={creating} onClick={() => handleCreate(false)}>{creating ? 'Criando…' : 'Criar lançamento'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -630,6 +639,23 @@ function EntryEditor({
   const [uploading, setUploading] = useState(false)
 
   const [tagsText, setTagsText] = useState((entry.tags || []).join(', '))
+  const [duplicating, setDuplicating] = useState(false)
+
+  async function handleDuplicate() {
+    setDuplicating(true)
+    const res = await createFinancialEntry(orgSlug, {
+      tipo: e.tipo, categoria: e.categoria, subcategoria: e.subcategoria, centro_custo: e.centro_custo,
+      conta_bancaria: e.conta_bancaria, forma_pagamento: e.forma_pagamento, contato_id: e.contato_id,
+      valor_cents: e.valor_cents, competencia: e.competencia, vencimento: e.vencimento,
+      observacoes: e.observacoes,
+      nota_fiscal: e.nota_fiscal, numero_documento: e.numero_documento,
+      projeto: e.projeto, unidade_negocio: e.unidade_negocio,
+    })
+    setDuplicating(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Lançamento duplicado')
+    router.refresh()
+  }
 
   const patch = () => ({
     tipo: e.tipo, categoria: e.categoria, subcategoria: e.subcategoria, centro_custo: e.centro_custo,
@@ -685,6 +711,9 @@ function EntryEditor({
         <div className="shrink-0 flex items-center gap-1.5">
           <Button variant="outline" size="sm" disabled={saving} onClick={() => onSave(patch())}>
             <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
+          </Button>
+          <Button variant="ghost" size="icon" disabled={duplicating} onClick={handleDuplicate} aria-label="Duplicar" title="Duplicar lançamento">
+            <Copy className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir lançamento">
             <Trash2 className="w-4 h-4" />
