@@ -16,11 +16,13 @@ export default function FinanceiroTabs({
 }) {
   return (
     <Tabs defaultValue="lancamentos">
-      <TabsList>
-        <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
-        <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-        <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
-      </TabsList>
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 bg-background">
+        <TabsList>
+          <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+        </TabsList>
+      </div>
       <TabsContent value="lancamentos">
         <FinancialEntriesView orgSlug={orgSlug} entries={entries} settings={settings} />
       </TabsContent>

@@ -405,7 +405,7 @@ export default function TasksBoard({
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
             <ViewBtn active={view === 'calendar'} onClick={() => pickView('calendar')} icon={CalendarDays} label="Calendário" />
