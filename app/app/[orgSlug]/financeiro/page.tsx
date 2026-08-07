@@ -20,7 +20,7 @@ export default async function FinanceiroPage({
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <PageHeader
         title="Financeiro"
         hint="Registre receitas e despesas manualmente ou importe um extrato bancário em CSV. Acompanhe fluxo de caixa, despesas por categoria e o DRE simplificado na aba Dashboard. Cadastre categorias, contas e centros de custo na aba Configurações."

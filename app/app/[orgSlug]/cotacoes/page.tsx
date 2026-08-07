@@ -24,7 +24,7 @@ export default async function ProposalsPage({ params }: { params: { orgSlug: str
   ])
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="max-w-7xl mx-auto w-full flex flex-col h-full gap-4">
       <PageHeader
         title="Cotações"
         hint="Monte propostas completas, vincule a um lead do pipeline e compartilhe por link ou PDF. Use o autopreenchimento por IA pra ler um voucher/orçamento e já montar a cotação."
