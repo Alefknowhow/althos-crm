@@ -39,6 +39,12 @@ export type CapiEventPayload = {
   currency?: string
   value?: number
   orderId?: string
+  // Attribution: click IDs, sem eles a Meta geralmente não consegue linkar
+  // o evento a um anúncio/campanha específico pra otimizar a entrega.
+  fbc?: string | null           // cookie _fbc (clique em anúncio no site)
+  fbp?: string | null           // cookie _fbp (browser id do Pixel)
+  ctwaClid?: string | null      // Click-to-WhatsApp Click ID (referral do webhook)
+  actionSource?: 'website' | 'business_messaging'
 }
 
 export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
@@ -48,6 +54,7 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
     email, phone, firstName,
     eventSourceUrl, userAgent, clientIpAddress,
     eventId, currency, value, orderId,
+    fbc, fbp, ctwaClid, actionSource = 'website',
   } = payload
 
   const userData: Record<string, string> = {}
@@ -59,16 +66,20 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
   if (hashedFn)    userData.fn = hashedFn
   if (clientIpAddress) userData.client_ip_address = clientIpAddress
   if (userAgent)   userData.client_user_agent = userAgent
+  // fbc/fbp vão sem hash — são identificadores de clique, não PII.
+  if (fbc) userData.fbc = fbc
+  if (fbp) userData.fbp = fbp
 
   const customData: Record<string, any> = {}
   if (currency) customData.currency = currency
   if (value)    customData.value    = value
   if (orderId)  customData.order_id = orderId
+  if (ctwaClid) customData.ctwa_clid = ctwaClid
 
   const event: Record<string, any> = {
     event_name:   eventName,
     event_time:   eventTime,
-    action_source: 'website',
+    action_source: actionSource,
     user_data:    userData,
   }
   if (eventSourceUrl) event.event_source_url = eventSourceUrl

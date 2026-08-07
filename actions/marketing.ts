@@ -6,6 +6,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
+import { classifyObjective, type ObjectiveGroup } from '@/lib/marketing/objective'
 
 /* -------- Types -------- */
 
@@ -377,6 +378,12 @@ export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: strin
               impressions: row.impressions,
               clicks: row.clicks,
               spend_cents: row.spend_cents,
+              meta_leads: row.meta_leads,
+              meta_messaging_started: row.meta_messaging_started,
+              meta_link_clicks: row.meta_link_clicks,
+              meta_landing_page_views: row.meta_landing_page_views,
+              meta_purchases: row.meta_purchases,
+              meta_purchase_value_cents: row.meta_purchase_value_cents,
               source: 'api',
             },
             { onConflict: 'campaign_id,date,source' },
@@ -577,7 +584,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'marketing')
   if (!perm.allowed) {
-    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [] }
+    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], byObjective: [] }
   }
   const supabase = createClient()
   const start = periodStart(period)
@@ -594,16 +601,17 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const campaignIds = (campaigns || []).map(c => c.id)
   if (campaignIds.length === 0) {
     return {
-      totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0 },
+      totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 },
       campaigns: [],
       timeSeries: [],
       sourcesByLeads: [],
+      byObjective: [],
     }
   }
 
   const { data: metrics } = await supabase
     .from('campaign_metrics_daily')
-    .select('campaign_id, date, impressions, clicks, spend_cents')
+    .select('campaign_id, date, impressions, clicks, spend_cents, meta_leads, meta_messaging_started, meta_link_clicks, meta_landing_page_views, meta_purchases, meta_purchase_value_cents')
     .in('campaign_id', campaignIds)
     .eq('organization_id', org.id)
     .gte('date', start)
@@ -624,13 +632,55 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     : { data: [] as { utm_campaign: string | null; contato_id: string | null }[] }
 
   // 3) Aggregate metrics per campaign.
-  const metricsByCampaign = new Map<string, { spend: number; imp: number; clicks: number }>()
+  const metricsByCampaign = new Map<
+    string,
+    { spend: number; imp: number; clicks: number; metaLeads: number; messagingStarted: number; linkClicks: number; landingPageViews: number; purchases: number; purchaseValueCents: number }
+  >()
   for (const m of metrics || []) {
-    const cur = metricsByCampaign.get(m.campaign_id) || { spend: 0, imp: 0, clicks: 0 }
+    const cur = metricsByCampaign.get(m.campaign_id) || {
+      spend: 0, imp: 0, clicks: 0, metaLeads: 0, messagingStarted: 0, linkClicks: 0, landingPageViews: 0, purchases: 0, purchaseValueCents: 0,
+    }
     cur.spend += m.spend_cents || 0
     cur.imp += m.impressions || 0
     cur.clicks += m.clicks || 0
+    cur.metaLeads += m.meta_leads || 0
+    cur.messagingStarted += m.meta_messaging_started || 0
+    cur.linkClicks += m.meta_link_clicks || 0
+    cur.landingPageViews += m.meta_landing_page_views || 0
+    cur.purchases += m.meta_purchases || 0
+    cur.purchaseValueCents += m.meta_purchase_value_cents || 0
     metricsByCampaign.set(m.campaign_id, cur)
+  }
+
+  // 3b) Negócios ganhos no período, atribuídos a uma campanha — alimenta
+  // CAC/ROAS. Dois caminhos: (a) meta_resolved_campaign_id, gravado no
+  // webhook do WhatsApp quando a conversa vem de um anúncio de
+  // Click-to-WhatsApp (ad_id → campaign_id já resolvido, ver
+  // resolveAdCampaignExternalId em lib/meta/ads.ts) — direto, sem match de
+  // texto; (b) utm_campaign do lead (formulários/tráfego), mesmo padrão
+  // de form_submissions.utm_campaign abaixo.
+  const { data: wonDeals } = await supabase
+    .from('contatos')
+    .select('utm, value_cents, meta_resolved_campaign_id')
+    .eq('organization_id', org.id)
+    .eq('deal_status', 'ganho')
+    .gte('updated_at', startIso)
+
+  const utmToCampaignId = new Map<string, string>()
+  for (const c of campaigns || []) {
+    const key = (c.utm_campaign || '').trim().toLowerCase()
+    if (key) utmToCampaignId.set(key, c.id)
+  }
+
+  const wonByCampaignId = new Map<string, { count: number; revenue_cents: number }>()
+  for (const d of wonDeals || []) {
+    const campaignId = d.meta_resolved_campaign_id
+      || utmToCampaignId.get(String((d.utm as any)?.utm_campaign || '').trim().toLowerCase())
+    if (!campaignId) continue
+    const cur = wonByCampaignId.get(campaignId) || { count: 0, revenue_cents: 0 }
+    cur.count += 1
+    cur.revenue_cents += d.value_cents || 0
+    wonByCampaignId.set(campaignId, cur)
   }
 
   // 4) Map utm_campaign → number of leads.
@@ -643,15 +693,29 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
   // 5) Build per-campaign rows.
   const campaignRows = (campaigns || []).map(c => {
-    const m = metricsByCampaign.get(c.id) || { spend: 0, imp: 0, clicks: 0 }
+    const m = metricsByCampaign.get(c.id) || {
+      spend: 0, imp: 0, clicks: 0, metaLeads: 0, messagingStarted: 0, linkClicks: 0, landingPageViews: 0, purchases: 0, purchaseValueCents: 0,
+    }
     const utm = (c.utm_campaign || '').trim().toLowerCase()
     const leads = utm ? leadsByUtm.get(utm) || 0 : 0
+    const won = wonByCampaignId.get(c.id)
     const account = Array.isArray(c.ad_accounts) ? c.ad_accounts[0] : c.ad_accounts
+    const objectiveGroup = classifyObjective(c.objective)
+
+    // CAC/ROAS agora cobrem as 3 frentes: leads/tráfego/vendas via
+    // utm_campaign, e WhatsApp via meta_resolved_campaign_id (ad_id do
+    // referral CTWA resolvido no webhook — ver comentário acima). Só fica
+    // nulo quando não há nenhum negócio ganho atribuído no período.
+    const cac_cents = won && won.count > 0 ? Math.round(m.spend / won.count) : null
+    const roas = won && m.spend > 0 ? won.revenue_cents / m.spend : null
+
     return {
       id: c.id,
       name: c.name,
       color: c.color,
       status: c.status,
+      objective: c.objective,
+      objective_group: objectiveGroup,
       provider: account?.provider || 'other',
       account_name: account?.name || '—',
       spend_cents: m.spend,
@@ -660,6 +724,17 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       leads,
       cpl_cents: leads > 0 ? Math.round(m.spend / leads) : null,
       ctr: m.imp > 0 ? (m.clicks / m.imp) * 100 : 0,
+      meta_leads: m.metaLeads,
+      meta_messaging_started: m.messagingStarted,
+      meta_link_clicks: m.linkClicks,
+      meta_landing_page_views: m.landingPageViews,
+      meta_purchases: m.purchases,
+      meta_purchase_value_cents: m.purchaseValueCents,
+      cost_per_conversation_cents: m.messagingStarted > 0 ? Math.round(m.spend / m.messagingStarted) : null,
+      won_deals: won?.count || 0,
+      revenue_cents: won?.revenue_cents || 0,
+      cac_cents,
+      roas,
     }
   })
 
@@ -670,9 +745,27 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       acc.impressions += c.impressions
       acc.clicks += c.clicks
       acc.leads += c.leads
+      acc.won_deals += c.won_deals
+      acc.revenue_cents += c.revenue_cents
       return acc
     },
-    { spend_cents: 0, impressions: 0, clicks: 0, leads: 0 },
+    { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 },
+  )
+
+  // Agregado por objetivo — alimenta o filtro em abas no painel.
+  const byObjective = Array.from(
+    campaignRows.reduce((acc, c) => {
+      const cur = acc.get(c.objective_group) || {
+        group: c.objective_group, spend_cents: 0, leads: 0, meta_messaging_started: 0, won_deals: 0, revenue_cents: 0,
+      }
+      cur.spend_cents += c.spend_cents
+      cur.leads += c.leads
+      cur.meta_messaging_started += c.meta_messaging_started
+      cur.won_deals += c.won_deals
+      cur.revenue_cents += c.revenue_cents
+      acc.set(c.objective_group, cur)
+      return acc
+    }, new Map<ObjectiveGroup, { group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>()).values(),
   )
 
   // 7) Daily time series — aggregate spend/impressions/clicks per day from
@@ -727,5 +820,5 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
-  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads }
+  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective }
 }

@@ -20,12 +20,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import ObjectiveBadge from './ObjectiveBadge'
+import type { ObjectiveGroup } from '@/lib/marketing/objective'
 
 type CampaignRow = {
   id: string
   name: string
   color: string | null
   status: string
+  objective_group: ObjectiveGroup
   provider: string
   account_name: string
   spend_cents: number
@@ -34,13 +37,11 @@ type CampaignRow = {
   leads: number
   cpl_cents: number | null
   ctr: number
-}
-
-const PROVIDER_LABEL: Record<string, string> = {
-  meta: 'Meta',
-  google: 'Google',
-  tiktok: 'TikTok',
-  other: 'Outro',
+  meta_messaging_started: number
+  cost_per_conversation_cents: number | null
+  won_deals: number
+  cac_cents: number | null
+  roas: number | null
 }
 
 function fmtCurrency(cents: number): string {
@@ -49,6 +50,30 @@ function fmtCurrency(cents: number): string {
 
 function fmtNumber(n: number): string {
   return new Intl.NumberFormat('pt-BR').format(n)
+}
+
+/** Métrica de conversão "certa" pra cada objetivo — WhatsApp mostra custo
+ * por conversa iniciada, os demais mostram leads/CPL (já cobertos pela
+ * atribuição via utm_campaign). */
+function ConversionCell({ row }: { row: CampaignRow }) {
+  if (row.objective_group === 'whatsapp') {
+    return (
+      <div className="text-right">
+        <div className="tabular-nums font-medium">{fmtNumber(row.meta_messaging_started)} conversas</div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {row.cost_per_conversation_cents != null ? `${fmtCurrency(row.cost_per_conversation_cents)}/conversa` : '—'}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="text-right">
+      <div className="tabular-nums font-medium">{fmtNumber(row.leads)} leads</div>
+      <div className="text-xs text-muted-foreground tabular-nums">
+        {row.cpl_cents != null ? `${fmtCurrency(row.cpl_cents)}/lead` : '—'}
+      </div>
+    </div>
+  )
 }
 
 export default function CampaignsTable({
@@ -109,13 +134,14 @@ export default function CampaignsTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Campanha</TableHead>
-                  <TableHead>Canal</TableHead>
+                  <TableHead>Objetivo</TableHead>
                   <TableHead className="text-right">Investimento</TableHead>
                   <TableHead className="text-right">Impressões</TableHead>
                   <TableHead className="text-right">Cliques</TableHead>
                   <TableHead className="text-right">CTR</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
-                  <TableHead className="text-right">CPL</TableHead>
+                  <TableHead className="text-right">Conversão</TableHead>
+                  <TableHead className="text-right">CAC</TableHead>
+                  <TableHead className="text-right">ROAS</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -136,9 +162,7 @@ export default function CampaignsTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {PROVIDER_LABEL[r.provider] || r.provider}
-                      </Badge>
+                      <ObjectiveBadge group={r.objective_group} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {fmtCurrency(r.spend_cents)}
@@ -152,11 +176,14 @@ export default function CampaignsTable({
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {r.ctr.toFixed(2)}%
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">
-                      {r.leads}
+                    <TableCell>
+                      <ConversionCell row={r} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {r.cpl_cents != null ? fmtCurrency(r.cpl_cents) : '—'}
+                      {r.cac_cents != null ? fmtCurrency(r.cac_cents) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.roas != null ? `${r.roas.toFixed(2)}x` : '—'}
                     </TableCell>
                     <TableCell>
                       <Badge

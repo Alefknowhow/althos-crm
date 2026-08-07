@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { buildFormSchema } from '@/lib/validators/form'
 import { runAntispamGauntlet } from '@/lib/security/antispam'
@@ -7,6 +8,12 @@ import { runAntispamGauntlet } from '@/lib/security/antispam'
 import { inngest } from '@/lib/inngest/client'
 
 export async function submitPublicForm(slug: string, rawData: any, utms: any, meta: any) {
+  // Click IDs do Pixel da Meta — sem eles o evento CAPI (Lead/Purchase)
+  // chega sem contexto de atribuição e a Meta não consegue linkar de volta
+  // ao anúncio/campanha pra otimizar a entrega.
+  const cookieStore = cookies()
+  const fbc = cookieStore.get('_fbc')?.value || null
+  const fbp = cookieStore.get('_fbp')?.value || null
   // Anti-spam gauntlet (honeypot + min fill time + Turnstile + IP rate limit).
   // Generic error so we don't leak which defense caught the bot.
   const guard = await runAntispamGauntlet(
@@ -58,6 +65,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
         name: nameValue,
         phone: phoneValue || undefined,
         stage_id: form.stage_id || undefined,
+        meta_fbc: fbc || undefined,
+        meta_fbp: fbp || undefined,
         updated_at: new Date().toISOString()
       }).eq('id', leadId)
     }
@@ -73,6 +82,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
       phone: phoneValue || null,
       source: `form:${form.name}`,
       utm: utms,
+      meta_fbc: fbc,
+      meta_fbp: fbp,
       custom_fields: validData
     }).select('id').single()
     if (newLead) leadId = newLead.id
@@ -201,6 +212,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
         userAgent: meta?.userAgent || undefined,
         // Use leadId as dedup key so client fbq + server CAPI don't double-count
         eventId: leadId || undefined,
+        fbc,
+        fbp,
       })
     } catch (e: any) {
       console.warn('[submitPublicForm] Meta CAPI Lead event failed:', e?.message)

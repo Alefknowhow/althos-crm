@@ -242,7 +242,7 @@ export async function moveLeadToStage(
       .maybeSingle(),
     supabase
       .from('contatos')
-      .select('name, email, phone, value_cents, status, became_customer_at')
+      .select('name, email, phone, value_cents, status, became_customer_at, meta_fbc, meta_fbp, meta_ctwa_clid')
       .eq('id', leadId)
       .eq('organization_id', org.id)
       .maybeSingle(),
@@ -360,6 +360,10 @@ export async function moveLeadToStage(
           email:       lead.email,
           phone:       lead.phone,
           firstName:   lead.name,
+          fbc:         (lead as any).meta_fbc,
+          fbp:         (lead as any).meta_fbp,
+          ctwaClid:    (lead as any).meta_ctwa_clid,
+          actionSource: (lead as any).meta_ctwa_clid ? 'business_messaging' : 'website',
           ...(stage.is_won && lead.value_cents
             ? { currency: 'BRL', value: lead.value_cents / 100 }
             : {}),

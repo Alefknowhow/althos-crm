@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
+import { resolveAdCampaignExternalId } from '@/lib/meta/ads'
 
 /**
  * Webhook global do WhatsApp — UMA única URL por App da Meta (não dá pra
@@ -138,7 +139,7 @@ export async function POST(req: Request) {
         // seu via Embedded Signup, salvando o phone_number_id na tabela.
         const { data: org } = await supabase
           .from('organizations')
-          .select('id, whatsapp_access_token')
+          .select('id, whatsapp_access_token, meta_access_token')
           .eq('whatsapp_phone_number_id', phoneNumberId)
           .maybeSingle()
         if (!org) {
@@ -179,13 +180,41 @@ export async function POST(req: Request) {
                 stageId = stage?.id
               }
 
+              // Conversas iniciadas por anúncio de Click-to-WhatsApp trazem
+              // um objeto `referral` só na primeira mensagem, com o
+              // ctwa_clid — o click ID que permite atribuir a venda de
+              // volta ao anúncio de origem no CAPI (ver actions/contatos.ts,
+              // moveLeadToStage) — e o source_id (ad_id), que resolvemos
+              // agora pro campaign_id local, fechando o elo de CAC/ROAS de
+              // WhatsApp no painel de Marketing (actions/marketing.ts).
+              const referral = msg.referral
+              const ctwaClid: string | null = referral?.ctwa_clid || null
+              const adId: string | null = referral?.source_id || null
+
+              let resolvedCampaignId: string | null = null
+              if (adId && org.meta_access_token) {
+                const campaignExternalId = await resolveAdCampaignExternalId(adId, org.meta_access_token)
+                if (campaignExternalId) {
+                  const { data: matchedCampaign } = await supabase
+                    .from('campaigns')
+                    .select('id')
+                    .eq('organization_id', orgId)
+                    .eq('external_id', campaignExternalId)
+                    .maybeSingle()
+                  resolvedCampaignId = matchedCampaign?.id || null
+                }
+              }
+
               const { data: newLead } = await supabase.from('contatos').insert({
                 organization_id: orgId,
                 name: contactName,
                 phone: phone,
                 source: 'whatsapp',
                 pipeline_id: defaultPipeline?.id,
-                stage_id: stageId
+                stage_id: stageId,
+                meta_ctwa_clid: ctwaClid,
+                meta_ad_id: adId,
+                meta_resolved_campaign_id: resolvedCampaignId,
               }).select('id').single()
               if (newLead) leadId = newLead.id
             }

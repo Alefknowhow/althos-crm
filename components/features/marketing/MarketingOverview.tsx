@@ -42,12 +42,15 @@ import NewCampaignDialog from './NewCampaignDialog'
 import RecordSpendDialog from './RecordSpendDialog'
 import CampaignsTable from './CampaignsTable'
 import MetricsChart from './MetricsChart'
+import type { ObjectiveGroup } from '@/lib/marketing/objective'
+import { OBJECTIVE_GROUP_LABELS } from '@/lib/marketing/objective'
 
 type CampaignRow = {
   id: string
   name: string
   color: string | null
   status: string
+  objective_group: ObjectiveGroup
   provider: string
   account_name: string
   spend_cents: number
@@ -56,10 +59,16 @@ type CampaignRow = {
   leads: number
   cpl_cents: number | null
   ctr: number
+  meta_messaging_started: number
+  cost_per_conversation_cents: number | null
+  won_deals: number
+  revenue_cents: number
+  cac_cents: number | null
+  roas: number | null
 }
 
 type Overview = {
-  totals: { spend_cents: number; impressions: number; clicks: number; leads: number }
+  totals: { spend_cents: number; impressions: number; clicks: number; leads: number; won_deals: number; revenue_cents: number }
   campaigns: CampaignRow[]
   timeSeries: Array<{
     date: string
@@ -69,7 +78,17 @@ type Overview = {
     leads: number
   }>
   sourcesByLeads: Array<{ name: string; value: number }>
+  byObjective: Array<{ group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>
 }
+
+const OBJECTIVE_FILTERS: Array<{ value: ObjectiveGroup | 'all'; label: string }> = [
+  { value: 'all', label: 'Todos' },
+  { value: 'leads', label: OBJECTIVE_GROUP_LABELS.leads },
+  { value: 'whatsapp', label: OBJECTIVE_GROUP_LABELS.whatsapp },
+  { value: 'traffic', label: OBJECTIVE_GROUP_LABELS.traffic },
+  { value: 'sales', label: OBJECTIVE_GROUP_LABELS.sales },
+  { value: 'awareness', label: OBJECTIVE_GROUP_LABELS.awareness },
+]
 
 type Account = { id: string; provider: string; name: string; status: string }
 type Campaign = { id: string; name: string; ad_account_id: string; utm_campaign: string | null; color: string | null }
@@ -182,15 +201,35 @@ function KPICard({
 export default function MarketingOverview({ orgSlug, overview, accounts, campaigns }: Props) {
   const [, startTransition] = useTransition()
   const router = useRouter()
+  const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
 
-  const totalSpend = overview.totals.spend_cents
-  const totalLeads = overview.totals.leads
-  const totalClicks = overview.totals.clicks
+  const filteredCampaigns = objectiveFilter === 'all'
+    ? overview.campaigns
+    : overview.campaigns.filter(c => c.objective_group === objectiveFilter)
+
+  const filteredTotals = filteredCampaigns.reduce(
+    (acc, c) => {
+      acc.spend_cents += c.spend_cents
+      acc.impressions += c.impressions
+      acc.clicks += c.clicks
+      acc.leads += c.leads
+      acc.won_deals += c.won_deals
+      acc.revenue_cents += c.revenue_cents
+      return acc
+    },
+    { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 },
+  )
+
+  const totalSpend = filteredTotals.spend_cents
+  const totalLeads = filteredTotals.leads
+  const totalClicks = filteredTotals.clicks
   const cpl = totalLeads > 0 ? totalSpend / totalLeads : 0
-  const ctr = overview.totals.impressions > 0
-    ? (totalClicks / overview.totals.impressions) * 100
+  const ctr = filteredTotals.impressions > 0
+    ? (totalClicks / filteredTotals.impressions) * 100
     : 0
   const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0
+  const cac = filteredTotals.won_deals > 0 ? totalSpend / filteredTotals.won_deals : 0
+  const roas = totalSpend > 0 ? filteredTotals.revenue_cents / totalSpend : 0
 
   const hasData =
     overview.campaigns.length > 0 || overview.timeSeries.length > 0 || overview.totals.spend_cents > 0
@@ -268,6 +307,21 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
         </Card>
       )}
 
+      {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo de campanha */}
+      <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
+        <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
+          {OBJECTIVE_FILTERS.map(f => (
+            <TabsTrigger
+              key={f.value}
+              value={f.value}
+              className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
+            >
+              {f.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KPICard
@@ -306,6 +360,19 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           value={cpc > 0 ? fmtCurrency(cpc) : '—'}
           icon={DollarSign}
           iconBg="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400"
+        />
+        <KPICard
+          label="CAC"
+          value={cac > 0 ? fmtCurrency(cac) : '—'}
+          sublabel={`${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`}
+          icon={Target}
+          iconBg="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+        />
+        <KPICard
+          label="ROAS"
+          value={roas > 0 ? `${roas.toFixed(2)}x` : '—'}
+          icon={TrendingUp}
+          iconBg="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
         />
       </div>
 
@@ -377,7 +444,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       {/* Campaigns table */}
       <CampaignsTable
         orgSlug={orgSlug}
-        rows={overview.campaigns}
+        rows={filteredCampaigns}
         onRefresh={refresh}
       />
 
