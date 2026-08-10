@@ -593,7 +593,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const { data: campaigns } = await supabase
     .from('campaigns')
     .select(
-      'id, name, objective, status, utm_campaign, color, ad_account_id, ad_accounts(name, provider)',
+      'id, name, objective, status, utm_campaign, color, ad_account_id, external_id, ad_accounts(name, provider)',
     )
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
@@ -716,6 +716,8 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       status: c.status,
       objective: c.objective,
       objective_group: objectiveGroup,
+      ad_account_id: c.ad_account_id,
+      external_id: c.external_id,
       provider: account?.provider || 'other',
       account_name: account?.name || '—',
       spend_cents: m.spend,
@@ -768,20 +770,38 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     }, new Map<ObjectiveGroup, { group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>()).values(),
   )
 
-  // 7) Daily time series — aggregate spend/impressions/clicks per day from
-  // metrics, then layer leads per day from form_submissions.
+  // 7) Daily time series — aggregate por (dia, conta de anúncios), pra o
+  // filtro de conta poder recalcular o gráfico client-side sem refetch.
+  const campaignIdToAccountId = new Map<string, string>()
+  for (const c of campaigns || []) campaignIdToAccountId.set(c.id, c.ad_account_id)
+
   const tsMap = new Map<
     string,
-    { date: string; spend_cents: number; impressions: number; clicks: number; leads: number }
+    { date: string; ad_account_id: string; spend_cents: number; impressions: number; clicks: number; leads: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_landing_page_views: number; meta_purchases: number; meta_purchase_value_cents: number; won_deals: number; revenue_cents: number }
   >()
   for (const m of metrics || []) {
+    const accountId = campaignIdToAccountId.get(m.campaign_id) || 'unknown'
+    const key = `${m.date}|${accountId}`
     const cur =
-      tsMap.get(m.date) ||
-      { date: m.date, spend_cents: 0, impressions: 0, clicks: 0, leads: 0 }
+      tsMap.get(key) ||
+      { date: m.date, ad_account_id: accountId, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
     cur.spend_cents += m.spend_cents || 0
     cur.impressions += m.impressions || 0
     cur.clicks += m.clicks || 0
-    tsMap.set(m.date, cur)
+    cur.meta_leads += m.meta_leads || 0
+    cur.meta_messaging_started += m.meta_messaging_started || 0
+    cur.meta_link_clicks += m.meta_link_clicks || 0
+    cur.meta_landing_page_views += m.meta_landing_page_views || 0
+    cur.meta_purchases += m.meta_purchases || 0
+    cur.meta_purchase_value_cents += m.meta_purchase_value_cents || 0
+    tsMap.set(key, cur)
+  }
+
+  // utm_campaign → ad_account_id, pra bucketar leads de formulário na conta certa.
+  const utmToAccountId = new Map<string, string>()
+  for (const c of campaigns || []) {
+    const key = (c.utm_campaign || '').trim().toLowerCase()
+    if (key) utmToAccountId.set(key, c.ad_account_id)
   }
 
   // Leads per day: re-fetch with created_at so we can bucket by date.
@@ -803,11 +823,13 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     const utm = String(s.utm_campaign || '').trim().toLowerCase()
     if (!knownUtms.has(utm)) continue
     const day = String(s.created_at).slice(0, 10)
+    const accountId = utmToAccountId.get(utm) || 'unknown'
+    const key = `${day}|${accountId}`
     const cur =
-      tsMap.get(day) ||
-      { date: day, spend_cents: 0, impressions: 0, clicks: 0, leads: 0 }
+      tsMap.get(key) ||
+      { date: day, ad_account_id: accountId, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
     cur.leads += 1
-    tsMap.set(day, cur)
+    tsMap.set(key, cur)
   }
 
   const timeSeries = Array.from(tsMap.values()).sort((a, b) =>
@@ -821,4 +843,152 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .slice(0, 6)
 
   return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective }
+}
+
+/* -------- Drill-down: Conjuntos de Anúncios (CJ) e Anúncios, ao vivo -------- */
+
+export type DrillDownError = 'token_expired' | 'not_found' | 'rate_limited' | 'unknown'
+
+export type DrillDownRow = {
+  id: string
+  name: string
+  status: string
+  spend_cents: number
+  impressions: number
+  clicks: number
+  ctr: number
+  meta_leads: number
+  meta_messaging_started: number
+  meta_link_clicks: number
+  meta_purchases: number
+  meta_purchase_value_cents: number
+  cost_per_conversation_cents: number | null
+  meta_cpl_cents: number | null
+}
+
+function summarizeInsights(rows: Array<{ impressions: number; clicks: number; spend_cents: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_purchases: number; meta_purchase_value_cents: number }>) {
+  const agg = rows.reduce(
+    (acc, r) => {
+      acc.spend += r.spend_cents
+      acc.imp += r.impressions
+      acc.clicks += r.clicks
+      acc.metaLeads += r.meta_leads
+      acc.messagingStarted += r.meta_messaging_started
+      acc.linkClicks += r.meta_link_clicks
+      acc.purchases += r.meta_purchases
+      acc.purchaseValueCents += r.meta_purchase_value_cents
+      return acc
+    },
+    { spend: 0, imp: 0, clicks: 0, metaLeads: 0, messagingStarted: 0, linkClicks: 0, purchases: 0, purchaseValueCents: 0 },
+  )
+  return {
+    spend_cents: agg.spend,
+    impressions: agg.imp,
+    clicks: agg.clicks,
+    ctr: agg.imp > 0 ? (agg.clicks / agg.imp) * 100 : 0,
+    meta_leads: agg.metaLeads,
+    meta_messaging_started: agg.messagingStarted,
+    meta_link_clicks: agg.linkClicks,
+    meta_purchases: agg.purchases,
+    meta_purchase_value_cents: agg.purchaseValueCents,
+    cost_per_conversation_cents: agg.messagingStarted > 0 ? Math.round(agg.spend / agg.messagingStarted) : null,
+    meta_cpl_cents: agg.metaLeads > 0 ? Math.round(agg.spend / agg.metaLeads) : null,
+  }
+}
+
+function classifyMetaError(e: any): DrillDownError {
+  const msg = String(e?.message || '').toLowerCase()
+  if (msg.includes('190') || msg.includes('expired') || msg.includes('token')) return 'token_expired'
+  if (msg.includes('rate limit') || msg.includes('too many calls') || msg.includes('613')) return 'rate_limited'
+  if (msg.includes('does not exist') || msg.includes('cannot be loaded') || msg.includes('100')) return 'not_found'
+  return 'unknown'
+}
+
+/**
+ * Busca os Conjuntos de Anúncios (CJ) de uma campanha, 100% ao vivo na Meta
+ * — sem gravar nada no banco. Só é chamado quando o usuário expande a linha
+ * da campanha na tabela (ação pontual, não em todo carregamento de tela).
+ */
+export async function getCampaignAdSets(orgSlug: string, campaignId: string, period: MarketingPeriod = '30d') {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: 'unknown' as DrillDownError }
+  const supabase = createClient()
+
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('external_id')
+    .eq('id', campaignId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!campaign?.external_id) return { ok: false as const, error: 'not_found' as DrillDownError }
+
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('meta_ads_access_token')
+    .eq('id', org.id)
+    .maybeSingle()
+  if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
+
+  const { fetchMetaAdSets, fetchMetaInsights } = await import('@/lib/meta/ads')
+  const until = new Date().toISOString().slice(0, 10)
+  const since = periodStart(period)
+
+  try {
+    const adSets = await fetchMetaAdSets(campaign.external_id, orgRow.meta_ads_access_token)
+    const rows: DrillDownRow[] = []
+    for (const as of adSets) {
+      let insights: Awaited<ReturnType<typeof fetchMetaInsights>> = []
+      try {
+        insights = await fetchMetaInsights(as.id, orgRow.meta_ads_access_token, since, until)
+      } catch {
+        // Sem métricas nesse período pra esse CJ — segue com zeros em vez de derrubar a linha toda.
+      }
+      rows.push({ id: as.id, name: as.name, status: (as.effective_status || as.status || '').toLowerCase(), ...summarizeInsights(insights) })
+    }
+    return { ok: true as const, rows }
+  } catch (e: any) {
+    return { ok: false as const, error: classifyMetaError(e) }
+  }
+}
+
+/**
+ * Busca os Anúncios de um Conjunto de Anúncios, mesmo padrão de
+ * getCampaignAdSets (ao vivo, sem gravar no banco).
+ */
+export async function getAdSetAds(orgSlug: string, adSetExternalId: string, period: MarketingPeriod = '30d') {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: 'unknown' as DrillDownError }
+  const supabase = createClient()
+
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('meta_ads_access_token')
+    .eq('id', org.id)
+    .maybeSingle()
+  if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
+
+  const { fetchMetaAds, fetchMetaInsights } = await import('@/lib/meta/ads')
+  const until = new Date().toISOString().slice(0, 10)
+  const since = periodStart(period)
+
+  try {
+    const ads = await fetchMetaAds(adSetExternalId, orgRow.meta_ads_access_token)
+    const rows: DrillDownRow[] = []
+    for (const ad of ads) {
+      let insights: Awaited<ReturnType<typeof fetchMetaInsights>> = []
+      try {
+        insights = await fetchMetaInsights(ad.id, orgRow.meta_ads_access_token, since, until)
+      } catch {
+        // Sem métricas nesse período pra esse anúncio — segue com zeros.
+      }
+      rows.push({ id: ad.id, name: ad.name, status: (ad.effective_status || ad.status || '').toLowerCase(), ...summarizeInsights(insights) })
+    }
+    return { ok: true as const, rows }
+  } catch (e: any) {
+    return { ok: false as const, error: classifyMetaError(e) }
+  }
 }

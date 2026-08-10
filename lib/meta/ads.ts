@@ -21,8 +21,23 @@ export type MetaCampaign = {
   stop_time: string | null
 }
 
+export type MetaAdSet = {
+  id: string
+  name: string
+  status: string
+  daily_budget: string | null
+  effective_status: string | null
+}
+
+export type MetaAd = {
+  id: string
+  name: string
+  status: string
+  effective_status: string | null
+}
+
 export type MetaDailyInsight = {
-  campaign_id: string
+  entity_id: string
   date: string // YYYY-MM-DD
   impressions: number
   clicks: number
@@ -108,27 +123,50 @@ export async function fetchMetaCampaigns(adAccountExternalId: string, token: str
 }
 
 /**
- * Métricas diárias (spend/impressions/clicks) de uma campanha, num intervalo
- * de datas. `time_increment=1` faz a Meta já devolver quebrado por dia.
+ * Métricas diárias (spend/impressions/clicks/ações) de uma entidade —
+ * campanha, conjunto de anúncios (adset) ou anúncio (ad). A Insights API
+ * da Meta é idêntica nos 3 níveis, só troca o ID no path. `time_increment=1`
+ * faz a Meta já devolver quebrado por dia.
  */
-export async function fetchMetaCampaignDailyInsights(
-  campaignExternalId: string,
+export async function fetchMetaInsights(
+  entityId: string,
   token: string,
   since: string,
   until: string,
 ): Promise<MetaDailyInsight[]> {
-  const json = await metaGet(`/${campaignExternalId}/insights`, {
+  const json = await metaGet(`/${entityId}/insights`, {
     fields: 'impressions,clicks,spend,date_start,actions,action_values',
     time_range: JSON.stringify({ since, until }),
     time_increment: '1',
     limit: '500',
   }, token)
   return ((json.data || []) as any[]).map(row => ({
-    campaign_id: campaignExternalId,
+    entity_id: entityId,
     date: row.date_start,
     impressions: Math.round(Number(row.impressions || 0)),
     clicks: Math.round(Number(row.clicks || 0)),
     spend_cents: Math.round(Number(row.spend || 0) * 100),
     ...parseMetaActions(row.actions, row.action_values),
   }))
+}
+
+/** Alias — mantido pros call sites existentes (sync diário de campanhas). */
+export const fetchMetaCampaignDailyInsights = fetchMetaInsights
+
+/** Lista os conjuntos de anúncios (CJ) de uma campanha. */
+export async function fetchMetaAdSets(campaignExternalId: string, token: string): Promise<MetaAdSet[]> {
+  const json = await metaGet(`/${campaignExternalId}/adsets`, {
+    fields: 'id,name,status,daily_budget,effective_status',
+    limit: '200',
+  }, token)
+  return (json.data || []) as MetaAdSet[]
+}
+
+/** Lista os anúncios de um conjunto de anúncios. */
+export async function fetchMetaAds(adSetExternalId: string, token: string): Promise<MetaAd[]> {
+  const json = await metaGet(`/${adSetExternalId}/ads`, {
+    fields: 'id,name,status,effective_status',
+    limit: '200',
+  }, token)
+  return (json.data || []) as MetaAd[]
 }
