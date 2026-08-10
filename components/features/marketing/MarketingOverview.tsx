@@ -164,16 +164,16 @@ function KPICard({
 }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start gap-3">
+      <CardContent className="p-3">
+        <div className="flex items-start gap-2">
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg || 'bg-muted text-muted-foreground'}`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg || 'bg-muted text-muted-foreground'}`}
           >
-            <Icon className="w-5 h-5" />
+            <Icon className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground font-medium">{label}</p>
-            <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
+            <p className="text-xs text-muted-foreground font-medium truncate">{label}</p>
+            <p className="text-lg font-bold tabular-nums mt-0.5 truncate">{value}</p>
             {trend && (
               <p
                 className={`text-xs mt-1 inline-flex items-center gap-1 ${
@@ -323,7 +323,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       </Tabs>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
         <KPICard
           label="Novos Leads"
           value={fmtNumber(totalLeads)}

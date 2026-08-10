@@ -29,6 +29,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   // Busca de palavras dentro da conversa aberta
   const [msgQuery, setMsgQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+
+  // Tick compartilhado pra recalcular a contagem regressiva da janela de
+  // 24h grátis (API oficial) sem um setInterval por linha da lista.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
   const router = useRouter()
 
   // "Visto por último": derivado da última mensagem recebida do contato.
@@ -307,6 +315,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
+                <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
                 <div className="flex items-center gap-1.5">
                   {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
                   {(() => {
@@ -679,6 +688,52 @@ function MessageTicks({ status }: { status?: string }) {
       <path d="M1 5.5 4.5 9 11 1.5" />
       {isDouble && <path d="M6 5.5 9.5 9 16 1.5" />}
     </svg>
+  )
+}
+
+const WHATSAPP_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Contagem regressiva da janela grátis de 24h da API oficial do WhatsApp:
+ * a partir da última mensagem INBOUND (do cliente), a empresa pode
+ * responder de graça com mensagem livre; passado isso, só com template
+ * aprovado. `lastInboundAt` vem de whatsapp_conversations.last_inbound_at
+ * (setado só no webhook, nunca no envio) — se nulo, a conversa nunca
+ * recebeu mensagem do cliente e não há janela a contar.
+ */
+function WindowBadge({ lastInboundAt, now }: { lastInboundAt?: string | null; now: number }) {
+  if (!lastInboundAt) return null
+  const inboundMs = new Date(lastInboundAt).getTime()
+  if (isNaN(inboundMs)) return null
+  const remainingMs = inboundMs + WHATSAPP_WINDOW_MS - now
+
+  if (remainingMs <= 0) {
+    return (
+      <span
+        className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border"
+        title="Janela de 24h encerrada — só é possível responder com um template aprovado."
+      >
+        Janela fechada
+      </span>
+    )
+  }
+
+  const hours = Math.floor(remainingMs / 3_600_000)
+  const minutes = Math.floor((remainingMs % 3_600_000) / 60_000)
+  const label = hours > 0 ? `${hours}h${String(minutes).padStart(2, '0')}` : `${minutes}min`
+  const urgent = remainingMs < 60 * 60_000 // menos de 1h restante
+
+  return (
+    <span
+      className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${
+        urgent
+          ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+          : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
+      }`}
+      title="Tempo restante da janela grátis de 24h pra responder sem template."
+    >
+      {label}
+    </span>
   )
 }
 

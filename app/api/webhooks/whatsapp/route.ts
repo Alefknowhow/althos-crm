@@ -232,6 +232,7 @@ export async function POST(req: Request) {
                 contact_name: contactName,
                 contato_id: leadId,
                 last_message_at: new Date(msg.timestamp * 1000).toISOString(),
+                last_inbound_at: new Date(msg.timestamp * 1000).toISOString(),
                 last_message_preview: preview,
                 last_message_direction: 'inbound',
                 unread_count: 1
@@ -240,6 +241,7 @@ export async function POST(req: Request) {
             } else {
               await supabase.from('whatsapp_conversations').update({
                 last_message_at: new Date(msg.timestamp * 1000).toISOString(),
+                last_inbound_at: new Date(msg.timestamp * 1000).toISOString(),
                 last_message_preview: preview,
                 last_message_direction: 'inbound',
                 unread_count: (conv.unread_count || 0) + 1,
