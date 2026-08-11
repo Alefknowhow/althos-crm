@@ -12,9 +12,12 @@ import {
 import { toast } from 'sonner'
 import { Plus, X, Loader2 } from 'lucide-react'
 import {
-  createFinancialSetting, deleteFinancialSetting, updateFinancialSettingPaymentDay,
-  type FinancialSettingType, type FinancialSettingRow,
+  createFinancialSetting, deleteFinancialSetting, updateFinancialSettingPaymentSchedule,
+  type FinancialSettingType, type FinancialSettingRow, type PaymentScheduleType,
 } from '@/actions/financial-settings'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { FINANCIAL_SETTING_TYPES } from '@/lib/financial-settings-types'
 
 export default function FinancialSettingsView({
@@ -61,9 +64,30 @@ function SettingListCard({
     else toast.error(res.error)
   }
 
-  async function handlePaymentDay(id: string, day: string) {
+  async function handleScheduleType(item: FinancialSettingRow, scheduleType: PaymentScheduleType) {
+    const res = await updateFinancialSettingPaymentSchedule(orgSlug, item.id, {
+      scheduleType,
+      paymentDay: scheduleType === 'dia_fixo' ? item.payment_day : null,
+      offsetDays: scheduleType === 'decendio' ? item.payment_offset_days : null,
+    })
+    if (res.ok) router.refresh()
+    else toast.error(res.error)
+  }
+
+  async function handlePaymentDay(item: FinancialSettingRow, day: string) {
     const n = day ? parseInt(day, 10) : null
-    const res = await updateFinancialSettingPaymentDay(orgSlug, id, n)
+    const res = await updateFinancialSettingPaymentSchedule(orgSlug, item.id, {
+      scheduleType: 'dia_fixo', paymentDay: n, offsetDays: null,
+    })
+    if (res.ok) router.refresh()
+    else toast.error(res.error)
+  }
+
+  async function handleOffsetDays(item: FinancialSettingRow, days: string) {
+    const n = days ? parseInt(days, 10) : null
+    const res = await updateFinancialSettingPaymentSchedule(orgSlug, item.id, {
+      scheduleType: 'decendio', paymentDay: null, offsetDays: n,
+    })
     if (res.ok) router.refresh()
     else toast.error(res.error)
   }
@@ -88,7 +112,9 @@ function SettingListCard({
         </div>
         {isOperadora && (
           <p className="text-[11px] text-muted-foreground -mt-1.5">
-            Informe o dia do mês em que cada operadora paga a comissão — a receita da venda é lançada nessa data.
+            Configure como cada operadora paga a comissão — a receita da venda é lançada na data
+            calculada. "Dia fixo" paga sempre no mesmo dia do mês; "Decêndio" paga X dias depois
+            que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha.
           </p>
         )}
 
@@ -99,16 +125,41 @@ function SettingListCard({
             {items.map(item => (
               <li key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 text-sm">
                 <span className="truncate">{item.name}</span>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {isOperadora && (
-                    <Input
-                      type="number" min={1} max={31}
-                      defaultValue={item.payment_day ?? ''}
-                      onBlur={e => handlePaymentDay(item.id, e.target.value)}
-                      placeholder="dia"
-                      title="Dia do mês em que a operadora paga"
-                      className="h-7 w-16 text-xs px-2"
-                    />
+                    <>
+                      <Select
+                        value={item.payment_schedule_type}
+                        onValueChange={v => handleScheduleType(item, v as PaymentScheduleType)}
+                      >
+                        <SelectTrigger className="h-7 w-[110px] text-xs px-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dia_fixo">Dia fixo</SelectItem>
+                          <SelectItem value="decendio">Decêndio</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {item.payment_schedule_type === 'decendio' ? (
+                        <Input
+                          type="number" min={0} max={60}
+                          defaultValue={item.payment_offset_days ?? ''}
+                          onBlur={e => handleOffsetDays(item, e.target.value)}
+                          placeholder="dias"
+                          title="Dias após o fechamento do decêndio em que a operadora paga"
+                          className="h-7 w-16 text-xs px-2"
+                        />
+                      ) : (
+                        <Input
+                          type="number" min={1} max={31}
+                          defaultValue={item.payment_day ?? ''}
+                          onBlur={e => handlePaymentDay(item, e.target.value)}
+                          placeholder="dia"
+                          title="Dia do mês em que a operadora paga"
+                          className="h-7 w-16 text-xs px-2"
+                        />
+                      )}
+                    </>
                   )}
                   <button
                     type="button"

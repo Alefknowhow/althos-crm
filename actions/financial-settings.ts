@@ -9,13 +9,19 @@ import { FINANCIAL_SETTING_TYPES, type FinancialSettingType } from '@/lib/financ
 
 export type { FinancialSettingType }
 
+export type PaymentScheduleType = 'dia_fixo' | 'decendio'
+
 export type FinancialSettingRow = {
   id: string
   organization_id: string
   type: FinancialSettingType
   name: string
-  /** Só usado pra type='operadora' — dia do mês (1-31) em que a operadora paga a comissão. */
+  /** Só usado pra type='operadora'. */
+  payment_schedule_type: PaymentScheduleType
+  /** Modo 'dia_fixo' — dia do mês (1-31) em que a operadora paga a comissão. */
   payment_day: number | null
+  /** Modo 'decendio' — dias após o fechamento do decêndio (1-10/11-20/21-fim) em que a operadora paga. */
+  payment_offset_days: number | null
   created_at: string
 }
 
@@ -63,25 +69,41 @@ export async function createFinancialSetting(orgSlug: string, type: FinancialSet
   return { ok: true as const, data: data as FinancialSettingRow }
 }
 
-/** Dia do mês (1-31) em que a operadora paga a comissão — só faz sentido pra type='operadora'. */
-export async function updateFinancialSettingPaymentDay(orgSlug: string, id: string, paymentDay: number | null) {
+/**
+ * Configura como a operadora paga a comissão — só faz sentido pra
+ * type='operadora'. 'dia_fixo' usa paymentDay (dia do mês, 1-31);
+ * 'decendio' usa offsetDays (dias após o fechamento do bloco de 10 dias em
+ * que a venda caiu).
+ */
+export async function updateFinancialSettingPaymentSchedule(
+  orgSlug: string,
+  id: string,
+  input: { scheduleType: 'dia_fixo' | 'decendio'; paymentDay: number | null; offsetDays: number | null },
+) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'financial')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
-  if (paymentDay != null && (paymentDay < 1 || paymentDay > 31)) {
+  if (input.scheduleType === 'dia_fixo' && input.paymentDay != null && (input.paymentDay < 1 || input.paymentDay > 31)) {
     return { ok: false as const, error: 'Informe um dia entre 1 e 31.' }
+  }
+  if (input.scheduleType === 'decendio' && input.offsetDays != null && (input.offsetDays < 0 || input.offsetDays > 60)) {
+    return { ok: false as const, error: 'Informe um número de dias entre 0 e 60.' }
   }
 
   const supabase = createClient()
   const { error } = await supabase
     .from('financial_settings')
-    .update({ payment_day: paymentDay })
+    .update({
+      payment_schedule_type: input.scheduleType,
+      payment_day: input.scheduleType === 'dia_fixo' ? input.paymentDay : null,
+      payment_offset_days: input.scheduleType === 'decendio' ? input.offsetDays : null,
+    })
     .eq('id', id)
     .eq('organization_id', org.id)
 
-  if (error) return { ok: false as const, error: error.message || 'Erro ao salvar o dia de pagamento.' }
+  if (error) return { ok: false as const, error: error.message || 'Erro ao salvar o pagamento.' }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)
   return { ok: true as const }

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
-import { nextOperatorPaymentDate } from '@/lib/financial/operator-payment'
+import { nextOperatorPaymentDate, nextDecendioPaymentDate } from '@/lib/financial/operator-payment'
 import { previousRange } from '@/lib/utils/period-range'
 import {
   addMonthsIso, computeRecurrenceDates, computeInstallmentDates,
@@ -74,14 +74,21 @@ export async function syncSaleRevenueEntry(
 
   const { data: opSetting } = await supabase
     .from('financial_settings')
-    .select('payment_day')
+    .select('payment_day, payment_schedule_type, payment_offset_days')
     .eq('organization_id', org.id)
     .eq('type', 'operadora')
     .ilike('name', sale.operator.trim())
     .maybeSingle()
 
-  const paymentDay = opSetting?.payment_day ?? null
-  const vencimento = paymentDay ? nextOperatorPaymentDate(paymentDay) : null
+  // Duas formas de pagamento cadastráveis por operadora (Configurações >
+  // Operadoras): dia fixo do mês, ou "decêndio" (paga X dias depois que o
+  // bloco de 10 dias em que a venda caiu se fecha).
+  let vencimento: string | null = null
+  if (opSetting?.payment_schedule_type === 'decendio' && opSetting.payment_offset_days != null) {
+    vencimento = nextDecendioPaymentDate(opSetting.payment_offset_days)
+  } else if (opSetting?.payment_day) {
+    vencimento = nextOperatorPaymentDate(opSetting.payment_day)
+  }
 
   const { data: existing } = await supabase
     .from('financial_entries')
