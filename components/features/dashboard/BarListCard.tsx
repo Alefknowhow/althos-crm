@@ -30,7 +30,7 @@ export default function BarListCard({
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">{help}</p>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto">
+      <CardContent className="flex-1 max-h-[240px] overflow-y-auto">
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyText}</p>
         ) : (

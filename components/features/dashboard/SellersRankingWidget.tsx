@@ -50,7 +50,7 @@ export default async function SellersRankingWidget({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
             {rows.map((row, idx) => {
               const member = memberById.get(row.seller_id) as any
               const name = member?.name || 'Usuário removido'

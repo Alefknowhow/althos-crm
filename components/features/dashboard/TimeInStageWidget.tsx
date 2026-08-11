@@ -59,7 +59,7 @@ export default async function TimeInStageWidget({
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
           {rows.map(row => {
             const widthPct = (row.avg_days / maxAvg) * 100
             const isBottleneck = row.avg_days === maxAvg && row.avg_days > 0

@@ -67,7 +67,7 @@ export default async function PipelineAtRiskWidget({
             Nenhum lead parado há mais de 7 dias. Pipeline saudável.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
             {stages.map(stage => (
               <div key={stage.stage_id}>
                 <div className="flex items-center justify-between mb-2">

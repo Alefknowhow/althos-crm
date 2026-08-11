@@ -19,7 +19,7 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">Produtos/serviços com mais unidades vendidas no período.</p>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto">
+      <CardContent className="flex-1 max-h-[240px] overflow-y-auto">
         {rows.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma venda com produto associado no período.

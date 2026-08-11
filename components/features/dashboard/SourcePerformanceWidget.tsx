@@ -45,7 +45,7 @@ export default async function SourcePerformanceWidget({
             Sem dados nos últimos 90 dias.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
             {rows.map((r, idx) => {
               const widthPct = (r.total_value_cents / maxValue) * 100
               const isBest = idx === bestSourceIdx && r.total_value_cents > 0

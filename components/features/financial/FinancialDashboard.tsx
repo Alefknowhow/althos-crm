@@ -50,7 +50,7 @@ function BreakdownList({ title, items, total, tone = 'success' }: {
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground mb-1.5">{title}</p>
-      <ul className="space-y-1.5">
+      <ul className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
         {top.map(item => {
           const pct = total > 0 ? (item.valor_cents / total) * 100 : 0
           return (
@@ -308,7 +308,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             <Card>
               <CardHeader><CardTitle className="text-base">Alertas inteligentes</CardTitle></CardHeader>
               <CardContent>
-                <ul className="space-y-2">
+                <ul className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {data.alerts.map((a, i) => (
                     <li key={i} className={`flex items-start gap-2 text-sm p-2.5 border ${a.kind === 'risk' ? 'border-destructive/30 bg-destructive/5' : 'border-success/30 bg-success/5'}`}>
                       <span className={`mt-0.5 shrink-0 ${a.kind === 'risk' ? 'text-destructive' : 'text-success'}`}>
@@ -379,26 +379,28 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
           <Card>
             <CardHeader><CardTitle className="text-base">DRE simplificado (período selecionado)</CardTitle></CardHeader>
             <CardContent>
-              <table className="w-full text-sm">
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-2 font-medium">Receita total</td>
-                    <td className="py-2 text-right tabular-nums text-success font-semibold">{fmtCurrency(data.dre.receita_total_cents)}</td>
-                  </tr>
-                  {data.dre.despesas_por_categoria.map(d => (
-                    <tr key={d.categoria} className="border-b">
-                      <td className="py-2 pl-4 text-muted-foreground">(-) {d.categoria}</td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">{fmtCurrency(d.valor_cents)}</td>
+              <div className="max-h-[320px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="py-2 font-medium">Receita total</td>
+                      <td className="py-2 text-right tabular-nums text-success font-semibold">{fmtCurrency(data.dre.receita_total_cents)}</td>
                     </tr>
-                  ))}
-                  <tr>
-                    <td className="py-2 font-semibold">Resultado</td>
-                    <td className={`py-2 text-right tabular-nums font-bold ${data.dre.resultado_cents >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {fmtCurrency(data.dre.resultado_cents)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    {data.dre.despesas_por_categoria.map(d => (
+                      <tr key={d.categoria} className="border-b">
+                        <td className="py-2 pl-4 text-muted-foreground">(-) {d.categoria}</td>
+                        <td className="py-2 text-right tabular-nums text-muted-foreground">{fmtCurrency(d.valor_cents)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td className="py-2 font-semibold">Resultado</td>
+                      <td className={`py-2 text-right tabular-nums font-bold ${data.dre.resultado_cents >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {fmtCurrency(data.dre.resultado_cents)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </>
