@@ -79,9 +79,6 @@ function relName(rel: unknown): string | null {
 const SALES_STATUS_PT: Record<string, string> = {
   completed: 'Concluída', pending: 'Pendente', canceled: 'Cancelada', refunded: 'Estornada',
 }
-const TRAVEL_SALES_STATUS_PT: Record<string, string> = {
-  open: 'Em andamento', cancelled: 'Cancelada',
-}
 const APPT_STATUS_PT: Record<string, string> = {
   scheduled: 'Agendado', completed: 'Realizado', canceled: 'Cancelado', no_show: 'Não compareceu',
 }
@@ -171,7 +168,7 @@ export async function getReport(
     if (isTravelNiche(org.niche)) {
       const { data, error } = await supabase
         .from('travel_sales')
-        .select('created_at, destination, total_cents, payment_method, status, created_by, contato:contato_id(name)')
+        .select('created_at, destination, total_cents, payment_method, operator, package_locator, commission_cents, created_by, contato:contato_id(name)')
         .eq('organization_id', org.id)
         .gte('created_at', startISO)
         .lte('created_at', endISO)
@@ -188,7 +185,9 @@ export async function getReport(
         destination: (s.destination as string) || '—',
         seller: (s.created_by && sellerNames.get(s.created_by as string)) || '—',
         payment_method: (s.payment_method as string) || '—',
-        status: TRAVEL_SALES_STATUS_PT[s.status as string] || (s.status as string) || '—',
+        operator: (s.operator as string) || '—',
+        package_locator: (s.package_locator as string) || '—',
+        commission: brl(s.commission_cents as number),
         amount: brl(s.total_cents as number),
       }))
       const totalValue = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
@@ -203,7 +202,9 @@ export async function getReport(
             { key: 'destination', label: 'Destino' },
             { key: 'seller', label: 'Vendedor' },
             { key: 'payment_method', label: 'Pagamento' },
-            { key: 'status', label: 'Status' },
+            { key: 'operator', label: 'Operadora' },
+            { key: 'package_locator', label: 'Localizador operadora' },
+            { key: 'commission', label: 'Comissão', align: 'right' },
             { key: 'amount', label: 'Valor', align: 'right' },
           ],
           rows,
@@ -263,7 +264,7 @@ export async function getReport(
     // number of sales, gross sold value and total commission earned.
     const { data, error } = await supabase
       .from('travel_sales')
-      .select('created_by, total_cents, commission_cents, created_at')
+      .select('created_by, total_cents, commission_cents, created_at, operator')
       .eq('organization_id', org.id)
       .gte('created_at', startISO)
       .lte('created_at', endISO)
@@ -273,12 +274,15 @@ export async function getReport(
       (data || []).map(s => s.created_by as string | null),
     )
 
-    // Aggregate per seller.
-    type Agg = { count: number; gross: number; commission: number }
+    // Aggregate per seller. `operators` junta as operadoras distintas usadas
+    // pelo vendedor no período — localizador não entra aqui, é por reserva
+    // (fica só no relatório de Vendas).
+    type Agg = { count: number; gross: number; commission: number; operators: Set<string> }
     const bySeller = new Map<string, Agg>()
     for (const s of data || []) {
       const key = (s.created_by as string | null) ?? '__none__'
-      const agg = bySeller.get(key) || { count: 0, gross: 0, commission: 0 }
+      const agg = bySeller.get(key) || { count: 0, gross: 0, commission: 0, operators: new Set<string>() }
+      if (s.operator) agg.operators.add(s.operator as string)
       agg.count += 1
       agg.gross += (s.total_cents as number) || 0
       agg.commission += (s.commission_cents as number) || 0
@@ -289,6 +293,7 @@ export async function getReport(
       .map(([key, agg]) => ({
         seller: key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor'),
         count: agg.count,
+        operators: agg.operators.size > 0 ? Array.from(agg.operators).join(', ') : '—',
         gross: brl(agg.gross),
         commission: brl(agg.commission),
         _commission: agg.commission, // sort key, stripped before return
@@ -306,6 +311,7 @@ export async function getReport(
         columns: [
           { key: 'seller', label: 'Vendedor' },
           { key: 'count', label: 'Vendas', align: 'right' },
+          { key: 'operators', label: 'Operadora' },
           { key: 'gross', label: 'Valor vendido', align: 'right' },
           { key: 'commission', label: 'Comissão', align: 'right' },
         ],
