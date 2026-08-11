@@ -96,69 +96,72 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Report type selector */}
-      <div className="flex flex-wrap gap-2">
-        {reports.map(r => (
-          <button
-            key={r.type}
-            type="button"
-            onClick={() => setType(r.type)}
-            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-              type === r.type
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'bg-card hover:bg-accent/40'
-            }`}
-          >
-            {r.icon}
-            {r.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="rounded-none border bg-card p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end">
-          <div className="space-y-1.5">
-            <Label className="text-xs">De</Label>
-            <Input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Até</Label>
-            <Input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} />
-          </div>
-          <Button onClick={() => generate()} disabled={pending} variant="secondary">
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pré-visualizar'}
-          </Button>
-        </div>
-
+      <div className="max-w-5xl space-y-6">
+        {/* Report type selector */}
         <div className="flex flex-wrap gap-2">
-          {[
-            { label: '7 dias', days: 7 },
-            { label: '30 dias', days: 30 },
-            { label: '90 dias', days: 90 },
-          ].map(p => (
+          {reports.map(r => (
             <button
-              key={p.days}
+              key={r.type}
               type="button"
-              onClick={() => applyPreset(p.days)}
-              className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-accent/40"
+              onClick={() => setType(r.type)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                type === r.type
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'bg-card hover:bg-accent/40'
+              }`}
             >
-              {p.label}
+              {r.icon}
+              {r.label}
             </button>
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1 border-t">
-          <Button onClick={handleExcel} disabled={pending} className="mt-3">
-            <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Exportar Excel
-          </Button>
-          <Button onClick={handlePdf} disabled={pending} variant="outline" className="mt-3">
-            <Printer className="h-4 w-4 mr-1.5" /> Exportar PDF
-          </Button>
+        {/* Filters */}
+        <div className="rounded-none border bg-card p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-xs">De</Label>
+              <Input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Até</Label>
+              <Input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} />
+            </div>
+            <Button onClick={() => generate()} disabled={pending} variant="secondary">
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pré-visualizar'}
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: '7 dias', days: 7 },
+              { label: '30 dias', days: 30 },
+              { label: '90 dias', days: 90 },
+            ].map(p => (
+              <button
+                key={p.days}
+                type="button"
+                onClick={() => applyPreset(p.days)}
+                className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-accent/40"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1 border-t">
+            <Button onClick={handleExcel} disabled={pending} className="mt-3">
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Exportar Excel
+            </Button>
+            <Button onClick={handlePdf} disabled={pending} variant="outline" className="mt-3">
+              <Printer className="h-4 w-4 mr-1.5" /> Exportar PDF
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Preview — largura total, sem o max-w-5xl acima, pra caber tabelas
+          largas (ex: relatório de Vendas do nicho viagens) sem scroll. */}
       {showingForType && (
         <div className="rounded-none border bg-card overflow-hidden">
           <div className="px-5 py-3 border-b flex items-center justify-between">

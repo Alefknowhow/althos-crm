@@ -42,8 +42,10 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
   }
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." />
+    <div className="space-y-6">
+      <div className="max-w-5xl">
+        <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." />
+      </div>
 
       <ReportsClient orgSlug={params.orgSlug} isTravel={isTravelNiche(org.niche)} />
     </div>
