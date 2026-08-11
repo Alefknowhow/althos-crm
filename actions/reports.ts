@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfilesMap } from '@/lib/profiles'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+import { isTravelNiche } from '@/lib/niche'
 
 export type ReportType = 'leads' | 'sales' | 'appointments' | 'commission'
 
@@ -77,6 +78,9 @@ function relName(rel: unknown): string | null {
 
 const SALES_STATUS_PT: Record<string, string> = {
   completed: 'Concluída', pending: 'Pendente', canceled: 'Cancelada', refunded: 'Estornada',
+}
+const TRAVEL_SALES_STATUS_PT: Record<string, string> = {
+  open: 'Em andamento', cancelled: 'Cancelada',
 }
 const APPT_STATUS_PT: Record<string, string> = {
   scheduled: 'Agendado', completed: 'Realizado', canceled: 'Cancelado', no_show: 'Não compareceu',
@@ -159,6 +163,55 @@ export async function getReport(
   }
 
   if (type === 'sales') {
+    // Agências de viagem registram venda em travel_sales (reservas), não na
+    // tabela genérica `sales` — mesma fonte já usada pelo relatório de
+    // comissão (ver bloco `commission` abaixo) e pelo dashboard
+    // (lib/dashboard/sales-source.ts). Sem isso, orgs desse nicho sempre
+    // veem o relatório de vendas vazio.
+    if (isTravelNiche(org.niche)) {
+      const { data, error } = await supabase
+        .from('travel_sales')
+        .select('created_at, destination, total_cents, payment_method, status, created_by, contato:contato_id(name)')
+        .eq('organization_id', org.id)
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
+        .order('created_at', { ascending: false })
+      if (error) return { ok: false, error: 'query_error' }
+
+      const sellerNames = await resolveSellerNames(
+        (data || []).map(s => s.created_by as string | null),
+      )
+
+      const rows = (data || []).map(s => ({
+        sale_date: dateOnly(s.created_at as string),
+        lead: relName((s as any).contato) || (s.destination as string) || '—',
+        destination: (s.destination as string) || '—',
+        seller: (s.created_by && sellerNames.get(s.created_by as string)) || '—',
+        payment_method: (s.payment_method as string) || '—',
+        status: TRAVEL_SALES_STATUS_PT[s.status as string] || (s.status as string) || '—',
+        amount: brl(s.total_cents as number),
+      }))
+      const totalValue = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
+
+      return {
+        ok: true,
+        data: {
+          ...base,
+          columns: [
+            { key: 'sale_date', label: 'Data' },
+            { key: 'lead', label: 'Cliente' },
+            { key: 'destination', label: 'Destino' },
+            { key: 'seller', label: 'Vendedor' },
+            { key: 'payment_method', label: 'Pagamento' },
+            { key: 'status', label: 'Status' },
+            { key: 'amount', label: 'Valor', align: 'right' },
+          ],
+          rows,
+          totals: { lead: `${rows.length} reserva(s)`, amount: brl(totalValue) },
+        },
+      }
+    }
+
     const { data, error } = await supabase
       .from('sales')
       .select('sale_date, amount_cents, quantity, payment_method, installments, status, seller_id, lead:contato_id(name)')
