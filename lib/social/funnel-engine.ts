@@ -14,7 +14,7 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server'
-import { sendInstagramDM, privateReplyToComment, type MessageButton } from '@/lib/social/instagram'
+import { sendInstagramDM, privateReplyToComment, replyToComment, type MessageButton } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 
@@ -213,7 +213,7 @@ export async function startCommentFunnel(
 
   const { data: funnels } = await admin
     .from('social_funnels')
-    .select('id, trigger_keywords')
+    .select('id, trigger_keywords, reply_publicly')
     .eq('organization_id', connection.organization_id)
     .in('trigger_type', ['comment', 'comment_and_dm'])
     .eq('is_active', true)
@@ -230,12 +230,20 @@ export async function startCommentFunnel(
   const steps = (stepsData || []) as Step[]
   if (steps.length === 0) return false
 
-  // 1º passo vai como resposta privada ao comentário (inicia a DM).
+  // 1º passo vai como resposta privada ao comentário (inicia a DM) e,
+  // opcionalmente, também como resposta pública no próprio comentário.
   const first = steps[0]
   const text = await renderStep(admin, connection.organization_id, first, {
     igAccountId: connection.page_id, senderId: inbound.senderId, text: inbound.text,
   })
   if (text.trim()) {
+    if ((hit as any).reply_publicly) {
+      try {
+        await replyToComment(inbound.commentId, connection.access_token, text)
+      } catch (e: any) {
+        console.error('[funnel] comment public reply failed:', e?.message)
+      }
+    }
     try {
       await privateReplyToComment(connection.page_id, connection.access_token, inbound.commentId, text)
     } catch (e: any) {

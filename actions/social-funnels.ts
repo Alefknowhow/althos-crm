@@ -33,6 +33,10 @@ export type SocialFunnel = {
   trigger_type: FunnelTriggerType
   trigger_keywords: string[] | null
   create_lead: boolean
+  /** Só vale pra trigger_type 'comment'/'comment_and_dm': também publica o
+   *  1º passo como resposta pública no comentário, além da DM privada que
+   *  inicia o funil. */
+  reply_publicly: boolean
   is_active: boolean
   created_at: string
   steps: FunnelStep[]
@@ -65,6 +69,7 @@ const FunnelPatchSchema = z.object({
   trigger_type: z.enum(['dm', 'comment', 'comment_and_dm', 'story', 'story_reply']).optional(),
   trigger_keywords: z.array(z.string().max(60)).max(20).nullable().optional(),
   create_lead: z.boolean().optional(),
+  reply_publicly: z.boolean().optional(),
   is_active: z.boolean().optional(),
 })
 

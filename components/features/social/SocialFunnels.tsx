@@ -46,7 +46,7 @@ export default function SocialFunnels({
       if (!res.ok) { toast.error(res.error); return }
       const fresh: SocialFunnel = {
         id: res.id, organization_id: '', name: 'Nova automação', trigger_type: triggerType,
-        trigger_keywords: null, create_lead: true, is_active: true, created_at: new Date().toISOString(),
+        trigger_keywords: null, create_lead: true, reply_publicly: false, is_active: true, created_at: new Date().toISOString(),
         steps: [{ sort_order: 0, step_type: 'message', message_text: 'Oi! Que bom te ver por aqui 😊 Como posso te ajudar?', ai_instructions: null, wait_for_reply: true, buttons: [] }],
       }
       setFunnels(f => [fresh, ...f])
@@ -215,6 +215,7 @@ function FunnelBuilder({
   const [triggerType, setTriggerType] = useState<FunnelTriggerType>(funnel.trigger_type)
   const [keywords, setKeywords] = useState((funnel.trigger_keywords || []).join(', '))
   const [createLead, setCreateLead] = useState(funnel.create_lead)
+  const [replyPublicly, setReplyPublicly] = useState(funnel.reply_publicly)
   const [steps, setSteps] = useState<EditStep[]>(
     (funnel.steps.length ? funnel.steps : [{ sort_order: 0, step_type: 'message' as const, message_text: '', ai_instructions: null, wait_for_reply: true, buttons: [] }])
       .map(s => ({ ...s, buttons: s.buttons || [], _key: nk() })),
@@ -241,7 +242,7 @@ function FunnelBuilder({
     setSaving(true)
     const kwArr = keywords.split(',').map(k => k.trim()).filter(Boolean)
     const [u, s] = await Promise.all([
-      updateFunnel(orgSlug, funnel.id, { name: name || 'Automação', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead }),
+      updateFunnel(orgSlug, funnel.id, { name: name || 'Automação', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead, reply_publicly: isCommentish ? replyPublicly : false }),
       saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order, ...rest }) => rest)),
     ])
     setSaving(false)
@@ -250,6 +251,7 @@ function FunnelBuilder({
     toast.success('Automação salva')
     onSaved({
       ...funnel, name: name || 'Automação', trigger_type: triggerType, create_lead: createLead,
+      reply_publicly: isCommentish ? replyPublicly : false,
       trigger_keywords: kwArr.length ? kwArr : null,
       steps: steps.map(({ _key, ...rest }) => rest),
     })
@@ -293,6 +295,12 @@ function FunnelBuilder({
             <Switch checked={createLead} onCheckedChange={setCreateLead} />
             Criar lead no pipeline ao iniciar a automação
           </label>
+          {isCommentish && (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={replyPublicly} onCheckedChange={setReplyPublicly} />
+              Também responder publicamente no comentário (além da DM privada)
+            </label>
+          )}
 
           {/* Passos de resposta */}
           <div className="space-y-2">
