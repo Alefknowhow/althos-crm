@@ -682,7 +682,6 @@ function SaleEditor({
               <Receipt className="w-4 h-4 text-primary shrink-0" /> {s.client_name || 'Venda de viagem'}
             </h2>
             <div className="hidden md:flex mt-1.5 items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 font-mono">#{s.sale_number}</Badge>
               {sellerName && (
                 <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
                   <UserCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{sellerName}</span>
@@ -711,7 +710,6 @@ function SaleEditor({
                 {(s.departure_date || s.return_date) && (
                   <span>{s.departure_date ? new Date(s.departure_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'}</span>
                 )}
-                <span className="font-mono">#{s.sale_number}</span>
               </div>
             </div>
           </div>
