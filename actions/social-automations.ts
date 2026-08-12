@@ -29,6 +29,7 @@ export type SocialConnection = {
   page_id: string
   page_name: string | null
   username: string | null
+  avatar_url: string | null
   is_active: boolean
   token_expires_at: string | null
   created_at: string
@@ -160,7 +161,7 @@ export async function getSocialConnections(orgSlug: string): Promise<SocialConne
   const orgId = await getOrgId(orgSlug)
   const { data, error } = await supabase
     .from('social_connections')
-    .select('id, organization_id, platform, page_id, page_name, username, is_active, token_expires_at, created_at')
+    .select('id, organization_id, platform, page_id, page_name, username, avatar_url, is_active, token_expires_at, created_at')
     .eq('organization_id', orgId)
     .order('created_at')
   if (error) throw new Error(error.message)

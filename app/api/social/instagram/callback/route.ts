@@ -70,6 +70,7 @@ export async function GET(req: Request) {
           page_id: profile.id,            // IG account id (matches webhook entry.id)
           page_name: profile.name || profile.username,
           username: profile.username,
+          avatar_url: profile.profilePictureUrl,
           access_token: igToken,
           token_expires_at: expiresAt,
           is_active: true,

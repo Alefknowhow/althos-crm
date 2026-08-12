@@ -117,6 +117,40 @@ async function maybeCreateLead(
   return lead?.id ?? null
 }
 
+/** Registra um comentário que não bateu em nenhuma automação, pra aparecer
+ *  na aba Instagram → Comentários (resposta manual). Best-effort + de-dupe
+ *  por comment_id (o webhook pode reentregar o mesmo evento). */
+async function logPendingComment(
+  supabase: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  connectionId: string,
+  inbound: InboundInteraction,
+) {
+  try {
+    const { data: dup } = await supabase
+      .from('social_interactions')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('raw_payload->>commentId', inbound.commentId)
+      .maybeSingle()
+    if (dup) return
+
+    await supabase.from('social_interactions').insert({
+      organization_id: orgId,
+      social_connection_id: connectionId,
+      platform: 'instagram',
+      interaction_type: 'comment',
+      sender_external_id: inbound.senderId,
+      sender_username: inbound.senderUsername ?? null,
+      inbound_text: inbound.text,
+      post_id: inbound.postId ?? null,
+      raw_payload: { commentId: inbound.commentId },
+    })
+  } catch (e: any) {
+    console.error('[social engine] logPendingComment failed:', e?.message)
+  }
+}
+
 /**
  * Process a single inbound interaction end-to-end. Safe to call per webhook
  * event; failures are caught and logged so one bad event can't 500 the webhook.
@@ -228,7 +262,14 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   const auto = (automations || []).find(a => matches(a as Automation, inbound.kind, inbound.text)) as
     | Automation
     | undefined
-  if (!auto) return
+  if (!auto) {
+    // Comentário sem automação que bata: fica pendente pra resposta manual
+    // (aba Instagram → Comentários), em vez de simplesmente ser descartado.
+    if (inbound.kind === 'comment' && inbound.commentId) {
+      await logPendingComment(supabase, orgId, connection.id, inbound)
+    }
+    return
+  }
 
   // 4) Build the response text.
   let responseText = ''

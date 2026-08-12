@@ -126,12 +126,12 @@ export async function getLongLivedToken(
   return { token: json.access_token as string, expiresIn: json.expires_in ?? 60 * 24 * 3600 }
 }
 
-export type IgProfile = { id: string; username: string; name: string | null }
+export type IgProfile = { id: string; username: string; name: string | null; profilePictureUrl: string | null }
 
 /** Fetch the connected Instagram professional account profile. */
 export async function getInstagramProfile(token: string): Promise<IgProfile> {
   const params = new URLSearchParams({
-    fields: 'user_id,username,name',
+    fields: 'user_id,username,name,profile_picture_url',
     access_token: token,
   })
   const res = await fetch(`${IG_GRAPH_V}/me?${params.toString()}`)
@@ -142,6 +142,7 @@ export async function getInstagramProfile(token: string): Promise<IgProfile> {
     id: String(json.user_id ?? json.id),
     username: json.username,
     name: json.name ?? null,
+    profilePictureUrl: json.profile_picture_url ?? null,
   }
 }
 

@@ -95,12 +95,21 @@ export default function SocialConnectClient({
           <div className="space-y-2">
             {connections.map(conn => (
               <div key={conn.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <div
-                  className="w-9 h-9 rounded-lg grid place-items-center text-white shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)' }}
-                >
-                  <AtSign className="w-4.5 h-4.5" />
-                </div>
+                {conn.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={conn.avatar_url}
+                    alt={conn.username || 'Instagram'}
+                    className="w-9 h-9 rounded-lg object-cover shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-9 h-9 rounded-lg grid place-items-center text-white shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)' }}
+                  >
+                    <AtSign className="w-4.5 h-4.5" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
                     {conn.username ? `@${conn.username}` : conn.page_name || 'Conta Instagram'}

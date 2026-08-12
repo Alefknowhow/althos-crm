@@ -3,21 +3,25 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Zap, ChevronRight } from 'lucide-react'
+import { MessageCircle, MessageSquareText, Zap, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /**
- * Abas internas do hub do Instagram: Direct Inbox (inbox manual) ↔ Automações
- * (regras + funis). O botão de conexão do Instagram fica sempre aqui do lado,
- * único lugar de onde se conecta/gerencia a conta — não duplicado em cada aba.
+ * Abas internas do hub do Instagram: Direct Inbox (inbox manual) ↔ Comentários
+ * (resposta manual) ↔ Automações (regras + funis). O botão de conexão do
+ * Instagram fica sempre aqui do lado, único lugar de onde se conecta/gerencia
+ * a conta — não duplicado em cada aba.
  */
 export default function InstagramTabsNav({ orgSlug, connected }: { orgSlug: string; connected: boolean }) {
   const pathname = usePathname() ?? ''
   const base = `/app/${orgSlug}`
+  const onComentarios = pathname.includes('/social/comentarios')
   const onAutomacoes = pathname.includes('/social/automacoes')
+  const onInbox = !onComentarios && !onAutomacoes
 
   const tabs = [
-    { label: 'Direct Inbox', href: `${base}/social/inbox`, icon: <MessageCircle className="w-4 h-4" />, active: !onAutomacoes },
+    { label: 'Direct Inbox', href: `${base}/social/inbox`, icon: <MessageCircle className="w-4 h-4" />, active: onInbox },
+    { label: 'Comentários', href: `${base}/social/comentarios`, icon: <MessageSquareText className="w-4 h-4" />, active: onComentarios },
     { label: 'Automações', href: `${base}/social/automacoes`, icon: <Zap className="w-4 h-4" />, active: onAutomacoes },
   ]
 

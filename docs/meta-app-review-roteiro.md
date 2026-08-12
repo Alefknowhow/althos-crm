@@ -163,43 +163,48 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 
 **O que é:** ler e responder comentários em publicações da conta conectada
 — usado pra automações do tipo "comentou → resposta pública e/ou DM
-privada".
+privada" e pela fila de resposta manual em Instagram → Comentários.
 
-> ⚠️ **Hoje o CRM só responde comentários via automação** — não existe uma
-> aba de "responder comentário manualmente" como existe pra DM (Direct
-> Inbox). O roteiro abaixo já reflete isso: o vídeo mostra só o fluxo
-> automático, nada de resposta manual. Se em algum momento a Meta pedir
-> especificamente uma tela de resposta manual pra aprovar essa permissão,
-> me avisa que eu crio a aba antes de gravar de novo.
+> O CRM responde comentários de duas formas: **automação** (regra por
+> palavra-chave, resposta pública e/ou DM privada) e, desde a aba
+> **Instagram → Comentários**, **resposta manual** — todo comentário que não
+> bate em nenhuma automação fica pendente ali, com uma caixa de texto pra
+> responder na hora (com opção de também mandar como DM privada).
 
 ### Caso de uso (PT)
 
-> Além do Direct, o Althos CRM permite que o dono do negócio configure
-> automações para comentários recebidos em suas publicações do Instagram —
-> por exemplo, responder publicamente a um comentário com uma palavra-chave
-> específica (ex.: "quero saber mais") e, opcionalmente, enviar uma resposta
-> privada (DM) complementar, redirecionando o interessado para o atendimento.
-> A permissão `instagram_business_manage_comments` é usada para: (1) receber,
-> via webhook, os comentários feitos nas publicações da conta conectada; e
-> (2) publicar a resposta pública e/ou disparar a resposta privada
-> configurada pelo dono do negócio. Como a API do Instagram não oferece
-> evento de "novo seguidor", o CRM usa esse gatilho de comentário (junto com
-> resposta a stories) como forma legítima de iniciar um atendimento
-> automatizado.
+> Além do Direct, o Althos CRM permite que o dono do negócio responda
+> comentários recebidos em suas publicações do Instagram de duas formas:
+> automaticamente, por meio de automações configuráveis (ex.: responder
+> publicamente a um comentário com uma palavra-chave específica como "quero
+> saber mais", opcionalmente com uma resposta privada complementar via DM);
+> ou manualmente, pela aba "Comentários" do CRM, onde ficam listados os
+> comentários que ainda não foram respondidos, prontos para o atendente
+> responder diretamente pelo próprio CRM. A permissão
+> `instagram_business_manage_comments` é usada para: (1) receber, via
+> webhook, os comentários feitos nas publicações da conta conectada; e (2)
+> publicar a resposta pública e/ou disparar a resposta privada, seja ela
+> automática ou digitada manualmente pelo atendente. Como a API do Instagram
+> não oferece evento de "novo seguidor", o CRM usa esse gatilho de comentário
+> (junto com resposta a stories) como forma legítima de iniciar um
+> atendimento — automatizado ou humano.
 
 ### Caso de uso (EN)
 
-> In addition to Direct Messages, Althos CRM lets a business owner set up
-> automations for comments received on their Instagram posts — for example,
-> publicly replying to a comment containing a specific keyword (e.g. "tell me
-> more") and, optionally, sending a complementary private reply (DM) to move
-> the conversation into support. The `instagram_business_manage_comments`
-> permission is used to: (1) receive, via webhook, comments made on the
-> connected account's posts; and (2) publish the public reply and/or trigger
-> the private reply configured by the business owner. Since the Instagram API
-> does not provide a "new follower" event, the CRM uses this comment trigger
-> (along with story-reply triggers) as a legitimate way to start an automated
-> support interaction.
+> In addition to Direct Messages, Althos CRM lets a business owner reply to
+> comments received on their Instagram posts in two ways: automatically,
+> through configurable automations (e.g. publicly replying to a comment
+> containing a specific keyword such as "tell me more", optionally with a
+> complementary private DM reply); or manually, from the CRM's "Comments"
+> tab, which lists comments that haven't been answered yet, ready for an
+> agent to reply directly from within the CRM. The
+> `instagram_business_manage_comments` permission is used to: (1) receive,
+> via webhook, comments made on the connected account's posts; and (2)
+> publish the public reply and/or trigger the private reply, whether
+> automatic or manually typed by the agent. Since the Instagram API does not
+> provide a "new follower" event, the CRM uses this comment trigger (along
+> with story-reply triggers) as a legitimate way to start a support
+> interaction — automated or human.
 
 ### Roteiro do vídeo
 
@@ -212,9 +217,14 @@ privada".
    Instagram real, não só do CRM).
 4. Se a automação também disparar DM privada, mostre a **resposta privada**
    chegando na conta que comentou.
-5. Volte ao CRM e mostre o registro dessa interação na aba de
-   Instagram/Automações (histórico/log), evidenciando que o CRM sabe o que
-   respondeu e quando.
+5. **Fluxo manual:** de uma segunda conta, comente no post de novo com uma
+   frase que NÃO bate em nenhuma automação (ex.: "adorei o post!").
+6. No CRM, abra a aba **Instagram → Comentários** e mostre esse comentário
+   aparecendo como **pendente**.
+7. Digite uma resposta na caixa de texto, marque (ou não) "Também enviar
+   como DM privada", e clique em **Responder** — mostre a resposta
+   aparecendo no post real do Instagram e o card sumindo da fila de
+   pendentes no CRM.
 
 ### Instruções de teste para o revisor
 
@@ -227,6 +237,10 @@ privada".
 > 5. De uma segunda conta, comente no post usando a palavra-chave.
 > 6. Confirme que a resposta pública aparece no comentário e, se configurado,
 >    que a resposta privada chega como DM.
+> 7. Comente novamente com um texto que não bate em nenhuma automação e
+>    confirme que ele aparece em Instagram → Comentários como pendente.
+> 8. Responda pelo CRM e confirme que a resposta aparece no comentário real
+>    do Instagram.
 
 ---
 
