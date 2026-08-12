@@ -417,17 +417,20 @@ export default function TravelSalesView({
                   <span className="font-medium text-sm leading-tight truncate">
                     {s.client_name || 'Cliente'}
                   </span>
+                  <span className="text-[11px] text-muted-foreground shrink-0">{fmtTimestamp(s.created_at)}</span>
                 </div>
                 {s.destination && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span>
                   </div>
                 )}
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatCurrency(s.total_cents || 0)}</span>
-                  <span className="text-[11px] text-muted-foreground">{fmtTimestamp(s.created_at)}</span>
-                </div>
-                <div className="mt-1 text-[10px] font-mono text-muted-foreground/70">#{s.sale_number}</div>
+                {(s.package_locator || s.operator) && (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    {s.package_locator && <span className="font-mono truncate">{s.package_locator}</span>}
+                    {s.package_locator && s.operator && <span className="opacity-50">·</span>}
+                    {s.operator && <span className="truncate">{s.operator}</span>}
+                  </div>
+                )}
                 {seller && (
                   <div className="mt-1.5 flex">
                     <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
