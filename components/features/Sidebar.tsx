@@ -25,6 +25,7 @@ import {
   Settings,
   Calendar,
   Megaphone,
+  Send,
   FileSignature,
   PlaneTakeoff,
   Store,
@@ -108,8 +109,9 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           checkFeatureAccess(accountId, 'export_reports'),
           checkFeatureAccess(accountId, 'whatsapp'),
           checkFeatureAccess(accountId, 'instagram_automation'),
+          checkFeatureAccess(accountId, 'bulk_campaigns'),
         ])
-      : Promise.resolve<[boolean, boolean, boolean, boolean]>([true, true, true, true]),
+      : Promise.resolve<[boolean, boolean, boolean, boolean, boolean]>([true, true, true, true, true]),
   ])
 
   // Membership → role + permissions
@@ -128,7 +130,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
     return canAccess(userRole, userPermissions, key)
   }
 
-  const [, planReports, planWhatsapp, planInstagram] = planChecks as [boolean, boolean, boolean, boolean]
+  const [, planReports, planWhatsapp, planInstagram, planBulkCampaigns] = planChecks as [boolean, boolean, boolean, boolean, boolean]
 
   const overdueCount = (overdueRes as { count: number | null }).count
   const convs = (convsRes as { data: { unread_count: number }[] | null }).data
@@ -328,6 +330,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <IgIcon />
               <span>Instagram</span>
               <SidebarUnreadBadge orgId={org.id} initialCount={unreadInstagram} table="social_conversations" />
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('campaigns') && planBulkCampaigns && (
+          <SidebarNavLink href={`${base}/campanhas`}>
+            <span className="flex items-center gap-2.5">
+              <Send className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Campanhas de Envio</span>
             </span>
           </SidebarNavLink>
         )}

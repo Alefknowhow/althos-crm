@@ -26,6 +26,7 @@ export type PermissionKey =
   | 'conversations'
   | 'social'
   | 'insights'
+  | 'campaigns'
   | 'marketing'
   | 'automations'
   | 'templates'
@@ -67,6 +68,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
   { key: 'insights',      label: 'Copiloto IA',       section: 'Comunicação' },
+  { key: 'campaigns',     label: 'Campanhas de Envio', section: 'Comunicação' },
   // Marketing
   { key: 'marketing',     label: 'Campanhas',         section: 'Marketing' },
   { key: 'forms',         label: 'Formulários',       section: 'Marketing' },
@@ -113,6 +115,7 @@ export function defaultMemberPermissions(): Permissions {
     conversations: false,
     social:        false,
     insights:      false,
+    campaigns:     false,
     clients:       false,
     catalog:       false,
     sales:         false,

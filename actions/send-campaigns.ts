@@ -26,6 +26,43 @@ async function buildAudienceQuery(supabase: ReturnType<typeof createClient>, org
   return q
 }
 
+/** Tags distintas usadas pelos contatos da org — alimenta o checklist do construtor de público. */
+export async function listDistinctTags(orgSlug: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('contatos')
+    .select('tags')
+    .eq('organization_id', org.id)
+    .not('tags', 'is', null)
+
+  const set = new Set<string>()
+  for (const row of data || []) {
+    for (const tag of (row.tags as string[] | null) || []) {
+      if (tag) set.add(tag)
+    }
+  }
+  return Array.from(set).sort()
+}
+
+/** Templates aprovados pela Meta — únicos elegíveis pra campanha em massa. */
+export async function listApprovedWaTemplates(orgSlug: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('whatsapp_templates')
+    .select('id, name, display_name, language')
+    .eq('organization_id', org.id)
+    .eq('status', 'approved')
+    .order('display_name', { ascending: true })
+
+  return data || []
+}
+
 export async function previewAudienceCount(orgSlug: string, filter: AudienceFilter) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
