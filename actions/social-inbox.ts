@@ -85,16 +85,42 @@ export async function getConversationMessages(
   return (data as SocialMessageRow[] | null) || []
 }
 
-/** A Meta só permite enviar DM até 24h após a última mensagem inbound (sem a
- *  tag HUMAN_AGENT, que exige aprovação separada — ver docs/instagram-meta-setup.md). */
-function withinMessagingWindow(lastInboundAt: string | null): boolean {
-  if (!lastInboundAt) return false
-  return Date.now() - new Date(lastInboundAt).getTime() < 24 * 60 * 60 * 1000
+const HOUR = 60 * 60 * 1000
+const STANDARD_WINDOW_MS = 24 * HOUR
+const HUMAN_AGENT_WINDOW_MS = 7 * 24 * HOUR
+
+/** A tag HUMAN_AGENT estende o envio de 24h pra 7 dias, mas exige aprovação
+ *  específica da Meta no App Review (caso de uso "atendimento humano", não
+ *  marketing) — fica desligada até a env confirmar que já foi aprovada. Ver
+ *  docs/instagram-meta-setup.md. */
+function humanAgentTagApproved(): boolean {
+  return process.env.INSTAGRAM_HUMAN_AGENT_APPROVED === 'true'
 }
 
-/** Busca a conversa + conexão e valida a janela de 24h (a partir da última
- *  mensagem INBOUND de verdade, não da última mensagem da conversa — que
- *  pode já ser uma resposta nossa). Compartilhado por texto e imagem. */
+type WindowCheck =
+  | { ok: true; tag?: 'HUMAN_AGENT' }
+  | { ok: false; error: string }
+
+/** Decide se dá pra enviar agora, e com qual tag (a partir da última mensagem
+ *  INBOUND de verdade, não da última mensagem da conversa — que pode já ser
+ *  uma resposta nossa). */
+function checkMessagingWindow(lastInboundAt: string | null): WindowCheck {
+  if (!lastInboundAt) {
+    return { ok: false, error: 'Fora da janela de mensagens da Meta — ainda não há mensagem do cliente nessa conversa.' }
+  }
+  const elapsed = Date.now() - new Date(lastInboundAt).getTime()
+  if (elapsed < STANDARD_WINDOW_MS) return { ok: true }
+  if (elapsed < HUMAN_AGENT_WINDOW_MS && humanAgentTagApproved()) return { ok: true, tag: 'HUMAN_AGENT' }
+  return {
+    ok: false,
+    error: humanAgentTagApproved()
+      ? 'Fora da janela de 7 dias da Meta — não é mais possível responder essa conversa.'
+      : 'Fora da janela de 24h da Meta — só é possível responder até 24h após a última mensagem do cliente.',
+  }
+}
+
+/** Busca a conversa + conexão e valida a janela de envio. Compartilhado por
+ *  texto e imagem. */
 async function loadConversationForSend(orgId: string, conversationId: string) {
   const supabase = createClient()
   const { data: conv } = await supabase
@@ -120,14 +146,11 @@ async function loadConversationForSend(orgId: string, conversationId: string) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!withinMessagingWindow(lastInboundMsg?.created_at ?? null)) {
-    return {
-      ok: false as const,
-      error: 'Fora da janela de 24h da Meta — só é possível responder até 24h após a última mensagem do cliente.',
-    }
-  }
 
-  return { ok: true as const, supabase, conv, connection }
+  const windowCheck = checkMessagingWindow(lastInboundMsg?.created_at ?? null)
+  if (!windowCheck.ok) return { ok: false as const, error: windowCheck.error }
+
+  return { ok: true as const, supabase, conv, connection, tag: windowCheck.tag }
 }
 
 export async function sendManualMessage(orgSlug: string, conversationId: string, text: string) {
@@ -138,10 +161,10 @@ export async function sendManualMessage(orgSlug: string, conversationId: string,
 
   const loaded = await loadConversationForSend(g.org.id, conversationId)
   if (!loaded.ok) return loaded
-  const { supabase, conv, connection } = loaded
+  const { supabase, conv, connection, tag } = loaded
 
   try {
-    await sendInstagramDM(connection.page_id, connection.access_token, conv.sender_external_id, body)
+    await sendInstagramDM(connection.page_id, connection.access_token, conv.sender_external_id, body, undefined, tag)
   } catch (e: any) {
     return { ok: false as const, error: e?.message || 'Falha ao enviar mensagem no Instagram' }
   }
@@ -161,10 +184,10 @@ export async function sendManualImageMessage(orgSlug: string, conversationId: st
 
   const loaded = await loadConversationForSend(g.org.id, conversationId)
   if (!loaded.ok) return loaded
-  const { supabase, conv, connection } = loaded
+  const { supabase, conv, connection, tag } = loaded
 
   try {
-    await sendInstagramImage(connection.access_token, conv.sender_external_id, imageUrl)
+    await sendInstagramImage(connection.access_token, conv.sender_external_id, imageUrl, tag)
   } catch (e: any) {
     return { ok: false as const, error: e?.message || 'Falha ao enviar imagem no Instagram' }
   }

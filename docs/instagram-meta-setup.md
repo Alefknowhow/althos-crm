@@ -146,7 +146,16 @@ Para qualquer cliente conectar, precisa passar pelo App Review:
   Por isso o **funil de conversa** avança a cada resposta dela (cada resposta reabre a
   janela), em vez de disparar mensagens temporizadas sem interação.
 - **Tag HUMAN_AGENT** — permite responder até 7 dias depois (para atendimento humano),
-  mas exige aprovação específica e não serve para marketing.
+  mas exige aprovação específica e não serve para marketing. O código já suporta essa
+  tag (`actions/social-inbox.ts` estende a janela automaticamente quando aprovada),
+  mas ela só é usada se a env `INSTAGRAM_HUMAN_AGENT_APPROVED=true` estiver setada —
+  não ative antes de ter a aprovação de verdade da Meta, senão os envios fora de 24h
+  vão falhar na chamada da API (a tag não aprovada é rejeitada pela Meta).
+  Pra pedir a aprovação: Meta App Dashboard → seu app → **App Review** → solicitar
+  revisão do escopo `instagram_business_manage_messages` com a tag `human_agent`,
+  descrevendo o caso de uso como atendimento humano (não marketing/promoção). Exige
+  Business Verification da empresa. Depois de aprovado, seta a env no ambiente de
+  produção (Vercel) e o recurso liga sozinho, sem precisar mexer em código de novo.
 - **Rate limits** — respeite os limites de envio da Graph API para não ser bloqueado.
 
 ---

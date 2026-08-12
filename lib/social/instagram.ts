@@ -170,12 +170,18 @@ export type MessageButton = { type: 'reply' | 'link'; label: string; value: stri
  * 'reply' buttons come back as a postback whose payload is `value` (the
  * webhook maps it to inbound text so wait_for_reply steps advance normally).
  */
+/** Estende o envio pra até 7 dias (em vez de 24h) — exige aprovação da Meta
+ *  no App Review pro escopo instagram_business_manage_messages (caso de uso
+ *  "atendimento humano", não marketing). Ver docs/instagram-meta-setup.md. */
+export type IgSendTag = 'HUMAN_AGENT'
+
 export async function sendInstagramDM(
   _igAccountId: string,
   token: string,
   recipientId: string,
   text: string,
   buttons?: MessageButton[],
+  tag?: IgSendTag,
 ): Promise<void> {
   const message = buttons?.length
     ? {
@@ -196,7 +202,11 @@ export async function sendInstagramDM(
   const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipient: { id: recipientId }, message }),
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message,
+      ...(tag ? { messaging_type: 'MESSAGE_TAG', tag } : {}),
+    }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -210,6 +220,7 @@ export async function sendInstagramImage(
   token: string,
   recipientId: string,
   imageUrl: string,
+  tag?: IgSendTag,
 ): Promise<void> {
   const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
     method: 'POST',
@@ -217,6 +228,7 @@ export async function sendInstagramImage(
     body: JSON.stringify({
       recipient: { id: recipientId },
       message: { attachment: { type: 'image', payload: { url: imageUrl, is_reusable: true } } },
+      ...(tag ? { messaging_type: 'MESSAGE_TAG', tag } : {}),
     }),
   })
   if (!res.ok) {
