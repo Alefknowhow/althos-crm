@@ -164,6 +164,10 @@ export async function updateLead(orgSlug: string, leadId: string, formData: Form
   if (email !== null) updates.email = email || null
   const phone = formData.get('phone') as string
   if (phone !== null) updates.phone = phone || null
+  const cpf = formData.get('cpf') as string
+  if (cpf !== null) updates.cpf = cpf || null
+  const date_of_birth = formData.get('date_of_birth') as string
+  if (date_of_birth !== null) updates.date_of_birth = date_of_birth || null
 
   let newTagsAdded: string[] = []
   const tags_str = formData.get('tags') as string

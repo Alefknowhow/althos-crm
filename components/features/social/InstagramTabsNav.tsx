@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button'
 export default function InstagramTabsNav({ orgSlug, connected }: { orgSlug: string; connected: boolean }) {
   const pathname = usePathname() ?? ''
   const base = `/app/${orgSlug}`
-  const onInbox = pathname.includes('/social/inbox')
+  const onAutomacoes = pathname.includes('/social/automacoes')
 
   const tabs = [
-    { label: 'Direct Inbox', href: `${base}/social/inbox`, icon: <MessageCircle className="w-4 h-4" />, active: onInbox },
-    { label: 'Automações', href: `${base}/social`, icon: <Zap className="w-4 h-4" />, active: !onInbox },
+    { label: 'Direct Inbox', href: `${base}/social/inbox`, icon: <MessageCircle className="w-4 h-4" />, active: !onAutomacoes },
+    { label: 'Automações', href: `${base}/social/automacoes`, icon: <Zap className="w-4 h-4" />, active: onAutomacoes },
   ]
 
   return (

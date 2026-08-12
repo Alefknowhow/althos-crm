@@ -356,31 +356,6 @@ export async function simulateInboundMessage(orgSlug: string, conversationId: st
  * ──────────────────────────────────────────────────────────────────────── */
 
 /**
- * Define (ou limpa) o responsável PELO ATENDIMENTO desta conversa. É um conceito
- * separado do dono do lead no funil; a UI usa o dono do lead como fallback
- * quando este campo está vazio (modelo híbrido).
- */
-export async function assignConversation(
-  orgSlug: string,
-  conversationId: string,
-  userId: string | null,
-) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const { error } = await supabase
-    .from('whatsapp_conversations')
-    .update({ assigned_to: userId })
-    .eq('id', conversationId)
-    .eq('organization_id', org.id)
-
-  if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/conversas`)
-  return { ok: true as const }
-}
-
-/**
  * Carrega o contexto que o painel lateral precisa para uma conversa: o lead
  * vinculado (se houver), os estágios do pipeline padrão (para mover) e os
  * membros da org (para os seletores de responsável). Centraliza num único

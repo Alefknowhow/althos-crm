@@ -52,7 +52,7 @@ export default function CancelTravelSaleDialog({
     setSaving(false)
 
     if (!res.ok) { toast.error(res.error); return }
-    toast.success('Reserva cancelada e crédito de viagem gerado.')
+    toast.success('Reserva cancelada e crédito de cancelamento gerado.')
     reset()
     onOpenChange(false)
     onCancelled()

@@ -703,7 +703,7 @@ function DetailPanel({
           <span className="text-2xl font-bold">{fmtDate(lastPurchase)}</span>
         </Field>
         {isTravel && (
-          <Field icon={Wallet} label="Créditos de viagem">
+          <Field icon={Wallet} label="Créditos de cancelamento">
             <span className="text-2xl font-bold text-primary">{fmtCurrency(creditBalance)}</span>
           </Field>
         )}

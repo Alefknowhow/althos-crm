@@ -181,7 +181,7 @@ export default async function ContatoDetailPage({
                     </div>
                     <div>
                       <div className="text-sm font-medium">
-                        {act.type === 'manual_created' ? 'Contato criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type === 'credit_created' ? `Crédito de viagem gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})` : act.type === 'credit_used' ? `Crédito de viagem utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}` : act.type}
+                        {act.type === 'manual_created' ? 'Contato criado manualmente' : act.type === 'note' ? 'Nota adicionada' : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)` : act.type === 'email_sent' ? 'E-mail enviado' : act.type === 'email_opened' ? 'E-mail aberto' : act.type === 'credit_created' ? `Crédito de cancelamento gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})` : act.type === 'credit_used' ? `Crédito de cancelamento utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}` : act.type}
                       </div>
                       {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
                       {act.type === 'ai_qualified' && (
@@ -280,12 +280,14 @@ export default async function ContatoDetailPage({
             initial={relationships}
           />
 
-          {/* Créditos de Viagem — só para agências de viagem, gerados via cancelamento de reserva */}
+          {/* Créditos de Cancelamento — só para agências de viagem, gerados via cancelamento de reserva.
+              Nome genérico (não "de viagem") porque o conceito de crédito por
+              cancelamento não é exclusivo do nicho de viagens. */}
           {isTravelNiche(org.niche) && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-1.5">
-                  <Wallet className="w-4 h-4 text-primary" /> Créditos de Viagem
+                  <Wallet className="w-4 h-4 text-primary" /> Créditos de Cancelamento
                 </CardTitle>
                 <span className="text-sm font-bold tabular-nums">
                   {fmtCurrency(travelCredits.reduce((a, c) => a + (c.status === 'available' ? c.valor_cents - c.valor_usado_cents : 0), 0))}
@@ -294,7 +296,7 @@ export default async function ContatoDetailPage({
               <CardContent>
                 {travelCredits.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">
-                    Sem créditos de viagem. Créditos são gerados automaticamente ao cancelar uma reserva.
+                    Sem créditos de cancelamento. Créditos são gerados automaticamente ao cancelar uma reserva.
                   </p>
                 ) : (
                   <div className="space-y-3">

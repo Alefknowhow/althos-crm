@@ -82,7 +82,7 @@ export default function ApplyCreditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Wallet className="w-4 h-4 text-primary" /> Usar crédito de viagem</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Wallet className="w-4 h-4 text-primary" /> Usar crédito de cancelamento</DialogTitle>
           <DialogDescription>Selecione um crédito disponível do cliente para aplicar nesta venda.</DialogDescription>
         </DialogHeader>
 
@@ -92,7 +92,7 @@ export default function ApplyCreditDialog({
           </div>
         ) : credits.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            Este cliente não possui créditos de viagem disponíveis.
+            Este cliente não possui créditos de cancelamento disponíveis.
           </div>
         ) : (
           <div className="py-2 space-y-3">

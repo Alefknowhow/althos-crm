@@ -11,12 +11,21 @@ export default async function ConversasPage({ params, searchParams }: { params: 
 
   const { data: conversations } = await supabase
     .from('whatsapp_conversations')
-    .select('*, contatos(id, name, avatar_url, assigned_to, pipeline_stages(name))')
+    .select('*, contatos(id, name, avatar_url, assigned_to, stage_id, pipeline_id, pipeline_stages(name))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
 
   // Team members power both the inbox agent-color tags and the side panel selectors.
   const members = await listOrgMembers(params.orgSlug)
+
+  // Etapas de todos os pipelines da org — alimenta o dropdown de troca rápida
+  // de etapa direto na lista de conversas. pipeline_stages não tem
+  // organization_id direto, então filtra via join com pipelines.
+  const { data: pipelineStages } = await supabase
+    .from('pipeline_stages')
+    .select('id, name, pipeline_id, position, pipelines!inner(organization_id)')
+    .eq('pipelines.organization_id', org.id)
+    .order('position', { ascending: true })
 
   // Templates aprovados servem de fallback quando a janela de 24h está fechada.
   const templates = await getWaTemplates(params.orgSlug)
@@ -52,6 +61,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         selectedConversation={selectedConversation}
         initialMessages={messages}
         members={members}
+        pipelineStages={(pipelineStages || []).map(s => ({ id: s.id, name: s.name, pipeline_id: s.pipeline_id, position: s.position }))}
         panelContext={panelContext}
         scheduled={scheduled}
         templates={templates}

@@ -12,8 +12,12 @@ import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
 import { Clock, X, FileText } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -54,6 +58,22 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   // Etapa do funil do lead vinculado (para a tag compacta no cabeçalho).
   const stageName: string | null = panelContext?.lead?.pipeline_stages?.name ?? null
 
+  // Troca rápida de etapa/responsável direto na lista de conversas, sem
+  // precisar abrir a conversa. contatoId é o lead vinculado à conversa.
+  async function handleQuickStageChange(contatoId: string, currentStageId: string | null, newStageId: string) {
+    if (!contatoId || newStageId === currentStageId) return
+    const res = await moveLeadToStage(orgSlug, contatoId, newStageId, currentStageId || '')
+    if ((res as any)?.ok === false) toast.error('Não foi possível mover de etapa', { description: (res as any).error })
+    else { toast.success('Etapa atualizada'); router.refresh() }
+  }
+
+  async function handleQuickAssign(contatoId: string, userId: string | null) {
+    if (!contatoId) return
+    const res = await assignLead(orgSlug, contatoId, userId)
+    if ((res as any)?.ok === false) toast.error('Não foi possível atribuir', { description: (res as any).error })
+    else { toast.success('Responsável atualizado'); router.refresh() }
+  }
+
   const memberById = useMemo(() => {
     const map: Record<string, any> = {}
     for (const m of members) map[m.user_id] = m
@@ -74,7 +94,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   const sellerOptions = useMemo(() => {
     const ids = new Set<string>()
     for (const c of conversations) {
-      const owner = c.assigned_to ?? c.contatos?.assigned_to
+      const owner = c.contatos?.assigned_to
       if (owner) ids.add(owner)
     }
     return Array.from(ids).map(id => ({ id, member: memberById[id] }))
@@ -91,7 +111,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
         if (!hay.includes(q)) return false
       }
       if (filterSeller) {
-        const owner = c.assigned_to ?? c.contatos?.assigned_to ?? null
+        const owner = c.contatos?.assigned_to ?? null
         if (filterSeller === '__none' ? !!owner : owner !== filterSeller) return false
       }
       if (filterStage) {
@@ -191,31 +211,6 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
   return (
     <div className="flex w-full h-full border-t">
       <div className={`w-full md:w-1/3 md:max-w-[350px] border-r border-[#e9edef] dark:border-[#2a3942] flex-col bg-white dark:bg-[#111b21] ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b border-[#e9edef] dark:border-[#2a3942] shrink-0 h-16 flex items-center justify-end gap-2">
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href={`/app/${orgSlug}/whatsapp-templates`}
-              className="inline-flex items-center gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
-              title="Templates de mensagem do WhatsApp"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Templates
-            </Link>
-            {isMock && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleSeed}
-                disabled={seeding}
-                className="text-xs h-7"
-                title="Modo de teste — gera conversas fictícias (WhatsApp não conectado)"
-              >
-                {seeding ? '...' : '🧪 Gerar conversas'}
-              </Button>
-            )}
-          </div>
-        </div>
         {/* Busca + filtros do inbox */}
         <div className="px-3 py-2 border-b bg-background shrink-0 space-y-2">
           <div className="flex items-center gap-2">
@@ -245,6 +240,27 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilters}</span>
               )}
             </button>
+            <Link
+              href={`/app/${orgSlug}/whatsapp-templates`}
+              className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full border text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Templates de mensagem do WhatsApp"
+              aria-label="Templates de mensagem do WhatsApp"
+            >
+              <FileText className="w-4 h-4" />
+            </Link>
+            {isMock && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleSeed}
+                disabled={seeding}
+                className="text-xs h-9 shrink-0"
+                title="Modo de teste — gera conversas fictícias (WhatsApp não conectado)"
+              >
+                {seeding ? '...' : '🧪'}
+              </Button>
+            )}
           </div>
 
           {showFilters && (
@@ -299,12 +315,6 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
-                  {c.contatos?.pipeline_stages?.name && (
-                    <span className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px]" title={`Etapa: ${c.contatos.pipeline_stages.name}`}>
-                      <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
-                      <span className="truncate">{c.contatos.pipeline_stages.name}</span>
-                    </span>
-                  )}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
                   {c.last_message_direction === 'outbound' && (
@@ -315,23 +325,65 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
-                <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
+
+                {/* Janela de 24h + etapa do pipeline na mesma linha (economiza uma linha) */}
+                <div className="flex items-center gap-1">
+                  <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
+                  {c.contatos?.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={e => e.stopPropagation()}
+                          className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px] hover:bg-primary/20 transition-colors"
+                          title={c.contatos?.pipeline_stages?.name ? `Etapa: ${c.contatos.pipeline_stages.name} — clique para mudar` : 'Definir etapa'}
+                        >
+                          <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
+                          <span className="truncate">{c.contatos?.pipeline_stages?.name || 'Sem etapa'}</span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        {pipelineStages
+                          .filter((s: any) => !c.contatos?.pipeline_id || s.pipeline_id === c.contatos.pipeline_id)
+                          .map((s: any) => (
+                            <DropdownMenuItem key={s.id} onClick={() => handleQuickStageChange(c.contatos.id, c.contatos?.stage_id ?? null, s.id)}>
+                              {s.name}
+                            </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-1.5">
                   {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
-                  {(() => {
-                    // Híbrido: responsável do atendimento, com fallback no dono do lead.
-                    const ownerId = c.assigned_to ?? c.contatos?.assigned_to ?? null
-                    if (!ownerId) return null
-                    const m = memberById[ownerId]
-                    return (
-                      <div
-                        className={`h-5 w-5 rounded-full ${agentColor(ownerId)} text-white text-[9px] font-semibold flex items-center justify-center`}
-                        title={`Atendendo: ${m?.name || m?.email || 'membro'}`}
-                      >
-                        {memberInitials(m?.name, m?.email)}
-                      </div>
-                    )
-                  })()}
+                  {c.contatos?.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={e => e.stopPropagation()}
+                          className={`h-5 w-5 rounded-full shrink-0 ${agentColor(c.contatos?.assigned_to ?? null)} text-white text-[9px] font-semibold flex items-center justify-center hover:ring-2 hover:ring-offset-1 hover:ring-primary/40 transition-all`}
+                          title={(() => {
+                            const m = memberById[c.contatos?.assigned_to]
+                            return m ? `Responsável: ${m.name || m.email} — clique para mudar` : 'Sem responsável — clique para atribuir'
+                          })()}
+                        >
+                          {c.contatos?.assigned_to
+                            ? memberInitials(memberById[c.contatos.assigned_to]?.name, memberById[c.contatos.assigned_to]?.email)
+                            : <span className="opacity-70">?</span>}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => handleQuickAssign(c.contatos.id, null)}>Ninguém</DropdownMenuItem>
+                        {members.map((m: any) => (
+                          <DropdownMenuItem key={m.user_id} onClick={() => handleQuickAssign(c.contatos.id, m.user_id)}>
+                            {m.name || m.email}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
             </div>

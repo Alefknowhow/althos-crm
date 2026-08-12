@@ -727,7 +727,7 @@ function SaleEditor({
             <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
           </Button>
           {s.contato_id && (
-            <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de viagem" aria-label="Usar crédito de viagem">
+            <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de cancelamento" aria-label="Usar crédito de cancelamento">
               <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
             </Button>
           )}

@@ -1,22 +1,10 @@
-import { getSocialAutomations, getSocialInteractions } from '@/actions/social-automations'
-import { getFunnels } from '@/actions/social-funnels'
-import { SocialPageClient } from './SocialPageClient'
+import { redirect } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
-
-export default async function SocialPage({ params }: { params: { orgSlug: string } }) {
-  const [automations, interactions, funnels] = await Promise.all([
-    getSocialAutomations(params.orgSlug).catch(() => []),
-    getSocialInteractions(params.orgSlug, 30).catch(() => []),
-    getFunnels(params.orgSlug).catch(() => []),
-  ])
-
-  return (
-    <SocialPageClient
-      orgSlug={params.orgSlug}
-      initialAutomations={automations}
-      initialInteractions={interactions}
-      initialFunnels={funnels}
-    />
-  )
+/**
+ * Direct Inbox é a aba padrão do hub do Instagram — qualquer link pra
+ * /social "puro" (sidebar, atalhos, etc.) cai direto na inbox em vez de
+ * Automações, que agora vive em /social/automacoes.
+ */
+export default function SocialPage({ params }: { params: { orgSlug: string } }) {
+  redirect(`/app/${params.orgSlug}/social/inbox`)
 }
