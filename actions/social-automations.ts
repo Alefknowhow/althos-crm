@@ -171,6 +171,15 @@ export async function getSocialConnections(orgSlug: string): Promise<SocialConne
 export async function deleteSocialConnection(orgSlug: string, id: string) {
   const orgId = await requireSocialPermission(orgSlug)
   const admin = createAdminClient()
+
+  // Conversas/mensagens e comentários pendentes só fazem sentido enquanto a
+  // conta segue conectada (sem token, não dá mais pra responder nada) — por
+  // isso somem do inbox junto com a conexão, em vez de ficar como lixo órfão.
+  // social_messages tem FK CASCADE em conversation_id, então apagar
+  // social_conversations já leva as mensagens junto.
+  await admin.from('social_conversations').delete().eq('social_connection_id', id).eq('organization_id', orgId)
+  await admin.from('social_interactions').delete().eq('social_connection_id', id).eq('organization_id', orgId).is('response_type', null)
+
   const { error } = await admin
     .from('social_connections')
     .delete()
@@ -178,6 +187,8 @@ export async function deleteSocialConnection(orgSlug: string, id: string) {
     .eq('organization_id', orgId)
   if (error) throw new Error(error.message)
   revalidatePath(`/app/${orgSlug}/social`)
+  revalidatePath(`/app/${orgSlug}/social/inbox`)
+  revalidatePath(`/app/${orgSlug}/social/comentarios`)
 }
 
 // ── Interactions log ──────────────────────────────────────────────────────────
