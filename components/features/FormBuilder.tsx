@@ -297,6 +297,34 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               )}
             </div>
 
+            {(schema.mode || 'classic') === 'classic' && (
+              <div className="space-y-4 p-4 border rounded-none bg-background  ">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm">Briefing</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Texto curto acima das perguntas, na própria página do formulário (diferente da Tela de Boas-Vindas, que é uma etapa separada).</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!schema.briefing?.enabled}
+                    onChange={e => setSchema({ ...schema, briefing: { ...(schema.briefing || {}), enabled: e.target.checked } })}
+                    className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer"
+                  />
+                </div>
+                {schema.briefing?.enabled && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Texto</Label>
+                    <textarea
+                      className="flex min-h-[70px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={schema.briefing?.text || ''}
+                      onChange={e => setSchema({ ...schema, briefing: { ...schema.briefing, text: e.target.value } })}
+                      placeholder="Ex: Preencha os dados abaixo pra montarmos sua proposta personalizada."
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <h3 className="font-semibold text-sm">Aparência</h3>
               <div className="space-y-1.5">
@@ -434,12 +462,12 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               )}
             </div>
 
-            {/* ── Assinatura do rodapé ────────────────── */}
+            {/* ── Logo e assinatura ────────────────── */}
             <div className="space-y-4 p-4 border rounded-none bg-background  ">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-sm">Assinatura do Rodapé</h3>
-                  <p className="text-[11px] text-muted-foreground">Logo e nome exibidos no final do formulário.</p>
+                  <h3 className="font-semibold text-sm">Logo e Assinatura</h3>
+                  <p className="text-[11px] text-muted-foreground">Logo e nome exibidos no topo ou no final do formulário.</p>
                 </div>
                 <input
                   type="checkbox"
@@ -450,6 +478,25 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
               </div>
               {schema.signature?.enabled && (
                 <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Posição</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSchema({ ...schema, signature: { ...schema.signature, position: 'top' } })}
+                        className={`p-2 border rounded-md text-xs transition-colors ${(schema.signature?.position || 'footer') === 'top' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                      >
+                        Topo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSchema({ ...schema, signature: { ...schema.signature, position: 'footer' } })}
+                        className={`p-2 border rounded-md text-xs transition-colors ${(schema.signature?.position || 'footer') === 'footer' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                      >
+                        Rodapé
+                      </button>
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Logo</Label>
                     <ImageUploadButton
@@ -469,6 +516,33 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
                       placeholder="Ex: Althos Performance"
                     />
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Dados da empresa no rodapé ────────────────── */}
+            <div className="space-y-4 p-4 border rounded-none bg-background  ">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Dados da empresa no rodapé</h3>
+                  <p className="text-[11px] text-muted-foreground">CNPJ, endereço ou qualquer outra informação institucional — aparece embaixo de tudo, no final da página.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!schema.footerInfo?.enabled}
+                  onChange={e => setSchema({ ...schema, footerInfo: { ...(schema.footerInfo || {}), enabled: e.target.checked } })}
+                  className="w-4 h-4 rounded border-gray-300 accent-primary cursor-pointer"
+                />
+              </div>
+              {schema.footerInfo?.enabled && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Texto</Label>
+                  <textarea
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={schema.footerInfo?.text || ''}
+                    onChange={e => setSchema({ ...schema, footerInfo: { ...schema.footerInfo, text: e.target.value } })}
+                    placeholder="Ex: Althos Viagens LTDA · CNPJ 00.000.000/0001-00 · Rua Exemplo, 123 - Balneário Camboriú/SC"
+                  />
                 </div>
               )}
             </div>

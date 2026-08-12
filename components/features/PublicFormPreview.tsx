@@ -36,6 +36,20 @@ export interface FormSignature {
   enabled?: boolean
   logoUrl?: string
   name?: string
+  /** Onde a logo/assinatura aparece na página — 'footer' (default) ou 'top'. */
+  position?: 'top' | 'footer'
+}
+
+/** Briefing: texto curto acima das perguntas, na própria página (modo clássico). */
+export interface FormBriefing {
+  enabled?: boolean
+  text?: string
+}
+
+/** Dados institucionais no rodapé (CNPJ, endereço etc) — texto livre. */
+export interface FormFooterInfo {
+  enabled?: boolean
+  text?: string
 }
 
 export interface FormStyle {
@@ -50,6 +64,8 @@ export interface FormSchema {
   welcome?: FormWelcome
   whatsapp?: FormWhatsApp
   signature?: FormSignature
+  briefing?: FormBriefing
+  footerInfo?: FormFooterInfo
   style?: FormStyle
 }
 
@@ -77,11 +93,35 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
   const labelClass = dark ? 'text-white' : 'text-foreground'
   const helperClass = dark ? 'text-gray-300' : 'text-muted-foreground'
 
+  const signaturePosition = schema.signature?.position || 'footer'
+  const showTopSignature = schema.signature?.enabled && signaturePosition === 'top' && (schema.signature.logoUrl || schema.signature.name)
+  const showFooterSignature = schema.signature?.enabled && signaturePosition === 'footer' && (schema.signature.logoUrl || schema.signature.name)
+
   return (
     <form className="space-y-5" onSubmit={e => {
       e.preventDefault();
       if (onSubmit && !isPreview) onSubmit(new FormData(e.currentTarget));
     }}>
+      {showTopSignature && (
+        <div className="flex items-center justify-center gap-2.5 pb-2">
+          {schema.signature!.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={schema.signature!.logoUrl}
+              alt={schema.signature!.name || 'Logo'}
+              className="h-10 w-auto object-contain"
+            />
+          )}
+          {schema.signature!.name && (
+            <span className={`text-sm font-medium ${labelClass}`}>{schema.signature!.name}</span>
+          )}
+        </div>
+      )}
+
+      {schema.briefing?.enabled && schema.briefing.text && (
+        <p className={`text-sm whitespace-pre-line ${helperClass}`}>{schema.briefing.text}</p>
+      )}
+
       {schema.fields.map((field) => (
         <div key={field.id} className="space-y-1.5">
           {/* Per-field image */}
@@ -268,20 +308,27 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
       </Button>
 
       {/* Footer signature */}
-      {schema.signature?.enabled && (schema.signature.logoUrl || schema.signature.name) && (
+      {showFooterSignature && (
         <div className={`pt-4 mt-4 border-t flex items-center justify-center gap-2.5 ${dark ? 'border-white/15' : ''}`}>
-          {schema.signature.logoUrl && (
+          {schema.signature!.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={schema.signature.logoUrl}
-              alt={schema.signature.name || 'Logo'}
+              src={schema.signature!.logoUrl}
+              alt={schema.signature!.name || 'Logo'}
               className="h-6 w-auto object-contain"
             />
           )}
-          {schema.signature.name && (
-            <span className={`text-xs font-medium ${helperClass}`}>{schema.signature.name}</span>
+          {schema.signature!.name && (
+            <span className={`text-xs font-medium ${helperClass}`}>{schema.signature!.name}</span>
           )}
         </div>
+      )}
+
+      {/* Dados institucionais (CNPJ, endereço etc) */}
+      {schema.footerInfo?.enabled && schema.footerInfo.text && (
+        <p className={`text-center text-[11px] whitespace-pre-line ${helperClass} ${showFooterSignature ? 'mt-1' : 'pt-4 mt-4 border-t'} ${dark && !showFooterSignature ? 'border-white/15' : ''}`}>
+          {schema.footerInfo.text}
+        </p>
       )}
     </form>
   )
