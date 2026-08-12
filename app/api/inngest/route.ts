@@ -12,6 +12,7 @@ import { scheduledWhatsappMessagesFn } from '@/lib/inngest/scheduled-messages-cr
 import { proposalEventFn } from '@/lib/inngest/proposal-events'
 import { dashboardInsightsCronFn } from '@/lib/inngest/dashboard-insights-cron'
 import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
+import { sendCampaignsCronFn } from '@/lib/inngest/send-campaigns-cron'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -35,5 +36,6 @@ export const { GET, POST, PUT } = serve({
     proposalEventFn,
     dashboardInsightsCronFn,
     marketingSyncCronFn,
+    sendCampaignsCronFn,
   ]
 })
