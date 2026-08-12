@@ -15,6 +15,19 @@ cada uma das 6 permissões solicitadas. Ordem de gravação sugerida: **Instagra
 > MP4, até ~3-5 min por vídeo. Comece sempre mostrando o app já logado —
 > não precisa gravar o cadastro/login no CRM, só a permissão em uso.
 
+## Credenciais de teste (login no CRM)
+
+Cole isso no campo de instruções gerais do App Review (a Meta sempre pede
+login/senha quando o app avaliado exige autenticação):
+
+> - URL: https://althoscrm.com.br
+> - Organização de teste: **Clínica Teste** (`clinica-teste`)
+> - E-mail: `aleftrentin+metareview@gmail.com`
+> - Senha: `Teste123@`
+>
+> Após o login, o app já abre direto na organização de teste — não é
+> necessário selecionar nada.
+
 ---
 
 ## 1. `instagram_business_basic`
@@ -63,12 +76,14 @@ mensagens/comentários.
 
 ### Instruções de teste para o revisor
 
-> 1. Faça login com uma conta Instagram profissional (Comercial ou Criador de
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Faça login com uma conta Instagram profissional (Comercial ou Criador de
 >    Conteúdo) de teste.
-> 2. No app avaliado, acesse o item "Instagram" na sidebar e clique em
+> 3. No app avaliado, acesse o item "Instagram" na sidebar e clique em
 >    "Conectar Instagram" no canto superior direito.
-> 3. Autorize o acesso solicitado.
-> 4. Confirme que o nome, username e foto de perfil da conta aparecem
+> 4. Autorize o acesso solicitado.
+> 5. Confirme que o nome, username e foto de perfil da conta aparecem
 >    corretamente na tela de conexão e na lista de conversas.
 
 ---
@@ -130,13 +145,15 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 
 ### Instruções de teste para o revisor
 
-> 1. Conecte uma conta Instagram profissional de teste (ver seção 1).
-> 2. De uma segunda conta Instagram, envie uma DM para a conta conectada.
-> 3. No CRM, acesse Instagram → Direct Inbox — a mensagem deve aparecer na
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Conecte uma conta Instagram profissional de teste (ver seção 1).
+> 3. De uma segunda conta Instagram, envie uma DM para a conta conectada.
+> 4. No CRM, acesse Instagram → Direct Inbox — a mensagem deve aparecer na
 >    lista de conversas.
-> 4. Responda pelo campo de texto do CRM e confirme o recebimento na segunda
+> 5. Responda pelo campo de texto do CRM e confirme o recebimento na segunda
 >    conta.
-> 5. Opcional: configure uma automação simples em Instagram → Automações
+> 6. Opcional: configure uma automação simples em Instagram → Automações
 >    (gatilho por palavra-chave) e envie uma nova DM contendo a palavra para
 >    ver a resposta automática.
 
@@ -201,12 +218,14 @@ privada".
 
 ### Instruções de teste para o revisor
 
-> 1. Conecte uma conta Instagram profissional de teste (ver seção 1).
-> 2. No CRM, crie uma automação em Instagram → Automações com gatilho
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Conecte uma conta Instagram profissional de teste (ver seção 1).
+> 3. No CRM, crie uma automação em Instagram → Automações com gatilho
 >    "Comentário" e uma palavra-chave (ex.: "preço").
-> 3. Publique um post na conta de teste (ou use um já existente).
-> 4. De uma segunda conta, comente no post usando a palavra-chave.
-> 5. Confirme que a resposta pública aparece no comentário e, se configurado,
+> 4. Publique um post na conta de teste (ou use um já existente).
+> 5. De uma segunda conta, comente no post usando a palavra-chave.
+> 6. Confirme que a resposta pública aparece no comentário e, se configurado,
 >    que a resposta privada chega como DM.
 
 ---
@@ -269,14 +288,16 @@ cliente.
 
 ### Instruções de teste para o revisor
 
-> 1. Use uma conta de anúncios de teste da Meta com pelo menos uma campanha
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Use uma conta de anúncios de teste da Meta com pelo menos uma campanha
 >    ativa (ou histórico) com métricas.
-> 2. No CRM, acesse Marketing → Contas e clique em "Conectar com Facebook
+> 3. No CRM, acesse Marketing → Contas e clique em "Conectar com Facebook
 >    (Meta Ads)", autorizando o login e selecionando a conta na lista
 >    carregada automaticamente pela API (nenhum ID é digitado manualmente).
-> 3. Acesse Marketing → Anúncios e confirme que campanhas e métricas da
+> 4. Acesse Marketing → Anúncios e confirme que campanhas e métricas da
 >    conta conectada aparecem corretamente na tabela e no gráfico.
-> 4. Confirme que não há nenhuma ação de escrita disponível na tela (criar,
+> 5. Confirme que não há nenhuma ação de escrita disponível na tela (criar,
 >    editar, pausar campanha) — o painel é somente leitura.
 
 ---
@@ -335,12 +356,14 @@ conexão "Embedded Signup" (1 clique) e na tela de Templates.
 
 ### Instruções de teste para o revisor
 
-> 1. Use uma conta Meta Business de teste com um número de telefone
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Use uma conta Meta Business de teste com um número de telefone
 >    disponível para conectar ao WhatsApp Business.
-> 2. No CRM, acesse Configurações → WhatsApp → Conectar WhatsApp e siga o
+> 3. No CRM, acesse Configurações → WhatsApp → Conectar WhatsApp e siga o
 >    fluxo de Embedded Signup.
-> 3. Confirme que o número aparece conectado no CRM após a autorização.
-> 4. Acesse a tela de Templates de WhatsApp e crie um template de teste,
+> 4. Confirme que o número aparece conectado no CRM após a autorização.
+> 5. Acesse a tela de Templates de WhatsApp e crie um template de teste,
 >    confirmando que ele é salvo e listado corretamente.
 
 ---
@@ -400,12 +423,14 @@ massa por template aprovado).
 
 ### Instruções de teste para o revisor
 
-> 1. Conecte um número de teste do WhatsApp Business ao CRM (ver permissão
+> 1. Faça login em https://althoscrm.com.br com as credenciais de teste do
+>    topo deste documento.
+> 2. Conecte um número de teste do WhatsApp Business ao CRM (ver permissão
 >    `whatsapp_business_management`).
-> 2. De outro número, envie uma mensagem para o número conectado.
-> 3. No CRM, acesse Conversas e confirme que a mensagem aparece no inbox.
-> 4. Responda pelo CRM e confirme o recebimento no número de teste.
-> 5. Opcional: em Campanhas de Envio, crie uma campanha de teste com um
+> 3. De outro número, envie uma mensagem para o número conectado.
+> 4. No CRM, acesse Conversas e confirme que a mensagem aparece no inbox.
+> 5. Responda pelo CRM e confirme o recebimento no número de teste.
+> 6. Opcional: em Campanhas de Envio, crie uma campanha de teste com um
 >    template aprovado e um público pequeno, e confirme o envio.
 
 ---
