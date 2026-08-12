@@ -386,7 +386,7 @@ export default function PublicQuotationView({
 
   /* tracking (só no link real) */
   useEffect(() => {
-    if (preview || data.expired) return
+    if (preview) return
     const key = `alq_viewed_${data.id}`
     try {
       if (sessionStorage.getItem(key)) return
@@ -480,27 +480,6 @@ export default function PublicQuotationView({
   const accentStyle = org.brand_accent
     ? ({ ['--gold' as any]: org.brand_accent, ['--gold-soft' as any]: org.brand_accent } as React.CSSProperties)
     : undefined
-
-  /* estado expirado */
-  if (data.expired && !preview) {
-    return (
-      <div className="alq" ref={rootRef} style={accentStyle}>
-        <style>{CSS}</style>
-        <div className="expired-wrap">
-          <div className="expired-card">
-            <div className="eyebrow">Proposta expirada</div>
-            <h1>Esta cotação não está mais válida</h1>
-            <p>Tarifas de viagem mudam rápido. Fale com a gente para atualizar os valores — leva poucos minutos.</p>
-            {waNumber && (
-              <a className="btn btn-primary" href={waHref(`Olá! A proposta "${data.title || 'de viagem'}" expirou — pode atualizar os valores pra mim?`)} target="_blank" rel="noopener noreferrer">
-                <IcWa /> Falar com a agência
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   /* numeração dinâmica dos blocos visíveis */
   let n = 0
@@ -1181,13 +1160,6 @@ const CSS = `
 .alq .mini-gal img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s}
 .alq .mini-gal img.loaded{opacity:1}
 .alq .mini-map{height:170px;border-radius:12px;margin-top:14px;border:1px solid var(--line);background:#eef0ec}
-
-/* Expirada */
-.alq .expired-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.alq .expired-card{background:var(--paper);border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:44px 38px;max-width:520px;text-align:center}
-.alq .expired-card h1{font-size:24px;font-weight:700;color:var(--navy);margin:12px 0 12px}
-.alq .expired-card p{color:var(--body);margin:0 0 24px}
 
 /* ─────── Mobile: letras menores, espaços mais justos ─────── */
 @media(max-width:560px){
