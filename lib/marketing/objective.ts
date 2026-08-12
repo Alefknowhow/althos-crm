@@ -1,8 +1,8 @@
-export type ObjectiveGroup = 'leads' | 'whatsapp' | 'traffic' | 'sales' | 'awareness' | 'other'
+export type ObjectiveGroup = 'leads' | 'messaging' | 'traffic' | 'sales' | 'awareness' | 'other'
 
 export const OBJECTIVE_GROUP_LABELS: Record<ObjectiveGroup, string> = {
   leads: 'Geração de Leads',
-  whatsapp: 'WhatsApp',
+  messaging: 'Mensagens (WhatsApp/Direct)',
   traffic: 'Tráfego',
   sales: 'Vendas',
   awareness: 'Reconhecimento',
@@ -14,9 +14,11 @@ export const OBJECTIVE_GROUP_LABELS: Record<ObjectiveGroup, string> = {
  * usado no painel — determina qual métrica de conversão é a "certa" pra
  * mostrar por campanha (ver actions/marketing.ts, getMarketingOverview).
  *
- * OUTCOME_ENGAGEMENT cobre tanto engajamento genérico de post quanto
- * Click-to-WhatsApp — na prática das campanhas do Althos CRM isso é
- * sempre WhatsApp, mas fica marcado aqui caso precise refinar depois.
+ * OUTCOME_ENGAGEMENT cobre qualquer campanha de mensagens — WhatsApp,
+ * Instagram Direct ou Messenger — a Meta não distingue o destino no
+ * objetivo da campanha, só no nível do anúncio. Por isso o grupo se chama
+ * "messaging" (Mensagens), não "whatsapp": rotular tudo como WhatsApp é
+ * enganoso quando a campanha na verdade manda pro Direct do Instagram.
  */
 export function classifyObjective(objective: string | null | undefined): ObjectiveGroup {
   const up = (objective || '').toUpperCase()
@@ -27,7 +29,7 @@ export function classifyObjective(objective: string | null | undefined): Objecti
     case 'OUTCOME_ENGAGEMENT':
     case 'MESSAGES':
     case 'ENGAGEMENT':
-      return 'whatsapp'
+      return 'messaging'
     case 'OUTCOME_TRAFFIC':
     case 'LINK_CLICKS':
     case 'TRAFFIC':

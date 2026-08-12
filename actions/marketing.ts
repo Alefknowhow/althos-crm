@@ -777,14 +777,14 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
   const tsMap = new Map<
     string,
-    { date: string; ad_account_id: string; spend_cents: number; impressions: number; clicks: number; leads: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_landing_page_views: number; meta_purchases: number; meta_purchase_value_cents: number; won_deals: number; revenue_cents: number }
+    { date: string; ad_account_id: string; campaign_id: string; spend_cents: number; impressions: number; clicks: number; leads: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_landing_page_views: number; meta_purchases: number; meta_purchase_value_cents: number; won_deals: number; revenue_cents: number }
   >()
   for (const m of metrics || []) {
     const accountId = campaignIdToAccountId.get(m.campaign_id) || 'unknown'
-    const key = `${m.date}|${accountId}`
+    const key = `${m.date}|${m.campaign_id}`
     const cur =
       tsMap.get(key) ||
-      { date: m.date, ad_account_id: accountId, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
+      { date: m.date, ad_account_id: accountId, campaign_id: m.campaign_id, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
     cur.spend_cents += m.spend_cents || 0
     cur.impressions += m.impressions || 0
     cur.clicks += m.clicks || 0
@@ -797,11 +797,16 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     tsMap.set(key, cur)
   }
 
-  // utm_campaign → ad_account_id, pra bucketar leads de formulário na conta certa.
+  // utm_campaign → ad_account_id/campaign_id, pra bucketar leads de
+  // formulário na conta e campanha certas.
   const utmToAccountId = new Map<string, string>()
+  const utmToCampaignIdForTs = new Map<string, string>()
   for (const c of campaigns || []) {
     const key = (c.utm_campaign || '').trim().toLowerCase()
-    if (key) utmToAccountId.set(key, c.ad_account_id)
+    if (key) {
+      utmToAccountId.set(key, c.ad_account_id)
+      utmToCampaignIdForTs.set(key, c.id)
+    }
   }
 
   // Leads per day: re-fetch with created_at so we can bucket by date.
@@ -824,10 +829,11 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     if (!knownUtms.has(utm)) continue
     const day = String(s.created_at).slice(0, 10)
     const accountId = utmToAccountId.get(utm) || 'unknown'
-    const key = `${day}|${accountId}`
+    const campaignId = utmToCampaignIdForTs.get(utm) || 'unknown'
+    const key = `${day}|${campaignId}`
     const cur =
       tsMap.get(key) ||
-      { date: day, ad_account_id: accountId, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
+      { date: day, ad_account_id: accountId, campaign_id: campaignId, spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 }
     cur.leads += 1
     tsMap.set(key, cur)
   }

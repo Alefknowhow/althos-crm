@@ -53,7 +53,12 @@ export type MetaDailyInsight = {
 type MetaAction = { action_type: string; value: string }
 
 const LEAD_ACTION_TYPES = new Set(['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'])
-const MESSAGING_ACTION_TYPES = new Set(['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply'])
+// Só messaging_conversation_started_7d — é exatamente o que o Gerenciador
+// de Anúncios soma na coluna "Conversas iniciadas por mensagem". Somar
+// messaging_first_reply junto (métrica diferente: primeira resposta DA
+// EMPRESA numa conversa) inflava o número, gerando dado que não batia
+// com o Gerenciador.
+const MESSAGING_ACTION_TYPES = new Set(['onsite_conversion.messaging_conversation_started_7d'])
 const PURCHASE_ACTION_TYPES = new Set(['offsite_conversion.fb_pixel_purchase', 'omni_purchase', 'purchase'])
 
 /**

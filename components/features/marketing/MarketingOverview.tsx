@@ -79,7 +79,7 @@ type CampaignRow = {
   roas: number | null
 }
 
-type TimeSeriesPoint = MetricContext & { date: string; ad_account_id: string }
+type TimeSeriesPoint = MetricContext & { date: string; ad_account_id: string; campaign_id: string }
 
 type Overview = {
   totals: { spend_cents: number; impressions: number; clicks: number; leads: number; won_deals: number; revenue_cents: number }
@@ -92,7 +92,7 @@ type Overview = {
 const OBJECTIVE_FILTERS: Array<{ value: ObjectiveGroup | 'all'; label: string }> = [
   { value: 'all', label: 'Todos' },
   { value: 'leads', label: OBJECTIVE_GROUP_LABELS.leads },
-  { value: 'whatsapp', label: OBJECTIVE_GROUP_LABELS.whatsapp },
+  { value: 'messaging', label: OBJECTIVE_GROUP_LABELS.messaging },
   { value: 'traffic', label: OBJECTIVE_GROUP_LABELS.traffic },
   { value: 'sales', label: OBJECTIVE_GROUP_LABELS.sales },
   { value: 'awareness', label: OBJECTIVE_GROUP_LABELS.awareness },
@@ -229,6 +229,9 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   const router = useRouter()
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
   const [accountFilter, setAccountFilter] = useState<Set<string> | 'all'>('all')
+  // Quais campanhas entram no gráfico — checkbox por linha na tabela.
+  // 'all' = todas (default); um Set explícito = só as marcadas.
+  const [chartCampaignFilter, setChartCampaignFilter] = useState<Set<string> | 'all'>('all')
   const [visibleCardMetrics, setVisibleCardMetrics] = useState<Set<MetricKey>>(new Set(DEFAULT_CARD_METRICS))
   const [visibleChartMetrics, setVisibleChartMetrics] = useState<Set<MetricKey>>(new Set(DEFAULT_CHART_METRICS))
 
@@ -255,13 +258,14 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
     { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0, won_deals: 0, revenue_cents: 0 },
   )
 
-  // Série diária filtrada pela conta (o objetivo não afeta o gráfico —
-  // não dá pra reagregar por objetivo sem reprocessar por campanha/dia,
-  // fora de escopo; o filtro de conta já cobre o pedido do usuário).
+  // Série diária filtrada pela conta e pelas campanhas marcadas na tabela
+  // (o objetivo não afeta o gráfico — não dá pra reagregar por objetivo
+  // sem reprocessar por campanha/dia, fora de escopo).
   const filteredTimeSeries = useMemo(() => {
     const byDate = new Map<string, MetricContext & { date: string }>()
     for (const p of overview.timeSeries) {
       if (accountFilter !== 'all' && !accountFilter.has(p.ad_account_id)) continue
+      if (chartCampaignFilter !== 'all' && !chartCampaignFilter.has(p.campaign_id)) continue
       const cur = byDate.get(p.date) || {
         date: p.date, spend_cents: 0, impressions: 0, clicks: 0, leads: 0,
         meta_leads: 0, meta_messaging_started: 0, meta_link_clicks: 0, meta_landing_page_views: 0, meta_purchases: 0, meta_purchase_value_cents: 0,
@@ -280,7 +284,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       byDate.set(p.date, cur)
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
-  }, [overview.timeSeries, accountFilter])
+  }, [overview.timeSeries, accountFilter, chartCampaignFilter])
 
   const hasData =
     overview.campaigns.length > 0 || overview.timeSeries.length > 0 || overview.totals.spend_cents > 0
@@ -485,6 +489,15 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
         rows={filteredCampaigns}
         period={period}
         onRefresh={refresh}
+        chartSelection={chartCampaignFilter}
+        onToggleChartSelection={id => {
+          setChartCampaignFilter(prev => {
+            const base = prev === 'all' ? new Set(overview.campaigns.map(c => c.id)) : new Set(prev)
+            if (base.has(id)) base.delete(id)
+            else base.add(id)
+            return base.size === overview.campaigns.length ? 'all' : base
+          })
+        }}
       />
 
       {!hasData && !noAccountsYet && !noCampaignsYet && (

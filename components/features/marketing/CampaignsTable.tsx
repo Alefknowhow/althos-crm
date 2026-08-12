@@ -66,7 +66,7 @@ function fmtNumber(n: number): string {
  * por conversa iniciada, os demais mostram leads/CPL (já cobertos pela
  * atribuição via utm_campaign). */
 function ConversionCell({ row }: { row: CampaignRow }) {
-  if (row.objective_group === 'whatsapp') {
+  if (row.objective_group === 'messaging') {
     return (
       <div className="text-right">
         <div className="tabular-nums font-medium">{fmtNumber(row.meta_messaging_started)} conversas</div>
@@ -86,7 +86,7 @@ function ConversionCell({ row }: { row: CampaignRow }) {
   )
 }
 
-const TOTAL_COLUMNS = 11
+const TOTAL_COLUMNS = 12
 
 function DrillDownStatusBadge({ status }: { status: string }) {
   const active = status === 'active'
@@ -123,6 +123,7 @@ function DrillDownRowView({
 }) {
   return (
     <TableRow className="bg-muted/30 hover:bg-muted/50">
+      <TableCell />
       <TableCell>
         <div className="flex items-center gap-2" style={{ paddingLeft: depth * 20 }}>
           {expandable ? (
@@ -197,11 +198,16 @@ export default function CampaignsTable({
   rows,
   period,
   onRefresh,
+  chartSelection,
+  onToggleChartSelection,
 }: {
   orgSlug: string
   rows: CampaignRow[]
   period: string
   onRefresh: () => void
+  /** Quais campanhas aparecem no gráfico de evolução — 'all' = todas. */
+  chartSelection?: Set<string> | 'all'
+  onToggleChartSelection?: (campaignId: string) => void
 }) {
   const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -302,6 +308,7 @@ export default function CampaignsTable({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8" title="No gráfico">Gráf.</TableHead>
                   <TableHead>Campanha</TableHead>
                   <TableHead>Objetivo</TableHead>
                   <TableHead className="text-right">Investimento</TableHead>
@@ -322,6 +329,16 @@ export default function CampaignsTable({
                   return (
                   <Fragment key={r.id}>
                   <TableRow>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={chartSelection === 'all' || !!chartSelection?.has(r.id)}
+                        onChange={() => onToggleChartSelection?.(r.id)}
+                        title="Mostrar esta campanha no gráfico de evolução"
+                        aria-label={`Incluir ${r.name} no gráfico`}
+                        className="h-3.5 w-3.5 accent-primary cursor-pointer"
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <button
