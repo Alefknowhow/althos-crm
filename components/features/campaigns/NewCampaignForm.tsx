@@ -16,7 +16,13 @@ import {
 
 type Pipeline = { id: string; name: string }
 type Stage = { id: string; name: string; pipeline_id: string }
-type WaTemplate = { id: string; name: string; display_name: string; language: string }
+type WaTemplate = { id: string; name: string; display_name: string; language: string; status: string }
+
+const WA_STATUS_LABEL: Record<string, string> = {
+  approved: 'Aprovado',
+  pending:  'Pendente',
+  local:    'Local',
+}
 type EmailTemplate = { id: string; name: string; subject: string | null; category: string | null }
 
 interface Props {
@@ -44,6 +50,7 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, waTe
   const [pending, startTransition] = useTransition()
 
   const filteredStages = pipelineId ? stages.filter(s => s.pipeline_id === pipelineId) : stages
+  const selectedWaTemplate = waTemplates.find(t => t.id === waTemplateId)
 
   const filter: AudienceFilter = {
     tags: selectedTags,
@@ -71,7 +78,7 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, waTe
   function handleConfirm() {
     setError('')
     if (!name.trim()) return setError('Dê um nome à campanha.')
-    if (channel === 'whatsapp' && !waTemplateId) return setError('Selecione um template aprovado.')
+    if (channel === 'whatsapp' && !waTemplateId) return setError('Selecione um template.')
     if (channel === 'email' && !emailTemplateId) return setError('Selecione um template de e-mail.')
     if (sendMode === 'schedule' && !scheduleAt) return setError('Escolha a data/hora do agendamento.')
 
@@ -122,20 +129,29 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, waTe
 
       {channel === 'whatsapp' ? (
         <div className="space-y-1.5">
-          <Label>Template aprovado</Label>
+          <Label>Template</Label>
           {waTemplates.length === 0 ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none p-3">
-              Nenhum template aprovado pela Meta ainda. Crie um em Templates e aguarde a aprovação antes de disparar uma campanha.
+              Nenhum template criado ainda. Crie um em Templates de WhatsApp primeiro.
             </p>
           ) : (
-            <Select value={waTemplateId} onValueChange={setWaTemplateId}>
-              <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
-              <SelectContent>
-                {waTemplates.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.display_name || t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <Select value={waTemplateId} onValueChange={setWaTemplateId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um template" /></SelectTrigger>
+                <SelectContent>
+                  {waTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.display_name || t.name} · {WA_STATUS_LABEL[t.status] || t.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedWaTemplate && selectedWaTemplate.status !== 'approved' && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none p-2">
+                  Esse template está marcado como "{WA_STATUS_LABEL[selectedWaTemplate.status] || selectedWaTemplate.status}", não "Aprovado". Confirme na Meta que ele está realmente aprovado antes de disparar — fora da janela de 24h, só templates aprovados são entregues.
+                </p>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -172,10 +188,13 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, waTe
           </Select>
         </div>
 
-        {filteredStages.length > 0 && (
+        {stages.length > 0 && (
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground font-normal">Estágios (E)</Label>
-            <div className="flex flex-wrap gap-1.5">
+            {/* Altura travada (independente da quantidade de estágios do pipeline
+                selecionado) pra trocar de pipeline não empurrar o resto do
+                formulário pra cima/baixo — rola por dentro se precisar. */}
+            <div className="flex flex-wrap content-start gap-1.5 max-h-24 overflow-y-auto">
               {filteredStages.map(s => (
                 <button
                   key={s.id}

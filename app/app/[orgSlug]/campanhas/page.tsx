@@ -25,12 +25,26 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
           <h1 className="text-xl font-semibold">Campanhas de Envio</h1>
           <p className="text-sm text-muted-foreground">Disparos em massa por WhatsApp ou e-mail, filtrados por tag e/ou estágio.</p>
         </div>
-        <Button asChild>
-          <Link href={`/app/${params.orgSlug}/campanhas/nova`}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Nova campanha
-          </Link>
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link href={`/app/${params.orgSlug}/whatsapp-templates`}>
+              <MessageSquare className="w-3.5 h-3.5" />
+              Templates WhatsApp
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link href={`/app/${params.orgSlug}/email-templates`}>
+              <Mail className="w-3.5 h-3.5" />
+              Templates E-mail
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/app/${params.orgSlug}/campanhas/nova`}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nova campanha
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border rounded-none overflow-hidden">

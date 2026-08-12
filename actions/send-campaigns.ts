@@ -47,17 +47,23 @@ export async function listDistinctTags(orgSlug: string) {
   return Array.from(set).sort()
 }
 
-/** Templates aprovados pela Meta — únicos elegíveis pra campanha em massa. */
-export async function listApprovedWaTemplates(orgSlug: string) {
+/**
+ * Templates elegíveis pra campanha em massa. O status aqui é autodeclarado
+ * pelo usuário na tela de Templates (não há sincronização automática com a
+ * Meta) — a maioria fica em "local" mesmo depois de aprovada de verdade, só
+ * "rejeitado" é bloqueado. A UI mostra o status de cada um pra o usuário
+ * decidir, e avisa quando o selecionado não está marcado como aprovado.
+ */
+export async function listSelectableWaTemplates(orgSlug: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data } = await supabase
     .from('whatsapp_templates')
-    .select('id, name, display_name, language')
+    .select('id, name, display_name, language, status')
     .eq('organization_id', org.id)
-    .eq('status', 'approved')
+    .neq('status', 'rejected')
     .order('display_name', { ascending: true })
 
   return data || []
@@ -94,15 +100,15 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
 
   let waFields: Record<string, any> = {}
   if (input.channel === 'whatsapp') {
-    if (!input.waTemplateId) return { ok: false as const, error: 'Selecione um template aprovado.' }
+    if (!input.waTemplateId) return { ok: false as const, error: 'Selecione um template.' }
     const { data: tpl } = await supabase
       .from('whatsapp_templates')
       .select('id, name, language, header_type, header_media_url, status')
       .eq('id', input.waTemplateId)
       .eq('organization_id', org.id)
       .maybeSingle()
-    if (!tpl || tpl.status !== 'approved') {
-      return { ok: false as const, error: 'O template selecionado não está aprovado pela Meta.' }
+    if (!tpl || tpl.status === 'rejected') {
+      return { ok: false as const, error: 'Template inválido ou rejeitado pela Meta.' }
     }
     waFields = {
       wa_template_id: tpl.id,
