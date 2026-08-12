@@ -34,6 +34,7 @@ export type FeatureKey =
   | 'export_reports'
   | 'meta_ads_panel'
   | 'instagram_automation'
+  | 'bulk_campaigns'
 
 export const FEATURE_KEYS: FeatureKey[] = [
   'tasks',
@@ -49,6 +50,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
   'export_reports',
   'meta_ads_panel',
   'instagram_automation',
+  'bulk_campaigns',
 ]
 
 /** Per-plan feature flags — mirror of `plans.features`. */
@@ -67,6 +69,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     export_reports: false,
     meta_ads_panel: false,
     instagram_automation: false,
+    bulk_campaigns: false,
   },
   // Starter/Pro/Business compartilham praticamente as MESMAS funcionalidades;
   // a diferença está na QUANTIDADE de uso (ver PLAN_LIMITS) e em dois recursos
@@ -86,6 +89,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     export_reports: false,     // premium: só Pro/Business
     meta_ads_panel: true,
     instagram_automation: false, // removido da oferta: só Pro/Business
+    bulk_campaigns: false,       // premium: só Pro/Business
   },
   pro: {
     tasks: true,
@@ -101,6 +105,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     export_reports: true,
     meta_ads_panel: true,
     instagram_automation: true,
+    bulk_campaigns: true,
   },
   business: {
     tasks: true,
@@ -116,6 +121,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     export_reports: true,
     meta_ads_panel: true,
     instagram_automation: true,
+    bulk_campaigns: true,
   },
 }
 
@@ -309,6 +315,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   export_reports: 'Exportar relatórios',
   meta_ads_panel: 'Painel de Meta Ads',
   instagram_automation: 'Automação de Instagram',
+  bulk_campaigns: 'Campanhas de Envio',
 }
 
 /** True if the given plan includes the given feature (static check). */

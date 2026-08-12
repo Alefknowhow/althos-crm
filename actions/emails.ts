@@ -122,6 +122,20 @@ export async function sendTestEmail(orgSlug: string, templateId: string) {
   }
 }
 
+export async function listEmailTemplates(orgSlug: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('email_templates')
+    .select('id, name, subject, category')
+    .eq('organization_id', org.id)
+    .order('name', { ascending: true })
+
+  return data || []
+}
+
 export async function queueEmailForLead(orgSlug: string, leadId: string, templateId: string, toEmail: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
