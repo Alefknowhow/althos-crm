@@ -34,6 +34,9 @@ export type TravelSaleRow = {
   hotel_locator: string | null
   airline_checkin_url: string | null
   commission_cents: number
+  /** Parte da comissão retida na fonte (ex.: entrada à vista) — lançada em
+   * Financeiro na data da venda, em vez de esperar o repasse da operadora. */
+  retained_commission_cents: number | null
   notes: string | null
   tasks_generated_at: string | null
   contrato_gerado_at: string | null
@@ -67,12 +70,19 @@ const WRITABLE = [
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
   'included_items', 'vouchers', 'travelers', 'travelers_note',
   'payment_method', 'package_locator', 'air_locator', 'hotel_locator', 'airline_checkin_url',
-  'commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info', 'flights',
+  'commission_cents', 'retained_commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info', 'flights',
 ] as const
 
 function pick(input: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = {}
   for (const k of WRITABLE) if (k in input) out[k] = input[k]
+  // Nunca deixa reter mais do que a comissão total — trava aqui pra não
+  // depender só da checagem no client.
+  if ('retained_commission_cents' in out) {
+    const total = 'commission_cents' in out ? Number(out.commission_cents) : Number(input.commission_cents ?? 0)
+    const r = out.retained_commission_cents
+    out.retained_commission_cents = r == null || r === '' ? null : Math.max(0, Math.min(Math.round(Number(r) || 0), Math.round(total) || 0))
+  }
   for (const k of ['total_cents', 'commission_cents', 'negotiation_days'] as const) {
     if (k in out && out[k] != null && out[k] !== '') {
       const n = Number(out[k])
@@ -127,8 +137,21 @@ export async function updateTravelSale(orgSlug: string, id: string, input: Recor
     .single()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar venda' }
+  const s = data as TravelSaleRow
+
+  // Mesmo sync de saveTravelSaleAndGenerateTasks — precisa acontecer em
+  // QUALQUER salvamento (não só ao gerar tarefas), senão editar comissão/
+  // retenção pelo botão "Salvar" simples nunca refletia no Financeiro.
+  const { syncSaleRevenueEntry } = await import('@/actions/financial')
+  await syncSaleRevenueEntry(orgSlug, {
+    id: s.id, contato_id: s.contato_id, client_name: s.client_name,
+    operator: s.operator, commission_cents: s.commission_cents ?? null,
+    retained_commission_cents: s.retained_commission_cents ?? null,
+    created_at: s.created_at,
+  })
+
   revalidatePath(`/app/${orgSlug}/reservas`)
-  return { ok: true as const, data: data as TravelSaleRow }
+  return { ok: true as const, data: s }
 }
 
 export async function deleteTravelSale(orgSlug: string, id: string) {
@@ -486,6 +509,8 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
   await syncSaleRevenueEntry(orgSlug, {
     id: s.id, contato_id: s.contato_id, client_name: s.client_name,
     operator: s.operator, commission_cents: s.commission_cents ?? null,
+    retained_commission_cents: s.retained_commission_cents ?? null,
+    created_at: s.created_at,
   })
 
   if (s.tasks_generated_at) {

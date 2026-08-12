@@ -102,6 +102,70 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-1"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>
 }
 
+/**
+ * "Reter comissão": quando o cliente dá entrada à vista, a agência às vezes
+ * já fica com parte (ou toda) a comissão nesse momento, em vez de esperar o
+ * repasse da operadora. Esse controle só marca QUANTO disso foi retido —
+ * a Comissão continua sendo o valor cheio; o Financeiro é quem usa os dois
+ * números pra separar em dois lançamentos (retido na data da venda, o resto
+ * na data de pagamento da operadora).
+ */
+function RetainedCommissionField({
+  commissionCents, retainedCents, onChange,
+}: {
+  commissionCents: number
+  retainedCents: number | null
+  onChange: (v: number | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const active = retainedCents != null && retainedCents > 0
+  const clamp = (v: number) => Math.max(0, Math.min(v, commissionCents))
+
+  return (
+    <Field label="Comissão retida na venda">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={!commissionCents}
+            className={cn(
+              'w-full h-9 px-3 rounded-md border text-sm text-left transition-colors flex items-center justify-between',
+              FOCUS_RING,
+              !commissionCents
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : active
+                  ? 'bg-success/10 border-success/30 text-success'
+                  : 'bg-background hover:bg-muted text-muted-foreground',
+            )}
+          >
+            <span>{active ? `${centsToReais(retainedCents!)} retido agora` : 'Nenhuma retenção'}</span>
+            {active && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 space-y-2" align="start">
+          <p className="text-xs text-muted-foreground">
+            Quanto da comissão ({centsToReais(commissionCents)}) já ficou com a agência na
+            entrada à vista? Lançado no Financeiro na data da venda; o restante entra na data
+            de pagamento da operadora.
+          </p>
+          <MoneyInput
+            value={retainedCents || 0}
+            onChange={v => onChange(clamp(v) || null)}
+          />
+          {retainedCents != null && retainedCents >= commissionCents && commissionCents > 0 && (
+            <p className="text-[11px] text-muted-foreground">Comissão 100% retida — nada a receber da operadora.</p>
+          )}
+          {active && (
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => { onChange(null); setOpen(false) }}>
+              Remover retenção
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
+    </Field>
+  )
+}
+
 // Combobox com busca por digitação — a lista de contatos pode ser grande,
 // então rolar com o mouse num <select> comum não escala.
 function ContactCombobox({ leads, value, onChange }: {
@@ -594,6 +658,7 @@ function SaleEditor({
     travelers, travelers_note: s.travelers_note,
     package_locator: s.package_locator, air_locator: s.air_locator, hotel_locator: s.hotel_locator,
     airline_checkin_url: s.airline_checkin_url, commission_cents: s.commission_cents,
+    retained_commission_cents: s.retained_commission_cents,
     notes: s.notes, cancellation_policy: s.cancellation_policy, important_info: s.important_info,
     service_info: s.service_info, flights,
   })
@@ -899,7 +964,24 @@ function SaleEditor({
             <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
             <Field label="Localizador aéreo"><Input value={s.air_locator || ''} onChange={e => set('air_locator', e.target.value)} placeholder="Ex.: ABC123" /></Field>
             <Field label="Localizador da hospedagem"><Input value={s.hotel_locator || ''} onChange={e => set('hotel_locator', e.target.value)} placeholder="Ex.: RES12345" /></Field>
-            <Field label="Comissão"><MoneyInput value={s.commission_cents || 0} onChange={c => set('commission_cents', c)} /></Field>
+            <Field label="Comissão">
+              <MoneyInput
+                value={s.commission_cents || 0}
+                onChange={c => {
+                  set('commission_cents', c)
+                  // Se a comissão cair abaixo do valor já retido, reduz o
+                  // retido junto — nunca pode reter mais do que a comissão.
+                  if (s.retained_commission_cents != null && s.retained_commission_cents > c) {
+                    set('retained_commission_cents', c > 0 ? c : null)
+                  }
+                }}
+              />
+            </Field>
+            <RetainedCommissionField
+              commissionCents={s.commission_cents || 0}
+              retainedCents={s.retained_commission_cents}
+              onChange={v => set('retained_commission_cents', v)}
+            />
           </div>
         </div>
 
