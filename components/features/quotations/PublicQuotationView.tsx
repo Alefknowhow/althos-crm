@@ -360,16 +360,12 @@ export default function PublicQuotationView({
   const nights = nightsBetween(data.departure_date, data.return_date)
   const daysCount = nights != null ? nights + 1 : null
 
-  // pins: tabela de pins + hospedagens com coordenadas
+  // pins: exclusivamente o bloco "Mapa" (quotation_map_pins) — hospedagens
+  // não entram mais automaticamente via TripAdvisor (localização às vezes
+  // vinha errada); quem gerencia o mapa é o bloco dedicado no editor.
   const pins: QuotationPin[] = useMemo(() => {
-    const fromLodgings = lodgings
-      .filter(l => l.lat != null && l.lng != null)
-      .map(l => ({ label: l.name || 'Hospedagem', type: 'lodging', lat: l.lat!, lng: l.lng! }))
-    const explicit = (data.map_pins || []).filter(p => p && p.lat != null && p.lng != null)
-    // evita pin duplicado da hospedagem quando também existe na tabela
-    const seen = new Set(explicit.map(p => `${p.lat},${p.lng}`))
-    return [...explicit, ...fromLodgings.filter(p => !seen.has(`${p.lat},${p.lng}`))]
-  }, [data.map_pins, lodgings])
+    return (data.map_pins || []).filter(p => p && p.lat != null && p.lng != null)
+  }, [data.map_pins])
 
   const pinTypes = Array.from(new Set(pins.map(p => p.type || 'attraction')))
 

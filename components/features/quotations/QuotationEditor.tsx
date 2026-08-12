@@ -999,7 +999,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           onClick={() => setPins(ps => [...ps, { _key: nk(), label: '', type: 'attraction' }])}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Pin
         </Button>}>
-        <p className="text-[11px] text-muted-foreground">Hospedagens com localização (via TripAdvisor) entram no mapa automaticamente. Adicione aqui atrações e aeroporto.</p>
+        <p className="text-[11px] text-muted-foreground">O mapa da cotação mostra só os pins adicionados aqui — inclua hospedagens, atrações e aeroporto manualmente.</p>
         {pins.map(p => (
           <div key={p._key} className="rounded-lg border p-2.5 space-y-2">
             <div className="flex gap-1.5">
