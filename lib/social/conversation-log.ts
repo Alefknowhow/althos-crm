@@ -39,7 +39,12 @@ export async function getOrCreateConversation(
   let senderName = params.senderName ?? existing?.sender_name ?? null
   let senderAvatarUrl = existing?.sender_avatar_url ?? null
 
-  if (!existing?.sender_name && params.fetchProfile) {
+  // Reconsulta o perfil se ainda não temos nome, OU se a foto salva ainda é
+  // um link direto do CDN da Meta (expira em poucos dias) em vez de já ter
+  // sido migrada pro nosso Storage — assim conversas antigas com foto
+  // quebrada se autocorrigem na próxima mensagem, sem precisar de backfill.
+  const avatarIsEphemeral = !!senderAvatarUrl && /cdninstagram\.com|fbcdn\.net/.test(senderAvatarUrl)
+  if ((!existing?.sender_name || avatarIsEphemeral) && params.fetchProfile) {
     const profile = await params.fetchProfile()
     if (profile) {
       senderName = profile.name ?? senderName

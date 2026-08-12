@@ -16,6 +16,7 @@ import {
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
 import { getOrCreateConversation, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
+import { cacheInstagramAvatar } from '@/lib/social/avatar-cache'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -82,7 +83,9 @@ async function maybeCreateLead(
   if (accessToken) {
     try {
       const profile = await getInstagramUserProfile(inbound.senderId, accessToken)
-      avatarUrl = profile?.profilePic ?? null
+      avatarUrl = profile?.profilePic
+        ? await cacheInstagramAvatar(supabase, profile.profilePic, `lead-${inbound.senderId}`)
+        : null
     } catch { /* best-effort */ }
   }
 
@@ -161,7 +164,10 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
         fetchProfile: async () => {
           const profile = await getInstagramUserProfile(inbound.senderId, connection.access_token)
           if (!profile) return null
-          return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
+          const avatarUrl = profile.profilePic
+            ? await cacheInstagramAvatar(supabase, profile.profilePic, `conv-${connection.id}-${inbound.senderId}`)
+            : null
+          return { name: profile.name, username: profile.username, avatarUrl }
         },
       })
       await logInboundMessage(supabase, conversation.id, orgId, inbound.text)
