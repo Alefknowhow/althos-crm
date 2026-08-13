@@ -53,7 +53,10 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] -m-6 flex bg-background overflow-hidden">
+    <div
+      className="-mx-6 -mb-6 flex bg-background overflow-hidden"
+      style={{ height: 'calc(100vh - 4rem - 18px)', marginTop: 18 }}
+    >
       <WhatsappChat
         orgSlug={params.orgSlug}
         orgId={org.id}
