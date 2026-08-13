@@ -25,20 +25,22 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
     schema.welcome?.enabled ? 'welcome' : (schema.fields[0]?.id ?? 'ending')
   )
 
-  // Raw text da textarea de opções — evita trim/filter agressivo a cada tecla.
-  const [rawOptions, setRawOptions] = useState<string>('')
-
   const selectedField = schema.fields.find((f: any) => f.id === activePageId) || null
   const fieldIndex = schema.fields.findIndex((f: any) => f.id === activePageId) + 1
 
   function selectPage(id: ActivePageId) {
     setActivePageId(id)
-    const field = schema.fields.find((f: any) => f.id === id)
-    setRawOptions(field?.options?.join('\n') ?? '')
   }
 
   function addField(type: string) {
-    const def = { id: `field_${Date.now()}`, type, label: 'Nova pergunta', required: false }
+    const isChoice = ['single_choice', 'select', 'multi_select'].includes(type)
+    const def = {
+      id: `field_${Date.now()}`,
+      type,
+      label: 'Nova pergunta',
+      required: false,
+      ...(isChoice ? { options: ['Opção 1', 'Opção 2'] } : {}),
+    }
     setSchema({ ...schema, fields: [...schema.fields, def] })
     selectPage(def.id)
   }
@@ -50,11 +52,6 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
       ...schema,
       fields: schema.fields.map((f: any) => (f.id === updated.id ? updated : f)),
     })
-  }
-
-  function commitOptions() {
-    const opts = rawOptions.split('\n').map((s: string) => s.trim()).filter(Boolean)
-    updateSelectedField({ options: opts })
   }
 
   function reorderFields(fromId: string, toId: string) {
@@ -141,7 +138,13 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
           onEnableWelcome={enableWelcome}
         />
 
-        <PreviewPane schema={schema} activePageId={activePageId} fieldIndex={fieldIndex} />
+        <PreviewPane
+          schema={schema}
+          setSchema={setSchema}
+          activePageId={activePageId}
+          fieldIndex={fieldIndex}
+          onUpdateField={updateSelectedField}
+        />
 
         <PropertiesPanel
           orgSlug={orgSlug}
@@ -149,9 +152,6 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
           schema={schema}
           setSchema={setSchema}
           selectedField={selectedField}
-          rawOptions={rawOptions}
-          setRawOptions={setRawOptions}
-          onCommitOptions={commitOptions}
           onUpdateField={updateSelectedField}
           eventTypes={eventTypes}
         />

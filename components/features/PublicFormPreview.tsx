@@ -78,9 +78,14 @@ interface PublicFormPreviewProps {
    *  rótulos/textos estáticos em branco/cinza-claro. false (padrão) mantém
    *  as cores normais do CRM, usado no preview do editor de formulários. */
   dark?: boolean
+  /** Usado só pelo editor (edição inline no preview central): omite o
+   *  label/helperText embutidos porque o builder já renderiza sua própria
+   *  versão editável por cima. Nunca usado na página pública real. */
+  hideLabel?: boolean
+  hideHelperText?: boolean
 }
 
-export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false, dark = false }: PublicFormPreviewProps) {
+export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false, dark = false, hideLabel = false, hideHelperText = false }: PublicFormPreviewProps) {
   if (!schema?.fields || schema.fields.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-none bg-muted/30">
@@ -136,13 +141,13 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
             </div>
           )}
 
-          {field.type !== 'checkbox' && (
+          {!hideLabel && field.type !== 'checkbox' && (
             <Label className={`text-sm font-medium flex items-center gap-1 ${labelClass}`}>
               {field.label} {field.required && <span className="text-destructive">*</span>}
             </Label>
           )}
 
-          {field.helperText && field.type !== 'checkbox' && (
+          {!hideHelperText && field.helperText && field.type !== 'checkbox' && (
             <p className={`text-xs ${helperClass}`}>{field.helperText}</p>
           )}
 
@@ -286,10 +291,12 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
                 required={field.required}
               />
               <div className="space-y-1 leading-none">
-                <Label className={`text-sm font-medium flex items-center gap-1 ${labelClass}`}>
-                  {field.label} {field.required && <span className="text-destructive">*</span>}
-                </Label>
-                {field.helperText && (
+                {!hideLabel && (
+                  <Label className={`text-sm font-medium flex items-center gap-1 ${labelClass}`}>
+                    {field.label} {field.required && <span className="text-destructive">*</span>}
+                  </Label>
+                )}
+                {!hideHelperText && field.helperText && (
                   <p className={`text-xs ${helperClass}`}>{field.helperText}</p>
                 )}
               </div>
