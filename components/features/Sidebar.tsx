@@ -7,7 +7,6 @@ import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
 import SidebarCollapseToggleButton from './SidebarCollapseToggleButton'
 import SidebarUserMenu from './SidebarUserMenu'
-import BottomNav from './BottomNav'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { isTravelNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
@@ -141,7 +140,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   const base = `/app/${orgSlug}`
 
   return (
-    <>
     <SidebarShell>
       {/* Desktop-only — a versão mobile do cabeçalho (logo + nome + X) é
           renderizada direto pelo SidebarShell, pra não duplicar quando o
@@ -393,15 +391,5 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         <SidebarUserMenu name={userName} email={userEmail} />
       </div>
     </SidebarShell>
-    <BottomNav
-      orgSlug={orgSlug}
-      showPipeline={can('pipeline')}
-      showContatos={can('leads') || can('clients')}
-      showTarefas={can('tasks')}
-      showConversas={can('conversations') && planWhatsapp}
-      overdueCount={overdueCount ?? 0}
-      unreadCount={unreadWhatsapp}
-    />
-    </>
   )
 }

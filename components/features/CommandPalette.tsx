@@ -284,7 +284,20 @@ export function CommandPaletteTrigger({ orgSlug }: { orgSlug: string }) {
           <span>K</span>
         </kbd>
       </button>
-      <CommandPalette orgSlug={orgSlug} />
     </>
+  )
+}
+
+/** Dispara o mesmo toggle global do ⌘K — usado por qualquer trigger visual
+ *  (botão compacto mobile, barra de busca desktop) sem duplicar o diálogo. */
+export function openCommandPalette() {
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+  window.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'k',
+      metaKey: isMac,
+      ctrlKey: !isMac,
+      bubbles: true,
+    }),
   )
 }

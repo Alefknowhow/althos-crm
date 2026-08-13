@@ -21,14 +21,19 @@ const ROUTE_TITLES: Record<string, string> = {
   forms: 'Formulários',
   financeiro: 'Financeiro',
   automacoes: 'Automações',
+  campanhas: 'Campanhas de Envio',
   'email-templates': 'Templates de Email',
   configuracoes: 'Configurações',
   ajuda: 'Central de Ajuda',
 }
 
-export function getPageTitle(pathname: string, orgSlug: string): string {
+/** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */
+export function getRouteSegment(pathname: string, orgSlug: string): string {
   const prefix = `/app/${orgSlug}`
   const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname
-  const segment = rest.split('/').filter(Boolean)[0] ?? ''
-  return ROUTE_TITLES[segment] ?? ''
+  return rest.split('/').filter(Boolean)[0] ?? ''
+}
+
+export function getPageTitle(pathname: string, orgSlug: string): string {
+  return ROUTE_TITLES[getRouteSegment(pathname, orgSlug)] ?? ''
 }

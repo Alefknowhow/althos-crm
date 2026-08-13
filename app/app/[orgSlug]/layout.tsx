@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
-import { HelpTooltip } from '@/components/ui/help-tooltip'
-import { CommandPaletteTrigger } from '@/components/features/CommandPalette'
+import { HelpCircle } from 'lucide-react'
 import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
@@ -19,8 +18,11 @@ import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseCo
 import { HeaderMobileMenu } from '@/components/features/HeaderMobileMenu'
 import { PageHintProvider } from '@/components/features/PageHintContext'
 import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
+import { HeaderModuleTitle } from '@/components/features/HeaderModuleTitle'
 import { GlobalBackButton } from '@/components/features/GlobalBackButton'
 import HealthLinkConditional from '@/components/features/HealthLinkConditional'
+import CommandPalette, { CommandPaletteTrigger } from '@/components/features/CommandPalette'
+import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 
 export default async function OrgLayout({
   children,
@@ -79,6 +81,11 @@ export default async function OrgLayout({
       </div>
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
+      {/* Diálogo montado uma única vez — os triggers (mobile e desktop) só
+          disparam o mesmo toggle global, evitando 2 diálogos concorrentes. */}
+      <div className="print:hidden">
+        <CommandPalette orgSlug={params.orgSlug} />
+      </div>
       <SidebarCollapseProvider>
       <PageHintProvider>
       <div className="flex flex-1 min-h-0 print:block">
@@ -95,7 +102,14 @@ export default async function OrgLayout({
           <header className="print:hidden h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
               <GlobalBackButton orgSlug={params.orgSlug} />
-              <HeaderSidebarToggle orgSlug={params.orgSlug} />
+              {/* Mobile: título compacto (inalterado). Desktop: ícone +
+                  nome do módulo em destaque (reformulação). */}
+              <div className="md:hidden min-w-0">
+                <HeaderSidebarToggle orgSlug={params.orgSlug} />
+              </div>
+              <div className="hidden md:block min-w-0">
+                <HeaderModuleTitle orgSlug={params.orgSlug} />
+              </div>
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
               {orgs.length > 1 && (
                 <>
@@ -109,7 +123,10 @@ export default async function OrgLayout({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {/* Mobile: botão compacto (inalterado). Desktop: barra de
+                  pesquisa global — ambos abrem o mesmo command palette. */}
               <CommandPaletteTrigger orgSlug={params.orgSlug} />
+              <HeaderSearchBar />
               <HealthLinkConditional orgSlug={params.orgSlug} />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
@@ -118,14 +135,15 @@ export default async function OrgLayout({
               </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden md:flex items-center">
                 <Link
                   href={`/app/${params.orgSlug}/ajuda`}
-                  className="hidden lg:inline text-xs text-muted-foreground hover:text-foreground tracking-apple-snug transition-colors px-2"
+                  aria-label="Central de Ajuda"
+                  title="Central de Ajuda"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  Central de Ajuda
+                  <HelpCircle className="h-[18px] w-[18px]" />
                 </Link>
-                <HelpTooltip content="Precisa de ajuda? Acesse a Central de Ajuda ou use o chat de suporte no ícone de balão aqui na barra." />
                 <SupportHeaderButton />
               </div>
               <div className="hidden md:inline-flex">
@@ -135,7 +153,7 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-20 md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>
