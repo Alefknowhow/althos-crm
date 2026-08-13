@@ -17,7 +17,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
+  // Lista ao vivo — semeada pelo server, depois atualizada em tempo real
+  // (ver efeito abaixo) pra não precisar de F5 quando chega mensagem nova.
+  const [conversations, setConversations] = useState(conversationsProp)
+  useEffect(() => { setConversations(conversationsProp) }, [conversationsProp])
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -157,6 +161,33 @@ export default function WhatsappChat({ orgSlug, orgId, conversations, selectedCo
 
     return () => { supabase.removeChannel(channel) }
   }, [selectedConversation?.id, orgSlug, supabase])
+
+  // Lista de conversas ao vivo: qualquer mensagem (de qualquer conversa,
+  // aberta ou não) toca whatsapp_conversations.last_message_at/preview/
+  // unread_count no servidor — escutando essa tabela a lista reordena e
+  // mostra o não-lido sem F5. Conversa nova (contato nunca visto) não tem
+  // como montar a linha completa (falta o join com contatos) só com o
+  // payload do realtime, então nesse caso só pedimos um refresh silencioso.
+  useEffect(() => {
+    if (!orgId) return
+    const channel = supabase.channel(`wa_conv_list_${orgId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_conversations', filter: `organization_id=eq.${orgId}` }, (payload) => {
+        setConversations((prev: any[]) => {
+          const idx = prev.findIndex(c => c.id === payload.new.id)
+          if (idx === -1) return prev
+          const next = [...prev]
+          next[idx] = { ...next[idx], ...payload.new }
+          next.sort((a, b) => new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime())
+          return next
+        })
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_conversations', filter: `organization_id=eq.${orgId}` }, () => {
+        router.refresh()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [orgId, supabase, router])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
