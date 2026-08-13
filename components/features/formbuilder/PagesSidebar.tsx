@@ -73,7 +73,10 @@ export default function PagesSidebar({ fields, welcomeEnabled, activePageId, onS
       </div>
 
       <div className="flex-1 px-3 pb-3">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        {/* id fixo — sem isso o dnd-kit gera "DndDescribedBy-N" com número
+            diferente no server e no client (contador global), causando
+            mismatch de hidratação nesse componente client-only. */}
+        <DndContext id="formbuilder-pages" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-0.5">
               {fields.map((f, i) => {

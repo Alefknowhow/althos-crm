@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 
 interface Props {
   value: string
@@ -22,7 +23,10 @@ export default function InlineEditableText({
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
 
-  const base = `w-full bg-transparent border border-transparent rounded px-1.5 -mx-1.5 hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:italic placeholder:text-muted-foreground/60 ${inputClassName}`
+  const base = cn(
+    'w-full bg-transparent border border-transparent rounded px-1.5 -mx-1.5 hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:italic placeholder:text-muted-foreground/60',
+    inputClassName,
+  )
 
   function commit() {
     if (draft !== value) onCommit(draft)
@@ -36,7 +40,7 @@ export default function InlineEditableText({
         onBlur={commit}
         placeholder={placeholder}
         rows={2}
-        className={`${base} resize-none ${className}`}
+        className={cn(base, 'resize-none', className)}
       />
     )
   }
@@ -48,7 +52,7 @@ export default function InlineEditableText({
       onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
       placeholder={placeholder}
-      className={`${base} ${className}`}
+      className={cn(base, className)}
     />
   )
 }
