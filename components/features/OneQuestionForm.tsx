@@ -153,8 +153,12 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
             }}
             className="space-y-6"
           >
-            {/* Per-question image */}
-            {currentField.imageUrl && (
+            {/* Per-question media — vídeo tem prioridade sobre imagem. */}
+            {currentField.videoUrl ? (
+              <div className="rounded-lg overflow-hidden -mx-1">
+                <video src={currentField.videoUrl} controls className="w-full max-h-52 rounded-lg" />
+              </div>
+            ) : currentField.imageUrl ? (
               <div className="rounded-lg overflow-hidden -mx-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -163,7 +167,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
                   className="w-full object-cover max-h-52 rounded-lg"
                 />
               </div>
-            )}
+            ) : null}
             <div className="space-y-2">
               <Label className={`text-lg font-semibold leading-snug block ${textClass}`}>
                 {currentField.label}
@@ -368,6 +372,42 @@ function FieldRenderer({
             </button>
           )
         })}
+      </div>
+    )
+  }
+  if (field.type === 'rating') {
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            disabled={loading || isPreview}
+            onClick={() => { onChange(n); onAutoAdvance() }}
+            className={`text-3xl transition-colors ${(value || 0) >= n ? 'text-amber-400' : 'text-muted-foreground/40 hover:text-amber-300'}`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+    )
+  }
+  if (field.type === 'opinion_scale') {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: 11 }, (_, n) => n).map(n => (
+          <button
+            key={n}
+            type="button"
+            disabled={loading || isPreview}
+            onClick={() => { onChange(n); onAutoAdvance() }}
+            className={`flex items-center justify-center w-9 h-9 rounded-md border text-sm font-medium transition-colors ${
+              value === n ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:border-primary/50'
+            }`}
+          >
+            {n}
+          </button>
+        ))}
       </div>
     )
   }

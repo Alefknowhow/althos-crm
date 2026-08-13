@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploadButton from '../ImageUploadButton'
+import VideoUploadButton from '../VideoUploadButton'
 import FieldTypePicker from './FieldTypePicker'
 import { getFieldTypeDef } from './FieldTypeMeta'
 import type { ActivePageId } from './types'
@@ -139,6 +140,16 @@ export default function PropertiesPanel({
             onChange={e => onUpdateField({ required: e.target.checked })}
           />
           <Label className="text-xs">Obrigatória</Label>
+        </div>
+
+        <div className="space-y-2 pt-3 border-t">
+          <Label className="text-xs">Vídeo da pergunta</Label>
+          <p className="text-[10px] text-muted-foreground">Ocupa o topo da tela. Tem prioridade sobre a imagem, se as duas estiverem definidas.</p>
+          <VideoUploadButton
+            orgSlug={orgSlug}
+            value={selectedField.videoUrl}
+            onChange={url => onUpdateField({ videoUrl: url })}
+          />
         </div>
 
         <div className="space-y-2 pt-3 border-t">

@@ -35,12 +35,16 @@ export default function EditableFieldCard({ field, onUpdate }: Props) {
 
   return (
     <div className="space-y-3">
-      {field.imageUrl && (
+      {field.videoUrl ? (
+        <div className="rounded-lg overflow-hidden">
+          <video src={field.videoUrl} controls className="w-full max-h-52 rounded-lg" />
+        </div>
+      ) : field.imageUrl ? (
         <div className="rounded-lg overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={field.imageUrl} alt="" className="w-full object-cover max-h-52 rounded-lg" />
         </div>
-      )}
+      ) : null}
 
       <div className="flex items-start gap-1">
         <InlineEditableText
@@ -92,7 +96,7 @@ export default function EditableFieldCard({ field, onUpdate }: Props) {
         </div>
       ) : (
         <div className="pt-1">
-          <PublicFormPreview schema={{ fields: [field] }} hideLabel hideHelperText />
+          <PublicFormPreview schema={{ fields: [field] }} hideLabel hideHelperText hideMedia />
         </div>
       )}
     </div>

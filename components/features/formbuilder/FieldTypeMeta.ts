@@ -1,6 +1,6 @@
 import {
   CircleDot, Type, AlignLeft, Mail, Phone, Hash, ChevronDown,
-  ListChecks, CheckSquare, Calendar,
+  ListChecks, CheckSquare, Calendar, Star, Gauge,
 } from 'lucide-react'
 import type { FieldType } from '../PublicFormPreview'
 
@@ -24,6 +24,8 @@ export const FIELD_TYPES: FieldTypeDef[] = [
   { type: 'select',       label: 'Select (Dropdown)',       icon: ChevronDown, colorClass: 'bg-violet-100 text-violet-700' },
   { type: 'multi_select', label: 'Múltipla Escolha (várias)', icon: ListChecks, colorClass: 'bg-violet-100 text-violet-700' },
   { type: 'checkbox',     label: 'Checkbox',                icon: CheckSquare, colorClass: 'bg-green-100 text-green-700' },
+  { type: 'rating',       label: 'Avaliação (estrelas)',     icon: Star,        colorClass: 'bg-amber-100 text-amber-700' },
+  { type: 'opinion_scale',label: 'Escala de Opinião (0-10)', icon: Gauge,       colorClass: 'bg-amber-100 text-amber-700' },
 ]
 
 const BY_TYPE: Record<string, FieldTypeDef> = Object.fromEntries(FIELD_TYPES.map(f => [f.type, f]))

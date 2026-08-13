@@ -54,6 +54,51 @@ export async function uploadFormAsset(
   return { ok: true, url: publicUrl }
 }
 
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
+const VIDEO_MAX_BYTES = 30 * 1024 * 1024 // 30 MB — vídeo curto de pergunta, não vídeo longo
+
+/**
+ * Upload de vídeo pra bloco de pergunta do formulário (ocupa o topo da tela,
+ * estilo Typeform). Mesmo bucket `form-assets`, prefixo `videos/`.
+ */
+export async function uploadFormVideo(
+  orgSlug: string,
+  formData: FormData,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const file = formData.get('file') as File | null
+  if (!file || file.size === 0) return { ok: false, error: 'Arquivo vazio' }
+
+  if (!VIDEO_TYPES.includes(file.type)) {
+    return { ok: false, error: 'Formato não suportado. Use MP4, WebM ou MOV.' }
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    return { ok: false, error: 'Arquivo muito grande. O limite é 30 MB.' }
+  }
+
+  const extMap: Record<string, string> = {
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
+  }
+  const ext = extMap[file.type] ?? 'mp4'
+  const path = `${org.id}/videos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const bytes = await file.arrayBuffer()
+
+  const { error: uploadError } = await supabase.storage
+    .from('form-assets')
+    .upload(path, bytes, { contentType: file.type, upsert: false })
+
+  if (uploadError) return { ok: false, error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage.from('form-assets').getPublicUrl(path)
+  return { ok: true, url: publicUrl }
+}
+
 const VOUCHER_TYPES = [
   'application/pdf',
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',

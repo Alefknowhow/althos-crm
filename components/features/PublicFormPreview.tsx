@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
-export type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'select' | 'single_choice' | 'multi_select' | 'date' | 'checkbox'
+export type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'select' | 'single_choice' | 'multi_select' | 'date' | 'checkbox' | 'rating' | 'opinion_scale'
 
 export interface FormField {
   id: string
@@ -16,6 +16,8 @@ export interface FormField {
   options?: string[]
   /** URL of an image to display above the question */
   imageUrl?: string
+  /** URL of a video to display above the question (takes priority over imageUrl) */
+  videoUrl?: string
 }
 
 export interface FormWelcome {
@@ -83,9 +85,12 @@ interface PublicFormPreviewProps {
    *  versão editável por cima. Nunca usado na página pública real. */
   hideLabel?: boolean
   hideHelperText?: boolean
+  /** Idem — o builder já renderiza seu próprio bloco de vídeo/imagem no topo
+   *  do card quando edita uma pergunta. */
+  hideMedia?: boolean
 }
 
-export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false, dark = false, hideLabel = false, hideHelperText = false }: PublicFormPreviewProps) {
+export default function PublicFormPreview({ schema, isPreview = true, onSubmit, loading = false, dark = false, hideLabel = false, hideHelperText = false, hideMedia = false }: PublicFormPreviewProps) {
   if (!schema?.fields || schema.fields.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-none bg-muted/30">
@@ -129,8 +134,13 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
 
       {schema.fields.map((field) => (
         <div key={field.id} className="space-y-1.5">
-          {/* Per-field image */}
-          {field.imageUrl && (
+          {/* Per-field media — vídeo tem prioridade sobre imagem. */}
+          {!hideMedia && field.videoUrl && (
+            <div className="mb-3 rounded-lg overflow-hidden">
+              <video src={field.videoUrl} controls className="w-full max-h-52 rounded-lg" />
+            </div>
+          )}
+          {!hideMedia && !field.videoUrl && field.imageUrl && (
             <div className="mb-3 rounded-lg overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -275,6 +285,46 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
                     className="w-4 h-4 rounded accent-primary shrink-0"
                   />
                   <span className="text-sm">{opt}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {field.type === 'rating' && (
+            <div className={`flex items-center gap-1 pt-1 ${isPreview ? 'pointer-events-none' : ''}`}>
+              {[1, 2, 3, 4, 5].map(n => (
+                <label key={n} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name={field.id}
+                    value={n}
+                    tabIndex={isPreview ? -1 : 0}
+                    disabled={loading}
+                    required={field.required}
+                    className="peer sr-only"
+                  />
+                  <span className="text-2xl text-muted-foreground/40 peer-checked:text-amber-400 hover:text-amber-300 transition-colors">★</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {field.type === 'opinion_scale' && (
+            <div className={`flex flex-wrap gap-1.5 pt-1 ${isPreview ? 'pointer-events-none' : ''}`}>
+              {Array.from({ length: 11 }, (_, n) => n).map(n => (
+                <label key={n} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name={field.id}
+                    value={n}
+                    tabIndex={isPreview ? -1 : 0}
+                    disabled={loading}
+                    required={field.required}
+                    className="peer sr-only"
+                  />
+                  <span className="flex items-center justify-center w-8 h-8 rounded-md border text-xs font-medium text-muted-foreground peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary hover:border-primary/50 transition-colors">
+                    {n}
+                  </span>
                 </label>
               ))}
             </div>
