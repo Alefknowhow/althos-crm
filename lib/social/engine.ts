@@ -16,6 +16,7 @@ import {
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
 import { getOrCreateConversation, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
+import { inngest } from '@/lib/inngest/client'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -178,6 +179,24 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       .eq('raw_payload->>mid', inbound.mid)
       .maybeSingle()
     if (dup) return
+  }
+
+  // 2.3) Avisa a equipe (push + sino de notificações) que chegou uma
+  //      interação nova — dispara aqui, antes de qualquer automação/funil
+  //      decidir o que fazer com ela, pra não depender de nenhum caminho
+  //      específico (mesmo se cair num funil ou a automação_paused pular o
+  //      resto, o time ainda fica sabendo que a mensagem chegou).
+  try {
+    await inngest.send({
+      name: inbound.kind === 'dm' ? 'instagram/message.received' : 'instagram/comment.received',
+      data: {
+        orgId,
+        senderName: inbound.senderUsername ? `@${inbound.senderUsername}` : 'alguém',
+        text: inbound.text,
+      },
+    })
+  } catch (e: any) {
+    console.error('[social engine] notify event failed:', e?.message)
   }
 
   // 2.4) Inbox manual: registra a mensagem inbound no histórico da conversa

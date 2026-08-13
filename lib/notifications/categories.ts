@@ -23,6 +23,8 @@ export type NotificationCategory =
   | 'proposal_approved'
   // Mensagens
   | 'whatsapp_message'
+  | 'instagram_message'
+  | 'instagram_comment'
   // Tarefas
   | 'task_created'
   | 'task_due'
@@ -66,7 +68,9 @@ export const NOTIFICATION_GROUPS: NotificationGroupDef[] = [
     key: 'mensagens',
     label: 'Mensagens',
     items: [
-      { key: 'whatsapp_message', label: 'Nova mensagem WhatsApp', description: 'Quando chega uma mensagem no WhatsApp.' },
+      { key: 'whatsapp_message',  label: 'Nova mensagem WhatsApp',  description: 'Quando chega uma mensagem no WhatsApp.' },
+      { key: 'instagram_message', label: 'Nova mensagem Instagram', description: 'Quando chega um direct no Instagram.' },
+      { key: 'instagram_comment', label: 'Novo comentário Instagram', description: 'Quando chega um comentário em uma publicação.' },
     ],
   },
   {

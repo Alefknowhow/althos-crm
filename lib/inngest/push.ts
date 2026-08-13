@@ -170,3 +170,119 @@ export const pushWhatsappMessageFn = inngest.createFunction(
     return { ok: true }
   },
 )
+
+// ---------------------------------------------------------------------------
+// 3. New Instagram DM push
+// ---------------------------------------------------------------------------
+
+export const pushInstagramMessageFn = inngest.createFunction(
+  {
+    id:      'push-instagram-message',
+    name:    'Push: nova mensagem Instagram',
+    retries: 1,
+    throttle: {
+      key:    'event.data.orgId',
+      limit:  1,
+      period: '2m',
+    },
+    triggers: [{ event: 'instagram/message.received' }],
+  },
+  async ({ event, step }: { event: any; step: any }) => {
+    const { orgId, senderName, text } = event.data as {
+      orgId:      string
+      senderName: string
+      text:       string | null
+    }
+
+    const admin = createAdminClient()
+
+    const org: { slug: string } | null = await step.run('get-org-slug', async () => {
+      const { data } = await admin.from('organizations').select('slug').eq('id', orgId).single()
+      return data
+    })
+
+    await step.run('send-push', async () => {
+      const body = text
+        ? text.length > 80 ? text.slice(0, 80) + '…' : text
+        : 'Mensagem recebida no Instagram'
+
+      const url = org?.slug ? `/app/${org.slug}/social/inbox` : '/'
+      const title = `Novo direct de ${senderName}`
+      await sendPushToOrg(orgId, {
+        title,
+        body,
+        url,
+        tag:   `instagram-${orgId}`,
+        icon:  '/icon.svg',
+        category: 'instagram_message',
+      })
+      await createNotification({
+        organizationId: orgId,
+        type: 'instagram_message',
+        title,
+        content: body,
+        link: url,
+      })
+    })
+
+    return { ok: true }
+  },
+)
+
+// ---------------------------------------------------------------------------
+// 4. New Instagram comment push
+// ---------------------------------------------------------------------------
+
+export const pushInstagramCommentFn = inngest.createFunction(
+  {
+    id:      'push-instagram-comment',
+    name:    'Push: novo comentário Instagram',
+    retries: 1,
+    throttle: {
+      key:    'event.data.orgId',
+      limit:  1,
+      period: '2m',
+    },
+    triggers: [{ event: 'instagram/comment.received' }],
+  },
+  async ({ event, step }: { event: any; step: any }) => {
+    const { orgId, senderName, text } = event.data as {
+      orgId:      string
+      senderName: string
+      text:       string | null
+    }
+
+    const admin = createAdminClient()
+
+    const org: { slug: string } | null = await step.run('get-org-slug', async () => {
+      const { data } = await admin.from('organizations').select('slug').eq('id', orgId).single()
+      return data
+    })
+
+    await step.run('send-push', async () => {
+      const body = text
+        ? text.length > 80 ? text.slice(0, 80) + '…' : text
+        : 'Comentário recebido no Instagram'
+
+      const url = org?.slug ? `/app/${org.slug}/social` : '/'
+      const title = `Novo comentário de ${senderName}`
+      await sendPushToOrg(orgId, {
+        title,
+        body,
+        url,
+        tag:   `instagram-comment-${orgId}`,
+        icon:  '/icon.svg',
+        category: 'instagram_comment',
+      })
+      await createNotification({
+        organizationId: orgId,
+        type: 'instagram_comment',
+        title,
+        content: body,
+        link: url,
+      })
+    })
+
+    return { ok: true }
+  },
+)
