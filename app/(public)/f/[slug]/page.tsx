@@ -54,10 +54,7 @@ export default async function PublicFormPage({ params, searchParams }: { params:
   const fontFamily = resolveFormFontStack(form.schema?.style?.fontFamily)
 
   return (
-    <div
-      className="min-h-[100dvh] flex items-center justify-center px-6 py-10"
-      style={{ background, fontFamily }}
-    >
+    <div className="min-h-[100dvh] flex items-center justify-center bg-neutral-950 p-4 sm:p-8 overflow-y-auto">
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={googleFontsHref(form.schema?.style?.fontFamily)} />
       {/* Meta Pixel base code — only injected when org has a pixel configured */}
@@ -81,16 +78,21 @@ export default async function PublicFormPage({ params, searchParams }: { params:
         </>
       )}
 
-      {/* Sem "cartão" branco em nenhum tamanho de tela — o gradiente escuro
-          cobre a viewport inteira, e o conteúdo fica centralizado (vertical
-          e horizontalmente) dentro de uma coluna de leitura confortável. */}
-      <div className="w-full max-w-lg">
-        {!hideHeader && (
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-white">{form.name}</h1>
-          </div>
-        )}
-        <PublicFormClient form={form} utms={utms} orgSlug={org?.slug || null} />
+      {/* Mesmo enquadramento 9:16 do preview do editor (PreviewPane) — o
+          fundo do formulário preenche o quadro inteiro, sem "cartão" branco
+          por dentro, com o mesmo fundo neutro escuro ao redor. */}
+      <div
+        className="w-full max-w-[420px] aspect-[9/16] rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0"
+        style={{ background, fontFamily }}
+      >
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 sm:px-7 py-8 sm:py-10 flex flex-col justify-center">
+          {!hideHeader && (
+            <div className="mb-8 text-center">
+              <h1 className="text-2xl font-bold text-white">{form.name}</h1>
+            </div>
+          )}
+          <PublicFormClient form={form} utms={utms} orgSlug={org?.slug || null} />
+        </div>
       </div>
     </div>
   )
