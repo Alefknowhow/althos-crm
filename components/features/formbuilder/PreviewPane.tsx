@@ -1,6 +1,8 @@
 'use client'
 
 import { resolveFormBackground } from '@/lib/forms/background-presets'
+import { resolveFormFontStack } from '@/lib/forms/font-presets'
+import { useGoogleFont } from '@/lib/forms/use-google-font'
 import { CalendarClock } from 'lucide-react'
 import InlineEditableText from './InlineEditableText'
 import EditableFieldCard from './EditableFieldCard'
@@ -16,14 +18,20 @@ interface Props {
 
 export default function PreviewPane({ schema, setSchema, activePageId, fieldIndex, onUpdateField }: Props) {
   const activeField = schema.fields.find((f: any) => f.id === activePageId)
+  useGoogleFont(schema.style?.fontFamily)
 
   return (
     <div
       className="flex-1 min-w-0 flex items-center justify-center overflow-y-auto p-8"
       style={{ background: resolveFormBackground(schema.style?.backgroundPreset) }}
     >
-      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden">
-        <div className="p-8 min-h-[420px] flex flex-col justify-center">
+      <div
+        className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden"
+        style={{ fontFamily: resolveFormFontStack(schema.style?.fontFamily) }}
+      >
+        {/* key={activePageId} força o React a remontar o bloco a cada troca
+            de página, o que replay a animação de entrada (tailwindcss-animate). */}
+        <div key={activePageId} className="p-8 min-h-[420px] flex flex-col justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
           {activePageId === 'welcome' && (
             <div className="text-center space-y-3">
               <InlineEditableText

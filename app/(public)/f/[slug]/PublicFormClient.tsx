@@ -122,7 +122,7 @@ export default function PublicFormClient({
     const waUrl = buildWhatsAppUrl(schema.whatsapp)
 
     return (
-      <div className="text-center py-12 space-y-4">
+      <div className="text-center py-12 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">
           ✓
         </div>
@@ -173,7 +173,7 @@ export default function PublicFormClient({
       .filter(Boolean)
 
     return (
-      <div className="relative py-6">
+      <div className="relative py-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview</Badge>}
 
         {logoUrl && (
@@ -252,7 +252,7 @@ export default function PublicFormClient({
   }
 
   return (
-    <div className="relative">
+    <div className="relative animate-in fade-in slide-in-from-bottom-2 duration-300">
       {honeypot}
       {isPreview && <Badge className="mb-6 w-full justify-center bg-orange-100 text-orange-800 hover:bg-orange-100">Modo Preview (Lead não será criado)</Badge>}
       {error && <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg text-sm">{error}</div>}

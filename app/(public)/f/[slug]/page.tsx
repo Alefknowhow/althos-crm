@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import PublicFormClient from './PublicFormClient'
 import { resolveFormBackground } from '@/lib/forms/background-presets'
+import { resolveFormFontStack, googleFontsHref } from '@/lib/forms/font-presets'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,12 +51,15 @@ export default async function PublicFormPage({ params, searchParams }: { params:
 
   const metaPixelId = org?.meta_pixel_id || null
   const background = resolveFormBackground(form.schema?.style?.backgroundPreset)
+  const fontFamily = resolveFormFontStack(form.schema?.style?.fontFamily)
 
   return (
     <div
       className="min-h-[100dvh] flex items-center justify-center px-6 py-10"
-      style={{ background }}
+      style={{ background, fontFamily }}
     >
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href={googleFontsHref(form.schema?.style?.fontFamily)} />
       {/* Meta Pixel base code — only injected when org has a pixel configured */}
       {metaPixelId && (
         <>

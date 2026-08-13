@@ -106,7 +106,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
         </div>
       )}
 
-      <div className="flex-1 flex flex-col justify-center">
+      <div key={step} className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
         {isWelcome && (
           <div className="space-y-6 text-center py-6">
             <h2 className={`text-2xl font-bold tracking-tight ${textClass}`}>

@@ -8,6 +8,7 @@ import {
 import { Plus, Palette, ExternalLink, Settings, Link as LinkIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { FORM_BACKGROUND_PRESETS, DEFAULT_FORM_BACKGROUND, type FormBackgroundPreset } from '@/lib/forms/background-presets'
+import { FORM_FONT_PRESETS, DEFAULT_FORM_FONT, type FormFontPreset } from '@/lib/forms/font-presets'
 import FieldTypePicker from './FieldTypePicker'
 
 interface Props {
@@ -55,6 +56,25 @@ export default function FormToolbar({ form, setForm, schema, setSchema, saving, 
                   className={`w-9 h-9 rounded-full border-2 transition-all ${active ? 'border-primary scale-110' : 'border-transparent hover:border-muted-foreground/30'}`}
                   style={{ background: preset.gradient }}
                 />
+              )
+            })}
+          </div>
+
+          <Label className="text-xs pt-1 block">Fonte</Label>
+          <div className="space-y-0.5">
+            {(Object.keys(FORM_FONT_PRESETS) as FormFontPreset[]).map(key => {
+              const preset = FORM_FONT_PRESETS[key]
+              const active = (schema.style?.fontFamily || DEFAULT_FORM_FONT) === key
+              return (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => setSchema({ ...schema, style: { ...(schema.style || {}), fontFamily: key } })}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}
+                  style={{ fontFamily: preset.stack }}
+                >
+                  {preset.label}
+                </button>
               )
             })}
           </div>
