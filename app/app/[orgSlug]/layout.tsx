@@ -123,9 +123,12 @@ export default async function OrgLayout({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Mobile: botão compacto (inalterado). Desktop: barra de
-                  pesquisa global — ambos abrem o mesmo command palette. */}
-              <CommandPaletteTrigger orgSlug={params.orgSlug} />
+              {/* Mobile/tablet (<md): botão compacto (inalterado). Desktop
+                  (md+): barra de pesquisa global — ambos abrem o mesmo
+                  command palette, nunca os dois ao mesmo tempo. */}
+              <div className="md:hidden">
+                <CommandPaletteTrigger orgSlug={params.orgSlug} />
+              </div>
               <HeaderSearchBar />
               <HealthLinkConditional orgSlug={params.orgSlug} />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
