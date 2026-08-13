@@ -8,7 +8,7 @@ export default async function MetaConfigPage({ params }: { params: { orgSlug: st
   const config = await getOrgMetaConfig(params.orgSlug)
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Meta / Facebook Pixel & CAPI</h1>
         <p className="text-muted-foreground text-sm mt-1">

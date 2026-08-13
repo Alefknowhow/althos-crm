@@ -143,7 +143,7 @@ export default async function IntegrationsHealthPage({ params }: { params: { org
     availability.filter(p => p.integration === name)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div>
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">

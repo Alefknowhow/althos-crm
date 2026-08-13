@@ -24,7 +24,7 @@ export default async function GoogleBusinessSettingsPage({
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/api/google-business/callback`
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Google Meu Negócio</h1>
         <p className="text-muted-foreground text-sm mt-1">

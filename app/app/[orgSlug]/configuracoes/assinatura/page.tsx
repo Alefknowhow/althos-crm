@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import SettingsTabsNav from '../SettingsTabsNav'
 
 function statusLabel(status: string | null) {
   const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -73,14 +72,6 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
     isManaged
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
       <div className="space-y-6 max-w-3xl">
       {/* ── Plan + Status card ─────────────────────────────────────────────── */}
       <div className="rounded-none border bg-card p-6 space-y-5">
@@ -243,7 +234,6 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         </div>
       )}
       </div>
-    </div>
   )
 }
 

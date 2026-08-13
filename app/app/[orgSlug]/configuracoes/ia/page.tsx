@@ -8,7 +8,7 @@ export default async function IAConfigPage({ params }: { params: { orgSlug: stri
   const config = await getOrgAIConfig(params.orgSlug)
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Parâmetros de IA</h1>
         <p className="text-muted-foreground text-sm">

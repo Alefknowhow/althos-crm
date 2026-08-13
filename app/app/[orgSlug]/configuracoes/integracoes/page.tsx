@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button'
 import { Activity, Share2, Sparkles, AtSign, Target, MapPin } from 'lucide-react'
-import SettingsTabsNav from '../SettingsTabsNav'
 
 type IntegrationItem = {
   title: string
@@ -84,14 +83,6 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
   ]
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
       <div className="divide-y rounded-none border bg-card">
         {items.map(item => {
           const Icon = item.icon
@@ -126,6 +117,5 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
           )
         })}
       </div>
-    </div>
   )
 }

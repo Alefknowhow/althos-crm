@@ -10,7 +10,6 @@ import { hasPlatformAiKey } from '@/lib/ai/api-key'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import UpgradeGate from '@/components/features/billing/UpgradeGate'
 import AgenteIaTabs from '@/components/features/ai/AgenteIaTabs'
-import SettingsTabsNav from '../SettingsTabsNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,28 +47,19 @@ export default async function AgenteIaPage({
     : []
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
-      <UpgradeGate locked={!hasAccess} orgSlug={params.orgSlug} featureName="Agente de IA">
-        <AgenteIaTabs
-          orgSlug={params.orgSlug}
-          initial={config}
-          knowledge={knowledge}
-          sandbox={{
-            hasApiKey: hasPlatformAiKey(),
-            sessions: sessions as any[],
-            activeSessionId: activeSessionId || '',
-            initialMessages: initialMessages as any[],
-          }}
-          defaultTab={VALID_TABS.includes(searchParams.tab || '') ? searchParams.tab : undefined}
-        />
-      </UpgradeGate>
-    </div>
+    <UpgradeGate locked={!hasAccess} orgSlug={params.orgSlug} featureName="Agente de IA">
+      <AgenteIaTabs
+        orgSlug={params.orgSlug}
+        initial={config}
+        knowledge={knowledge}
+        sandbox={{
+          hasApiKey: hasPlatformAiKey(),
+          sessions: sessions as any[],
+          activeSessionId: activeSessionId || '',
+          initialMessages: initialMessages as any[],
+        }}
+        defaultTab={VALID_TABS.includes(searchParams.tab || '') ? searchParams.tab : undefined}
+      />
+    </UpgradeGate>
   )
 }

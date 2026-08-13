@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getAccountOrganizations } from '@/actions/organization'
 import { getTeamData } from '@/actions/team'
-import SettingsTabsNav from '../SettingsTabsNav'
 import OrganizationsClient from './OrganizationsClient'
 
 export default async function OrganizacoesPage({ params }: { params: { orgSlug: string } }) {
@@ -29,20 +28,11 @@ export default async function OrganizacoesPage({ params }: { params: { orgSlug: 
   ])
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
-      <OrganizationsClient
-        orgSlug={params.orgSlug}
-        organizations={organizations}
-        members={team.members}
-        canManage={team.currentUserIsManager}
-      />
-    </div>
+    <OrganizationsClient
+      orgSlug={params.orgSlug}
+      organizations={organizations}
+      members={team.members}
+      canManage={team.currentUserIsManager}
+    />
   )
 }

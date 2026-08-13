@@ -3,7 +3,6 @@ import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import TeamClient from './TeamClient'
-import SettingsTabsNav from '../SettingsTabsNav'
 
 export default async function EquipePage({
   params,
@@ -30,21 +29,12 @@ export default async function EquipePage({
   const teamData = await getTeamData(params.orgSlug)
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
-      <TeamClient
-        orgSlug={params.orgSlug}
-        currentUserId={user.id}
-        currentUserRole={membership.role as 'owner' | 'admin'}
-        niche={org.niche}
-        {...teamData}
-      />
-    </div>
+    <TeamClient
+      orgSlug={params.orgSlug}
+      currentUserId={user.id}
+      currentUserRole={membership.role as 'owner' | 'admin'}
+      niche={org.niche}
+      {...teamData}
+    />
   )
 }

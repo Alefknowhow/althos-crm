@@ -23,7 +23,7 @@ export default async function SocialSettingsPage({
   const configured = !!(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET)
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Instagram · DMs & Comentários</h1>
         <p className="text-muted-foreground text-sm mt-1">

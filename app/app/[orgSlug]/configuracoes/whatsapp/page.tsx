@@ -17,7 +17,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
     org.whatsapp_access_token !== 'mock'
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">WhatsApp Cloud API</h1>
         <p className="text-muted-foreground mt-2">

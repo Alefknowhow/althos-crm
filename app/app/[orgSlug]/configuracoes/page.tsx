@@ -6,7 +6,6 @@ import GeneralTab from '@/components/features/GeneralTab'
 import CompanyBrandingCard from '@/components/features/CompanyBrandingCard'
 import DataImportExportCard from '@/components/features/DataImportExportCard'
 import OrganizationsClient from './organizacoes/OrganizationsClient'
-import SettingsTabsNav from './SettingsTabsNav'
 
 export default async function SettingsPage({ params }: { params: { orgSlug: string } }) {
   // Niche is account-level; getOrgGeneral reads the authoritative account value
@@ -26,14 +25,7 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
   ])
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-      </div>
-
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
+    <div className="space-y-6">
       <GeneralTab orgSlug={params.orgSlug} initialNiche={general.niche} />
 
       {/* Organização do cliente + dados da empresa (CNPJ, telefone, e-mail…) —
