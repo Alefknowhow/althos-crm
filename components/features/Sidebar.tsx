@@ -214,22 +214,28 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
+        {/* Ocultos no mobile: ferramentas de construção/configuração, sem
+            uso real "na rua" — continuam disponíveis no desktop. */}
         {TRAVEL_PLANNER_ENABLED && can('roteirista') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/roteirista`}>
-            <span className="flex items-center gap-2.5">
-              <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Travel Planner</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/roteirista`}>
+              <span className="flex items-center gap-2.5">
+                <Sparkles className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Travel Planner</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {can('ofertas') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/ofertas`}>
-            <span className="flex items-center gap-2.5">
-              <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Ofertas</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/ofertas`}>
+              <span className="flex items-center gap-2.5">
+                <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Ofertas</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {can('embarques') && isTravelNiche(org.niche) && (
@@ -251,12 +257,14 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('catalog') && !isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/catalogo`}>
-            <span className="flex items-center gap-2.5">
-              <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Catálogo</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/catalogo`}>
+              <span className="flex items-center gap-2.5">
+                <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Catálogo</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {can('sales') && !isTravelNiche(org.niche) && (
@@ -278,12 +286,14 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('documentos') && isTravelNiche(org.niche) && (
-          <SidebarNavLink href={`${base}/documentos`}>
-            <span className="flex items-center gap-2.5">
-              <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Documentos</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/documentos`}>
+              <span className="flex items-center gap-2.5">
+                <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Documentos</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {can('calendar') && !isTravelNiche(org.niche) && (
@@ -319,35 +329,43 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('campaigns') && planBulkCampaigns && (
-          <SidebarNavLink href={`${base}/campanhas`}>
-            <span className="flex items-center gap-2.5">
-              <Send className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Campanhas de Envio</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/campanhas`}>
+              <span className="flex items-center gap-2.5">
+                <Send className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Campanhas de Envio</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {/* ── Marketing ─────────────────────────────── */}
-        <SectionLabel>Marketing</SectionLabel>
+        {/* Rótulo também some no mobile — os dois itens da seção (Anúncios,
+            Formulários) ficam ocultos ali, não faz sentido um cabeçalho vazio. */}
+        <div className="hidden md:block">
+          <SectionLabel>Marketing</SectionLabel>
+        </div>
 
         {can('marketing') && (
-          <>
+          <div className="hidden md:block">
             <SidebarNavLink href={`${base}/marketing`} exact dataTour="forms">
               <span className="flex items-center gap-2.5">
                 <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                 <span>Anúncios</span>
               </span>
             </SidebarNavLink>
-          </>
+          </div>
         )}
 
         {can('forms') && (
-          <SidebarNavLink href={`${base}/forms`}>
-            <span className="flex items-center gap-2.5">
-              <FileText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Formulários</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/forms`}>
+              <span className="flex items-center gap-2.5">
+                <FileText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Formulários</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {/* ── Operações ─────────────────────────────── */}
@@ -363,12 +381,14 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('automations') && (
-          <SidebarNavLink href={`${base}/automacoes`}>
-            <span className="flex items-center gap-2.5">
-              <Zap className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Automações</span>
-            </span>
-          </SidebarNavLink>
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/automacoes`}>
+              <span className="flex items-center gap-2.5">
+                <Zap className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Automações</span>
+              </span>
+            </SidebarNavLink>
+          </div>
         )}
 
         {/* ── Configurações ─────────────────────────── */}
