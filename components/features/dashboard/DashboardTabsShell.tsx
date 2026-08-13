@@ -22,11 +22,14 @@ export default function DashboardTabsShell({
     <Tabs defaultValue="visao-geral" className="space-y-4">
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 space-y-2 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
         {stickyHeader}
-        <TabsList className="flex-wrap h-auto w-full sm:w-auto">
-          <TabsTrigger value="visao-geral" className="flex-1 sm:flex-none">Visão Geral</TabsTrigger>
-          <TabsTrigger value="comercial" className="flex-1 sm:flex-none">Comercial</TabsTrigger>
-          <TabsTrigger value="vendas-clientes" className="flex-1 sm:flex-none">Vendas e Clientes</TabsTrigger>
-          <TabsTrigger value="equipe-atendimento" className="flex-1 sm:flex-none">Equipe</TabsTrigger>
+        {/* Mobile: grid de 4 colunas iguais numa linha só (célula do grid dá
+            a mesma largura pra todas, independente do tamanho do texto) —
+            texto trunca com "…" se não couber. Desktop mantém o auto-width. */}
+        <TabsList className="grid grid-cols-4 gap-1 h-auto w-full sm:inline-flex sm:w-auto sm:gap-0">
+          <TabsTrigger value="visao-geral" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Visão Geral</TabsTrigger>
+          <TabsTrigger value="comercial" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Comercial</TabsTrigger>
+          <TabsTrigger value="vendas-clientes" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Vendas e Clientes</TabsTrigger>
+          <TabsTrigger value="equipe-atendimento" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Equipe</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="visao-geral" className="space-y-4">
