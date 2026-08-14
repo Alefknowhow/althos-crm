@@ -118,3 +118,22 @@ export async function getAutentiqueDocumentStatus(apiKey: string, documentId: st
     signatures: { public_id: string; name: string; email: string | null; signed: { created_at: string } | null; link: { short_link: string } | null }[]
   } | null
 }
+
+/**
+ * A Autentique às vezes inclui na resposta um signatário extra que nunca
+ * assinamos explicitamente (ex.: o dono da própria conta/API como
+ * aprovador implícito) — cobrar `signatures.every(signed)` trava o
+ * documento pra sempre nesse caso, mesmo com todos os signatários REAIS já
+ * tendo assinado. Em vez disso, checa só os e-mails que nós mesmos
+ * cadastramos como signatários (signer_email / signer2_email).
+ */
+export function isDocumentSignedByKnownSigners(
+  doc: { signatures: { email: string | null; signed: { created_at: string } | null }[] } | null,
+  knownEmails: (string | null | undefined)[],
+): boolean {
+  const emails = knownEmails.filter((e): e is string => !!e).map(e => e.toLowerCase())
+  if (!doc || emails.length === 0) return false
+  return emails.every(email =>
+    doc.signatures.some(s => s.email?.toLowerCase() === email && !!s.signed),
+  )
+}

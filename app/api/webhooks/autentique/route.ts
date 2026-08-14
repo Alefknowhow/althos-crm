@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { getAutentiqueDocumentStatus } from '@/lib/autentique'
+import { getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
 
 // Webhook global da Autentique — cada organização registra essa mesma URL no
 // próprio painel (Configurações de Desenvolvedor > Webhooks) usando sua conta.
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     const { data: contract } = await supabase
       .from('sale_contracts')
-      .select('id, sale_id, organization_id')
+      .select('id, sale_id, organization_id, signer_email, signer2_email')
       .eq('autentique_document_id', documentId)
       .maybeSingle()
 
@@ -30,31 +30,37 @@ export async function POST(req: Request) {
         .eq('id', contract.organization_id)
         .maybeSingle()
 
-      let signedPdfPath: string | null = null
       if (org?.autentique_api_key) {
         try {
+          // A Autentique dispara signature.accepted a cada assinatura — com 2
+          // signatários (cliente + agência), isso chega 2x, e às vezes ela
+          // ainda inclui um signatário extra (dono da conta) que nunca
+          // assina. Só marca "assinado" quando os signatários que NÓS
+          // cadastramos (signer_email/signer2_email) tiverem assinado.
           const doc = await getAutentiqueDocumentStatus(org.autentique_api_key, documentId)
-          signedPdfPath = doc?.files?.signed || null
+          const fullySigned = isDocumentSignedByKnownSigners(doc, [contract.signer_email, contract.signer2_email])
+
+          if (fullySigned) {
+            const now = new Date().toISOString()
+            await supabase
+              .from('sale_contracts')
+              .update({
+                status: 'signed',
+                signed_at: now,
+                updated_at: now,
+                ...(doc?.files?.signed ? { signed_pdf_path: doc.files.signed } : {}),
+              })
+              .eq('id', contract.id)
+            await supabase
+              .from('travel_sales')
+              .update({ contrato_assinado_at: now })
+              .eq('id', contract.sale_id)
+              .eq('organization_id', contract.organization_id)
+          }
         } catch (e) {
-          console.error('autentique webhook: falha ao buscar PDF assinado', e)
+          console.error('autentique webhook: falha ao consultar status do documento', e)
         }
       }
-
-      const now = new Date().toISOString()
-      await supabase
-        .from('sale_contracts')
-        .update({
-          status: 'signed',
-          signed_at: now,
-          updated_at: now,
-          ...(signedPdfPath ? { signed_pdf_path: signedPdfPath } : {}),
-        })
-        .eq('id', contract.id)
-      await supabase
-        .from('travel_sales')
-        .update({ contrato_assinado_at: now })
-        .eq('id', contract.sale_id)
-        .eq('organization_id', contract.organization_id)
     }
   }
 

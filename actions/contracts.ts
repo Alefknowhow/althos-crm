@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { createAutentiqueDocument, getAutentiqueDocumentStatus } from '@/lib/autentique'
+import { createAutentiqueDocument, getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
 import { sendWhatsappMessage } from '@/actions/whatsapp'
 import { getResend, clientEmailFrom } from '@/lib/resend'
 import { getTravelSale, markContractGenerated } from '@/actions/travel-sales'
@@ -282,8 +282,7 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
       console.error('refreshContractStatus: Autentique retornou documento nulo', { documentId: contract.autentique_document_id })
       return { ok: false as const, error: 'Documento não encontrado na Autentique. Confira se ele ainda existe na sua conta.' }
     }
-    const hasSigners = (doc.signatures?.length || 0) > 0
-    const signed = hasSigners && doc.signatures.every(s => !!s.signed)
+    const signed = isDocumentSignedByKnownSigners(doc, [contract.signer_email, contract.signer2_email])
     if (!signed) {
       console.log('refreshContractStatus: ainda não assinado', { documentId: contract.autentique_document_id, signatures: doc.signatures })
     }
