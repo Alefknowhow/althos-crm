@@ -10,21 +10,18 @@ import { getProfilesMap } from '@/lib/profiles'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
-export async function saveWhatsappConfig(orgSlug: string, phone_id: string, token: string) {
+export async function disconnectWhatsapp(orgSlug: string) {
   if (isImpersonating()) {
-    return { ok: false, error: 'Alteração de credenciais críticas não permitida em modo de impersonação.' }
-  }
-  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
-    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+    return { ok: false, error: 'Desconectar WhatsApp não é permitido em modo de impersonação.' }
   }
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { error } = await supabase.from('organizations').update({
-    whatsapp_phone_number_id: phone_id,
-    whatsapp_access_token: token
-  }).eq('id', org.id)
-  
+  const { error } = await supabase
+    .from('organizations')
+    .update({ whatsapp_phone_number_id: null, whatsapp_access_token: null })
+    .eq('id', org.id)
+
   if (error) return { ok: false, error: error.message }
   revalidatePath(`/app/${orgSlug}/configuracoes/whatsapp`)
   return { ok: true }

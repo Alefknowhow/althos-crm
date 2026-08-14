@@ -4,8 +4,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { MessageCircle, Loader2, CheckCircle2 } from 'lucide-react'
-import { connectWhatsappEmbedded } from '@/actions/whatsapp'
+import { MessageCircle, Loader2, CheckCircle2, Unplug } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { connectWhatsappEmbedded, disconnectWhatsapp } from '@/actions/whatsapp'
 
 declare global {
   interface Window {
@@ -38,6 +49,7 @@ export default function WhatsappEmbeddedSignup({
   const router = useRouter()
   const [sdkReady, setSdkReady] = useState(false)
   const [working, setWorking] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   // session info (phone_number_id / waba_id) arrives via postMessage, before
   // the FB.login callback hands us the `code`.
   const sessionInfo = useRef<{ phoneNumberId?: string; wabaId?: string }>({})
@@ -117,6 +129,18 @@ export default function WhatsappEmbeddedSignup({
     [orgSlug, router],
   )
 
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    const res = await disconnectWhatsapp(orgSlug)
+    setDisconnecting(false)
+    if (res.ok) {
+      toast.success('WhatsApp desconectado.')
+      router.refresh()
+    } else {
+      toast.error(res.error || 'Não foi possível desconectar.')
+    }
+  }
+
   function launch() {
     if (!sdkReady || !window.FB) {
       toast.error('Carregando o conector... tente novamente em instantes.')
@@ -145,27 +169,54 @@ export default function WhatsappEmbeddedSignup({
 
   return (
     <div className="space-y-3">
-      <Button onClick={launch} disabled={working} size="lg" className="w-full sm:w-auto">
-        {working ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Conectando...
-          </>
-        ) : alreadyConnected ? (
-          <>
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Reconectar WhatsApp
-          </>
-        ) : (
-          <>
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Conectar WhatsApp
-          </>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={launch} disabled={working} size="lg" className="w-full sm:w-auto">
+          {working ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Conectando...
+            </>
+          ) : alreadyConnected ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Trocar número
+            </>
+          ) : (
+            <>
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Conectar WhatsApp
+            </>
+          )}
+        </Button>
+
+        {alreadyConnected && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="lg" disabled={disconnecting} className="w-full sm:w-auto">
+                {disconnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unplug className="w-4 h-4 mr-2" />}
+                Desconectar
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Desconectar WhatsApp?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O número atual vai parar de enviar e receber mensagens pelo CRM. Você pode conectar
+                  outro número do WhatsApp em seguida, a qualquer momento.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDisconnect}>Desconectar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
-      </Button>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Você será direcionado ao Facebook para autorizar e escolher o número.
-        Sem copiar tokens ou IDs.
+        {alreadyConnected
+          ? 'Pra trocar de número, conecte outro pelo Facebook — ele substitui o atual automaticamente.'
+          : 'Você será direcionado ao Facebook para autorizar e escolher o número. Sem copiar tokens ou IDs.'}
       </p>
     </div>
   )
