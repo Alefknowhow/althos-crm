@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
+import { checkAndRecordRateLimit } from '@/lib/security/antispam'
 
 /**
  * Captação de leads do site institucional (fora do CRM multi-tenant, sem
@@ -23,6 +24,16 @@ async function insertMarketingLead(
   subjectLabel: string,
   raw: unknown,
 ) {
+  // Sem honeypot/timing no form (não plugado no client) — só o rate limit
+  // por IP+endpoint mesmo, pra barrar flood/spam sem exigir mudança de UI.
+  const guard = await checkAndRecordRateLimit(`public_lead:${source}`, {
+    maxPerWindow: 5,
+    windowMinutes: 60,
+  })
+  if (!guard.ok) {
+    return { ok: false as const, error: 'Erro ao enviar. Tente novamente em instantes.' }
+  }
+
   const parsed = SalesLeadSchema.safeParse(raw)
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0].message }

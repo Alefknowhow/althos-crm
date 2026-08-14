@@ -12,6 +12,8 @@ import { getPlatformAiKey } from '@/lib/ai/api-key'
  * — notably including propor_lancamento, which never writes on its own; the
  * client calls confirmFinancialAiEntry only after the user clicks confirm.
  */
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const orgSlug = body?.orgSlug as string | undefined

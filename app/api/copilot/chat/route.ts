@@ -17,6 +17,10 @@ import { getPlatformAiKey } from '@/lib/ai/api-key'
  *   {"type":"done","assistantMessageId":"...","costCentsUsd":n}
  *   {"type":"error","error":"...","code":"feature_locked"|"insufficient_credits"}
  */
+// Resposta de IA em streaming pode passar do default de 10s da Vercel sob
+// carga — sem isso a função é morta no meio da geração.
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const orgSlug = body?.orgSlug as string | undefined

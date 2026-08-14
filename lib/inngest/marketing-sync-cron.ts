@@ -63,7 +63,10 @@ export const marketingSyncCronFn = inngest.createFunction(
       await step.run(`sync-account-${account.id}`, async () => {
         try {
           const campaigns = await fetchMetaCampaigns(account.external_id, token)
-          for (const mc of campaigns) {
+          // Cada campanha é independente (upsert próprio + insights próprios)
+          // — paralelizar em vez de aguardar uma por vez encurta o tempo do
+          // cron quase linearmente com o nº de campanhas por conta.
+          await Promise.all(campaigns.map(async mc => {
             const { data: localCampaign } = await admin
               .from('campaigns')
               .upsert(
@@ -81,11 +84,11 @@ export const marketingSyncCronFn = inngest.createFunction(
               )
               .select('id')
               .maybeSingle()
-            if (!localCampaign) continue
+            if (!localCampaign) return
 
             const insights = await fetchMetaCampaignDailyInsights(mc.id, token, since, until)
-            for (const row of insights) {
-              await admin.from('campaign_metrics_daily').upsert(
+            await Promise.all(insights.map(row =>
+              admin.from('campaign_metrics_daily').upsert(
                 {
                   organization_id: account.organization_id,
                   campaign_id: localCampaign.id,
@@ -96,9 +99,9 @@ export const marketingSyncCronFn = inngest.createFunction(
                   source: 'api',
                 },
                 { onConflict: 'campaign_id,date,source' },
-              )
-            }
-          }
+              ),
+            ))
+          }))
         } catch (e: any) {
           console.error(`[marketing-sync] account ${account.id} failed:`, e?.message)
         }
