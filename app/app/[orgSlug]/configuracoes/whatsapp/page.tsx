@@ -43,6 +43,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
           </div>
           <WhatsappEmbeddedSignup
             orgSlug={params.orgSlug}
+            orgName={org.name}
             appId={appId!}
             configId={configId!}
             alreadyConnected={alreadyConnected}

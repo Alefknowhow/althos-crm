@@ -37,11 +37,13 @@ const GRAPH_VERSION = 'v19.0'
  */
 export default function WhatsappEmbeddedSignup({
   orgSlug,
+  orgName,
   appId,
   configId,
   alreadyConnected,
 }: {
   orgSlug: string
+  orgName: string
   appId: string
   configId: string
   alreadyConnected: boolean
@@ -162,7 +164,17 @@ export default function WhatsappEmbeddedSignup({
         config_id: configId,
         response_type: 'code',
         override_default_response_type: true,
-        extras: { sessionInfoVersion: '2' },
+        // business_management é o que permite a Meta enumerar os Business
+        // Portfolios/WABAs que a pessoa já administra e oferecê-los no
+        // popup — sem isso, o fluxo tende a só oferecer "criar conta nova"
+        // mesmo quando já existe uma WABA configurada manualmente.
+        scope: 'business_management,whatsapp_business_management',
+        extras: {
+          sessionInfoVersion: '2',
+          // Pré-preenche o nome do negócio pra ajudar a Meta a casar com o
+          // Business Manager certo quando a conta participa de mais de um.
+          setup: { business: { name: orgName } },
+        },
       },
     )
   }
