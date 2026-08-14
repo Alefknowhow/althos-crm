@@ -91,7 +91,7 @@ export async function createAutentiqueDocument(
 
 export async function getAutentiqueDocumentStatus(apiKey: string, documentId: string) {
   const query = `
-    query GetDocument($id: ID!) {
+    query GetDocument($id: UUID!) {
       document(id: $id) {
         id
         name
