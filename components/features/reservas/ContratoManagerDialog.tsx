@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -24,7 +25,10 @@ import {
   refreshContractStatus,
   getContractFileUrl,
   sendContractLinkByEmail,
+  getContractRenderData,
 } from '@/actions/contracts'
+import ContractPrintView from '@/components/features/reservas/ContractPrintView'
+import ContractTemplatePrintView from '@/components/features/reservas/ContractTemplatePrintView'
 
 type Props = {
   orgSlug: string
@@ -52,6 +56,8 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
   const [signerEmail, setSignerEmail] = useState(clientEmail || '')
   const [signerPhone, setSignerPhone] = useState('')
   const [emailTo, setEmailTo] = useState(clientEmail || '')
+  const [renderData, setRenderData] = useState<any>(null)
+  const captureRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -73,32 +79,25 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
   async function handleGenerate() {
     setGenerating(true)
     try {
-      const iframe = document.createElement('iframe')
-      iframe.style.position = 'fixed'
-      iframe.style.left = '-10000px'
-      iframe.style.top = '0'
-      iframe.style.width = '900px'
-      iframe.style.height = '1200px'
-      document.body.appendChild(iframe)
+      const data = await getContractRenderData(orgSlug, saleId)
+      if (!data.ok) throw new Error(data.error)
 
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Tempo esgotado ao carregar o contrato.')), 20000)
-        iframe.onload = () => {
-          clearTimeout(timeout)
-          setTimeout(resolve, 800) // dá tempo pras fontes/imagens renderizarem
-        }
-        iframe.src = `/app/${orgSlug}/reservas/${saleId}/contrato`
-      })
+      // Monta o mesmo componente da página de impressão fora da tela (não dá
+      // pra usar um <iframe> pra essa página — a CSP do app bloqueia
+      // frame-ancestors mesmo same-origin) e espera o React commitar antes
+      // de capturar, pra garantir que o DOM já existe no momento do html2canvas.
+      flushSync(() => setRenderData(data))
+      await new Promise(resolve => setTimeout(resolve, 500)) // fontes/imagens/logo
 
-      const doc = iframe.contentDocument
-      const target = doc?.querySelector('.max-w-\\[210mm\\].bg-white') as HTMLElement | null
-      if (!doc || !target) throw new Error('Não foi possível localizar o conteúdo do contrato.')
+      const container = captureRef.current
+      const target = container?.querySelector('.max-w-\\[210mm\\].bg-white') as HTMLElement | null
+      if (!target) throw new Error('Não foi possível localizar o conteúdo do contrato.')
 
       const html2canvas = (await import('html2canvas')).default
       const { jsPDF } = await import('jspdf')
 
       const canvas = await html2canvas(target, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-      document.body.removeChild(iframe)
+      setRenderData(null)
 
       const pdf = new jsPDF({ unit: 'mm', format: 'a4' })
       const pageWidth = 210
@@ -130,6 +129,7 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
     } catch (e: any) {
       toast.error(e.message || 'Erro ao gerar PDF do contrato.')
     } finally {
+      setRenderData(null)
       setGenerating(false)
     }
   }
@@ -338,6 +338,23 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
           </div>
         )}
       </DialogContent>
+
+      {/* Render fora da tela usado só pra capturar o snapshot do PDF — não
+          fica visível, e some assim que a captura termina. */}
+      <div ref={captureRef} style={{ position: 'fixed', left: -10000, top: 0, width: 900, pointerEvents: 'none' }} aria-hidden>
+        {renderData?.ok && (
+          renderData.hasTemplate ? (
+            <ContractTemplatePrintView
+              saleId={saleId}
+              orgSlug={orgSlug}
+              bodyHtml={renderData.bodyHtml}
+              org={renderData.org}
+            />
+          ) : (
+            <ContractPrintView sale={renderData.sale} org={renderData.org} orgSlug={orgSlug} />
+          )
+        )}
+      </div>
     </Dialog>
   )
 }
