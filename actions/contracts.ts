@@ -190,6 +190,7 @@ export async function sendContractForSignature(
   orgSlug: string,
   saleId: string,
   signer: { name: string; email?: string; phone?: string },
+  signer2: { name: string; email?: string; phone?: string },
 ) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -207,7 +208,8 @@ export async function sendContractForSignature(
     .maybeSingle()
 
   if (!contract?.pdf_path) return { ok: false as const, error: 'Gere o PDF do contrato antes de enviar.' }
-  if (!signer.email && !signer.phone) return { ok: false as const, error: 'Informe e-mail ou telefone do signatário.' }
+  if (!signer.email && !signer.phone) return { ok: false as const, error: 'Informe e-mail ou telefone do cliente.' }
+  if (!signer2.email && !signer2.phone) return { ok: false as const, error: 'Informe e-mail ou telefone do signatário da agência.' }
 
   const { data: file, error: downloadError } = await supabase.storage
     .from('sale-contracts')
@@ -220,10 +222,15 @@ export async function sendContractForSignature(
     const doc = await createAutentiqueDocument(
       keyRes.apiKey,
       `Contrato ${sale?.sale_number || saleId}`,
-      { name: signer.name, email: signer.email, phone: signer.phone },
+      [
+        { name: signer.name, email: signer.email, phone: signer.phone },
+        { name: signer2.name, email: signer2.email, phone: signer2.phone },
+      ],
       file,
       'contrato.pdf',
     )
+    // Signatures voltam na mesma ordem em que os signatários foram enviados —
+    // o link do cliente (índice 0) é o que usamos nos atalhos de reenvio.
     const link = doc.signatures?.[0]?.link?.short_link || null
 
     const { error } = await supabase
@@ -235,6 +242,9 @@ export async function sendContractForSignature(
         signer_name: signer.name,
         signer_email: signer.email || null,
         signer_phone: signer.phone || null,
+        signer2_name: signer2.name,
+        signer2_email: signer2.email || null,
+        signer2_phone: signer2.phone || null,
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

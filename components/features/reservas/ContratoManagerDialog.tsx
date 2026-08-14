@@ -55,6 +55,9 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
   const [signerName, setSignerName] = useState(clientName || '')
   const [signerEmail, setSignerEmail] = useState(clientEmail || '')
   const [signerPhone, setSignerPhone] = useState('')
+  const [signer2Name, setSigner2Name] = useState('')
+  const [signer2Email, setSigner2Email] = useState('')
+  const [signer2Phone, setSigner2Phone] = useState('')
   const [emailTo, setEmailTo] = useState(clientEmail || '')
   const [renderData, setRenderData] = useState<any>(null)
   const captureRef = useRef<HTMLDivElement>(null)
@@ -67,6 +70,9 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
       setSignerName(prev => c?.signer_name || prev)
       setSignerEmail(prev => c?.signer_email || prev)
       setSignerPhone(prev => c?.signer_phone || prev)
+      setSigner2Name(prev => c?.signer2_name || prev)
+      setSigner2Email(prev => c?.signer2_email || prev)
+      setSigner2Phone(prev => c?.signer2_phone || prev)
       setLoading(false)
     })
   }, [open, orgSlug, saleId])
@@ -136,19 +142,36 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
 
   async function handleSend() {
     if (!signerName.trim()) {
-      toast.error('Informe o nome do signatário.')
+      toast.error('Informe o nome do cliente.')
       return
     }
     if (!signerEmail.trim() && !signerPhone.trim()) {
-      toast.error('Informe e-mail ou telefone do signatário.')
+      toast.error('Informe e-mail ou telefone do cliente.')
+      return
+    }
+    if (!signer2Name.trim()) {
+      toast.error('Informe o nome do signatário da agência.')
+      return
+    }
+    if (!signer2Email.trim() && !signer2Phone.trim()) {
+      toast.error('Informe e-mail ou telefone do signatário da agência.')
       return
     }
     setSending(true)
-    const res = await sendContractForSignature(orgSlug, saleId, {
-      name: signerName.trim(),
-      email: signerEmail.trim() || undefined,
-      phone: signerPhone.trim() || undefined,
-    })
+    const res = await sendContractForSignature(
+      orgSlug,
+      saleId,
+      {
+        name: signerName.trim(),
+        email: signerEmail.trim() || undefined,
+        phone: signerPhone.trim() || undefined,
+      },
+      {
+        name: signer2Name.trim(),
+        email: signer2Email.trim() || undefined,
+        phone: signer2Phone.trim() || undefined,
+      },
+    )
     setSending(false)
     if (!res.ok) {
       toast.error(res.error)
@@ -268,24 +291,47 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
               <CardContent className="space-y-3">
                 {isSigned ? (
                   <p className="text-sm text-muted-foreground">
-                    Este contrato já foi assinado por <strong>{contract.signer_name}</strong>.
+                    Este contrato já foi assinado por <strong>{contract.signer_name}</strong> e{' '}
+                    <strong>{contract.signer2_name}</strong>.
                   </p>
                 ) : (
                   <>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div className="space-y-1 sm:col-span-2">
-                        <Label className="text-xs">Nome do signatário</Label>
-                        <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" disabled={isSent} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">E-mail</Label>
-                        <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Telefone (WhatsApp)</Label>
-                        <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Cliente (contratante)</p>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs">Nome</Label>
+                          <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" disabled={isSent} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">E-mail</Label>
+                          <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Telefone (WhatsApp)</Label>
+                          <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
+                        </div>
                       </div>
                     </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground pt-2">Agência (contratada)</p>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs">Nome do responsável</Label>
+                          <Input value={signer2Name} onChange={e => setSigner2Name(e.target.value)} placeholder="Nome completo" disabled={isSent} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">E-mail</Label>
+                          <Input value={signer2Email} onChange={e => setSigner2Email(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Telefone (WhatsApp)</Label>
+                          <Input value={signer2Phone} onChange={e => setSigner2Phone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
+                        </div>
+                      </div>
+                    </div>
+
                     {!isSent ? (
                       <Button size="sm" onClick={handleSend} disabled={sending || !hasPdf} className="w-full sm:w-auto">
                         {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}

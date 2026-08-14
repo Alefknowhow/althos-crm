@@ -48,7 +48,7 @@ export type AutentiqueSigner = {
 export async function createAutentiqueDocument(
   apiKey: string,
   documentName: string,
-  signer: AutentiqueSigner,
+  signers: AutentiqueSigner[],
   pdf: Blob,
   fileName: string,
 ) {
@@ -66,19 +66,22 @@ export async function createAutentiqueDocument(
       }
     }
   `
-  const signerInput: Record<string, any> = { action: 'SIGN' }
-  if (signer.email) {
-    signerInput.email = signer.email
-  } else if (signer.phone) {
-    signerInput.phone = signer.phone
-    signerInput.delivery_method = signer.deliveryMethod || 'WHATSAPP'
-  }
-  if (signer.name) signerInput.name = signer.name
+  const signerInputs = signers.map(signer => {
+    const signerInput: Record<string, any> = { action: 'SIGN' }
+    if (signer.email) {
+      signerInput.email = signer.email
+    } else if (signer.phone) {
+      signerInput.phone = signer.phone
+      signerInput.delivery_method = signer.deliveryMethod || 'WHATSAPP'
+    }
+    if (signer.name) signerInput.name = signer.name
+    return signerInput
+  })
 
   const data = await graphqlMultipart(
     apiKey,
     query,
-    { document: { name: documentName }, signers: [signerInput] },
+    { document: { name: documentName }, signers: signerInputs },
     pdf,
     fileName,
   )
