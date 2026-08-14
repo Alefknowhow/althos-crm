@@ -901,16 +901,23 @@ function SaleEditor({
           </div>
         </div>
 
-        {/* Forma de pagamento — 3 selectable buttons */}
+        {/* Forma de pagamento — multi-select (pedido pago com mais de uma
+            forma, ex.: parte no Pix + parte no cartão). Guardado como texto
+            único separado por vírgula, mesmo formato já usado quando a venda
+            nasce automaticamente de uma cotação (proposal.payment.methods). */}
         <Field label="Forma de pagamento">
           <div className="flex flex-wrap gap-1.5">
             {PAYMENT_METHODS.map(m => {
-              const active = s.payment_method === m
+              const selected = (s.payment_method || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+              const active = selected.includes(m)
               return (
                 <button
                   key={m}
                   type="button"
-                  onClick={() => set('payment_method', active ? null : m)}
+                  onClick={() => {
+                    const next = active ? selected.filter((x: string) => x !== m) : [...selected, m]
+                    set('payment_method', next.length ? next.join(', ') : null)
+                  }}
                   className={cn(
                     'px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
                     FOCUS_RING,
