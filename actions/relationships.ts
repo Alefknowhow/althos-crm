@@ -55,7 +55,7 @@ const addSchema = z.object({
   kind: z.enum(RELATIONSHIP_KINDS),
   note: z.string().trim().max(500).optional().nullable(),
   relatedContatoId: z.string().uuid().optional().nullable(),
-  relatedName: z.string().trim().min(1).max(200).optional().nullable(),
+  relatedName: z.string().trim().min(1).max(4000).optional().nullable(),
   relatedCpf: z.string().trim().max(20).optional().nullable(),
   relatedBirthDate: z.string().trim().optional().nullable(),
 })

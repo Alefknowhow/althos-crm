@@ -11,7 +11,6 @@ import {
   Trash2,
   Eye,
   Loader2,
-  Image as ImageIcon,
   Lock,
 } from 'lucide-react'
 import {
@@ -79,6 +78,10 @@ export default function CustomerDocuments({
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<{ url: string; mime: string } | null>(null)
   const [docToDelete, setDocToDelete] = useState<string | null>(null)
+  // Miniaturas: URL assinada (expira em 5min) buscada uma vez por documento
+  // de imagem ao montar, pra mostrar a foto de verdade em vez de um ícone
+  // genérico. PDF não tem preview aqui, só ícone (abre no clique mesmo assim).
+  const [thumbs, setThumbs] = useState<Record<string, string>>({})
 
   // If no profile exists yet (operator hasn't saved address fields), show a
   // gentle prompt — Storage upload requires the profile id as part of the
@@ -127,6 +130,27 @@ export default function CustomerDocuments({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [previewUrl])
+
+  // Busca a URL assinada de cada documento-imagem uma vez, pra render como
+  // miniatura de verdade. Só refaz quando a lista de documentos muda.
+  useEffect(() => {
+    const images = initialDocuments.filter(d => (d.mime_type || '').startsWith('image/'))
+    if (images.length === 0) return
+    let cancelled = false
+    Promise.all(
+      images.map(async d => {
+        const res = await getDocumentSignedUrl(orgSlug, d.id)
+        return res.ok ? ([d.id, res.url] as const) : null
+      }),
+    ).then(results => {
+      if (cancelled) return
+      const next: Record<string, string> = {}
+      for (const r of results) if (r) next[r[0]] = r[1]
+      setThumbs(next)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgSlug, initialDocuments.map(d => d.id).join(',')])
 
   return (
     <Card>
@@ -200,28 +224,30 @@ export default function CustomerDocuments({
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {initialDocuments.map(doc => {
                   const isImage = (doc.mime_type || '').startsWith('image/')
+                  const thumb = thumbs[doc.id]
                   return (
                     <div
                       key={doc.id}
                       className="border rounded-lg overflow-hidden group hover:border-primary/50 transition-colors"
                     >
-                      <div className="aspect-square bg-muted flex items-center justify-center relative">
-                        {isImage ? (
-                          <ImageIcon className="w-10 h-10 text-muted-foreground/40" />
+                      <button
+                        type="button"
+                        onClick={() => openPreview(doc)}
+                        className="aspect-square bg-muted flex items-center justify-center relative w-full cursor-pointer"
+                        title="Clique para ver em tamanho completo"
+                      >
+                        {isImage && thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumb} alt={KIND_LABEL[doc.kind] || doc.kind} className="w-full h-full object-cover" />
+                        ) : isImage ? (
+                          <Loader2 className="w-6 h-6 text-muted-foreground/40 animate-spin" />
                         ) : (
                           <FileText className="w-10 h-10 text-muted-foreground/40" />
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openPreview(doc)}
-                            className="bg-white text-black hover:bg-white/90"
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1" /> Ver
-                          </Button>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Eye className="w-5 h-5 text-white" />
                         </div>
-                      </div>
+                      </button>
                       <div className="p-2 space-y-1">
                         <div className="text-xs font-medium truncate">
                           {KIND_LABEL[doc.kind] || doc.kind}
