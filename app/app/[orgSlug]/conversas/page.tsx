@@ -9,11 +9,16 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
 
+  // Trava um teto — antes carregava a tabela inteira. 300 conversas mais
+  // recentes cobre qualquer uso real de inbox; se a organização crescer além
+  // disso, a lista passa a precisar de paginação/scroll incremental de
+  // verdade (fica pro próximo passo, quando o volume justificar).
   const { data: conversations } = await supabase
     .from('whatsapp_conversations')
     .select('*, contatos(id, name, avatar_url, assigned_to, stage_id, pipeline_id, pipeline_stages(name))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
+    .limit(300)
 
   // Team members power both the inbox agent-color tags and the side panel selectors.
   const members = await listOrgMembers(params.orgSlug)
@@ -45,8 +50,15 @@ export default async function ConversasPage({ params, searchParams }: { params: 
 
   {
     if (selectedConversation) {
-      const { data: msgs } = await supabase.from('whatsapp_messages').select('*').eq('conversation_id', selectedConversation.id).order('created_at', { ascending: true })
-      messages = msgs || []
+      // Últimas 500 mensagens (busca desc + limit, depois reordena pra
+      // exibição) — antes carregava o histórico inteiro da thread de uma vez.
+      const { data: msgs } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('conversation_id', selectedConversation.id)
+        .order('created_at', { ascending: false })
+        .limit(500)
+      messages = (msgs || []).reverse()
       panelContext = await getConversationContext(params.orgSlug, selectedConversation.id)
       scheduled = await listScheduledMessages(params.orgSlug, selectedConversation.id)
     }

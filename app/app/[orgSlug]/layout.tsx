@@ -21,6 +21,7 @@ import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 import { HeaderModuleTitle } from '@/components/features/HeaderModuleTitle'
 import { GlobalBackButton } from '@/components/features/GlobalBackButton'
 import HealthLinkConditional from '@/components/features/HealthLinkConditional'
+import QueryProvider from '@/components/providers/QueryProvider'
 import CommandPalette, { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 
@@ -71,6 +72,7 @@ export default async function OrgLayout({
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   return (
+    <QueryProvider>
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-plex print:static print:h-auto print:overflow-visible print:block">
       <div className="print:hidden">
         {isFrozen ? (
@@ -170,5 +172,6 @@ export default async function OrgLayout({
         <SupportWidget orgSlug={params.orgSlug} />
       </div>
     </div>
+    </QueryProvider>
   )
 }

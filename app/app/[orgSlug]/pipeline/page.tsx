@@ -56,6 +56,9 @@ export default async function PipelinePage({
       .select('id, name, position, color, pipeline_id, is_won, is_lost')
       .eq('pipeline_id', pipeline.id)
       .order('position'),
+    // Limit(2000) trava um teto — antes carregava todos os leads abertos do
+    // pipeline sem limite. Ordenado por mais recentemente ativo primeiro,
+    // então se truncar são os leads mais "frios" que ficam de fora.
     supabase
       .from('contatos')
       .select(
@@ -64,7 +67,8 @@ export default async function PipelinePage({
       .eq('pipeline_id', pipeline.id)
       .eq('organization_id', org.id)
       .eq('deal_status', 'aberto')
-      .order('updated_at', { ascending: false }),
+      .order('updated_at', { ascending: false })
+      .limit(2000),
   ])
 
   // Resolve members (id → name/email) for owner avatars + the responsável filter.

@@ -13,13 +13,15 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
 
   // Pull every active-workflow task; the board groups them by custom column
   // and filters client-side. Columns are user-defined (pipeline-style).
+  // Limit(1000) trava um teto — antes carregava a tabela inteira sem limite.
   const [{ data: tasks }, members, columnsRes] = await Promise.all([
     supabase
       .from('tasks')
       .select('id, title, description, status, priority, due_date, assigned_to, column_id, leads:contatos(id, name)')
       .eq('organization_id', org.id)
       .order('due_date', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(1000),
     listOrgMembers(params.orgSlug),
     listTaskColumns(params.orgSlug),
   ])

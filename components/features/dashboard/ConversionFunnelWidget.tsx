@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Filter, TrendingDown, ArrowDown, Loader2 } from 'lucide-react'
@@ -78,24 +79,20 @@ export default function ConversionFunnelWidget({
   const router = useRouter()
   const [period, setPeriod] = useState<FunnelPeriod>('30d')
   const [sourceKey, setSourceKey] = useState<string>('all')
-  const [result, setResult] = useState<FunnelResult>(initialResult)
-  const [isPending, startTransition] = useTransition()
 
-  // Re-fetch whenever filters change. We skip the initial render because
-  // initialResult is already populated by the server with default filters.
-  const firstRenderRef = useFirstRender()
-  useEffect(() => {
-    if (firstRenderRef) return
-    startTransition(async () => {
-      const next = await fetchFunnel(orgSlug, {
-        period,
-        source: decodeSource(sourceKey),
-        pipelineId,
-      })
-      setResult(next)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, sourceKey, pipelineId])
+  // useQuery cacheia por chave (org+pipeline+filtros) — voltar pra uma
+  // combinação de filtro já vista (ex.: trocar de aba Comercial → Visão
+  // Geral e voltar) reusa o resultado em cache em vez de refazer a query.
+  // `initialData` na combinação default evita um fetch redundante logo na
+  // primeira renderização, já que o server já mandou esse resultado pronto.
+  const isDefaultFilters = period === '30d' && sourceKey === 'all'
+  const { data: result = initialResult, isFetching } = useQuery({
+    queryKey: ['funnel', orgSlug, pipelineId, period, sourceKey],
+    queryFn: () => fetchFunnel(orgSlug, { period, source: decodeSource(sourceKey), pipelineId }),
+    initialData: isDefaultFilters ? initialResult : undefined,
+    placeholderData: keepPreviousData,
+  })
+  const isPending = isFetching
 
   // Find the largest stage count so we can scale the bars relative to it.
   const maxCount = useMemo(
@@ -264,14 +261,4 @@ export default function ConversionFunnelWidget({
       </CardContent>
     </Card>
   )
-}
-
-/** Simple flag that becomes false after the first render. */
-function useFirstRender(): boolean {
-  const [first, setFirst] = useState(true)
-  useEffect(() => {
-    if (first) setFirst(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  return first
 }

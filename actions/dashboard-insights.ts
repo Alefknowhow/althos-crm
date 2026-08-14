@@ -1,5 +1,6 @@
 'use server'
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
@@ -14,7 +15,11 @@ export type DashboardInsight = {
   created_at: string
 }
 
-export async function listDashboardInsights(orgSlug: string): Promise<DashboardInsight[]> {
+// cache() deduplica por argumento DENTRO do mesmo request/render — o
+// Dashboard chama isso uma vez no page.tsx (pro InsightsStrip) e de novo
+// dentro do InsightCard da aba ativa; sem isso eram 2 queries idênticas na
+// mesma carga de página.
+export const listDashboardInsights = cache(async (orgSlug: string): Promise<DashboardInsight[]> => {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
@@ -25,7 +30,7 @@ export async function listDashboardInsights(orgSlug: string): Promise<DashboardI
     .order('score', { ascending: false })
     .limit(6)
   return (data as DashboardInsight[] | null) || []
-}
+})
 
 export async function dismissInsight(orgSlug: string, id: string) {
   const org = await getCurrentOrganization(orgSlug)
