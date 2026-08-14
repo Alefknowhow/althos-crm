@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import {
   Upload,
   FileText,
+  FileImage,
   Trash2,
-  Eye,
   Loader2,
   Lock,
 } from 'lucide-react'
@@ -60,6 +60,21 @@ function fmtSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** Extensão curta pro selo do ícone (JPG/PNG/WEBP/PDF...), a partir do mime
+ *  type (mais confiável) ou, na falta dele, do nome do arquivo. */
+function fileExt(doc: Doc): string {
+  const mime = doc.mime_type || ''
+  const mimeMap: Record<string, string> = {
+    'image/jpeg': 'JPG',
+    'image/png': 'PNG',
+    'image/webp': 'WEBP',
+    'application/pdf': 'PDF',
+  }
+  if (mimeMap[mime]) return mimeMap[mime]
+  const fromName = doc.file_name.split('.').pop()
+  return fromName ? fromName.slice(0, 4).toUpperCase() : '?'
+}
+
 export default function CustomerDocuments({
   orgSlug,
   leadId,
@@ -78,10 +93,6 @@ export default function CustomerDocuments({
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<{ url: string; mime: string } | null>(null)
   const [docToDelete, setDocToDelete] = useState<string | null>(null)
-  // Miniaturas: URL assinada (expira em 5min) buscada uma vez por documento
-  // de imagem ao montar, pra mostrar a foto de verdade em vez de um ícone
-  // genérico. PDF não tem preview aqui, só ícone (abre no clique mesmo assim).
-  const [thumbs, setThumbs] = useState<Record<string, string>>({})
 
   // If no profile exists yet (operator hasn't saved address fields), show a
   // gentle prompt — Storage upload requires the profile id as part of the
@@ -130,27 +141,6 @@ export default function CustomerDocuments({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [previewUrl])
-
-  // Busca a URL assinada de cada documento-imagem uma vez, pra render como
-  // miniatura de verdade. Só refaz quando a lista de documentos muda.
-  useEffect(() => {
-    const images = initialDocuments.filter(d => (d.mime_type || '').startsWith('image/'))
-    if (images.length === 0) return
-    let cancelled = false
-    Promise.all(
-      images.map(async d => {
-        const res = await getDocumentSignedUrl(orgSlug, d.id)
-        return res.ok ? ([d.id, res.url] as const) : null
-      }),
-    ).then(results => {
-      if (cancelled) return
-      const next: Record<string, string> = {}
-      for (const r of results) if (r) next[r[0]] = r[1]
-      setThumbs(next)
-    })
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgSlug, initialDocuments.map(d => d.id).join(',')])
 
   return (
     <Card>
@@ -221,51 +211,40 @@ export default function CustomerDocuments({
                 Nenhum documento enviado.
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="flex flex-wrap gap-3">
                 {initialDocuments.map(doc => {
                   const isImage = (doc.mime_type || '').startsWith('image/')
-                  const thumb = thumbs[doc.id]
+                  const ext = fileExt(doc)
                   return (
-                    <div
-                      key={doc.id}
-                      className="border rounded-lg overflow-hidden group hover:border-primary/50 transition-colors"
-                    >
+                    <div key={doc.id} className="w-24 shrink-0 group">
                       <button
                         type="button"
                         onClick={() => openPreview(doc)}
-                        className="aspect-square bg-muted flex items-center justify-center relative w-full cursor-pointer"
+                        className="w-24 h-24 rounded-lg border bg-muted flex flex-col items-center justify-center gap-1 relative cursor-pointer hover:border-primary/50 hover:bg-muted/70 transition-colors"
                         title="Clique para ver em tamanho completo"
                       >
-                        {isImage && thumb ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumb} alt={KIND_LABEL[doc.kind] || doc.kind} className="w-full h-full object-cover" />
-                        ) : isImage ? (
-                          <Loader2 className="w-6 h-6 text-muted-foreground/40 animate-spin" />
+                        {isImage ? (
+                          <FileImage className="w-8 h-8 text-muted-foreground/50" />
                         ) : (
-                          <FileText className="w-10 h-10 text-muted-foreground/40" />
+                          <FileText className="w-8 h-8 text-muted-foreground/50" />
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Eye className="w-5 h-5 text-white" />
-                        </div>
+                        <span className="text-[9px] font-bold tracking-wide text-muted-foreground/70 bg-background/80 rounded px-1">
+                          {ext}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDocToDelete(doc.id) }}
+                          className="absolute top-1 right-1 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive/10 p-0.5 rounded transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </button>
-                      <div className="p-2 space-y-1">
-                        <div className="text-xs font-medium truncate">
+                      <div className="mt-1 text-center">
+                        <div className="text-[10px] font-medium truncate" title={KIND_LABEL[doc.kind] || doc.kind}>
                           {KIND_LABEL[doc.kind] || doc.kind}
                         </div>
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          {doc.file_name}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground">
-                            {fmtSize(doc.file_size_bytes)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setDocToDelete(doc.id)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                        <div className="text-[9px] text-muted-foreground truncate">
+                          {fmtSize(doc.file_size_bytes)}
                         </div>
                       </div>
                     </div>
