@@ -278,11 +278,17 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
       console.log('refreshContractStatus: ainda não assinado', { documentId: contract.autentique_document_id, signatures: doc.signatures })
     }
     const updates: Record<string, any> = { updated_at: new Date().toISOString() }
-    if (signed && contract.status !== 'signed') {
-      updates.status = 'signed'
-      updates.signed_at = new Date().toISOString()
-      if (doc.files?.signed) updates.signed_pdf_path = doc.files.signed
-      await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
+    if (signed) {
+      if (contract.status !== 'signed') {
+        updates.status = 'signed'
+        updates.signed_at = new Date().toISOString()
+        await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
+      }
+      // Backfill mesmo se já estava marcado como assinado — o webhook pode
+      // ter marcado o status sem conseguir buscar o PDF ainda.
+      if (doc.files?.signed && !contract.signed_pdf_path) {
+        updates.signed_pdf_path = doc.files.signed
+      }
     }
     await supabase.from('sale_contracts').update(updates).eq('id', contract.id)
     revalidatePath(`/app/${orgSlug}/reservas`)

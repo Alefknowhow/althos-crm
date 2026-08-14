@@ -23,7 +23,18 @@ export async function disconnectWhatsapp(orgSlug: string) {
     .eq('id', org.id)
 
   if (error) return { ok: false, error: error.message }
+
+  // O histórico pertence ao número desconectado — limpa junto pra não deixar
+  // conversas de um número antigo misturadas com as do próximo que conectar
+  // (mensagens/agendamentos somem em cascata pela FK de whatsapp_conversations).
+  const { error: convError } = await supabase
+    .from('whatsapp_conversations')
+    .delete()
+    .eq('organization_id', org.id)
+  if (convError) console.error('disconnectWhatsapp: falha ao limpar histórico de conversas', convError)
+
   revalidatePath(`/app/${orgSlug}/configuracoes/whatsapp`)
+  revalidatePath(`/app/${orgSlug}/conversas`)
   return { ok: true }
 }
 

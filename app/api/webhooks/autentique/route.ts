@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getAutentiqueDocumentStatus } from '@/lib/autentique'
 
 // Webhook global da Autentique — cada organização registra essa mesma URL no
 // próprio painel (Configurações de Desenvolvedor > Webhooks) usando sua conta.
@@ -23,10 +24,31 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (contract) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('autentique_api_key')
+        .eq('id', contract.organization_id)
+        .maybeSingle()
+
+      let signedPdfPath: string | null = null
+      if (org?.autentique_api_key) {
+        try {
+          const doc = await getAutentiqueDocumentStatus(org.autentique_api_key, documentId)
+          signedPdfPath = doc?.files?.signed || null
+        } catch (e) {
+          console.error('autentique webhook: falha ao buscar PDF assinado', e)
+        }
+      }
+
       const now = new Date().toISOString()
       await supabase
         .from('sale_contracts')
-        .update({ status: 'signed', signed_at: now, updated_at: now })
+        .update({
+          status: 'signed',
+          signed_at: now,
+          updated_at: now,
+          ...(signedPdfPath ? { signed_pdf_path: signedPdfPath } : {}),
+        })
         .eq('id', contract.id)
       await supabase
         .from('travel_sales')

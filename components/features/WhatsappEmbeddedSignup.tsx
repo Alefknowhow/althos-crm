@@ -201,8 +201,10 @@ export default function WhatsappEmbeddedSignup({
               <AlertDialogHeader>
                 <AlertDialogTitle>Desconectar WhatsApp?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  O número atual vai parar de enviar e receber mensagens pelo CRM. Você pode conectar
-                  outro número do WhatsApp em seguida, a qualquer momento.
+                  O número atual vai parar de enviar e receber mensagens pelo CRM, e{' '}
+                  <strong>todo o histórico de conversas deste número será apagado</strong> — essa
+                  parte não pode ser desfeita. Você pode conectar outro número em seguida, a
+                  qualquer momento.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
