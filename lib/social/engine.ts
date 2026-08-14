@@ -186,12 +186,22 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   //      decidir o que fazer com ela, pra não depender de nenhum caminho
   //      específico (mesmo se cair num funil ou a automação_paused pular o
   //      resto, o time ainda fica sabendo que a mensagem chegou).
+  //      Busca o nome de exibição do perfil (não só o @usuário) — o
+  //      webhook raramente traz isso de graça, então vale 1 chamada extra
+  //      à Graph API pra a notificação ficar legível.
   try {
+    let senderName = inbound.senderUsername ? `@${inbound.senderUsername}` : 'alguém'
+    try {
+      const profile = await getInstagramUserProfile(inbound.senderId, connection.access_token)
+      if (profile?.name) senderName = profile.name
+      else if (profile?.username) senderName = `@${profile.username}`
+    } catch { /* best-effort — mantém o fallback acima */ }
+
     await inngest.send({
       name: inbound.kind === 'dm' ? 'instagram/message.received' : 'instagram/comment.received',
       data: {
         orgId,
-        senderName: inbound.senderUsername ? `@${inbound.senderUsername}` : 'alguém',
+        senderName,
         text: inbound.text,
       },
     })
