@@ -13,6 +13,7 @@ import { proposalEventFn } from '@/lib/inngest/proposal-events'
 import { dashboardInsightsCronFn } from '@/lib/inngest/dashboard-insights-cron'
 import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
 import { sendCampaignsCronFn } from '@/lib/inngest/send-campaigns-cron'
+import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -39,5 +40,6 @@ export const { GET, POST, PUT } = serve({
     dashboardInsightsCronFn,
     marketingSyncCronFn,
     sendCampaignsCronFn,
+    processInstagramInboundFn,
   ]
 })

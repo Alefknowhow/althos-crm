@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
-import { processInboundInteraction, type InboundInteraction } from '@/lib/social/engine'
+import type { InboundInteraction } from '@/lib/social/engine'
+import { inngest } from '@/lib/inngest/client'
 
 /**
  * Instagram webhook.
@@ -30,12 +31,13 @@ export async function GET(req: Request) {
   return new NextResponse('Forbidden', { status: 403 })
 }
 
-/** Validate Meta's X-Hub-Signature-256 (fail-open when the secret is unset). */
+/** Validate Meta's X-Hub-Signature-256 (fail-CLOSED when the secret is unset —
+ *  um erro de configuração de env var nunca deve virar endpoint aberto). */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET
   if (!appSecret) {
-    console.warn('[instagram webhook] no app secret set — payloads are NOT verified')
-    return true
+    console.error('[instagram webhook] no app secret set — rejecting payload (fail-closed)')
+    return false
   }
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false
   const expected = 'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex')
@@ -112,13 +114,19 @@ export async function POST(req: Request) {
       }
     }
 
-    // Process sequentially; each is independently guarded against failure.
-    for (const inbound of inbounds) {
-      try {
-        await processInboundInteraction(inbound)
-      } catch (e: any) {
-        console.error('[instagram webhook] processing error:', e?.message)
-      }
+    // Só enfileira — quem processa de verdade (pode chamar IA + Graph API)
+    // é o worker do Inngest (lib/inngest/social-inbound.ts), fora do ciclo
+    // de resposta que a Meta espera rápido. inngest.send só grava o evento,
+    // é rápido e não deveria falhar; se falhar mesmo assim, loga e segue —
+    // não vale a pena fazer a Meta reenviar o payload inteiro por isso.
+    try {
+      await Promise.all(
+        inbounds.map(inbound =>
+          inngest.send({ name: 'instagram/inbound.received', data: inbound }),
+        ),
+      )
+    } catch (e: any) {
+      console.error('[instagram webhook] failed to enqueue:', e?.message)
     }
 
     // Always 200 quickly so Meta doesn't retry-storm us.

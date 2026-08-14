@@ -92,12 +92,14 @@ async function downloadAndStoreMedia(
   }
 }
 
-/** Verify Meta's X-Hub-Signature-256 header against the raw body. */
+/** Verify Meta's X-Hub-Signature-256 header against the raw body (fail-CLOSED
+ *  when the secret is unset — um erro de configuração nunca deve virar
+ *  endpoint aberto). */
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   const appSecret = process.env.META_APP_SECRET
   if (!appSecret) {
-    console.warn('[whatsapp webhook] META_APP_SECRET not set — incoming payloads are NOT being verified')
-    return true
+    console.error('[whatsapp webhook] META_APP_SECRET not set — rejecting payload (fail-closed)')
+    return false
   }
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false
 
