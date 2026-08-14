@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Activity, Share2, Sparkles, AtSign, Target, MapPin } from 'lucide-react'
+import { Activity, Share2, Sparkles, AtSign, Target, MapPin, FileSignature } from 'lucide-react'
 
 type IntegrationItem = {
   title: string
@@ -70,6 +70,15 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       iconStyle: { background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)', color: '#fff' },
       actionLabel: 'Configurar',
       href: `${base}/social`,
+    },
+    {
+      title: 'Autentique · Assinatura Digital',
+      description: 'Envie contratos de Reservas para assinar.',
+      detail: 'Cada conta usa sua própria chave de API e consome seus próprios créditos de assinatura.',
+      icon: FileSignature,
+      iconClass: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+      actionLabel: 'Configurar',
+      href: `${base}/autentique`,
     },
     {
       title: 'Google Meu Negócio',

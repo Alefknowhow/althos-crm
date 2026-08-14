@@ -32,6 +32,7 @@ import {
 } from '@/actions/travel-sales'
 import { uploadSaleVoucher } from '@/actions/upload'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
+import ContratoManagerDialog from '@/components/features/reservas/ContratoManagerDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import { extractTravelDocument } from '@/actions/document-extract'
@@ -591,6 +592,7 @@ function SaleEditor({
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
   const [flightsOpen, setFlightsOpen] = useState(false)
+  const [contractOpen, setContractOpen] = useState(false)
   const router = useRouter()
 
   function toggleIncluded(key: string) {
@@ -737,11 +739,16 @@ function SaleEditor({
               <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar voucher</span>
             </Button>
           </a>
-          <a href={`/app/${orgSlug}/reservas/${s.id}/contrato`} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm" title="Gerar contrato" aria-label="Gerar contrato">
-              <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar contrato</span>
-            </Button>
-          </a>
+          <Button variant="outline" size="sm" title="Contrato" aria-label="Contrato" onClick={() => setContractOpen(true)}>
+            <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Contrato</span>
+          </Button>
+          <ContratoManagerDialog
+            orgSlug={orgSlug}
+            saleId={s.id}
+            clientName={s.client_name}
+            open={contractOpen}
+            onOpenChange={setContractOpen}
+          />
           {s.status !== 'cancelled' && (
             <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva" aria-label="Cancelar reserva">
               <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
