@@ -268,18 +268,27 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
 
   try {
     const doc = await getAutentiqueDocumentStatus(keyRes.apiKey, contract.autentique_document_id)
-    const signed = doc?.signatures?.every(s => !!s.signed)
+    if (!doc) {
+      console.error('refreshContractStatus: Autentique retornou documento nulo', { documentId: contract.autentique_document_id })
+      return { ok: false as const, error: 'Documento não encontrado na Autentique. Confira se ele ainda existe na sua conta.' }
+    }
+    const hasSigners = (doc.signatures?.length || 0) > 0
+    const signed = hasSigners && doc.signatures.every(s => !!s.signed)
+    if (!signed) {
+      console.log('refreshContractStatus: ainda não assinado', { documentId: contract.autentique_document_id, signatures: doc.signatures })
+    }
     const updates: Record<string, any> = { updated_at: new Date().toISOString() }
     if (signed && contract.status !== 'signed') {
       updates.status = 'signed'
       updates.signed_at = new Date().toISOString()
-      if (doc?.files?.signed) updates.signed_pdf_path = doc.files.signed
+      if (doc.files?.signed) updates.signed_pdf_path = doc.files.signed
       await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
     }
     await supabase.from('sale_contracts').update(updates).eq('id', contract.id)
     revalidatePath(`/app/${orgSlug}/reservas`)
     return { ok: true as const, status: updates.status || contract.status }
   } catch (e: any) {
+    console.error('refreshContractStatus error:', e)
     return { ok: false as const, error: e.message || 'Erro ao consultar status na Autentique.' }
   }
 }
