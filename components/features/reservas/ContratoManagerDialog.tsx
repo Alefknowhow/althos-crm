@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -11,7 +11,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, FileSignature, Send, Download, Eye, RefreshCw, CheckCircle2, Mail } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Loader2, FileSignature, Send, Download, Eye, RefreshCw, CheckCircle2,
+  Mail, FileText, Clock, XCircle, Copy, Settings2,
+} from 'lucide-react'
+import Link from 'next/link'
 import {
   getSaleContract,
   uploadContractPdf,
@@ -30,11 +35,11 @@ type Props = {
   onOpenChange: (open: boolean) => void
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Rascunho — PDF gerado, ainda não enviado',
-  sent: 'Enviado — aguardando assinatura',
-  signed: 'Assinado',
-  rejected: 'Recusado',
+const STATUS_META: Record<string, { label: string; className: string; icon: any }> = {
+  draft:    { label: 'Rascunho',              className: 'bg-muted text-muted-foreground',                                   icon: FileText },
+  sent:     { label: 'Aguardando assinatura', className: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20',                  icon: Clock },
+  signed:   { label: 'Assinado',              className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20',            icon: CheckCircle2 },
+  rejected: { label: 'Recusado',              className: 'bg-red-50 text-red-700 dark:bg-red-900/20',                       icon: XCircle },
 }
 
 export default function ContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, open, onOpenChange }: Props) {
@@ -47,13 +52,15 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
   const [signerEmail, setSignerEmail] = useState(clientEmail || '')
   const [signerPhone, setSignerPhone] = useState('')
   const [emailTo, setEmailTo] = useState(clientEmail || '')
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
     getSaleContract(orgSlug, saleId).then(c => {
       setContract(c)
+      setSignerName(prev => c?.signer_name || prev)
+      setSignerEmail(prev => c?.signer_email || prev)
+      setSignerPhone(prev => c?.signer_phone || prev)
       setLoading(false)
     })
   }, [open, orgSlug, saleId])
@@ -132,6 +139,10 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
       toast.error('Informe o nome do signatário.')
       return
     }
+    if (!signerEmail.trim() && !signerPhone.trim()) {
+      toast.error('Informe e-mail ou telefone do signatário.')
+      return
+    }
     setSending(true)
     const res = await sendContractForSignature(orgSlug, saleId, {
       name: signerName.trim(),
@@ -178,89 +189,152 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
     else toast.success('Link enviado por e-mail.')
   }
 
-  const status = contract?.status as string | undefined
+  function handleCopyLink() {
+    if (!contract?.signature_link) return
+    navigator.clipboard.writeText(contract.signature_link)
+    toast.success('Link copiado.')
+  }
+
+  const status: string = contract?.status || 'draft'
+  const meta = STATUS_META[status] || STATUS_META.draft
+  const StatusIcon = meta.icon
+  const hasPdf = !!contract?.pdf_path
+  const isSent = status === 'sent'
+  const isSigned = status === 'signed'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSignature className="w-5 h-5" /> Contrato
+            <FileSignature className="w-5 h-5" /> Gerenciar contrato
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : (
           <div className="space-y-5">
-            {status && (
-              <div className={`flex items-center gap-2 text-sm rounded-md px-3 py-2 ${status === 'signed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20' : 'bg-muted text-muted-foreground'}`}>
-                {status === 'signed' && <CheckCircle2 className="w-4 h-4" />}
-                {STATUS_LABEL[status] || status}
+            <div className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${meta.className}`}>
+              <div className="flex items-center gap-2">
+                <StatusIcon className="w-4 h-4 shrink-0" />
+                <span className="font-medium">{meta.label}</span>
               </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={handleGenerate} disabled={generating}>
-                {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileSignature className="w-4 h-4 mr-1.5" />}
-                {contract?.pdf_path ? 'Gerar novamente' : 'Gerar PDF'}
-              </Button>
-              {contract?.pdf_path && (
-                <Button size="sm" variant="outline" onClick={() => handleView('pdf')}>
-                  <Eye className="w-4 h-4 mr-1.5" /> Ver PDF
-                </Button>
+              {contract?.sent_at && !isSigned && (
+                <span className="text-xs opacity-80">
+                  enviado em {new Date(contract.sent_at).toLocaleDateString('pt-BR')}
+                </span>
               )}
-              {status === 'signed' && contract?.signed_pdf_path && (
-                <Button size="sm" variant="outline" onClick={() => handleView('signed')}>
-                  <Download className="w-4 h-4 mr-1.5" /> Baixar assinado
-                </Button>
-              )}
-              {status === 'sent' && (
-                <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
-                  {refreshing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
-                  Atualizar status
-                </Button>
+              {contract?.signed_at && isSigned && (
+                <span className="text-xs opacity-80">
+                  assinado em {new Date(contract.signed_at).toLocaleDateString('pt-BR')}
+                </span>
               )}
             </div>
 
-            {contract?.pdf_path && status !== 'signed' && (
-              <div className="space-y-3 border rounded-lg p-3">
-                <p className="text-sm font-medium">Enviar para assinatura</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nome do signatário</Label>
-                    <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">E-mail</Label>
-                    <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Telefone (WhatsApp) — opcional se preencher e-mail</Label>
-                    <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" />
-                  </div>
-                </div>
-                <Button size="sm" onClick={handleSend} disabled={sending} className="w-full">
-                  {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
-                  Enviar para assinatura (Autentique)
+            {/* 1. Documento */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Documento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={handleGenerate} disabled={generating}>
+                  {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileSignature className="w-4 h-4 mr-1.5" />}
+                  {hasPdf ? 'Gerar novamente' : 'Gerar contrato (PDF)'}
                 </Button>
-              </div>
-            )}
+                <Button size="sm" variant="outline" onClick={() => handleView('pdf')} disabled={!hasPdf}>
+                  <Eye className="w-4 h-4 mr-1.5" /> Visualizar PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleView('signed')} disabled={!isSigned}>
+                  <Download className="w-4 h-4 mr-1.5" /> Baixar assinado
+                </Button>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link href={`/app/${orgSlug}/reservas/${saleId}/contrato`} target="_blank">
+                    <Settings2 className="w-4 h-4 mr-1.5" /> Editar modelo
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
 
-            {contract?.signature_link && status === 'sent' && (
-              <div className="space-y-2 border rounded-lg p-3">
-                <p className="text-sm font-medium">Atalhos — reenviar link de assinatura</p>
+            {/* 2. Assinatura */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4" /> Assinatura digital (Autentique)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isSigned ? (
+                  <p className="text-sm text-muted-foreground">
+                    Este contrato já foi assinado por <strong>{contract.signer_name}</strong>.
+                  </p>
+                ) : (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label className="text-xs">Nome do signatário</Label>
+                        <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" disabled={isSent} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">E-mail</Label>
+                        <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Telefone (WhatsApp)</Label>
+                        <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
+                      </div>
+                    </div>
+                    {!isSent ? (
+                      <Button size="sm" onClick={handleSend} disabled={sending || !hasPdf} className="w-full sm:w-auto">
+                        {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
+                        Enviar para assinatura
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
+                        {refreshing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+                        Atualizar status de assinatura
+                      </Button>
+                    )}
+                    {!hasPdf && !isSent && (
+                      <p className="text-xs text-muted-foreground">Gere o PDF do contrato antes de enviar para assinatura.</p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 3. Atalhos de envio do link */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Mail className="w-4 h-4" /> Atalhos — reenviar link de assinatura
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div className="flex gap-2">
-                  <Input value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="email@exemplo.com" className="text-xs" />
-                  <Button size="sm" variant="outline" onClick={handleSendEmail}>
+                  <Input
+                    value={emailTo}
+                    onChange={e => setEmailTo(e.target.value)}
+                    placeholder="email@exemplo.com"
+                    className="text-xs"
+                    disabled={!contract?.signature_link}
+                  />
+                  <Button size="sm" variant="outline" onClick={handleSendEmail} disabled={!contract?.signature_link} title="Enviar por e-mail">
                     <Mail className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleCopyLink} disabled={!contract?.signature_link} title="Copiar link">
+                    <Copy className="w-4 h-4" />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Para enviar por WhatsApp, use o botão de atalho na conversa do cliente em Conversas.
+                  {contract?.signature_link
+                    ? 'Para enviar por WhatsApp, use o botão de atalho na conversa do cliente em Conversas.'
+                    : 'Disponível depois que o contrato for enviado para assinatura.'}
                 </p>
-              </div>
-            )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </DialogContent>
