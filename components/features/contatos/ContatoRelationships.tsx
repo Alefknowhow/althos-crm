@@ -94,10 +94,9 @@ export default function ContatoRelationships({ orgSlug, contatoId, initial }: Pr
       <CardContent className="space-y-4">
         {adding && (
           <div className="space-y-3 rounded-lg border p-3 bg-muted/20">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Grau de parentesco</Label>
+            <div className="flex items-center gap-2">
               <Select value={kind} onValueChange={(v) => setKind(v as RelationshipKind)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-auto shrink-0 gap-1.5">
                   <SelectValue placeholder="Escolher..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -108,15 +107,11 @@ export default function ContatoRelationships({ orgSlug, contatoId, initial }: Pr
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Dados</Label>
-              <textarea
+              <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={'Ex.: João da Silva, CPF 000.000.000-00, nascido em 20/06/2015...'}
-                rows={10}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                className="flex h-9 flex-1 min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
             <div className="flex justify-end gap-2">
