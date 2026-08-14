@@ -26,7 +26,7 @@ export async function listRelationships(
 
   const { data, error } = await supabase
     .from('contato_relationships')
-    .select('id, kind, note, related_contato_id, created_at, related:related_contato_id(name)')
+    .select('id, kind, note, related_contato_id, related_name, related_cpf, related_birth_date, created_at, related:related_contato_id(name)')
     .eq('organization_id', org.id)
     .eq('contato_id', contatoId)
     .order('created_at', { ascending: true })
@@ -38,22 +38,31 @@ export async function listRelationships(
     kind: r.kind,
     note: r.note,
     related_contato_id: r.related_contato_id,
-    related_name: Array.isArray(r.related) ? r.related[0]?.name : r.related?.name,
+    // Vínculo com contato existente: nome vem do join. Vínculo manual: nome
+    // é o que foi digitado (related_name já guardado na própria linha).
+    related_name: (Array.isArray(r.related) ? r.related[0]?.name : r.related?.name) || r.related_name || 'Contato',
+    related_cpf: r.related_cpf,
+    related_birth_date: r.related_birth_date,
     created_at: r.created_at,
   }))
 }
 
+// Duas formas de criar o vínculo: com um contato já cadastrado (relatedContatoId)
+// ou manual (nome + CPF/nascimento opcionais, sem contato próprio no CRM) —
+// exatamente uma das duas precisa vir preenchida.
 const addSchema = z.object({
   contatoId: z.string().uuid(),
-  relatedContatoId: z.string().uuid(),
   kind: z.enum(RELATIONSHIP_KINDS),
   note: z.string().trim().max(500).optional().nullable(),
+  relatedContatoId: z.string().uuid().optional().nullable(),
+  relatedName: z.string().trim().min(1).max(200).optional().nullable(),
+  relatedCpf: z.string().trim().max(20).optional().nullable(),
+  relatedBirthDate: z.string().trim().optional().nullable(),
 })
 
 /**
- * Cria um vínculo de parentesco. O vínculo é direcionado
- * (contato -> related), mas também cria a aresta inversa quando faz sentido,
- * para que ambos os contatos exibam o relacionamento.
+ * Cria um vínculo de parentesco — com um contato existente ou manual (pessoa
+ * sem contato próprio, ex.: familiar que viaja junto mas nunca vai virar lead).
  */
 export async function addRelationship(orgSlug: string, raw: unknown) {
   await requireAuth()
@@ -63,7 +72,11 @@ export async function addRelationship(orgSlug: string, raw: unknown) {
   const parsed = addSchema.safeParse(raw)
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
 
-  const { contatoId, relatedContatoId, kind, note } = parsed.data
+  const { contatoId, kind, note, relatedContatoId, relatedName, relatedCpf, relatedBirthDate } = parsed.data
+
+  if (!relatedContatoId && !relatedName) {
+    return { ok: false as const, error: 'Selecione um contato ou preencha o nome.' }
+  }
   if (contatoId === relatedContatoId) {
     return { ok: false as const, error: 'Um contato não pode se relacionar consigo mesmo.' }
   }
@@ -71,7 +84,10 @@ export async function addRelationship(orgSlug: string, raw: unknown) {
   const { error } = await supabase.from('contato_relationships').insert({
     organization_id: org.id,
     contato_id: contatoId,
-    related_contato_id: relatedContatoId,
+    related_contato_id: relatedContatoId || null,
+    related_name: relatedContatoId ? null : relatedName,
+    related_cpf: relatedContatoId ? null : (relatedCpf || null),
+    related_birth_date: relatedContatoId ? null : (relatedBirthDate || null),
     kind,
     note: note || null,
   })

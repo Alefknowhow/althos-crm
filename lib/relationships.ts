@@ -52,7 +52,12 @@ export type RelationshipRow = {
   id: string
   kind: RelationshipKind
   note: string | null
-  related_contato_id: string
+  /** null quando é um vínculo "manual" (pessoa sem contato próprio no CRM). */
+  related_contato_id: string | null
   related_name: string
+  /** Só preenchidos no vínculo manual — no vínculo com contato existente,
+   *  esses dados vivem no próprio contato relacionado. */
+  related_cpf: string | null
+  related_birth_date: string | null
   created_at: string
 }
