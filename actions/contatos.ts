@@ -1277,7 +1277,7 @@ export async function reopenNegotiation(orgSlug: string, contatoId: string) {
 
 /* -------- Documentos -------- */
 
-const DOC_KINDS = ['cpf_front', 'cpf_back', 'rg_front', 'rg_back', 'address_proof', 'contract', 'other'] as const
+const DOC_KINDS = ['cpf', 'rg_front', 'rg_back', 'cnh', 'passport', 'visa', 'address_proof', 'contract', 'other'] as const
 
 export async function uploadCustomerDocument(
   orgSlug: string,

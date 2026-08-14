@@ -34,20 +34,24 @@ type Doc = {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  cpf_front: 'CPF (frente)',
-  cpf_back: 'CPF (verso)',
+  cpf: 'CPF',
   rg_front: 'RG (frente)',
   rg_back: 'RG (verso)',
+  cnh: 'CNH',
+  passport: 'Passaporte',
+  visa: 'Visto',
   address_proof: 'Comprovante de endereço',
   contract: 'Contrato',
   other: 'Outro',
 }
 
 const KIND_OPTIONS = [
-  'cpf_front',
-  'cpf_back',
+  'cpf',
   'rg_front',
   'rg_back',
+  'cnh',
+  'passport',
+  'visa',
   'address_proof',
   'contract',
   'other',
@@ -89,10 +93,13 @@ export default function CustomerDocuments({
   const router = useRouter()
   const [, startTransition] = useTransition()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [kind, setKind] = useState<string>('cpf_front')
+  const [kind, setKind] = useState<string>('cpf')
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<{ url: string; mime: string } | null>(null)
   const [docToDelete, setDocToDelete] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const kindRef = useRef(kind)
+  kindRef.current = kind
 
   // If no profile exists yet (operator hasn't saved address fields), show a
   // gentle prompt — Storage upload requires the profile id as part of the
@@ -104,7 +111,9 @@ export default function CustomerDocuments({
     setUploading(true)
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('kind', kind)
+    // kindRef (não o state `kind` direto) pra funcionar certo mesmo quando
+    // chamado de dentro do listener de paste, que só é montado uma vez.
+    fd.append('kind', kindRef.current)
     const res = await uploadCustomerDocument(orgSlug, profileId, fd)
     setUploading(false)
     if (res.ok) {
@@ -142,6 +151,25 @@ export default function CustomerDocuments({
     return () => window.removeEventListener('keydown', onKey)
   }, [previewUrl])
 
+  // Ctrl+V em qualquer lugar da página envia direto pro tipo selecionado no
+  // dropdown — útil pra print de tela colado do clipboard. kindRef evita
+  // recriar o listener a cada troca de tipo (fica só um, a vida toda do
+  // componente montado).
+  useEffect(() => {
+    if (!profileId) return
+    function onPaste(e: ClipboardEvent) {
+      const file = Array.from(e.clipboardData?.items || [])
+        .find(item => item.kind === 'file')
+        ?.getAsFile()
+      if (!file) return
+      e.preventDefault()
+      handleFile(file)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId])
+
   return (
     <Card>
       <CardHeader>
@@ -153,7 +181,18 @@ export default function CustomerDocuments({
           Arquivos privados — só membros da sua org podem ver. Links de visualização expiram em 5 min.
         </p>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent
+        className={`space-y-4 rounded-lg transition-colors ${dragging ? 'bg-primary/5 ring-2 ring-primary/40 ring-inset' : ''}`}
+        onDragOver={e => { if (!profileMissing) { e.preventDefault(); setDragging(true) } }}
+        onDragLeave={e => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false) }}
+        onDrop={e => {
+          e.preventDefault()
+          setDragging(false)
+          if (profileMissing) return
+          const file = e.dataTransfer.files?.[0]
+          if (file) handleFile(file)
+        }}
+      >
         {profileMissing ? (
           <div className="border border-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300">
             Salve o cadastro do cliente acima primeiro pra habilitar o envio de documentos.
@@ -201,14 +240,14 @@ export default function CustomerDocuments({
                 )}
               </Button>
               <span className="text-[10px] text-muted-foreground">
-                PNG, JPG, WebP ou PDF — até 10MB
+                PNG, JPG, WebP ou PDF — até 10MB · arraste o arquivo ou cole com Ctrl+V
               </span>
             </div>
 
             {/* Grid of documents */}
             {initialDocuments.length === 0 ? (
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
-                Nenhum documento enviado.
+              <div className={`border-2 border-dashed rounded-lg p-8 text-center text-sm transition-colors ${dragging ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}>
+                {dragging ? 'Solte o arquivo aqui' : 'Nenhum documento enviado — arraste um arquivo aqui ou cole com Ctrl+V'}
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
