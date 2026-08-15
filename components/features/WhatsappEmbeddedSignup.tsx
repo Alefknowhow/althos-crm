@@ -180,15 +180,8 @@ export default function WhatsappEmbeddedSignup({
     }
   }
 
-  function launch() {
-    if (!sdkReady || !window.FB) {
-      log('Cliquei em conectar, mas o SDK ainda não estava pronto.')
-      toast.error('Carregando o conector... tente novamente em instantes.')
-      return
-    }
+  function doLogin() {
     log('Abrindo popup de login do Facebook...')
-    setWorking(true)
-    sessionInfo.current = {}
     window.FB.login(
       (response: any) => {
         log(`FB.login respondeu — status: ${response?.status}, tem code: ${!!response?.authResponse?.code}, tem accessToken: ${!!response?.authResponse?.accessToken}`)
@@ -215,6 +208,29 @@ export default function WhatsappEmbeddedSignup({
         extras: { version: 'v4' },
       },
     )
+  }
+
+  function launch() {
+    if (!sdkReady || !window.FB) {
+      log('Cliquei em conectar, mas o SDK ainda não estava pronto.')
+      toast.error('Carregando o conector... tente novamente em instantes.')
+      return
+    }
+    setWorking(true)
+    sessionInfo.current = {}
+    // Uma sessão/autorização anterior em cache faz o popup pular direto pro
+    // "conectado" com um accessToken de atalho, sem code nenhum (foi
+    // exatamente o que os logs mostraram: resposta em ~3s, tempo curto
+    // demais pro fluxo completo de consentimento). Desloga primeiro pra
+    // forçar o fluxo completo toda vez.
+    window.FB.getLoginStatus((status: any) => {
+      if (status?.status === 'connected') {
+        log('Sessão anterior detectada — desconectando pra forçar um login limpo...')
+        window.FB.logout(() => doLogin())
+      } else {
+        doLogin()
+      }
+    }, true)
   }
 
   return (
