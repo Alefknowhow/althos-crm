@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { Fragment, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins } from 'lucide-react'
+import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,6 +33,19 @@ function presetRange(days: number): { from: string; to: string } {
   return { from: ymd(from), to: ymd(to) }
 }
 
+function thisMonthRange(): { from: string; to: string } {
+  const now = new Date()
+  const from = new Date(now.getFullYear(), now.getMonth(), 1)
+  return { from: ymd(from), to: ymd(now) }
+}
+
+function lastMonthRange(): { from: string; to: string } {
+  const now = new Date()
+  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const to = new Date(now.getFullYear(), now.getMonth(), 0)
+  return { from: ymd(from), to: ymd(to) }
+}
+
 const ERROR_MSG: Record<string, string> = {
   forbidden: 'Seu plano não inclui exportação de relatórios.',
   invalid_period: 'Período inválido.',
@@ -47,9 +61,9 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
   const [to, setTo] = useState(init.to)
   const [data, setData] = useState<ReportData | null>(null)
   const [pending, startTransition] = useTransition()
+  const [expandedSeller, setExpandedSeller] = useState<string | null>(null)
 
-  function applyPreset(days: number) {
-    const r = presetRange(days)
+  function applyPresetRange(r: { from: string; to: string }) {
     setFrom(r.from)
     setTo(r.to)
   }
@@ -134,14 +148,13 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
 
           <div className="flex flex-wrap gap-2">
             {[
-              { label: '7 dias', days: 7 },
-              { label: '30 dias', days: 30 },
-              { label: '90 dias', days: 90 },
+              { label: 'Este mês', range: thisMonthRange() },
+              { label: 'Mês anterior', range: lastMonthRange() },
             ].map(p => (
               <button
-                key={p.days}
+                key={p.label}
                 type="button"
-                onClick={() => applyPreset(p.days)}
+                onClick={() => applyPresetRange(p.range)}
                 className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-accent/40"
               >
                 {p.label}
@@ -179,6 +192,7 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
+                    {showingForType.type === 'commission' && <th className="w-8" />}
                     {showingForType.columns.map(c => (
                       <th
                         key={c.key}
@@ -192,20 +206,81 @@ export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showingForType.rows.slice(0, 50).map((row, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      {showingForType.columns.map(c => (
-                        <td
-                          key={c.key}
-                          className={`px-3 py-2 whitespace-nowrap ${
-                            c.align === 'right' ? 'text-right tabular-nums' : 'text-left'
-                          }`}
+                  {showingForType.rows.slice(0, 50).map((row, i) => {
+                    const seller = String(row.seller ?? '')
+                    const detail = showingForType.saleDetails?.find(d => d.seller === seller)
+                    const isExpanded = showingForType.type === 'commission' && expandedSeller === seller
+                    return (
+                      <Fragment key={i}>
+                        <tr
+                          className={`border-b last:border-0 ${showingForType.type === 'commission' && detail?.sales.length ? 'cursor-pointer hover:bg-muted/20' : ''}`}
+                          onClick={() => {
+                            if (showingForType.type !== 'commission' || !detail?.sales.length) return
+                            setExpandedSeller(isExpanded ? null : seller)
+                          }}
                         >
-                          {row[c.key]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                          {showingForType.type === 'commission' && (
+                            <td className="px-2 py-2 text-muted-foreground">
+                              {detail?.sales.length
+                                ? (isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />)
+                                : null}
+                            </td>
+                          )}
+                          {showingForType.columns.map(c => (
+                            <td
+                              key={c.key}
+                              className={`px-3 py-2 whitespace-nowrap ${
+                                c.align === 'right' ? 'text-right tabular-nums' : 'text-left'
+                              }`}
+                            >
+                              {row[c.key]}
+                            </td>
+                          ))}
+                        </tr>
+                        {isExpanded && detail && (
+                          <tr className="border-b last:border-0 bg-muted/10">
+                            <td colSpan={showingForType.columns.length + 1} className="px-3 py-2">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="text-muted-foreground">
+                                    <th className="px-2 py-1 text-left font-medium">Localizador</th>
+                                    <th className="px-2 py-1 text-left font-medium">Cliente</th>
+                                    <th className="px-2 py-1 text-left font-medium">Operadora</th>
+                                    <th className="px-2 py-1 text-right font-medium">Valor da venda</th>
+                                    <th className="px-2 py-1 text-right font-medium">Comissão</th>
+                                    <th className="px-2 py-1 text-left font-medium">Data</th>
+                                    <th className="px-2 py-1 text-right font-medium" />
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {detail.sales.map(s => (
+                                    <tr key={s.saleId} className="border-t">
+                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.locator}</td>
+                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.client}</td>
+                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.operator}</td>
+                                      <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{s.amount}</td>
+                                      <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{s.commission}</td>
+                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.date}</td>
+                                      <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                                        <Link
+                                          href={`/app/${s.orgSlug}/reservas?sale=${s.saleId}`}
+                                          target="_blank"
+                                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                                          onClick={e => e.stopPropagation()}
+                                        >
+                                          Abrir reserva <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
               {showingForType.rows.length > 50 && (

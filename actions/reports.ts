@@ -38,6 +38,12 @@ export interface ReportData {
   rows: Record<string, string | number>[]
   /** Optional summary line (e.g. totals) rendered below the table. */
   totals?: Record<string, string | number>
+  /**
+   * Só no relatório de Comissões: cada linha agrupada (rows[i]) tem as
+   * vendas individuais que a compõem, pra UI expandir inline. CSV/PDF
+   * continuam usando só `columns`/`rows` (agrupado), sem essa camada extra.
+   */
+  saleDetails?: { seller: string; sales: { orgSlug: string; saleId: string; locator: string; client: string; operator: string; amount: string; commission: string; date: string }[] }[]
 }
 
 export type ReportResult =
@@ -264,10 +270,11 @@ export async function getReport(
     // number of sales, gross sold value and total commission earned.
     const { data, error } = await supabase
       .from('travel_sales')
-      .select('created_by, total_cents, commission_cents, created_at, operator')
+      .select('id, created_by, total_cents, commission_cents, created_at, operator, package_locator, client_name, contato_id, contato:contato_id(name)')
       .eq('organization_id', org.id)
       .gte('created_at', startISO)
       .lte('created_at', endISO)
+      .order('created_at', { ascending: false })
     if (error) return { ok: false, error: 'query_error' }
 
     const sellerNames = await resolveSellerNames(
@@ -276,7 +283,7 @@ export async function getReport(
 
     // Aggregate per seller. `operators` junta as operadoras distintas usadas
     // pelo vendedor no período — localizador não entra aqui, é por reserva
-    // (fica só no relatório de Vendas).
+    // (fica na lista expandida abaixo).
     type Agg = { count: number; gross: number; commission: number; operators: Set<string> }
     const bySeller = new Map<string, Agg>()
     for (const s of data || []) {
@@ -296,6 +303,7 @@ export async function getReport(
         operators: agg.operators.size > 0 ? Array.from(agg.operators).join(', ') : '—',
         gross: brl(agg.gross),
         commission: brl(agg.commission),
+        pct: agg.gross > 0 ? `${((agg.commission / agg.gross) * 100).toFixed(1)}%` : '—',
         _commission: agg.commission, // sort key, stripped before return
       }))
       .sort((a, b) => b._commission - a._commission)
@@ -303,6 +311,28 @@ export async function getReport(
 
     const totalGross = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
     const totalCommission = (data || []).reduce((a, s) => a + ((s.commission_cents as number) || 0), 0)
+
+    // Vendas individuais por vendedor, pra UI expandir cada linha agrupada.
+    const salesBySeller = new Map<string, typeof data>()
+    for (const s of data || []) {
+      const key = (s.created_by as string | null) ?? '__none__'
+      const arr = salesBySeller.get(key) || []
+      arr.push(s)
+      salesBySeller.set(key, arr)
+    }
+    const saleDetails = Array.from(salesBySeller.entries()).map(([key, sales]) => ({
+      seller: key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor'),
+      sales: (sales || []).map(s => ({
+        orgSlug,
+        saleId: s.id as string,
+        locator: (s.package_locator as string) || '—',
+        client: relName((s as any).contato) || (s.client_name as string) || '—',
+        operator: (s.operator as string) || '—',
+        amount: brl(s.total_cents as number),
+        commission: brl(s.commission_cents as number),
+        date: dateOnly(s.created_at as string),
+      })),
+    }))
 
     return {
       ok: true,
@@ -314,13 +344,16 @@ export async function getReport(
           { key: 'operators', label: 'Operadora' },
           { key: 'gross', label: 'Valor vendido', align: 'right' },
           { key: 'commission', label: 'Comissão', align: 'right' },
+          { key: 'pct', label: '% Comissão', align: 'right' },
         ],
         rows,
         totals: {
           seller: `${rows.length} vendedor(es)`,
           gross: brl(totalGross),
           commission: brl(totalCommission),
+          pct: totalGross > 0 ? `${((totalCommission / totalGross) * 100).toFixed(1)}%` : '—',
         },
+        saleDetails,
       },
     }
   }
