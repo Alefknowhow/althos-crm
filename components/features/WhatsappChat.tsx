@@ -37,7 +37,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const [simulating, setSimulating] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
@@ -230,11 +230,11 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || !selectedConversation) return
-    
+
     setSending(true)
     const text = input
     setInput('')
-    
+
     const res = await sendWhatsappMessage(orgSlug, selectedConversation.id, text)
     if (!res.ok) {
       toast.error('Não foi possível enviar a mensagem', { description: res.error })
@@ -243,6 +243,23 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     setSending(false)
     inputRef.current?.focus()
   }
+
+  // Enter envia; Shift+Enter quebra linha (igual WhatsApp normal).
+  function handleComposerKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      e.currentTarget.form?.requestSubmit()
+    }
+  }
+
+  // A caixa de texto cresce junto com o conteúdo (até um teto), em vez de
+  // rolar por dentro de uma linha só.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [input])
 
   async function uploadAndSend(file: File, caption?: string) {
     if (!selectedConversation) return
@@ -999,7 +1016,15 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 onScheduled={() => setInput('')}
               />
 
-              <Input ref={inputRef} className="flex-1 bg-secondary rounded-full px-3.5 sm:px-5 min-h-[38px] sm:min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} />
+              <Textarea
+                ref={inputRef}
+                rows={1}
+                className="flex-1 bg-secondary rounded-[20px] px-3.5 sm:px-5 py-2 sm:py-2.5 min-h-[38px] sm:min-h-[44px] max-h-40 resize-none leading-snug"
+                placeholder="Digite uma mensagem..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleComposerKeyDown}
+              />
 
               {input.trim() ? (
                 <Button type="submit" disabled={sending} className="rounded-full min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] px-0 flex items-center justify-center" title="Enviar">

@@ -5,12 +5,58 @@ import { CSS } from '@dnd-kit/utilities'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { updateLeadValue, assignLead, updateLeadTags } from '@/actions/contatos'
+import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import { cn } from '@/lib/utils'
-import { MessageCircle, Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X, MessagesSquare } from 'lucide-react'
-import Link from 'next/link'
+import { Mail, UserCheck, Sparkles, UserPlus, Check, Tag, Plus, X } from 'lucide-react'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
 import LeadProposalsButton from './LeadProposalsButton'
+
+// Ícone do WhatsApp (lucide-react não tem) — mesmo traçado usado na Sidebar,
+// mas com a cor controlada via `fill` pra distinguir os dois botões:
+// "Iniciar Waba" (chat dentro do CRM, na API oficial) fica azul; "WhatsApp"
+// (abre o app normal, fora do CRM) fica verde, a cor de sempre do WhatsApp.
+function WhatsAppGlyph({ color }: { color: string }) {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill={color}>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.92 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 1.67c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.42 5.82c0 4.55-3.7 8.25-8.25 8.25a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.4c0-4.55 3.7-8.24 8.25-8.24Zm-4.53 4.6c-.17 0-.44.06-.67.32-.23.25-.87.85-.87 2.08 0 1.22.89 2.4 1.01 2.57.13.17 1.75 2.67 4.25 3.74.59.26 1.06.41 1.42.52.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.28-.25-.13-1.47-.73-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.64.81-.79.98-.14.17-.29.19-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.44.12-.14.16-.25.24-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.37-.78-1.87-.2-.49-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01Z" />
+    </svg>
+  )
+}
+
+// Botão "Iniciar Waba" — abre a conversa desse lead dentro do CRM (API
+// oficial); se ainda não existe uma, cria na hora (sem mandar mensagem) e
+// já leva pro chat pronto pra digitar.
+function OpenWabaButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+
+  async function handleClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    if (loading) return
+    setLoading(true)
+    const res = await getOrCreateConversationForLead(orgSlug, leadId)
+    setLoading(false)
+    if (!res.ok) { toast.error(res.error); return }
+    router.push(`/app/${orgSlug}/conversas?id=${res.conversationId}`)
+  }
+
+  return (
+    <button
+      type="button"
+      onPointerDown={e => e.stopPropagation()}
+      onClick={handleClick}
+      disabled={loading}
+      title="Iniciar Waba"
+      className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-sky-50 disabled:opacity-50"
+    >
+      <WhatsAppGlyph color="#0a84ff" />
+    </button>
+  )
+}
 
 export type CardMember = { id: string; name: string; email: string }
 
@@ -530,15 +576,7 @@ export default function LeadCard({
           {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && (
-            <Link
-              href={`/app/${orgSlug}/conversas?lead=${lead.id}`}
-              onPointerDown={stop}
-              onClick={stop}
-              title="Abrir conversa"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-indigo-600 hover:bg-indigo-50"
-            >
-              <MessagesSquare className="h-3.5 w-3.5" />
-            </Link>
+            <OpenWabaButton orgSlug={orgSlug} leadId={lead.id} />
           )}
           {phoneDigits && (
             <a
@@ -548,9 +586,9 @@ export default function LeadCard({
               onPointerDown={stop}
               onClick={stop}
               title="WhatsApp"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-emerald-50"
             >
-              <MessageCircle className="h-3.5 w-3.5" />
+              <WhatsAppGlyph color="#25D366" />
             </a>
           )}
           {lead.email && (

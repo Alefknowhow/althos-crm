@@ -910,6 +910,13 @@ const CSS = `
 /* HERO */
 .alq .hero{position:relative;min-height:78vh;display:flex;align-items:flex-end;
   background:linear-gradient(160deg,#222222 0%,#3f3f3f 55%,#4a4a4a 100%);overflow:hidden}
+/* Desktop: a capa fica contida na largura do conteúdo, em 16:9 — antes ia
+   de ponta a ponta da tela com altura em vh, o que forçava um recorte
+   agressivo (e "distorcido" aos olhos) em telas largas. Mobile mantém o
+   hero cheio, como já era. */
+@media(min-width:561px){
+  .alq .hero{max-width:860px;margin:24px auto 0;aspect-ratio:16/9;min-height:0;border-radius:var(--radius)}
+}
 .alq .hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.1s ease}
 .alq .hero>img.loaded{opacity:1}
 .alq .hero::after{content:"";position:absolute;inset:0;

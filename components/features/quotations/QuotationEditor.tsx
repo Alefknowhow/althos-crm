@@ -162,7 +162,7 @@ function CoverUpload({
   return (
     <div className="space-y-2">
       <div
-        className="relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 min-h-[120px] flex items-center justify-center text-center"
+        className="relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 aspect-video flex items-center justify-center text-center"
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files?.[0]) }}
         onPaste={e => { const f = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))?.getAsFile(); if (f) { e.preventDefault(); handle(f) } }}
@@ -171,8 +171,10 @@ function CoverUpload({
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handle(e.target.files?.[0])} />
         {url ? (
           <>
+            {/* Mostra a imagem inteira (object-contain), não recortada — a
+                proporção padrão da capa é 16:9. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="Capa" className="w-full h-40 object-cover" />
+            <img src={url} alt="Capa" className="w-full h-full object-contain" />
             <div className="absolute bottom-2 right-2 flex gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}

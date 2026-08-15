@@ -10,6 +10,48 @@ import { getProfilesMap } from '@/lib/profiles'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
+/** Botão "Iniciar Waba" no card do lead: acha a conversa já existente com
+ * esse contato ou cria uma nova (sem enviar mensagem nenhuma) usando o
+ * telefone salvo no lead, pra abrir o chat já pronto pra digitar. */
+export async function getOrCreateConversationForLead(orgSlug: string, contatoId: string) {
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false as const, error: WHATSAPP_UPGRADE_ERROR }
+  }
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: existing } = await supabase
+    .from('whatsapp_conversations')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('contato_id', contatoId)
+    .maybeSingle()
+  if (existing) return { ok: true as const, conversationId: existing.id }
+
+  const { data: contato } = await supabase
+    .from('contatos')
+    .select('id, name, phone')
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!contato?.phone) return { ok: false as const, error: 'Esse lead não tem telefone cadastrado.' }
+
+  const { data: created, error } = await supabase
+    .from('whatsapp_conversations')
+    .insert({
+      organization_id: org.id,
+      contato_id: contato.id,
+      contact_phone: contato.phone.replace(/\D/g, ''),
+      contact_name: contato.name,
+    })
+    .select('id')
+    .single()
+  if (error || !created) return { ok: false as const, error: error?.message || 'Não foi possível iniciar a conversa.' }
+
+  return { ok: true as const, conversationId: created.id }
+}
+
 export async function disconnectWhatsapp(orgSlug: string) {
   if (isImpersonating()) {
     return { ok: false, error: 'Desconectar WhatsApp não é permitido em modo de impersonação.' }
