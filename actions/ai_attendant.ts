@@ -40,20 +40,32 @@ export async function getAttendantConfig(orgSlug: string): Promise<AttendantConf
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  let { data } = await supabase
-    .from('ai_attendant_config')
-    .select('*')
-    .eq('organization_id', org.id)
-    .maybeSingle()
+  // business_context e model são compartilhados com o resto da IA da org
+  // (automação do Instagram, qualificador de lead) — vivem em
+  // organizations, não mais em ai_attendant_config (ver migration
+  // 0151_consolidate_ai_business_context). As duas colunas antigas
+  // continuam no banco (não foram apagadas) só não são mais lidas.
+  const [{ data }, { data: orgData }] = await Promise.all([
+    supabase
+      .from('ai_attendant_config')
+      .select('*')
+      .eq('organization_id', org.id)
+      .maybeSingle(),
+    supabase
+      .from('organizations')
+      .select('ai_business_context, ai_qualifier_model')
+      .eq('id', org.id)
+      .maybeSingle(),
+  ])
+  let row = data
 
-  if (!data) {
+  if (!row) {
     const { data: created } = await supabase
       .from('ai_attendant_config')
       .insert({
         organization_id: org.id,
         is_enabled: false,
         persona_prompt: DEFAULT_PERSONA_PROMPT,
-        business_context: '',
         primary_goal: 'qualificar_agendar',
         working_hours: DEFAULT_WORKING_HOURS,
         out_of_hours_message: DEFAULT_OUT_OF_HOURS_MESSAGE,
@@ -61,24 +73,24 @@ export async function getAttendantConfig(orgSlug: string): Promise<AttendantConf
       })
       .select('*')
       .maybeSingle()
-    data = created
+    row = created
   }
 
   return {
-    id: data!.id,
-    organization_id: data!.organization_id,
-    is_enabled: data!.is_enabled,
-    persona_prompt: data!.persona_prompt || DEFAULT_PERSONA_PROMPT,
-    business_context: data!.business_context || '',
-    primary_goal: data!.primary_goal || 'qualificar_agendar',
-    working_hours: (data!.working_hours as any) || DEFAULT_WORKING_HOURS,
-    timezone: data!.timezone || 'America/Sao_Paulo',
-    out_of_hours_message: data!.out_of_hours_message || DEFAULT_OUT_OF_HOURS_MESSAGE,
-    handoff_phrases: (data!.handoff_phrases as any) || DEFAULT_HANDOFF_PHRASES,
-    max_replies_per_conversation: data!.max_replies_per_conversation ?? 30,
-    model: data!.model || 'claude-haiku-4-5',
-    outbound_template_name: data!.outbound_template_name,
-    outbound_enabled: data!.outbound_enabled ?? false,
+    id: row!.id,
+    organization_id: row!.organization_id,
+    is_enabled: row!.is_enabled,
+    persona_prompt: row!.persona_prompt || DEFAULT_PERSONA_PROMPT,
+    business_context: orgData?.ai_business_context || '',
+    primary_goal: row!.primary_goal || 'qualificar_agendar',
+    working_hours: (row!.working_hours as any) || DEFAULT_WORKING_HOURS,
+    timezone: row!.timezone || 'America/Sao_Paulo',
+    out_of_hours_message: row!.out_of_hours_message || DEFAULT_OUT_OF_HOURS_MESSAGE,
+    handoff_phrases: (row!.handoff_phrases as any) || DEFAULT_HANDOFF_PHRASES,
+    max_replies_per_conversation: row!.max_replies_per_conversation ?? 30,
+    model: orgData?.ai_qualifier_model || 'claude-haiku-4-5',
+    outbound_template_name: row!.outbound_template_name,
+    outbound_enabled: row!.outbound_enabled ?? false,
   }
 }
 
@@ -108,12 +120,28 @@ export async function updateAttendantConfig(orgSlug: string, raw: unknown) {
   // Ensure a row exists first.
   await getAttendantConfig(orgSlug)
 
-  const { error } = await supabase
-    .from('ai_attendant_config')
-    .update(parsed.data)
-    .eq('organization_id', org.id)
+  // business_context e model são campos compartilhados com o resto da IA
+  // da org (Instagram, qualificador) — gravam em organizations, não em
+  // ai_attendant_config (ver getAttendantConfig acima).
+  const { business_context, model, ...attendantFields } = parsed.data
 
-  if (error) return { ok: false as const, error: error.message }
+  const writes: PromiseLike<{ error: { message: string } | null }>[] = []
+  if (Object.keys(attendantFields).length > 0) {
+    writes.push(
+      supabase.from('ai_attendant_config').update(attendantFields).eq('organization_id', org.id),
+    )
+  }
+  if (business_context !== undefined || model !== undefined) {
+    const orgUpdate: Record<string, string> = {}
+    if (business_context !== undefined) orgUpdate.ai_business_context = business_context
+    if (model !== undefined) orgUpdate.ai_qualifier_model = model
+    writes.push(supabase.from('organizations').update(orgUpdate).eq('id', org.id))
+  }
+
+  const results = await Promise.all(writes)
+  const failed = results.find(r => r.error)
+  if (failed?.error) return { ok: false as const, error: failed.error.message }
+
   revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
