@@ -180,8 +180,22 @@ export default function WhatsappEmbeddedSignup({
     }
   }
 
-  function doLogin() {
+  function launch() {
+    if (!sdkReady || !window.FB) {
+      log('Cliquei em conectar, mas o SDK ainda não estava pronto.')
+      toast.error('Carregando o conector... tente novamente em instantes.')
+      return
+    }
+    setWorking(true)
+    sessionInfo.current = {}
     log('Abrindo popup de login do Facebook...')
+    // FB.login precisa ser chamado direto e de forma síncrona dentro do
+    // clique — um getLoginStatus/logout assíncrono antes dele tira o popup
+    // do contexto de "gesto do usuário" e o navegador bloqueia silenciosamente
+    // (foi o que aconteceu: status "unknown" sem popup nenhum). Pra evitar
+    // reaproveitar uma sessão em cache (que pula direto pro "conectado" com
+    // um accessToken de atalho, sem code), usa auth_type:'reauthenticate' —
+    // força o Facebook a pedir consentimento de novo sem sair do fluxo síncrono.
     window.FB.login(
       (response: any) => {
         log(`FB.login respondeu — status: ${response?.status}, tem code: ${!!response?.authResponse?.code}, tem accessToken: ${!!response?.authResponse?.accessToken}`)
@@ -201,6 +215,7 @@ export default function WhatsappEmbeddedSignup({
         config_id: configId,
         response_type: 'code',
         override_default_response_type: true,
+        auth_type: 'reauthenticate',
         // Formato exato que o painel da Meta documenta pra essa Configuration
         // (App → WhatsApp → Configurador de cadastro incorporado → "Configuração
         // do código do Cadastro incorporado"). sessionInfoVersion/setup eram do
@@ -208,29 +223,6 @@ export default function WhatsappEmbeddedSignup({
         extras: { version: 'v4' },
       },
     )
-  }
-
-  function launch() {
-    if (!sdkReady || !window.FB) {
-      log('Cliquei em conectar, mas o SDK ainda não estava pronto.')
-      toast.error('Carregando o conector... tente novamente em instantes.')
-      return
-    }
-    setWorking(true)
-    sessionInfo.current = {}
-    // Uma sessão/autorização anterior em cache faz o popup pular direto pro
-    // "conectado" com um accessToken de atalho, sem code nenhum (foi
-    // exatamente o que os logs mostraram: resposta em ~3s, tempo curto
-    // demais pro fluxo completo de consentimento). Desloga primeiro pra
-    // forçar o fluxo completo toda vez.
-    window.FB.getLoginStatus((status: any) => {
-      if (status?.status === 'connected') {
-        log('Sessão anterior detectada — desconectando pra forçar um login limpo...')
-        window.FB.logout(() => doLogin())
-      } else {
-        doLogin()
-      }
-    }, true)
   }
 
   return (
