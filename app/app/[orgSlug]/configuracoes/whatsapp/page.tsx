@@ -23,15 +23,20 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
         </p>
       </div>
 
-      {alreadyConnected && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>
-            WhatsApp conectado
-            {org.whatsapp_phone_number_id ? ` (número ${org.whatsapp_phone_number_id})` : ''}.
-          </span>
-        </div>
-      )}
+      <div
+        className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
+          alreadyConnected
+            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700'
+            : 'border-muted bg-muted/30 text-muted-foreground'
+        }`}
+      >
+        {alreadyConnected ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+        <span>
+          {alreadyConnected
+            ? `WhatsApp conectado — ${(org as any).whatsapp_display_phone || `número ${org.whatsapp_phone_number_id}`}`
+            : 'Nenhum número de WhatsApp conectado no momento.'}
+        </span>
+      </div>
 
       {embeddedConfigured ? (
         <div className="bg-card border rounded-none p-6 space-y-4">

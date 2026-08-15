@@ -58,12 +58,24 @@ export default function WhatsappEmbeddedSignup({
   // the FB.login callback hands us the `code`.
   const sessionInfo = useRef<{ phoneNumberId?: string; wabaId?: string }>({})
 
+  // Log visível na própria tela — depender do console do navegador se
+  // mostrou pouco confiável pra diagnosticar (mensagens cortadas/perdidas ao
+  // copiar). Cada linha aqui também vai pro console, com o mesmo prefixo.
+  const [debugLog, setDebugLog] = useState<string[]>([])
+  const log = (msg: string) => {
+    const line = `${new Date().toLocaleTimeString('pt-BR')} — ${msg}`
+    console.log('[WhatsApp Embedded Signup]', msg)
+    setDebugLog(prev => [...prev, line].slice(-20))
+  }
+
   // Load the Facebook JS SDK once.
   useEffect(() => {
     if (window.FB) {
+      log('SDK já estava carregado.')
       setSdkReady(true)
       return
     }
+    log('Carregando SDK do Facebook...')
     window.fbAsyncInit = function () {
       window.FB.init({
         appId,
@@ -71,6 +83,7 @@ export default function WhatsappEmbeddedSignup({
         xfbml: false,
         version: GRAPH_VERSION,
       })
+      log(`SDK pronto (versão ${GRAPH_VERSION}).`)
       setSdkReady(true)
     }
     const id = 'facebook-jssdk'
@@ -80,8 +93,10 @@ export default function WhatsappEmbeddedSignup({
       js.src = 'https://connect.facebook.net/en_US/sdk.js'
       js.async = true
       js.defer = true
+      js.onerror = () => log('ERRO: falha ao carregar o script do SDK do Facebook (bloqueado por adblock/rede?).')
       document.body.appendChild(js)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   // Capture the WhatsApp Embedded Signup session info (phone/waba ids).
@@ -99,7 +114,7 @@ export default function WhatsappEmbeddedSignup({
         // FINISH (ex.: usuário cancelou, deu erro de verificação, ou o
         // fluxo devolveu um evento diferente do esperado) a UI fica em
         // silêncio total sem nenhuma pista do que aconteceu.
-        console.log('[WhatsApp Embedded Signup]', data.event, data.data)
+        log(`postMessage recebido: ${data.event} — ${JSON.stringify(data.data)}`)
         if (data.event === 'FINISH') {
           sessionInfo.current = {
             phoneNumberId: data.data?.phone_number_id,
@@ -130,10 +145,13 @@ export default function WhatsappEmbeddedSignup({
       const { phoneNumberId, wabaId } = sessionInfo.current
       if (!phoneNumberId || !wabaId) {
         setWorking(false)
+        log('ERRO: recebi o code mas não tinha phoneNumberId/wabaId (postMessage FINISH não chegou antes do callback).')
         toast.error('Não recebemos os dados do número. Tente novamente.')
         return
       }
+      log('Enviando code pro servidor pra trocar por access token...')
       const res = await connectWhatsappEmbedded(orgSlug, { code, phoneNumberId, wabaId })
+      log(res.ok ? 'Conectado com sucesso.' : `ERRO do servidor: ${res.error}`)
       setWorking(false)
       if (res.ok) {
         toast.success(
@@ -164,14 +182,16 @@ export default function WhatsappEmbeddedSignup({
 
   function launch() {
     if (!sdkReady || !window.FB) {
+      log('Cliquei em conectar, mas o SDK ainda não estava pronto.')
       toast.error('Carregando o conector... tente novamente em instantes.')
       return
     }
+    log('Abrindo popup de login do Facebook...')
     setWorking(true)
     sessionInfo.current = {}
     window.FB.login(
       (response: any) => {
-        console.log('[WhatsApp Embedded Signup] FB.login response', response)
+        log(`FB.login respondeu — status: ${response?.status}, tem code: ${!!response?.authResponse?.code}, tem accessToken: ${!!response?.authResponse?.accessToken}`)
         const code = response?.authResponse?.code
         if (code) {
           finish(code)
@@ -179,6 +199,8 @@ export default function WhatsappEmbeddedSignup({
           setWorking(false)
           if (response?.status === 'unknown' || !response?.authResponse) {
             toast.error('Não foi possível concluir a conexão. Verifique se o pop-up não foi bloqueado e tente de novo.')
+          } else {
+            toast.error('O Facebook não devolveu o código esperado. Veja o log de diagnóstico abaixo.')
           }
         }
       },
@@ -248,6 +270,26 @@ export default function WhatsappEmbeddedSignup({
           ? 'Pra trocar de número, conecte outro pelo Facebook — ele substitui o atual automaticamente.'
           : 'Você será direcionado ao Facebook para autorizar e escolher o número. Sem copiar tokens ou IDs.'}
       </p>
+
+      {debugLog.length > 0 && (
+        <div className="rounded-md border bg-muted/30 p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Log de diagnóstico da conexão</p>
+            <button
+              type="button"
+              onClick={() => setDebugLog([])}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              limpar
+            </button>
+          </div>
+          <div className="font-mono text-[11px] leading-relaxed text-muted-foreground max-h-48 overflow-y-auto space-y-0.5">
+            {debugLog.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

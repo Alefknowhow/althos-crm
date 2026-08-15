@@ -19,7 +19,7 @@ export async function disconnectWhatsapp(orgSlug: string) {
 
   const { error } = await supabase
     .from('organizations')
-    .update({ whatsapp_phone_number_id: null, whatsapp_access_token: null })
+    .update({ whatsapp_phone_number_id: null, whatsapp_access_token: null, whatsapp_display_phone: null })
     .eq('id', org.id)
 
   if (error) return { ok: false, error: error.message }
@@ -98,15 +98,20 @@ export async function connectWhatsappEmbedded(
       throw new Error(subErr?.error?.message || 'Falha ao assinar o webhook da conta.')
     }
 
-    // 3. Busca o número exibido para guardar junto (informativo).
+    // 3. Busca o número/nome exibido — é o que a tela mostra no lugar do
+    // phone_number_id técnico, pra dar pra reconhecer qual conta está ativa.
     let displayPhone: string | null = null
+    let verifiedName: string | null = null
     try {
       const phoneRes = await fetch(
         `${GRAPH}/${params.phoneNumberId}?fields=display_phone_number,verified_name`,
         { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10_000) },
       )
       const phoneData = await phoneRes.json()
-      if (phoneRes.ok) displayPhone = phoneData?.display_phone_number ?? null
+      if (phoneRes.ok) {
+        displayPhone = phoneData?.display_phone_number ?? null
+        verifiedName = phoneData?.verified_name ?? null
+      }
     } catch { /* informativo, não bloqueia */ }
 
     // 4. Persiste as credenciais na org (mesmo modelo do fluxo manual).
@@ -116,6 +121,7 @@ export async function connectWhatsappEmbedded(
       .update({
         whatsapp_phone_number_id: params.phoneNumberId,
         whatsapp_access_token: accessToken,
+        whatsapp_display_phone: displayPhone && verifiedName ? `${verifiedName} — ${displayPhone}` : displayPhone,
       })
       .eq('id', org.id)
     if (error) throw new Error(error.message)
