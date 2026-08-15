@@ -75,8 +75,14 @@ const ContentSecurityPolicy = [
     `https://api.resend.com`,
     `https://viacep.com.br`,
     `https://challenges.cloudflare.com`,
-    `https://graph.facebook.com`,
-    `https://www.facebook.com`,
+    // O fluxo de WhatsApp Embedded Signup navega internamente por vários
+    // subdomínios (graph., www., business.facebook.com confirmado — é o
+    // domínio do link de teste que funcionou — possivelmente outros). Sem
+    // isso liberado, o CSP bloqueia silenciosamente a comunicação entre o
+    // popup e o SDK, sem erro nenhum no console — o popup completa
+    // visualmente, mas nada chega na página.
+    `https://*.facebook.com`,
+    `https://connect.facebook.net`,
     // Inngest Dev Server in local dev
     isDev ? 'http://localhost:8288' : '',
   ]
@@ -84,9 +90,9 @@ const ContentSecurityPolicy = [
     .join(' '),
 
   // Iframe embeds: Turnstile challenge widget + YouTube (vídeos da Vitrine)
-  // + www.facebook.com (iframe oculto do SDK da Meta pro Embedded Signup
-  // do WhatsApp se comunicar entre domínios).
-  `frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.facebook.com`,
+  // + qualquer subdomínio da Meta (iframes ocultos do SDK pro Embedded
+  // Signup do WhatsApp se comunicarem entre domínios).
+  `frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://*.facebook.com`,
 
   // Block <object>, <embed>, <applet> — vectors for plugin exploits.
   `object-src 'none'`,
