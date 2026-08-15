@@ -222,11 +222,17 @@ export default function WhatsappEmbeddedSignup({
         config_id: configId,
         response_type: 'code',
         override_default_response_type: true,
-        // Formato exato que o painel da Meta documenta pra essa Configuration
-        // (App → WhatsApp → Configurador de cadastro incorporado → "Configuração
-        // do código do Cadastro incorporado"). sessionInfoVersion/setup eram do
-        // protocolo antigo — nesse app o campo esperado é "version".
-        extras: { version: 'v4' },
+        // O link de teste gerado pelo próprio painel da Meta pra essa
+        // Configuration (business.facebook.com/messaging/whatsapp/onboard)
+        // usa os 3 campos abaixo — a gente só estava mandando "version",
+        // faltava sessionInfoVersion e principalmente featureType, que é o
+        // que identifica esse fluxo como onboarding de WhatsApp Business
+        // (sem ele a Meta parece tratar como Facebook Login genérico).
+        extras: {
+          version: 'v4',
+          sessionInfoVersion: '3',
+          featureType: 'whatsapp_business_app_onboarding',
+        },
       },
     )
   }
