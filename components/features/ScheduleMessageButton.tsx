@@ -101,11 +101,11 @@ export default function ScheduleMessageButton({ orgSlug, conversationId, text, t
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${open ? 'bg-muted text-primary' : ''}`}
+        className={`min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${open ? 'bg-muted text-primary' : ''}`}
         title="Agendar envio"
         aria-label="Agendar envio"
       >
-        <Clock className="w-[22px] h-[22px]" />
+        <Clock className="w-[19px] h-[19px] sm:w-[22px] sm:h-[22px]" />
       </button>
 
       {open && (

@@ -65,7 +65,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   }
 
   return (
-    <div className="-mx-6 -mb-6 mt-[3px] flex-1 min-h-0 flex bg-background overflow-hidden">
+    <div className="-mx-3 sm:-mx-5 -mb-5 -mt-3 flex-1 min-h-0 flex bg-background overflow-hidden">
       <WhatsappChat
         orgSlug={params.orgSlug}
         orgId={org.id}
