@@ -45,6 +45,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
+  const [draggingFile, setDraggingFile] = useState(false)
   // Busca + filtros do inbox
   const [query, setQuery] = useState('')
   const [filterSeller, setFilterSeller] = useState('')
@@ -282,6 +283,22 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       toast.error('Não foi possível acessar o microfone. Verifique a permissão do navegador.')
     }
   }
+
+  // Colar imagem (Ctrl+V) direto na conversa aberta.
+  useEffect(() => {
+    if (!selectedConversation) return
+    function onPaste(e: ClipboardEvent) {
+      const file = Array.from(e.clipboardData?.items || [])
+        .find(item => item.kind === 'file' && item.type.startsWith('image/'))
+        ?.getAsFile()
+      if (!file) return
+      e.preventDefault()
+      uploadAndSend(file)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation?.id])
 
   async function handleToggleFlag(
     action: (orgSlug: string, id: string, value: boolean) => Promise<{ ok: boolean; error?: string }>,
@@ -559,7 +576,25 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
         </div>
       </div>
 
-      <div className={`flex-1 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+      <div
+        className={`relative flex-1 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        onDragOver={e => { if (selectedConversation) { e.preventDefault(); setDraggingFile(true) } }}
+        onDragLeave={e => { if (e.currentTarget === e.target) setDraggingFile(false) }}
+        onDrop={e => {
+          e.preventDefault()
+          setDraggingFile(false)
+          if (!selectedConversation) return
+          const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'))
+          if (!file) { toast.error('Solte um arquivo de imagem (JPG, PNG ou WEBP).'); return }
+          if (file.size > 20 * 1024 * 1024) { toast.error('Arquivo muito grande (máx 20MB).'); return }
+          uploadAndSend(file)
+        }}
+      >
+        {selectedConversation && draggingFile && (
+          <div className="absolute inset-0 z-30 bg-primary/10 border-4 border-dashed border-primary flex items-center justify-center pointer-events-none">
+            <div className="bg-background rounded-lg px-6 py-4 shadow-lg text-sm font-medium">Solte a imagem para enviar</div>
+          </div>
+        )}
         {selectedConversation ? (
           <>
             <div className="px-4 md:px-6 py-3 border-b border-[#e9edef] dark:border-[#2a3942] bg-white dark:bg-[#202c33] flex justify-between items-center gap-2 h-16 shrink-0   z-10">

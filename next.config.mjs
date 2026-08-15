@@ -155,7 +155,11 @@ const securityHeaders = async () => [
         key: 'Permissions-Policy',
         value: [
           'camera=()',
-          'microphone=()',
+          // Gravação de áudio no chat (WhatsApp/Instagram) usa
+          // getUserMedia — 'microphone=()' bloqueava a permissão antes
+          // até do navegador poder perguntar, sem erro nenhum visível
+          // além do catch genérico.
+          'microphone=(self)',
           'geolocation=()',
           'payment=()',
           'usb=()',
