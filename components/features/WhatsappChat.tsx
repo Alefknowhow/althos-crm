@@ -8,6 +8,7 @@ import {
   sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage,
   setConversationArchived, setConversationMuted, setConversationPinned, setConversationFavorite,
   markConversationAsUnread, clearConversationMessages, deleteConversation, blockWhatsappContact,
+  sendWhatsappMedia,
 } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -38,6 +39,12 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showEmoji, setShowEmoji] = useState(false)
+  // Envio de imagem / gravação de áudio
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
   // Busca + filtros do inbox
   const [query, setQuery] = useState('')
   const [filterSeller, setFilterSeller] = useState('')
@@ -221,6 +228,59 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     }
     setSending(false)
     inputRef.current?.focus()
+  }
+
+  async function uploadAndSend(file: File) {
+    if (!selectedConversation) return
+    setUploadingMedia(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await sendWhatsappMedia(orgSlug, selectedConversation.id, fd)
+      if (!res.ok) toast.error('Não foi possível enviar', { description: res.error })
+    } finally {
+      setUploadingMedia(false)
+    }
+  }
+
+  function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) { toast.error('Arquivo muito grande (máx 20MB).'); return }
+    uploadAndSend(file)
+  }
+
+  async function handleMicClick() {
+    if (recording) {
+      mediaRecorderRef.current?.stop()
+      return
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Gravação de áudio não é suportada neste navegador.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      recordedChunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        setRecording(false)
+        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size > 0) {
+          const file = new File([blob], `audio-${Date.now()}.webm`, { type: blob.type })
+          uploadAndSend(file)
+        }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setRecording(true)
+    } catch {
+      toast.error('Não foi possível acessar o microfone. Verifique a permissão do navegador.')
+    }
   }
 
   async function handleToggleFlag(
@@ -708,14 +768,26 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               </div>
 
               {/* Imagem / anexo */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleImageSelected}
+              />
               <button
                 type="button"
-                onClick={() => toast.info('Envio de imagens', { description: 'Disponível ao conectar a API oficial do WhatsApp.' })}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingMedia}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0 disabled:opacity-50"
                 title="Inserir imagem"
                 aria-label="Inserir imagem"
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                {uploadingMedia ? (
+                  <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" opacity="0.25"/><path d="M21 12a9 9 0 0 0-9-9" /></svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                )}
               </button>
 
               {/* Agendar envio */}
@@ -738,12 +810,17 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               ) : (
                 <button
                   type="button"
-                  onClick={() => toast.info('Gravação de áudio', { description: 'Disponível ao conectar a API oficial do WhatsApp.' })}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0"
-                  title="Gravar áudio"
-                  aria-label="Gravar áudio"
+                  onClick={handleMicClick}
+                  disabled={uploadingMedia}
+                  className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-primary-foreground hover:opacity-90 shrink-0 disabled:opacity-50 ${recording ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
+                  title={recording ? 'Parar e enviar' : 'Gravar áudio'}
+                  aria-label={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                  {recording ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                  )}
                 </button>
               )}
             </form>

@@ -3,7 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating, isSuperAdmin } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { sendTextMessage } from '@/lib/whatsapp/meta-client'
+import { sendTextMessage, sendMediaMessage } from '@/lib/whatsapp/meta-client'
 import { listOrgMembers } from '@/actions/team'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { getProfilesMap } from '@/lib/profiles'
@@ -208,6 +208,83 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
       status: 'failed',
       content: { body: content, error: e.message }
     }).eq('id', msg.id)
+    return { ok: false, error: e.message }
+  }
+}
+
+const MEDIA_KIND_BY_MIME: Record<string, 'image' | 'audio' | 'video' | 'document'> = {
+  'image/jpeg': 'image', 'image/png': 'image', 'image/webp': 'image',
+  'audio/webm': 'audio', 'audio/ogg': 'audio', 'audio/mp4': 'audio', 'audio/mpeg': 'audio', 'audio/aac': 'audio', 'audio/opus': 'audio',
+  'video/mp4': 'video', 'video/3gpp': 'video',
+  'application/pdf': 'document',
+}
+
+/** Envia uma imagem ou áudio (inclusive gravado na hora) numa conversa —
+ * sobe pro Storage público (mesmo bucket usado pra mídia recebida) e manda
+ * pra Meta por link. */
+export async function sendWhatsappMedia(orgSlug: string, conversationId: string, formData: FormData) {
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+  }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const file = formData.get('file') as File | null
+  const caption = (formData.get('caption') as string | null) || undefined
+  if (!file) return { ok: false, error: 'Arquivo ausente.' }
+
+  const baseMime = file.type.split(';')[0].trim() // MediaRecorder pode incluir ";codecs=opus" etc.
+  const kind = MEDIA_KIND_BY_MIME[baseMime]
+  if (!kind) return { ok: false, error: `Tipo de arquivo não suportado: ${file.type}` }
+  if (file.size > 20 * 1024 * 1024) return { ok: false, error: 'Arquivo muito grande (máx 20MB).' }
+
+  const { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('id', conversationId).eq('organization_id', org.id).maybeSingle()
+  if (!conv) return { ok: false, error: 'Conversa não encontrada' }
+
+  // Upload direto pro bucket público (esse bucket só aceita escrita via
+  // service role — a action já roda no servidor, então usa o admin client).
+  const admin = createAdminClient()
+  const ext = kind === 'audio' ? 'webm' : (file.name.split('.').pop() || 'bin')
+  const path = `${org.id}/outbound-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error: uploadError } = await admin.storage.from('whatsapp-media').upload(path, await file.arrayBuffer(), {
+    contentType: baseMime,
+    upsert: false,
+  })
+  if (uploadError) return { ok: false, error: uploadError.message }
+  const { data: { publicUrl } } = admin.storage.from('whatsapp-media').getPublicUrl(path)
+
+  const agentName = (await getProfilesMap([user.id])).get(user.id)?.full_name || null
+
+  const { data: msg, error: insertError } = await supabase.from('whatsapp_messages').insert({
+    conversation_id: conv.id,
+    organization_id: org.id,
+    direction: 'outbound',
+    type: kind,
+    content: { media_url: publicUrl, [kind]: caption ? { caption } : {} },
+    status: 'sending',
+    sent_by_name: agentName,
+  }).select().single()
+  if (insertError) return { ok: false, error: insertError.message }
+
+  const previewLabel = kind === 'image' ? '📷 Foto' : kind === 'audio' ? '🎤 Áudio' : kind === 'video' ? '🎬 Vídeo' : '📄 Documento'
+  await supabase.from('whatsapp_conversations').update({
+    last_message_at:        new Date().toISOString(),
+    last_message_preview:   previewLabel,
+    last_message_direction: 'outbound',
+  }).eq('id', conv.id).eq('organization_id', org.id)
+
+  try {
+    const metaRes = await sendMediaMessage(org, conv.contact_phone, kind, publicUrl, caption, file.name)
+    await supabase.from('whatsapp_messages').update({
+      meta_message_id: metaRes.messages[0].id,
+      status: 'sent',
+    }).eq('id', msg.id)
+
+    revalidatePath(`/app/${orgSlug}/conversas`)
+    return { ok: true, message: msg }
+  } catch (e: any) {
+    await supabase.from('whatsapp_messages').update({ status: 'failed' }).eq('id', msg.id)
     return { ok: false, error: e.message }
   }
 }

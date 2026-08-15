@@ -1,3 +1,45 @@
+/** Envia mídia por link (a Meta baixa da URL informada) — mais simples que o
+ * fluxo de upload de media_id, e a URL pública do Storage já é acessível
+ * pela Meta. */
+export async function sendMediaMessage(
+  orgConfig: any,
+  to: string,
+  type: 'image' | 'audio' | 'video' | 'document',
+  link: string,
+  caption?: string,
+  filename?: string,
+) {
+  if (!orgConfig.whatsapp_phone_number_id || !orgConfig.whatsapp_access_token || orgConfig.whatsapp_access_token === 'mock') {
+    console.log(`[MOCK WHATSAPP MEDIA] To: ${to} | Type: ${type} | Link: ${link}`)
+    return { messages: [{ id: `wamid.MOCK_${Date.now()}` }] }
+  }
+
+  const mediaObj: Record<string, any> = { link }
+  if (caption && type !== 'audio') mediaObj.caption = caption
+  if (filename && type === 'document') mediaObj.filename = filename
+
+  const res = await fetch(`https://graph.facebook.com/v26.0/${orgConfig.whatsapp_phone_number_id}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${orgConfig.whatsapp_access_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type,
+      [type]: mediaObj,
+    })
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    throw new Error(error.error?.message || 'Erro na API do Meta')
+  }
+  return res.json()
+}
+
 export async function sendTextMessage(orgConfig: any, to: string, text: string) {
   if (!orgConfig.whatsapp_phone_number_id || !orgConfig.whatsapp_access_token || orgConfig.whatsapp_access_token === 'mock') {
     console.log(`[MOCK WHATSAPP] To: ${to} | Text: ${text}`)
