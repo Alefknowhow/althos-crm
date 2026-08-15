@@ -25,6 +25,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [simulating, setSimulating] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
@@ -203,6 +204,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       setInput(text) // restore so the user doesn't lose what they typed
     }
     setSending(false)
+    inputRef.current?.focus()
   }
 
   async function handleCancelScheduled(id: string) {
@@ -616,7 +618,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 onScheduled={() => setInput('')}
               />
 
-              <Input className="flex-1 bg-secondary rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} disabled={sending} />
+              <Input ref={inputRef} className="flex-1 bg-secondary rounded-full px-5 min-h-[44px]" placeholder="Digite uma mensagem..." value={input} onChange={e => setInput(e.target.value)} />
 
               {input.trim() ? (
                 <Button type="submit" disabled={sending} className="rounded-full min-h-[44px] min-w-[44px] px-0 flex items-center justify-center" title="Enviar">

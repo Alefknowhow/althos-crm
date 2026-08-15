@@ -57,6 +57,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [pausing, setPausing] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -139,6 +140,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
       router.refresh()
     }
     setSending(false)
+    inputRef.current?.focus()
   }
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -347,11 +349,11 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
               </button>
 
               <Input
+                ref={inputRef}
                 className="flex-1 bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-full px-5 min-h-[44px] focus-visible:ring-0"
                 placeholder="Mensagem..."
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                disabled={sending}
               />
               <Button type="submit" disabled={sending || !input.trim()} variant="ghost" className="rounded-full min-h-[44px] min-w-[44px] px-0 text-[#3797f0] hover:bg-[#efefef] dark:hover:bg-[#262626] disabled:opacity-40" title="Enviar">
                 {sending ? '...' : (
