@@ -556,6 +556,22 @@ export async function getConversationContext(orgSlug: string, conversationId: st
  * quando a conversa ainda não tem lead. Cai no primeiro estágio do pipeline
  * padrão.
  */
+/** Limpa o resumo de handoff da IA depois que o atendente leu. */
+export async function dismissHandoffSummary(orgSlug: string, conversationId: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('whatsapp_conversations')
+    .update({ ai_handoff_summary: null, ai_handoff_at: null })
+    .eq('id', conversationId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/conversas`)
+  return { ok: true as const }
+}
+
 export async function createLeadFromConversation(orgSlug: string, conversationId: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

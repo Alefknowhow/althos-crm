@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
 import ImageEditor from '@/components/features/ImageEditor'
-import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound } from 'lucide-react'
+import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound, Sparkles } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -638,6 +638,9 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                     <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200" title="Atendimento manual — IA pausada nesta conversa">
                       manual
                     </span>
+                  )}
+                  {c.ai_handoff_summary && (
+                    <Sparkles className="w-3 h-3 text-primary shrink-0" aria-label="Tem resumo da IA" />
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">

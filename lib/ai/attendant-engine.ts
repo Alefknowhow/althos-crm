@@ -315,6 +315,39 @@ export async function respondAsAttendant(
   }
 }
 
+/**
+ * Gera um resumo estruturado da conversa pro atendente humano que vai
+ * assumir depois de um handoff (seção 15 do documento de reestruturação).
+ * Chamada separada e mais barata que respondAsAttendant — sem tools, sem
+ * loop, só extrai o que já foi dito. Nunca é enviada ao cliente.
+ */
+export async function summarizeForHandoff(
+  input: { messages: AttendantTurn[]; leadProfile?: AttendantInput['leadProfile']; orgName?: string },
+  config: { apiKey: string; model?: string },
+): Promise<string> {
+  const client = new Anthropic({ apiKey: config.apiKey })
+
+  const transcript = input.messages
+    .map(m => `${m.role === 'user' ? 'Cliente' : 'IA'}: ${m.content}`)
+    .join('\n')
+
+  const system = [
+    'Você resume uma conversa de atendimento pro atendente humano que vai assumir agora.',
+    'Preencha SOMENTE com o que foi dito de fato na conversa abaixo — nunca invente ou deduza além do que está escrito.',
+    'Responda EXATAMENTE neste formato, uma linha por campo, omitindo por completo a linha de qualquer campo sem informação (não escreva "não informado"):',
+    'Cliente:\nInteresse:\nNecessidade:\nOrçamento:\nData:\nProduto:\nPrincipais dúvidas:\nObjeções:\nStatus:\nPróxima ação recomendada:',
+  ].join('\n\n')
+
+  const res = await client.messages.create({
+    model: config.model || 'claude-haiku-4-5',
+    max_tokens: 400,
+    system,
+    messages: [{ role: 'user', content: `Conversa:\n${transcript}` }],
+  })
+  const block = res.content.find(b => b.type === 'text') as Anthropic.Messages.TextBlock | undefined
+  return (block?.text || '').trim()
+}
+
 /* ─────────────────────────── Streaming variant ───────────────────────────
  * Used by the Inicial copiloto dock. Same tool loop as respondAsAttendant,
  * but streams the model's text as it's generated instead of awaiting the

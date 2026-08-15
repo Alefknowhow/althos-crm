@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Sparkles, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage } from '@/actions/contatos'
-import { createLeadFromConversation } from '@/actions/whatsapp'
+import { createLeadFromConversation, dismissHandoffSummary } from '@/actions/whatsapp'
 
 type Member = { user_id: string; name: string; email: string }
 
@@ -62,6 +63,7 @@ export default function ConversationDetailPanel({
   const [tags, setTags] = useState((lead?.tags ?? []).join(', '))
   const [savingContact, setSavingContact] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [dismissingSummary, setDismissingSummary] = useState(false)
 
   // Re-sync local state when a different conversation/lead is loaded.
   useEffect(() => {
@@ -128,6 +130,14 @@ export default function ConversationDetailPanel({
     router.refresh()
   }
 
+  async function handleDismissSummary() {
+    setDismissingSummary(true)
+    const res = await dismissHandoffSummary(orgSlug, conversation.id)
+    setDismissingSummary(false)
+    if ((res as any)?.ok === false) toast.error('Não foi possível dispensar o resumo')
+    else router.refresh()
+  }
+
   async function handleCreateLead() {
     setCreating(true)
     const res = await createLeadFromConversation(orgSlug, conversation.id)
@@ -150,6 +160,11 @@ export default function ConversationDetailPanel({
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
+        {conversation?.ai_handoff_summary && (
+          <div className="mt-2 text-primary" title="Tem um resumo da IA — abra o painel">
+            <Sparkles className="h-3.5 w-3.5" />
+          </div>
+        )}
         {responsibleId && (
           <div
             className={`mt-3 h-7 w-7 rounded-full ${agentColor(responsibleId)} text-white text-[10px] font-semibold flex items-center justify-center`}
@@ -178,6 +193,26 @@ export default function ConversationDetailPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 text-sm">
+        {conversation?.ai_handoff_summary && (
+          <section className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <Sparkles className="h-3 w-3" /> Resumo da IA
+              </h4>
+              <button
+                type="button"
+                onClick={handleDismissSummary}
+                disabled={dismissingSummary}
+                title="Dispensar resumo"
+                aria-label="Dispensar resumo"
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap text-xs leading-relaxed">{conversation.ai_handoff_summary}</p>
+          </section>
+        )}
         {!lead ? (
           <section className="space-y-3 rounded-lg border border-dashed p-4 text-center">
             <p className="text-muted-foreground text-xs">Esta conversa ainda não tem um lead vinculado.</p>

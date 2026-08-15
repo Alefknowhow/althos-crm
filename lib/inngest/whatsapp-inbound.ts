@@ -11,7 +11,7 @@
 import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendTextMessage } from '@/lib/whatsapp/meta-client'
-import { respondAsAttendant } from '@/lib/ai/attendant-engine'
+import { respondAsAttendant, summarizeForHandoff } from '@/lib/ai/attendant-engine'
 import { ATTENDANT_TOOLS, executeAttendantTool } from '@/lib/ai/attendant-tools'
 import { getPlatformAiKey } from '@/lib/ai/api-key'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
@@ -228,6 +228,26 @@ export const processWhatsappInboundFn = inngest.createFunction(
       // humano — próxima mensagem do cliente não aciona a IA de novo.
       ...(result.handoffRequested ? { automation_paused: true } : {}),
     }).eq('id', conv.id)
+
+    // Handoff: gera o resumo estruturado pro atendente que vai assumir
+    // (seção 15). Chamada separada, não bloqueia o envio da resposta acima
+    // — se falhar, o atendente só não tem o resumo, a conversa segue normal.
+    if (result.handoffRequested) {
+      try {
+        const summary = await summarizeForHandoff(
+          { messages: [...messages, { role: 'assistant', content: result.reply }], leadProfile, orgName: org.name },
+          { apiKey, model: org.ai_qualifier_model || 'claude-haiku-4-5' },
+        )
+        if (summary) {
+          await admin.from('whatsapp_conversations').update({
+            ai_handoff_summary: summary,
+            ai_handoff_at: new Date().toISOString(),
+          }).eq('id', conv.id)
+        }
+      } catch (e: any) {
+        console.error('[whatsapp inbound] falha ao gerar resumo de handoff:', e?.message)
+      }
+    }
 
     try {
       const metaRes = await sendTextMessage(org, conv.contact_phone, result.reply)
