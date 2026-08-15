@@ -42,9 +42,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   // Envio de imagem / gravação de áudio
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [recordingPaused, setRecordingPaused] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const recordedChunksRef = useRef<Blob[]>([])
+  const opusRecorderRef = useRef<any>(null)
   const [draggingFile, setDraggingFile] = useState(false)
   // Busca + filtros do inbox
   const [query, setQuery] = useState('')
@@ -252,37 +253,67 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     uploadAndSend(file)
   }
 
+  // Grava em Ogg Opus de verdade (via opus-recorder, WASM) — o WhatsApp
+  // rejeita audio/webm (o formato nativo do MediaRecorder do navegador),
+  // só aceita AAC, MP3, AMR ou OGG/Opus.
   async function handleMicClick() {
-    if (recording) {
-      mediaRecorderRef.current?.stop()
-      return
-    }
+    if (recording) return // enquanto grava, os controles são os da barra (pausar/cancelar/enviar)
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error('Gravação de áudio não é suportada neste navegador.')
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : undefined
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-      recordedChunksRef.current = []
-      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
-      recorder.onstop = () => {
-        stream.getTracks().forEach(t => t.stop())
-        setRecording(false)
-        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+      const { default: Recorder } = await import('opus-recorder')
+      const rec = new Recorder({ encoderPath: '/encoderWorker.min.js', numberOfChannels: 1, streamPages: false })
+      rec.ondataavailable = (arrayBuffer: ArrayBuffer) => {
+        const blob = new Blob([arrayBuffer], { type: 'audio/ogg' })
         if (blob.size > 0) {
-          const file = new File([blob], `audio-${Date.now()}.webm`, { type: blob.type })
+          const file = new File([blob], `audio-${Date.now()}.ogg`, { type: 'audio/ogg' })
           uploadAndSend(file)
         }
       }
-      mediaRecorderRef.current = recorder
-      recorder.start()
+      await rec.start()
+      opusRecorderRef.current = rec
       setRecording(true)
+      setRecordingPaused(false)
+      setRecordingSeconds(0)
     } catch {
       toast.error('Não foi possível acessar o microfone. Verifique a permissão do navegador.')
     }
   }
+
+  function handleRecordingPauseToggle() {
+    const rec = opusRecorderRef.current
+    if (!rec) return
+    if (recordingPaused) { rec.resume(); setRecordingPaused(false) }
+    else { rec.pause(); setRecordingPaused(true) }
+  }
+
+  function handleCancelRecording() {
+    const rec = opusRecorderRef.current
+    if (!rec) return
+    rec.ondataavailable = () => {} // descarta — não chama uploadAndSend
+    rec.stop()
+    opusRecorderRef.current = null
+    setRecording(false)
+    setRecordingPaused(false)
+  }
+
+  function handleSendRecording() {
+    const rec = opusRecorderRef.current
+    if (!rec) return
+    rec.stop() // dispara ondataavailable já configurado, que envia
+    opusRecorderRef.current = null
+    setRecording(false)
+    setRecordingPaused(false)
+  }
+
+  // Timer da gravação em andamento.
+  useEffect(() => {
+    if (!recording || recordingPaused) return
+    const id = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [recording, recordingPaused])
 
   // Colar imagem (Ctrl+V) direto na conversa aberta.
   useEffect(() => {
@@ -758,7 +789,61 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               </div>
             )}
 
-            <form onSubmit={handleSend} className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex gap-2 items-end shrink-0 z-10 relative">
+            <form onSubmit={handleSend} className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex gap-2 items-center shrink-0 z-10 relative">
+              {recording ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCancelRecording}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-destructive shrink-0"
+                    title="Descartar gravação"
+                    aria-label="Descartar gravação"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+
+                  <div className="flex-1 flex items-center gap-2 min-w-0 bg-background rounded-full px-4 min-h-[44px]">
+                    {!recordingPaused && <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />}
+                    <span className="tabular-nums text-sm font-medium text-red-500 shrink-0">
+                      {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')}
+                    </span>
+                    <div className="flex-1 flex items-center gap-[3px] overflow-hidden">
+                      {WAVEFORM_BARS.map((h, i) => (
+                        <span
+                          key={i}
+                          className={`w-[3px] rounded-full shrink-0 ${recordingPaused ? 'bg-muted-foreground/30' : 'bg-primary/50'}`}
+                          style={{ height: `${h}px` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRecordingPauseToggle}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0"
+                    title={recordingPaused ? 'Continuar' : 'Pausar'}
+                    aria-label={recordingPaused ? 'Continuar gravação' : 'Pausar gravação'}
+                  >
+                    {recordingPaused ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendRecording}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0"
+                    title="Enviar áudio"
+                    aria-label="Enviar áudio"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </>
+              ) : (
+              <>
               {isMock && (
                 <Button
                   type="button"
@@ -847,16 +932,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                   type="button"
                   onClick={handleMicClick}
                   disabled={uploadingMedia}
-                  className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-primary-foreground hover:opacity-90 shrink-0 disabled:opacity-50 ${recording ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
-                  title={recording ? 'Parar e enviar' : 'Gravar áudio'}
-                  aria-label={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0 disabled:opacity-50"
+                  title="Gravar áudio"
+                  aria-label="Gravar áudio"
                 >
-                  {recording ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                  )}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                 </button>
+              )}
+              </>
               )}
             </form>
           </>
@@ -1086,6 +1169,10 @@ function formatInboxTime(iso?: string | null): string {
   if (days < 7) return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
+
+// Alturas fixas pra "forma de onda" decorativa da barra de gravação (não é
+// reativa ao áudio de verdade — só um efeito visual leve, tipo o do WhatsApp).
+const WAVEFORM_BARS = Array.from({ length: 40 }, (_, i) => 6 + Math.round(10 * Math.abs(Math.sin(i * 0.7))))
 
 // Conjunto enxuto de emojis comuns para atendimento (sem libs externas).
 const EMOJIS = [

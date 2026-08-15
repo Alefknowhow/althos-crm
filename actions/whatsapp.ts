@@ -245,7 +245,7 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
   // Upload direto pro bucket público (esse bucket só aceita escrita via
   // service role — a action já roda no servidor, então usa o admin client).
   const admin = createAdminClient()
-  const ext = kind === 'audio' ? 'webm' : (file.name.split('.').pop() || 'bin')
+  const ext = file.name.split('.').pop() || 'bin'
   const path = `${org.id}/outbound-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
   const { error: uploadError } = await admin.storage.from('whatsapp-media').upload(path, await file.arrayBuffer(), {
     contentType: baseMime,
