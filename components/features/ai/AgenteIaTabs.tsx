@@ -10,13 +10,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Bot, RotateCcw, Workflow, Wrench, Database, type LucideIcon } from 'lucide-react'
+import { Bot, RotateCcw, Workflow, Wrench, Database, Check, type LucideIcon } from 'lucide-react'
 import { updateAttendantConfig, type AttendantConfig, type KnowledgeItem } from '@/actions/ai_attendant'
 import {
   DEFAULT_PERSONA_PROMPT,
   DEFAULT_OUT_OF_HOURS_MESSAGE,
   DAY_LABELS,
 } from '@/lib/ai/attendant-defaults'
+import { ATTENDANT_PRESETS } from '@/lib/ai/attendant-presets'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -93,6 +94,8 @@ export default function AgenteIaTabs({
 
   const [enabled, setEnabled] = useState(initial.is_enabled)
   const [persona, setPersona] = useState(initial.persona_prompt)
+  const [primaryGoal, setPrimaryGoal] = useState(initial.primary_goal)
+  const [pendingPreset, setPendingPreset] = useState<string | null>(null)
   const [business, setBusiness] = useState(initial.business_context)
   // Não editável aqui — configurado na aba Qualificação (campo
   // compartilhado, ver actions/ai_attendant.ts::getAttendantConfig).
@@ -114,6 +117,7 @@ export default function AgenteIaTabs({
     const res = await updateAttendantConfig(orgSlug, {
       is_enabled: enabled,
       persona_prompt: persona,
+      primary_goal: primaryGoal,
       business_context: business,
       model,
       out_of_hours_message: outOfHours,
@@ -133,6 +137,16 @@ export default function AgenteIaTabs({
     } else {
       toast.error(res.error || 'Erro ao salvar')
     }
+  }
+
+  function applyPreset(id: string) {
+    const preset = ATTENDANT_PRESETS.find(p => p.id === id)
+    if (!preset) return
+    setPersona(preset.personaPrompt)
+    setPrimaryGoal(preset.id)
+    if (preset.handoffPhrases) setPhrases(preset.handoffPhrases.join(', '))
+    setPendingPreset(null)
+    toast.success(`Modelo "${preset.label}" aplicado — revise e clique em Salvar.`)
   }
 
   function toggleDay(key: string) {
@@ -180,9 +194,37 @@ export default function AgenteIaTabs({
             <CardContent>
               <p className="text-xs text-muted-foreground">
                 {enabled
-                  ? 'Ligado — o agente responderá conversas pelo WhatsApp (quando a API estiver conectada) e pelo Testar Agente.'
+                  ? 'Ligado — o agente responde conversas reais do WhatsApp (respeitando pausa por conversa e horário comercial) e também no Testar Agente.'
                   : 'Desligado — só funciona em Testar Agente, ignorando mensagens reais.'}
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Modelos prontos</CardTitle>
+              <CardDescription>
+                Aplica uma persona pronta pra um objetivo comum. Só preenche o texto — você pode editar
+                livremente depois, e nada é salvo até clicar em "Salvar configuração".
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {ATTENDANT_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setPendingPreset(preset.id)}
+                    className="text-left rounded-lg border p-3 hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium">{preset.label}</span>
+                      {primaryGoal === preset.id && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{preset.shortDescription}</p>
+                  </button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -415,6 +457,24 @@ export default function AgenteIaTabs({
               onClick={() => { setPersona(DEFAULT_PERSONA_PROMPT); setShowResetConfirm(false) }}
             >
               Restaurar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingPreset} onOpenChange={o => !o && setPendingPreset(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar modelo "{ATTENDANT_PRESETS.find(p => p.id === pendingPreset)?.label}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Substitui o texto da Persona (aba Personalidade) pelo modelo pronto. Nada é salvo até você
+              clicar em "Salvar configuração" — dá pra revisar e ajustar antes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => pendingPreset && applyPreset(pendingPreset)}>
+              Aplicar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
