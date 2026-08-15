@@ -25,7 +25,11 @@ declare global {
   }
 }
 
-const GRAPH_VERSION = 'v19.0'
+// Precisa bater com a versão que o painel da Meta documenta pra essa
+// Configuration (App → WhatsApp → Configurador de cadastro incorporado) —
+// uma versão desatualizada do SDK pode não honrar response_type:'code' nem
+// disparar o postMessage de finalização do Embedded Signup corretamente.
+const GRAPH_VERSION = 'v26.0'
 
 /**
  * Embedded Signup button. The dono-de-clínica clicks "Conectar", logs into
