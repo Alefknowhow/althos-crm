@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { InboundInteraction } from '@/lib/social/engine'
 import { inngest } from '@/lib/inngest/client'
+import { createAdminClient } from '@/lib/supabase/server'
 
 /**
  * Instagram webhook.
@@ -51,6 +52,35 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   }
 }
 
+/** Atualiza o status (entregue/lida) de mensagens de saída por
+ *  meta_message_id, e reflete no "tick" da lista (last_message_status) só
+ *  quando for de fato a mensagem de saída mais recente da conversa — evita
+ *  um relatório de status atrasado sobrescrever um mais novo. */
+async function updateSocialMessageStatuses(mids: string[], status: 'delivered' | 'read') {
+  const supabase = createAdminClient()
+  for (const mid of mids) {
+    const { data: updated } = await supabase
+      .from('social_messages')
+      .update({ status })
+      .eq('meta_message_id', mid)
+      .select('conversation_id')
+      .maybeSingle()
+    if (!updated) continue
+
+    const { data: latestOutbound } = await supabase
+      .from('social_messages')
+      .select('meta_message_id')
+      .eq('conversation_id', updated.conversation_id)
+      .eq('direction', 'outbound')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latestOutbound?.meta_message_id === mid) {
+      await supabase.from('social_conversations').update({ last_message_status: status }).eq('id', updated.conversation_id)
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text()
@@ -73,15 +103,35 @@ export async function POST(req: Request) {
       for (const m of entry.messaging || []) {
         const senderId = m.sender?.id
         const recipientId = m.recipient?.id
-        // Ignore echoes (messages we sent) and read receipts / reactions.
+
+        // Confirmação de entrega/leitura — não é uma interação nova, só
+        // atualiza o status de uma mensagem já enviada por nós. Processa
+        // direto aqui (não precisa passar pelo engine/automação/IA).
+        if (m.read?.mid || m.delivery?.mids) {
+          updateSocialMessageStatuses(m.read?.mid ? [m.read.mid] : m.delivery.mids, m.read?.mid ? 'read' : 'delivered')
+            .catch(e => console.error('[instagram webhook] status update failed:', e?.message))
+          continue
+        }
+
+        // Ignore echoes (messages we sent) and reactions.
         if (m.message?.is_echo) continue
         // Toque em botão: quick reply chega em message.quick_reply.payload,
         // botão de template chega em m.postback.payload — em ambos os casos
         // tratamos o payload como o texto da mensagem, pra casar com
         // gatilhos/keywords e destravar passos com wait_for_reply.
         const buttonPayload = m.message?.quick_reply?.payload ?? m.postback?.payload
-        const text = buttonPayload || m.message?.text
-        if (!text || !senderId) continue
+        const text = buttonPayload || m.message?.text || ''
+        // Mídia recebida (foto, áudio, vídeo, arquivo) — a Meta manda em
+        // message.attachments, sem texto quando não tem legenda.
+        const attachment = m.message?.attachments?.[0]
+        const attachmentUrl: string | null = attachment?.payload?.url ?? null
+        const attachmentType: 'image' | 'audio' | 'video' | 'document' | null =
+          attachment?.type === 'image' ? 'image'
+          : attachment?.type === 'audio' ? 'audio'
+          : attachment?.type === 'video' ? 'video'
+          : attachment?.type === 'file' ? 'document'
+          : null
+        if ((!text && !attachmentUrl) || !senderId) continue
         // Skip messages the business account sent to itself.
         if (senderId === igAccountId) continue
         inbounds.push({
@@ -92,6 +142,8 @@ export async function POST(req: Request) {
           mid: m.message?.mid ?? null,
           // Respostas a stories chegam como DM com contexto reply_to.story.
           isStoryReply: !!m.message?.reply_to?.story,
+          attachmentUrl,
+          attachmentType,
         })
       }
 

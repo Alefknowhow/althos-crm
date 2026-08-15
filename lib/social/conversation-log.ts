@@ -95,15 +95,22 @@ export async function logInboundMessage(
   conversationId: string,
   organizationId: string,
   text: string,
+  mediaUrl?: string | null,
+  mediaType?: 'image' | 'audio' | 'video' | 'document' | null,
 ) {
   await admin.from('social_messages').insert({
     conversation_id: conversationId,
     organization_id: organizationId,
     direction: 'inbound',
-    message_text: text,
+    message_text: text || null,
+    media_url: mediaUrl ?? null,
+    media_type: mediaType ?? null,
     sent_by: 'user',
   })
-  await touchConversation(admin, conversationId, text, 'inbound', true)
+  const preview = mediaUrl
+    ? (mediaType === 'audio' ? '🎤 Áudio' : mediaType === 'video' ? '🎬 Vídeo' : '📷 Foto')
+    : text
+  await touchConversation(admin, conversationId, preview, 'inbound', true)
 }
 
 export async function logOutboundMessage(
@@ -115,6 +122,8 @@ export async function logOutboundMessage(
   mediaUrl?: string | null,
   sentByName?: string | null,
   buttons?: { type: 'reply' | 'link'; label: string; value: string }[] | null,
+  mediaType?: 'image' | 'audio' | 'video' | 'document' | null,
+  metaMessageId?: string | null,
 ) {
   await admin.from('social_messages').insert({
     conversation_id: conversationId,
@@ -122,9 +131,16 @@ export async function logOutboundMessage(
     direction: 'outbound',
     message_text: text || null,
     media_url: mediaUrl ?? null,
+    media_type: mediaUrl ? (mediaType ?? 'image') : null,
+    meta_message_id: metaMessageId ?? null,
+    status: 'sent',
     sent_by: sentBy,
     sent_by_name: sentByName ?? null,
     buttons: buttons?.length ? buttons : null,
   })
-  await touchConversation(admin, conversationId, mediaUrl ? '📷 Foto' : text, 'outbound', false)
+  const preview = mediaUrl
+    ? (mediaType === 'audio' ? '🎤 Áudio' : mediaType === 'video' ? '🎬 Vídeo' : '📷 Foto')
+    : text
+  await touchConversation(admin, conversationId, preview, 'outbound', false)
+  await admin.from('social_conversations').update({ last_message_status: 'sent' }).eq('id', conversationId)
 }

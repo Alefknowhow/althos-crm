@@ -28,6 +28,8 @@ export type InboundInteraction = {
   postId?: string | null
   mid?: string | null        // message id — used for idempotency on DMs
   isStoryReply?: boolean      // DM that is actually a reply to one of our stories
+  attachmentUrl?: string | null
+  attachmentType?: 'image' | 'audio' | 'video' | 'document' | null
 }
 
 type Automation = {
@@ -227,9 +229,13 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
           return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
         },
       })
-      await logInboundMessage(supabase, conversation.id, orgId, inbound.text)
+      await logInboundMessage(supabase, conversation.id, orgId, inbound.text, inbound.attachmentUrl, inbound.attachmentType)
       conversationId = conversation.id
       if (conversation.automationPaused) return
+      // Mensagem só com mídia (sem texto/legenda) — registra no histórico e
+      // avisa a equipe, mas não aciona automação/IA (não tem o que
+      // interpretar como gatilho).
+      if (!inbound.text && inbound.attachmentUrl) return
     } catch (e: any) {
       console.error('[social engine] conversation log failed:', e?.message)
     }

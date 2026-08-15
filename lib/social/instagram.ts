@@ -183,7 +183,7 @@ export async function sendInstagramDM(
   text: string,
   buttons?: MessageButton[],
   tag?: IgSendTag,
-): Promise<void> {
+): Promise<{ messageId?: string }> {
   const message = buttons?.length
     ? {
         attachment: {
@@ -209,10 +209,11 @@ export async function sendInstagramDM(
       ...(tag ? { messaging_type: 'MESSAGE_TAG', tag } : {}),
     }),
   })
+  const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || 'Falha ao enviar DM no Instagram')
+    throw new Error(json.error?.message || 'Falha ao enviar DM no Instagram')
   }
+  return { messageId: json.message_id as string | undefined }
 }
 
 /** Send an image message (attachment) to a user (by IGSID). `imageUrl` must
@@ -222,7 +223,7 @@ export async function sendInstagramImage(
   recipientId: string,
   imageUrl: string,
   tag?: IgSendTag,
-): Promise<void> {
+): Promise<{ messageId?: string }> {
   const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -232,10 +233,35 @@ export async function sendInstagramImage(
       ...(tag ? { messaging_type: 'MESSAGE_TAG', tag } : {}),
     }),
   })
+  const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || 'Falha ao enviar imagem no Instagram')
+    throw new Error(json.error?.message || 'Falha ao enviar imagem no Instagram')
   }
+  return { messageId: json.message_id as string | undefined }
+}
+
+/** Send an audio message (attachment) to a user (by IGSID). Mesma API que
+ *  a de imagem, só troca o `type`. */
+export async function sendInstagramAudio(
+  token: string,
+  recipientId: string,
+  audioUrl: string,
+  tag?: IgSendTag,
+): Promise<{ messageId?: string }> {
+  const res = await fetch(`${IG_GRAPH_V}/me/messages?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message: { attachment: { type: 'audio', payload: { url: audioUrl, is_reusable: true } } },
+      ...(tag ? { messaging_type: 'MESSAGE_TAG', tag } : {}),
+    }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error?.message || 'Falha ao enviar áudio no Instagram')
+  }
+  return { messageId: json.message_id as string | undefined }
 }
 
 export type IgUserProfile = { name: string | null; username: string | null; profilePic: string | null }
