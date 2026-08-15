@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { sendInstagramDM, sendInstagramImage, sendInstagramAudio } from '@/lib/social/instagram'
@@ -248,6 +248,39 @@ export async function sendManualAudioMessage(orgSlug: string, conversationId: st
 
   revalidatePath(`/app/${orgSlug}/social`)
   return { ok: true as const }
+}
+
+const SOCIAL_MEDIA_KIND_BY_MIME: Record<string, 'image' | 'audio'> = {
+  'image/jpeg': 'image', 'image/png': 'image', 'image/webp': 'image',
+  'audio/ogg': 'audio', 'audio/mpeg': 'audio', 'audio/mp4': 'audio', 'audio/aac': 'audio',
+}
+
+/** Sobe uma imagem ou áudio (inclusive gravado na hora) pro bucket público
+ * instagram-media — a API de mensagens do Instagram baixa a mídia de uma URL
+ * pública, então precisa estar acessível antes de mandar pra Meta. */
+export async function uploadSocialMedia(orgSlug: string, formData: FormData) {
+  const g = await guard(orgSlug)
+  if (!g.ok) return g
+
+  const file = formData.get('file') as File | null
+  if (!file) return { ok: false as const, error: 'Arquivo não enviado' }
+
+  const baseMime = file.type.split(';')[0]
+  const kind = SOCIAL_MEDIA_KIND_BY_MIME[baseMime]
+  if (!kind) return { ok: false as const, error: `Tipo de arquivo não suportado: ${file.type}` }
+  if (file.size > 20 * 1024 * 1024) return { ok: false as const, error: 'Arquivo muito grande (máx 20MB).' }
+
+  const admin = createAdminClient()
+  const ext = file.name.split('.').pop() || 'bin'
+  const path = `${g.org.id}/outbound-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error: uploadError } = await admin.storage.from('instagram-media').upload(path, await file.arrayBuffer(), {
+    contentType: baseMime,
+    upsert: false,
+  })
+  if (uploadError) return { ok: false as const, error: uploadError.message }
+  const { data: { publicUrl } } = admin.storage.from('instagram-media').getPublicUrl(path)
+
+  return { ok: true as const, url: publicUrl, kind }
 }
 
 export async function toggleAutomationPause(orgSlug: string, conversationId: string, paused: boolean) {
