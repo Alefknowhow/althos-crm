@@ -102,14 +102,22 @@ export default function WhatsappEmbeddedSignup({
   // Capture the WhatsApp Embedded Signup session info (phone/waba ids).
   useEffect(() => {
     function onMessage(event: MessageEvent) {
-      if (
-        event.origin !== 'https://www.facebook.com' &&
-        event.origin !== 'https://web.facebook.com'
-      )
+      // O popup pode ter iframes internos em subdomínios diferentes
+      // (business.facebook.com, m.facebook.com etc.) — aceita qualquer
+      // subdomínio de facebook.com em vez de só www/web, que pode estar
+      // sendo a causa do postMessage de finalização nunca chegar.
+      if (!/^https:\/\/([a-z0-9-]+\.)*facebook\.com$/.test(event.origin)) {
+        if (typeof event.data === 'string' && event.data.length < 500) {
+          log(`postMessage ignorado (origem ${event.origin}): ${event.data}`)
+        }
         return
+      }
       try {
         const data = JSON.parse(event.data)
-        if (data.type !== 'WA_EMBEDDED_SIGNUP') return
+        if (data.type !== 'WA_EMBEDDED_SIGNUP') {
+          log(`postMessage de facebook.com mas tipo diferente: ${data.type}`)
+          return
+        }
         // Loga todo evento do popup — sem isso, quando a Meta não manda
         // FINISH (ex.: usuário cancelou, deu erro de verificação, ou o
         // fluxo devolveu um evento diferente do esperado) a UI fica em
@@ -191,11 +199,10 @@ export default function WhatsappEmbeddedSignup({
     log('Abrindo popup de login do Facebook...')
     // FB.login precisa ser chamado direto e de forma síncrona dentro do
     // clique — um getLoginStatus/logout assíncrono antes dele tira o popup
-    // do contexto de "gesto do usuário" e o navegador bloqueia silenciosamente
-    // (foi o que aconteceu: status "unknown" sem popup nenhum). Pra evitar
-    // reaproveitar uma sessão em cache (que pula direto pro "conectado" com
-    // um accessToken de atalho, sem code), usa auth_type:'reauthenticate' —
-    // força o Facebook a pedir consentimento de novo sem sair do fluxo síncrono.
+    // do contexto de "gesto do usuário" e o navegador bloqueia silenciosamente.
+    // auth_type:'reauthenticate' foi tentado pra evitar sessão em cache, mas
+    // piorou (not_authorized quase instantâneo mesmo completando o fluxo) —
+    // removido, volta ao formato exato documentado pelo painel da Meta.
     window.FB.login(
       (response: any) => {
         log(`FB.login respondeu — status: ${response?.status}, tem code: ${!!response?.authResponse?.code}, tem accessToken: ${!!response?.authResponse?.accessToken}`)
@@ -215,7 +222,6 @@ export default function WhatsappEmbeddedSignup({
         config_id: configId,
         response_type: 'code',
         override_default_response_type: true,
-        auth_type: 'reauthenticate',
         // Formato exato que o painel da Meta documenta pra essa Configuration
         // (App → WhatsApp → Configurador de cadastro incorporado → "Configuração
         // do código do Cadastro incorporado"). sessionInfoVersion/setup eram do
