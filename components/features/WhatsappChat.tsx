@@ -16,7 +16,8 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
-import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send } from 'lucide-react'
+import ImageEditor from '@/components/features/ImageEditor'
+import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -55,6 +56,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [pendingImages, setPendingImages] = useState<{ file: File; caption: string; previewUrl: string }[]>([])
   const [composerIndex, setComposerIndex] = useState(0)
   const [sendingQueue, setSendingQueue] = useState(false)
+  const [editingImage, setEditingImage] = useState(false)
   // Ampliar imagem da conversa em popup, não em nova aba.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   // Busca + filtros do inbox
@@ -297,6 +299,18 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     pendingImages.forEach(p => URL.revokeObjectURL(p.previewUrl))
     setPendingImages([])
     setComposerIndex(0)
+    setEditingImage(false)
+  }
+
+  function handleApplyEditedImage(edited: File) {
+    setPendingImages(prev => {
+      const old = prev[composerIndex]
+      if (old) URL.revokeObjectURL(old.previewUrl)
+      const next = [...prev]
+      next[composerIndex] = { ...old, file: edited, previewUrl: URL.createObjectURL(edited) }
+      return next
+    })
+    setEditingImage(false)
   }
 
   async function handleSendImageQueue() {
@@ -1063,11 +1077,28 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           abre em vez de mandar direto ao colar/arrastar/selecionar. */}
       <Dialog open={pendingImages.length > 0} onOpenChange={o => !o && closeImageComposer()}>
         <DialogContent className="max-w-lg p-0 gap-0 bg-black text-white border-none overflow-hidden">
+          {editingImage && pendingImages[composerIndex] ? (
+            <div className="h-[70vh]">
+              <ImageEditor
+                file={pendingImages[composerIndex].file}
+                onCancel={() => setEditingImage(false)}
+                onApply={handleApplyEditedImage}
+              />
+            </div>
+          ) : (
+          <>
           <div className="flex items-center justify-between px-4 py-3">
             <button type="button" onClick={closeImageComposer} className="text-white/80 hover:text-white" aria-label="Cancelar">
               <X className="w-5 h-5" />
             </button>
-            <span className="text-sm text-white/70">{pendingImages.length > 1 ? `${composerIndex + 1} de ${pendingImages.length}` : ''}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/70">{pendingImages.length > 1 ? `${composerIndex + 1} de ${pendingImages.length}` : ''}</span>
+              {pendingImages[composerIndex] && (
+                <button type="button" onClick={() => setEditingImage(true)} className="text-white/80 hover:text-white" aria-label="Editar imagem" title="Editar imagem">
+                  <Pencil className="w-[18px] h-[18px]" />
+                </button>
+              )}
+            </div>
           </div>
 
           {pendingImages[composerIndex] && (
@@ -1145,6 +1176,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               <Send className="w-5 h-5" />
             </button>
           </div>
+          </>
+          )}
         </DialogContent>
       </Dialog>
 
