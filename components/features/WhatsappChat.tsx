@@ -736,7 +736,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 </button>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold truncate">{selectedConversation.contact_name || selectedConversation.contact_phone}</span>
+                    <span className="font-semibold truncate min-w-0">{selectedConversation.contact_name || selectedConversation.contact_phone}</span>
                     {stageName && (
                       <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
