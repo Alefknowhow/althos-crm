@@ -19,7 +19,7 @@ export async function disconnectWhatsapp(orgSlug: string) {
 
   const { error } = await supabase
     .from('organizations')
-    .update({ whatsapp_phone_number_id: null, whatsapp_access_token: null, whatsapp_display_phone: null })
+    .update({ whatsapp_phone_number_id: null, whatsapp_waba_id: null, whatsapp_access_token: null, whatsapp_display_phone: null })
     .eq('id', org.id)
 
   if (error) return { ok: false, error: error.message }
@@ -120,6 +120,7 @@ export async function connectWhatsappEmbedded(
       .from('organizations')
       .update({
         whatsapp_phone_number_id: params.phoneNumberId,
+        whatsapp_waba_id: params.wabaId,
         whatsapp_access_token: accessToken,
         whatsapp_display_phone: displayPhone && verifiedName ? `${verifiedName} — ${displayPhone}` : displayPhone,
       })

@@ -134,6 +134,23 @@ export async function POST(req: Request) {
 
     for (const entry of payload.entry) {
       for (const change of entry.changes) {
+        // Status de aprovação de template — não tem phone_number_id (é a
+        // nível de WABA, não de número), então trata separado antes do
+        // resto do loop, que é tudo sobre mensagens/status de mensagem.
+        if (change.field === 'message_template_status_update') {
+          const templateId: string | undefined = change.value?.message_template_id?.toString()
+          const event: string | undefined = change.value?.event
+          const reason: string | null = change.value?.reason || null
+          if (templateId && event) {
+            const status = event === 'APPROVED' ? 'approved' : event === 'REJECTED' ? 'rejected' : event.toLowerCase()
+            await supabase
+              .from('whatsapp_templates')
+              .update({ status, rejected_reason: status === 'rejected' ? reason : null })
+              .eq('meta_template_id', templateId)
+          }
+          continue
+        }
+
         const phoneNumberId: string | undefined = change.value?.metadata?.phone_number_id
         if (!phoneNumberId) continue
 

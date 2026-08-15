@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createMetaTemplate, getMetaTemplateStatus } from '@/lib/whatsapp/templates-api'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,10 +20,12 @@ export type WaTemplate = {
   variable_names: string[] | null
   footer_text: string | null
   status: 'local' | 'pending' | 'approved' | 'rejected'
+  meta_template_id: string | null
+  rejected_reason: string | null
   created_at: string
 }
 
-export type WaTemplatePayload = Omit<WaTemplate, 'id' | 'organization_id' | 'created_at'>
+export type WaTemplatePayload = Omit<WaTemplate, 'id' | 'organization_id' | 'created_at' | 'meta_template_id' | 'rejected_reason'>
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -105,4 +108,92 @@ export async function uploadWaMedia(orgSlug: string, file: FormData): Promise<st
 
   const { data } = supabase.storage.from('whatsapp-assets').getPublicUrl(path)
   return data.publicUrl
+}
+
+// ── Envio/consulta de aprovação direto na Meta ──────────────────────────────
+
+async function getOrgWhatsappCreds(orgSlug: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, whatsapp_waba_id, whatsapp_access_token')
+    .eq('slug', orgSlug)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Organização não encontrada')
+  if (!data.whatsapp_waba_id || !data.whatsapp_access_token) {
+    throw new Error('Conecte o WhatsApp em Configurações antes de enviar templates para aprovação.')
+  }
+  return { orgId: data.id as string, wabaId: data.whatsapp_waba_id as string, accessToken: data.whatsapp_access_token as string }
+}
+
+export async function submitWaTemplateToMeta(orgSlug: string, id: string): Promise<WaTemplate> {
+  const { orgId, wabaId, accessToken } = await getOrgWhatsappCreds(orgSlug)
+  const admin = createAdminClient()
+
+  const { data: template, error: fetchError } = await admin
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (fetchError) throw new Error(fetchError.message)
+  if (!template) throw new Error('Template não encontrado')
+
+  const meta = await createMetaTemplate(wabaId, accessToken, {
+    name: template.name,
+    category: template.category,
+    language: template.language,
+    headerType: template.header_type,
+    headerText: template.header_text,
+    headerMediaUrl: template.header_media_url,
+    bodyText: template.body_text,
+    footerText: template.footer_text,
+  })
+
+  const { data: updated, error } = await admin
+    .from('whatsapp_templates')
+    .update({
+      status: (meta.status || 'PENDING').toLowerCase(),
+      meta_template_id: meta.id,
+      rejected_reason: null,
+    })
+    .eq('id', id)
+    .select()
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/app/${orgSlug}/whatsapp-templates`)
+  return updated as WaTemplate
+}
+
+export async function refreshWaTemplateStatus(orgSlug: string, id: string): Promise<WaTemplate> {
+  const { orgId, wabaId, accessToken } = await getOrgWhatsappCreds(orgSlug)
+  const admin = createAdminClient()
+
+  const { data: template, error: fetchError } = await admin
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (fetchError) throw new Error(fetchError.message)
+  if (!template) throw new Error('Template não encontrado')
+  if (!template.meta_template_id) throw new Error('Este template ainda não foi enviado para aprovação.')
+
+  const meta = await getMetaTemplateStatus(wabaId, accessToken, template.meta_template_id)
+
+  const { data: updated, error } = await admin
+    .from('whatsapp_templates')
+    .update({
+      status: (meta.status || template.status).toLowerCase(),
+      rejected_reason: meta.rejected_reason || null,
+    })
+    .eq('id', id)
+    .select()
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/app/${orgSlug}/whatsapp-templates`)
+  return updated as WaTemplate
 }

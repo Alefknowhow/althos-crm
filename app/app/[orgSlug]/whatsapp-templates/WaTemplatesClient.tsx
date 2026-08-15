@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import {
   createWaTemplate, updateWaTemplate, deleteWaTemplate, uploadWaMedia,
+  submitWaTemplateToMeta, refreshWaTemplateStatus,
   type WaTemplate, type WaTemplatePayload,
 } from '@/actions/whatsapp-templates'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, ImageIcon, FileText, Video, X, Upload, ExternalLink } from 'lucide-react'
+import { Plus, Pencil, Trash2, ImageIcon, FileText, Video, X, Upload, ExternalLink, Send, RefreshCw, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -194,8 +195,8 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
             </div>
           </div>
 
-          {/* Category / Language / Status */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Category / Language */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Categoria</Label>
               <Select value={form.category} onValueChange={v => patch({ category: v as any })}>
@@ -215,18 +216,6 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
                   <SelectItem value="pt_BR">Português (BR)</SelectItem>
                   <SelectItem value="en_US">English (US)</SelectItem>
                   <SelectItem value="es">Español</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status Meta</Label>
-              <Select value={form.status} onValueChange={v => patch({ status: v as any })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="local">Local (rascunho)</SelectItem>
-                  <SelectItem value="pending">Pendente aprovação</SelectItem>
-                  <SelectItem value="approved">Aprovado ✓</SelectItem>
-                  <SelectItem value="rejected">Rejeitado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -405,8 +394,42 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing]      = useState<WaTemplate | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [submittingId, setSubmittingId] = useState<string | null>(null)
+  const [refreshingId, setRefreshingId] = useState<string | null>(null)
   const [, startTransition]        = useTransition()
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
+
+  function handleSubmitToMeta(id: string) {
+    setSubmittingId(id)
+    startTransition(async () => {
+      try {
+        const updated = await submitWaTemplateToMeta(orgSlug, id)
+        handleSaved(updated)
+        toast.success('Template enviado para aprovação da Meta!')
+      } catch (err: any) {
+        toast.error(err.message)
+      } finally {
+        setSubmittingId(null)
+      }
+    })
+  }
+
+  function handleRefreshStatus(id: string) {
+    setRefreshingId(id)
+    startTransition(async () => {
+      try {
+        const updated = await refreshWaTemplateStatus(orgSlug, id)
+        handleSaved(updated)
+        if (updated.status === 'approved') toast.success('Template aprovado! ✅')
+        else if (updated.status === 'rejected') toast.error('Template rejeitado pela Meta.')
+        else toast('Ainda pendente de aprovação.')
+      } catch (err: any) {
+        toast.error(err.message)
+      } finally {
+        setRefreshingId(null)
+      }
+    })
+  }
 
   function openNew()            { setEditing(null); setDialogOpen(true) }
   function openEdit(t: WaTemplate) { setEditing(t);   setDialogOpen(true) }
@@ -457,10 +480,11 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
         <span className="text-lg shrink-0">⚠️</span>
         <div>
           <strong>Templates precisam ser aprovados pela Meta antes de serem enviados.</strong>
-          {' '}Crie e submeta seus templates no{' '}
+          {' '}Crie o template aqui e clique em "Enviar para aprovação" — a análise da Meta costuma
+          levar de minutos a algumas horas. Você também pode criar templates direto no{' '}
           <a href="https://business.facebook.com/wa/manage/message-templates/" target="_blank"
-            className="underline hover:text-amber-900">Meta Business Manager</a>.
-          {' '}Após aprovação, registre o nome exato aqui e selecione-o nas automações.
+            className="underline hover:text-amber-900">Meta Business Manager</a> e só registrar o
+          nome aqui.
         </div>
       </div>
 
@@ -521,18 +545,39 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
                       ))}
                     </div>
                   )}
+                  {t.status === 'rejected' && t.rejected_reason && (
+                    <p className="text-xs text-red-600 mt-2">
+                      <strong>Motivo da rejeição:</strong> {t.rejected_reason}
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => openEdit(t)}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openEdit(t)} disabled={t.status !== 'local'} title={t.status !== 'local' ? 'Templates já enviados não podem ser editados' : 'Editar'}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  {(t.status === 'local' || t.status === 'rejected') && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={submittingId === t.id}
+                      onClick={() => handleSubmitToMeta(t.id)}>
+                      {submittingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                      {t.status === 'rejected' ? 'Reenviar' : 'Enviar para aprovação'}
+                    </Button>
+                  )}
+                  {t.status === 'pending' && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={refreshingId === t.id}
+                      onClick={() => handleRefreshStatus(t.id)}>
+                      {refreshingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                      Atualizar status
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
