@@ -7,6 +7,7 @@ import { sendTextMessage } from '@/lib/whatsapp/meta-client'
 import { listOrgMembers } from '@/actions/team'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { getProfilesMap } from '@/lib/profiles'
+import { isEmbeddedSignupConfigured, buildEmbeddedSignupUrl } from '@/lib/whatsapp/embedded-signup-oauth'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -40,97 +41,22 @@ export async function disconnectWhatsapp(orgSlug: string) {
 
 /**
  * Embedded Signup (Meta) — conecta o WhatsApp do cliente sem ele copiar
- * Phone Number ID / token na mão.
- *
- * O popup do Facebook devolve um `code` de autorização + (via postMessage) o
- * `phone_number_id` e o `waba_id`. Aqui trocamos o code por um access token
- * usando as credenciais do App da Althos, assinamos o app no webhook da WABA
- * (some o passo manual de webhook) e salvamos as credenciais na org.
- *
- * Requer (lado Althos, uma vez): META_APP_ID + META_APP_SECRET de um App com
- * o produto WhatsApp + Embedded Signup aprovado. Sem isso, retorna erro claro
- * e a tela cai no formulário manual.
+ * Phone Number ID / token na mão. Fluxo por redirecionamento — ver
+ * lib/whatsapp/embedded-signup-oauth.ts pro porquê (a versão via popup+SDK
+ * nunca entregava o resultado de forma confiável).
  */
-export async function connectWhatsappEmbedded(
-  orgSlug: string,
-  params: { code: string; phoneNumberId: string; wabaId: string },
-) {
+export async function getWhatsappEmbeddedSignupUrl(orgSlug: string) {
   if (isImpersonating()) {
-    return { ok: false, error: 'Conexão de WhatsApp não permitida em modo de impersonação.' }
+    return { ok: false as const, error: 'Conexão de WhatsApp não permitida em modo de impersonação.' }
   }
   if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
-    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+    return { ok: false as const, error: WHATSAPP_UPGRADE_ERROR }
   }
-
-  const appId = process.env.META_APP_ID
-  const appSecret = process.env.META_APP_SECRET
-  if (!appId || !appSecret) {
-    return { ok: false, error: 'Embedded Signup não está configurado neste ambiente.' }
+  if (!isEmbeddedSignupConfigured()) {
+    return { ok: false as const, error: 'Embedded Signup não está configurado neste ambiente.' }
   }
-  if (!params.code || !params.phoneNumberId || !params.wabaId) {
-    return { ok: false, error: 'Dados incompletos retornados pela Meta. Tente novamente.' }
-  }
-
-  const org = await getCurrentOrganization(orgSlug)
-  const GRAPH = 'https://graph.facebook.com/v26.0'
-
-  try {
-    // 1. Troca o código de autorização por um access token do negócio do cliente.
-    const tokenRes = await fetch(
-      `${GRAPH}/oauth/access_token?client_id=${appId}` +
-        `&client_secret=${appSecret}&code=${encodeURIComponent(params.code)}`,
-      { signal: AbortSignal.timeout(15_000) },
-    )
-    const tokenData = await tokenRes.json()
-    if (!tokenRes.ok || !tokenData.access_token) {
-      throw new Error(tokenData?.error?.message || 'Falha ao obter token de acesso.')
-    }
-    const accessToken: string = tokenData.access_token
-
-    // 2. Assina o App da Althos nos webhooks da WABA do cliente (recebe msgs).
-    const subRes = await fetch(`${GRAPH}/${params.wabaId}/subscribed_apps`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: AbortSignal.timeout(15_000),
-    })
-    if (!subRes.ok) {
-      const subErr = await subRes.json().catch(() => ({}))
-      throw new Error(subErr?.error?.message || 'Falha ao assinar o webhook da conta.')
-    }
-
-    // 3. Busca o número/nome exibido — é o que a tela mostra no lugar do
-    // phone_number_id técnico, pra dar pra reconhecer qual conta está ativa.
-    let displayPhone: string | null = null
-    let verifiedName: string | null = null
-    try {
-      const phoneRes = await fetch(
-        `${GRAPH}/${params.phoneNumberId}?fields=display_phone_number,verified_name`,
-        { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10_000) },
-      )
-      const phoneData = await phoneRes.json()
-      if (phoneRes.ok) {
-        displayPhone = phoneData?.display_phone_number ?? null
-        verifiedName = phoneData?.verified_name ?? null
-      }
-    } catch { /* informativo, não bloqueia */ }
-
-    // 4. Persiste as credenciais na org (mesmo modelo do fluxo manual).
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('organizations')
-      .update({
-        whatsapp_phone_number_id: params.phoneNumberId,
-        whatsapp_access_token: accessToken,
-        whatsapp_display_phone: displayPhone && verifiedName ? `${verifiedName} — ${displayPhone}` : displayPhone,
-      })
-      .eq('id', org.id)
-    if (error) throw new Error(error.message)
-
-    revalidatePath(`/app/${orgSlug}/configuracoes/whatsapp`)
-    return { ok: true, displayPhone }
-  } catch (e: any) {
-    return { ok: false, error: e?.message || 'Erro ao conectar o WhatsApp.' }
-  }
+  await getCurrentOrganization(orgSlug) // garante que o usuário pertence à org
+  return { ok: true as const, url: buildEmbeddedSignupUrl(orgSlug) }
 }
 
 export async function testWhatsappConnection(orgSlug: string) {

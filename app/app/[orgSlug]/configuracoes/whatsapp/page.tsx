@@ -1,8 +1,14 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import WhatsappEmbeddedSignup from '@/components/features/WhatsappEmbeddedSignup'
-import { CheckCircle2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 
-export default async function WhatsappConfigPage({ params }: { params: { orgSlug: string } }) {
+export default async function WhatsappConfigPage({
+  params,
+  searchParams,
+}: {
+  params: { orgSlug: string }
+  searchParams: { success?: string; error?: string; msg?: string }
+}) {
   const org = await getCurrentOrganization(params.orgSlug)
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID
@@ -22,6 +28,22 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
           Conecte sua conta do WhatsApp Business para enviar e receber mensagens diretamente do CRM.
         </p>
       </div>
+
+      {searchParams.success && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>WhatsApp conectado com sucesso!</span>
+        </div>
+      )}
+      {searchParams.error && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+          <XCircle className="w-4 h-4 shrink-0" />
+          <span>
+            Não foi possível conectar
+            {searchParams.msg ? `: ${decodeURIComponent(searchParams.msg)}` : '.'}
+          </span>
+        </div>
+      )}
 
       <div
         className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
@@ -46,12 +68,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
               Conecte em um clique, escolhendo o número direto no Facebook — sem copiar tokens ou IDs.
             </p>
           </div>
-          <WhatsappEmbeddedSignup
-            orgSlug={params.orgSlug}
-            appId={appId!}
-            configId={configId!}
-            alreadyConnected={alreadyConnected}
-          />
+          <WhatsappEmbeddedSignup orgSlug={params.orgSlug} alreadyConnected={alreadyConnected} />
         </div>
       ) : (
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
