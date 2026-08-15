@@ -532,14 +532,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
-                  {c.last_message_direction === 'outbound' && (
-                    <svg width="15" height="10" viewBox="0 0 18 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/70"><path d="M1 5.5 4.5 9 11 1.5"/><path d="M6 5.5 9.5 9 16 1.5"/></svg>
-                  )}
                   <span className="truncate">{c.last_message_preview || c.contact_phone}</span>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
+                <span className="flex items-center gap-1">
+                  {c.last_message_direction === 'outbound' && <ConversationTicks status={c.last_message_status} />}
+                  <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
+                </span>
 
                 {/* Janela de 24h + etapa do pipeline na mesma linha (economiza uma linha) */}
                 <div className="flex items-center gap-1">
@@ -1081,6 +1081,41 @@ function highlightText(text: string, q: string): React.ReactNode {
 //  • 2 tiques cinza → entregue (delivered)
 //  • 2 tiques azuis → lido (read)
 //  • triângulo vermelho → falha
+// Tick de confirmação ao lado do horário, na lista de conversas — mesmas
+// regras do MessageTicks (relógio/1 check/2 checks/2 checks azuis), mas com
+// cores pra fundo claro (a lista não tem o balão colorido de fundo).
+function ConversationTicks({ status }: { status?: string | null }) {
+  if (status === 'failed') {
+    return <span title="Falha no envio" className="text-red-500 text-[11px] leading-none shrink-0">⚠</span>
+  }
+  if (!status || status === 'pending' || status === 'sending') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/60" aria-label="Enviando">
+        <circle cx="12" cy="12" r="9" /><path d="M12 8v4l2.5 2.5" />
+      </svg>
+    )
+  }
+  const isRead = status === 'read'
+  const isDouble = status === 'delivered' || status === 'read'
+  return (
+    <svg
+      width={isDouble ? 16 : 11}
+      height="10"
+      viewBox={isDouble ? '0 0 18 11' : '0 0 12 11'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`shrink-0 ${isRead ? 'text-sky-500' : 'text-muted-foreground/70'}`}
+      aria-label={isRead ? 'Lida' : isDouble ? 'Entregue' : 'Enviada'}
+    >
+      <path d="M1 5.5 4.5 9 11 1.5" />
+      {isDouble && <path d="M6 5.5 9.5 9 16 1.5" />}
+    </svg>
+  )
+}
+
 function MessageTicks({ status }: { status?: string }) {
   if (status === 'failed') {
     return <span title="Falha no envio" className="text-red-500 text-[11px] leading-none">⚠</span>

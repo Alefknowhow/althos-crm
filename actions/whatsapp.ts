@@ -182,16 +182,18 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
     last_message_at:        new Date().toISOString(),
     last_message_preview:   content,
     last_message_direction: 'outbound',
+    last_message_status:    'sending',
   }).eq('id', conv.id).eq('organization_id', org.id)
 
   try {
     const metaRes = await sendTextMessage(org, conv.contact_phone, content)
-    
+
     await supabase.from('whatsapp_messages').update({
       meta_message_id: metaRes.messages[0].id,
       status: 'sent'
     }).eq('id', msg.id)
-    
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'sent' }).eq('id', conv.id)
+
     if (conv.contato_id) {
        await supabase.from('contato_activities').insert({
           contato_id: conv.contato_id,
@@ -208,6 +210,7 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
       status: 'failed',
       content: { body: content, error: e.message }
     }).eq('id', msg.id)
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'failed' }).eq('id', conv.id)
     return { ok: false, error: e.message }
   }
 }
@@ -272,6 +275,7 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
     last_message_at:        new Date().toISOString(),
     last_message_preview:   previewLabel,
     last_message_direction: 'outbound',
+    last_message_status:    'sending',
   }).eq('id', conv.id).eq('organization_id', org.id)
 
   try {
@@ -280,11 +284,13 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
       meta_message_id: metaRes.messages[0].id,
       status: 'sent',
     }).eq('id', msg.id)
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'sent' }).eq('id', conv.id)
 
     revalidatePath(`/app/${orgSlug}/conversas`)
     return { ok: true, message: msg }
   } catch (e: any) {
     await supabase.from('whatsapp_messages').update({ status: 'failed' }).eq('id', msg.id)
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'failed' }).eq('id', conv.id)
     return { ok: false, error: e.message }
   }
 }

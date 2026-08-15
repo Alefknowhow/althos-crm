@@ -310,7 +310,31 @@ export async function POST(req: Request) {
 
         if (change.value.statuses) {
           for (const status of change.value.statuses) {
-            await supabase.from('whatsapp_messages').update({ status: status.status }).eq('meta_message_id', status.id)
+            const { data: updatedMsg } = await supabase
+              .from('whatsapp_messages')
+              .update({ status: status.status })
+              .eq('meta_message_id', status.id)
+              .select('conversation_id')
+              .maybeSingle()
+            if (!updatedMsg) continue
+
+            // Só reflete o "tick" na lista se essa for a mensagem de saída
+            // mais recente da conversa — evita um status atrasado (relatório
+            // fora de ordem) sobrescrever um status mais novo.
+            const { data: latestOutbound } = await supabase
+              .from('whatsapp_messages')
+              .select('meta_message_id')
+              .eq('conversation_id', updatedMsg.conversation_id)
+              .eq('direction', 'outbound')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            if (latestOutbound?.meta_message_id === status.id) {
+              await supabase
+                .from('whatsapp_conversations')
+                .update({ last_message_status: status.status })
+                .eq('id', updatedMsg.conversation_id)
+            }
           }
         }
       }
