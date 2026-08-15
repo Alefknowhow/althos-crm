@@ -4,11 +4,12 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import {
   sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage,
   setConversationArchived, setConversationMuted, setConversationPinned, setConversationFavorite,
   markConversationAsUnread, clearConversationMessages, deleteConversation, blockWhatsappContact,
-  sendWhatsappMedia,
+  sendWhatsappMedia, setConversationAutomationPaused,
 } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -29,7 +30,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [], aiEnabledGlobally = false }: any) {
   // Lista ao vivo — semeada pelo server, depois atualizada em tempo real
   // (ver efeito abaixo) pra não precisar de F5 quando chega mensagem nova.
   const [conversations, setConversations] = useState(conversationsProp)
@@ -70,6 +71,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   // Menu de opções da conversa (arquivar, silenciar, fixar, bloquear etc.)
   const [confirmAction, setConfirmAction] = useState<'clear' | 'delete' | 'block' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [pausingAi, setPausingAi] = useState(false)
 
   // Tick compartilhado pra recalcular a contagem regressiva da janela de
   // 24h grátis (API oficial) sem um setInterval por linha da lista.
@@ -442,6 +444,17 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     router.refresh()
   }
 
+  async function handleToggleAi(nextEnabled: boolean) {
+    if (!selectedConversation) return
+    setPausingAi(true)
+    const res = await setConversationAutomationPaused(orgSlug, selectedConversation.id, !nextEnabled)
+    setPausingAi(false)
+    if (!res.ok) { toast.error(res.error || 'Não foi possível alterar.'); return }
+    setConversations((prev: any[]) => prev.map(c => c.id === selectedConversation.id ? { ...c, automation_paused: !nextEnabled } : c))
+    toast.success(nextEnabled ? 'IA reativada nesta conversa.' : 'IA pausada — você está no controle.')
+    router.refresh()
+  }
+
   async function handleMarkUnread() {
     if (!selectedConversation) return
     const res = await markConversationAsUnread(orgSlug, selectedConversation.id)
@@ -621,6 +634,11 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               <div className="overflow-hidden flex-1 pr-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-medium text-sm truncate block min-w-0">{c.contact_name || c.contact_phone}</span>
+                  {aiEnabledGlobally && c.automation_paused && (
+                    <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200" title="Atendimento manual — IA pausada nesta conversa">
+                      manual
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
                   <span className="truncate">{c.last_message_preview || c.contact_phone}</span>
@@ -748,6 +766,16 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
+                {aiEnabledGlobally && (
+                  <span className="hidden sm:flex items-center gap-1.5 mr-1" title={selectedConversation.automation_paused ? 'IA pausada nesta conversa — você está no controle.' : 'IA ativa nesta conversa.'}>
+                    <span className="text-[11px] text-muted-foreground">{selectedConversation.automation_paused ? 'IA pausada' : 'IA ativa'}</span>
+                    <Switch
+                      checked={!selectedConversation.automation_paused}
+                      onCheckedChange={handleToggleAi}
+                      disabled={pausingAi}
+                    />
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowSearch(v => { if (v) setMsgQuery(''); return !v })}

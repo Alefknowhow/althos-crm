@@ -225,6 +225,9 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
     last_message_preview:   content,
     last_message_direction: 'outbound',
     last_message_status:    'sending',
+    // Atendente respondeu na mão — a IA para de responder essa conversa até
+    // alguém devolver o controle pelo toggle (mesmo padrão do Instagram).
+    automation_paused:      true,
   }).eq('id', conv.id).eq('organization_id', org.id)
 
   try {
@@ -318,6 +321,7 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
     last_message_preview:   previewLabel,
     last_message_direction: 'outbound',
     last_message_status:    'sending',
+    automation_paused:      true,
   }).eq('id', conv.id).eq('organization_id', org.id)
 
   try {
@@ -716,7 +720,7 @@ export async function cancelScheduledMessage(orgSlug: string, scheduledId: strin
 
 // ─── Estados de conversa (arquivar, silenciar, fixar, favoritar, bloquear) ──
 
-type ConversationFlag = 'archived' | 'muted' | 'pinned' | 'favorite'
+type ConversationFlag = 'archived' | 'muted' | 'pinned' | 'favorite' | 'automation_paused'
 
 async function toggleConversationFlag(orgSlug: string, conversationId: string, field: ConversationFlag, value: boolean) {
   await requireAuth()
@@ -738,6 +742,10 @@ export const setConversationArchived = (orgSlug: string, id: string, value: bool
 export const setConversationMuted    = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'muted', value)
 export const setConversationPinned   = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'pinned', value)
 export const setConversationFavorite = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'favorite', value)
+/** Liga/desliga o Agente IA só nesta conversa (a IA continua ativa nas
+ * demais). Usado pelo toggle no cabeçalho do chat e, automaticamente,
+ * sempre que o atendente manda uma mensagem manual. */
+export const setConversationAutomationPaused = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'automation_paused', value)
 
 export async function markConversationAsUnread(orgSlug: string, conversationId: string) {
   await requireAuth()

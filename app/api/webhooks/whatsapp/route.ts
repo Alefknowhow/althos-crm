@@ -276,7 +276,7 @@ export async function POST(req: Request) {
               if (mediaUrl) messageContent = { ...msg, media_url: mediaUrl }
             }
 
-            await supabase.from('whatsapp_messages').insert({
+            const { data: insertedMsg } = await supabase.from('whatsapp_messages').insert({
               conversation_id: conv.id,
               organization_id: orgId,
               direction: 'inbound',
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
               content: messageContent,
               meta_message_id: msg.id,
               status: 'delivered'
-            })
+            }).select('id').single()
 
             if (leadId) {
               await supabase.from('contato_activities').insert({
@@ -305,6 +305,17 @@ export async function POST(req: Request) {
                 messageBody: msg.text?.body || null,
               },
             })
+
+            // Aciona o Agente IA (se ligado pra essa org e essa conversa não
+            // estiver pausada — checagens de verdade ficam dentro da
+            // function, aqui só enfileira). Mensagem sem texto (mídia sem
+            // legenda) não aciona: não há o que a IA responda com sentido.
+            if (insertedMsg && msg.text?.body) {
+              await inngest.send({
+                name: 'whatsapp/inbound.received',
+                data: { orgId, conversationId: conv.id, metaMessageId: msg.id },
+              })
+            }
           }
         }
 

@@ -35,6 +35,17 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // Templates aprovados servem de fallback quando a janela de 24h está fechada.
   const templates = await getWaTemplates(params.orgSlug)
 
+  // Se o Agente IA está ligado globalmente pra essa org — controla se o
+  // toggle "IA nesta conversa" aparece no cabeçalho do chat (não faz
+  // sentido oferecer pausar/retomar IA por conversa se ela está desligada
+  // pra todo mundo).
+  const { data: attendantConfig } = await supabase
+    .from('ai_attendant_config')
+    .select('is_enabled')
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  const aiEnabledGlobally = attendantConfig?.is_enabled ?? false
+
   let selectedConversation = null
   let messages: any[] = []
   let panelContext: any = null
@@ -78,6 +89,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         scheduled={scheduled}
         templates={templates}
         isMock={!org.whatsapp_access_token || org.whatsapp_access_token === 'mock'}
+        aiEnabledGlobally={aiEnabledGlobally}
       />
     </div>
   )

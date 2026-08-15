@@ -1,9 +1,18 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
 import WhatsappEmbeddedSignup from '@/components/features/WhatsappEmbeddedSignup'
-import { CheckCircle2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Sparkles, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function WhatsappConfigPage({ params }: { params: { orgSlug: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
+  const supabase = createClient()
+  const { data: attendantConfig } = await supabase
+    .from('ai_attendant_config')
+    .select('is_enabled')
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  const aiEnabled = attendantConfig?.is_enabled ?? false
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID
   const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID
@@ -37,6 +46,18 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
             : 'Nenhum número de WhatsApp conectado no momento.'}
         </span>
       </div>
+
+      <Link
+        href={`/app/${params.orgSlug}/configuracoes/agente-ia`}
+        className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
+      >
+        <Sparkles className="w-4 h-4 shrink-0 text-primary" />
+        <span className="flex-1">
+          Agente IA — <span className={aiEnabled ? 'text-emerald-600 font-medium' : 'text-muted-foreground font-medium'}>{aiEnabled ? '● Ativa' : '● Pausada'}</span>
+        </span>
+        <span className="text-muted-foreground">Configurar IA</span>
+        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+      </Link>
 
       {embeddedConfigured ? (
         <div className="bg-card border rounded-none p-4 sm:p-6 space-y-4 min-w-0">
