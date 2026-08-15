@@ -92,11 +92,28 @@ export default function WhatsappEmbeddedSignup({
         return
       try {
         const data = JSON.parse(event.data)
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+        if (data.type !== 'WA_EMBEDDED_SIGNUP') return
+        // Loga todo evento do popup — sem isso, quando a Meta não manda
+        // FINISH (ex.: usuário cancelou, deu erro de verificação, ou o
+        // fluxo devolveu um evento diferente do esperado) a UI fica em
+        // silêncio total sem nenhuma pista do que aconteceu.
+        console.log('[WhatsApp Embedded Signup]', data.event, data.data)
+        if (data.event === 'FINISH') {
           sessionInfo.current = {
             phoneNumberId: data.data?.phone_number_id,
             wabaId: data.data?.waba_id,
           }
+        } else if (data.event === 'CANCEL') {
+          setWorking(false)
+          const step = data.data?.current_step
+          toast.error(
+            step
+              ? `Conexão cancelada no passo "${step}". Verifique se o número já está confirmado no Meta Business Manager.`
+              : 'Conexão cancelada.',
+          )
+        } else if (data.event === 'ERROR') {
+          setWorking(false)
+          toast.error(data.data?.error_message || 'A Meta retornou um erro durante a conexão.')
         }
       } catch {
         /* not a JSON message we care about */
@@ -152,12 +169,15 @@ export default function WhatsappEmbeddedSignup({
     sessionInfo.current = {}
     window.FB.login(
       (response: any) => {
+        console.log('[WhatsApp Embedded Signup] FB.login response', response)
         const code = response?.authResponse?.code
         if (code) {
           finish(code)
         } else {
-          // user closed the popup or denied
           setWorking(false)
+          if (response?.status === 'unknown' || !response?.authResponse) {
+            toast.error('Não foi possível concluir a conexão. Verifique se o pop-up não foi bloqueado e tente de novo.')
+          }
         }
       },
       {
