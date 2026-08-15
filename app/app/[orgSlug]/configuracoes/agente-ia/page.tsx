@@ -6,6 +6,7 @@ import {
   listSandboxMessages,
   createSandboxSession,
 } from '@/actions/ai_attendant'
+import { getOrgAIConfig } from '@/actions/organization'
 import { hasPlatformAiKey } from '@/lib/ai/api-key'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import UpgradeGate from '@/components/features/billing/UpgradeGate'
@@ -13,7 +14,7 @@ import AgenteIaTabs from '@/components/features/ai/AgenteIaTabs'
 
 export const dynamic = 'force-dynamic'
 
-const VALID_TABS = ['personalidade', 'conhecimento', 'fluxos', 'horarios', 'transferencia', 'ferramentas', 'memoria', 'testar']
+const VALID_TABS = ['personalidade', 'qualificacao', 'conhecimento', 'fluxos', 'horarios', 'transferencia', 'ferramentas', 'memoria', 'testar']
 
 export default async function AgenteIaPage({
   params,
@@ -27,10 +28,11 @@ export default async function AgenteIaPage({
 
   const hasAccess = await checkFeatureAccessByOrgSlug(params.orgSlug, 'ai_attendant')
 
-  const [config, knowledge, sessions] = await Promise.all([
+  const [config, knowledge, sessions, qualifier] = await Promise.all([
     getAttendantConfig(params.orgSlug),
     listKnowledge(params.orgSlug),
     listSandboxSessions(params.orgSlug),
+    getOrgAIConfig(params.orgSlug),
   ])
 
   let activeSessionId = searchParams.session
@@ -52,6 +54,7 @@ export default async function AgenteIaPage({
         orgSlug={params.orgSlug}
         initial={config}
         knowledge={knowledge}
+        qualifier={qualifier}
         sandbox={{
           hasApiKey: hasPlatformAiKey(),
           sessions: sessions as any[],

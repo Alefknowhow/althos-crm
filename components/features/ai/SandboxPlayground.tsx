@@ -310,8 +310,8 @@ export default function SandboxPlayground({
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span className="text-amber-800 dark:text-amber-300">
               Cadastre a chave da Anthropic em{' '}
-              <Link href={`/app/${orgSlug}/configuracoes/ia`} className="underline font-medium">
-                Configurações → IA
+              <Link href={`/app/${orgSlug}/configuracoes/agente-ia?tab=qualificacao`} className="underline font-medium">
+                Configurações → Agente IA
               </Link>{' '}
               antes de testar.
             </span>

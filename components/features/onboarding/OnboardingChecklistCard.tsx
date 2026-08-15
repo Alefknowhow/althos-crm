@@ -81,7 +81,7 @@ export default async function OnboardingChecklistCard({
       id: 'ai',
       label: 'Ative a Inteligência Artificial',
       description: 'Qualificação de leads e atendimento automáticos.',
-      href: `${base}/configuracoes/ia`,
+      href: `${base}/configuracoes/agente-ia?tab=qualificacao`,
       done: hasAi,
     },
   ]

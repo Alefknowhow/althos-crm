@@ -45,13 +45,13 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       actionLabel: 'Conectar',
     },
     {
-      title: 'Parâmetros de IA',
-      description: 'Motor de IA e score automático de leads.',
-      detail: 'Escolha o motor de IA (Claude ou Gemini) e configure a qualificação automática: score 0–100, tier (hot/warm/cold), tags e razões.',
+      title: 'Agente IA',
+      description: 'Atendimento automático e score de leads.',
+      detail: 'Configure a persona/atendimento automático no WhatsApp e a qualificação automática: score 0–100, tier (hot/warm/cold), tags e razões.',
       icon: Sparkles,
       iconClass: 'bg-purple-100 text-purple-600',
       actionLabel: 'Configurar',
-      href: `${base}/ia`,
+      href: `${base}/agente-ia`,
     },
     {
       title: 'Capi / Pixel',

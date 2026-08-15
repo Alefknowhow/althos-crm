@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import KnowledgeManager from './KnowledgeManager'
 import SandboxPlayground from './SandboxPlayground'
+import QualifierSettings from './QualifierSettings'
 
 const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (rápido, barato — recomendado)' },
@@ -58,11 +59,20 @@ function ComingSoon({ title, description, icon: Icon }: { title: string; descrip
   )
 }
 
+type QualifierInitial = {
+  ai_enabled: boolean
+  ai_provider: string
+  ai_qualifier_model: string
+  ai_qualifier_model_gemini: string
+  ai_qualifier_prompt: string
+}
+
 export default function AgenteIaTabs({
   orgSlug,
   initial,
   knowledge,
   sandbox,
+  qualifier,
   defaultTab = 'personalidade',
 }: {
   orgSlug: string
@@ -74,6 +84,7 @@ export default function AgenteIaTabs({
     activeSessionId: string
     initialMessages: SandboxMessage[]
   }
+  qualifier: QualifierInitial
   defaultTab?: string
 }) {
   const router = useRouter()
@@ -83,7 +94,9 @@ export default function AgenteIaTabs({
   const [enabled, setEnabled] = useState(initial.is_enabled)
   const [persona, setPersona] = useState(initial.persona_prompt)
   const [business, setBusiness] = useState(initial.business_context)
-  const [model, setModel] = useState(initial.model)
+  // Não editável aqui — configurado na aba Qualificação (campo
+  // compartilhado, ver actions/ai_attendant.ts::getAttendantConfig).
+  const [model] = useState(initial.model)
   const [outOfHours, setOutOfHours] = useState(initial.out_of_hours_message)
   const [phrases, setPhrases] = useState((initial.handoff_phrases || []).join(', '))
   const [maxReplies, setMaxReplies] = useState(initial.max_replies_per_conversation)
@@ -139,6 +152,7 @@ export default function AgenteIaTabs({
       <Tabs defaultValue={defaultTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="personalidade">Personalidade</TabsTrigger>
+          <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
           <TabsTrigger value="conhecimento">Conhecimento</TabsTrigger>
           <TabsTrigger value="fluxos">Fluxos</TabsTrigger>
           <TabsTrigger value="horarios">Horários</TabsTrigger>
@@ -209,25 +223,26 @@ export default function AgenteIaTabs({
                 placeholder="Ex: Clínica de estética em Florianópolis. Atende botox, preenchimento, harmonização. Ticket médio R$ 800-2500. Atendemos das 9h às 19h. Diferencial: equipe formada por médicos."
                 className="font-mono text-xs resize-y"
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Esse mesmo texto também é usado pela qualificação automática de leads (aba Qualificação).
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Modelo</CardTitle>
+              <CardDescription>Configurado na aba Qualificação (compartilhado com a qualificação de leads).</CardDescription>
             </CardHeader>
             <CardContent>
-              <select
-                className="flex h-9 w-full rounded-none border border-input bg-transparent px-3 text-sm"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-              >
-                {MODELS.map(m => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
-                ))}
-              </select>
+              <p className="text-sm font-medium">{MODELS.find(m => m.id === model)?.label || model}</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Qualificação ───────────────────────────────────────────────── */}
+        <TabsContent value="qualificacao" className="mt-4">
+          <QualifierSettings orgSlug={orgSlug} initial={qualifier} />
         </TabsContent>
 
         {/* ── Conhecimento ───────────────────────────────────────────────── */}
