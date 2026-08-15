@@ -15,7 +15,7 @@ export default function ConfiguracoesLayout({
   params: { orgSlug: string }
 }) {
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto w-full min-w-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
