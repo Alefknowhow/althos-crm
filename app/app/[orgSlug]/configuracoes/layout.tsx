@@ -15,15 +15,20 @@ export default function ConfiguracoesLayout({
   params: { orgSlug: string }
 }) {
   return (
-    <div className="space-y-6 max-w-5xl mx-auto w-full min-w-0">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
+    <div className="max-w-5xl mx-auto w-full min-w-0">
+      {/* Cabeçalho + abas fixos — não rolam junto com o conteúdo da
+          sub-página abaixo. -mx/px compensam o padding do <main> pai pra
+          o fundo cobrir até a borda enquanto fica "colado" no topo. */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 pb-4 bg-secondary/40 space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
+        </div>
+
+        <SettingsTabsNav orgSlug={params.orgSlug} />
       </div>
 
-      <SettingsTabsNav orgSlug={params.orgSlug} />
-
-      {children}
+      <div className="pt-6">{children}</div>
     </div>
   )
 }

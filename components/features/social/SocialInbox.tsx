@@ -204,11 +204,18 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
 
   useEffect(() => {
     setMessages(initialMessages)
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     if (selectedConversation && selectedConversation.unread_count > 0) {
       markConversationRead(orgSlug, selectedConversation.id)
     }
   }, [initialMessages, selectedConversation, orgSlug])
+
+  // Efeito separado, disparado por `messages` (já renderizado) em vez de
+  // `initialMessages` — mesma correção do WhatsappChat.tsx: rolar no mesmo
+  // efeito que ainda vai setar o estado usa o layout anterior, abrindo a
+  // conversa nas mensagens antigas em vez das últimas.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+  }, [messages, selectedConversation?.id])
 
   useEffect(() => {
     const conversationId = selectedConversation?.id

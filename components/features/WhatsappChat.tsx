@@ -179,11 +179,20 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     setMessages(initialMessages)
     setMsgQuery('')
     setShowSearch(false)
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     if (selectedConversation && selectedConversation.unread_count > 0) {
       markConversationAsRead(orgSlug, selectedConversation.id)
     }
   }, [initialMessages, selectedConversation, orgSlug])
+
+  // Rola pro fim (últimas mensagens) sempre que abre uma conversa — precisa
+  // ser um efeito separado do de cima, disparado por `messages` (o estado
+  // já renderizado), não por `initialMessages`: chamar scrollIntoView no
+  // mesmo efeito que ainda vai setar o estado rola com base no layout
+  // ANTERIOR (a lista antiga, ou vazia na primeira conversa aberta), o que
+  // deixava a conversa abrindo no topo/mensagens antigas.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+  }, [messages, selectedConversation?.id])
 
   useEffect(() => {
     const conversationId = selectedConversation?.id
