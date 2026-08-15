@@ -16,7 +16,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
-import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban } from 'lucide-react'
+import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -24,6 +24,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
 export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
@@ -45,8 +47,16 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [recordingPaused, setRecordingPaused] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const composerFileInputRef = useRef<HTMLInputElement>(null)
   const opusRecorderRef = useRef<any>(null)
   const [draggingFile, setDraggingFile] = useState(false)
+  // Fila de imagens em revisão antes de enviar (colar/arrastar/selecionar
+  // abre essa janela em vez de mandar direto, igual o WhatsApp normal).
+  const [pendingImages, setPendingImages] = useState<{ file: File; caption: string; previewUrl: string }[]>([])
+  const [composerIndex, setComposerIndex] = useState(0)
+  const [sendingQueue, setSendingQueue] = useState(false)
+  // Ampliar imagem da conversa em popup, não em nova aba.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   // Busca + filtros do inbox
   const [query, setQuery] = useState('')
   const [filterSeller, setFilterSeller] = useState('')
@@ -232,12 +242,13 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     inputRef.current?.focus()
   }
 
-  async function uploadAndSend(file: File) {
+  async function uploadAndSend(file: File, caption?: string) {
     if (!selectedConversation) return
     setUploadingMedia(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
+      if (caption?.trim()) fd.append('caption', caption.trim())
       const res = await sendWhatsappMedia(orgSlug, selectedConversation.id, fd)
       if (!res.ok) toast.error('Não foi possível enviar', { description: res.error })
     } finally {
@@ -245,12 +256,60 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     }
   }
 
+  // Áudio continua indo direto (sem revisão) — só imagem abre a janela de
+  // pré-visualização, igual o WhatsApp normal.
+  function queueImages(files: File[]) {
+    const valid = files.filter(f => {
+      if (f.size > 20 * 1024 * 1024) { toast.error(`"${f.name}" é muito grande (máx 20MB).`); return false }
+      return true
+    })
+    if (valid.length === 0) return
+    setPendingImages(prev => {
+      const added = valid.map(file => ({ file, caption: '', previewUrl: URL.createObjectURL(file) }))
+      const next = [...prev, ...added]
+      setComposerIndex(next.length - added.length) // foca na primeira recém-adicionada
+      return next
+    })
+  }
+
   function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const files = Array.from(e.target.files || [])
     e.target.value = ''
-    if (!file) return
-    if (file.size > 20 * 1024 * 1024) { toast.error('Arquivo muito grande (máx 20MB).'); return }
-    uploadAndSend(file)
+    queueImages(files)
+  }
+
+  function handleComposerAddMore(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ''
+    queueImages(files)
+  }
+
+  function removePendingImage(index: number) {
+    setPendingImages(prev => {
+      URL.revokeObjectURL(prev[index].previewUrl)
+      const next = prev.filter((_, i) => i !== index)
+      setComposerIndex(i => Math.min(i, Math.max(0, next.length - 1)))
+      return next
+    })
+  }
+
+  function closeImageComposer() {
+    pendingImages.forEach(p => URL.revokeObjectURL(p.previewUrl))
+    setPendingImages([])
+    setComposerIndex(0)
+  }
+
+  async function handleSendImageQueue() {
+    if (pendingImages.length === 0) return
+    setSendingQueue(true)
+    try {
+      for (const p of pendingImages) {
+        await uploadAndSend(p.file, p.caption)
+      }
+    } finally {
+      setSendingQueue(false)
+      closeImageComposer()
+    }
   }
 
   // Grava em Ogg Opus de verdade (via opus-recorder, WASM) — o WhatsApp
@@ -325,12 +384,13 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   useEffect(() => {
     if (!selectedConversation) return
     function onPaste(e: ClipboardEvent) {
-      const file = Array.from(e.clipboardData?.items || [])
-        .find(item => item.kind === 'file' && item.type.startsWith('image/'))
-        ?.getAsFile()
-      if (!file) return
+      const files = Array.from(e.clipboardData?.items || [])
+        .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+        .map(item => item.getAsFile())
+        .filter((f): f is File => !!f)
+      if (files.length === 0) return
       e.preventDefault()
-      uploadAndSend(file)
+      queueImages(files)
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
@@ -621,10 +681,9 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           e.preventDefault()
           setDraggingFile(false)
           if (!selectedConversation) return
-          const file = Array.from(e.dataTransfer.files || []).find(f => f.type.startsWith('image/'))
-          if (!file) { toast.error('Solte um arquivo de imagem (JPG, PNG ou WEBP).'); return }
-          if (file.size > 20 * 1024 * 1024) { toast.error('Arquivo muito grande (máx 20MB).'); return }
-          uploadAndSend(file)
+          const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'))
+          if (files.length === 0) { toast.error('Solte um arquivo de imagem (JPG, PNG ou WEBP).'); return }
+          queueImages(files)
         }}
       >
         {selectedConversation && draggingFile && (
@@ -743,7 +802,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
-                const media = renderWhatsappMedia(m)
+                const media = renderWhatsappMedia(m, setLightboxUrl)
                 const text = msgBody(m)
                 return (
                   <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
@@ -898,6 +957,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 className="hidden"
                 onChange={handleImageSelected}
               />
@@ -998,6 +1058,105 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Revisão de imagem(ns) antes de enviar — igual ao WhatsApp normal:
+          abre em vez de mandar direto ao colar/arrastar/selecionar. */}
+      <Dialog open={pendingImages.length > 0} onOpenChange={o => !o && closeImageComposer()}>
+        <DialogContent className="max-w-lg p-0 gap-0 bg-black text-white border-none overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <button type="button" onClick={closeImageComposer} className="text-white/80 hover:text-white" aria-label="Cancelar">
+              <X className="w-5 h-5" />
+            </button>
+            <span className="text-sm text-white/70">{pendingImages.length > 1 ? `${composerIndex + 1} de ${pendingImages.length}` : ''}</span>
+          </div>
+
+          {pendingImages[composerIndex] && (
+            <div className="flex items-center justify-center bg-black/40 min-h-[320px] max-h-[55vh] p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingImages[composerIndex].previewUrl} alt="" className="max-h-full max-w-full object-contain rounded" />
+            </div>
+          )}
+
+          {pendingImages.length > 1 && (
+            <div className="flex gap-2 px-4 py-2 overflow-x-auto bg-black/60">
+              {pendingImages.map((p, i) => (
+                <div key={i} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setComposerIndex(i)}
+                    className={`w-12 h-12 rounded-md overflow-hidden border-2 ${i === composerIndex ? 'border-primary' : 'border-transparent opacity-70'}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.previewUrl} alt="" className="w-full h-full object-cover" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removePendingImage(i)}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center"
+                    aria-label="Remover imagem"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => composerFileInputRef.current?.click()}
+                className="w-12 h-12 rounded-md border-2 border-dashed border-white/30 flex items-center justify-center text-white/60 hover:text-white shrink-0"
+                aria-label="Adicionar mais imagens"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          <input ref={composerFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleComposerAddMore} />
+
+          <div className="flex items-center gap-2 px-4 py-3 bg-black/60">
+            <Textarea
+              value={pendingImages[composerIndex]?.caption || ''}
+              onChange={e => {
+                const v = e.target.value
+                setPendingImages(prev => prev.map((p, i) => i === composerIndex ? { ...p, caption: v } : p))
+              }}
+              placeholder="Adicionar legenda..."
+              rows={1}
+              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none min-h-[40px]"
+            />
+            {pendingImages.length === 1 && (
+              <button
+                type="button"
+                onClick={() => composerFileInputRef.current?.click()}
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/10 text-white/70 shrink-0"
+                title="Adicionar mais imagens"
+                aria-label="Adicionar mais imagens"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSendImageQueue}
+              disabled={sendingQueue}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0 disabled:opacity-50"
+              title="Enviar"
+              aria-label="Enviar"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ampliar imagem recebida/enviada — popup em vez de nova aba. */}
+      <Dialog open={!!lightboxUrl} onOpenChange={o => !o && setLightboxUrl(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/95 border-none">
+          {lightboxUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={lightboxUrl} alt="" className="w-full max-h-[85vh] object-contain rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1010,7 +1169,7 @@ function msgBody(m: any): string {
 // Renderiza a mídia de uma mensagem (o webhook baixa e salva a URL
 // permanente em content.media_url — ver app/api/webhooks/whatsapp/route.ts).
 // Retorna null pra mensagens de texto puro, deixando o texto normal aparecer.
-function renderWhatsappMedia(m: any): React.ReactNode {
+function renderWhatsappMedia(m: any, onImageClick?: (url: string) => void): React.ReactNode {
   const mediaUrl: string | undefined = m?.content?.media_url
   const caption: string | undefined = m?.content?.[m.type]?.caption
   if (!mediaUrl) return null
@@ -1021,7 +1180,7 @@ function renderWhatsappMedia(m: any): React.ReactNode {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-72 object-cover cursor-pointer"
-          onClick={() => window.open(mediaUrl, '_blank')}
+          onClick={() => onImageClick?.(mediaUrl)}
         />
         {caption && <div className="whitespace-pre-wrap">{caption}</div>}
       </div>
