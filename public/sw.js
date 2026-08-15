@@ -104,8 +104,10 @@ self.addEventListener('push', event => {
   const title   = data.title   || 'Althos CRM'
   const options = {
     body:            data.body    || '',
-    icon:            data.icon    || '/icon.svg',
-    badge:           '/icon.svg',
+    // Android não renderiza SVG de forma confiável em notificações push
+    // (ficava um quadrado em branco) — precisa ser um raster (PNG).
+    icon:            data.icon    || '/logo-mark.png',
+    badge:           '/logo-mark.png',
     tag:             data.tag     || 'althos-default',
     // Replace earlier notification with the same tag instead of stacking.
     renotify:        !!data.tag,
