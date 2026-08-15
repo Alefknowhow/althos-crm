@@ -302,9 +302,9 @@ export default function WhatsappEmbeddedSignup({
               limpar
             </button>
           </div>
-          <div className="font-mono text-[11px] leading-relaxed text-muted-foreground max-h-48 overflow-y-auto space-y-0.5">
+          <div className="font-mono text-[11px] leading-relaxed text-muted-foreground max-h-48 overflow-y-auto overflow-x-hidden space-y-0.5">
             {debugLog.map((line, i) => (
-              <div key={i}>{line}</div>
+              <div key={i} className="whitespace-pre-wrap break-all">{line}</div>
             ))}
           </div>
         </div>

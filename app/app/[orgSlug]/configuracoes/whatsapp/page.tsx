@@ -39,7 +39,7 @@ export default async function WhatsappConfigPage({ params }: { params: { orgSlug
       </div>
 
       {embeddedConfigured ? (
-        <div className="bg-card border rounded-none p-6 space-y-4">
+        <div className="bg-card border rounded-none p-4 sm:p-6 space-y-4 min-w-0">
           <div>
             <h2 className="font-semibold text-base">Conexão pelo Facebook</h2>
             <p className="text-sm text-muted-foreground mt-1">
