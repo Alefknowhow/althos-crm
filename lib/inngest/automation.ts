@@ -288,7 +288,7 @@ export const executeAutomationRun = inngest.createFunction(
                       body:  pushBody,
                       url:   pushUrl,
                       tag:   `automation-${auto.id}`,
-                      icon:  '/icon.svg',
+                      icon:  '/logo-mark.png',
                     })
                     const { createNotification } = await import('@/actions/notifications')
                     await createNotification({

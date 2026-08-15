@@ -300,6 +300,7 @@ export async function POST(req: Request) {
               name: 'whatsapp/message.received',
               data: {
                 orgId,
+                conversationId: conv?.id || null,
                 contactName,
                 messageBody: msg.text?.body || null,
               },

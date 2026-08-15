@@ -4,17 +4,25 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage } from '@/actions/whatsapp'
+import {
+  sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage,
+  setConversationArchived, setConversationMuted, setConversationPinned, setConversationFavorite,
+  markConversationAsUnread, clearConversationMessages, deleteConversation, blockWhatsappContact,
+} from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
-import { Clock, X, FileText } from 'lucide-react'
+import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban } from 'lucide-react'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
 export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [] }: any) {
@@ -38,6 +46,9 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   // Busca de palavras dentro da conversa aberta
   const [msgQuery, setMsgQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  // Menu de opções da conversa (arquivar, silenciar, fixar, bloquear etc.)
+  const [confirmAction, setConfirmAction] = useState<'clear' | 'delete' | 'block' | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   // Tick compartilhado pra recalcular a contagem regressiva da janela de
   // 24h grátis (API oficial) sem um setInterval por linha da lista.
@@ -110,21 +121,26 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   // Inbox filtrado por busca de texto + vendedor + estágio.
   const filteredConversations = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return conversations.filter((c: any) => {
-      if (q) {
-        const hay = `${c.contact_name || ''} ${c.contact_phone || ''} ${c.last_message_preview || ''}`.toLowerCase()
-        if (!hay.includes(q)) return false
-      }
-      if (filterSeller) {
-        const owner = c.contatos?.assigned_to ?? null
-        if (filterSeller === '__none' ? !!owner : owner !== filterSeller) return false
-      }
-      if (filterStage) {
-        if ((c.contatos?.pipeline_stages?.name || '') !== filterStage) return false
-      }
-      return true
-    })
-  }, [conversations, query, filterSeller, filterStage])
+    return conversations
+      .filter((c: any) => {
+        // Arquivadas somem da lista principal — exceto a que está aberta
+        // agora, senão ela desaparece debaixo do usuário ao arquivar.
+        if (c.archived && c.id !== selectedConversation?.id) return false
+        if (q) {
+          const hay = `${c.contact_name || ''} ${c.contact_phone || ''} ${c.last_message_preview || ''}`.toLowerCase()
+          if (!hay.includes(q)) return false
+        }
+        if (filterSeller) {
+          const owner = c.contatos?.assigned_to ?? null
+          if (filterSeller === '__none' ? !!owner : owner !== filterSeller) return false
+        }
+        if (filterStage) {
+          if ((c.contatos?.pipeline_stages?.name || '') !== filterStage) return false
+        }
+        return true
+      })
+      .sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+  }, [conversations, query, filterSeller, filterStage, selectedConversation])
 
   // Mensagens visíveis: filtradas pela busca dentro da conversa.
   const visibleMessages = useMemo(() => {
@@ -205,6 +221,58 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
     }
     setSending(false)
     inputRef.current?.focus()
+  }
+
+  async function handleToggleFlag(
+    action: (orgSlug: string, id: string, value: boolean) => Promise<{ ok: boolean; error?: string }>,
+    field: 'archived' | 'muted' | 'pinned' | 'favorite',
+    nextValue: boolean,
+    successMsg: string,
+  ) {
+    if (!selectedConversation) return
+    const res = await action(orgSlug, selectedConversation.id, nextValue)
+    if (!res.ok) { toast.error(res.error || 'Não foi possível concluir a ação.'); return }
+    setConversations((prev: any[]) => prev.map(c => c.id === selectedConversation.id ? { ...c, [field]: nextValue } : c))
+    toast.success(successMsg)
+    router.refresh()
+  }
+
+  async function handleMarkUnread() {
+    if (!selectedConversation) return
+    const res = await markConversationAsUnread(orgSlug, selectedConversation.id)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Marcada como não lida.')
+    router.push(`/app/${orgSlug}/conversas`)
+  }
+
+  async function handleConfirmedAction() {
+    if (!selectedConversation || !confirmAction) return
+    setActionLoading(true)
+    try {
+      if (confirmAction === 'clear') {
+        const res = await clearConversationMessages(orgSlug, selectedConversation.id)
+        if (!res.ok) throw new Error(res.error)
+        setMessages([])
+        toast.success('Conversa limpa.')
+      } else if (confirmAction === 'delete') {
+        const res = await deleteConversation(orgSlug, selectedConversation.id)
+        if (!res.ok) throw new Error(res.error)
+        toast.success('Conversa apagada.')
+        router.push(`/app/${orgSlug}/conversas`)
+      } else if (confirmAction === 'block') {
+        const willBlock = !selectedConversation.blocked
+        const res = await blockWhatsappContact(orgSlug, selectedConversation.id, willBlock)
+        if (!res.ok) throw new Error(res.error)
+        setConversations((prev: any[]) => prev.map(c => c.id === selectedConversation.id ? { ...c, blocked: willBlock } : c))
+        toast.success(willBlock ? 'Número bloqueado.' : 'Número desbloqueado.')
+        router.refresh()
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Não foi possível concluir a ação.')
+    } finally {
+      setActionLoading(false)
+      setConfirmAction(null)
+    }
   }
 
   async function handleCancelScheduled(id: string) {
@@ -470,6 +538,47 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 {selectedConversation.contato_id && (
                   <Link href={`/app/${orgSlug}/contatos/${selectedConversation.contato_id}`} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md font-medium hover:bg-primary/20 transition-colors">Abrir Lead</Link>
                 )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground"
+                      title="Mais opções"
+                      aria-label="Mais opções"
+                    >
+                      <MoreVertical className="w-[18px] h-[18px]" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => handleToggleFlag(setConversationArchived, 'archived', !selectedConversation.archived, selectedConversation.archived ? 'Conversa desarquivada.' : 'Conversa arquivada.')}>
+                      <Archive className="w-4 h-4 mr-2" /> {selectedConversation.archived ? 'Desarquivar conversa' : 'Arquivar conversa'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleToggleFlag(setConversationMuted, 'muted', !selectedConversation.muted, selectedConversation.muted ? 'Notificações reativadas.' : 'Notificações silenciadas.')}>
+                      {selectedConversation.muted ? <Bell className="w-4 h-4 mr-2" /> : <BellOff className="w-4 h-4 mr-2" />}
+                      {selectedConversation.muted ? 'Reativar notificações' : 'Silenciar notificações'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleToggleFlag(setConversationPinned, 'pinned', !selectedConversation.pinned, selectedConversation.pinned ? 'Conversa desafixada.' : 'Conversa fixada.')}>
+                      {selectedConversation.pinned ? <PinOff className="w-4 h-4 mr-2" /> : <Pin className="w-4 h-4 mr-2" />}
+                      {selectedConversation.pinned ? 'Desafixar conversa' : 'Fixar conversa'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleMarkUnread}>
+                      <MailQuestion className="w-4 h-4 mr-2" /> Marcar como não lida
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleToggleFlag(setConversationFavorite, 'favorite', !selectedConversation.favorite, selectedConversation.favorite ? 'Removida dos favoritos.' : 'Adicionada aos favoritos.')}>
+                      <Star className="w-4 h-4 mr-2" /> {selectedConversation.favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setConfirmAction('block')} className={selectedConversation.blocked ? '' : 'text-destructive focus:text-destructive'}>
+                      <Ban className="w-4 h-4 mr-2" /> {selectedConversation.blocked ? 'Desbloquear número' : 'Bloquear'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmAction('clear')} className="text-destructive focus:text-destructive">
+                      <Eraser className="w-4 h-4 mr-2" /> Limpar conversa
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmAction('delete')} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" /> Apagar conversa
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -659,6 +768,35 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           onToggle={() => setPanelOpen(o => !o)}
         />
       )}
+
+      <AlertDialog open={!!confirmAction} onOpenChange={o => !o && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === 'clear' && 'Limpar conversa?'}
+              {confirmAction === 'delete' && 'Apagar conversa?'}
+              {confirmAction === 'block' && (selectedConversation?.blocked ? 'Desbloquear número?' : 'Bloquear número?')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === 'clear' && 'Apaga todas as mensagens desta conversa, mas mantém o contato na lista. Essa ação não pode ser desfeita.'}
+              {confirmAction === 'delete' && 'Apaga a conversa e todas as mensagens permanentemente. Essa ação não pode ser desfeita.'}
+              {confirmAction === 'block' && (selectedConversation?.blocked
+                ? 'Esse número volta a poder enviar mensagens pro seu WhatsApp.'
+                : 'Esse número deixa de conseguir enviar mensagens pro seu WhatsApp (bloqueio feito direto na API oficial da Meta).')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction !== 'block' || !selectedConversation?.blocked ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              onClick={handleConfirmedAction}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Aguarde...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

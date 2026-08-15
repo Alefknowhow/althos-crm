@@ -81,7 +81,7 @@ export const pushOverdueTasksFn = inngest.createFunction(
           body,
           url,
           tag:  'overdue-tasks',
-          icon: '/icon.svg',
+          icon: '/logo-mark.png',
           category: 'task_due',
         })
         await createNotification({
@@ -126,10 +126,11 @@ export const pushWhatsappMessageFn = inngest.createFunction(
     triggers: [{ event: 'whatsapp/message.received' }],
   },
   async ({ event, step }: { event: any; step: any }) => {
-    const { orgId, contactName, messageBody } = event.data as {
-      orgId:       string
-      contactName: string
-      messageBody: string | null
+    const { orgId, conversationId, contactName, messageBody } = event.data as {
+      orgId:          string
+      conversationId: string | null
+      contactName:    string
+      messageBody:    string | null
     }
 
     const admin = createAdminClient()
@@ -143,6 +144,18 @@ export const pushWhatsappMessageFn = inngest.createFunction(
       return data
     })
 
+    const muted: boolean = conversationId
+      ? await step.run('check-muted', async () => {
+          const { data } = await admin
+            .from('whatsapp_conversations')
+            .select('muted')
+            .eq('id', conversationId)
+            .maybeSingle()
+          return !!data?.muted
+        })
+      : false
+    if (muted) return { notified: 0, muted: true }
+
     await step.run('send-push', async () => {
       const body = messageBody
         ? messageBody.length > 80 ? messageBody.slice(0, 80) + '…' : messageBody
@@ -155,7 +168,7 @@ export const pushWhatsappMessageFn = inngest.createFunction(
         body,
         url,
         tag:   `whatsapp-${orgId}`,
-        icon:  '/icon.svg',
+        icon:  '/logo-mark.png',
         category: 'whatsapp_message',
       })
       await createNotification({
@@ -213,7 +226,7 @@ export const pushInstagramMessageFn = inngest.createFunction(
         body,
         url,
         tag:   `instagram-${orgId}`,
-        icon:  '/icon.svg',
+        icon:  '/logo-mark.png',
         category: 'instagram_message',
       })
       await createNotification({
@@ -271,7 +284,7 @@ export const pushInstagramCommentFn = inngest.createFunction(
         body,
         url,
         tag:   `instagram-comment-${orgId}`,
-        icon:  '/icon.svg',
+        icon:  '/logo-mark.png',
         category: 'instagram_comment',
       })
       await createNotification({

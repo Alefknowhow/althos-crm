@@ -173,7 +173,7 @@ export async function sendPushToUser(
   const notification = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    icon: payload.icon || '/icon.svg',
+    icon: payload.icon || '/logo-mark.png',
     badge: payload.badge,
     tag: payload.tag,
     data: { url: payload.url || '/' },
@@ -247,7 +247,7 @@ export async function sendPushToOrg(
   const notification = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    icon: payload.icon || '/icon.svg',
+    icon: payload.icon || '/logo-mark.png',
     badge: payload.badge,
     tag: payload.tag,
     data: { url: payload.url || '/' },
