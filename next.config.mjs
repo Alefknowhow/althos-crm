@@ -163,11 +163,16 @@ const securityHeaders = async () => [
           'gyroscope=()',
         ].join(', '),
       },
-      // Tell browsers not to send credentials in cross-origin requests unless
-      // explicitly requested.
+      // 'same-origin' corta window.opener assim que um popup navega pra um
+      // domínio diferente — quebra silenciosamente o WhatsApp Embedded
+      // Signup (FB.login abre um popup em facebook.com; sem essa referência,
+      // o SDK nunca consegue reportar o resultado de volta pra essa aba,
+      // mesmo com o popup completando normalmente). 'same-origin-allow-popups'
+      // mantém a proteção de isolamento de processo pra tudo mais, só libera
+      // popups explicitamente abertos por nós.
       {
         key: 'Cross-Origin-Opener-Policy',
-        value: 'same-origin',
+        value: 'same-origin-allow-popups',
       },
       // Prevent other origins from loading our resources (JS/CSS/images).
       {
