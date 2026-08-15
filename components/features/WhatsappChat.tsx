@@ -277,8 +277,14 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       setRecording(true)
       setRecordingPaused(false)
       setRecordingSeconds(0)
-    } catch {
-      toast.error('Não foi possível acessar o microfone. Verifique a permissão do navegador.')
+    } catch (e: any) {
+      console.error('[gravação de áudio]', e)
+      const isPermission = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
+      toast.error(
+        isPermission
+          ? 'Não foi possível acessar o microfone. Verifique a permissão do navegador.'
+          : `Não foi possível iniciar a gravação: ${e?.message || e?.name || 'erro desconhecido'}`,
+      )
     }
   }
 

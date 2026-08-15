@@ -41,7 +41,12 @@ const ContentSecurityPolicy = [
   // Cloudflare Turnstile script is loaded client-side from their CDN.
   // connect.facebook.net serves the Meta JS SDK used by the WhatsApp
   // Embedded Signup button (Conectar WhatsApp em Configurações).
-  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net`,
+  // 'wasm-unsafe-eval' é necessário pro encoder Ogg Opus (opus-recorder,
+  // gravação de áudio no chat) — ele compila um binário WebAssembly dentro
+  // de um Worker, e sem essa permissão o navegador bloqueia silenciosamente
+  // (aparecia como "não foi possível acessar o microfone" mesmo com a
+  // permissão concedida — o erro real nunca chegava a ser sobre permissão).
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net`,
 
   // Styles: same-origin + inline (Tailwind / shadcn inject style tags).
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
