@@ -705,7 +705,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       </div>
 
       <div
-        className={`relative flex-1 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        className={`relative flex-1 min-w-0 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
         onDragOver={e => { if (selectedConversation) { e.preventDefault(); setDraggingFile(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target) setDraggingFile(false) }}
         onDrop={e => {
@@ -724,8 +724,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
         )}
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b border-[#e9edef] dark:border-[#2a3942] bg-white dark:bg-[#202c33] flex justify-between items-center gap-2 h-16 shrink-0   z-10">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="px-4 md:px-6 py-3 border-b border-[#e9edef] dark:border-[#2a3942] bg-white dark:bg-[#202c33] flex justify-between items-center gap-2 h-16 shrink-0 overflow-hidden z-10">
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => router.push(`/app/${orgSlug}/conversas`)}
