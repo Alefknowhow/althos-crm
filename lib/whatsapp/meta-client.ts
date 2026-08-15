@@ -4,7 +4,7 @@ export async function sendTextMessage(orgConfig: any, to: string, text: string) 
     return { messages: [{ id: `wamid.MOCK_${Date.now()}` }] }
   }
 
-  const res = await fetch(`https://graph.facebook.com/v19.0/${orgConfig.whatsapp_phone_number_id}/messages`, {
+  const res = await fetch(`https://graph.facebook.com/v26.0/${orgConfig.whatsapp_phone_number_id}/messages`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${orgConfig.whatsapp_access_token}`,
@@ -60,7 +60,7 @@ export async function sendTemplateMessage(
     })
   }
 
-  const res = await fetch(`https://graph.facebook.com/v19.0/${orgConfig.whatsapp_phone_number_id}/messages`, {
+  const res = await fetch(`https://graph.facebook.com/v26.0/${orgConfig.whatsapp_phone_number_id}/messages`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${orgConfig.whatsapp_access_token}`,

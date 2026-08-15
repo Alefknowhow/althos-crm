@@ -9,7 +9,7 @@
  * Docs: https://developers.facebook.com/docs/marketing-api/insights
  */
 
-const GRAPH_VERSION = 'v21.0'
+const GRAPH_VERSION = 'v26.0'
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`
 
 export type MetaCampaign = {

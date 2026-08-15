@@ -72,7 +72,7 @@ export async function connectWhatsappEmbedded(
   }
 
   const org = await getCurrentOrganization(orgSlug)
-  const GRAPH = 'https://graph.facebook.com/v19.0'
+  const GRAPH = 'https://graph.facebook.com/v26.0'
 
   try {
     // 1. Troca o código de autorização por um access token do negócio do cliente.
@@ -133,7 +133,7 @@ export async function testWhatsappConnection(orgSlug: string) {
   if (org.whatsapp_access_token === 'mock') return { ok: true }
 
   try {
-    const res = await fetch(`https://graph.facebook.com/v19.0/${org.whatsapp_phone_number_id}`, {
+    const res = await fetch(`https://graph.facebook.com/v26.0/${org.whatsapp_phone_number_id}`, {
       headers: { 'Authorization': `Bearer ${org.whatsapp_access_token}` }
     })
     const data = await res.json()

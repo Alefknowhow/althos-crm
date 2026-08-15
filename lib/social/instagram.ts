@@ -20,7 +20,7 @@
 
 import { createHmac } from 'crypto'
 
-export const GRAPH_VERSION = 'v21.0'
+export const GRAPH_VERSION = 'v26.0'
 const IG_GRAPH = 'https://graph.instagram.com'
 const IG_GRAPH_V = `https://graph.instagram.com/${GRAPH_VERSION}`
 

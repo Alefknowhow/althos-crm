@@ -90,7 +90,7 @@ export async function checkWhatsapp(org: WhatsappConfig): Promise<HealthResult> 
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${encodeURIComponent(phoneId)}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier`,
+      `https://graph.facebook.com/v26.0/${encodeURIComponent(phoneId)}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier`,
       { headers: { Authorization: `Bearer ${token}` }, signal: probeSignal() },
     )
 

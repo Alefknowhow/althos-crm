@@ -51,7 +51,7 @@ async function downloadAndStoreMedia(
   accessToken: string,
 ): Promise<string | null> {
   try {
-    const metaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+    const metaRes = await fetch(`https://graph.facebook.com/v26.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (!metaRes.ok) {

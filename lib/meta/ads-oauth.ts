@@ -14,7 +14,7 @@
 
 import { createHmac } from 'crypto'
 
-export const GRAPH_VERSION = 'v21.0'
+export const GRAPH_VERSION = 'v26.0'
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`
 
 /** Só leitura de relatórios de campanha — nada de criar/editar anúncios. */

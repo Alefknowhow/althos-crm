@@ -86,7 +86,7 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
   if (eventId)        event.event_id          = eventId
   if (Object.keys(customData).length) event.custom_data = customData
 
-  const url = `https://graph.facebook.com/v21.0/${pixelId}/events?access_token=${accessToken}`
+  const url = `https://graph.facebook.com/v26.0/${pixelId}/events?access_token=${accessToken}`
 
   const res = await fetch(url, {
     method: 'POST',
