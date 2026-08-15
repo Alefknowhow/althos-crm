@@ -222,11 +222,12 @@ export default function WhatsappEmbeddedSignup({
         config_id: configId,
         response_type: 'code',
         override_default_response_type: true,
-        // Formato exato do link de "testar configuração" gerado pelo próprio
-        // painel da Meta pra esse config_id (dialog/oauth?...&extras=...) —
-        // usa "features" (array), não "featureType" (string) como tentamos
-        // antes.
+        // Formato exato da "página de destino do Cadastro incorporado
+        // hospedado pela Meta" mostrada no painel pra esse config_id — os
+        // 4 campos juntos (nas tentativas anteriores só mandávamos 3 de
+        // cada vez).
         extras: {
+          featureType: 'whatsapp_business_app_onboarding',
           sessionInfoVersion: '3',
           version: 'v4',
           features: [{ name: 'app_only_install' }],
