@@ -28,6 +28,33 @@ function msgText(m: { content: any; type: string }): string {
   return m.content?.text?.body || m.content?.body || ''
 }
 
+/** Checa se agora está dentro do horário configurado (working_hours é um
+ *  mapa dia-da-semana '0'-'6' → [horaInicio, horaFim), fuso do próprio
+ *  registro). Dia ausente do mapa = fechado o dia inteiro. Falha "aberta"
+ *  em caso de fuso inválido — melhor a IA atender fora de hora por engano
+ *  do que ficar muda por um bug de configuração. */
+function isWithinWorkingHours(workingHours: Record<string, [number, number]> | null, timezone: string): boolean {
+  if (!workingHours || Object.keys(workingHours).length === 0) return true
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone || 'America/Sao_Paulo',
+      weekday: 'short',
+      hour: 'numeric',
+      hour12: false,
+    }).formatToParts(new Date())
+    const weekday = parts.find(p => p.type === 'weekday')?.value || ''
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10) % 24
+    const dow = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[weekday]
+    if (dow === undefined) return true
+    const window = workingHours[String(dow)]
+    if (!window) return false
+    const [start, end] = window
+    return hour >= start && hour < end
+  } catch {
+    return true
+  }
+}
+
 export const processWhatsappInboundFn = inngest.createFunction(
   {
     id:      'process-whatsapp-inbound',
@@ -143,6 +170,10 @@ export const processWhatsappInboundFn = inngest.createFunction(
       .filter(m => m.content.trim() !== '')
     if (messages.length === 0) return { skipped: 'no-text-history' }
 
+    const outOfHours = !isWithinWorkingHours((attendant.working_hours as any) || null, attendant.timezone)
+      ? { message: attendant.out_of_hours_message || 'No momento estamos fora do horário de atendimento.' }
+      : undefined
+
     let result
     try {
       result = await respondAsAttendant(
@@ -151,6 +182,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
           businessContext: org.ai_business_context,
           knowledgeBase:   (knowledge || []) as any,
           handoffPhrases:  (attendant.handoff_phrases as any) || [],
+          outOfHours,
           leadProfile,
           orgName: org.name,
           messages,
@@ -213,6 +245,6 @@ export const processWhatsappInboundFn = inngest.createFunction(
       return { skipped: 'send-failed', error: e?.message }
     }
 
-    return { ok: true, handoffRequested: result.handoffRequested }
+    return { ok: true, handoffRequested: result.handoffRequested, outOfHours: !!outOfHours }
   },
 )

@@ -25,6 +25,13 @@ export type AttendantInput = {
   knowledgeBase?: Array<{ category?: string | null; question: string; answer: string }>
   handoffPhrases?: string[]
 
+  // Presença = fora do horário comercial agora (calculado pelo caller a
+  // partir de working_hours/timezone — o motor continua sem noção de
+  // tempo/fuso). O texto é o "out_of_hours_message" configurado pelo
+  // operador; a IA usa como base pra avisar de forma natural, sem
+  // continuar repetindo o aviso a cada mensagem.
+  outOfHours?: { message: string }
+
   // Per-conversation context.
   leadProfile?: {
     name?: string | null
@@ -165,6 +172,17 @@ function buildSystemBlocks(input: AttendantInput): Anthropic.Messages.TextBlockP
       ...blocks[blocks.length - 1],
       cache_control: { type: 'ephemeral' },
     }
+  }
+
+  // Fora do horário comercial (volátil — muda com o relógio, não pode
+  // entrar no prefixo cacheado). Vem antes do lead profile só por ordem
+  // de leitura natural.
+  if (input.outOfHours) {
+    blocks.push({
+      type: 'text',
+      text:
+        `\n\n# Fora do horário comercial\nAgora é fora do expediente. Se esta for a primeira mensagem sua nesta conversa, avise disso de forma natural e breve (algo no espírito de: "${input.outOfHours.message}"), mas continue atendendo normalmente — responda dúvidas, colete informações, qualifique o lead. NÃO repita esse aviso se você já mandou uma mensagem antes nesta conversa (veja o histórico).`,
+    })
   }
 
   // Lead profile (volatile, per-conversation) comes after the cache mark.
