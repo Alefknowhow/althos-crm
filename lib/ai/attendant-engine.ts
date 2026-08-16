@@ -25,6 +25,12 @@ export type AttendantInput = {
   knowledgeBase?: Array<{ category?: string | null; question: string; answer: string }>
   handoffPhrases?: string[]
 
+  // Roteiro guiado (aba Fluxos) — lista ordenada de passos/instruções que
+  // a IA deve seguir como sugestão de condução da conversa. Não é uma
+  // máquina de estado: a IA decide quando avançar/pular com base na
+  // conversa real, isso é só orientação estruturada no prompt.
+  guidedSteps?: string[]
+
   // Presença = fora do horário comercial agora (calculado pelo caller a
   // partir de working_hours/timezone — o motor continua sem noção de
   // tempo/fuso). O texto é o "out_of_hours_message" configurado pelo
@@ -40,6 +46,9 @@ export type AttendantInput = {
     source?: string | null
     tags?: string[] | null
     custom_fields?: Record<string, any> | null
+    // Notas de conversas anteriores desse mesmo lead (aba Memória) — o que
+    // já foi combinado/perguntado antes, pra IA não repetir.
+    memoryNotes?: string | null
   } | null
   orgName?: string
 
@@ -155,6 +164,15 @@ function buildSystemBlocks(input: AttendantInput): Anthropic.Messages.TextBlockP
     })
   }
 
+  if (input.guidedSteps && input.guidedSteps.length > 0) {
+    const stepsText = input.guidedSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+    blocks.push({
+      type: 'text',
+      text:
+        `\n\n# Roteiro sugerido\nUse os passos abaixo como guia pra conduzir a conversa, na ordem, mas não trate como formulário rígido — se o cliente já respondeu algo, pule esse passo; se ele mudar de assunto, adapte-se e volte ao roteiro quando fizer sentido:\n${stepsText}`,
+    })
+  }
+
   // Tool use guidance — only when tools are wired. Helps the model decide.
   if (input.tools && input.tools.length > 0) {
     blocks.push({
@@ -200,6 +218,11 @@ function buildSystemBlocks(input: AttendantInput): Anthropic.Messages.TextBlockP
         const value = Array.isArray(v) ? v.join(', ') : String(v)
         profileLines.push(`  - ${k}: ${value}`)
       }
+    }
+    if (p.memoryNotes && p.memoryNotes.trim()) {
+      profileLines.push(
+        `\n# O que sabemos de atendimentos anteriores com esse cliente\n${p.memoryNotes.trim()}\nNão repita perguntas cuja resposta já está aqui.`,
+      )
     }
     blocks.push({ type: 'text', text: profileLines.join('\n') })
   }

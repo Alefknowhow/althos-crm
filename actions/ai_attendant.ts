@@ -30,6 +30,12 @@ export type AttendantConfig = {
   model: string
   outbound_template_name: string | null
   outbound_enabled: boolean
+  // null = todas as ferramentas disponíveis habilitadas (default anterior
+  // à existência da aba Ferramentas — preserva o comportamento de quem já
+  // usava o agente).
+  enabled_tools: string[] | null
+  guided_steps: string[]
+  memory_enabled: boolean
 }
 
 /**
@@ -91,6 +97,9 @@ export async function getAttendantConfig(orgSlug: string): Promise<AttendantConf
     model: orgData?.ai_qualifier_model || 'claude-haiku-4-5',
     outbound_template_name: row!.outbound_template_name,
     outbound_enabled: row!.outbound_enabled ?? false,
+    enabled_tools: (row!.enabled_tools as any) ?? null,
+    guided_steps: (row!.guided_steps as any) || [],
+    memory_enabled: row!.memory_enabled ?? true,
   }
 }
 
@@ -107,6 +116,9 @@ const configInput = z.object({
   model: z.string().optional(),
   outbound_template_name: z.string().nullable().optional(),
   outbound_enabled: z.boolean().optional(),
+  enabled_tools: z.array(z.string()).nullable().optional(),
+  guided_steps: z.array(z.string()).optional(),
+  memory_enabled: z.boolean().optional(),
 })
 
 export async function updateAttendantConfig(orgSlug: string, raw: unknown) {
@@ -406,12 +418,13 @@ export async function sendSandboxMessage(
         businessContext: config.business_context,
         knowledgeBase: (knowledge || []) as any,
         handoffPhrases: config.handoff_phrases,
+        guidedSteps: config.guided_steps,
         leadProfile: (session.simulated_lead as any) || null,
         orgName: orgData?.name || undefined,
         messages: history,
         // Give the attendant access to the CRM: list event types, check
         // availability. The executor closes over the org-scoped client.
-        tools: ATTENDANT_TOOLS,
+        tools: config.enabled_tools ? ATTENDANT_TOOLS.filter(t => config.enabled_tools!.includes(t.name)) : ATTENDANT_TOOLS,
         executeTool: (name, input) =>
           executeAttendantTool(name, input, { orgId: org.id, supabase: supabase as any }),
       },

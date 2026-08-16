@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Bot, RotateCcw, Workflow, Wrench, Database, Check, type LucideIcon } from 'lucide-react'
+import { Bot, RotateCcw, Check, Plus, X, ArrowUp, ArrowDown } from 'lucide-react'
 import { updateAttendantConfig, type AttendantConfig, type KnowledgeItem } from '@/actions/ai_attendant'
 import {
   DEFAULT_PERSONA_PROMPT,
@@ -18,6 +18,7 @@ import {
   DAY_LABELS,
 } from '@/lib/ai/attendant-defaults'
 import { ATTENDANT_PRESETS } from '@/lib/ai/attendant-presets'
+import { ATTENDANT_TOOLS_META } from '@/lib/ai/attendant-tools-meta'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,25 +41,6 @@ type SandboxMessage = {
   cost_cents: number | null; model: string | null; created_at: string
 }
 
-/** Aba ainda sem funcionalidade real por trás — evita fingir um recurso que não existe. */
-function ComingSoon({ title, description, icon: Icon }: { title: string; description: string; icon: LucideIcon }) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-          <Icon className="w-5 h-5 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-semibold">{title}</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
-        </div>
-        <span className="inline-flex items-center rounded-full border border-dashed border-muted-foreground/30 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-          Em breve
-        </span>
-      </CardContent>
-    </Card>
-  )
-}
 
 type QualifierInitial = {
   ai_enabled: boolean
@@ -112,6 +94,44 @@ export default function AgenteIaTabs({
     return out
   })
 
+  // Ferramentas: null = todas habilitadas (default). Um Set explícito só
+  // aparece depois que o operador mexe nos checkboxes.
+  const [enabledTools, setEnabledTools] = useState<Set<string> | null>(
+    initial.enabled_tools ? new Set(initial.enabled_tools) : null,
+  )
+  function toggleTool(name: string) {
+    setEnabledTools(prev => {
+      const base = prev ? new Set(prev) : new Set(ATTENDANT_TOOLS_META.map(t => t.name))
+      if (base.has(name)) base.delete(name)
+      else base.add(name)
+      return base
+    })
+  }
+
+  // Fluxos: roteiro guiado.
+  const [steps, setSteps] = useState<string[]>(initial.guided_steps.length ? initial.guided_steps : [''])
+  function updateStep(i: number, value: string) {
+    setSteps(prev => prev.map((s, idx) => idx === i ? value : s))
+  }
+  function addStep() {
+    setSteps(prev => [...prev, ''])
+  }
+  function removeStep(i: number) {
+    setSteps(prev => prev.filter((_, idx) => idx !== i))
+  }
+  function moveStep(i: number, dir: -1 | 1) {
+    setSteps(prev => {
+      const j = i + dir
+      if (j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
+
+  // Memória.
+  const [memoryEnabled, setMemoryEnabled] = useState(initial.memory_enabled)
+
   async function save() {
     setSaving(true)
     const res = await updateAttendantConfig(orgSlug, {
@@ -126,6 +146,9 @@ export default function AgenteIaTabs({
         .map(p => p.trim())
         .filter(Boolean),
       max_replies_per_conversation: maxReplies,
+      enabled_tools: enabledTools ? Array.from(enabledTools) : null,
+      guided_steps: steps.map(s => s.trim()).filter(Boolean),
+      memory_enabled: memoryEnabled,
       working_hours: Object.fromEntries(
         Object.entries(hours).filter(([, v]) => v !== null),
       ) as any,
@@ -301,11 +324,40 @@ export default function AgenteIaTabs({
 
         {/* ── Fluxos ─────────────────────────────────────────────────────── */}
         <TabsContent value="fluxos" className="mt-4">
-          <ComingSoon
-            icon={Workflow}
-            title="Fluxos guiados"
-            description="Monte roteiros de conversa com etapas fixas (ex.: qualificação, agendamento) para o agente seguir em vez de responder livremente."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Roteiro guiado</CardTitle>
+              <CardDescription>
+                Passos que a IA usa como guia pra conduzir a conversa, na ordem. Não é um formulário
+                rígido — a IA pula passos já respondidos e se adapta se o cliente mudar de assunto.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {steps.map((step, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-5 shrink-0 text-xs text-muted-foreground text-right">{i + 1}.</span>
+                  <Input
+                    value={step}
+                    onChange={e => updateStep(i, e.target.value)}
+                    placeholder="Ex: Perguntar qual serviço a pessoa procura"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => moveStep(i, -1)} disabled={i === 0} className="h-8 w-8 shrink-0">
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} className="h-8 w-8 shrink-0">
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeStep(i)} className="h-8 w-8 shrink-0 text-destructive">
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addStep} className="mt-2">
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar passo
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Horários ───────────────────────────────────────────────────── */}
@@ -408,20 +460,53 @@ export default function AgenteIaTabs({
 
         {/* ── Ferramentas ────────────────────────────────────────────────── */}
         <TabsContent value="ferramentas" className="mt-4">
-          <ComingSoon
-            icon={Wrench}
-            title="Ferramentas do agente"
-            description="Escolha quais ações o agente pode executar sozinho — consultar pipeline, agendar horários, buscar pedidos — além de só responder texto."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Ferramentas do agente</CardTitle>
+              <CardDescription>
+                Escolha quais ações o agente pode executar sozinho durante a conversa, além de responder
+                texto. Desligar uma ferramenta não apaga nada — só impede a IA de chamá-la.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {ATTENDANT_TOOLS_META.map(tool => {
+                const isEnabled = enabledTools ? enabledTools.has(tool.name) : true
+                return (
+                  <div key={tool.name} className="flex items-start gap-3 rounded-lg border p-3">
+                    <Switch checked={isEnabled} onCheckedChange={() => toggleTool(tool.name)} className="mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">{tool.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Memória ────────────────────────────────────────────────────── */}
         <TabsContent value="memoria" className="mt-4">
-          <ComingSoon
-            icon={Database}
-            title="Memória entre conversas"
-            description="Configure o que o agente deve lembrar de um cliente entre atendimentos diferentes (preferências, histórico, combinados anteriores)."
-          />
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Memória entre conversas</CardTitle>
+                <CardDescription>
+                  Quando um atendimento é transferido pra humano, a IA guarda um resumo do que foi
+                  combinado. Com a memória ligada, ela consulta esse resumo em conversas futuras do
+                  mesmo cliente — pra não repetir perguntas já respondidas antes.
+                </CardDescription>
+              </div>
+              <Switch checked={memoryEnabled} onCheckedChange={setMemoryEnabled} />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                {memoryEnabled
+                  ? 'Ligada — a nota fica salva no cadastro do lead e some se você desligar aqui.'
+                  : 'Desligada — cada conversa começa do zero, mesmo com clientes recorrentes.'}
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Testar Agente ──────────────────────────────────────────────── */}

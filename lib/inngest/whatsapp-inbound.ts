@@ -150,11 +150,21 @@ export const processWhatsappInboundFn = inngest.createFunction(
     if (conv.contato_id) {
       const { data: lead } = await admin
         .from('contatos')
-        .select('name, phone, email, source, tags')
+        .select('name, phone, email, source, tags, ai_memory_notes')
         .eq('id', conv.contato_id)
         .maybeSingle()
-      if (lead) leadProfile = lead
+      if (lead) {
+        leadProfile = {
+          ...lead,
+          memoryNotes: attendant.memory_enabled ? lead.ai_memory_notes : null,
+        }
+      }
     }
+
+    // Ferramentas: enabled_tools=null preserva o comportamento anterior
+    // (todas habilitadas). Array vazio = nenhuma tool disponível de propósito.
+    const enabledTools = attendant.enabled_tools as string[] | null
+    const tools = enabledTools ? ATTENDANT_TOOLS.filter(t => enabledTools.includes(t.name)) : ATTENDANT_TOOLS
 
     const { data: history } = await admin
       .from('whatsapp_messages')
@@ -182,11 +192,12 @@ export const processWhatsappInboundFn = inngest.createFunction(
           businessContext: org.ai_business_context,
           knowledgeBase:   (knowledge || []) as any,
           handoffPhrases:  (attendant.handoff_phrases as any) || [],
+          guidedSteps: (attendant.guided_steps as any as string[]) || [],
           outOfHours,
           leadProfile,
           orgName: org.name,
           messages,
-          tools: ATTENDANT_TOOLS,
+          tools,
           executeTool: (name, input) => executeAttendantTool(name, input, { orgId, supabase: admin as any }),
         },
         {
@@ -243,6 +254,16 @@ export const processWhatsappInboundFn = inngest.createFunction(
             ai_handoff_summary: summary,
             ai_handoff_at: new Date().toISOString(),
           }).eq('id', conv.id)
+
+          // Memória entre conversas: o resumo de hoje vira a nota atual do
+          // lead — assim uma próxima conversa (mesmo que dias depois) já
+          // começa sabendo o que foi combinado, sem repetir perguntas.
+          if (attendant.memory_enabled && conv.contato_id) {
+            const dateLabel = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            await admin.from('contatos').update({
+              ai_memory_notes: `[Atendimento de ${dateLabel}]\n${summary}`.slice(0, 4000),
+            }).eq('id', conv.contato_id)
+          }
         }
       } catch (e: any) {
         console.error('[whatsapp inbound] falha ao gerar resumo de handoff:', e?.message)
