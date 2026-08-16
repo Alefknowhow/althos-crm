@@ -32,6 +32,7 @@ import {
   FileStack,
   Armchair,
   Sparkles,
+  Star,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -359,6 +360,17 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span className="flex items-center gap-2.5">
                 <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                 <span>Anúncios</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+        )}
+
+        {can('marketing') && (
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/avaliacoes`}>
+              <span className="flex items-center gap-2.5">
+                <Star className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Avaliações</span>
               </span>
             </SidebarNavLink>
           </div>

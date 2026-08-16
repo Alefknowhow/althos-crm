@@ -20,6 +20,11 @@ const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const ACCOUNT_MGMT_API = 'https://mybusinessaccountmanagement.googleapis.com/v1'
 const BUSINESS_INFO_API = 'https://mybusinessbusinessinformation.googleapis.com/v1'
+// Avaliações continuam só na API v4 (My Business API) — as APIs novas e
+// granulares (Account Management, Business Information) ainda não cobrem
+// reviews; a v4 está deprecada pra outros recursos, mas segue sendo o
+// único jeito de ler/responder avaliação.
+const MYBUSINESS_V4 = 'https://mybusiness.googleapis.com/v4'
 
 export const GBP_SCOPE = 'https://www.googleapis.com/auth/business.manage'
 
@@ -149,4 +154,85 @@ export async function listGoogleBusinessLocations(accessToken: string, accountNa
       ? [l.storefrontAddress.addressLines?.join(', '), l.storefrontAddress.locality].filter(Boolean).join(' — ')
       : null,
   }))
+}
+
+// ── Avaliações ────────────────────────────────────────────────────────────
+
+const STAR_RATING_MAP: Record<string, number> = {
+  ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5,
+}
+
+export type GbpReview = {
+  name: string // accounts/{accountId}/locations/{locationId}/reviews/{reviewId}
+  reviewerName: string | null
+  reviewerPhotoUrl: string | null
+  starRating: number | null
+  comment: string | null
+  createTime: string | null
+  updateTime: string | null
+  replyComment: string | null
+  replyUpdateTime: string | null
+}
+
+/** Lista TODAS as avaliações de uma unidade (pagina até acabar — o volume
+ *  por unidade costuma ser pequeno o bastante pra isso ser seguro). */
+export async function listGoogleBusinessReviews(accessToken: string, locationName: string): Promise<GbpReview[]> {
+  const reviews: GbpReview[] = []
+  let pageToken: string | undefined
+
+  do {
+    const params = new URLSearchParams({ pageSize: '50' })
+    if (pageToken) params.set('pageToken', pageToken)
+    const res = await fetch(`${MYBUSINESS_V4}/${locationName}/reviews?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error?.message || 'Falha ao listar avaliações')
+
+    for (const r of json.reviews || []) {
+      reviews.push({
+        name: r.name,
+        reviewerName: r.reviewer?.displayName ?? null,
+        reviewerPhotoUrl: r.reviewer?.profilePhotoUrl ?? null,
+        starRating: STAR_RATING_MAP[r.starRating] ?? null,
+        comment: r.comment ?? null,
+        createTime: r.createTime ?? null,
+        updateTime: r.updateTime ?? null,
+        replyComment: r.reviewReply?.comment ?? null,
+        replyUpdateTime: r.reviewReply?.updateTime ?? null,
+      })
+    }
+    pageToken = json.nextPageToken
+  } while (pageToken)
+
+  return reviews
+}
+
+/** Publica (ou substitui) a resposta do dono do negócio a uma avaliação. */
+export async function replyToGoogleBusinessReview(
+  accessToken: string,
+  reviewName: string,
+  comment: string,
+): Promise<void> {
+  const res = await fetch(`${MYBUSINESS_V4}/${reviewName}/reply`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment }),
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error(json.error?.message || 'Falha ao responder avaliação')
+  }
+}
+
+/** Remove a resposta publicada numa avaliação. */
+export async function deleteGoogleBusinessReviewReply(accessToken: string, reviewName: string): Promise<void> {
+  const res = await fetch(`${MYBUSINESS_V4}/${reviewName}/reply`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error(json.error?.message || 'Falha ao remover resposta')
+  }
 }
