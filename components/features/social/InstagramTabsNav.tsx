@@ -12,7 +12,14 @@ import { Button } from '@/components/ui/button'
  * Instagram fica sempre aqui do lado, único lugar de onde se conecta/gerencia
  * a conta — não duplicado em cada aba.
  */
-export default function InstagramTabsNav({ orgSlug, connected }: { orgSlug: string; connected: boolean }) {
+export default function InstagramTabsNav({
+  orgSlug, connected, username, avatarUrl,
+}: {
+  orgSlug: string
+  connected: boolean
+  username?: string | null
+  avatarUrl?: string | null
+}) {
   const pathname = usePathname() ?? ''
   const base = `/app/${orgSlug}`
   const onComentarios = pathname.includes('/social/comentarios')
@@ -48,9 +55,14 @@ export default function InstagramTabsNav({ orgSlug, connected }: { orgSlug: stri
       {connected ? (
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" asChild>
           <Link href={`/app/${orgSlug}/configuracoes/social`}>
-            <span className="hidden sm:inline">Instagram conectado</span>
-            <span className="sm:hidden">Conectado</span>
-            <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+            ) : (
+              <span className="w-5 h-5 rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] shrink-0" />
+            )}
+            <span className="ml-1.5 max-w-[120px] truncate">{username ? `@${username}` : 'Conectado'}</span>
+            <ChevronRight className="w-3.5 h-3.5 ml-1 shrink-0" />
           </Link>
         </Button>
       ) : (
@@ -59,8 +71,7 @@ export default function InstagramTabsNav({ orgSlug, connected }: { orgSlug: stri
           className="shrink-0 px-2 sm:px-3"
           onClick={() => { window.location.href = `/api/social/instagram/connect?org=${encodeURIComponent(orgSlug)}` }}
         >
-          <span className="hidden sm:inline">Conectar Instagram</span>
-          <span className="sm:hidden">Conectar</span>
+          Conectar Instagram
         </Button>
       )}
     </div>

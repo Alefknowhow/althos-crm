@@ -20,7 +20,10 @@ export function GlobalBackButton({ orgSlug }: { orgSlug: string }) {
   const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname
   const segments = rest.split('/').filter(Boolean)
 
-  if (segments.length <= 1) return null
+  // Tela de conexão do Instagram: fica dentro de Configurações, mas tem
+  // seu próprio botão "Ir para Instagram" no conteúdo — não precisa do
+  // "voltar" genérico do header em cima disso.
+  if (segments.length <= 1 || (segments[0] === 'configuracoes' && segments[1] === 'social')) return null
 
   const parentPath = `${prefix}/${segments.slice(0, -1).join('/')}`
 

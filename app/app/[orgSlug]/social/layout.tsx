@@ -14,11 +14,17 @@ export default async function SocialLayout({
   params: { orgSlug: string }
 }) {
   const connections = await getSocialConnections(params.orgSlug)
+  const connection = connections[0] ?? null
 
   return (
     <div className="h-[calc(100vh-4rem)] -m-6 flex flex-col bg-background overflow-hidden">
       <div className="h-16 px-4 sm:px-6 border-b bg-background flex items-center shrink-0">
-        <InstagramTabsNav orgSlug={params.orgSlug} connected={connections.length > 0} />
+        <InstagramTabsNav
+          orgSlug={params.orgSlug}
+          connected={connections.length > 0}
+          username={connection?.username ?? null}
+          avatarUrl={connection?.avatar_url ?? null}
+        />
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
         {children}
