@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -73,6 +73,22 @@ export default function AgenteIaTabs({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+
+  // As sub-abas (Personalidade/Qualificação/...) também ficam fixas, logo
+  // abaixo do cabeçalho de Configurações — que também é sticky, mas tem
+  // altura variável (título+abas do topo). Mede a altura real dele em vez
+  // de cravar um valor fixo, que quebraria em qualquer mudança de conteúdo
+  // ali (ou no mobile, onde o texto quebra linha).
+  const [headerOffset, setHeaderOffset] = useState(0)
+  useEffect(() => {
+    const header = document.getElementById('configuracoes-sticky-header')
+    if (!header) return
+    const update = () => setHeaderOffset(header.offsetHeight)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
 
   const [enabled, setEnabled] = useState(initial.is_enabled)
   const [persona, setPersona] = useState(initial.persona_prompt)
@@ -187,17 +203,21 @@ export default function AgenteIaTabs({
   return (
     <div className="space-y-4">
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="personalidade">Personalidade</TabsTrigger>
-          <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
-          <TabsTrigger value="conhecimento">Conhecimento</TabsTrigger>
-          <TabsTrigger value="fluxos">Fluxos</TabsTrigger>
-          <TabsTrigger value="horarios">Horários</TabsTrigger>
-          <TabsTrigger value="transferencia">Transferência Humana</TabsTrigger>
-          <TabsTrigger value="ferramentas">Ferramentas</TabsTrigger>
-          <TabsTrigger value="memoria">Memória</TabsTrigger>
-          <TabsTrigger value="testar">Testar Agente</TabsTrigger>
-        </TabsList>
+        {/* Sticky logo abaixo do cabeçalho de Configurações — fundo sólido,
+            sem fade, acompanha a altura real dele (headerOffset). */}
+        <div className="sticky z-10 py-2 bg-background" style={{ top: headerOffset }}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="personalidade">Personalidade</TabsTrigger>
+            <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
+            <TabsTrigger value="conhecimento">Conhecimento</TabsTrigger>
+            <TabsTrigger value="fluxos">Fluxos</TabsTrigger>
+            <TabsTrigger value="horarios">Horários</TabsTrigger>
+            <TabsTrigger value="transferencia">Transferência Humana</TabsTrigger>
+            <TabsTrigger value="ferramentas">Ferramentas</TabsTrigger>
+            <TabsTrigger value="memoria">Memória</TabsTrigger>
+            <TabsTrigger value="testar">Testar Agente</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Personalidade ──────────────────────────────────────────────── */}
         <TabsContent value="personalidade" className="space-y-4 mt-4">
@@ -524,7 +544,9 @@ export default function AgenteIaTabs({
         </TabsContent>
       </Tabs>
 
-      <div className="flex items-center justify-end sticky bottom-4 bg-card border px-4 py-3">
+      {/* Barra de salvar fixa no rodapé — não é mais um cartão flutuante:
+          fica colada na base da página assim que o usuário rola até lá. */}
+      <div className="flex items-center justify-end sticky bottom-0 z-10 bg-background border-t px-4 py-3">
         <Button onClick={save} disabled={saving}>
           {saving ? 'Salvando...' : 'Salvar configuração'}
         </Button>
