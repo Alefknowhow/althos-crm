@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
+import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 /** Inline Google "G" logo SVG — no extra dependency needed. */
 function GoogleIcon() {
@@ -176,6 +177,8 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
+
+          <TurnstileWidget action="login" />
 
           <Button type="submit" className="w-full h-11" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar'}

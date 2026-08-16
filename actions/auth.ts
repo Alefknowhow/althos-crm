@@ -2,7 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { loginSchema, signupSchema } from '@/lib/validators/auth'
+import { verifyTurnstileToken } from '@/lib/security/antispam'
 import { redirect } from 'next/navigation'
+
+function turnstileToken(formData: FormData): string | null {
+  return (formData.get('cf-turnstile-response') as string | null) || null
+}
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -12,6 +17,9 @@ export async function login(formData: FormData) {
   if (!validation.success) {
     return { ok: false, error: validation.error.issues[0].message }
   }
+
+  const ts = await verifyTurnstileToken(turnstileToken(formData))
+  if (!ts.ok) return { ok: false, error: 'Verificação de segurança falhou. Recarregue a página e tente de novo.' }
 
   const supabase = createClient()
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -65,6 +73,9 @@ export async function signup(formData: FormData) {
     return { ok: false, error: validation.error.issues[0].message }
   }
 
+  const ts = await verifyTurnstileToken(turnstileToken(formData))
+  if (!ts.ok) return { ok: false, error: 'Verificação de segurança falhou. Recarregue a página e tente de novo.' }
+
   // Validate invite before touching auth (fail fast)
   if (inviteToken) {
     const { validateInvite } = await import('@/actions/invites')
@@ -111,7 +122,10 @@ export async function resendConfirmationEmail(email: string) {
   return { ok: true }
 }
 
-export async function requestPasswordReset(email: string) {
+export async function requestPasswordReset(email: string, turnstileTokenValue?: string | null) {
+  const ts = await verifyTurnstileToken(turnstileTokenValue)
+  if (!ts.ok) return { ok: false as const, error: 'Verificação de segurança falhou. Recarregue a página e tente de novo.' }
+
   const supabase = createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'}/auth/reset-password`,

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
+import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 /** Inline Google "G" logo SVG */
 function GoogleIcon() {
@@ -276,6 +277,8 @@ function SignupForm() {
               .
             </span>
           </label>
+
+          <TurnstileWidget action="signup" />
 
           <Button
             type="submit"

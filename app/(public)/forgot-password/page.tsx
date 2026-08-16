@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { MailCheck } from 'lucide-react'
+import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState('')
@@ -18,7 +19,9 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await requestPasswordReset(email)
+    const turnstileToken =
+      (document.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value || null
+    const res = await requestPasswordReset(email, turnstileToken)
     setLoading(false)
     if (!res.ok) {
       setError((res as any).error || 'Erro ao enviar e-mail.')
@@ -67,6 +70,8 @@ export default function ForgotPasswordPage() {
                   required
                 />
               </div>
+
+              <TurnstileWidget action="forgot_password" />
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Enviando...' : 'Enviar link de recuperação'}
