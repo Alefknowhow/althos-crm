@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
+import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 export type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'select' | 'single_choice' | 'multi_select' | 'date' | 'checkbox' | 'rating' | 'opinion_scale'
 
@@ -354,6 +355,8 @@ export default function PublicFormPreview({ schema, isPreview = true, onSubmit, 
           )}
         </div>
       ))}
+
+      {!isPreview && <TurnstileWidget action="public_form" />}
 
       <Button
         type="submit"

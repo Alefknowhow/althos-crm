@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, ArrowRight, MessageCircle } from 'lucide-react'
 import type { FormField, FormSchema } from './PublicFormPreview'
+import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 interface OneQuestionFormProps {
   schema: FormSchema
@@ -189,6 +190,8 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
               loading={loading}
               dark={dark}
             />
+
+            {!isPreview && <TurnstileWidget action="public_form" />}
 
             <div className="flex items-center gap-2 pt-4">
               {step > 0 && (
