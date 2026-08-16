@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Clock, MapPin, Check, ChevronLeft } from 'lucide-react'
 import { getAvailableSlots, createPublicAppointment } from '@/actions/appointments'
-import TurnstileWidget from '@/components/features/security/TurnstileWidget'
 
 type EventType = {
   id: string
@@ -310,8 +309,6 @@ export default function BookingClient({ orgSlug, orgName, eventSlug, eventType }
                   placeholder="Contexto, dúvida específica, link..."
                 />
               </div>
-
-              <TurnstileWidget action="booking" />
 
               <div className="pt-2 flex justify-end">
                 <Button type="submit" size="lg" disabled={submitting}>
