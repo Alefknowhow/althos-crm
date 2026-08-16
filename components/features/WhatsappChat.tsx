@@ -735,7 +735,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       </div>
 
       <div
-        className={`relative flex-1 min-w-0 flex-col bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        className={`relative flex-1 min-w-0 flex-col overflow-x-hidden bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
         onDragOver={e => { if (selectedConversation) { e.preventDefault(); setDraggingFile(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target) setDraggingFile(false) }}
         onDrop={e => {
@@ -877,21 +877,21 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-3">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
                 const media = renderWhatsappMedia(m, setLightboxUrl)
                 const text = msgBody(m)
                 return (
-                  <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
+                  <div key={m.id} className={`flex min-w-0 ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <div
-                      className={`max-w-[75%] rounded-[7px] px-2.5 py-1.5 relative shadow-sm ${
+                      className={`max-w-[75%] min-w-0 rounded-[7px] px-2.5 py-1.5 relative shadow-sm ${
                         isInbound
                           ? 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-[2px]'
                           : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-[2px]'
                       }`}
                     >
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                         {media || (text ? highlightText(text, msgQuery) : '[Mídia recebida]')}
                       </div>
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-[#667781] dark:text-[#8696a0]`}>
@@ -1287,7 +1287,7 @@ function renderWhatsappMedia(m: any, onImageClick?: (url: string) => void): Reac
           src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-72 object-cover cursor-pointer"
           onClick={() => onImageClick?.(mediaUrl)}
         />
-        {caption && <div className="whitespace-pre-wrap">{caption}</div>}
+        {caption && <div className="whitespace-pre-wrap break-words">{caption}</div>}
       </div>
     )
   }
@@ -1300,13 +1300,13 @@ function renderWhatsappMedia(m: any, onImageClick?: (url: string) => void): Reac
       <div className="space-y-1.5">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video controls src={mediaUrl} className="rounded-lg max-w-full max-h-72" />
-        {caption && <div className="whitespace-pre-wrap">{caption}</div>}
+        {caption && <div className="whitespace-pre-wrap break-words">{caption}</div>}
       </div>
     )
   }
   if (m.type === 'audio') {
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <audio controls src={mediaUrl} className="max-w-[220px]" />
+    return <audio controls src={mediaUrl} className="w-full max-w-[220px]" />
   }
   if (m.type === 'document') {
     const filename = m?.content?.document?.filename || 'Documento'
