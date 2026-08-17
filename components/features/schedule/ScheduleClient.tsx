@@ -369,7 +369,7 @@ export default function ScheduleClient({
 
       {/* ── Detalhe ──────────────────────────────────────────── */}
       <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {selected && (
             <TripDetail
               orgSlug={orgSlug}
@@ -407,18 +407,18 @@ function TripDetail({
 
       <div className="space-y-4">
         {/* período */}
-        <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+        <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm flex-wrap">
+            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="font-medium">{fmtDate(trip.departure_date)}</span>
             <span className="text-muted-foreground">→</span>
             <span className="font-medium">{fmtDate(trip.return_date)}</span>
           </div>
-          <span className="text-sm font-semibold tabular-nums">{formatCurrency(trip.total_cents || 0)}</span>
+          <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(trip.total_cents || 0)}</span>
         </div>
 
         {/* infos */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           {trip.destination && <Info icon={MapPin} label="Destino" value={trip.destination} />}
           {trip.hotel_name && <Info icon={Hotel} label="Hospedagem" value={trip.hotel_name} />}
           {trip.airline && <Info icon={Plane} label="Cia aérea" value={trip.airline} />}
