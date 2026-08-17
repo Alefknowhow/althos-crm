@@ -15,6 +15,7 @@ import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/trave
 import {
   CalendarClock, ChevronLeft, ChevronRight, MapPin, Plane, Hotel, MessageCircle,
   ExternalLink, CheckSquare, Loader2, CalendarDays, ListChecks, Ticket, Building2, ArrowUpRight,
+  UserRound,
 } from 'lucide-react'
 
 const DAY = 86400000
@@ -377,6 +378,7 @@ export default function ScheduleClient({
               tasks={tasks}
               loadingTasks={loadingTasks}
               state={tripState(selected, today)}
+              sellerName={members.find(m => m.user_id === selected.created_by)?.name}
             />
           )}
         </DialogContent>
@@ -386,13 +388,14 @@ export default function ScheduleClient({
 }
 
 function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, state,
+  orgSlug, trip, tasks, loadingTasks, state, sellerName,
 }: {
   orgSlug: string
   trip: ScheduledTrip
   tasks: TripTask[]
   loadingTasks: boolean
   state: TripState
+  sellerName?: string
 }) {
   const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
@@ -419,6 +422,7 @@ function TripDetail({
 
         {/* infos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          {sellerName && <Info icon={UserRound} label="Agente de viagem" value={sellerName} />}
           {trip.destination && <Info icon={MapPin} label="Destino" value={trip.destination} />}
           {trip.hotel_name && <Info icon={Hotel} label="Hospedagem" value={trip.hotel_name} />}
           {trip.airline && <Info icon={Plane} label="Cia aérea" value={trip.airline} />}
