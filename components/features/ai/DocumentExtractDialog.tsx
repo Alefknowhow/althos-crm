@@ -92,12 +92,21 @@ export default function DocumentExtractDialog({
 
     setFile(f)
     setExtracting(true)
-    const base64 = await fileToBase64(f)
-    const res = await extractTravelDocument(orgSlug, { base64, mediaType: f.type })
-    setExtracting(false)
-
-    if (!res.ok) { toast.error(res.error); return }
-    setExtracted(res.data)
+    try {
+      const base64 = await fileToBase64(f)
+      const res = await extractTravelDocument(orgSlug, { base64, mediaType: f.type })
+      if (!res.ok) { toast.error(res.error); return }
+      setExtracted(res.data)
+    } catch (e: any) {
+      // Sem isso, uma falha de rede/tamanho de payload/timeout deixava o
+      // spinner girando pra sempre — o await acima nunca chegava no
+      // setExtracting(false) de baixo, que só rodava no caminho feliz.
+      toast.error('Não foi possível processar o documento. Tente novamente.', {
+        description: e?.message,
+      })
+    } finally {
+      setExtracting(false)
+    }
   }
 
   function set<K extends keyof ExtractedTravelDocument>(k: K, v: ExtractedTravelDocument[K]) {

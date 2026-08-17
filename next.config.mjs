@@ -238,6 +238,14 @@ const nextConfig = {
       dynamic: 120,
       static: 300,
     },
+    // Server Actions default to a 1MB request body — muito abaixo do que o
+    // upload de documento (Cotações "Orçamento IA", autopreenchimento de
+    // Reservas) precisa: um PDF de poucos MB já vira ~1.3x esse tamanho em
+    // base64 e estourava o limite, travando o upload sem erro visível pro
+    // usuário (a chamada rejeitava com 413 antes mesmo de chegar na action).
+    serverActions: {
+      bodySizeLimit: '20mb',
+    },
   },
 }
 

@@ -6,6 +6,11 @@ import { listLeadsForPicker } from '@/actions/travel-proposals'
 import QuotationEditor from '@/components/features/quotations/QuotationEditor'
 
 export const dynamic = 'force-dynamic'
+// PDFs de várias páginas no "Orçamento IA" (extractTravelDocument) podem
+// levar mais que os ~15s padrão da função serverless até a Claude terminar
+// a leitura por visão — sem isso, o upload trava/falha silenciosamente
+// bem antes do timeout de payload já corrigido em next.config.mjs.
+export const maxDuration = 60
 
 export default async function QuotationEditorPage({
   params,

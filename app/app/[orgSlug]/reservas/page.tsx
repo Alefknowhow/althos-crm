@@ -11,6 +11,10 @@ import { FileSignature } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
+// Autopreenchimento de voucher via IA (extractTravelDocument) pode levar
+// mais que o timeout padrão em PDFs de várias páginas — ver
+// cotacoes/[id]/page.tsx pro mesmo ajuste e o motivo completo.
+export const maxDuration = 60
 
 export default async function TravelSalesPage({
   params, searchParams,

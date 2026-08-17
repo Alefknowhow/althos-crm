@@ -5,6 +5,8 @@ import { getQuotationFull } from '@/actions/quotations'
 import QuotationEditor from '@/components/features/quotations/QuotationEditor'
 
 export const dynamic = 'force-dynamic'
+// Ver cotacoes/[id]/page.tsx — mesmo editor, mesmo motivo.
+export const maxDuration = 60
 
 export default async function OfferEditorPage({
   params,
