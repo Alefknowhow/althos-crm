@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toggleTaskStatus, updateTask, deleteTask } from '@/actions/tasks'
 import Link from 'next/link'
 import LeadCombobox from '@/components/features/LeadCombobox'
@@ -114,11 +115,14 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
             </div>
             <div className="space-y-2">
               <Label>Prioridade</Label>
-              <select name="priority" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={task.priority}>
-                <option value="low">Baixa</option>
-                <option value="normal">Média</option>
-                <option value="high">Alta</option>
-              </select>
+              <Select name="priority" defaultValue={task.priority}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="normal">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Lead</Label>

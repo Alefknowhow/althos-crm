@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import {
@@ -954,7 +955,7 @@ function EditSheet({
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       contato_id:     fd.get('contato_id')     as string,
-      assigned_to: fd.get('assigned_to') as string,
+      assigned_to: ((fd.get('assigned_to') as string) === '__unassigned__' ? '' : fd.get('assigned_to') as string),
     }
     setSaving(true)
     const res = await updateTask(orgSlug, task.id, input)
@@ -992,11 +993,14 @@ function EditSheet({
             </div>
             <div className="space-y-2">
               <Label>Prioridade</Label>
-              <select name="priority" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={task.priority}>
-                <option value="low">Baixa</option>
-                <option value="normal">Média</option>
-                <option value="high">Alta</option>
-              </select>
+              <Select name="priority" defaultValue={task.priority}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="normal">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Lead</Label>
@@ -1009,12 +1013,15 @@ function EditSheet({
             {members.length > 0 && (
               <div className="space-y-2">
                 <Label>Responsável</Label>
-                <select name="assigned_to" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={task.assigned_to || ''}>
-                  <option value="">Sem responsável</option>
-                  {members.map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.name}</option>
-                  ))}
-                </select>
+                <Select name="assigned_to" defaultValue={task.assigned_to || '__unassigned__'}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unassigned__">Sem responsável</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <DialogFooter>

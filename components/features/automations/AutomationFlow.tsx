@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -381,12 +382,14 @@ function StepConfig({
           </div>
           <div className="space-y-2">
             <Label className={labelClass}>Unidade</Label>
-            <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={step.config.unit || 'minutes'} onChange={e => patch({ unit: e.target.value })}>
-              <option value="minutes">Minutos</option>
-              <option value="hours">Horas</option>
-              <option value="days">Dias</option>
-            </select>
+            <Select value={step.config.unit || 'minutes'} onValueChange={v => patch({ unit: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minutes">Minutos</SelectItem>
+                <SelectItem value="hours">Horas</SelectItem>
+                <SelectItem value="days">Dias</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )
@@ -504,12 +507,14 @@ function StepConfig({
             </div>
             <div className="space-y-2">
               <Label className={labelClass}>Prioridade</Label>
-              <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                value={step.config.priority || 'normal'} onChange={e => patch({ priority: e.target.value })}>
-                <option value="low">Baixa</option>
-                <option value="normal">Normal</option>
-                <option value="high">Alta</option>
-              </select>
+              <Select value={step.config.priority || 'normal'} onValueChange={v => patch({ priority: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -518,11 +523,13 @@ function StepConfig({
       return (
         <div className="space-y-2">
           <Label className={labelClass}>Mover para</Label>
-          <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            value={step.config.stageId || ''} onChange={e => patch({ stageId: e.target.value })}>
-            <option value="">Selecione...</option>
-            {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <Select value={step.config.stageId || '__none__'} onValueChange={v => patch({ stageId: v === '__none__' ? '' : v })}>
+            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Selecione...</SelectItem>
+              {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       )
     case 'close_deal':
@@ -530,11 +537,13 @@ function StepConfig({
         <div className="space-y-3">
           <div className="space-y-2">
             <Label className={labelClass}>Resultado</Label>
-            <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={step.config.dealStatus || 'perdido'} onChange={e => patch({ dealStatus: e.target.value })}>
-              <option value="perdido">Perdido</option>
-              <option value="desqualificado">Desqualificado</option>
-            </select>
+            <Select value={step.config.dealStatus || 'perdido'} onValueChange={v => patch({ dealStatus: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="perdido">Perdido</SelectItem>
+                <SelectItem value="desqualificado">Desqualificado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label className={labelClass}>Motivo</Label>
@@ -580,13 +589,15 @@ function StepConfig({
           </div>
           <div className="space-y-2">
             <Label className={labelClass}>Método</Label>
-            <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={step.config.method || 'POST'} onChange={e => patch({ method: e.target.value })}>
-              <option value="POST">POST</option>
-              <option value="GET">GET</option>
-              <option value="PUT">PUT</option>
-              <option value="PATCH">PATCH</option>
-            </select>
+            <Select value={step.config.method || 'POST'} onValueChange={v => patch({ method: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="PATCH">PATCH</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label className={labelClass}>Headers extras (JSON)</Label>

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { queueEmailForLead } from '@/actions/emails'
 import { Mail } from 'lucide-react'
 import { toast } from 'sonner'
@@ -70,10 +71,13 @@ export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) 
               </div>
               <div className="space-y-2">
                 <Label>Template</Label>
-                <select className="w-full h-9 border rounded-md px-3 text-sm bg-background cursor-pointer" value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)}>
-                  <option value="">Selecione...</option>
-                  {templates.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                <Select value={selectedTemplateId || '__none__'} onValueChange={v => setSelectedTemplateId(v === '__none__' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Selecione...</SelectItem>
+                    {templates.map((t:any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="mt-auto pt-4 border-t">

@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ImageUploadButton from '../ImageUploadButton'
 
 interface Props {
@@ -163,14 +164,26 @@ export default function SettingsSheet({ orgSlug, open, onOpenChange, schema, set
           <div className="space-y-3 pt-4 border-t">
             <h3 className="font-semibold text-sm">Destino do Lead</h3>
             <div className="grid grid-cols-1 gap-2">
-              <select className="flex h-9 w-full rounded-md border border-input px-3 py-1 text-sm bg-background cursor-pointer" value={form.pipeline_id || ''} onChange={e => setForm({ ...form, pipeline_id: e.target.value })}>
-                <option value="">Selecione o Pipeline</option>
-                {pipelines.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select className="flex h-9 w-full rounded-md border border-input px-3 py-1 text-sm bg-background cursor-pointer" value={form.stage_id || ''} onChange={e => setForm({ ...form, stage_id: e.target.value })}>
-                <option value="">Selecione o Estágio</option>
-                {stages.filter((s: any) => s.pipeline_id === form.pipeline_id).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <Select
+                value={form.pipeline_id || '__none__'}
+                onValueChange={v => setForm({ ...form, pipeline_id: v === '__none__' ? '' : v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione o Pipeline" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecione o Pipeline</SelectItem>
+                  {pipelines.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select
+                value={form.stage_id || '__none__'}
+                onValueChange={v => setForm({ ...form, stage_id: v === '__none__' ? '' : v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione o Estágio" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Selecione o Estágio</SelectItem>
+                  {stages.filter((s: any) => s.pipeline_id === form.pipeline_id).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

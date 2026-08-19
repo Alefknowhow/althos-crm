@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
 import { LogOut, User, ChevronDown } from 'lucide-react'
 import { logout } from '@/actions/auth'
 import UserAvatar from './UserAvatar'
+import ProfileSheet from './ProfileSheet'
 
 interface Props {
   orgSlug: string
@@ -19,6 +19,7 @@ interface Props {
  *  desktop, "por enquanto", conforme pedido). */
 export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl }: Props) {
   const [open, setOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,14 +47,14 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl }: Prop
             <p className="text-[11px] text-muted-foreground truncate">{email}</p>
           </div>
 
-          <Link
-            href={`/app/${orgSlug}/perfil`}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setProfileOpen(true) }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
           >
             <User className="w-4 h-4 text-muted-foreground" />
             Meu perfil
-          </Link>
+          </button>
 
           <form action={logout}>
             <button
@@ -66,6 +67,8 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl }: Prop
           </form>
         </div>
       )}
+
+      <ProfileSheet orgSlug={orgSlug} open={profileOpen} onOpenChange={setProfileOpen} />
     </div>
   )
 }

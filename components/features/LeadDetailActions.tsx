@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { updateLead, deleteLead } from '@/actions/contatos'
 
 export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any, orgSlug: string, stages: any[] }) {
@@ -66,9 +67,12 @@ export default function LeadDetailActions({ lead, orgSlug, stages }: { lead: any
             </div>
             <div className="space-y-2">
               <Label>Estágio</Label>
-              <select name="stage_id" defaultValue={lead.stage_id} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <Select name="stage_id" defaultValue={lead.stage_id}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Tags (separadas por vírgula)</Label>

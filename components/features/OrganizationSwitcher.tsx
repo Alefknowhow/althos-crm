@@ -1,27 +1,25 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-export default function OrganizationSwitcher({ 
-  currentSlug, 
-  organizations 
-}: { 
-  currentSlug: string, 
-  organizations: { id: string, name: string, slug: string }[] 
+export default function OrganizationSwitcher({
+  currentSlug,
+  organizations,
+}: {
+  currentSlug: string,
+  organizations: { id: string, name: string, slug: string }[]
 }) {
   const router = useRouter()
 
   return (
-    <select 
-      className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      value={currentSlug}
-      onChange={(e) => {
-        router.push(`/app/${e.target.value}/pipeline`)
-      }}
-    >
-      {organizations.map(org => (
-        <option key={org.id} value={org.slug}>{org.name}</option>
-      ))}
-    </select>
+    <Select value={currentSlug} onValueChange={slug => router.push(`/app/${slug}/pipeline`)}>
+      <SelectTrigger className="h-9 w-auto"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {organizations.map(org => (
+          <SelectItem key={org.id} value={org.slug}>{org.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

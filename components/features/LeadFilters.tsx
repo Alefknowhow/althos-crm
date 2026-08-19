@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createLead } from '@/actions/contatos'
 
 export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: { orgSlug: string, stages: any[], isCreateOnly?: boolean }) {
@@ -31,6 +32,9 @@ export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: {
     setLoading(true)
     setError('')
     const formData = new FormData(e.currentTarget)
+    // Radix Select não aceita item com value="" — o sentinel abaixo
+    // representa "(Padrão)", que a action espera como campo ausente/vazio.
+    if (formData.get('stage_id') === '__default__') formData.set('stage_id', '')
     const result = await createLead(orgSlug, formData)
     setLoading(false)
     if (!result.ok) {
@@ -75,12 +79,15 @@ export default function LeadFilters({ orgSlug, stages, isCreateOnly = false }: {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="stage_id">Estágio</Label>
-                <select name="stage_id" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm   focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                  <option value="">(Padrão)</option>
-                  {stages.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                <Select name="stage_id" defaultValue="__default__">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">(Padrão)</SelectItem>
+                    {stages.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="value_cents">Valor (em centavos, ex: 10000 = R$ 100,00)</Label>
