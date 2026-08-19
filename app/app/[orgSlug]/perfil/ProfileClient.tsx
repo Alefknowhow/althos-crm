@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import UserAvatar from '@/components/features/UserAvatar'
 import {
   updateProfileInfo,
   requestEmailChange,
   changePassword,
+  uploadUserAvatar,
+  removeUserAvatar,
   type UserProfile,
 } from '@/actions/profile'
 import { deleteOrganization } from '@/actions/organization'
@@ -34,18 +37,12 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  Camera,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function initials(name: string, email: string) {
-  if (name.trim()) {
-    const parts = name.trim().split(' ')
-    return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
-  }
-  return email[0].toUpperCase()
-}
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Proprietário',
@@ -87,6 +84,50 @@ export default function ProfileClient({
   orgSlug: string
 }) {
   const router = useRouter()
+
+  // ── Foto de perfil ────────────────────────────────────────────────────────
+  // Mesmo padrão otimista do AvatarUploader de contatos
+  // (components/features/contatos/ContatosView.tsx): mostra o preview local
+  // (URL.createObjectURL) na hora, troca pela signed URL real quando a
+  // action retorna, reverte se der erro.
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleAvatarFile(file: File | undefined) {
+    if (!file) return
+    setAvatarBusy(true)
+    const preview = URL.createObjectURL(file)
+    setAvatarUrl(preview)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadUserAvatar(orgSlug, fd)
+      if (res.ok) {
+        setAvatarUrl(res.url)
+        router.refresh()
+      } else {
+        toast.error(res.error)
+        setAvatarUrl(profile.avatar_url)
+      }
+    } finally {
+      URL.revokeObjectURL(preview)
+      setAvatarBusy(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarBusy(true)
+    const res = await removeUserAvatar(orgSlug)
+    setAvatarBusy(false)
+    if (res.ok) {
+      setAvatarUrl(null)
+      router.refresh()
+    } else {
+      toast.error(res.error)
+    }
+  }
 
   // ── Dados pessoais ───────────────────────────────────────────────────────
   const [name,          setName]          = useState(profile.name)
@@ -190,8 +231,34 @@ export default function ProfileClient({
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-primary-foreground shrink-0">
-          {initials(profile.name, profile.email)}
+        <div className="relative shrink-0 group">
+          <UserAvatar name={profile.name} email={profile.email} avatarUrl={avatarUrl} size={56} />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarBusy}
+            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground grid place-items-center shadow ring-2 ring-card disabled:opacity-50"
+            aria-label="Trocar foto"
+          >
+            {avatarBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+          </button>
+          {avatarUrl && !avatarBusy && (
+            <button
+              type="button"
+              onClick={handleRemoveAvatar}
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-white grid place-items-center shadow ring-2 ring-card opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Remover foto"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={e => handleAvatarFile(e.target.files?.[0])}
+          />
         </div>
         <div>
           <h1 className="text-xl font-bold leading-tight">

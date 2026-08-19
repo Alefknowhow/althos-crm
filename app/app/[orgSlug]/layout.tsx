@@ -22,6 +22,8 @@ import HealthLinkConditional from '@/components/features/HealthLinkConditional'
 import QueryProvider from '@/components/providers/QueryProvider'
 import CommandPalette, { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
+import HeaderUserMenu from '@/components/features/HeaderUserMenu'
+import { getObjectSignedUrl } from '@/actions/storage'
 
 export default async function OrgLayout({
   children,
@@ -68,6 +70,17 @@ export default async function OrgLayout({
     }) || []
 
   const userName = (user.user_metadata as any)?.full_name as string | undefined
+
+  // Avatar do usuário (menu no header, canto direito) — mesmo padrão dos
+  // demais avatares migrados pro R2: referência estável em user_metadata,
+  // signed URL resolvida na hora de renderizar. Ver actions/profile.ts.
+  const headerUserName = (user.user_metadata as any)?.name as string ?? ''
+  const avatarObjectId = (user.user_metadata as any)?.avatar_storage_object_id as string | undefined
+  let headerAvatarUrl: string | null = (user.user_metadata as any)?.avatar_url ?? null
+  if (avatarObjectId) {
+    const signed = await getObjectSignedUrl(params.orgSlug, avatarObjectId)
+    if (signed.ok) headerAvatarUrl = signed.url
+  }
 
   return (
     <QueryProvider>
@@ -140,6 +153,10 @@ export default async function OrgLayout({
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
                 <ModeToggle />
+              </div>
+              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:inline-flex">
+                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} />
               </div>
               <HeaderMobileMenu orgSlug={params.orgSlug} />
             </div>

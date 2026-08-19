@@ -9,6 +9,7 @@ import SidebarCollapseToggleButton from './SidebarCollapseToggleButton'
 import SidebarUserMenu from './SidebarUserMenu'
 import SidebarSupportLink from './SidebarSupportLink'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
+import { getObjectSignedUrl } from '@/actions/storage'
 import { isTravelNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
@@ -75,6 +76,12 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
   const userName  = (user?.user_metadata?.name  as string) ?? ''
   const userEmail = user?.email ?? ''
+  const avatarObjectId = user?.user_metadata?.avatar_storage_object_id as string | undefined
+  let userAvatarUrl: string | null = (user?.user_metadata?.avatar_url as string) ?? null
+  if (avatarObjectId) {
+    const signed = await getObjectSignedUrl(orgSlug, avatarObjectId)
+    if (signed.ok) userAvatarUrl = signed.url
+  }
 
   const accountId = (org as any).account_id as string | null
 
@@ -431,8 +438,14 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border">
-        <SidebarUserMenu name={userName} email={userEmail} />
+      {/* Menu do usuário: no header (canto direito) na versão desktop —
+          ver HeaderUserMenu.tsx em app/app/[orgSlug]/layout.tsx. Aqui na
+          sidebar fica só pro drawer mobile por enquanto (md:hidden — o
+          mesmo JSX é renderizado tanto no <aside> desktop quanto no
+          drawer mobile por SidebarShell.tsx, então essa é a forma de
+          escondê-lo só num dos dois). */}
+      <div className="p-3 border-t border-sidebar-border md:hidden">
+        <SidebarUserMenu name={userName} email={userEmail} avatarUrl={userAvatarUrl} />
       </div>
     </SidebarShell>
   )

@@ -7,7 +7,7 @@ export default async function PerfilPage({
 }: {
   params: { orgSlug: string }
 }) {
-  const profile = await getUserProfile()
+  const profile = await getUserProfile(params.orgSlug)
   if (!profile) redirect('/login')
 
   return <ProfileClient profile={profile} orgSlug={params.orgSlug} />
