@@ -172,15 +172,41 @@ separado por tenant (paralelizar), e o dump do banco pra usar streaming
 abstração de bucket/provider já existe (`lib/backup/r2-backup-client.ts`
 isolado) — trocar de storage não exige reescrever o resto.
 
-## O que não existe ainda (Fase 2)
+## Restore de arquivo (Fase 2 — implementado)
 
-- `restoreTenant(tenantId, backupId)`, `restoreObject(...)`, restore
-  completo.
-- Teste de restore em staging (não existe staging hoje).
-- Ações destrutivas no dashboard (`/super-admin/backups` é read-only).
+`lib/backup/restore-object.ts::restoreObject({ organizationId, objectId, userId, overwrite })`
+— devolve UM arquivo apagado (ou corrompido) a partir da cópia no bucket
+de backup, escrevendo de volta na MESMA key de produção via
+`putRawObject` (`lib/storage/providers/r2.ts`, restore-only, nunca usado
+pelo fluxo normal de upload). Regras:
+
+- Só funciona pra objeto que ainda tem linha em `storage_objects`
+  (ativa ou soft-deleted) — hard-delete do metadado está fora de
+  escopo.
+- Se o objeto ainda estiver `status='active'` em produção, só
+  restaura com `overwrite=true` explícito — o painel sempre confirma
+  antes de mandar isso (`window.confirm`, duas mensagens diferentes
+  conforme o caso).
+- Nunca cria estrutura nova nem mexe em outro objeto — é aditivo/
+  pontual por design.
+- Grava em `backup_audit_log` (`event='object_restore_completed'`).
+
+UI: `/super-admin/backups` → seção "Restaurar arquivo" — busca por
+slug da org, lista os objetos com `status='deleted'`, botão de
+restaurar por linha.
+
+## O que continua fora de escopo (decisão explícita do usuário)
+
+- **`restoreTenant(tenantId, backupId)`, restore completo do banco** —
+  sobrescrevem dado vivo. Ficam de fora até existir um ambiente de
+  staging pra validar com segurança (o projeto está no plano Free do
+  Supabase, sem branching de banco — criar esse ambiente foi
+  deliberadamente adiado).
+- Teste de restore automatizado end-to-end (dependeria do staging acima).
 - `BackupProvider` formal pra outro storage (S3/Backblaze B2) — hoje só
   R2, credenciais isoladas mas sem abstração de multi-provider.
-- Suíte de testes que dependa de um restore real.
+- Restore de objeto cuja linha de metadado foi hard-deletada do banco
+  (não só soft-deleted).
 
 Ver `docs/backup-operations.md` pro runbook operacional (como checar
 status, disparar manualmente, o que fazer quando um alerta chega).

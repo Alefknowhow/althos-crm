@@ -1,4 +1,5 @@
 import { listBackupRuns, getBackupStatus, type BackupRunRow } from '@/actions/backup'
+import RestorePanel from '@/components/features/backup/RestorePanel'
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, Database, HardDrive } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,8 @@ export default async function BackupsPage() {
         <StatusCard title="Banco de dados (diário, 03:00 UTC)" icon={Database} run={status?.lastDatabaseRun ?? null} />
         <StatusCard title="Storage (diário, 03:30 UTC)" icon={HardDrive} run={status?.lastStorageRun ?? null} />
       </div>
+
+      <RestorePanel />
 
       <div>
         <h2 className="text-sm font-semibold text-white mb-3">Histórico recente</h2>

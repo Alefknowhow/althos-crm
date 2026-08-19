@@ -146,3 +146,14 @@ export const r2Provider: StorageProviderAdapter = {
     }
   },
 }
+
+/**
+ * Escreve bytes numa key EXATA da produção (não gera key nova via
+ * buildObjectKey) — usado só pelo restore (lib/backup/restore-object.ts),
+ * pra devolver um objeto pra sua localização original a partir do
+ * backup. Nunca chamar isso do fluxo normal de upload (que sempre usa
+ * `r2Provider.upload`, com key nova por design).
+ */
+export async function putRawObject(bucket: string, key: string, body: Buffer, contentType: string): Promise<void> {
+  await client().send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }))
+}

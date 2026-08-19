@@ -1,13 +1,16 @@
 'use server'
 
 /**
- * Leitura pro dashboard de backup (/super-admin/backups) — Fase 1 é
- * read-only, sem ação de restore/apagar. Mesmo padrão de gate de
- * super-admin já usado em actions/super-admin.ts (isSuperAdmin()).
+ * Backup/restore pro dashboard (/super-admin/backups). Fase 1 (leitura)
+ * + Fase 2 (restore de arquivo, escopo estreito — ver
+ * lib/backup/restore-object.ts). Mesmo padrão de gate de super-admin já
+ * usado em actions/super-admin.ts (isSuperAdmin()).
  */
 
-import { isSuperAdmin } from '@/lib/supabase/types'
+import { revalidatePath } from 'next/cache'
+import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import { createAdminClient } from '@/lib/supabase/server'
+import { restoreObject } from '@/lib/backup/restore-object'
 
 export type BackupRunRow = {
   id: string
@@ -54,4 +57,53 @@ export async function getBackupStatus(): Promise<BackupStatusSummary | null> {
     lastDatabaseRun: (lastDb as BackupRunRow) ?? null,
     lastStorageRun: (lastStorage as BackupRunRow) ?? null,
   }
+}
+
+// ── Fase 2: restore de arquivo (escopo estreito, ver lib/backup/restore-object.ts) ──
+
+export type DeletedObjectRow = {
+  id: string
+  storage_key: string
+  filename: string | null
+  mime_type: string | null
+  size_bytes: number | null
+  updated_at: string
+}
+
+async function resolveOrgId(orgSlug: string): Promise<string | null> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('organizations').select('id').eq('slug', orgSlug).maybeSingle()
+  return data?.id ?? null
+}
+
+export async function listDeletedObjects(orgSlug: string): Promise<DeletedObjectRow[]> {
+  if (!(await isSuperAdmin())) return []
+  const orgId = await resolveOrgId(orgSlug)
+  if (!orgId) return []
+
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('storage_objects')
+    .select('id, storage_key, filename, mime_type, size_bytes, updated_at')
+    .eq('organization_id', orgId)
+    .eq('status', 'deleted')
+    .order('updated_at', { ascending: false })
+    .limit(50)
+  return (data as DeletedObjectRow[]) ?? []
+}
+
+export async function restoreDeletedObject(
+  orgSlug: string,
+  objectId: string,
+  overwrite = false,
+): Promise<{ ok: true } | { ok: false; error: string; needsOverwriteConfirmation?: boolean }> {
+  if (!(await isSuperAdmin())) return { ok: false, error: 'Não autorizado' }
+  const user = await getUser()
+  if (!user) return { ok: false, error: 'Não autenticado' }
+  const orgId = await resolveOrgId(orgSlug)
+  if (!orgId) return { ok: false, error: 'Organização não encontrada' }
+
+  const result = await restoreObject({ organizationId: orgId, objectId, userId: user.id, overwrite })
+  if (result.ok) revalidatePath('/super-admin/backups')
+  return result
 }
