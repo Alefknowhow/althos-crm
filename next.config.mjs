@@ -33,6 +33,17 @@ const supabaseWs = supabaseHostname.startsWith('*')
   ? 'wss://*.supabase.co'
   : `wss://${supabaseHostname}`
 
+// Cloudflare R2 hostname — arquivos migrados (avatares, mídia, anexos)
+// passam a ser servidos via signed URL desse domínio em vez do Supabase
+// Storage. R2_ENDPOINT (se setado) ou R2_ACCOUNT_ID (fallback padrão
+// {accountId}.r2.cloudflarestorage.com) — mesma lógica do resolveEndpoint()
+// em lib/storage/providers/r2.ts.
+const r2Hostname = process.env.R2_ENDPOINT
+  ? new URL(process.env.R2_ENDPOINT).hostname
+  : process.env.R2_ACCOUNT_ID
+    ? `${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    : null
+
 const ContentSecurityPolicy = [
   // Only load resources from the same origin by default.
   `default-src 'self'`,
@@ -61,12 +72,13 @@ const ContentSecurityPolicy = [
   // (fotos de hospedagem puxadas via Terra API em Cotações) + Unsplash
   // photo CDN (busca de foto de capa em Cotações) + Instagram CDN (foto de
   // perfil do contato no inbox de DM).
-  `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com`,
+  `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com${r2Hostname ? ` https://${r2Hostname}` : ''}`,
 
   // Áudio/vídeo (elementos <audio>/<video>) — mídia recebida via WhatsApp,
-  // baixada e salva no Storage (bucket whatsapp-media, mesmo host acima).
+  // baixada e salva no Storage (bucket whatsapp-media, mesmo host acima —
+  // ou R2, pós-migração).
   // Não é coberto por img-src; sem isso, cai no default-src 'self' e bloqueia.
-  `media-src 'self' blob: https://${supabaseHostname}`,
+  `media-src 'self' blob: https://${supabaseHostname}${r2Hostname ? ` https://${r2Hostname}` : ''}`,
 
   // Fetch / XHR / WebSocket connections allowed to known external services.
   // This is the most impactful restriction — exfiltrating data to an
@@ -88,6 +100,9 @@ const ContentSecurityPolicy = [
     // visualmente, mas nada chega na página.
     `https://*.facebook.com`,
     `https://connect.facebook.net`,
+    // Cloudflare R2 — upload direto do navegador via presigned URL (bypassa
+    // o servidor Vercel pro payload do arquivo).
+    r2Hostname ? `https://${r2Hostname}` : '',
     // Inngest Dev Server in local dev
     isDev ? 'http://localhost:8288' : '',
   ]
