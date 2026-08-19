@@ -15,6 +15,7 @@ import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
 import { sendCampaignsCronFn } from '@/lib/inngest/send-campaigns-cron'
 import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
 import { processWhatsappInboundFn } from '@/lib/inngest/whatsapp-inbound'
+import { backupDatabaseCronFn, backupStorageCronFn, backupRetentionCronFn } from '@/lib/inngest/backup-cron'
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -43,5 +44,8 @@ export const { GET, POST, PUT } = serve({
     sendCampaignsCronFn,
     processInstagramInboundFn,
     processWhatsappInboundFn,
+    backupDatabaseCronFn,
+    backupStorageCronFn,
+    backupRetentionCronFn,
   ]
 })
