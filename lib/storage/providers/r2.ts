@@ -46,6 +46,11 @@ function client(): S3Client {
   cachedClient = new S3Client({
     region: 'auto', // R2 não usa regiões AWS reais — 'auto' é o valor documentado pela Cloudflare.
     endpoint: resolveEndpoint(),
+    // Path-style (endpoint/bucket/key) em vez de virtual-hosted-style
+    // (bucket.endpoint/key) — recomendação da Cloudflare pro R2. Sem isso o
+    // SDK gera URLs em bucket.{accountId}.r2.cloudflarestorage.com, um host
+    // que não bate com o domínio fixo liberado no CSP (next.config.mjs).
+    forcePathStyle: true,
     credentials: {
       accessKeyId: process.env.R2_ACCESS_KEY_ID!,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
