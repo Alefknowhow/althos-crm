@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
 import ImageEditor from '@/components/features/ImageEditor'
+import { LinkPreviewCard, linkifyText } from '@/components/features/LinkPreviewCard'
+import { extractFirstUrl } from '@/lib/link-preview/extract-url'
 import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound, Sparkles } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -882,6 +884,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                 const isInbound = m.direction === 'inbound'
                 const media = renderWhatsappMedia(m, setLightboxUrl)
                 const text = msgBody(m)
+                const linkUrl = !media && text && !msgQuery.trim() ? extractFirstUrl(text) : null
                 return (
                   <div key={m.id} className={`flex min-w-0 ${isInbound ? 'justify-start' : 'justify-end'}`}>
                     <div
@@ -892,8 +895,9 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                       }`}
                     >
                       <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                        {media || (text ? highlightText(text, msgQuery) : '[Mídia recebida]')}
+                        {media || (text ? (linkUrl ? linkifyText(text) : highlightText(text, msgQuery)) : '[Mídia recebida]')}
                       </div>
+                      {linkUrl && <LinkPreviewCard url={linkUrl} />}
                       <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-[#667781] dark:text-[#8696a0]`}>
                         {!isInbound && m.sent_by_name && <span className="truncate max-w-[120px]">{m.sent_by_name} ·</span>}
                         {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
