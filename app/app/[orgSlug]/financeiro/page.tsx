@@ -7,6 +7,7 @@ import FinancialAiChat from '@/components/features/financial/FinancialAiChat'
 import { PageHeader } from '@/components/ui/page-header'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
 
 export default async function FinanceiroPage({
   params,

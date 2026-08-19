@@ -852,15 +852,20 @@ function EntryEditor({
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploading(true)
-    for (const file of Array.from(files)) {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await uploadFinancialAttachment(orgSlug, e.id, fd)
-      if (res.ok) set('anexos', res.anexos)
-      else toast.error(`${file.name}: ${res.error}`)
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await uploadFinancialAttachment(orgSlug, e.id, fd)
+        if (res.ok) set('anexos', res.anexos)
+        else toast.error(`${file.name}: ${res.error}`)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao enviar anexo.')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
-    setUploading(false)
-    if (fileRef.current) fileRef.current.value = ''
   }
 
   async function handleRemoveAttachment(path: string) {
