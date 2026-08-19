@@ -22,6 +22,7 @@ const ROUTE_TITLES: Record<string, string> = {
   financeiro: 'Financeiro',
   automacoes: 'Automações',
   campanhas: 'Campanhas de Envio',
+  'whatsapp-templates': 'Templates WhatsApp',
   'email-templates': 'Templates de Email',
   configuracoes: 'Configurações',
   ajuda: 'Central de Ajuda',

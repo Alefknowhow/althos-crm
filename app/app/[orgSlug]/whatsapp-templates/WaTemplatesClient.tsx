@@ -460,16 +460,16 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
 
-      {/* Header */}
+      {/* Header — título vai pra barra superior (getPageTitle em
+          lib/route-titles.ts), igual todo outro módulo; aqui só a
+          descrição + ação, mesmo padrão de PageHeader (ui/page-header.tsx)
+          usado no resto do app. */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Templates WhatsApp (HSM)</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie seus templates aprovados pela Meta. Usados em automações para enviar mensagens fora da janela de 24h.
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Gerencie seus templates aprovados pela Meta. Usados em automações para enviar mensagens fora da janela de 24h.
+        </p>
         <Button onClick={openNew} size="sm" className="shrink-0">
           <Plus className="w-4 h-4 mr-1.5" />
           Novo template
@@ -477,7 +477,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
       </div>
 
       {/* Info callout */}
-      <div className="rounded-none bg-amber-50 border border-amber-100 p-4 text-sm text-amber-800 flex gap-3">
+      <div className="rounded-none bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-4 text-sm text-amber-800 dark:text-amber-300 flex gap-3">
         <span className="text-lg shrink-0">⚠️</span>
         <div>
           <strong>Templates precisam ser aprovados pela Meta antes de serem enviados.</strong>

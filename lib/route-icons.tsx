@@ -42,6 +42,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   social: InstagramGlyph,
   marketing: Megaphone,
   campanhas: Send,
+  'whatsapp-templates': Send,
   forms: FileText,
   financeiro: Wallet,
   automacoes: Zap,
