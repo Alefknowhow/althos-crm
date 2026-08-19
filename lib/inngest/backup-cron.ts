@@ -138,16 +138,30 @@ export const backupStorageCronFn = inngest.createFunction(
       return data?.completed_at ?? null
     })
 
-    const result: { status: 'success' | 'failed'; objectCount?: number; bytes?: number; error?: string } =
-      await step.run('copy-objects', async () => {
-        const startedAt = Date.now()
-        try {
-          const r2Result = await backupStorageObjects(lastSuccessAt)
-          const legacyResult = await backupLegacySupabaseBuckets()
+    // Duas steps separadas (em vez de uma só) — cada uma é uma
+    // invocação HTTP independente do orquestrador do Inngest, então o
+    // teto de tempo da function serverless (maxDuration, ver
+    // app/api/inngest/route.ts) se aplica a CADA uma, não à soma das
+    // duas. Varrer os 12 buckets legados é a parte mais lenta (lista
+    // recursiva), então ganha a própria step.
+    const startedAt = Date.now()
+    const r2Copied: { objectsCopied: number; bytesCopied: number; tenantIds: string[] } =
+      await step.run('copy-r2-objects', async () => {
+        const r = await backupStorageObjects(lastSuccessAt)
+        return { objectsCopied: r.objectsCopied, bytesCopied: r.bytesCopied, tenantIds: Array.from(r.tenantIds) }
+      })
+    const legacyCopied: { objectsCopied: number; bytesCopied: number; tenantIds: string[] } =
+      await step.run('copy-legacy-buckets', async () => {
+        const r = await backupLegacySupabaseBuckets()
+        return { objectsCopied: r.objectsCopied, bytesCopied: r.bytesCopied, tenantIds: Array.from(r.tenantIds) }
+      })
 
-          const objectCount = r2Result.objectsCopied + legacyResult.objectsCopied
-          const bytes = r2Result.bytesCopied + legacyResult.bytesCopied
-          const tenantCount = new Set(Array.from(r2Result.tenantIds).concat(Array.from(legacyResult.tenantIds))).size
+    const result: { status: 'success' | 'failed'; objectCount?: number; bytes?: number; error?: string } =
+      await step.run('finalize', async () => {
+        try {
+          const objectCount = r2Copied.objectsCopied + legacyCopied.objectsCopied
+          const bytes = r2Copied.bytesCopied + legacyCopied.bytesCopied
+          const tenantCount = new Set(r2Copied.tenantIds.concat(legacyCopied.tenantIds)).size
           const durationMs = Date.now() - startedAt
 
           const now = new Date()

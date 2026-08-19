@@ -17,6 +17,14 @@ import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
 import { processWhatsappInboundFn } from '@/lib/inngest/whatsapp-inbound'
 import { backupDatabaseCronFn, backupStorageCronFn, backupRetentionCronFn } from '@/lib/inngest/backup-cron'
 
+// Sem isso, a function serverless usa o teto padrão do plano da Vercel
+// (bem menor que isso) — o backup de storage varre 12 buckets legados
+// recursivamente + baixa/reenvia cada objeto novo, o que pode passar
+// fácil do teto padrão numa carga maior. 300s é o máximo do plano Pro
+// sem Fluid Compute; reavaliar se o volume de storage crescer muito
+// (ver "Como escalar" em docs/backup-disaster-recovery.md).
+export const maxDuration = 300
+
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
