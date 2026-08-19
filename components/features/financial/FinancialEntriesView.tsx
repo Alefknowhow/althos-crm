@@ -970,13 +970,14 @@ function EntryEditor({
               <ul className="space-y-1.5">
                 {e.anexos.map((a, i) => {
                   const isPdf = a.mime_type === 'application/pdf'
+                  const key = a.storage_object_id ?? a.path
                   return (
-                    <li key={`${a.path}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                    <li key={`${key}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
                       {isPdf ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
-                      <button type="button" onClick={() => handleOpenAttachment(a.path)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
+                      <button type="button" onClick={() => handleOpenAttachment(key!)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
                         {a.name}
                       </button>
-                      <button type="button" onClick={() => handleRemoveAttachment(a.path)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remover anexo">
+                      <button type="button" onClick={() => handleRemoveAttachment(key!)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remover anexo">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </li>
