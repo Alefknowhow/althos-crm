@@ -7,6 +7,7 @@ import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
 import SidebarCollapseToggleButton from './SidebarCollapseToggleButton'
 import SidebarUserMenu from './SidebarUserMenu'
+import SidebarSupportLink from './SidebarSupportLink'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { isTravelNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
@@ -423,6 +424,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             </SidebarNavLink>
           </>
         )}
+
+        {/* ── Suporte ────────────────────────────────── */}
+        <SectionLabel>Suporte</SectionLabel>
+        <SidebarSupportLink />
 
       </nav>
 

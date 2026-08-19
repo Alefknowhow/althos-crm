@@ -21,14 +21,14 @@ import { isTravelNiche } from '@/lib/niche'
 import CopyButton from '@/components/ui/copy-button'
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
-  lead: { label: 'Lead', className: 'border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20' },
+  lead: { label: 'Lead', className: 'border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20' },
   cliente: {
     label: 'Cliente',
-    className: 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20',
+    className: 'border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20',
   },
   inativo: {
     label: 'Inativo',
-    className: 'border-zinc-300 text-zinc-600 bg-zinc-50 dark:bg-zinc-800/40',
+    className: 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/40',
   },
 }
 

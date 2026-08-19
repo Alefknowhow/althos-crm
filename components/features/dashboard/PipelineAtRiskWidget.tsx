@@ -55,7 +55,7 @@ export default async function PipelineAtRiskWidget({
           </p>
         </div>
         {totalAtRisk > 0 ? (
-          <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-900/20">
+          <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
             {totalAtRisk} parados
           </Badge>
         ) : null}
@@ -104,9 +104,9 @@ export default async function PipelineAtRiskWidget({
                           variant="outline"
                           className={`text-[10px] tabular-nums ${
                             lead.days_stuck >= 30
-                              ? 'text-red-700 border-red-300 bg-red-50 dark:bg-red-900/20'
+                              ? 'text-red-700 dark:text-red-300 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
                               : lead.days_stuck >= 14
-                                ? 'text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                                ? 'text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20'
                                 : 'text-muted-foreground'
                           }`}
                         >

@@ -41,9 +41,9 @@ type Props = {
 
 const STATUS_META: Record<string, { label: string; className: string; icon: any }> = {
   draft:    { label: 'Rascunho',              className: 'bg-muted text-muted-foreground',                                   icon: FileText },
-  sent:     { label: 'Aguardando assinatura', className: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20',                  icon: Clock },
-  signed:   { label: 'Assinado',              className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20',            icon: CheckCircle2 },
-  rejected: { label: 'Recusado',              className: 'bg-red-50 text-red-700 dark:bg-red-900/20',                       icon: XCircle },
+  sent:     { label: 'Aguardando assinatura', className: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',       icon: Clock },
+  signed:   { label: 'Assinado',              className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300', icon: CheckCircle2 },
+  rejected: { label: 'Recusado',              className: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300',              icon: XCircle },
 }
 
 export default function ContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, open, onOpenChange }: Props) {

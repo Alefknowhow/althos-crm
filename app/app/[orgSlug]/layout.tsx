@@ -5,13 +5,11 @@ import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { ModeToggle } from '@/components/features/ModeToggle'
-import { HelpCircle } from 'lucide-react'
 import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
-import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
-import Link from 'next/link'
+import { SupportWidget } from '@/components/features/SupportWidget'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
 import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
@@ -140,17 +138,6 @@ export default async function OrgLayout({
               </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
-              <div className="hidden md:flex items-center">
-                <Link
-                  href={`/app/${params.orgSlug}/ajuda`}
-                  aria-label="Central de Ajuda"
-                  title="Central de Ajuda"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <HelpCircle className="h-[18px] w-[18px]" />
-                </Link>
-                <SupportHeaderButton />
-              </div>
               <div className="hidden md:inline-flex">
                 <ModeToggle />
               </div>
