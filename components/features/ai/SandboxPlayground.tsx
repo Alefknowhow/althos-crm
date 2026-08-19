@@ -324,7 +324,7 @@ export default function SandboxPlayground({
               <Bot className="w-10 h-10 opacity-30" />
               <p>Mande a primeira mensagem como se fosse um cliente.</p>
               <p className="text-xs">
-                Ex: "Oi, vi um anúncio de vocês, queria saber preço."
+                Ex: &quot;Oi, vi um anúncio de vocês, queria saber preço.&quot;
               </p>
             </div>
           ) : (

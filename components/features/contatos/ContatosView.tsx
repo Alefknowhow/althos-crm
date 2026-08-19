@@ -40,8 +40,6 @@ import CustomerDocuments from '@/components/features/customers/CustomerDocuments
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import CopyButton from '@/components/ui/copy-button'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 // ── Tipos vindos da página (server) ──────────────────────────────────
 type ListRow = {
   id: string

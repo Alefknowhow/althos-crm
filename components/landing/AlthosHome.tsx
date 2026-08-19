@@ -226,7 +226,7 @@ function Compare() {
         <div className="eyebrow reveal" data-d="0"><span className="star">✦</span> Por que a Althos</div>
         <h2 className="reveal" data-d="1">Mais do que planilha e WhatsApp solto — sem a complexidade das plataformas gringas</h2>
         <p className="reveal" data-d="2">
-          Se hoje o seu "sistema" é uma planilha e o WhatsApp do celular, qualquer automação já é um
+          Se hoje o seu &quot;sistema&quot; é uma planilha e o WhatsApp do celular, qualquer automação já é um
           salto. E se você já cogitou uma ferramenta gringa, sabe que são caras, complexas e não
           falam a língua do seu negócio. A Althos entrega IA, automações e WhatsApp prontos pra
           vender — feita para o Brasil.

@@ -133,7 +133,7 @@ export default function FinancialCsvImporter({
           <DialogTitle className="flex items-center gap-2"><Upload className="w-4 h-4 text-primary" /> Importar extrato (CSV)</DialogTitle>
           <DialogDescription>
             Envie um CSV com colunas de data, descrição e valor. Valores negativos viram despesa, positivos viram receita.
-            Os lançamentos entram com a categoria "A categorizar" — revise depois em Lançamentos.
+            Os lançamentos entram com a categoria &quot;A categorizar&quot; — revise depois em Lançamentos.
           </DialogDescription>
         </DialogHeader>
 

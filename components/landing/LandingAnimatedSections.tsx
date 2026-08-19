@@ -415,7 +415,7 @@ export function Testimonials() {
             <FadeInItem key={t.name}>
               <SpotlightCard className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 h-full flex flex-col sm:p-6">
                 <div className="flex items-center gap-0.5 text-amber-400 text-sm mb-3 sm:mb-4">★★★★★</div>
-                <p className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed flex-1">"{t.quote}"</p>
+                <p className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed flex-1">&quot;{t.quote}&quot;</p>
                 <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/8 sm:mt-5 sm:pt-5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-semibold shrink-0" style={{ background: t.color }}>
                     {t.name[0]}

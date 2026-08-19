@@ -244,26 +244,26 @@ export default function CsvImporter({
           <div className="mt-6 border-t pt-6 text-sm space-y-3">
             <p className="font-medium">Como exportar do Meta Ads Manager:</p>
             <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-              <li>Abra o Meta Ads Manager → aba "Campanhas"</li>
+              <li>Abra o Meta Ads Manager → aba &quot;Campanhas&quot;</li>
               <li>Selecione o período desejado</li>
               <li>
                 <strong className="text-foreground">⚠ Crítico:</strong> clique em{' '}
-                <strong className="text-foreground">"Detalhamento"</strong> (canto superior direito, ao lado de "Colunas") e
-                selecione <strong className="text-foreground">"Por dia"</strong>. Sem isso, o Meta
+                <strong className="text-foreground">&quot;Detalhamento&quot;</strong> (canto superior direito, ao lado de &quot;Colunas&quot;) e
+                selecione <strong className="text-foreground">&quot;Por dia&quot;</strong>. Sem isso, o Meta
                 exporta um rollup sem coluna diária e o import não funciona.
               </li>
               <li>
                 Clique no ícone de <strong className="text-foreground">download</strong> (seta pra baixo, à direita das
-                colunas/detalhamento) → "Exportar dados da tabela" → CSV
+                colunas/detalhamento) → &quot;Exportar dados da tabela&quot; → CSV
               </li>
               <li>Envie o arquivo aqui</li>
             </ol>
             <p className="font-medium mt-3">Como exportar do Google Ads:</p>
             <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-              <li>Google Ads → aba "Campanhas"</li>
+              <li>Google Ads → aba &quot;Campanhas&quot;</li>
               <li>Selecione período</li>
-              <li>Segmentar → "Dia" (botão segmentar no topo da tabela)</li>
-              <li>Botão "Baixar" → CSV</li>
+              <li>Segmentar → &quot;Dia&quot; (botão segmentar no topo da tabela)</li>
+              <li>Botão &quot;Baixar&quot; → CSV</li>
             </ol>
           </div>
         </CardContent>

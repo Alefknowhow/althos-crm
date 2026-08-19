@@ -425,7 +425,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           <CardHeader>
             <CardTitle className="text-base">Evolução das métricas</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Use "Personalizar" acima pra escolher quais métricas aparecem aqui.
+              Use &quot;Personalizar&quot; acima pra escolher quais métricas aparecem aqui.
             </p>
           </CardHeader>
           <CardContent>

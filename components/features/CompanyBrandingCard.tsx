@@ -187,7 +187,7 @@ export default function CompanyBrandingCard({
         <div className="space-y-2 max-w-xs">
           <Label htmlFor="monthly-goal">Meta mensal de receita</Label>
           <p className="text-xs text-muted-foreground -mt-1">
-            Usada como linha de referência no gráfico "Receita vs. meta" da Inicial.
+            Usada como linha de referência no gráfico &quot;Receita vs. meta&quot; da Inicial.
           </p>
           <Input
             id="monthly-goal"

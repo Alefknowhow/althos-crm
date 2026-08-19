@@ -60,7 +60,7 @@ export default function NewAdAccountDialog({
         <DialogHeader>
           <DialogTitle>Nova conta de anúncio</DialogTitle>
           <DialogDescription>
-            Uma "conta" é o agrupador das suas campanhas em uma plataforma (Meta Business, Google Ads, etc).
+            Uma &quot;conta&quot; é o agrupador das suas campanhas em uma plataforma (Meta Business, Google Ads, etc).
           </DialogDescription>
         </DialogHeader>
 

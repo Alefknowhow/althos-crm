@@ -223,7 +223,7 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
 
           <p className="text-xs text-muted-foreground border-t pt-3">
             Agendamento manual não valida horário disponível — o operador pode marcar fora da agenda
-            normal. Para o link público (cliente marcando sozinho), use a aba "Tipos de Evento".
+            normal. Para o link público (cliente marcando sozinho), use a aba &quot;Tipos de Evento&quot;.
           </p>
 
           <DialogFooter>

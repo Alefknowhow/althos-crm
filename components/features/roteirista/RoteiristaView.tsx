@@ -516,7 +516,7 @@ function KnowledgeDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-primary" /> Base de conhecimento</DialogTitle>
           <DialogDescription>
-            Fatos que a IA considera ao conversar — ex.: "Grand Palladium tem gratuidade para até 2 CHD de até 17 anos por quarto, acompanhado de adultos pagantes."
+            Fatos que a IA considera ao conversar — ex.: &quot;Grand Palladium tem gratuidade para até 2 CHD de até 17 anos por quarto, acompanhado de adultos pagantes.&quot;
           </DialogDescription>
         </DialogHeader>
 

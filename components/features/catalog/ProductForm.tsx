@@ -32,7 +32,6 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
 
   const form = useForm<ProductFormValues>({
     // zodResolver cast: @hookform/resolvers v5 tem incompatibilidade de tipos com zod v4
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productInputSchema as any),
     defaultValues: {
       name: initialData?.name || '',

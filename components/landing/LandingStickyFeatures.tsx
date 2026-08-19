@@ -104,8 +104,8 @@ function DMMockup() {
       <div className="border-t border-black/5 p-3">
         <p className="text-[10px] font-semibold text-[#6E6E73] uppercase tracking-wider mb-1.5">Comentário respondido</p>
         <div className="rounded-xl p-2.5 border" style={{ background: 'linear-gradient(to right, #fdf0f8, #f5f0ff)', borderColor: '#f0d0f0' }}>
-          <p className="text-[10px] text-[#6E6E73]"><span className="font-semibold" style={{ color: '#833AB4' }}>@usuario_joao:</span> "Tem teste?"</p>
-          <p className="text-[10px] font-medium mt-0.5" style={{ color: '#E1306C' }}>↳ IA: "Sim! Te mandei no privado 😊"</p>
+          <p className="text-[10px] text-[#6E6E73]"><span className="font-semibold" style={{ color: '#833AB4' }}>@usuario_joao:</span> &quot;Tem teste?&quot;</p>
+          <p className="text-[10px] font-medium mt-0.5" style={{ color: '#E1306C' }}>↳ IA: &quot;Sim! Te mandei no privado 😊&quot;</p>
         </div>
       </div>
     </div>

@@ -148,7 +148,7 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, waTe
               </Select>
               {selectedWaTemplate && selectedWaTemplate.status !== 'approved' && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none p-2">
-                  Esse template está marcado como "{WA_STATUS_LABEL[selectedWaTemplate.status] || selectedWaTemplate.status}", não "Aprovado". Confirme na Meta que ele está realmente aprovado antes de disparar — fora da janela de 24h, só templates aprovados são entregues.
+                  Esse template está marcado como &quot;{WA_STATUS_LABEL[selectedWaTemplate.status] || selectedWaTemplate.status}&quot;, não &quot;Aprovado&quot;. Confirme na Meta que ele está realmente aprovado antes de disparar — fora da janela de 24h, só templates aprovados são entregues.
                 </p>
               )}
             </>

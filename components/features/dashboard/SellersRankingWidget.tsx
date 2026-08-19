@@ -46,7 +46,7 @@ export default async function SellersRankingWidget({
           <div className="py-10 text-center text-sm text-muted-foreground">
             <p>Nenhuma venda no período.</p>
             <p className="text-[10px] mt-1">
-              Vendedor é atribuído ao registrar uma venda em "Vendas".
+              Vendedor é atribuído ao registrar uma venda em &quot;Vendas&quot;.
             </p>
           </div>
         ) : (

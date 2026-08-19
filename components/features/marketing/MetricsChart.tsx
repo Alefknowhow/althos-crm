@@ -45,7 +45,7 @@ export default function MetricsChart({ data, visible }: Props) {
   if (visibleArray.length === 0) {
     return (
       <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
-        Nenhuma métrica selecionada pro gráfico — use "Personalizar" pra escolher.
+        Nenhuma métrica selecionada pro gráfico — use &quot;Personalizar&quot; pra escolher.
       </div>
     )
   }

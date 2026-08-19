@@ -480,7 +480,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
         <span className="text-lg shrink-0">⚠️</span>
         <div>
           <strong>Templates precisam ser aprovados pela Meta antes de serem enviados.</strong>
-          {' '}Crie o template aqui e clique em "Enviar para aprovação" — a análise da Meta costuma
+          {' '}Crie o template aqui e clique em &quot;Enviar para aprovação&quot; — a análise da Meta costuma
           levar de minutos a algumas horas. Você também pode criar templates direto no{' '}
           <a href="https://business.facebook.com/wa/manage/message-templates/" target="_blank"
             className="underline hover:text-amber-900">Meta Business Manager</a> e só registrar o

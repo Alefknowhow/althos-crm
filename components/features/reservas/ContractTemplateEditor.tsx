@@ -33,7 +33,7 @@ export default function ContractTemplateEditor({
       <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground flex items-start gap-2">
         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
         <div>
-          Este é o texto usado ao clicar em "Gerar contrato" numa venda. Campos entre chaves são
+          Este é o texto usado ao clicar em &quot;Gerar contrato&quot; numa venda. Campos entre chaves são
           preenchidos automaticamente com os dados da venda: <code className="px-1 rounded bg-muted">{'{{sale.cliente}}'}</code>{' '}
           <code className="px-1 rounded bg-muted">{'{{sale.destino}}'}</code>{' '}
           <code className="px-1 rounded bg-muted">{'{{sale.hotel}}'}</code>{' '}

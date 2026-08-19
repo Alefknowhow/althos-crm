@@ -242,7 +242,7 @@ function SetupGuide({ redirectUri }: { redirectUri: string }) {
           GOOGLE_BUSINESS_CLIENT_ID = (Client ID do OAuth)<br />
           GOOGLE_BUSINESS_CLIENT_SECRET = (Client secret do OAuth)
         </code>
-        <span className="block mt-1 text-xs">Faça um novo deploy após salvar. Depois é só clicar em "Conectar Google Business".</span></>,
+        <span className="block mt-1 text-xs">Faça um novo deploy após salvar. Depois é só clicar em &quot;Conectar Google Business&quot;.</span></>,
     },
   ]
 
@@ -250,7 +250,7 @@ function SetupGuide({ redirectUri }: { redirectUri: string }) {
     <div className="rounded-none border bg-card p-5">
       <h2 className="text-sm font-semibold mb-1">Como conectar — passo a passo</h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Conectar o Google Business usa OAuth + aprovação de API do Google — não é uma "chave" única.
+        Conectar o Google Business usa OAuth + aprovação de API do Google — não é uma &quot;chave&quot; única.
       </p>
       <ol className="space-y-4">
         {steps.map(s => (

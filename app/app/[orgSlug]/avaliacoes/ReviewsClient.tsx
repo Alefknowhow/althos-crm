@@ -184,7 +184,7 @@ export default function ReviewsClient({
         <div className="flex flex-col items-center text-center py-12 px-4 rounded-lg border border-dashed">
           <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
           <p className="text-sm font-medium">Nenhuma avaliação sincronizada ainda</p>
-          <p className="text-xs text-muted-foreground mt-1">Clique em "Sincronizar" pra buscar as avaliações do Google.</p>
+          <p className="text-xs text-muted-foreground mt-1">Clique em &quot;Sincronizar&quot; pra buscar as avaliações do Google.</p>
         </div>
       ) : (
         <div className="space-y-3">

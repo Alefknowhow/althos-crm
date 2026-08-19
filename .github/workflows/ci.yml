@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # scripts/verify.sh é a mesma verificação que roda local (Harness) —
+      # CI e dev usam exatamente o mesmo pipeline, sem duplicar passos.
+      # Adiciona lint ao CI (não rodava antes) e mantém o resto igual
+      # (typecheck, unit tests, build), sem mascarar falha: o script sai
+      # com código != 0 se qualquer passo reprovar.
+      - name: Verify (typecheck, lint, tests, build)
+        run: bash scripts/verify.sh
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

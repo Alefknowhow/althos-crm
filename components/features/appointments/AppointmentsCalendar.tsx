@@ -507,7 +507,7 @@ export default function AppointmentsCalendar({
                 {selected.notes && (
                   <div>
                     <div className="text-xs text-muted-foreground">Notas do cliente</div>
-                    <div className="italic">"{selected.notes}"</div>
+                    <div className="italic">&quot;{selected.notes}&quot;</div>
                   </div>
                 )}
 

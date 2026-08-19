@@ -386,7 +386,7 @@ function RecurrenceFields({
         </label>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Gera até 60 ocorrências de uma vez (trava de segurança) — se marcar "infinita", uma nova leva precisa ser gerada mais adiante.
+        Gera até 60 ocorrências de uma vez (trava de segurança) — se marcar &quot;infinita&quot;, uma nova leva precisa ser gerada mais adiante.
       </p>
     </div>
   )

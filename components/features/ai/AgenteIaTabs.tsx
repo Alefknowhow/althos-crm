@@ -248,7 +248,7 @@ export default function AgenteIaTabs({
               <CardTitle>Modelos prontos</CardTitle>
               <CardDescription>
                 Aplica uma persona pronta pra um objetivo comum. Só preenche o texto — você pode editar
-                livremente depois, e nada é salvo até clicar em "Salvar configuração".
+                livremente depois, e nada é salvo até clicar em &quot;Salvar configuração&quot;.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -386,7 +386,7 @@ export default function AgenteIaTabs({
             <CardHeader>
               <CardTitle>Horário de atendimento</CardTitle>
               <CardDescription>
-                Fora desses horários, o agente responde apenas com a mensagem de "fora do horário" abaixo.
+                Fora desses horários, o agente responde apenas com a mensagem de &quot;fora do horário&quot; abaixo.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -572,10 +572,10 @@ export default function AgenteIaTabs({
       <AlertDialog open={!!pendingPreset} onOpenChange={o => !o && setPendingPreset(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aplicar modelo "{ATTENDANT_PRESETS.find(p => p.id === pendingPreset)?.label}"?</AlertDialogTitle>
+            <AlertDialogTitle>Aplicar modelo &quot;{ATTENDANT_PRESETS.find(p => p.id === pendingPreset)?.label}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
               Substitui o texto da Persona (aba Personalidade) pelo modelo pronto. Nada é salvo até você
-              clicar em "Salvar configuração" — dá pra revisar e ajustar antes.
+              clicar em &quot;Salvar configuração&quot; — dá pra revisar e ajustar antes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

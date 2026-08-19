@@ -148,7 +148,7 @@ export default function PipelinesManager({
       {initial.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
-            Você ainda não tem pipelines. Clique em "Novo Pipeline" para começar.
+            Você ainda não tem pipelines. Clique em &quot;Novo Pipeline&quot; para começar.
           </CardContent>
         </Card>
       ) : (

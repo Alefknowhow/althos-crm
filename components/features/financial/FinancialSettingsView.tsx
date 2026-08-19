@@ -113,7 +113,7 @@ function SettingListCard({
         {isOperadora && (
           <p className="text-[11px] text-muted-foreground -mt-1.5">
             Configure como cada operadora paga a comissão — a receita da venda é lançada na data
-            calculada. "Dia fixo" paga sempre no mesmo dia do mês; "Decêndio" paga X dias depois
+            calculada. &quot;Dia fixo&quot; paga sempre no mesmo dia do mês; &quot;Decêndio&quot; paga X dias depois
             que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha.
           </p>
         )}

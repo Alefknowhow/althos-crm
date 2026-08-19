@@ -819,7 +819,7 @@ function SaleEditor({
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. "Preencher com IA" lê o último voucher enviado.
+              <Paperclip className="w-3 h-3" /> PDF ou imagem, até 15 MB cada. &quot;Preencher com IA&quot; lê o último voucher enviado.
             </p>
           </div>
         </Field>
