@@ -29,10 +29,25 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+// Tokens de tamanho — opcional, aditivo: nenhum uso existente de
+// DialogContent quebra (default continua max-w-lg, mesmo comportamento
+// de sempre). twMerge resolve o conflito quando um `className` com
+// max-w-* próprio é passado junto (className vence, sempre por último
+// no cn() abaixo) — telas antigas continuam controlando a própria
+// largura até serem migradas pra usar `size` em vez disso.
+const DIALOG_SIZES = {
+  sm: "max-w-sm",
+  md: "max-w-lg",
+  lg: "max-w-2xl",
+  xl: "max-w-4xl",
+} as const
+
+type DialogSize = keyof typeof DIALOG_SIZES
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { size?: DialogSize }
+>(({ className, size = "md", children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -40,7 +55,8 @@ const DialogContent = React.forwardRef<
       className={cn(
         // Carbon modal: flat corners, hairline border — no drop shadow, the
         // dark overlay behind already separates it from the page.
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-none max-md:rounded-[8px] border border-border bg-background p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 rounded-none max-md:rounded-[8px] border border-border bg-background p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        DIALOG_SIZES[size],
         className
       )}
       {...props}
