@@ -65,6 +65,22 @@ function bucketName(): string {
   return b
 }
 
+/** Monta um Content-Disposition seguro pra ir num header HTTP assinado
+ *  (SigV4) — headers HTTP só aceitam ASCII/Latin-1; um nome de arquivo
+ *  com acento (ex.: "cotação.pdf") faz o Node reescrever o valor real na
+ *  hora de enviar, o que não bate mais com o que o SDK assinou —
+ *  resultado: "The request signature we calculated does not match"
+ *  (erro visto ao anexar PDF com nome acentuado; imagem com nome sem
+ *  acento passava batido). `filename` (entre aspas) vira uma versão só
+ *  ASCII pra compatibilidade; `filename*` (RFC 5987, percent-encoded)
+ *  carrega o nome de verdade — todo navegador moderno prioriza esse
+ *  campo, então o nome exibido no download continua correto. */
+function buildContentDisposition(type: 'inline' | 'attachment', filename: string): string {
+  const asciiName = filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '')
+  const encoded = encodeURIComponent(filename)
+  return `${type}; filename="${asciiName}"; filename*=UTF-8''${encoded}`
+}
+
 export const r2Provider: StorageProviderAdapter = {
   name: 'r2',
 
@@ -76,7 +92,7 @@ export const r2Provider: StorageProviderAdapter = {
       Key: storageKey,
       Body: input.body,
       ContentType: input.contentType,
-      ...(input.filename ? { ContentDisposition: `inline; filename="${input.filename.replace(/"/g, '')}"` } : {}),
+      ...(input.filename ? { ContentDisposition: buildContentDisposition('inline', input.filename) } : {}),
     }))
     return { provider: 'r2', bucket, storageKey, size: input.body.byteLength }
   },
@@ -107,7 +123,7 @@ export const r2Provider: StorageProviderAdapter = {
       Bucket: ref.bucket,
       Key: ref.storageKey,
       ...(opts.downloadFilename
-        ? { ResponseContentDisposition: `attachment; filename="${opts.downloadFilename.replace(/"/g, '')}"` }
+        ? { ResponseContentDisposition: buildContentDisposition('attachment', opts.downloadFilename) }
         : {}),
     })
     return getS3SignedUrl(client(), command, { expiresIn: opts.expiresInSeconds })
