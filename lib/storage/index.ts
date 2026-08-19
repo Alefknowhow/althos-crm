@@ -40,6 +40,13 @@ function getProvider(name: StorageProviderName): StorageProviderAdapter {
   return p
 }
 
+/** TTL padrão de leitura — 48h. Decisão consciente: bem menor que uma URL
+ *  permanente (a exposição sempre expira), mas longo o bastante pra cobrir
+ *  o padrão real de revisita a uma conversa/anexo sem forçar reassinatura
+ *  toda hora. Quem persiste essa URL (ver actions/storage.ts) guarda o
+ *  timestamp de expiração junto, pra saber quando reassinar. */
+export const SIGNED_URL_TTL_SECONDS = 48 * 60 * 60
+
 /** Provider usado para todo upload NOVO. Hoje sempre 'r2' — centralizado
  *  aqui em vez de espalhado, pra trocar em um lugar só quando o próximo
  *  provider entrar. */
@@ -75,18 +82,22 @@ export const StorageService = {
   },
 
   /** URL temporária de leitura — nunca uma URL pública permanente pra
-   *  objeto privado (Fase 7 do plano). TTL default de 10min quando o
-   *  caller não especifica (dentro da faixa 5–15min recomendada). */
+   *  objeto privado (Fase 7 do plano). TTL default de 48h (ver
+   *  SIGNED_URL_TTL_SECONDS) quando o caller não especifica — o cache
+   *  em `storage_objects` (actions/storage.ts::getObjectSignedUrl) é
+   *  quem normalmente decide isso; chamar direto sem passar por ali
+   *  pula o cache (ok pra casos pontuais, como o healthcheck). */
   async getSignedUrl(ref: StorageObjectRef, opts?: Partial<SignedUrlOptions>): Promise<string> {
     return getProvider(ref.provider).getSignedUrl(ref, {
-      expiresInSeconds: opts?.expiresInSeconds ?? 600,
+      expiresInSeconds: opts?.expiresInSeconds ?? SIGNED_URL_TTL_SECONDS,
       downloadFilename: opts?.downloadFilename ?? null,
     })
   },
 
   /** URL de upload direto do browser pro provider (Fase 6 — presigned
    *  upload), sem passar o arquivo pelo servidor da aplicação. Só pra
-   *  upload NOVO, então sempre no provider atual. */
+   *  upload NOVO, então sempre no provider atual. TTL curto por padrão —
+   *  é uma URL de escrita, não deveria ficar viva por muito tempo. */
   async createUploadUrl(input: Omit<UploadInput, 'body'>, expiresInSeconds = 600) {
     const provider = getProvider(defaultProviderForNewUploads())
     return provider.createUploadUrl(input, expiresInSeconds)
