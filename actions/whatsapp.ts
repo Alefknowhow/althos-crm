@@ -1,12 +1,13 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating, isSuperAdmin } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { sendTextMessage, sendMediaMessage } from '@/lib/whatsapp/meta-client'
 import { listOrgMembers } from '@/actions/team'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { getProfilesMap } from '@/lib/profiles'
+import { uploadFile, getObjectSignedUrl } from '@/actions/storage'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -290,17 +291,23 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
   const { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('id', conversationId).eq('organization_id', org.id).maybeSingle()
   if (!conv) return { ok: false, error: 'Conversa não encontrada' }
 
-  // Upload direto pro bucket público (esse bucket só aceita escrita via
-  // service role — a action já roda no servidor, então usa o admin client).
-  const admin = createAdminClient()
-  const ext = file.name.split('.').pop() || 'bin'
-  const path = `${org.id}/outbound-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const { error: uploadError } = await admin.storage.from('whatsapp-media').upload(path, await file.arrayBuffer(), {
+  // Sobe pro R2 via Storage Service — signed URL (não mais pública
+  // permanente), assinada já na hora do upload e embutida na mensagem:
+  // mensagens novas chegam no client via Realtime, sem passar pelo
+  // servidor, então a URL precisa estar pronta pra uso imediato.
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+  const uploaded = await uploadFile(orgSlug, {
+    category: 'whatsapp',
+    scopeId: conv.id,
+    conversationId: conv.id,
+    filename: file.name,
     contentType: baseMime,
-    upsert: false,
+    base64,
   })
-  if (uploadError) return { ok: false, error: uploadError.message }
-  const { data: { publicUrl } } = admin.storage.from('whatsapp-media').getPublicUrl(path)
+  if (!uploaded.ok) return { ok: false, error: uploaded.error }
+  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
+  if (!signed.ok) return { ok: false, error: signed.error }
+  const publicUrl = signed.url
 
   const agentName = (await getProfilesMap([user.id])).get(user.id)?.full_name || null
 

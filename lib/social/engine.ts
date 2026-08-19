@@ -17,6 +17,7 @@ import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
 import { getOrCreateConversation, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 import { inngest } from '@/lib/inngest/client'
+import { uploadSystemFile } from '@/lib/storage/system'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -155,6 +156,52 @@ async function logPendingComment(
 }
 
 /**
+ * A URL de mídia que a Meta manda no payload do webhook (attachment.payload.url)
+ * é um link temporário do CDN "lookaside" do Instagram — expira em
+ * horas/1 dia. Baixa o arquivo e sobe pro Storage Service (R2), pra ter
+ * uma URL assinada e cacheada (48h, renovável) em vez de um link que
+ * expira sozinho sem nunca ser trocado. Retorna a URL original em
+ * qualquer falha (mensagem ainda é salva, só com o link temporário da
+ * Meta — mesmo comportamento de hoje, não piora nada).
+ */
+async function rehostInboundAttachment(
+  orgId: string,
+  conversationId: string,
+  url: string,
+  attachmentType: 'image' | 'audio' | 'video' | 'document',
+): Promise<string> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.error(`[social engine] attachment fetch failed (${res.status})`)
+      return url
+    }
+    const contentType = res.headers.get('content-type')?.split(';')[0].trim()
+      || { image: 'image/jpeg', audio: 'audio/mpeg', video: 'video/mp4', document: 'application/octet-stream' }[attachmentType]
+    const bytes = Buffer.from(await res.arrayBuffer())
+    const ext = contentType.split('/')[1] || 'bin'
+
+    const uploaded = await uploadSystemFile({
+      organizationId: orgId,
+      category: 'instagram',
+      scopeId: conversationId,
+      conversationId,
+      filename: `${crypto.randomUUID()}.${ext}`,
+      contentType,
+      body: bytes,
+    })
+    if (!uploaded.ok) {
+      console.error('[social engine] attachment re-host failed:', uploaded.error)
+      return url
+    }
+    return uploaded.url
+  } catch (e: any) {
+    console.error('[social engine] attachment re-host failed:', e?.message)
+    return url
+  }
+}
+
+/**
  * Process a single inbound interaction end-to-end. Safe to call per webhook
  * event; failures are caught and logged so one bad event can't 500 the webhook.
  */
@@ -229,7 +276,10 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
           return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
         },
       })
-      await logInboundMessage(supabase, conversation.id, orgId, inbound.text, inbound.attachmentUrl, inbound.attachmentType)
+      const rehostedUrl = inbound.attachmentUrl && inbound.attachmentType
+        ? await rehostInboundAttachment(orgId, conversation.id, inbound.attachmentUrl, inbound.attachmentType)
+        : inbound.attachmentUrl
+      await logInboundMessage(supabase, conversation.id, orgId, inbound.text, rehostedUrl, inbound.attachmentType)
       conversationId = conversation.id
       if (conversation.automationPaused) return
       // Mensagem só com mídia (sem texto/legenda) — registra no histórico e

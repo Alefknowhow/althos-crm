@@ -1,13 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { sendInstagramDM, sendInstagramImage, sendInstagramAudio } from '@/lib/social/instagram'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 import { getProfilesMap } from '@/lib/profiles'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+import { uploadFile, getObjectSignedUrl } from '@/actions/storage'
 
 /**
  * Inbox manual de DM do Instagram: lista/lê conversas registradas por
@@ -270,17 +271,18 @@ export async function uploadSocialMedia(orgSlug: string, formData: FormData) {
   if (!kind) return { ok: false as const, error: `Tipo de arquivo não suportado: ${file.type}` }
   if (file.size > 20 * 1024 * 1024) return { ok: false as const, error: 'Arquivo muito grande (máx 20MB).' }
 
-  const admin = createAdminClient()
-  const ext = file.name.split('.').pop() || 'bin'
-  const path = `${g.org.id}/outbound-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const { error: uploadError } = await admin.storage.from('instagram-media').upload(path, await file.arrayBuffer(), {
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+  const uploaded = await uploadFile(orgSlug, {
+    category: 'instagram',
+    filename: file.name,
     contentType: baseMime,
-    upsert: false,
+    base64,
   })
-  if (uploadError) return { ok: false as const, error: uploadError.message }
-  const { data: { publicUrl } } = admin.storage.from('instagram-media').getPublicUrl(path)
+  if (!uploaded.ok) return { ok: false as const, error: uploaded.error }
+  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
+  if (!signed.ok) return { ok: false as const, error: signed.error }
 
-  return { ok: true as const, url: publicUrl, kind }
+  return { ok: true as const, url: signed.url, kind }
 }
 
 export async function toggleAutomationPause(orgSlug: string, conversationId: string, paused: boolean) {

@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 import { resolveAdCampaignExternalId } from '@/lib/meta/ads'
+import { uploadSystemFile } from '@/lib/storage/system'
 
 /**
  * Webhook global do WhatsApp — UMA única URL por App da Meta (não dá pra
@@ -40,13 +41,14 @@ const MEDIA_MESSAGE_TYPES = new Set(['image', 'audio', 'video', 'document', 'sti
 /**
  * A mensagem de mídia do WhatsApp só traz um media_id — a URL real é
  * temporária (expira em minutos) e exige o token de acesso pra baixar.
- * Baixa o arquivo e sobe no bucket `whatsapp-media` pra ter uma URL
- * permanente que o CRM consegue exibir depois. Retorna null em qualquer
- * falha (a mensagem ainda é salva, só sem mídia — não trava o webhook).
+ * Baixa o arquivo e sobe pro Storage Service (R2) pra ter uma URL
+ * assinada e cacheada que o CRM consegue exibir depois. Retorna null em
+ * qualquer falha (a mensagem ainda é salva, só sem mídia — não trava o
+ * webhook).
  */
 async function downloadAndStoreMedia(
-  supabase: ReturnType<typeof createAdminClient>,
   orgId: string,
+  conversationId: string,
   mediaId: string,
   accessToken: string,
 ): Promise<string | null> {
@@ -69,23 +71,25 @@ async function downloadAndStoreMedia(
       console.error(`[whatsapp webhook] media file fetch failed (${fileRes.status})`)
       return null
     }
-    const bytes = await fileRes.arrayBuffer()
+    const bytes = Buffer.from(await fileRes.arrayBuffer())
 
     const mimeType: string = meta.mime_type || 'application/octet-stream'
     const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin'
-    const path = `${orgId}/${mediaId}.${ext}`
 
-    const { error } = await supabase.storage.from('whatsapp-media').upload(path, bytes, {
+    const uploaded = await uploadSystemFile({
+      organizationId: orgId,
+      category: 'whatsapp',
+      scopeId: conversationId,
+      conversationId,
+      filename: `${mediaId}.${ext}`,
       contentType: mimeType,
-      upsert: true,
+      body: bytes,
     })
-    if (error) {
-      console.error('[whatsapp webhook] media upload failed:', error.message)
+    if (!uploaded.ok) {
+      console.error('[whatsapp webhook] media upload failed:', uploaded.error)
       return null
     }
-
-    const { data: { publicUrl } } = supabase.storage.from('whatsapp-media').getPublicUrl(path)
-    return publicUrl
+    return uploaded.url
   } catch (e: any) {
     console.error('[whatsapp webhook] media download failed:', e?.message)
     return null
@@ -272,7 +276,7 @@ export async function POST(req: Request) {
             // pro Storage antes de salvar, pra ter uma URL permanente.
             let messageContent: any = msg
             if (MEDIA_MESSAGE_TYPES.has(msg.type) && msg[msg.type]?.id && org.whatsapp_access_token) {
-              const mediaUrl = await downloadAndStoreMedia(supabase, orgId, msg[msg.type].id, org.whatsapp_access_token)
+              const mediaUrl = await downloadAndStoreMedia(orgId, conv.id, msg[msg.type].id, org.whatsapp_access_token)
               if (mediaUrl) messageContent = { ...msg, media_url: mediaUrl }
             }
 

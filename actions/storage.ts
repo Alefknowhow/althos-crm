@@ -32,7 +32,7 @@ const SIGNED_URL_CACHE_SAFETY_MARGIN_SECONDS = 5 * 60
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024 // 20MB — mesmo teto já usado pelos uploads existentes (whatsapp-media, instagram-media)
 
 const ALLOWED_MIME_BY_CATEGORY: Record<StorageCategory, string[]> = {
-  whatsapp: ['image/jpeg', 'image/png', 'image/webp', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'video/mp4', 'video/3gpp', 'application/pdf'],
+  whatsapp: ['image/jpeg', 'image/png', 'image/webp', 'audio/ogg', 'audio/webm', 'audio/opus', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'video/mp4', 'video/3gpp', 'application/pdf'],
   instagram: ['image/jpeg', 'image/png', 'image/webp', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/aac'],
   attachments: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'],
   documents: ['application/pdf', 'image/jpeg', 'image/png'],
