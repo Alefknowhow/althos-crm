@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
+import { resolveContatoAvatars } from '@/actions/contatos'
 import { isTravelNiche } from '@/lib/niche'
 
 const PAGE_SIZE = 50
@@ -72,7 +73,7 @@ export default async function ContatosPage({
   let q = supabase
     .from('contatos')
     .select(
-      'id, name, email, phone, status, source, avatar_url, city, state, tags, value_cents, became_customer_at, last_activity_at, created_at, updated_at, ai_tier',
+      'id, name, email, phone, status, source, avatar_url, avatar_storage_object_id, city, state, tags, value_cents, became_customer_at, last_activity_at, created_at, updated_at, ai_tier',
       { count: 'exact' },
     )
     .eq('organization_id', org.id)
@@ -140,7 +141,8 @@ export default async function ContatosPage({
       )
     docIds = new Set((docs || []).map(d => d.contato_id))
   }
-  const listRows = rows.map(r => ({ ...r, has_documents: docIds.has(r.id) }))
+  const listRowsRaw = rows.map(r => ({ ...r, has_documents: docIds.has(r.id) }))
+  const listRows = await resolveContatoAvatars(params.orgSlug, listRowsRaw)
 
   // Selected contato (right panel) — fetched server-side so the embedded
   // edit forms' router.refresh() keeps the panel in sync.
@@ -170,8 +172,9 @@ export default async function ContatosPage({
         listRelationships(params.orgSlug, selId),
       ])
     if (contato) {
+      const [resolvedContato] = await resolveContatoAvatars(params.orgSlug, [contato as any])
       selected = {
-        contato,
+        contato: resolvedContato,
         documents: documents || [],
         sales: sales || [],
         relationships,

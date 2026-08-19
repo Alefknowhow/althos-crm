@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { uploadFile, deleteObject, getObjectSignedUrl, getObjectSignedUrls } from '@/actions/storage'
 
 const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
@@ -1019,7 +1020,11 @@ export async function setContatoStatus(orgSlug: string, contatoId: string, rawSt
   return { ok: true as const }
 }
 
-/* -------- Foto do contato (avatar) -------- */
+/* -------- Foto do contato (avatar) --------
+ * Primeiro fluxo migrado pra Storage Service (Cloudflare R2) — upload
+ * novo vai pra lá, contato antigo com avatar_url (Supabase Storage,
+ * público) continua funcionando sem mudança nenhuma. Ver
+ * actions/storage.ts pra a camada compartilhada de upload/signed URL. */
 
 const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024
@@ -1046,49 +1051,55 @@ export async function uploadContatoAvatar(
 
   const { data: contato } = await supabase
     .from('contatos')
-    .select('id, avatar_url')
+    .select('id, avatar_url, avatar_storage_object_id')
     .eq('id', contatoId)
     .eq('organization_id', org.id)
     .maybeSingle()
   if (!contato) return { ok: false as const, error: 'Contato não encontrado' }
 
-  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-  const path = `${org.id}/${contatoId}/${Date.now()}.${ext}`
+  // uploadFile (actions/storage.ts) só aceita image/jpeg — normaliza o
+  // 'image/jpg' não-padrão que ALLOWED_AVATAR_MIME aceita por precaução.
+  const contentType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
 
-  const arrayBuffer = await file.arrayBuffer()
-  const { error: uploadError } = await supabase.storage
-    .from('contato-avatars')
-    .upload(path, arrayBuffer, { contentType: file.type, upsert: false })
-  if (uploadError) return { ok: false as const, error: uploadError.message }
-
-  const { data: pub } = supabase.storage.from('contato-avatars').getPublicUrl(path)
-  const publicUrl = pub.publicUrl
+  const uploaded = await uploadFile(orgSlug, {
+    category: 'avatars',
+    scopeId: contatoId,
+    filename: file.name,
+    contentType,
+    base64,
+  })
+  if (!uploaded.ok) return { ok: false as const, error: uploaded.error }
 
   const { error: updateError } = await supabase
     .from('contatos')
-    .update({ avatar_url: publicUrl })
+    .update({ avatar_storage_object_id: uploaded.objectId, avatar_url: null })
     .eq('id', contatoId)
     .eq('organization_id', org.id)
   if (updateError) {
-    await supabase.storage.from('contato-avatars').remove([path])
+    await deleteObject(orgSlug, uploaded.objectId)
     return { ok: false as const, error: updateError.message }
   }
 
-  // Remove a foto anterior (best-effort) para não acumular lixo no bucket.
-  if (contato.avatar_url) {
+  // Remove a foto anterior (best-effort) — legada (Supabase Storage) ou
+  // já migrada (R2), pra não acumular lixo.
+  if (contato.avatar_storage_object_id) {
+    await deleteObject(orgSlug, contato.avatar_storage_object_id)
+  } else if (contato.avatar_url) {
     const marker = '/contato-avatars/'
     const idx = contato.avatar_url.indexOf(marker)
     if (idx >= 0) {
       const oldPath = contato.avatar_url.slice(idx + marker.length)
-      if (oldPath && oldPath !== path) {
-        await supabase.storage.from('contato-avatars').remove([oldPath])
-      }
+      if (oldPath) await supabase.storage.from('contato-avatars').remove([oldPath])
     }
   }
 
+  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
+  if (!signed.ok) return { ok: false as const, error: signed.error }
+
   revalidatePath(`/app/${orgSlug}/contatos`)
   revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
-  return { ok: true as const, url: publicUrl }
+  return { ok: true as const, url: signed.url }
 }
 
 export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
@@ -1100,7 +1111,7 @@ export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
 
   const { data: contato } = await supabase
     .from('contatos')
-    .select('avatar_url')
+    .select('avatar_url, avatar_storage_object_id')
     .eq('id', contatoId)
     .eq('organization_id', org.id)
     .maybeSingle()
@@ -1108,12 +1119,14 @@ export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
 
   const { error } = await supabase
     .from('contatos')
-    .update({ avatar_url: null })
+    .update({ avatar_url: null, avatar_storage_object_id: null })
     .eq('id', contatoId)
     .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
-  if (contato.avatar_url) {
+  if (contato.avatar_storage_object_id) {
+    await deleteObject(orgSlug, contato.avatar_storage_object_id)
+  } else if (contato.avatar_url) {
     const marker = '/contato-avatars/'
     const idx = contato.avatar_url.indexOf(marker)
     if (idx >= 0) {
@@ -1125,6 +1138,32 @@ export async function removeContatoAvatar(orgSlug: string, contatoId: string) {
   revalidatePath(`/app/${orgSlug}/contatos`)
   revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
   return { ok: true as const }
+}
+
+/**
+ * Resolve avatar_storage_object_id → signed URL do R2 pra uma lista de
+ * contatos, de uma vez (uma chamada em lote, não uma por contato — ver
+ * actions/storage.ts::getObjectSignedUrls). Contato legado (avatar_url
+ * do Supabase Storage, sem avatar_storage_object_id) não precisa de
+ * nada — o campo já é a URL final.
+ *
+ * Devolve a MESMA lista recebida, só com `avatar_url` substituído pela
+ * signed URL quando aplicável — quem chama continua lendo `avatar_url`
+ * normalmente, sem saber se veio do R2 ou do Supabase.
+ */
+export async function resolveContatoAvatars<T extends { avatar_url: string | null; avatar_storage_object_id?: string | null }>(
+  orgSlug: string,
+  rows: T[],
+): Promise<T[]> {
+  const objectIds = rows.map(r => r.avatar_storage_object_id).filter((id): id is string => !!id)
+  if (objectIds.length === 0) return rows
+
+  const urls = await getObjectSignedUrls(orgSlug, objectIds)
+  return rows.map(r =>
+    r.avatar_storage_object_id && urls.has(r.avatar_storage_object_id)
+      ? { ...r, avatar_url: urls.get(r.avatar_storage_object_id)! }
+      : r,
+  )
 }
 
 /* -------- Status de cliente (marcar / desmarcar) -------- */

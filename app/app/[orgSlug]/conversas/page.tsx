@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
 import { getConversationContext, listScheduledMessages } from '@/actions/whatsapp'
 import { getWaTemplates } from '@/actions/whatsapp-templates'
+import { getObjectSignedUrls } from '@/actions/storage'
 import WhatsappChat from '@/components/features/WhatsappChat'
 
 export default async function ConversasPage({ params, searchParams }: { params: { orgSlug: string }, searchParams: { id?: string, lead?: string } }) {
@@ -13,12 +14,30 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // recentes cobre qualquer uso real de inbox; se a organização crescer além
   // disso, a lista passa a precisar de paginação/scroll incremental de
   // verdade (fica pro próximo passo, quando o volume justificar).
-  const { data: conversations } = await supabase
+  const { data: conversationsRaw } = await supabase
     .from('whatsapp_conversations')
-    .select('*, contatos(id, name, avatar_url, assigned_to, stage_id, pipeline_id, pipeline_stages(name))')
+    .select('*, contatos(id, name, avatar_url, avatar_storage_object_id, assigned_to, stage_id, pipeline_id, pipeline_stages(name))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
     .limit(300)
+
+  // Resolve avatar do contato (R2, signed URL) numa chamada em lote — o
+  // join acima só traz avatar_url legado (Supabase Storage) ou
+  // avatar_storage_object_id (R2); aqui a gente substitui pela URL final,
+  // igual acontece em contatos/page.tsx.
+  const avatarObjectIds = (conversationsRaw || [])
+    .map(c => (c as any).contatos?.avatar_storage_object_id)
+    .filter((id): id is string => !!id)
+  const avatarUrls = avatarObjectIds.length > 0
+    ? await getObjectSignedUrls(params.orgSlug, avatarObjectIds)
+    : new Map<string, string>()
+  const conversations = (conversationsRaw || []).map(c => {
+    const contato = (c as any).contatos
+    if (contato?.avatar_storage_object_id && avatarUrls.has(contato.avatar_storage_object_id)) {
+      return { ...c, contatos: { ...contato, avatar_url: avatarUrls.get(contato.avatar_storage_object_id) } }
+    }
+    return c
+  })
 
   // Team members power both the inbox agent-color tags and the side panel selectors.
   const members = await listOrgMembers(params.orgSlug)
