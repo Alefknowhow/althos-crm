@@ -103,7 +103,7 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
     if (!input.waTemplateId) return { ok: false as const, error: 'Selecione um template.' }
     const { data: tpl } = await supabase
       .from('whatsapp_templates')
-      .select('id, name, language, header_type, header_media_url, status')
+      .select('id, name, language, header_type, header_media_url, header_storage_object_id, status')
       .eq('id', input.waTemplateId)
       .eq('organization_id', org.id)
       .maybeSingle()
@@ -115,7 +115,12 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
       wa_template_name: tpl.name,
       wa_template_language: tpl.language,
       wa_header_type: tpl.header_type,
+      // Guarda a referência estável (id), não a URL — uma campanha pode
+      // levar dias pra terminar de enviar, bem além do TTL de uma signed
+      // URL. wa_header_media_url fica só como fallback legado (template
+      // antigo sem header_storage_object_id) — ver migration 0160.
       wa_header_media_url: tpl.header_media_url,
+      wa_header_storage_object_id: tpl.header_storage_object_id,
     }
   } else {
     if (!input.emailTemplateId) return { ok: false as const, error: 'Selecione um template de e-mail.' }

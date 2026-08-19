@@ -74,7 +74,7 @@ function BodyPreview({ text }: { text: string }) {
 
 const BLANK: Omit<WaTemplatePayload, 'organization_id'> = {
   name: '', display_name: '', category: 'UTILITY', language: 'pt_BR',
-  header_type: 'none', header_text: null, header_media_url: null,
+  header_type: 'none', header_text: null, header_media_url: null, header_storage_object_id: null,
   body_text: '', variable_names: null, footer_text: null, status: 'local',
 }
 
@@ -125,8 +125,8 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const url = await uploadWaMedia(orgSlug, fd)
-      patch({ header_media_url: url })
+      const { url, objectId } = await uploadWaMedia(orgSlug, fd)
+      patch({ header_media_url: url, header_storage_object_id: objectId })
       toast.success('Arquivo enviado!')
     } catch (err: any) {
       toast.error(err.message)
@@ -150,6 +150,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
       variable_names: varLabels.length > 0 ? varLabels : null,
       header_text:      form.header_type === 'text' ? (form.header_text ?? null) : null,
       header_media_url: ['image','video','document'].includes(form.header_type) ? (form.header_media_url ?? null) : null,
+      header_storage_object_id: ['image','video','document'].includes(form.header_type) ? (form.header_storage_object_id ?? null) : null,
     }
 
     startTransition(async () => {
@@ -225,7 +226,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
           <div className="space-y-3 rounded-none border border-border p-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-semibold">Cabeçalho</Label>
-              <Select value={form.header_type} onValueChange={v => patch({ header_type: v as any, header_text: null, header_media_url: null })}>
+              <Select value={form.header_type} onValueChange={v => patch({ header_type: v as any, header_text: null, header_media_url: null, header_storage_object_id: null })}>
                 <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem cabeçalho</SelectItem>
@@ -258,7 +259,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
                       </div>
                     )}
                     <button
-                      onClick={() => patch({ header_media_url: null })}
+                      onClick={() => patch({ header_media_url: null, header_storage_object_id: null })}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70"
                     >
                       <X className="w-3 h-3" />
@@ -272,7 +273,7 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
                     <Input
                       placeholder={`URL pública da ${form.header_type === 'image' ? 'imagem' : form.header_type === 'video' ? 'vídeo' : 'documento'}`}
                       value={form.header_media_url ?? ''}
-                      onChange={e => patch({ header_media_url: e.target.value })}
+                      onChange={e => patch({ header_media_url: e.target.value, header_storage_object_id: null })}
                     />
                   </div>
                   <Button type="button" variant="outline" size="sm" className="shrink-0"

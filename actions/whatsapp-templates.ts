@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { createMetaTemplate, getMetaTemplateStatus } from '@/lib/whatsapp/templates-api'
+import { uploadFile, getObjectSignedUrl } from '@/actions/storage'
+import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +18,7 @@ export type WaTemplate = {
   header_type: 'none' | 'text' | 'image' | 'video' | 'document'
   header_text: string | null
   header_media_url: string | null
+  header_storage_object_id: string | null
   body_text: string
   variable_names: string[] | null
   footer_text: string | null
@@ -91,23 +94,27 @@ export async function deleteWaTemplate(orgSlug: string, id: string) {
 
 // ── Media upload ──────────────────────────────────────────────────────────────
 
-export async function uploadWaMedia(orgSlug: string, file: FormData): Promise<string> {
-  const orgId = await getOrgId(orgSlug)
-  const supabase = createClient()
+/** Sobe a amostra de mídia do cabeçalho do template pro R2. Retorna uma
+ *  URL (só pra prévia imediata no formulário) e o objectId (referência
+ *  estável — o que de fato é persistido em header_storage_object_id;
+ *  ver migration 0160 sobre por que nunca guardamos a URL assinada em
+ *  si além dessa prévia pontual). */
+export async function uploadWaMedia(orgSlug: string, file: FormData): Promise<{ url: string; objectId: string }> {
   const raw = file.get('file') as File
   if (!raw) throw new Error('Nenhum arquivo enviado')
 
-  const ext = raw.name.split('.').pop() ?? 'bin'
-  const path = `${orgId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-
-  const { error } = await supabase.storage.from('whatsapp-assets').upload(path, raw, {
+  const base64 = Buffer.from(await raw.arrayBuffer()).toString('base64')
+  const uploaded = await uploadFile(orgSlug, {
+    category: 'whatsapp',
+    filename: raw.name,
     contentType: raw.type,
-    upsert: false,
+    base64,
   })
-  if (error) throw new Error(error.message)
+  if (!uploaded.ok) throw new Error(uploaded.error)
+  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
+  if (!signed.ok) throw new Error(signed.error)
 
-  const { data } = supabase.storage.from('whatsapp-assets').getPublicUrl(path)
-  return data.publicUrl
+  return { url: signed.url, objectId: uploaded.objectId }
 }
 
 // ── Envio/consulta de aprovação direto na Meta ──────────────────────────────
@@ -140,13 +147,21 @@ export async function submitWaTemplateToMeta(orgSlug: string, id: string): Promi
   if (fetchError) throw new Error(fetchError.message)
   if (!template) throw new Error('Template não encontrado')
 
+  // Resolve uma signed URL fresca a partir da referência estável — nunca
+  // usa uma URL antiga guardada em algum lugar (ver migration 0160).
+  // Template sem header_storage_object_id (upload antigo, legado) cai no
+  // header_media_url de sempre.
+  const headerMediaUrl = template.header_storage_object_id
+    ? await resolveSystemSignedUrl(template.header_storage_object_id)
+    : template.header_media_url
+
   const meta = await createMetaTemplate(wabaId, accessToken, {
     name: template.name,
     category: template.category,
     language: template.language,
     headerType: template.header_type,
     headerText: template.header_text,
-    headerMediaUrl: template.header_media_url,
+    headerMediaUrl,
     bodyText: template.body_text,
     footerText: template.footer_text,
   })

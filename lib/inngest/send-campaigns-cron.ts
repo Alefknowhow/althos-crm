@@ -21,6 +21,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
 import { getResend, clientEmailFrom } from '@/lib/resend'
 import { renderTemplate } from '@/lib/inngest/functions'
+import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
 const WHATSAPP_BATCH_PER_TICK = 40
 const EMAIL_BATCH_PER_TICK = 100
@@ -44,11 +45,11 @@ export const sendCampaignsCronFn = inngest.createFunction(
         .or(`scheduled_at.is.null,scheduled_at.lte.${nowISO}`)
     })
 
-    const activeCampaigns: Array<{ id: string; organization_id: string; wa_template_name: string; wa_template_language: string; wa_header_type: string | null; wa_header_media_url: string | null }> =
+    const activeCampaigns: Array<{ id: string; organization_id: string; wa_template_name: string; wa_template_language: string; wa_header_type: string | null; wa_header_media_url: string | null; wa_header_storage_object_id: string | null }> =
       await step.run('fetch-active-whatsapp-campaigns', async () => {
         const { data } = await admin
           .from('send_campaigns')
-          .select('id, organization_id, wa_template_name, wa_template_language, wa_header_type, wa_header_media_url')
+          .select('id, organization_id, wa_template_name, wa_template_language, wa_header_type, wa_header_media_url, wa_header_storage_object_id')
           .eq('status', 'sending')
           .eq('channel', 'whatsapp')
         return data || []
@@ -79,6 +80,14 @@ export const sendCampaignsCronFn = inngest.createFunction(
             return data
           })
 
+        // Resolve uma signed URL fresca por tick (a campanha pode levar
+        // dias pra terminar — nunca reusa uma URL guardada de um tick
+        // anterior). resolveSystemSignedUrl já cacheia por 48h, então
+        // isso não gera um novo signing a cada 2 minutos.
+        const headerMediaUrl: string | undefined = campaign.wa_header_storage_object_id
+          ? (await step.run(`resolve-header-media-${campaign.id}`, () => resolveSystemSignedUrl(campaign.wa_header_storage_object_id!))) ?? undefined
+          : campaign.wa_header_media_url || undefined
+
         for (const recipient of pending) {
           const claimed: boolean = await step.run(`claim-${recipient.id}`, async () => {
             const { data } = await admin
@@ -101,7 +110,7 @@ export const sendCampaignsCronFn = inngest.createFunction(
                 [],
                 campaign.wa_template_language || 'pt_BR',
                 campaign.wa_header_type || undefined,
-                campaign.wa_header_media_url || undefined,
+                headerMediaUrl,
               )
               return { ok: true, messageId: res?.messages?.[0]?.id }
             } catch (e: any) {

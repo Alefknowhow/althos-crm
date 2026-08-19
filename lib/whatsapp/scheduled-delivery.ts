@@ -11,6 +11,7 @@
  */
 
 import { sendTextMessage, sendTemplateMessage } from './meta-client'
+import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
 const WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -117,6 +118,9 @@ export async function deliverScheduledMessage(
     if (via === 'text') {
       metaRes = await sendTextMessage(org, row.contact_phone, row.body)
     } else {
+      const headerMediaUrl = template.header_storage_object_id
+        ? (await resolveSystemSignedUrl(template.header_storage_object_id)) ?? undefined
+        : template.header_media_url || undefined
       metaRes = await sendTemplateMessage(
         org,
         row.contact_phone,
@@ -124,7 +128,7 @@ export async function deliverScheduledMessage(
         variables,
         template.language || 'pt_BR',
         template.header_type,
-        template.header_media_url || undefined,
+        headerMediaUrl,
       )
     }
 

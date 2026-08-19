@@ -2,6 +2,7 @@ import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
 import { sendPushToOrg } from '@/actions/push'
+import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
 export const processAutomationEvent = inngest.createFunction(
   {
@@ -193,6 +194,26 @@ export const executeAutomationRun = inngest.createFunction(
                       template: stepDef.config.templateName,
                       language: stepDef.config.language || 'pt_BR',
                     }
+                    // Resolve a mídia do cabeçalho fresca a partir do
+                    // template atual, nunca da URL congelada no config do
+                    // flow (headerMediaUrl fica salva ali só pra prévia
+                    // no editor — ver AutomationFlow.tsx — uma automação
+                    // roda indefinidamente, bem além do TTL de uma signed
+                    // URL). Sem header_storage_object_id (template
+                    // legado/URL manual), cai no headerMediaUrl do config
+                    // mesmo, igual sempre foi.
+                    let headerMediaUrl: string | undefined = stepDef.config.headerMediaUrl
+                    if (stepDef.config.headerType && stepDef.config.headerType !== 'none' && stepDef.config.headerType !== 'text') {
+                      const { data: tpl } = await supabase
+                        .from('whatsapp_templates')
+                        .select('header_storage_object_id')
+                        .eq('organization_id', orgId)
+                        .eq('name', stepDef.config.templateName)
+                        .maybeSingle()
+                      if (tpl?.header_storage_object_id) {
+                        headerMediaUrl = (await resolveSystemSignedUrl(tpl.header_storage_object_id)) ?? headerMediaUrl
+                      }
+                    }
                     await sendTemplateMessage(
                       orgConfig,
                       lead.phone,
@@ -200,7 +221,7 @@ export const executeAutomationRun = inngest.createFunction(
                       stepDef.config.variables || [],
                       stepDef.config.language || 'pt_BR',
                       stepDef.config.headerType,
-                      stepDef.config.headerMediaUrl,
+                      headerMediaUrl,
                     )
                   }
                   break;
