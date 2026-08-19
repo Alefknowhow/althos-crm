@@ -427,7 +427,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
         {/* ── Suporte ────────────────────────────────── */}
         <SectionLabel>Suporte</SectionLabel>
-        <SidebarSupportLink />
+        <SidebarSupportLink orgSlug={orgSlug} />
 
       </nav>
 
