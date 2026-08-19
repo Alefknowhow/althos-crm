@@ -42,7 +42,7 @@
     --input: 0 0% 88%;
     --ring: 219 99% 53%;                /* mesmo azul do primary */
 
-    --radius: 0px;                      /* Carbon: sem cantos arredondados */
+    --radius: 8px;                      /* leve arredondamento (Apple HIG) — era 0px "Carbon" antes do redesign */
 
     /* Sidebar (used by app shell) */
     --sidebar: 0 0% 100%;

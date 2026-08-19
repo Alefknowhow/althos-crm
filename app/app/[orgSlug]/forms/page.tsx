@@ -20,7 +20,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
     .order('created_at', { ascending: false })
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center">
         <NewFormButton orgSlug={params.orgSlug} />
       </div>
