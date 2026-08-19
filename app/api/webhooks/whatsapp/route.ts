@@ -51,7 +51,7 @@ async function downloadAndStoreMedia(
   conversationId: string,
   mediaId: string,
   accessToken: string,
-): Promise<string | null> {
+): Promise<{ url: string; objectId: string } | null> {
   try {
     const metaRes = await fetch(`https://graph.facebook.com/v26.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -89,7 +89,7 @@ async function downloadAndStoreMedia(
       console.error('[whatsapp webhook] media upload failed:', uploaded.error)
       return null
     }
-    return uploaded.url
+    return { url: uploaded.url, objectId: uploaded.objectId }
   } catch (e: any) {
     console.error('[whatsapp webhook] media download failed:', e?.message)
     return null
@@ -276,8 +276,8 @@ export async function POST(req: Request) {
             // pro Storage antes de salvar, pra ter uma URL permanente.
             let messageContent: any = msg
             if (MEDIA_MESSAGE_TYPES.has(msg.type) && msg[msg.type]?.id && org.whatsapp_access_token) {
-              const mediaUrl = await downloadAndStoreMedia(orgId, conv.id, msg[msg.type].id, org.whatsapp_access_token)
-              if (mediaUrl) messageContent = { ...msg, media_url: mediaUrl }
+              const media = await downloadAndStoreMedia(orgId, conv.id, msg[msg.type].id, org.whatsapp_access_token)
+              if (media) messageContent = { ...msg, media_url: media.url, media_object_id: media.objectId }
             }
 
             const { data: insertedMsg } = await supabase.from('whatsapp_messages').insert({

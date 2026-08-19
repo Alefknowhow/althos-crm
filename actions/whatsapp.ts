@@ -316,7 +316,7 @@ export async function sendWhatsappMedia(orgSlug: string, conversationId: string,
     organization_id: org.id,
     direction: 'outbound',
     type: kind,
-    content: { media_url: publicUrl, [kind]: caption ? { caption } : {} },
+    content: { media_url: publicUrl, media_object_id: uploaded.objectId, [kind]: caption ? { caption } : {} },
     status: 'sending',
     sent_by_name: agentName,
   }).select().single()

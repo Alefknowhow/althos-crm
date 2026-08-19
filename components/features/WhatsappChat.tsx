@@ -20,6 +20,8 @@ import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
 import ImageEditor from '@/components/features/ImageEditor'
 import { LinkPreviewCard, linkifyText } from '@/components/features/LinkPreviewCard'
 import { extractFirstUrl } from '@/lib/link-preview/extract-url'
+import { getObjectSignedUrl } from '@/actions/storage'
+import { Download } from 'lucide-react'
 import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound, Sparkles } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -882,7 +884,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-3">
               {visibleMessages.map((m: any) => {
                 const isInbound = m.direction === 'inbound'
-                const media = renderWhatsappMedia(m, setLightboxUrl)
+                const media = renderWhatsappMedia(m, orgSlug, setLightboxUrl)
                 const text = msgBody(m)
                 const linkUrl = !media && text && !msgQuery.trim() ? extractFirstUrl(text) : null
                 return (
@@ -1275,22 +1277,63 @@ function msgBody(m: any): string {
   return m?.content?.text?.body || m?.content?.body || ''
 }
 
+// Botão de download — só aparece quando a mensagem tem media_object_id
+// (mídia migrada pro R2; mensagem antiga/legada sem essa referência não
+// ganha o botão). Ao clicar, pede uma signed URL nova com
+// Content-Disposition: attachment (força download mesmo pra imagem/PDF,
+// que o navegador abriria inline com a URL "de visualização" normal).
+function DownloadMediaButton({ orgSlug, objectId, className }: { orgSlug: string; objectId: string; className?: string }) {
+  const [loading, setLoading] = useState(false)
+  async function handleDownload(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await getObjectSignedUrl(orgSlug, objectId, { download: true })
+      if (res.ok) window.open(res.url, '_blank', 'noopener,noreferrer')
+      else toast.error(res.error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={loading}
+      title="Baixar mídia"
+      className={className ?? 'shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-50'}
+    >
+      <Download className="w-4 h-4" />
+    </button>
+  )
+}
+
 // Renderiza a mídia de uma mensagem (o webhook baixa e salva a URL
 // permanente em content.media_url — ver app/api/webhooks/whatsapp/route.ts).
 // Retorna null pra mensagens de texto puro, deixando o texto normal aparecer.
-function renderWhatsappMedia(m: any, onImageClick?: (url: string) => void): React.ReactNode {
+function renderWhatsappMedia(m: any, orgSlug: string, onImageClick?: (url: string) => void): React.ReactNode {
   const mediaUrl: string | undefined = m?.content?.media_url
+  const objectId: string | undefined = m?.content?.media_object_id
   const caption: string | undefined = m?.content?.[m.type]?.caption
   if (!mediaUrl) return null
 
   if (m.type === 'image') {
     return (
       <div className="space-y-1.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-72 object-cover cursor-pointer"
-          onClick={() => onImageClick?.(mediaUrl)}
-        />
+        <div className="relative group">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-72 object-cover cursor-pointer"
+            onClick={() => onImageClick?.(mediaUrl)}
+          />
+          {objectId && (
+            <DownloadMediaButton
+              orgSlug={orgSlug} objectId={objectId}
+              className="absolute top-1.5 right-1.5 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          )}
+        </div>
         {caption && <div className="whitespace-pre-wrap break-words">{caption}</div>}
       </div>
     )
@@ -1302,23 +1345,34 @@ function renderWhatsappMedia(m: any, onImageClick?: (url: string) => void): Reac
   if (m.type === 'video') {
     return (
       <div className="space-y-1.5">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-        <video controls src={mediaUrl} className="rounded-lg max-w-full max-h-72" />
+        <div className="flex items-end gap-1.5">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video controls src={mediaUrl} className="rounded-lg max-w-full max-h-72" />
+          {objectId && <DownloadMediaButton orgSlug={orgSlug} objectId={objectId} />}
+        </div>
         {caption && <div className="whitespace-pre-wrap break-words">{caption}</div>}
       </div>
     )
   }
   if (m.type === 'audio') {
-    // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <audio controls src={mediaUrl} className="w-full max-w-[220px]" />
+    return (
+      <div className="flex items-center gap-1.5">
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <audio controls src={mediaUrl} className="w-full max-w-[220px]" />
+        {objectId && <DownloadMediaButton orgSlug={orgSlug} objectId={objectId} />}
+      </div>
+    )
   }
   if (m.type === 'document') {
     const filename = m?.content?.document?.filename || 'Documento'
     return (
-      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 underline">
-        <FileText className="w-4 h-4 shrink-0" />
-        <span className="truncate">{filename}</span>
-      </a>
+      <div className="flex items-center gap-2">
+        <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 underline min-w-0">
+          <FileText className="w-4 h-4 shrink-0" />
+          <span className="truncate">{filename}</span>
+        </a>
+        {objectId && <DownloadMediaButton orgSlug={orgSlug} objectId={objectId} />}
+      </div>
     )
   }
   return <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="underline">Abrir mídia</a>
