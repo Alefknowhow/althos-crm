@@ -107,7 +107,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" defaultValue={task.description || ''} />
+              <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm" defaultValue={task.description || ''} />
             </div>
             <div className="space-y-2">
               <Label>Data de Vencimento</Label>

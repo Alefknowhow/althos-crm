@@ -110,7 +110,7 @@ export default function QualifierSettings({ orgSlug, initial }: { orgSlug: strin
           <div className="space-y-2">
             <Label>Provedor</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={provider}
               onChange={e => setProvider(e.target.value as 'claude' | 'gemini')}
             >
@@ -122,7 +122,7 @@ export default function QualifierSettings({ orgSlug, initial }: { orgSlug: strin
           <div className="space-y-2">
             <Label>Modelo</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={model}
               onChange={e => setModel(e.target.value)}
             >

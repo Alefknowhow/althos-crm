@@ -145,7 +145,7 @@ export default function NewCampaignDialog({
           <div className="space-y-2">
             <Label>Conta de anúncio *</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={form.ad_account_id}
               onChange={e => setForm({ ...form, ad_account_id: e.target.value })}
               required
@@ -172,7 +172,7 @@ export default function NewCampaignDialog({
             <div className="space-y-2">
               <Label>Objetivo</Label>
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                 value={form.objective}
                 onChange={e => setForm({ ...form, objective: e.target.value })}
               >

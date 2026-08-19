@@ -136,7 +136,7 @@ export default function AvailabilityPanel({ orgSlug, eventTypes, initialAvailabi
           <div className="space-y-1">
             <Label className="text-xs">Aplicar para</Label>
             <select
-              className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm min-w-[220px]"
+              className="flex h-9 rounded-md border border-input bg-input/25 px-3 text-sm min-w-[220px]"
               value={scope}
               onChange={e => changeScope(e.target.value)}
             >

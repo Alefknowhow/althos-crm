@@ -202,7 +202,7 @@ export default function CustomerDocuments({
             {/* Upload control */}
             <div className="flex items-center gap-2 flex-wrap">
               <select
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
                 value={kind}
                 onChange={e => setKind(e.target.value)}
                 disabled={uploading}

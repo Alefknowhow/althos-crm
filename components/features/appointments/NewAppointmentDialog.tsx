@@ -129,7 +129,7 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
           <div className="space-y-2">
             <Label>Tipo de evento *</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={form.eventTypeId}
               onChange={e => onEventTypeChange(e.target.value)}
               required

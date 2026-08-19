@@ -70,7 +70,7 @@ export default function SettingsSheet({ orgSlug, open, onOpenChange, schema, set
               </div>
               {schema.briefing?.enabled && (
                 <textarea
-                  className="flex min-h-[70px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex min-h-[70px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={schema.briefing?.text || ''}
                   onChange={e => setSchema({ ...schema, briefing: { ...schema.briefing, text: e.target.value } })}
                   placeholder="Ex: Preencha os dados abaixo pra montarmos sua proposta personalizada."
@@ -153,7 +153,7 @@ export default function SettingsSheet({ orgSlug, open, onOpenChange, schema, set
             </div>
             {schema.footerInfo?.enabled && (
               <textarea
-                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 value={schema.footerInfo?.text || ''}
                 onChange={e => setSchema({ ...schema, footerInfo: { ...schema.footerInfo, text: e.target.value } })}
                 placeholder="Ex: Althos Viagens LTDA · CNPJ 00.000.000/0001-00"

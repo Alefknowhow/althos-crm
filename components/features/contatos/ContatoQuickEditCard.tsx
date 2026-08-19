@@ -75,7 +75,7 @@ export default function ContatoQuickEditCard({
               <select
                 name="stage_id"
                 defaultValue={lead.stage_id || ''}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 py-1 text-sm"
               >
                 {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>

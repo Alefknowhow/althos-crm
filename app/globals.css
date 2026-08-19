@@ -5,10 +5,10 @@
 @layer base {
   :root {
     /* IBM Carbon-inspired light palette mapped to shadcn tokens */
-    --background: 0 0% 100%;            /* #ffffff canvas */
+    --background: 0 0% 98%;             /* #fafafa canvas — levemente diferente do card, pra dar profundidade sem depender de sombra (era igual ao card, 100%, antes do redesign) */
     --foreground: 0 0% 9%;              /* #161616 ink */
 
-    --card: 0 0% 100%;
+    --card: 0 0% 100%;                  /* #ffffff — mais claro que o background, "flutua" por cima */
     --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
@@ -54,7 +54,7 @@
 
   /* Force light theme regardless of OS preference — used on public pages */
   .light {
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 0 0% 9%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 9%;
@@ -82,7 +82,7 @@
     color-scheme: light;
     /* Break dark-mode color inheritance from body */
     color: hsl(0 0% 9%);
-    background-color: hsl(0 0% 100%);
+    background-color: hsl(0 0% 98%);
   }
 
   .dark {

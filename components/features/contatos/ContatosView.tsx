@@ -1078,7 +1078,7 @@ function FiltersSheet({
           <div className="space-y-1.5">
             <Label className="text-xs">Origem</Label>
             <select
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.source || ''}
               onChange={e => set('source', e.target.value)}
             >
@@ -1092,7 +1092,7 @@ function FiltersSheet({
           <div className="space-y-1.5">
             <Label className="text-xs">Tag</Label>
             <select
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.tag || ''}
               onChange={e => set('tag', e.target.value)}
             >
@@ -1106,7 +1106,7 @@ function FiltersSheet({
           <div className="space-y-1.5">
             <Label className="text-xs">Funil</Label>
             <select
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.pipeline_id || ''}
               onChange={e => set('pipeline_id', e.target.value)}
             >
@@ -1120,7 +1120,7 @@ function FiltersSheet({
           <div className="space-y-1.5">
             <Label className="text-xs">Classificação IA</Label>
             <select
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.tier || ''}
               onChange={e => set('tier', e.target.value)}
             >

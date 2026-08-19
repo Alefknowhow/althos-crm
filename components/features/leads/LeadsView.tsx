@@ -610,7 +610,7 @@ function FilterSheet({
             <div className="space-y-2">
               <Label>Pipeline</Label>
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                 value={draft.pipeline_id}
                 onChange={e => setDraft({ ...draft, pipeline_id: e.target.value, stage: '' })}
               >
@@ -628,7 +628,7 @@ function FilterSheet({
           <div className="space-y-2">
             <Label>Estágio</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.stage}
               onChange={e => setDraft({ ...draft, stage: e.target.value })}
             >
@@ -646,7 +646,7 @@ function FilterSheet({
           <div className="space-y-2">
             <Label>Tag</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.tag}
               onChange={e => setDraft({ ...draft, tag: e.target.value })}
             >
@@ -662,7 +662,7 @@ function FilterSheet({
           <div className="space-y-2">
             <Label>Score IA (tier)</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={draft.tier}
               onChange={e => setDraft({ ...draft, tier: e.target.value })}
             >
@@ -988,7 +988,7 @@ function NewLeadDialog({ orgSlug, stages }: { orgSlug: string; stages: Stage[] }
             <Label htmlFor="stage_id">Estágio</Label>
             <select
               name="stage_id"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
             >
               <option value="">(Padrão)</option>
               {stages.map(s => (

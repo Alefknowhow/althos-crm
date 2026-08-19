@@ -35,7 +35,7 @@ export default function FieldTypePicker({
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar tipo..."
-            className="w-full h-8 pl-8 pr-2 text-sm rounded-md border border-input bg-transparent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="w-full h-8 pl-8 pr-2 text-sm rounded-md border border-input bg-input/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
         <div className="max-h-72 overflow-y-auto space-y-0.5">

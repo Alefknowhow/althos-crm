@@ -275,7 +275,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
                     <div className="space-y-2">
                       <Label>Pipeline para o lead</Label>
                       <select
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                        className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                         value={draft.pipeline_id}
                         onChange={e =>
                           setDraft({ ...draft, pipeline_id: e.target.value, stage_id: '' })
@@ -293,7 +293,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
                     <div className="space-y-2">
                       <Label>Estágio inicial</Label>
                       <select
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                        className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                         value={draft.stage_id}
                         onChange={e => setDraft({ ...draft, stage_id: e.target.value })}
                         disabled={!draft.pipeline_id}

@@ -252,7 +252,7 @@ export default function ConversationDetailPanel({
             <section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estágio</h4>
               <select
-                className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                className="w-full h-9 rounded-md border border-input bg-input/25 px-2 text-sm"
                 value={lead.stage_id ?? ''}
                 onChange={e => handleChangeStage(e.target.value)}
               >
@@ -265,7 +265,7 @@ export default function ConversationDetailPanel({
             <section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Responsável</h4>
               <select
-                className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                className="w-full h-9 rounded-md border border-input bg-input/25 px-2 text-sm"
                 value={lead.assigned_to ?? ''}
                 onChange={e => handleAssignLeadOwner(e.target.value || null)}
               >

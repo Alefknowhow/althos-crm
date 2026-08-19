@@ -90,7 +90,7 @@ export default function CustomersSplit({
         </div>
 
         <select
-          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
           value={stateFilter}
           onChange={e => setStateFilter(e.target.value)}
         >

@@ -66,7 +66,7 @@ export default function AIConfigForm({ orgSlug, initial }: { orgSlug: string; in
         </CardHeader>
         <CardContent className="space-y-2">
           <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
             value={ocrProvider}
             onChange={e => setOcrProvider(e.target.value as 'claude' | 'gemini')}
           >

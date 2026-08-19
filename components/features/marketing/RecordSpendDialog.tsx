@@ -121,7 +121,7 @@ export default function RecordSpendDialog({
           <div className="space-y-2">
             <Label>Campanha *</Label>
             <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
               value={form.campaign_id}
               onChange={e => setForm({ ...form, campaign_id: e.target.value })}
               required

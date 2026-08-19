@@ -62,7 +62,7 @@ export default function RevenueForecastCard({
         {sellers.length > 0 && (
           <div className="flex items-center gap-1.5 shrink-0">
             <select
-              className="h-8 rounded-md border border-input bg-transparent px-2 text-xs max-w-[140px]"
+              className="h-8 rounded-md border border-input bg-input/25 px-2 text-xs max-w-[140px]"
               value={sellerId}
               onChange={e => handleSellerChange(e.target.value)}
             >

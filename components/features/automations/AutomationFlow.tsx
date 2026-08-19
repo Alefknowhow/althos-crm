@@ -289,7 +289,7 @@ function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (
       <div className="space-y-2">
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Evento de disparo</Label>
         <select
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
           value={auto.trigger_type}
           onChange={e => setAuto({ ...auto, trigger_type: e.target.value, trigger_config: {} })}
         >
@@ -304,7 +304,7 @@ function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (
         <div className="space-y-2">
           <Label className="text-xs">Formulário</Label>
           <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
             value={auto.trigger_config?.formId || ''}
             onChange={e => setAuto({ ...auto, trigger_config: { formId: e.target.value } })}
           >
@@ -318,7 +318,7 @@ function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (
         <div className="space-y-2">
           <Label className="text-xs">Estágio que dispara</Label>
           <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
             value={auto.trigger_config?.stageId || ''}
             onChange={e => setAuto({ ...auto, trigger_config: { stageId: e.target.value } })}
           >
@@ -413,7 +413,7 @@ function StepConfig({
             <Label className={labelClass}>Template HSM</Label>
             {templates.length > 0 ? (
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                 value={step.config.templateName || ''}
                 onChange={e => {
                   const tpl = templates.find(t => t.name === e.target.value) ?? null

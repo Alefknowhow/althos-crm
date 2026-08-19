@@ -114,7 +114,7 @@ export default function ConversionFunnelWidget({
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
           <select
-            className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+            className="h-8 rounded-md border border-input bg-input/25 px-2 text-xs"
             value={period}
             onChange={e => setPeriod(e.target.value as FunnelPeriod)}
           >
@@ -125,7 +125,7 @@ export default function ConversionFunnelWidget({
             ))}
           </select>
           <select
-            className="h-8 rounded-md border border-input bg-transparent px-2 text-xs min-w-[160px]"
+            className="h-8 rounded-md border border-input bg-input/25 px-2 text-xs min-w-[160px]"
             value={sourceKey}
             onChange={e => setSourceKey(e.target.value)}
           >
