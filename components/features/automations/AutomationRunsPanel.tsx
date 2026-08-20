@@ -49,6 +49,9 @@ const STEP_LABEL: Record<string, string> = {
   create_task: 'Tarefa',
   move_stage: 'Estágio',
   add_tag: 'Tag',
+  close_deal: 'Fechar Negociação',
+  send_push: 'Notificação Push',
+  webhook: 'Webhook Externo',
 }
 
 const STATUS_META: Record<
