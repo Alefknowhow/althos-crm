@@ -13,39 +13,26 @@ import { revalidatePath, revalidateTag } from 'next/cache'
  */
 
 /* ─────────── schemas ─────────── */
-const LodgingSchema = z.object({
-  name: z.string().max(200).default(''),
-  check_in: z.string().nullable().optional(),
-  check_out: z.string().nullable().optional(),
-  room_category: z.string().max(200).nullable().optional(),
-  board: z.string().max(120).nullable().optional(),
-  description_html: z.string().max(20000).nullable().optional(),
-  photos: z.array(z.string().url()).max(12).default([]),
-  lat: z.number().nullable().optional(),
-  lng: z.number().nullable().optional(),
-  tripadvisor_location_id: z.string().max(40).nullable().optional(),
-  tripadvisor_data: z.record(z.string(), z.any()).nullable().optional(),
-  is_alternative_option: z.boolean().default(false),
-  option_price_per_person_cents: z.number().int().nullable().optional(),
-  option_total_cents: z.number().int().nullable().optional(),
-})
+/**
+ * Produto de uma cotação (Construtor de Viagens) — infraestrutura única
+ * pra Aéreo/Hospedagem/Cruzeiro/Transfer/Passeio/Seguro/Locação. Campos
+ * comuns (name/summary/datas/preço) ficam tipados; o que é específico de
+ * cada tipo vive em `data` (jsonb solto — cada editor de produto sabe o
+ * que ler/gravar ali, sem exigir migração de schema pra tipo novo).
+ * `internal_data` é comercial interno (comissão, markup, fornecedor,
+ * custo, margem, código de tarifa) — nunca sai pro público/PDF.
+ */
+const PRODUCT_TYPES = ['aereo', 'hospedagem', 'cruzeiro', 'transfer', 'passeio', 'seguro', 'locacao'] as const
 
-const FlightSchema = z.object({
-  leg_type: z.enum(['outbound', 'inbound', 'connection']).default('outbound'),
-  from_code: z.string().max(8).nullable().optional(),
-  from_city: z.string().max(120).nullable().optional(),
-  to_code: z.string().max(8).nullable().optional(),
-  to_city: z.string().max(120).nullable().optional(),
-  airline: z.string().max(120).nullable().optional(),
-  date: z.string().nullable().optional(),
-  departure_time: z.string().max(10).nullable().optional(),
-  arrival_date: z.string().nullable().optional(),
-  arrival_time: z.string().max(10).nullable().optional(),
-  flight_number: z.string().max(60).nullable().optional(),
-  duration_label: z.string().max(60).nullable().optional(),
-  stopover_label: z.string().max(160).nullable().optional(),
-  baggage: z.array(z.enum(['item_pessoal', 'mao', 'despachada'])).max(3).default([]),
-  cabin_class: z.enum(['economica', 'premium', 'executiva', 'primeira']).nullable().optional(),
+const ProductSchema = z.object({
+  product_type: z.enum(PRODUCT_TYPES),
+  name: z.string().max(200).nullable().optional(),
+  summary: z.string().max(300).nullable().optional(),
+  date_start: z.string().nullable().optional(),
+  date_end: z.string().nullable().optional(),
+  price_cents: z.number().int().nullable().optional(),
+  data: z.record(z.string(), z.any()).default({}),
+  internal_data: z.record(z.string(), z.any()).default({}),
 })
 
 const DaySchema = z.object({
@@ -97,8 +84,7 @@ const QuotationSchema = z.object({
   commission_total_cents: z.number().int().min(0).optional(),
   offer_published: z.boolean().optional(),
   offer_category: z.string().max(80).nullable().optional(),
-  lodgings: z.array(LodgingSchema).max(10).optional(),
-  flights: z.array(FlightSchema).max(20).optional(),
+  products: z.array(ProductSchema).max(40).optional(),
   itinerary_days: z.array(DaySchema).max(30).optional(),
   map_pins: z.array(PinSchema).max(30).optional(),
 })
@@ -107,8 +93,7 @@ export type QuotationInput = z.infer<typeof QuotationSchema>
 
 export type QuotationFull = {
   quotation: Record<string, any>
-  lodgings: Record<string, any>[]
-  flights: Record<string, any>[]
+  products: Record<string, any>[]
   itinerary_days: Record<string, any>[]
   map_pins: Record<string, any>[]
   org_settings: Record<string, any> | null
@@ -127,9 +112,8 @@ export async function getQuotationFull(orgSlug: string, id: string): Promise<Quo
     .eq('id', id).eq('organization_id', org.id).maybeSingle()
   if (!q) return null
 
-  const [l, f, d, p, s] = await Promise.all([
-    supabase.from('quotation_lodgings').select('*').eq('quotation_id', id).order('sort_order'),
-    supabase.from('quotation_flights').select('*').eq('quotation_id', id).order('sort_order'),
+  const [pr, d, p, s] = await Promise.all([
+    supabase.from('quotation_products').select('*').eq('quotation_id', id).order('sort_order'),
     supabase.from('quotation_itinerary_days').select('*').eq('quotation_id', id).order('sort_order'),
     supabase.from('quotation_map_pins').select('*').eq('quotation_id', id),
     supabase.from('org_settings').select('*').eq('org_id', org.id).maybeSingle(),
@@ -137,8 +121,7 @@ export async function getQuotationFull(orgSlug: string, id: string): Promise<Quo
 
   return {
     quotation: q,
-    lodgings: l.data ?? [],
-    flights: f.data ?? [],
+    products: pr.data ?? [],
     itinerary_days: d.data ?? [],
     map_pins: p.data ?? [],
     org_settings: s.data ?? null,
@@ -162,7 +145,7 @@ export async function saveQuotation(orgSlug: string, id: string, input: unknown)
     .eq('id', id).eq('organization_id', org.id).maybeSingle()
   if (!existing) return { ok: false as const, error: 'Cotação não encontrada' }
 
-  const { lodgings, flights, itinerary_days, map_pins, ...parent } = v
+  const { products, itinerary_days, map_pins, ...parent } = v
 
   const clean = (s?: string | null) => (s == null ? s : s === '' ? null : s)
   const parentPatch: Record<string, any> = {
@@ -187,7 +170,7 @@ export async function saveQuotation(orgSlug: string, id: string, input: unknown)
   if (upErr) return { ok: false as const, error: upErr.message }
 
   // Filhas: substituição integral (listas pequenas; mantém sort_order simples).
-  async function replaceChildren(table: string, rows: Record<string, any>[] | undefined, withSort = true) {
+  async function replaceChildren(table: string, rows: Record<string, any>[] | undefined, withSort = true, extra?: Record<string, any>) {
     if (rows === undefined) return null
     const del = await supabase.from(table).delete().eq('quotation_id', id)
     if (del.error) return del.error.message
@@ -196,16 +179,17 @@ export async function saveQuotation(orgSlug: string, id: string, input: unknown)
       rows.map((r, i) => ({
         ...r,
         quotation_id: id,
+        ...(extra || {}),
         ...(withSort ? { sort_order: i } : {}),
         check_in: clean(r.check_in), check_out: clean(r.check_out), date: clean(r.date),
+        date_start: clean(r.date_start), date_end: clean(r.date_end),
       })).map(r => Object.fromEntries(Object.entries(r).filter(([, val]) => val !== undefined))),
     )
     return ins.error?.message ?? null
   }
 
   const errs = [
-    await replaceChildren('quotation_lodgings', lodgings),
-    await replaceChildren('quotation_flights', flights),
+    await replaceChildren('quotation_products', products, true, { organization_id: org.id }),
     await replaceChildren('quotation_itinerary_days', itinerary_days),
     await replaceChildren('quotation_map_pins', map_pins, false),
   ].filter(Boolean)
@@ -312,7 +296,7 @@ export async function convertOfferToQuotation(orgSlug: string, offerId: string) 
   const newId = (created as any).id
 
   // Duplica as tabelas-filhas.
-  for (const table of ['quotation_lodgings', 'quotation_flights', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
+  for (const table of ['quotation_products', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
     const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', offerId)
     if (rows?.length) {
       const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
@@ -353,7 +337,7 @@ export async function convertQuotationToOffer(orgSlug: string, quotationId: stri
   if (error || !created) return { ok: false as const, error: error?.message || 'Erro ao converter' }
   const newId = (created as any).id
 
-  for (const table of ['quotation_lodgings', 'quotation_flights', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
+  for (const table of ['quotation_products', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
     const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', quotationId)
     if (rows?.length) {
       const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
@@ -390,15 +374,15 @@ export async function createSaleFromQuotation(orgSlug: string, id: string) {
     .eq('organization_id', org.id).eq('proposal_id', id).maybeSingle()
   if (existing) return { ok: true as const, saleId: (existing as any).id, existed: true }
 
-  const [lodg, fl] = await Promise.all([
-    supabase.from('quotation_lodgings').select('name').eq('quotation_id', id).order('sort_order'),
-    supabase.from('quotation_flights').select('airline').eq('quotation_id', id).order('sort_order'),
-  ])
+  const { data: products } = await supabase
+    .from('quotation_products').select('product_type, name, data').eq('quotation_id', id).order('sort_order')
+  const lodgingRows = (products || []).filter((p: any) => p.product_type === 'hospedagem')
+  const flightRows = (products || []).filter((p: any) => p.product_type === 'aereo')
 
   const destination = (Array.isArray(q.destinations) ? q.destinations : [])
     .map((d: any) => d?.name).filter(Boolean).join(', ') || null
-  const hotelName = (lodg.data || []).map((l: any) => l.name).filter(Boolean).join(', ') || null
-  const airline = Array.from(new Set((fl.data || []).map((f: any) => f.airline).filter(Boolean))).join(', ') || null
+  const hotelName = lodgingRows.map((l: any) => l.name).filter(Boolean).join(', ') || null
+  const airline = Array.from(new Set(flightRows.map((f: any) => f.data?.airline).filter(Boolean))).join(', ') || null
   const paymentMethod = (Array.isArray(q.payment_conditions) ? q.payment_conditions : [])
     .map((p: any) => p?.label).filter(Boolean).join(', ') || null
 

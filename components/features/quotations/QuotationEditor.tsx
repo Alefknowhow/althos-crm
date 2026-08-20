@@ -544,19 +544,34 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     operadora: q0.operadora || '', commission_total_cents: q0.commission_total_cents || 0,
     offer_published: !!q0.offer_published, offer_category: q0.offer_category || '',
   }))
-  const [lodgings, setLodgings] = useState<Lodging[]>(() => withKeys(initial.lodgings.map(l => ({
-    name: l.name || '', check_in: l.check_in, check_out: l.check_out, room_category: l.room_category,
-    board: l.board, description_html: l.description_html, photos: (l.photos || []) as string[],
-    lat: l.lat, lng: l.lng, tripadvisor_location_id: l.tripadvisor_location_id, tripadvisor_data: l.tripadvisor_data,
-  }))) as Lodging[])
-  const [flights, setFlights] = useState<Flight[]>(() => withKeys(initial.flights.map(f => ({
-    leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: f.from_city,
-    to_code: f.to_code, to_city: f.to_city, airline: f.airline, flight_number: (f as any).flight_number,
-    date: f.date, departure_time: (f as any).departure_time,
-    arrival_date: (f as any).arrival_date, arrival_time: (f as any).arrival_time,
-    duration_label: f.duration_label, stopover_label: f.stopover_label,
-    baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
-  }))) as Flight[])
+  // Aéreo/Hospedagem vivem em quotation_products (Construtor de Viagens,
+  // infra única compartilhada por todo tipo de produto) — filtra por
+  // product_type e achata `data` de volta pro shape local que o resto
+  // deste arquivo (ainda) espera. `_productId` guarda o id da linha em
+  // quotation_products só quando o produto já existe (undefined = novo).
+  const initialProducts = (initial.products || []) as any[]
+  const [lodgings, setLodgings] = useState<Lodging[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'hospedagem').map(p => {
+    const l = p.data || {}
+    return {
+      name: p.name || '', check_in: l.check_in, check_out: l.check_out, room_category: l.room_category,
+      board: l.board, description_html: l.description_html, photos: (l.photos || []) as string[],
+      lat: l.lat, lng: l.lng, tripadvisor_location_id: l.tripadvisor_location_id, tripadvisor_data: l.tripadvisor_data,
+      is_alternative_option: !!l.is_alternative_option,
+      option_price_per_person_cents: l.option_price_per_person_cents ?? null,
+      option_total_cents: l.option_total_cents ?? null,
+    }
+  })) as Lodging[])
+  const [flights, setFlights] = useState<Flight[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'aereo').map(p => {
+    const f = p.data || {}
+    return {
+      leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: f.from_city,
+      to_code: f.to_code, to_city: f.to_city, airline: f.airline, flight_number: f.flight_number,
+      date: f.date, departure_time: f.departure_time,
+      arrival_date: f.arrival_date, arrival_time: f.arrival_time,
+      duration_label: f.duration_label, stopover_label: f.stopover_label,
+      baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
+    }
+  })) as Flight[])
   const [pins, setPins] = useState<Pin[]>(() => withKeys(initial.map_pins.map(p => ({
     label: p.label || '', type: p.type || 'attraction', lat: p.lat, lng: p.lng,
   }))) as Pin[])
@@ -676,8 +691,24 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     price_disclaimer: q.price_disclaimer || null, validity_days: q.validity_days,
     operadora: q.operadora || null, commission_total_cents: q.commission_total_cents,
     ...(isOffer ? { offer_published: q.offer_published, offer_category: q.offer_category || null } : {}),
-    lodgings: lodgings.map(({ _key, ...l }) => l),
-    flights: flights.map(({ _key, ...f }) => ({ ...f, leg_type: f.leg_type as any, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any })),
+    products: [
+      ...lodgings.map(({ _key, name, check_in, check_out, ...rest }) => ({
+        product_type: 'hospedagem' as const,
+        name: name || null,
+        date_start: check_in || null, date_end: check_out || null,
+        price_cents: rest.option_total_cents ?? null,
+        data: { check_in, check_out, ...rest },
+        internal_data: {},
+      })),
+      ...flights.map(({ _key, ...f }) => ({
+        product_type: 'aereo' as const,
+        name: [f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || null,
+        date_start: f.date || null, date_end: f.arrival_date || f.date || null,
+        price_cents: null,
+        data: { ...f, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any },
+        internal_data: {},
+      })),
+    ],
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
   }), [q, lodgings, flights, pins])
 
