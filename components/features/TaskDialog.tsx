@@ -37,7 +37,7 @@ import {
 import { createTask, type TaskInput } from '@/actions/tasks'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import { taskSchema } from '@/lib/validators/task'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 type FormValues = z.infer<typeof taskSchema>
@@ -57,13 +57,23 @@ interface Props {
   defaultLead?: { id: string; name: string } | null
   trigger?:    React.ReactNode
   members?:    Member[]
+  /** Preenche data/horário ao criar a partir de um dia/horário específico
+   *  do calendário (ex.: clique num dia da grade, ou num slot da timeline). */
+  defaultDate?: string
+  defaultTime?: string
+  /** Controle externo do open state — usado quando o calendário abre este
+   *  diálogo programaticamente (sem trigger próprio visível). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [] }: Props) {
+export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange }: Props) {
   const router = useRouter()
-  const [open, setOpen]         = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = onOpenChange ?? setOpenState
   const [isPending, startTrans] = useTransition()
-  const [dueTime, setDueTime]   = useState('')
+  const [dueTime, setDueTime]   = useState(defaultTime || '')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -72,12 +82,26 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
     defaultValues: {
       title:       '',
       description: '',
-      due_date:    today,
+      due_date:    defaultDate || today,
       priority:    'normal',
       contato_id:     defaultLead?.id || '',
       assigned_to: '',
     },
   })
+
+  // Reabre sempre com a data/horário do dia clicado no calendário (o form
+  // não remonta entre aberturas, então sem isso o valor ficaria preso ao
+  // primeiro `defaultDate` recebido).
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        title: '', description: '', due_date: defaultDate || today, priority: 'normal',
+        contato_id: defaultLead?.id || '', assigned_to: '',
+      })
+      setDueTime(defaultTime || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultDate, defaultTime])
 
   async function onSubmit(values: FormValues) {
     startTrans(async () => {

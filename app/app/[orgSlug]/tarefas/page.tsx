@@ -38,7 +38,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
     <div className="space-y-6">
       <PageHeader
         title="Tarefas"
-        hint="Pendentes, atrasadas e concluídas — tudo numa lista só."
+        hint="Calendário e lista sincronizados — Pendentes, Atrasadas e Concluídas."
       />
 
       <TasksBoard
@@ -46,7 +46,6 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
         orgSlug={params.orgSlug}
         members={members}
         currentUserId={user.id}
-        headerAction={<TaskDialog orgSlug={params.orgSlug} members={members} />}
       />
 
       {/* FAB mobile — mesma criação de tarefa do botão do cabeçalho (desktop),
