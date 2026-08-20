@@ -21,8 +21,8 @@ export default async function QuotationPrintPage({
   // (lodgings/flights), então a lista genérica é filtrada por tipo e
   // achatada de volta pro shape que o componente já sabe renderizar.
   const products = (full.products || []) as any[]
-  const lodgings = products.filter(p => p.product_type === 'hospedagem').map(p => ({ name: p.name, ...p.data }))
-  const flights = products.filter(p => p.product_type === 'aereo').map(p => p.data)
+  const lodgings = products.filter(p => p.product_type === 'hospedagem').map(p => ({ name: p.name, price_cents: p.price_cents, ...p.data }))
+  const flights = products.filter(p => p.product_type === 'aereo').map(p => ({ price_cents: p.price_cents, ...p.data }))
   const cruises = products.filter(p => p.product_type === 'cruzeiro').map(p => ({ name: p.name, price_cents: p.price_cents, ...p.data }))
 
   return (

@@ -41,6 +41,7 @@ type Lodging = {
   room_category: string | null
   board: string | null
   photos?: string[] | null
+  price_cents?: number | null
 }
 
 type Flight = {
@@ -59,6 +60,7 @@ type Flight = {
   stopover_label: string | null
   cabin_class: string | null
   baggage?: string[] | null
+  price_cents?: number | null
 }
 
 type Cruise = {
@@ -118,6 +120,15 @@ function fmtDate(d?: string | null) {
 function fmtCurrency(cents: number | null | undefined) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
+/** "Cotação válida até: DD/MM/AAAA" — quoted_at/created_at + validity_days,
+ *  em vez do texto "válida por N dias" (menos escaneável num documento). */
+function validUntil(from?: string | null, days?: number | null): string | null {
+  if (!from || !days) return null
+  const base = new Date(from.slice(0, 10) + 'T12:00:00')
+  if (Number.isNaN(base.getTime())) return null
+  base.setDate(base.getDate() + days)
+  return base.toLocaleDateString('pt-BR')
+}
 function stripHtml(html?: string | null) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -149,11 +160,11 @@ function Rich({ html, className, onReady }: { html?: string | null; className?: 
   return <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ icon, children }: { icon?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-1.5 mb-[0.5em]">
-      <span className="w-[3px] h-[0.9em] bg-red-600 shrink-0" />
-      <p className="font-bold text-[0.82em] uppercase tracking-wide">{children}</p>
+      <span className="w-[3px] h-[0.9em] bg-gray-800 shrink-0" />
+      <p className="font-bold text-[0.82em] uppercase tracking-wide">{icon ? `${icon} ` : ''}{children}</p>
     </div>
   )
 }
@@ -165,7 +176,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
  * medido de verdade no DOM, não estimado. */
 const DENSITY_FONT_PX = [11.5, 10.5, 9.5]
 const DENSITY_GAP = ['mb-[1.1em]', 'mb-[0.85em]', 'mb-[0.65em]']
-const DENSITY_HERO_W = ['w-full', 'w-[92%]', 'w-[78%]']
+const DENSITY_HERO_W = ['w-[42%]', 'w-[36%]', 'w-[30%]']
 const A4_HEIGHT_MM = 297
 const MM_TO_PX = 3.7795275591
 
@@ -229,6 +240,13 @@ export default function QuotationPrintView({
   const hasTours = hasHtml(quotation.tours_html)
   const cancellationHasContent = hasHtml(quotation.cancellation_html)
   const hasValidity = !!quotation.validity_days && quotation.validity_days > 0
+  const validUntilLabel = validUntil(quotation.quoted_at || quotation.created_at, quotation.validity_days)
+
+  const productBreakdown: { label: string; cents: number }[] = [
+    ...lodgings.filter(l => l.price_cents).map(l => ({ label: l.name || 'Hospedagem', cents: l.price_cents! })),
+    ...cruises.filter(c => c.total_cents).map(c => ({ label: c.name || c.cruise_line || 'Cruzeiro', cents: c.total_cents! })),
+    ...flights.filter(f => f.price_cents).map(f => ({ label: [f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || 'Aéreo', cents: f.price_cents! })),
+  ]
 
   // Quantos blocos de HTML rico assíncrono (Rich/dompurify) existem nesta
   // renderização — a medição de compactação só roda depois que todos
@@ -258,48 +276,48 @@ export default function QuotationPrintView({
         style={{ fontSize: `${DENSITY_FONT_PX[density]}px` }}
         className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-[12mm] print:p-[12mm] text-black"
       >
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 pb-[0.8em] border-b border-gray-300 break-inside-avoid">
+        {/* ── Header compacto ────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-4 pb-[0.6em] border-b border-gray-300 break-inside-avoid">
           <div className="flex items-center gap-2.5 min-w-0">
             {org.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt={org.name} className="h-[2.6em] w-auto object-contain shrink-0" />
+              <img src={org.logo_url} alt={org.name} className="h-[2em] w-auto object-contain shrink-0" />
             )}
-            <p className="text-[1.35em] font-bold leading-tight truncate">{org.name}</p>
+            <p className="text-[1.1em] font-bold leading-tight truncate">{org.name}</p>
           </div>
-          <div className="text-right text-[0.68em] text-gray-500 space-y-[0.2em] shrink-0">
-            {org.contact_phone && <p className="flex items-center justify-end gap-1"><Phone className="w-[0.9em] h-[0.9em]" /> {org.contact_phone}</p>}
-            {org.contact_email && <p className="flex items-center justify-end gap-1"><Mail className="w-[0.9em] h-[0.9em]" /> {org.contact_email}</p>}
-            {org.website && <p className="flex items-center justify-end gap-1"><Globe className="w-[0.9em] h-[0.9em]" /> {org.website}</p>}
-          </div>
-        </div>
-
-        {/* ── Hero 16:9 ──────────────────────────────────────────── */}
-        {heroImage && (
-          <div className={`${DENSITY_HERO_W[density]} mx-auto mt-[0.9em] mb-[0.9em] aspect-[16/9] overflow-hidden rounded-md break-inside-avoid`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={heroImage} alt={destinations || quotation.title || 'Destino'} className="w-full h-full object-cover" />
-          </div>
-        )}
-
-        {/* ── Resumo do cliente ──────────────────────────────────── */}
-        <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
-          <div className="flex items-center justify-between gap-3 mb-[0.5em]">
-            <p className="font-bold text-[1.05em] uppercase tracking-wide">Orçamento personalizado</p>
-            <p className="text-[0.68em] text-gray-400 shrink-0">Código #{quotation.id.slice(0, 8).toUpperCase()}</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-[1em] gap-y-[0.4em]">
-            <SummaryField label="Cliente" value={quotation.client_name || quotation.title || '—'} />
-            {destinations && <SummaryField label="Destino" value={destinations} />}
-            {quotation.start_date && <SummaryField label="Período" value={`${fmtDate(quotation.start_date)} a ${fmtDate(quotation.end_date)}`} />}
-            <SummaryField label="Passageiros" value={paxLine} />
+          <div className="text-right text-[0.62em] text-gray-500 flex items-center gap-[0.8em] shrink-0">
+            {org.contact_phone && <span className="flex items-center gap-1"><Phone className="w-[0.9em] h-[0.9em]" /> {org.contact_phone}</span>}
+            {org.contact_email && <span className="flex items-center gap-1"><Mail className="w-[0.9em] h-[0.9em]" /> {org.contact_email}</span>}
+            {org.website && <span className="flex items-center gap-1"><Globe className="w-[0.9em] h-[0.9em]" /> {org.website}</span>}
           </div>
         </div>
 
-        {/* ── Aviso de disponibilidade (compacto) ───────────────────── */}
-        <div className="border border-gray-300 px-[0.8em] py-[0.5em] mb-[1em] break-inside-avoid">
-          <p className="text-[0.68em] leading-snug">
-            <span className="font-bold text-red-600">Atenção — </span>
+        {/* ── Resumo da viagem (texto à esquerda, hero compacto à direita) ── */}
+        <div className={`${DENSITY_GAP[density]} flex items-start gap-[1em] mt-[0.7em] break-inside-avoid`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-3 mb-[0.5em]">
+              <p className="font-bold text-[1.05em] uppercase tracking-wide">{quotation.title || 'Orçamento personalizado'}</p>
+              <p className="text-[0.64em] text-gray-400 shrink-0">Código #{quotation.id.slice(0, 8).toUpperCase()}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-x-[1em] gap-y-[0.4em]">
+              <SummaryField label="Cliente" value={quotation.client_name || '—'} />
+              {destinations && <SummaryField label="Destino" value={destinations} />}
+              {quotation.start_date && <SummaryField label="Período" value={`${fmtDate(quotation.start_date)} a ${fmtDate(quotation.end_date)}`} />}
+              <SummaryField label="Passageiros" value={paxLine} />
+            </div>
+          </div>
+          {heroImage && (
+            <div className={`${DENSITY_HERO_W[density]} shrink-0 aspect-[16/9] overflow-hidden rounded-md break-inside-avoid`} style={{ maxWidth: '38%' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImage} alt={destinations || quotation.title || 'Destino'} className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+
+        {/* ── ⚠️ ATENÇÃO — único bloco com vermelho no documento ───── */}
+        <div className="border border-red-200 bg-red-50 px-[0.8em] py-[0.5em] mb-[1em] break-inside-avoid">
+          <p className="text-[0.68em] leading-snug text-red-900">
+            <span className="font-bold">⚠️ ATENÇÃO — </span>
             Esta é uma cotação. Os serviços estão sujeitos à disponibilidade e os valores podem sofrer alterações até a efetivação da reserva.
           </p>
         </div>
@@ -307,7 +325,7 @@ export default function QuotationPrintView({
         {/* ── Produtos e serviços ────────────────────────────────── */}
         {lodgings.length > 0 && (
           <div className={DENSITY_GAP[density]}>
-            <SectionLabel>Hospedagem</SectionLabel>
+            <SectionLabel icon="🏨">Hospedagem</SectionLabel>
             {lodgings.map((l, i) => (
               <div key={i} className={cn('break-inside-avoid', i < lodgings.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
                 <p className="font-semibold text-[0.85em]">{l.name}</p>
@@ -322,7 +340,7 @@ export default function QuotationPrintView({
 
         {cruises.length > 0 && (
           <div className={DENSITY_GAP[density]}>
-            <SectionLabel>Cruzeiro</SectionLabel>
+            <SectionLabel icon="🚢">Cruzeiro</SectionLabel>
             {cruises.map((c, i) => (
               <div key={i} className={cn('break-inside-avoid', i < cruises.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
                 <p className="font-semibold text-[0.85em]">{c.name || c.cruise_line || 'Cruzeiro'}{c.duration_nights ? ` · ${c.duration_nights} noites` : ''}</p>
@@ -341,7 +359,7 @@ export default function QuotationPrintView({
 
         {legGroups.length > 0 && (
           <div className={DENSITY_GAP[density]}>
-            <SectionLabel>Voos</SectionLabel>
+            <SectionLabel icon="✈️">Voos</SectionLabel>
             {legGroups.map(group => (
               <div key={group.label} className="mb-[0.5em] last:mb-0">
                 {group.legs.map((f, i) => {
@@ -369,7 +387,7 @@ export default function QuotationPrintView({
 
         {flightsHtmlText && legGroups.length === 0 && (
           <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
-            <SectionLabel>Voos</SectionLabel>
+            <SectionLabel icon="✈️">Voos</SectionLabel>
             <p className="text-[0.78em] whitespace-pre-wrap">{flightsHtmlText}</p>
           </div>
         )}
@@ -408,14 +426,27 @@ export default function QuotationPrintView({
         )}
 
         {/* ── Investimento ───────────────────────────────────────── */}
-        <div className={`${DENSITY_GAP[density]} border-t-2 border-red-600 pt-[0.7em] break-inside-avoid`}>
-          <p className="font-bold text-[0.8em] uppercase tracking-wide mb-[0.3em]">Investimento da viagem</p>
-          <p className="text-[1.9em] font-bold text-red-600 leading-none tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+        <div className={`${DENSITY_GAP[density]} border border-gray-300 bg-gray-50 px-[1em] py-[0.9em] break-inside-avoid`}>
+          <p className="font-bold text-[0.8em] uppercase tracking-wide mb-[0.5em]">Investimento</p>
+          {productBreakdown.length > 1 && (
+            <ul className="mb-[0.6em] space-y-[0.2em]">
+              {productBreakdown.map((row, i) => (
+                <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
+                  <span className="truncate">{row.label}</span>
+                  <span className="tabular-nums shrink-0">{fmtCurrency(row.cents)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex items-baseline justify-between border-t border-gray-300 pt-[0.5em] gap-[1em]">
+            <p className="font-bold text-[0.82em] uppercase tracking-wide">Total da viagem</p>
+            <p className="text-[1.9em] font-bold text-black leading-none tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+          </div>
           {quotation.price_per_person_cents != null && quotation.price_per_person_cents > 0 && (
-            <p className="text-[0.78em] text-gray-600 mt-[0.25em]">{fmtCurrency(quotation.price_per_person_cents)} por pessoa</p>
+            <p className="text-[0.78em] text-gray-600 mt-[0.25em] text-right">{fmtCurrency(quotation.price_per_person_cents)} por pessoa</p>
           )}
           {(quotation.payment_conditions?.length ?? 0) > 0 && (
-            <ul className="mt-[0.5em] space-y-[0.15em]">
+            <ul className="mt-[0.6em] pt-[0.5em] border-t border-gray-200 space-y-[0.15em]">
               {quotation.payment_conditions!.map((p, i) => (
                 <li key={i} className="text-[0.76em]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
               ))}
@@ -433,7 +464,7 @@ export default function QuotationPrintView({
               <div>
                 <SectionLabel>Validade da tarifa</SectionLabel>
                 <p className="text-[0.76em] text-gray-700">
-                  Tarifa válida por {quotation.validity_days} dia{quotation.validity_days === 1 ? '' : 's'} a partir de {fmtDate(quotation.quoted_at || quotation.created_at)}, sujeita à disponibilidade até a confirmação da reserva.
+                  {validUntilLabel ? <>Cotação válida até: <span className="font-semibold">{validUntilLabel}</span></> : `Tarifa válida por ${quotation.validity_days} dia${quotation.validity_days === 1 ? '' : 's'}.`} Sujeita à disponibilidade até a confirmação da reserva.
                 </p>
               </div>
             )}
