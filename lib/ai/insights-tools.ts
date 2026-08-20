@@ -190,6 +190,24 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
       properties: { periodo: PERIOD_PARAM },
     },
   },
+  {
+    name: 'consultar_atendimentos_clinicos',
+    description:
+      'Vertical Clínicas: atendimentos no período, taxa de no-show e atendimentos por profissional. Use para "atendimentos", "quantos pacientes atendemos", "taxa de falta", "no-show", "produtividade por profissional". SÓ retorna dado operacional/comercial (contagens, status, nomes) — nunca conteúdo clínico das observações.',
+    input_schema: {
+      type: 'object',
+      properties: { periodo: PERIOD_PARAM },
+    },
+  },
+  {
+    name: 'consultar_comissoes_clinicas',
+    description:
+      'Vertical Clínicas: comissões calculadas no período (pendentes vs. pagas), por profissional. Use para "comissões", "quanto devo aos profissionais", "comissão pendente", "comissão paga".',
+    input_schema: {
+      type: 'object',
+      properties: { periodo: PERIOD_PARAM },
+    },
+  },
 ]
 
 /* ------- Executor dispatcher ------- */
@@ -225,6 +243,10 @@ export async function executeAnalyticsTool(
         return await queryOffers(input, ctx)
       case 'consultar_tarefas':
         return await queryTasks(input, ctx)
+      case 'consultar_atendimentos_clinicos':
+        return await queryClinicAttendances(input, ctx)
+      case 'consultar_comissoes_clinicas':
+        return await queryClinicCommissions(input, ctx)
       default:
         return {
           summary: `Tool desconhecida: ${name}`,
@@ -941,5 +963,88 @@ async function queryTasks(
   return {
     summary: `${rows.length} tarefas no período (${label}): ${open} em aberto, ${doing} em andamento, ${done} concluídas e ${overdue} vencidas (atrasadas).`,
     view: { type: 'kpis', items },
+  }
+}
+
+/* ------- Vertical Clínicas — só dado operacional/comercial, nunca
+ * conteúdo clínico das observações de texto livre (ver docs/audit/
+ * clinicas-lgpd.md). ------- */
+
+async function queryClinicAttendances(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+
+  const [{ data: attendances }, { data: statusRows }] = await Promise.all([
+    ctx.supabase
+      .from('clinic_attendances')
+      .select('professional_id, clinic_professionals(name)')
+      .eq('organization_id', ctx.orgId)
+      .gte('attended_at', start.toISOString()),
+    ctx.supabase
+      .from('clinic_appointment_context')
+      .select('clinic_status')
+      .eq('organization_id', ctx.orgId)
+      .gte('created_at', start.toISOString())
+      .in('clinic_status', ['realizado', 'no_show']),
+  ])
+
+  const rows = (attendances as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhum atendimento registrado no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const byProf = new Map<string, number>()
+  for (const a of rows) {
+    const name = a.clinic_professionals?.name || 'Sem profissional'
+    byProf.set(name, (byProf.get(name) || 0) + 1)
+  }
+  const barData = Array.from(byProf.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  const total = (statusRows || []).length
+  const noShow = (statusRows || []).filter((r: any) => r.clinic_status === 'no_show').length
+  const noShowRate = total > 0 ? (noShow / total) * 100 : null
+
+  return {
+    summary: `${rows.length} atendimentos no período (${label}).${noShowRate !== null ? ` Taxa de no-show: ${noShowRate.toFixed(1)}%.` : ''} Por profissional: ${barData.map(b => `${b.name} (${b.value})`).join(', ')}.`,
+    view: { type: 'bar', data: barData, color: '#0ea5e9' },
+  }
+}
+
+async function queryClinicCommissions(
+  input: Record<string, any>,
+  ctx: AnalyticsContext,
+): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+
+  const { data } = await ctx.supabase
+    .from('clinic_commissions')
+    .select('commission_cents, status, clinic_professionals(name)')
+    .eq('organization_id', ctx.orgId)
+    .gte('competencia', start.toISOString().slice(0, 10))
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhuma comissão calculada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const pendingCents = rows.filter(r => r.status === 'pendente').reduce((a, r) => a + r.commission_cents, 0)
+  const paidCents = rows.filter(r => r.status === 'pago').reduce((a, r) => a + r.commission_cents, 0)
+
+  const byProf = new Map<string, number>()
+  for (const r of rows) {
+    const name = r.clinic_professionals?.name || 'Sem profissional'
+    byProf.set(name, (byProf.get(name) || 0) + r.commission_cents)
+  }
+  const barData = Array.from(byProf.entries())
+    .map(([name, cents]) => ({ name, value: Math.round(cents / 100) }))
+    .sort((a, b) => b.value - a.value)
+
+  return {
+    summary: `Comissões no período (${label}): ${fmtCurrency(pendingCents)} pendentes e ${fmtCurrency(paidCents)} pagas. Por profissional: ${barData.map(b => `${b.name} (${fmtCurrency(b.value * 100)})`).join(', ')}.`,
+    view: { type: 'bar', data: barData, color: '#10b981' },
   }
 }
