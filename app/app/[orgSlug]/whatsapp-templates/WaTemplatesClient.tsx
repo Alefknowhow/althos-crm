@@ -535,13 +535,8 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
     <div className="w-full lg:w-3/5 mx-auto space-y-6">
 
       {/* Header — título vai pra barra superior (getPageTitle em
-          lib/route-titles.ts), igual todo outro módulo; aqui só a
-          descrição + ação, mesmo padrão de PageHeader (ui/page-header.tsx)
-          usado no resto do app. */}
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          Gerencie seus templates aprovados pela Meta. Usados em automações para enviar mensagens fora da janela de 24h.
-        </p>
+          lib/route-titles.ts), igual todo outro módulo. */}
+      <div className="flex items-center justify-end">
         <Button onClick={openNew} size="sm" className="shrink-0">
           <Plus className="w-4 h-4 mr-1.5" />
           Novo template
@@ -574,28 +569,16 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
       ) : (
         <div className="space-y-2">
           {templates.map(t => (
-            <div key={t.id} className="rounded-md border border-border bg-card px-4 py-2.5 space-y-1">
-              {/* Linha 1 — nome de exibição · nome Meta · categoria · status + ver mensagem */}
-              <div className="flex items-center gap-2 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{t.display_name}</p>
-                <span className="text-xs font-mono text-muted-foreground truncate shrink-0">{t.name}</span>
-                <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${categoryColor(t.category)}`}>{t.category}</Badge>
-                <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${statusColor(t.status)}`}>{statusLabel(t.status)}</Badge>
-                <Button
-                  variant="ghost" size="sm" className="ml-auto h-7 text-xs gap-1.5 shrink-0"
-                  onClick={() => setPreviewing(t)}
-                >
+            <div key={t.id} className="rounded-md border border-border bg-card px-4 py-2.5 flex items-center gap-2 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{t.display_name}</p>
+              <span className="text-xs font-mono text-muted-foreground truncate shrink-0">{t.name}</span>
+              <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${categoryColor(t.category)}`}>{t.category}</Badge>
+              <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${statusColor(t.status)}`}>{statusLabel(t.status)}</Badge>
+
+              <div className="ml-auto flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setPreviewing(t)}>
                   <Eye className="w-3.5 h-3.5" /> Ver mensagem
                 </Button>
-              </div>
-
-              {/* Linha 2 — preview do corpo, uma linha só */}
-              <p className="text-xs text-muted-foreground truncate leading-relaxed">
-                <BodyPreview text={t.body_text} />
-              </p>
-
-              {/* Linha 3 — ações */}
-              <div className="flex items-center gap-1.5 pt-0.5">
                 <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-foreground"
                   onClick={() => openEdit(t)} disabled={t.status !== 'local'} title={t.status !== 'local' ? 'Templates já enviados não podem ser editados' : 'Editar'}>
                   <Pencil className="w-3.5 h-3.5" />
