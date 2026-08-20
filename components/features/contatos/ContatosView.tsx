@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -172,6 +173,22 @@ export default function ContatosView({
     navigate({ sel: id })
   }
 
+  // Botão "Conversas" da lista: acha a conversa já existente com esse
+  // contato (no número WABA cadastrado) ou cria uma nova sem enviar
+  // mensagem — mesmo padrão do botão "Iniciar Waba" do Pipeline
+  // (actions/whatsapp.ts::getOrCreateConversationForLead) — e leva
+  // direto pro chat já pronto pra digitar, em vez de só filtrar a lista
+  // de conversas por lead (que ficava vazio quando não existia thread ainda).
+  const [conversationLoadingId, setConversationLoadingId] = useState<string | null>(null)
+  async function handleOpenConversation(contatoId: string) {
+    if (conversationLoadingId) return
+    setConversationLoadingId(contatoId)
+    const res = await getOrCreateConversationForLead(orgSlug, contatoId)
+    setConversationLoadingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    router.push(`/app/${orgSlug}/conversas?id=${res.conversationId}`)
+  }
+
   // ── Busca com debounce → URL ──────────────────────────────────────
   const [searchInput, setSearchInput] = useState(filters.q || '')
   useEffect(() => {
@@ -289,14 +306,10 @@ export default function ContatosView({
                   {/* Atalhos: conversas, cotações enviadas, reservas */}
                   <div className="mt-2 flex items-center gap-1.5 pl-12">
                     <ShortcutButton
-                      asChild
                       label="Conversas"
                       icon={MessageCircle}
-                    >
-                      <Link href={`/app/${orgSlug}/conversas?lead=${c.id}`} aria-label="Conversas">
-                        <MessageCircle className="w-4 h-4" />
-                      </Link>
-                    </ShortcutButton>
+                      onClick={() => handleOpenConversation(c.id)}
+                    />
                     {isTravel && (
                       <>
                         <ShortcutButton
