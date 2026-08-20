@@ -33,6 +33,7 @@ const ROUTE_TITLES: Record<string, string> = {
   tratamentos: 'Tratamentos e Pacotes',
   'lista-espera': 'Lista de Espera',
   comissoes: 'Comissões',
+  retornos: 'Retornos',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */

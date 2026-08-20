@@ -40,6 +40,7 @@ import {
   ListChecks,
   Hourglass,
   Percent,
+  CalendarCheck2,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -349,6 +350,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <ClipboardList className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Atendimentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('atendimentos_clinica') && isModuleEnabled(org.niche, 'retornos_clinica') && (
+          <SidebarNavLink href={`${base}/retornos`}>
+            <span className="flex items-center gap-2.5">
+              <CalendarCheck2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Retornos</span>
             </span>
           </SidebarNavLink>
         )}
