@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
   ArrowLeft, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
-  CopyPlus, Loader2,
+  CopyPlus, Loader2, FileText,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -429,6 +429,11 @@ function ProposalDetail({
           <Button asChild size="sm" title="Abrir editor">
             <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
               <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
+            </Link>
+          </Button>
+          <Button type="button" variant="outline" size="sm" asChild title="Gerar PDF">
+            <Link href={`/app/${orgSlug}/cotacoes/${p.id}/pdf`} target="_blank" rel="noopener noreferrer" aria-label="Gerar PDF">
+              <FileText className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar PDF</span>
             </Link>
           </Button>
           {p.public_token && (
