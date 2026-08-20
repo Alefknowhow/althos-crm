@@ -167,7 +167,7 @@ export default function TasksBoard({
   const [calView, setCalView] = useState<CalView>('month')
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()))
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [todayOnly, setTodayOnly] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
   const [quickAdd, setQuickAdd] = useState<{ date: string; time?: string } | null>(null)
@@ -226,9 +226,34 @@ export default function TasksBoard({
     return map
   }, [filtered])
 
+  // A lista segue o período visível no calendário — mês inteiro (visão Mês)
+  // ou semana inteira (visão Semana). Não existe mais filtro de um dia
+  // avulso: o único recorte diário é o toggle "Hoje" (mais abaixo). Tarefas
+  // sem data ficam sempre visíveis (não têm período pra pertencer).
+  const periodTasks = useMemo(() => {
+    if (todayOnly) {
+      const t0 = todayISO()
+      return filtered.filter(t => t.due_date && t.due_date.split('T')[0] === t0)
+    }
+    if (calView === 'month') {
+      return filtered.filter(t => {
+        const d = dueDateOnly(t)
+        if (!d) return true
+        return d.getFullYear() === calMonth.getFullYear() && d.getMonth() === calMonth.getMonth()
+      })
+    }
+    const weekStart = startOfWeek(weekAnchor)
+    const weekEnd = addDays(weekStart, 6)
+    return filtered.filter(t => {
+      const d = dueDateOnly(t)
+      if (!d) return true
+      return d >= weekStart && d <= weekEnd
+    })
+  }, [filtered, todayOnly, calView, calMonth, weekAnchor])
+
   const grouped = useMemo(() => {
     const byGroup: Record<GroupId, Task[]> = { pending: [], overdue: [], done: [] }
-    for (const t of filtered) byGroup[classify(t)].push(t)
+    for (const t of periodTasks) byGroup[classify(t)].push(t)
     for (const id of Object.keys(byGroup) as GroupId[]) {
       byGroup[id].sort((a, b) => {
         const da = dueDateOnly(a)?.getTime() ?? Infinity
@@ -237,12 +262,7 @@ export default function TasksBoard({
       })
     }
     return byGroup
-  }, [filtered])
-
-  const selectedDateTasks = useMemo(
-    () => (selectedDate ? (tasksByDate[selectedDate] || []) : null),
-    [selectedDate, tasksByDate],
-  )
+  }, [periodTasks])
 
   const assigneeCounts = useMemo(() => {
     const c: Record<string, number> = { all: tasks.length, none: 0 }
@@ -432,8 +452,21 @@ export default function TasksBoard({
             <User2 className="w-3.5 h-3.5" /> Minhas
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setTodayOnly(v => !v)}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors shrink-0',
+            FOCUS_RING,
+            todayOnly
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-background hover:bg-muted text-muted-foreground border-border',
+          )}
+        >
+          <Calendar className="w-3.5 h-3.5" /> Hoje
+        </button>
         <div className="ml-auto">
-          <Button size="sm" onClick={() => setQuickAdd({ date: selectedDate || ymd(new Date()) })} className="gap-1.5">
+          <Button size="sm" onClick={() => setQuickAdd({ date: ymd(new Date()) })} className="gap-1.5">
             <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova tarefa</span>
           </Button>
         </div>
@@ -465,7 +498,7 @@ export default function TasksBoard({
           </button>
           <button
             type="button"
-            onClick={() => { setCalMonth(startOfMonth(new Date())); setWeekAnchor(startOfWeek(new Date())); setSelectedDate(null) }}
+            onClick={() => { setCalMonth(startOfMonth(new Date())); setWeekAnchor(startOfWeek(new Date())) }}
             className={cn('px-2.5 h-8 rounded-md border text-xs font-medium hover:bg-muted transition-colors ml-1', FOCUS_RING)}
           >
             Hoje
@@ -533,7 +566,6 @@ export default function TasksBoard({
               days={monthDays}
               calMonth={calMonth}
               todayYmd={todayYmd}
-              selectedDate={selectedDate}
               tasksByDate={tasksByDate}
               members={members}
               highlightId={highlightId}
@@ -541,7 +573,6 @@ export default function TasksBoard({
               setOpenPopoverId={setOpenPopoverId}
               dragOverKey={dragOverKey}
               setDragOverKey={setDragOverKey}
-              onSelectDate={d => setSelectedDate(prev => (prev === d ? null : d))}
               onDropDay={handleDropOnDay}
               onChipDragStart={onChipDragStart}
               onChipDragEnd={onChipDragEnd}
@@ -561,7 +592,6 @@ export default function TasksBoard({
               days={weekDays}
               hours={hours}
               todayYmd={todayYmd}
-              selectedDate={selectedDate}
               tasksByDate={tasksByDate}
               members={members}
               highlightId={highlightId}
@@ -569,7 +599,6 @@ export default function TasksBoard({
               setOpenPopoverId={setOpenPopoverId}
               dragOverKey={dragOverKey}
               setDragOverKey={setDragOverKey}
-              onSelectDate={d => setSelectedDate(prev => (prev === d ? null : d))}
               onDropAllDay={handleDropOnAllDay}
               onDropSlot={handleDropOnSlot}
               onChipDragStart={onChipDragStart}
@@ -588,45 +617,19 @@ export default function TasksBoard({
           )}
         </div>
 
-        {/* Lista — 40% */}
+        {/* Lista — 40%, sempre escopada ao período visível no calendário */}
         <div className="w-full lg:w-[40%] min-w-0 space-y-2">
-          {selectedDate && (
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-sm font-semibold">
-                Tarefas de {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground', FOCUS_RING)}
-              >
-                <X className="w-3.5 h-3.5" /> Todas as tarefas
-              </button>
-            </div>
-          )}
+          <div className="px-0.5">
+            <span className="text-sm font-semibold">
+              {todayOnly
+                ? 'Tarefas de hoje'
+                : calView === 'month'
+                  ? `Tarefas de ${calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`
+                  : `Tarefas de ${weekRangeLabel(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(weekAnchor), i)))}`}
+            </span>
+          </div>
 
-          {selectedDate ? (
-            <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
-              {(selectedDateTasks?.length ?? 0) === 0 ? (
-                <div className="px-3.5 py-6 text-center text-xs text-muted-foreground">Nenhuma tarefa nesse dia.</div>
-              ) : (
-                selectedDateTasks!.map(task => (
-                  <TaskListRow
-                    key={task.id}
-                    task={task}
-                    orgSlug={orgSlug}
-                    members={members}
-                    highlighted={highlightId === task.id}
-                    onOpen={() => openFromList(task)}
-                    onToggleDone={() => handleToggleDone(task)}
-                    onSetPriority={p => handleSetPriority(task, p)}
-                    onDelete={() => handleDelete(task.id)}
-                  />
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
+          <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
               {GROUPS.map(g => {
                 const list = grouped[g.id]
                 const isOpen = expanded[g.id]
@@ -676,8 +679,7 @@ export default function TasksBoard({
                   </div>
                 )
               })}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -721,14 +723,13 @@ function weekRangeLabel(days: Date[]) {
 // ── Calendário — visão Mês ──────────────────────────────────────────────────
 
 function MonthGrid({
-  days, calMonth, todayYmd, selectedDate, tasksByDate, members, highlightId,
+  days, calMonth, todayYmd, tasksByDate, members, highlightId,
   openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
-  onSelectDate, onDropDay, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
+  onDropDay, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
 }: {
   days: Date[]
   calMonth: Date
   todayYmd: string
-  selectedDate: string | null
   tasksByDate: Record<string, Task[]>
   members: Member[]
   highlightId: string | null
@@ -736,7 +737,6 @@ function MonthGrid({
   setOpenPopoverId: (id: string | null) => void
   dragOverKey: string | null
   setDragOverKey: (k: string | null) => void
-  onSelectDate: (d: string) => void
   onDropDay: (e: React.DragEvent, dayYmd: string) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
   onChipDragEnd: () => void
@@ -756,7 +756,6 @@ function MonthGrid({
           const dayTasks = tasksByDate[key] || []
           const inMonth = d.getMonth() === calMonth.getMonth()
           const isToday = key === todayYmd
-          const isSelected = key === selectedDate
           const isWeekend = d.getDay() === 0 || d.getDay() === 6
           const visible = dayTasks.slice(0, 3)
           const overflow = dayTasks.length - visible.length
@@ -764,22 +763,19 @@ function MonthGrid({
           return (
             <div
               key={key}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectDate(key)}
               onDoubleClick={() => onQuickAdd(key)}
               onDragOver={e => { e.preventDefault(); setDragOverKey(`month:${key}`) }}
               onDragLeave={() => setDragOverKey(null)}
               onDrop={e => onDropDay(e, key)}
+              title="Duplo clique para criar uma tarefa neste dia"
               className={cn(
-                'min-h-[96px] sm:min-h-[108px] border-b border-r p-1.5 text-left align-top transition-colors cursor-pointer',
+                'min-h-[96px] sm:min-h-[108px] min-w-0 border-b border-r p-1.5 text-left align-top transition-colors',
                 (i + 1) % 7 === 0 && 'border-r-0',
                 i >= 35 && 'border-b-0',
                 !inMonth && 'bg-muted/20',
                 isWeekend && inMonth && 'bg-muted/10',
-                isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/40',
                 isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/50',
-                !isSelected && !isDragOver && 'hover:bg-muted/30',
+                !isDragOver && 'hover:bg-muted/30',
               )}
             >
               <span
@@ -851,13 +847,13 @@ function CalendarTaskChip({
           onClick={e => e.stopPropagation()}
           title={member ? `${task.title} · ${member.name}` : task.title}
           className={cn(
-            'group/chip relative flex items-center gap-1 text-[11px] leading-tight px-1 py-0.5 rounded cursor-grab active:cursor-grabbing truncate',
+            'group/chip relative flex items-center gap-1 text-[11px] leading-tight px-1 py-0.5 rounded cursor-grab active:cursor-grabbing min-w-0 max-w-full overflow-hidden',
             'hover:bg-muted/60',
             highlighted && 'ring-1 ring-primary/50 bg-primary/5',
           )}
         >
           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', stateDotClass(task))} />
-          <span className={cn('truncate', done && 'line-through text-muted-foreground')}>
+          <span className={cn('min-w-0 flex-1 truncate [overflow-wrap:anywhere]', done && 'line-through text-muted-foreground')}>
             {time && <span className="text-muted-foreground/70 mr-1 tabular-nums">{time}</span>}
             {task.title}
           </span>
@@ -934,14 +930,13 @@ function DayOverflowPopover({
 // ── Calendário — visão Semana ────────────────────────────────────────────────
 
 function WeekTimeline({
-  days, hours, todayYmd, selectedDate, tasksByDate, members, highlightId,
+  days, hours, todayYmd, tasksByDate, members, highlightId,
   openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
-  onSelectDate, onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
+  onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
 }: {
   days: Date[]
   hours: number[]
   todayYmd: string
-  selectedDate: string | null
   tasksByDate: Record<string, Task[]>
   members: Member[]
   highlightId: string | null
@@ -949,7 +944,6 @@ function WeekTimeline({
   setOpenPopoverId: (id: string | null) => void
   dragOverKey: string | null
   setDragOverKey: (k: string | null) => void
-  onSelectDate: (d: string) => void
   onDropAllDay: (e: React.DragEvent, dayYmd: string) => void
   onDropSlot: (e: React.DragEvent, dayYmd: string, hour: number) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
@@ -959,22 +953,15 @@ function WeekTimeline({
 }) {
   return (
     <div className="rounded-[8px] border bg-card overflow-hidden">
-      {/* Cabeçalho dos dias */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b">
+      {/* Cabeçalho dos dias — colunas de largura fixa (minmax(0,1fr)): texto
+          de tarefa nunca pode forçar uma coluna a crescer além disso. */}
+      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b">
         <div />
         {days.map(d => {
           const key = ymd(d)
           const isToday = key === todayYmd
           return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onSelectDate(key)}
-              className={cn(
-                'py-2 text-center border-l transition-colors hover:bg-muted/30',
-                key === selectedDate && 'bg-primary/10',
-              )}
-            >
+            <div key={key} className="py-2 text-center border-l min-w-0">
               <div className="text-[11px] text-muted-foreground">{WEEKDAYS_PT[d.getDay()]}</div>
               <div className={cn(
                 'inline-flex items-center justify-center w-6 h-6 rounded-full text-xs mt-0.5',
@@ -982,13 +969,13 @@ function WeekTimeline({
               )}>
                 {d.getDate()}
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
 
       {/* Dia inteiro */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b bg-muted/10">
+      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b bg-muted/10">
         <div className="text-[10px] text-muted-foreground px-1.5 py-2 uppercase tracking-wide">Dia inteiro</div>
         {days.map(d => {
           const key = ymd(d)
@@ -1000,7 +987,7 @@ function WeekTimeline({
               onDragOver={e => { e.preventDefault(); setDragOverKey(`allday:${key}`) }}
               onDragLeave={() => setDragOverKey(null)}
               onDrop={e => onDropAllDay(e, key)}
-              className={cn('border-l px-1 py-1.5 space-y-0.5 min-h-[36px]', isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/40')}
+              className={cn('border-l px-1 py-1.5 space-y-0.5 min-h-[36px] min-w-0', isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/40')}
             >
               {allDay.map(t => (
                 <CalendarTaskChip
@@ -1021,7 +1008,7 @@ function WeekTimeline({
       </div>
 
       {/* Timeline */}
-      <div className="grid grid-cols-[56px_repeat(7,1fr)] relative">
+      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] relative">
         {/* Coluna de horas */}
         <div>
           {hours.map(h => (
@@ -1035,7 +1022,7 @@ function WeekTimeline({
           const key = ymd(d)
           const timed = (tasksByDate[key] || []).filter(t => dueTimeOnly(t.due_date))
           return (
-            <div key={key} className="relative border-l">
+            <div key={key} className="relative border-l min-w-0">
               {hours.map(h => {
                 const slotKey = `slot:${key}:${h}`
                 const isDragOver = dragOverKey === slotKey

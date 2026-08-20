@@ -22,7 +22,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
     .order('created_at', { ascending: false })
 
   return (
-    <div className="space-y-6">
+    <div className="w-full lg:w-3/5 mx-auto space-y-6">
       <div className="flex justify-end items-center">
         <NewTemplateButton orgSlug={params.orgSlug} />
       </div>

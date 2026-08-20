@@ -19,7 +19,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
   const campaigns = await listCampaigns(params.orgSlug)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full lg:w-1/2 mx-auto space-y-6">
       <div className="flex items-center justify-end">
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild className="gap-1.5">

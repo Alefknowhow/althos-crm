@@ -21,7 +21,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, ImageIcon, FileText, Video, X, Upload, ExternalLink, Send, RefreshCw, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ImageIcon, FileText, Video, X, Upload, ExternalLink, Send, RefreshCw, Loader2, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -385,6 +385,77 @@ function TemplateDialog({ orgSlug, open, editing, onClose, onSaved }: DialogProp
   )
 }
 
+// ── Preview dialog (mensagem completa: cabeçalho, corpo, variáveis, rodapé) ────
+
+function PreviewDialog({ template, onClose }: { template: WaTemplate | null; onClose: () => void }) {
+  return (
+    <Dialog open={!!template} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        {template && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{template.display_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-mono">{template.name}</span>
+                <Badge variant="outline" className={`text-[10px] font-semibold ${categoryColor(template.category)}`}>{template.category}</Badge>
+                <Badge variant="outline" className={`text-[10px] font-semibold ${statusColor(template.status)}`}>{statusLabel(template.status)}</Badge>
+                <span>· {template.language}</span>
+              </div>
+
+              <div className="rounded-md border border-emerald-100 bg-[#ECF8F0] p-4">
+                <div className="bg-white rounded-md max-w-xs p-3 space-y-1.5">
+                  {template.header_type === 'image' && template.header_media_url && (
+                    <img src={template.header_media_url} alt="header" className="rounded w-full h-28 object-cover" />
+                  )}
+                  {['video', 'document'].includes(template.header_type) && template.header_media_url && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {headerIcon(template.header_type)}
+                      <a href={template.header_media_url} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                        Ver arquivo do cabeçalho <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
+                  {template.header_type === 'text' && template.header_text && (
+                    <p className="text-sm font-bold text-foreground">{template.header_text}</p>
+                  )}
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    <BodyPreview text={template.body_text} />
+                  </p>
+                  {template.footer_text && (
+                    <p className="text-[11px] text-muted-foreground">{template.footer_text}</p>
+                  )}
+                </div>
+              </div>
+
+              {template.variable_names && template.variable_names.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Variáveis</Label>
+                  <div className="space-y-1">
+                    {template.variable_names.map((v, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <span className="text-xs font-mono rounded bg-muted px-1.5 py-0.5 text-muted-foreground shrink-0">{`{{${i + 1}}}`}</span>
+                        <span>{v || <span className="text-muted-foreground italic">sem nome</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {template.status === 'rejected' && template.rejected_reason && (
+                <p className="text-xs text-red-600">
+                  <strong>Motivo da rejeição:</strong> {template.rejected_reason}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function WaTemplatesClient({ orgSlug, initialTemplates }: {
@@ -399,6 +470,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   const [refreshingId, setRefreshingId] = useState<string | null>(null)
   const [, startTransition]        = useTransition()
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState<WaTemplate | null>(null)
 
   function handleSubmitToMeta(id: string) {
     setSubmittingId(id)
@@ -460,7 +532,7 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full lg:w-3/5 mx-auto space-y-6">
 
       {/* Header — título vai pra barra superior (getPageTitle em
           lib/route-titles.ts), igual todo outro módulo; aqui só a
@@ -500,86 +572,52 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
           <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1.5" /> Criar primeiro template</Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {templates.map(t => (
-            <div key={t.id} className="rounded-none border border-border bg-card overflow-hidden   transition-shadow">
-              <div className="flex items-start gap-4 p-4">
+            <div key={t.id} className="rounded-md border border-border bg-card px-4 py-2.5 space-y-1">
+              {/* Linha 1 — nome de exibição · nome Meta · categoria · status + ver mensagem */}
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{t.display_name}</p>
+                <span className="text-xs font-mono text-muted-foreground truncate shrink-0">{t.name}</span>
+                <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${categoryColor(t.category)}`}>{t.category}</Badge>
+                <Badge variant="outline" className={`text-[10px] font-semibold shrink-0 ${statusColor(t.status)}`}>{statusLabel(t.status)}</Badge>
+                <Button
+                  variant="ghost" size="sm" className="ml-auto h-7 text-xs gap-1.5 shrink-0"
+                  onClick={() => setPreviewing(t)}
+                >
+                  <Eye className="w-3.5 h-3.5" /> Ver mensagem
+                </Button>
+              </div>
 
-                {/* Header media preview */}
-                {t.header_type === 'image' && t.header_media_url ? (
-                  <img src={t.header_media_url} alt="" className="w-14 h-14 rounded-none object-cover shrink-0 border border-border" />
-                ) : (
-                  <div className="w-14 h-14 rounded-none bg-muted flex items-center justify-center shrink-0 border border-border">
-                    {t.header_type === 'image'    && <ImageIcon className="w-6 h-6 text-muted-foreground" />}
-                    {t.header_type === 'video'    && <Video className="w-6 h-6 text-muted-foreground" />}
-                    {t.header_type === 'document' && <FileText className="w-6 h-6 text-muted-foreground" />}
-                    {(t.header_type === 'none' || t.header_type === 'text') && <span className="text-2xl">💬</span>}
-                  </div>
+              {/* Linha 2 — preview do corpo, uma linha só */}
+              <p className="text-xs text-muted-foreground truncate leading-relaxed">
+                <BodyPreview text={t.body_text} />
+              </p>
+
+              {/* Linha 3 — ações */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                  onClick={() => openEdit(t)} disabled={t.status !== 'local'} title={t.status !== 'local' ? 'Templates já enviados não podem ser editados' : 'Editar'}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+                {(t.status === 'local' || t.status === 'rejected') && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={submittingId === t.id}
+                    onClick={() => handleSubmitToMeta(t.id)}>
+                    {submittingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                    {t.status === 'rejected' ? 'Reenviar' : 'Enviar para aprovação'}
+                  </Button>
                 )}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <p className="text-sm font-semibold text-foreground">{t.display_name}</p>
-                    <Badge variant="outline" className={`text-[10px] font-semibold ${categoryColor(t.category)}`}>
-                      {t.category}
-                    </Badge>
-                    <Badge variant="outline" className={`text-[10px] font-semibold ${statusColor(t.status)}`}>
-                      {statusLabel(t.status)}
-                    </Badge>
-                    {t.header_type !== 'none' && (
-                      <Badge variant="outline" className="text-[10px] font-semibold gap-1 bg-gray-50 text-gray-600">
-                        {headerIcon(t.header_type)}
-                        {t.header_type === 'image' ? 'Imagem' : t.header_type === 'video' ? 'Vídeo' : 'Documento'}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs font-mono text-muted-foreground mb-2">{t.name}</p>
-                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                    <BodyPreview text={t.body_text} />
-                  </p>
-                  {t.variable_names && t.variable_names.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {t.variable_names.map((v, i) => (
-                        <span key={i} className="text-[10px] rounded bg-muted px-1.5 py-0.5 text-muted-foreground font-mono">
-                          {`{{${i + 1}}}`} {v}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {t.status === 'rejected' && t.rejected_reason && (
-                    <p className="text-xs text-red-600 mt-2">
-                      <strong>Motivo da rejeição:</strong> {t.rejected_reason}
-                    </p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => openEdit(t)} disabled={t.status !== 'local'} title={t.status !== 'local' ? 'Templates já enviados não podem ser editados' : 'Editar'}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                  {(t.status === 'local' || t.status === 'rejected') && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={submittingId === t.id}
-                      onClick={() => handleSubmitToMeta(t.id)}>
-                      {submittingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
-                      {t.status === 'rejected' ? 'Reenviar' : 'Enviar para aprovação'}
-                    </Button>
-                  )}
-                  {t.status === 'pending' && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={refreshingId === t.id}
-                      onClick={() => handleRefreshStatus(t.id)}>
-                      {refreshingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                      Atualizar status
-                    </Button>
-                  )}
-                </div>
+                {t.status === 'pending' && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={refreshingId === t.id}
+                    onClick={() => handleRefreshStatus(t.id)}>
+                    {refreshingId === t.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                    Atualizar status
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -593,6 +631,8 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
         onClose={closeDialog}
         onSaved={handleSaved}
       />
+
+      <PreviewDialog template={previewing} onClose={() => setPreviewing(null)} />
 
       <AlertDialog open={!!templateToDelete} onOpenChange={o => !o && setTemplateToDelete(null)}>
         <AlertDialogContent>
