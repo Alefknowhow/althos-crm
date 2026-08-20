@@ -1,7 +1,6 @@
 import { getCurrentOrganization, requireAuth } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
-import { listTaskColumns } from '@/actions/tasks'
 import TaskDialog from '@/components/features/TaskDialog'
 import TasksBoard from '@/components/features/tasks/TasksBoard'
 import { PageHeader } from '@/components/ui/page-header'
@@ -12,10 +11,10 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
   const user = await requireAuth()
   const supabase = createClient()
 
-  // Pull every active-workflow task; the board groups them by custom column
-  // and filters client-side. Columns are user-defined (pipeline-style).
+  // Pull every active-workflow task; classificação em Pendentes/Atrasadas/
+  // Concluídas é derivada client-side de status+due_date (TasksBoard.tsx).
   // Limit(1000) trava um teto — antes carregava a tabela inteira sem limite.
-  const [{ data: tasks }, members, columnsRes] = await Promise.all([
+  const [{ data: tasks }, members] = await Promise.all([
     supabase
       .from('tasks')
       .select('id, title, description, status, priority, due_date, assigned_to, column_id, leads:contatos(id, name)')
@@ -24,10 +23,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
       .order('created_at', { ascending: false })
       .limit(1000),
     listOrgMembers(params.orgSlug),
-    listTaskColumns(params.orgSlug),
   ])
-
-  const columns = columnsRes.ok ? columnsRes.columns : []
 
   const memberName = new Map(members.map(m => [m.user_id, m.name]))
 
@@ -42,12 +38,11 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
     <div className="space-y-6">
       <PageHeader
         title="Tarefas"
-        hint="Organize seu trabalho em quadro Kanban, lista ou calendário."
+        hint="Pendentes, atrasadas e concluídas — tudo numa lista só."
       />
 
       <TasksBoard
         initialTasks={normalized as any}
-        initialColumns={columns}
         orgSlug={params.orgSlug}
         members={members}
         currentUserId={user.id}

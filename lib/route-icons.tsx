@@ -5,7 +5,7 @@ import {
   LayoutDashboard, BarChart3, Kanban, Users, CheckSquare, FileSignature,
   PlaneTakeoff, Store, CalendarClock, Package, ShoppingCart, Receipt,
   FileStack, Calendar, MessageSquare, Megaphone, FileText, Wallet, Zap,
-  Mail, Settings, HelpCircle, Send,
+  Mail, Settings, HelpCircle, Send, Star,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { getRouteSegment } from '@/lib/route-titles'
@@ -49,6 +49,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   'email-templates': Mail,
   configuracoes: Settings,
   ajuda: HelpCircle,
+  avaliacoes: Star,
 }
 
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */

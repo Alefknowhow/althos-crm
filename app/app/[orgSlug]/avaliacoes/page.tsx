@@ -25,13 +25,6 @@ export default async function AvaliacoesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Avaliações do Google</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Veja e responda as avaliações do Perfil da Empresa no Google, direto do CRM.
-        </p>
-      </div>
-
       <ReviewsClient
         orgSlug={params.orgSlug}
         locations={locations}

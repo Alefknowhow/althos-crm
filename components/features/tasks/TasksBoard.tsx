@@ -1,6 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+/**
+ * TasksBoard — lista compacta agrupada em 3 seções independentes
+ * (Pendentes/Atrasadas/Concluídas), cada uma expansível/retrátil. Substituiu
+ * a versão anterior (Kanban + calendário/lista split) por decisão explícita
+ * do usuário: menos telas, leitura mais rápida, sem duplicar a mesma tarefa
+ * entre grupos. A classificação é sempre derivada de status/due_date — nunca
+ * um campo próprio — então uma tarefa muda de grupo sozinha ao vencer ou ao
+ * ser concluída, sem ação extra do usuário.
+ */
+
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -10,22 +20,21 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import LeadCombobox from '@/components/features/LeadCombobox'
 import {
-  updateTask, deleteTask, toggleTaskStatus,
-  moveTaskToColumn, createTaskColumn, renameTaskColumn, deleteTaskColumn,
-} from '@/actions/tasks'
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import LeadCombobox from '@/components/features/LeadCombobox'
+import UserAvatar from '@/components/features/UserAvatar'
+import { updateTask, deleteTask, toggleTaskStatus, setTaskPriority } from '@/actions/tasks'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
-  LayoutGrid, CalendarDays, Calendar, User2, UserCheck, CheckCircle2, Circle,
-  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ChevronLeft, ChevronRight, Search,
+  User2, UserCheck, CheckCircle2, Circle, Calendar, Search,
+  Trash2, X, ChevronDown, ChevronRight, MoreVertical, Pencil,
 } from 'lucide-react'
 
 type Member = { user_id: string; name: string; email: string }
-
-type Column = { id: string; name: string; position: number }
 
 type Task = {
   id: string
@@ -40,52 +49,27 @@ type Task = {
   leads?: { id: string; name: string } | null
 }
 
-type View = 'split' | 'kanban'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
 type AssigneeFilter = 'all' | 'none' | string
-type DateFilter = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'this_month' | 'no_date'
+type GroupId = 'pending' | 'overdue' | 'done'
 
-const DATE_FILTERS: { id: DateFilter; label: string }[] = [
-  { id: 'overdue',    label: 'Atrasadas' },
-  { id: 'today',      label: 'Hoje' },
-  { id: 'tomorrow',   label: 'Amanhã' },
-  { id: 'this_week',  label: 'Esta semana' },
-  { id: 'next_week',  label: 'Próxima semana' },
-  { id: 'this_month', label: 'Este mês' },
-  { id: 'no_date',    label: 'Sem data' },
-  { id: 'all',        label: 'Todas' },
+const GROUPS: { id: GroupId; label: string; empty: string }[] = [
+  { id: 'pending',  label: 'Pendentes',  empty: 'Nenhuma tarefa pendente' },
+  { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada' },
+  { id: 'done',     label: 'Concluídas', empty: 'Nenhuma tarefa concluída' },
 ]
+
+function todayISO() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().split('T')[0]
+}
 
 function dueDateOnly(t: Task): Date | null {
   if (!t.due_date) return null
   const [y, m, d] = t.due_date.split('T')[0].split('-').map(Number)
   if (!y || !m || !d) return null
   return new Date(y, m - 1, d)
-}
-
-const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-
-function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
-function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
-function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-
-// Priority maps onto the semantic status tokens (low→success, normal→warning,
-// high→destructive) so the colors track the design system in both themes.
-const PRIORITY_META: Record<Task['priority'], { label: string; cls: string; bar: string }> = {
-  low:    { label: 'Baixa', cls: 'bg-success/15 text-success border-success/20',           bar: 'bg-success' },
-  normal: { label: 'Média', cls: 'bg-warning/15 text-warning border-warning/20',           bar: 'bg-warning' },
-  high:   { label: 'Alta',  cls: 'bg-destructive/15 text-destructive border-destructive/20', bar: 'bg-destructive' },
-}
-
-// Shared focus-visible ring for the custom <button> filters/toggles below —
-// the design system zeroes the native outline, so interactive non-shadcn
-// elements need this to stay keyboard-navigable.
-const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
-
-function todayISO() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().split('T')[0]
 }
 
 function isOverdue(t: Task) {
@@ -98,118 +82,75 @@ function fmtDate(iso?: string | null) {
 }
 
 /** Horário opcional (HH:mm) embutido no due_date — data e hora ficam ambas
- *  ancoradas em UTC (mesma convenção de dueDateOnly/fmtDate), então "sem
- *  horário definido" é o padrão 00:00 que já existia antes desse campo. */
+ *  ancoradas em UTC, então "sem horário definido" é o padrão 00:00. */
 function dueTimeOnly(iso?: string | null): string | null {
   if (!iso) return null
   const t = iso.split('T')[1]?.slice(0, 5)
   return t && t !== '00:00' ? t : null
 }
 
-/** Combina data (YYYY-MM-DD) + horário opcional (HH:mm) num ISO em UTC —
- *  mesma âncora usada em todo o resto do arquivo, então o dia nunca "pula"
- *  por causa do fuso horário do navegador. */
+/** Combina data (YYYY-MM-DD) + horário opcional (HH:mm) num ISO em UTC. */
 function combineDueDate(date: string, time: string): string | null {
   if (!date) return null
   return `${date}T${time || '00:00'}:00.000Z`
 }
 
-/** Sort helper: keeps pending tasks on top and pushes completed ones to the
- *  bottom while preserving the incoming order within each group. */
-function doneLast(list: Task[]): Task[] {
-  const pending = list.filter(t => t.status !== 'done')
-  const done = list.filter(t => t.status === 'done')
-  return [...pending, ...done]
+function classify(t: Task): GroupId {
+  if (t.status === 'done') return 'done'
+  if (isOverdue(t)) return 'overdue'
+  return 'pending'
 }
+
+const PRIORITY_META: Record<Task['priority'], { label: string; cls: string; dot: string }> = {
+  low:    { label: 'Baixa', cls: 'bg-success/15 text-success border-success/20',           dot: 'bg-success' },
+  normal: { label: 'Média', cls: 'bg-warning/15 text-warning border-warning/20',           dot: 'bg-warning' },
+  high:   { label: 'Alta',  cls: 'bg-destructive/15 text-destructive border-destructive/20', dot: 'bg-destructive' },
+}
+
+const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
+
+const EXPANDED_STORAGE_KEY = 'tasks-groups-expanded'
+const DEFAULT_EXPANDED: Record<GroupId, boolean> = { pending: true, overdue: true, done: false }
 
 export default function TasksBoard({
   initialTasks,
-  initialColumns,
   orgSlug,
   members = [],
   currentUserId,
   headerAction,
 }: {
   initialTasks: Task[]
-  initialColumns: Column[]
   orgSlug: string
   members?: Member[]
   /** Usuário logado — habilita o chip rápido "Minhas". */
   currentUserId?: string
-  /** Botão "Nova tarefa", renderizado ao lado dos filtros (desktop). */
+  /** Botão "Nova tarefa", renderizado ao lado dos filtros. */
   headerAction?: React.ReactNode
 }) {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
-  const [columns, setColumns] = useState<Column[]>(initialColumns)
-  const [view, setView] = useState<View>('split')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [assignee, setAssignee] = useState<AssigneeFilter>('all')
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [onlyMine, setOnlyMine] = useState(false)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Task | null>(null)
-  const [dragId, setDragId] = useState<string | null>(null)
-  const [overCol, setOverCol] = useState<string | null>(null)
-  const [editingColId, setEditingColId] = useState<string | null>(null)
-  const [colDraft, setColDraft] = useState('')
-  const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
-  const [openBucket, setOpenBucket] = useState<'overdue' | 'today' | 'upcoming' | null>('overdue')
-  const [openColumnId, setOpenColumnId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Record<GroupId, boolean>>(DEFAULT_EXPANDED)
 
-  // Re-sync when the server sends fresh data (after router.refresh()).
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
-  useEffect(() => { setColumns(initialColumns) }, [initialColumns])
 
-  // Restore preferred view (avoid SSR hydration mismatch by reading after mount).
+  // Persiste o estado de expansão durante a sessão (não entre sessões).
   useEffect(() => {
-    const v = localStorage.getItem('tasks-view')
-    if (v === 'kanban' || v === 'split') setView(v)
+    try {
+      const raw = sessionStorage.getItem(EXPANDED_STORAGE_KEY)
+      if (raw) setExpanded({ ...DEFAULT_EXPANDED, ...JSON.parse(raw) })
+    } catch { /* ignora sessionStorage indisponível */ }
   }, [])
-  function pickView(v: View) {
-    setView(v)
-    localStorage.setItem('tasks-view', v)
-  }
-
-  // On mobile, nem o Kanban nem o split calendário+lista cabem lado a lado —
-  // sempre cai na lista agrupada (mesma UI usada há tempos nessa faixa).
-  const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)')
-    const sync = () => setIsMobile(mq.matches)
-    sync()
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
-  const effectiveView: View | 'list' = isMobile ? 'list' : view
-
-  // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
-  const bounds = useMemo(() => {
-    const now = new Date(); now.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1)
-    const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay())
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
-    const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(weekStart.getDate() + 7)
-    const nextWeekEnd = new Date(weekEnd); nextWeekEnd.setDate(weekEnd.getDate() + 7)
-    return { now, tomorrow, weekStart, weekEnd, nextWeekStart, nextWeekEnd }
-  }, [tasks])
-
-  function matchesDate(t: Task, f: DateFilter): boolean {
-    if (f === 'all') return true
-    if (f === 'no_date') return !t.due_date
-    const d = dueDateOnly(t)
-    if (!d) return false
-    const { now, tomorrow, weekStart, weekEnd, nextWeekStart, nextWeekEnd } = bounds
-    switch (f) {
-      case 'overdue':    return d < now && t.status !== 'done'
-      case 'today':      return d.getTime() === now.getTime()
-      case 'tomorrow':   return d.getTime() === tomorrow.getTime()
-      case 'this_week':  return d >= weekStart && d <= weekEnd
-      case 'next_week':  return d >= nextWeekStart && d <= nextWeekEnd
-      case 'this_month': return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-      default:           return true
-    }
+  function toggleGroup(id: GroupId) {
+    setExpanded(prev => {
+      const next = { ...prev, [id]: !prev[id] }
+      try { sessionStorage.setItem(EXPANDED_STORAGE_KEY, JSON.stringify(next)) } catch { /* noop */ }
+      return next
+    })
   }
 
   function matchesAssignee(t: Task, f: AssigneeFilter): boolean {
@@ -217,9 +158,7 @@ export default function TasksBoard({
     if (f === 'none') return !t.assigned_to
     return t.assigned_to === f
   }
-
   function matchesSearch(t: Task, q: string): boolean {
-    if (!q) return true
     const needle = q.trim().toLowerCase()
     if (!needle) return true
     return t.title.toLowerCase().includes(needle) || (t.description ?? '').toLowerCase().includes(needle)
@@ -229,100 +168,39 @@ export default function TasksBoard({
     () => tasks.filter(t =>
       (priority === 'all' || t.priority === priority) &&
       matchesAssignee(t, assignee) &&
-      matchesDate(t, dateFilter) &&
       (!onlyMine || t.assigned_to === currentUserId) &&
       matchesSearch(t, search),
     ),
-    [tasks, priority, assignee, dateFilter, onlyMine, currentUserId, search, bounds],
+    [tasks, priority, assignee, onlyMine, currentUserId, search],
   )
 
-  const dateCounts = useMemo(() => {
-    const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, tomorrow: 0, this_week: 0, next_week: 0, this_month: 0, no_date: 0 }
-    for (const t of tasks) {
-      for (const f of ['overdue', 'today', 'tomorrow', 'this_week', 'next_week', 'this_month', 'no_date'] as DateFilter[]) {
-        if (matchesDate(t, f)) c[f]++
-      }
+  const grouped = useMemo(() => {
+    const byGroup: Record<GroupId, Task[]> = { pending: [], overdue: [], done: [] }
+    for (const t of filtered) byGroup[classify(t)].push(t)
+    for (const id of Object.keys(byGroup) as GroupId[]) {
+      byGroup[id].sort((a, b) => {
+        const da = dueDateOnly(a)?.getTime() ?? Infinity
+        const db = dueDateOnly(b)?.getTime() ?? Infinity
+        return da - db
+      })
     }
-    return c
-  }, [tasks, bounds])
-
-  // Mobile: 3 seções sempre visíveis (Atrasadas/Hoje/Próximas), respeitando os
-  // filtros de prioridade/responsável mas ignorando o filtro de data (que na
-  // versão mobile deixa de ser exclusivo e vira agrupamento permanente).
-  const mobileBuckets = useMemo(() => {
-    const base = tasks.filter(t =>
-      (priority === 'all' || t.priority === priority) &&
-      matchesAssignee(t, assignee) &&
-      (!onlyMine || t.assigned_to === currentUserId) &&
-      matchesSearch(t, search),
-    )
-    const overdue = base.filter(t => matchesDate(t, 'overdue'))
-    const today = base.filter(t => matchesDate(t, 'today'))
-    const upcoming = base.filter(t => !matchesDate(t, 'overdue') && !matchesDate(t, 'today'))
-    return {
-      overdue: doneLast(overdue),
-      today: doneLast(today),
-      upcoming: doneLast(upcoming),
-    }
-  }, [tasks, priority, assignee, onlyMine, currentUserId, search, bounds])
-
-  // Group tasks by column. Tasks with no/unknown column fall into the first one.
-  const byColumn = useMemo(() => {
-    const firstId = columns[0]?.id ?? null
-    const valid = new Set(columns.map(c => c.id))
-    const map: Record<string, Task[]> = {}
-    for (const c of columns) map[c.id] = []
-    for (const t of filtered) {
-      const key = t.column_id && valid.has(t.column_id) ? t.column_id : firstId
-      if (key) (map[key] ??= []).push(t)
-    }
-    for (const k of Object.keys(map)) map[k] = doneLast(map[k])
-    return map
-  }, [filtered, columns])
-
-  // 6 semanas fixas (42 dias), começando no domingo antes (ou no) 1º do mês —
-  // grade estável, sem "pular" de altura entre meses de 4 ou 6 semanas.
-  const calDays = useMemo(() => {
-    const gridStart = new Date(calMonth)
-    gridStart.setDate(gridStart.getDate() - gridStart.getDay())
-    return Array.from({ length: 42 }, (_, i) => {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      return d
-    })
-  }, [calMonth])
-
-  const tasksByDate = useMemo(() => {
-    const map: Record<string, Task[]> = {}
-    for (const t of filtered) {
-      const d = dueDateOnly(t)
-      if (!d) continue
-      ;(map[ymd(d)] ??= []).push(t)
-    }
-    for (const k of Object.keys(map)) map[k] = doneLast(map[k])
-    return map
+    return byGroup
   }, [filtered])
 
-  // Painel de lista do split view: quando uma data é selecionada no calendário,
-  // restringe à lista daquele dia; senão segue os filtros normais (agrupado por coluna).
-  const splitListTasks = useMemo(() => {
-    if (!selectedDate) return null
-    return tasksByDate[selectedDate] || []
-  }, [selectedDate, tasksByDate])
-
-  async function moveTo(taskId: string, columnId: string) {
-    const task = tasks.find(t => t.id === taskId)
-    if (!task || task.column_id === columnId) return
-    const prevCol = task.column_id ?? null
-    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, column_id: columnId } : t)))
-    const res = await moveTaskToColumn(orgSlug, taskId, columnId)
-    if (!res.ok) {
-      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, column_id: prevCol } : t)))
-      toast.error('Erro ao mover tarefa')
-      return
+  const assigneeCounts = useMemo(() => {
+    const c: Record<string, number> = { all: tasks.length, none: 0 }
+    for (const t of tasks) {
+      if (!t.assigned_to) c.none++
+      else c[t.assigned_to] = (c[t.assigned_to] ?? 0) + 1
     }
-    router.refresh()
-  }
+    return c
+  }, [tasks])
+
+  const priorityCounts = useMemo(() => {
+    const c: Record<string, number> = { all: tasks.length, low: 0, normal: 0, high: 0 }
+    for (const t of tasks) c[t.priority] = (c[t.priority] ?? 0) + 1
+    return c
+  }, [tasks])
 
   async function handleToggleDone(task: Task) {
     const next = task.status === 'done' ? 'open' : 'done'
@@ -331,6 +209,18 @@ export default function TasksBoard({
     if (!res.ok) {
       setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: task.status } : t)))
       toast.error('Erro ao atualizar tarefa')
+      return
+    }
+    router.refresh()
+  }
+
+  async function handleSetPriority(task: Task, p: Task['priority']) {
+    if (task.priority === p) return
+    setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, priority: p } : t)))
+    const res = await setTaskPriority(orgSlug, task.id, p)
+    if (!res.ok) {
+      setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, priority: task.priority } : t)))
+      toast.error('Erro ao atualizar prioridade')
       return
     }
     router.refresh()
@@ -349,77 +239,9 @@ export default function TasksBoard({
     router.refresh()
   }
 
-  // --- Column management ----------------------------------------------------
-  async function handleAddColumn() {
-    const res = await createTaskColumn(orgSlug, 'Nova coluna')
-    if (!res.ok || !res.column) {
-      toast.error('Erro ao criar coluna')
-      return
-    }
-    setColumns(prev => [...prev, res.column!])
-    setEditingColId(res.column.id)
-    setColDraft(res.column.name)
-  }
-
-  function startEditCol(col: Column) {
-    setEditingColId(col.id)
-    setColDraft(col.name)
-  }
-
-  async function commitEditCol() {
-    const id = editingColId
-    if (!id) return
-    const name = colDraft.trim()
-    setEditingColId(null)
-    const current = columns.find(c => c.id === id)
-    if (!name || name === current?.name) return
-    setColumns(prev => prev.map(c => (c.id === id ? { ...c, name } : c)))
-    const res = await renameTaskColumn(orgSlug, id, name)
-    if (!res.ok) {
-      toast.error(res.error || 'Erro ao renomear coluna')
-      if (current) setColumns(prev => prev.map(c => (c.id === id ? { ...c, name: current.name } : c)))
-    }
-  }
-
-  async function handleDeleteColumn(col: Column) {
-    if (columns.length <= 1) {
-      toast.error('Mantenha ao menos uma coluna.')
-      return
-    }
-    const count = byColumn[col.id]?.length ?? 0
-    const msg = count > 0
-      ? `Excluir "${col.name}"? As ${count} tarefa(s) serão movidas para a primeira coluna.`
-      : `Excluir a coluna "${col.name}"?`
-    if (!window.confirm(msg)) return
-
-    const fallback = columns.find(c => c.id !== col.id)
-    setColumns(prev => prev.filter(c => c.id !== col.id))
-    if (fallback) {
-      setTasks(prev => prev.map(t => (t.column_id === col.id ? { ...t, column_id: fallback.id } : t)))
-    }
-    const res = await deleteTaskColumn(orgSlug, col.id)
-    if (!res.ok) {
-      toast.error(res.error || 'Erro ao excluir coluna')
-      router.refresh()
-      return
-    }
-  }
-
-  const counts = { all: tasks.length, ...(['low', 'normal', 'high'] as const).reduce(
-    (acc, p) => ({ ...acc, [p]: tasks.filter(t => t.priority === p).length }), {} as Record<string, number>) }
-
-  const assigneeCounts = useMemo(() => {
-    const c: Record<string, number> = { all: tasks.length, none: 0 }
-    for (const t of tasks) {
-      if (!t.assigned_to) c.none++
-      else c[t.assigned_to] = (c[t.assigned_to] ?? 0) + 1
-    }
-    return c
-  }, [tasks])
-
   return (
     <div className="space-y-4">
-      {/* Busca + chip "Minhas" */}
+      {/* Busca + chip "Minhas" + Nova tarefa */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -459,425 +281,103 @@ export default function TasksBoard({
             <User2 className="w-3.5 h-3.5" /> Minhas
           </button>
         )}
+        {headerAction && <div className="ml-auto">{headerAction}</div>}
       </div>
 
-      {/* Date filters — pills on desktop, dropdown on mobile to save space. */}
-      <div className="hidden sm:flex flex-wrap items-center gap-1.5">
-        {DATE_FILTERS.map(f => {
-          const active = dateFilter === f.id
-          const count = dateCounts[f.id]
-          const danger = f.id === 'overdue'
-          return (
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        {members.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground mr-1 inline-flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5" />Responsável:
+            </span>
+            <ResponsiveSelect
+              className="h-8 w-[180px] text-xs"
+              aria-label="Filtrar por responsável"
+              value={assignee}
+              onValueChange={v => setAssignee(v as AssigneeFilter)}
+              options={[
+                { value: 'all', label: `Todos (${assigneeCounts.all})` },
+                { value: 'none', label: `Sem responsável (${assigneeCounts.none})` },
+                ...members.map(m => ({ value: m.user_id, label: `${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
+              ]}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted-foreground mr-1">Prioridade:</span>
+          {(['all', 'high', 'normal', 'low'] as PriorityFilter[]).map(p => (
             <button
-              key={f.id}
-              onClick={() => setDateFilter(f.id)}
+              key={p}
+              onClick={() => setPriority(p)}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                'px-2.5 h-7 rounded-md border transition-colors font-medium',
                 FOCUS_RING,
-                active
-                  ? (danger ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-primary text-primary-foreground border-primary')
-                  : (danger && count > 0
-                      ? 'bg-destructive/5 text-destructive border-destructive/30 hover:bg-destructive/10'
-                      : 'bg-background hover:bg-muted text-muted-foreground border-border'),
+                priority === p
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-muted text-muted-foreground border-border',
               )}
             >
-              {f.label}
-              <span className={cn('tabular-nums', active ? 'opacity-80' : 'opacity-60')}>{count}</span>
+              {p === 'all' ? 'Todas' : PRIORITY_META[p].label}
+              <span className="ml-1 opacity-60">{(priorityCounts as any)[p] ?? 0}</span>
             </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grupos */}
+      <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
+        {GROUPS.map(g => {
+          const list = grouped[g.id]
+          const isOpen = expanded[g.id]
+          const danger = g.id === 'overdue'
+          return (
+            <div key={g.id}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.id)}
+                className={cn(
+                  'flex w-full items-center gap-2 px-3.5 h-11 text-left transition-colors duration-150 hover:bg-muted/40',
+                  FOCUS_RING,
+                )}
+              >
+                {isOpen
+                  ? <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  : <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />}
+                <span className={cn('text-[13px] font-semibold', danger && list.length > 0 && 'text-destructive')}>
+                  {g.label}
+                </span>
+                <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+                  {list.length}
+                </span>
+              </button>
+
+              {isOpen && (
+                list.length === 0 ? (
+                  <div className="px-3.5 py-3 text-xs text-muted-foreground border-t">{g.empty}</div>
+                ) : (
+                  <div className="divide-y border-t">
+                    {list.map(task => (
+                      <TaskListRow
+                        key={task.id}
+                        task={task}
+                        orgSlug={orgSlug}
+                        members={members}
+                        onOpen={() => setEditing(task)}
+                        onToggleDone={() => handleToggleDone(task)}
+                        onSetPriority={p => handleSetPriority(task, p)}
+                        onDelete={() => handleDelete(task.id)}
+                      />
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           )
         })}
       </div>
-      {!isMobile && (
-        <ResponsiveSelect
-          className="sm:hidden w-full"
-          aria-label="Filtrar por data"
-          value={dateFilter}
-          onValueChange={v => setDateFilter(v as DateFilter)}
-          options={DATE_FILTERS.map(f => ({ value: f.id, label: `${f.label} (${dateCounts[f.id]})` }))}
-        />
-      )}
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
-            <ViewBtn active={view === 'split'} onClick={() => pickView('split')} icon={CalendarDays} label="Calendário" />
-            <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          {members.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground mr-1 inline-flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5" />Responsável:
-              </span>
-              <ResponsiveSelect
-                className="h-8 w-[180px] text-xs"
-                aria-label="Filtrar por responsável"
-                value={assignee}
-                onValueChange={v => setAssignee(v as AssigneeFilter)}
-                options={[
-                  { value: 'all', label: `Todos (${assigneeCounts.all})` },
-                  { value: 'none', label: `Sem responsável (${assigneeCounts.none})` },
-                  ...members.map(m => ({ value: m.user_id, label: `${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
-                ]}
-              />
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground mr-1">Prioridade:</span>
-            {(['all', 'high', 'normal', 'low'] as PriorityFilter[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPriority(p)}
-                className={cn(
-                  'px-2.5 h-7 rounded-md border transition-colors font-medium',
-                  FOCUS_RING,
-                  priority === p
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background hover:bg-muted text-muted-foreground border-border',
-                )}
-              >
-                {p === 'all' ? 'Todas' : PRIORITY_META[p].label}
-                <span className="ml-1 opacity-60">{(counts as any)[p] ?? 0}</span>
-              </button>
-            ))}
-          </div>
-
-          {headerAction && <div className="hidden md:block">{headerAction}</div>}
-        </div>
-      </div>
-
-      {/* Board */}
-      {effectiveView === 'kanban' ? (
-        <div className="flex gap-4 overflow-x-auto pb-2 items-start">
-          {columns.map(col => (
-            <div
-              key={col.id}
-              onDragOver={e => { e.preventDefault(); setOverCol(col.id) }}
-              onDragLeave={() => setOverCol(c => (c === col.id ? null : c))}
-              onDrop={e => {
-                e.preventDefault()
-                const id = dragId || e.dataTransfer.getData('text/plain')
-                if (id) moveTo(id, col.id)
-                setDragId(null)
-                setOverCol(null)
-              }}
-              className={cn(
-                'rounded-none border bg-muted/20 border-t-2 border-t-primary/40 flex flex-col min-h-[200px] w-[300px] shrink-0 transition-colors',
-                overCol === col.id && 'bg-primary/5 ring-2 ring-primary/30',
-              )}
-            >
-              <div className="flex items-center justify-between px-3 py-2.5 gap-2">
-                {editingColId === col.id ? (
-                  <div className="flex items-center gap-1 flex-1">
-                    <Input
-                      autoFocus
-                      value={colDraft}
-                      onChange={e => setColDraft(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') commitEditCol()
-                        if (e.key === 'Escape') setEditingColId(null)
-                      }}
-                      className="h-7 text-sm font-semibold"
-                    />
-                    <button onClick={commitEditCol} className="text-green-600 hover:text-green-700 shrink-0" aria-label="Salvar">
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setEditingColId(null)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Cancelar">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => startEditCol(col)}
-                      className="group flex items-center gap-1.5 min-w-0"
-                      title="Renomear coluna"
-                    >
-                      <span className="text-sm font-semibold truncate">{col.name}</span>
-                      <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </button>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs text-muted-foreground tabular-nums bg-background border rounded-full px-2 py-0.5">
-                        {byColumn[col.id]?.length ?? 0}
-                      </span>
-                      {columns.length > 1 && (
-                        <button
-                          onClick={() => handleDeleteColumn(col)}
-                          className="text-muted-foreground/50 hover:text-destructive transition-colors"
-                          aria-label="Excluir coluna"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="flex-1 px-2 pb-2 space-y-2 overflow-y-auto">
-                {(byColumn[col.id]?.length ?? 0) === 0 ? (
-                  <div className="text-center text-xs text-muted-foreground py-8 border-2 border-dashed rounded-lg">
-                    Arraste tarefas para cá
-                  </div>
-                ) : (
-                  byColumn[col.id].map(task => (
-                    <KanbanCard
-                      key={task.id}
-                      task={task}
-                      onOpen={() => setEditing(task)}
-                      onToggleDone={() => handleToggleDone(task)}
-                      onDragStart={() => setDragId(task.id)}
-                      onDragEnd={() => { setDragId(null); setOverCol(null) }}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Add column */}
-          <button
-            onClick={handleAddColumn}
-            className="w-[220px] shrink-0 min-h-[120px] rounded-none border-2 border-dashed text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-sm font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Nova coluna
-          </button>
-        </div>
-      ) : isMobile ? (
-        <div className="space-y-2">
-          {([
-            { id: 'overdue', label: 'Atrasadas', danger: true },
-            { id: 'today', label: 'Hoje', danger: false },
-            { id: 'upcoming', label: 'Próximas', danger: false },
-          ] as { id: 'overdue' | 'today' | 'upcoming'; label: string; danger: boolean }[]).map(bucket => {
-            const list = mobileBuckets[bucket.id]
-            const isOpen = openBucket === bucket.id
-            return (
-              <div key={bucket.id} className="overflow-hidden rounded-[8px] border bg-card">
-                <button
-                  type="button"
-                  onClick={() => setOpenBucket(isOpen ? null : bucket.id)}
-                  className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
-                >
-                  <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
-                  <span className={cn('flex-1 text-sm font-semibold', bucket.danger && list.length > 0 && 'text-destructive')}>
-                    {bucket.label}
-                  </span>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-                    {list.length}
-                  </span>
-                </button>
-                {isOpen && (
-                  <div className="divide-y border-t">
-                    {list.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
-                    ) : (
-                      list.map(task => (
-                        <TaskRow
-                          key={task.id}
-                          task={task}
-                          orgSlug={orgSlug}
-                          columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
-                          onOpen={() => setEditing(task)}
-                          onToggleDone={() => handleToggleDone(task)}
-                        />
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
-          {/* Calendário — ~40% */}
-          <div className="lg:col-span-2 rounded-none border bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCalMonth(m => addMonths(m, -1))}
-                  className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-                  aria-label="Mês anterior"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-semibold min-w-[130px] text-center capitalize">
-                  {calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                </span>
-                <button
-                  onClick={() => setCalMonth(m => addMonths(m, 1))}
-                  className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-                  aria-label="Próximo mês"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-              <button
-                onClick={() => { setCalMonth(startOfMonth(new Date())); setSelectedDate(null) }}
-                className={cn('px-2.5 h-7 rounded-md border text-xs font-medium hover:bg-muted transition-colors', FOCUS_RING)}
-              >
-                Hoje
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 border-b">
-              {WEEKDAYS_PT.map(w => (
-                <div key={w} className="py-2 text-center text-[11px] font-medium text-muted-foreground">{w}</div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7">
-              {calDays.map((d, i) => {
-                const key = ymd(d)
-                const dayTasks = tasksByDate[key] || []
-                const inMonth = d.getMonth() === calMonth.getMonth()
-                const isToday = key === ymd(new Date())
-                const isSelected = key === selectedDate
-                const visible = dayTasks.slice(0, 3)
-                const overflow = dayTasks.length - visible.length
-                return (
-                  <div
-                    key={key}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedDate(prev => (prev === key ? null : key))}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(prev => (prev === key ? null : key)) } }}
-                    className={cn(
-                      'min-h-[92px] sm:min-h-[104px] border-b border-r p-1.5 text-left align-top transition-colors hover:bg-muted/30 cursor-pointer',
-                      (i + 1) % 7 === 0 && 'border-r-0',
-                      i >= 35 && 'border-b-0',
-                      !inMonth && 'bg-muted/20',
-                      isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/40',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1',
-                        isToday ? 'bg-primary text-primary-foreground font-semibold'
-                          : inMonth ? 'text-muted-foreground' : 'text-muted-foreground/40',
-                      )}
-                    >
-                      {d.getDate()}
-                    </span>
-                    <div className="space-y-0.5">
-                      {visible.map(t => {
-                        const pm = PRIORITY_META[t.priority]
-                        return (
-                          <span
-                            key={t.id}
-                            onClick={e => { e.stopPropagation(); setEditing(t) }}
-                            title={t.title}
-                            className={cn(
-                              'block w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate border',
-                              pm.cls,
-                              t.status === 'done' && 'opacity-50 line-through',
-                            )}
-                          >
-                            {t.title}
-                          </span>
-                        )
-                      })}
-                      {overflow > 0 && (
-                        <span
-                          onClick={e => e.stopPropagation()}
-                          className="block"
-                        >
-                          <DayOverflowPopover tasks={dayTasks} onOpen={setEditing} label={`+${overflow} mais`} />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Lista — ~60% */}
-          <div className="lg:col-span-3 space-y-2">
-            {selectedDate ? (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">
-                  Tarefas em {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(null)}
-                  className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground', FOCUS_RING)}
-                >
-                  <X className="w-3.5 h-3.5" /> Limpar filtro
-                </button>
-              </div>
-            ) : null}
-
-            {selectedDate ? (
-              <div className="overflow-hidden rounded-[8px] border bg-card divide-y">
-                {(splitListTasks?.length ?? 0) === 0 ? (
-                  <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa nesse dia.</div>
-                ) : (
-                  splitListTasks!.map(task => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      orgSlug={orgSlug}
-                      columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
-                      onOpen={() => setEditing(task)}
-                      onToggleDone={() => handleToggleDone(task)}
-                    />
-                  ))
-                )}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground border rounded-none">Nenhuma tarefa nesta visão.</div>
-            ) : (
-              columns.map(col => {
-                const list = byColumn[col.id] ?? []
-                const isOpen = openColumnId === col.id
-                return (
-                  <div key={col.id} className="overflow-hidden rounded-[8px] border bg-card">
-                    <button
-                      type="button"
-                      onClick={() => setOpenColumnId(isOpen ? null : col.id)}
-                      className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
-                    >
-                      <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
-                      <span className="flex-1 text-sm font-semibold">{col.name}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-                        {list.length}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="divide-y border-t">
-                        {list.length === 0 ? (
-                          <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
-                        ) : (
-                          list.map(task => (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              orgSlug={orgSlug}
-                              columnName={col.name}
-                              onOpen={() => setEditing(task)}
-                              onToggleDone={() => handleToggleDone(task)}
-                            />
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Edit sheet */}
       <EditSheet
         task={editing}
         orgSlug={orgSlug}
@@ -894,183 +394,139 @@ export default function TasksBoard({
   )
 }
 
-function DayOverflowPopover({ tasks, onOpen, label }: { tasks: Task[]; onOpen: (t: Task) => void; label: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="w-full text-left text-[10px] text-muted-foreground hover:text-foreground px-1"
-        >
-          {label}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-1.5" align="start">
-        <div className="space-y-0.5 max-h-64 overflow-y-auto">
-          {tasks.map(t => {
-            const pm = PRIORITY_META[t.priority]
-            return (
-              <button
-                key={t.id}
-                onClick={() => { onOpen(t); setOpen(false) }}
-                className={cn(
-                  'w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted flex items-center gap-1.5',
-                  t.status === 'done' && 'opacity-60 line-through',
-                )}
-              >
-                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', pm.bar)} />
-                <span className="truncate">{t.title}</span>
-              </button>
-            )
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
+// ── Linha da tarefa ──────────────────────────────────────────────────────────
 
-function ViewBtn({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-sm font-medium transition-colors',
-        FOCUS_RING,
-        active ? 'bg-background   text-foreground' : 'text-muted-foreground hover:text-foreground',
-      )}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
-  )
-}
-
-function KanbanCard({
-  task, onOpen, onToggleDone, onDragStart, onDragEnd,
-}: {
-  task: Task
-  onOpen: () => void
-  onToggleDone: () => void
-  onDragStart: () => void
-  onDragEnd: () => void
-}) {
-  const pm = PRIORITY_META[task.priority]
-  const overdue = isOverdue(task)
-  const date = fmtDate(task.due_date)
-  const time = dueTimeOnly(task.due_date)
-  return (
-    <div
-      draggable
-      onDragStart={e => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
-      onDragEnd={onDragEnd}
-      onClick={onOpen}
-      className={cn(
-        'group relative rounded-lg border bg-card p-3 pl-4     hover:border-primary/40 cursor-pointer transition-all',
-        task.status === 'done' && 'opacity-70',
-      )}
-    >
-      <span className={cn('absolute left-0 top-0 bottom-0 w-1 rounded-l-lg', pm.bar)} />
-      <div className="flex items-start gap-2">
-        <button
-          onClick={e => { e.stopPropagation(); onToggleDone() }}
-          className="mt-0.5 shrink-0 text-muted-foreground hover:text-green-600 transition-colors"
-          aria-label={task.status === 'done' ? 'Reabrir' : 'Concluir'}
-        >
-          {task.status === 'done'
-            ? <CheckCircle2 className="w-4 h-4 text-green-600" />
-            : <Circle className="w-4 h-4" />}
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className={cn('text-sm font-medium leading-snug', task.status === 'done' && 'line-through text-muted-foreground')}>
-            {task.title}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4', pm.cls)}>{pm.label}</Badge>
-            {date && (
-              <span className={cn('inline-flex items-center gap-1 text-[11px]', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
-                <Calendar className="w-3 h-3" />{date}{time && ` ${time}`}
-              </span>
-            )}
-            {task.leads && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground truncate max-w-[120px]">
-                <User2 className="w-3 h-3" />{task.leads.name}
-              </span>
-            )}
-            {task.assignee_name && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-primary/80 truncate max-w-[120px]" title={`Responsável: ${task.assignee_name}`}>
-                <UserCheck className="w-3 h-3" />{task.assignee_name}
-              </span>
-            )}
-          </div>
-        </div>
-        <GripVertical className="w-4 h-4 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </div>
-    </div>
-  )
-}
-
-function TaskRow({
-  task, orgSlug, columnName, onOpen, onToggleDone,
+function TaskListRow({
+  task, orgSlug, members, onOpen, onToggleDone, onSetPriority, onDelete,
 }: {
   task: Task
   orgSlug: string
-  columnName: string
+  members: Member[]
   onOpen: () => void
   onToggleDone: () => void
+  onSetPriority: (p: Task['priority']) => void
+  onDelete: () => void
 }) {
   const pm = PRIORITY_META[task.priority]
   const overdue = isOverdue(task)
   const date = fmtDate(task.due_date)
   const time = dueTimeOnly(task.due_date)
-  const statusName = task.status === 'done' ? 'Concluído' : columnName
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
-      <button
-        onClick={onToggleDone}
-        className="shrink-0 text-muted-foreground hover:text-success transition-colors"
-        aria-label={task.status === 'done' ? 'Reabrir' : 'Concluir'}
-      >
-        {task.status === 'done'
-          ? <CheckCircle2 className="w-[18px] h-[18px] text-success" />
-          : <Circle className="w-[18px] h-[18px]" />}
-      </button>
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
-        <p className={cn('text-sm font-medium truncate', task.status === 'done' && 'line-through text-muted-foreground')}>
-          {task.title}
-        </p>
-        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{statusName}</span>
-          {date && <span className={overdue ? 'text-destructive font-medium' : ''}>· {date}{time && ` às ${time}`}</span>}
-          {task.assignee_name && (
-            <span className="inline-flex items-center gap-1 text-primary/80">
-              <UserCheck className="w-3 h-3" />{task.assignee_name}
-            </span>
-          )}
-        </div>
-      </div>
+  const done = task.status === 'done'
+  const member = members.find(m => m.user_id === task.assigned_to)
 
-      {/* Lead name — fixed-width column, right-aligned, sits to the LEFT of the
-          priority badge so both line up consistently across every row. */}
-      <div className="hidden sm:flex w-[160px] shrink-0 justify-end">
-        {task.leads && (
-          <Link
-            href={`/app/${orgSlug}/contatos/${task.leads.id}`}
-            onClick={e => e.stopPropagation()}
-            className="text-xs text-primary hover:underline truncate"
-          >
-            {task.leads.name}
-          </Link>
+  return (
+    <div className="group flex items-center gap-3 px-3.5 h-[50px] hover:bg-muted/30 transition-colors duration-150">
+      <button
+        type="button"
+        onClick={onToggleDone}
+        aria-label={done ? 'Reabrir' : 'Concluir'}
+        className={cn('shrink-0 transition-transform active:scale-90', FOCUS_RING, 'rounded-full')}
+      >
+        {done
+          ? <CheckCircle2 className="w-[18px] h-[18px] text-success" />
+          : <Circle className="w-[18px] h-[18px] text-muted-foreground hover:text-foreground transition-colors" />}
+      </button>
+
+      {/* Título — flexível, ocupa o espaço restante */}
+      <button
+        type="button"
+        onClick={onOpen}
+        title={task.title}
+        className="flex-1 min-w-0 text-left"
+      >
+        <span className={cn(
+          'text-sm font-medium truncate block',
+          done ? 'line-through text-muted-foreground' : 'text-foreground',
+        )}>
+          {task.title}
+        </span>
+      </button>
+
+      {/* Lead vinculado (opcional) — some primeiro em telas menores */}
+      {task.leads && (
+        <Link
+          href={`/app/${orgSlug}/contatos/${task.leads.id}`}
+          onClick={e => e.stopPropagation()}
+          className="hidden xl:inline text-xs text-primary hover:underline truncate max-w-[140px] shrink-0"
+        >
+          {task.leads.name}
+        </Link>
+      )}
+
+      {/* Responsável */}
+      <div className="hidden sm:flex items-center gap-1.5 w-[150px] shrink-0">
+        {member && (
+          <>
+            <UserAvatar name={member.name} email={member.email} size={22} />
+            <span className="text-xs text-muted-foreground truncate">{member.name}</span>
+          </>
         )}
       </div>
 
-      {/* Priority badge — fixed-width slot keeps all badges aligned in a column. */}
-      <div className="w-[64px] shrink-0 flex justify-start">
-        <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4', pm.cls)}>{pm.label}</Badge>
+      {/* Prazo */}
+      <div className="w-[80px] shrink-0 flex items-center gap-1 text-xs">
+        {date ? (
+          <span className={cn('inline-flex items-center gap-1', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
+            <Calendar className="w-3 h-3 shrink-0" />
+            {date}{time && <span className="hidden sm:inline">{` ${time}`}</span>}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
       </div>
+
+      {/* Prioridade */}
+      <div className="hidden sm:block w-[56px] shrink-0">
+        <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4 rounded-full', pm.cls)}>{pm.label}</Badge>
+      </div>
+
+      {/* Ações */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="Ações"
+            className={cn(
+              'shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground/40 group-hover:text-muted-foreground hover:!text-foreground hover:bg-muted transition-colors',
+              FOCUS_RING,
+            )}
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onOpen} className="cursor-pointer">
+            <Pencil className="w-3.5 h-3.5 mr-2" /> Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onToggleDone} className="cursor-pointer">
+            {done
+              ? <><Circle className="w-3.5 h-3.5 mr-2" /> Reabrir</>
+              : <><CheckCircle2 className="w-3.5 h-3.5 mr-2" /> Concluir</>}
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="cursor-pointer">
+              <span className={cn('w-2 h-2 rounded-full mr-2', pm.dot)} />
+              Prioridade
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {(['low', 'normal', 'high'] as const).map(p => (
+                <DropdownMenuItem key={p} onClick={() => onSetPriority(p)} className="cursor-pointer">
+                  {PRIORITY_META[p].label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive focus:text-destructive">
+            <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
+
+// ── Drawer de edição ─────────────────────────────────────────────────────────
 
 function EditSheet({
   task, orgSlug, members, onClose, onSaved, onDelete,
@@ -1083,7 +539,6 @@ function EditSheet({
   onDelete: (id: string) => void
 }) {
   const [saving, setSaving] = useState(false)
-  const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -1121,7 +576,7 @@ function EditSheet({
       <SheetContent className="overflow-y-auto">
         <SheetHeader><SheetTitle>Editar Tarefa</SheetTitle></SheetHeader>
         {task && (
-          <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label>Título *</Label>
               <Input name="title" required defaultValue={task.title} />

@@ -9,7 +9,7 @@ import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
-import { SupportWidget } from '@/components/features/SupportWidget'
+import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
 import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
@@ -150,6 +150,10 @@ export default async function OrgLayout({
                 <PushNotificationToggle orgSlug={params.orgSlug} />
               </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
+              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:inline-flex">
+                <SupportHeaderButton />
+              </div>
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
                 <ModeToggle />

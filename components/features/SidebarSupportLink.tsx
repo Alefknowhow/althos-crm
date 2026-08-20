@@ -30,7 +30,7 @@ export default function SidebarSupportLink({ orgSlug }: { orgSlug: string }) {
       )}
     >
       <HelpCircle className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-      <span>Ajuda & Suporte</span>
+      <span>Central de ajuda</span>
     </Link>
   )
 }

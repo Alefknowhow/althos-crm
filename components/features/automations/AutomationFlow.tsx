@@ -1,14 +1,16 @@
 'use client'
 
 /**
- * AutomationFlow — lista vertical de steps (Trigger → Passo 1 → Passo 2 → …).
+ * AutomationFlow — lista horizontal de steps (Trigger → Passo 1 → Passo 2 → …),
+ * da esquerda pra direita, com rolagem horizontal quando não cabe na tela.
  *
  * Antes disso era um canvas livre (posição arbitrária por nó, conectores SVG,
  * drag-to-connect estilo N8N — ver histórico do commit). Removido porque o
  * motor de execução (lib/inngest/automation.ts) NUNCA leu o grafo (__edges) —
  * sempre executou `automation.steps` como array linear, na ordem em que está
  * salvo. O canvas era só uma camada de edição visual sobre esse mesmo array;
- * a lista vertical edita o array diretamente, sem indireção nenhuma.
+ * esta lista edita o array diretamente, sem indireção nenhuma (a orientação
+ * horizontal, em vez da vertical usada antes, é só um reflow do mesmo layout).
  *
  * `trigger_config.__edges`/`step.config.__pos` de automações antigas (criadas
  * antes dessa mudança) ficam como JSON órfão inofensivo — nunca foram lidos
@@ -40,7 +42,7 @@ import {
   X,
   Bell,
   Webhook,
-  ArrowDown,
+  ArrowRight,
   XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -157,7 +159,7 @@ function FlowNode({
   config?: React.ReactNode
 }) {
   return (
-    <div className="relative group/node w-full max-w-[420px]">
+    <div className="relative group/node w-[320px] shrink-0">
       <div className="bg-card border rounded-md text-left">
         {/* Colored top strip */}
         <div className="h-1 rounded-t-md w-full" style={{ backgroundColor: color }} />
@@ -230,8 +232,8 @@ function FlowNode({
 
 function Connector({ onInsert }: { onInsert: (type: string) => void }) {
   return (
-    <div className="flex flex-col items-center py-1 w-full max-w-[420px]">
-      <div className="w-px h-3 bg-border" />
+    <div className="flex flex-row items-center px-1 shrink-0 self-center">
+      <div className="h-px w-3 bg-border" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -242,7 +244,7 @@ function Connector({ onInsert }: { onInsert: (type: string) => void }) {
             <Plus className="w-3.5 h-3.5" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-52 max-h-[60vh] overflow-y-auto">
+        <DropdownMenuContent align="start" className="w-52 max-h-[60vh] overflow-y-auto">
           <DropdownMenuLabel className="text-xs">Inserir passo</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {STEP_TYPES.map(t => (
@@ -253,8 +255,8 @@ function Connector({ onInsert }: { onInsert: (type: string) => void }) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <div className="w-px h-3 bg-border" />
-      <ArrowDown className="w-3.5 h-3.5 text-border -mt-1" />
+      <div className="h-px w-3 bg-border" />
+      <ArrowRight className="w-3.5 h-3.5 text-border -ml-1" />
     </div>
   )
 }
@@ -611,46 +613,48 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-muted/20 flex flex-col items-center py-8 px-4">
-      {/* Trigger */}
-      <FlowNode
-        icon={Zap}
-        color={TRIGGER_COLOR}
-        typeLabel="Gatilho"
-        nodeName={triggerMeta(auto.trigger_type).label}
-        detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
-        badge="Início"
-        config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
-      />
+    <div className="h-full overflow-auto bg-muted/20 py-8 px-4">
+      <div className="flex flex-row items-start gap-0 min-w-max mx-auto w-fit">
+        {/* Trigger */}
+        <FlowNode
+          icon={Zap}
+          color={TRIGGER_COLOR}
+          typeLabel="Gatilho"
+          nodeName={triggerMeta(auto.trigger_type).label}
+          detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
+          badge="Início"
+          config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
+        />
 
-      <Connector onInsert={type => insertStep(0, type)} />
+        <Connector onInsert={type => insertStep(0, type)} />
 
-      {/* Steps */}
-      {steps.map((step, i) => {
-        const meta = stepMeta(step.type)
-        return (
-          <div key={step.id || i} className="flex flex-col items-center w-full">
-            <FlowNode
-              icon={meta.icon}
-              color={meta.color}
-              typeLabel={meta.label}
-              nodeName={meta.label}
-              detail={describeStep(step, stages)}
-              badge={`Passo ${i + 1}`}
-              onDelete={() => removeStep(i)}
-              stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
-              config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />}
-            />
-            <Connector onInsert={type => insertStep(i + 1, type)} />
-          </div>
-        )
-      })}
+        {/* Steps */}
+        {steps.map((step, i) => {
+          const meta = stepMeta(step.type)
+          return (
+            <div key={step.id || i} className="flex flex-row items-start">
+              <FlowNode
+                icon={meta.icon}
+                color={meta.color}
+                typeLabel={meta.label}
+                nodeName={meta.label}
+                detail={describeStep(step, stages)}
+                badge={`Passo ${i + 1}`}
+                onDelete={() => removeStep(i)}
+                stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
+                config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />}
+              />
+              <Connector onInsert={type => insertStep(i + 1, type)} />
+            </div>
+          )
+        })}
 
-      {steps.length === 0 && (
-        <p className="text-xs text-muted-foreground text-center max-w-[280px] -mt-1">
-          Clique no + acima pra adicionar o primeiro passo do fluxo.
-        </p>
-      )}
+        {steps.length === 0 && (
+          <p className="text-xs text-muted-foreground max-w-[220px] self-center pl-2">
+            Clique no + acima pra adicionar o primeiro passo do fluxo.
+          </p>
+        )}
+      </div>
     </div>
   )
 }

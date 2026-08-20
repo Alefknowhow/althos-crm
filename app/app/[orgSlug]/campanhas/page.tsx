@@ -20,11 +20,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Campanhas de Envio</h1>
-          <p className="text-sm text-muted-foreground">Disparos em massa por WhatsApp ou e-mail, filtrados por tag e/ou estágio.</p>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild className="gap-1.5">
             <Link href={`/app/${params.orgSlug}/whatsapp-templates`}>

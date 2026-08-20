@@ -26,6 +26,7 @@ const ROUTE_TITLES: Record<string, string> = {
   'email-templates': 'Templates de Email',
   configuracoes: 'Configurações',
   ajuda: 'Central de Ajuda',
+  avaliacoes: 'Avaliações do Google',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */

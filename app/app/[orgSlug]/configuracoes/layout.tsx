@@ -21,12 +21,7 @@ export default function ConfiguracoesLayout({
           o fundo cobrir até a borda enquanto fica "colado" no topo. Fundo
           sólido (não translúcido) — sem efeito de fade no conteúdo por trás
           ao rolar. */}
-      <div id="configuracoes-sticky-header" className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 pb-4 bg-background space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground">Gerencie sua conta, organizações, membros e integrações.</p>
-        </div>
-
+      <div id="configuracoes-sticky-header" className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 pb-3 bg-background">
         <SettingsTabsNav orgSlug={params.orgSlug} />
       </div>
 
