@@ -18,6 +18,11 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'lead.stale' },
       { event: 'appointment.booked' },
       { event: 'customer.birthday' },
+      // Vertical Clínicas — eventos de ciclo de vida (Fase 12), mesmo
+      // motor de automação genérico do Core, sem engine paralela.
+      { event: 'clinic.appointment.confirmed' },
+      { event: 'clinic.quote.approved' },
+      { event: 'clinic.attendance.completed' },
     ]
   },
   async ({ event, step }: { event: any; step: any }) => {

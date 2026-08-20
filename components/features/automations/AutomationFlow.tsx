@@ -57,6 +57,10 @@ const TRIGGER_TYPES = [
   { id: 'lead.stale',          label: 'Lead sem Contato',         desc: 'Dispara após N dias sem atividade' },
   { id: 'appointment.booked',  label: 'Agendamento Realizado',    desc: 'Dispara quando um agendamento é criado' },
   { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)' },
+  // Vertical Clínicas — sem configuração extra (igual appointment.booked).
+  { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento' },
+  { id: 'clinic.quote.approved',        label: 'Orçamento Aprovado (Clínica)',     desc: 'Dispara quando um orçamento é marcado como aprovado' },
+  { id: 'clinic.attendance.completed',  label: 'Atendimento Realizado (Clínica)', desc: 'Dispara quando um atendimento é registrado como realizado' },
 ] as const
 
 const STEP_TYPES = [
@@ -115,6 +119,9 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'lead.stale')         return `Sem contato há ${config?.staleDays ?? 7} dias`
   if (type === 'appointment.booked') return 'Novo agendamento recebido'
   if (type === 'customer.birthday')  return 'No aniversário do cliente'
+  if (type === 'clinic.appointment.confirmed') return 'Paciente confirmou o agendamento'
+  if (type === 'clinic.quote.approved')        return 'Orçamento aprovado'
+  if (type === 'clinic.attendance.completed')  return 'Atendimento registrado como realizado'
   return ''
 }
 

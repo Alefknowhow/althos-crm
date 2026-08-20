@@ -6,6 +6,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicQuoteStatus } from '@/lib/clinic-constants'
 import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
+import { inngest } from '@/lib/inngest/client'
 
 /**
  * Vertical Clínicas — Fase 4: Orçamentos. Paciente = contatos (Core).
@@ -236,6 +237,10 @@ export async function setClinicQuoteStatus(orgSlug: string, id: string, status: 
         sourceType: 'orcamento',
         sourceId: id,
         baseAmountCents: Math.max(total, 0),
+      })
+      await inngest.send({
+        name: 'clinic.quote.approved',
+        data: { orgId: org.id, leadId: quote.patient_contato_id, quoteId: id },
       })
     }
   }

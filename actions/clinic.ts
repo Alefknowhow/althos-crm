@@ -6,6 +6,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicStatus } from '@/lib/clinic-constants'
 import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
+import { inngest } from '@/lib/inngest/client'
 
 /**
  * Vertical Clínicas — Fase 1 (fundação): CRUD de especialidades,
@@ -280,6 +281,24 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
     .upsert({ appointment_id: appointmentId, organization_id: org.id, ...patch })
   if (error) return { ok: false as const, error: error.message }
 
+  // Evento de automação (Fase 12) — mesmo motor genérico do Core
+  // (lib/inngest/automation.ts), pra permitir que a org configure uma
+  // automação (WhatsApp/tarefa/etc.) disparada por confirmação de agenda.
+  if (status === 'confirmado') {
+    const { data: apptForEvent } = await supabase
+      .from('appointments')
+      .select('lead_id')
+      .eq('id', appointmentId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (apptForEvent?.lead_id) {
+      await inngest.send({
+        name: 'clinic.appointment.confirmed',
+        data: { orgId: org.id, leadId: apptForEvent.lead_id, appointmentId },
+      })
+    }
+  }
+
   // Sincronização mínima com o status Core (appointments.status).
   if (status === 'realizado') {
     await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointmentId).eq('organization_id', org.id)
@@ -340,6 +359,13 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
               baseAmountCents: svcCtx.price_cents,
             })
           }
+        }
+
+        if (attendance) {
+          await inngest.send({
+            name: 'clinic.attendance.completed',
+            data: { orgId: org.id, leadId: appt.lead_id, attendanceId: attendance.id },
+          })
         }
       }
     }
