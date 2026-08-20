@@ -312,10 +312,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {/* Core extensível — agenda serve pra reunião/atendimento em
-            qualquer nicho (inclusive Viagens), não é substituída pelas
-            Reservas (que são a venda em si, não um compromisso de agenda). */}
-        {can('calendar') && (
+        {can('calendar') && isModuleEnabled(org.niche, 'agendamentos') && (
           <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
             <span className="flex items-center gap-2.5">
               <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
