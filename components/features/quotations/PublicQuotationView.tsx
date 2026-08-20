@@ -85,6 +85,33 @@ export type QuotationDay = {
 
 export type QuotationPin = { label?: string; type?: string; lat: number; lng: number }
 
+/** Cruzeiro — primeiro tipo de produto do Construtor de Viagens além de
+ *  Aéreo/Hospedagem (ver quotation_products, product_type='cruzeiro').
+ *  `data` carrega os campos específicos (mesmo shape gravado pelo editor,
+ *  QuotationEditor.tsx/type Cruise) — só o essencial é lido aqui. */
+export type QuotationCruise = {
+  id?: string
+  name?: string | null
+  summary?: string | null
+  date_start?: string | null
+  date_end?: string | null
+  price_cents?: number | null
+  data?: {
+    cruise_line?: string | null
+    ship_name?: string | null
+    itinerary_name?: string | null
+    embark_port?: string | null
+    disembark_port?: string | null
+    duration_nights?: number | null
+    cabin_category?: string | null
+    cabin_type?: string | null
+    pkg_drinks?: string | null
+    pkg_internet?: string | null
+    pkg_restaurants?: string | null
+    days?: { day_number?: number | null; date?: string | null; port?: string | null; arrival?: string | null; departure?: string | null }[]
+  } | null
+}
+
 export type PublicQuotation = {
   id?: string
   status?: string
@@ -120,6 +147,7 @@ export type PublicQuotation = {
   validity_days?: number | null
   lodgings?: QuotationLodging[]
   flights?: QuotationFlight[]
+  cruises?: QuotationCruise[]
   itinerary_days?: QuotationDay[]
   map_pins?: QuotationPin[]
   org?: QuotationOrg
@@ -211,6 +239,7 @@ const IcChat = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const IcIg = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
 const IcImg = () => <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
 const IcBackpack = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5M8 10h8" /></svg>
+const IcShip = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 16.5 5 9h14l2 7.5M2 20c1.2 1 2.5 1 3.7 0 1.2 1 2.5 1 3.7 0 1.2 1 2.5 1 3.7 0 1.2 1 2.5 1 3.7 0 1.2 1 2.5 1 3.7 0" /><path d="M8 9V5h8v4M12 2v3" /></svg>
 const IcCarryon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="6" y="7" width="12" height="14" rx="2" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3M10 11v6M14 11v6" /></svg>
 const IcSuitcase = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 10v6M16 10v6M12 10v6" /></svg>
 const BAGGAGE_ICONS: Record<string, () => JSX.Element> = {
@@ -354,6 +383,7 @@ export default function PublicQuotationView({
   const lodgings = data.lodgings || []
   const altLodgings = lodgings.filter(l => l.is_alternative_option)
   const flights = data.flights || []
+  const cruises = data.cruises || []
   const days = data.itinerary_days || []
   const included = data.included || []
   const notIncluded = data.not_included || []
@@ -640,6 +670,53 @@ export default function PublicQuotationView({
                         const opt = BAGGAGE_OPTIONS.find(o => o.key === k)
                         return <span key={k} className="bag"><Ic />{opt?.short}</span>
                       })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </Block>
+        )}
+
+        {/* ───── CRUZEIRO ───── */}
+        {cruises.length > 0 && (
+          <Block num={num()} title="Cruzeiro" sub={cruises.length > 1 ? `${cruises.length} cruzeiros` : undefined}>
+            {cruises.map((c, i) => {
+              const cd_ = c.data || {}
+              const pkgs = [cd_.pkg_drinks, cd_.pkg_internet, cd_.pkg_restaurants].filter(Boolean)
+              return (
+                <div className="flight-wrap" key={c.id || i}>
+                  <div className="fl-top">
+                    <span className="fl-leg">{cd_.cruise_line || 'Cruzeiro'}</span>
+                    {cd_.duration_nights && <span className="fl-meta">{cd_.duration_nights} noites</span>}
+                    {cd_.itinerary_name && <span className="fl-meta">{cd_.itinerary_name}</span>}
+                    {cd_.cabin_category && <span className="pill gold fl-cabin">{cd_.cabin_category}{cd_.cabin_type ? ` · ${cd_.cabin_type}` : ''}</span>}
+                  </div>
+                  <div className="fl-mid">
+                    <div className="route">
+                      <div className="ap"><div className="code">{cd_.embark_port || '—'}</div><div className="city">Embarque{fmtDayMonth(c.date_start) ? ` · ${fmtDayMonth(c.date_start)}` : ''}</div></div>
+                      <div className="path"><IcShip /></div>
+                      <div className="ap"><div className="code">{cd_.disembark_port || '—'}</div><div className="city">Desembarque{fmtDayMonth(c.date_end) ? ` · ${fmtDayMonth(c.date_end)}` : ''}</div></div>
+                    </div>
+                    {c.name && <span className="fl-airline">{c.name}</span>}
+                  </div>
+                  {pkgs.length > 0 && (
+                    <div className="fl-bags">
+                      {pkgs.map((p, j) => <span key={j} className="fl-stop">{p}</span>)}
+                    </div>
+                  )}
+                  {(cd_.days?.length ?? 0) > 0 && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {cd_.days!.map((d, j) => (
+                        <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+                          <span style={{ opacity: 0.6, minWidth: 16 }}>{d.day_number ?? j + 1}</span>
+                          <span>
+                            {d.port || 'Navegação'}
+                            {d.date ? ` — ${fmtDayMonth(d.date)}` : ''}
+                            {(d.arrival || d.departure) ? ` (${[d.arrival, d.departure].filter(Boolean).join(' / ')})` : ''}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -23,12 +23,14 @@ export default async function QuotationPrintPage({
   const products = (full.products || []) as any[]
   const lodgings = products.filter(p => p.product_type === 'hospedagem').map(p => ({ name: p.name, ...p.data }))
   const flights = products.filter(p => p.product_type === 'aereo').map(p => p.data)
+  const cruises = products.filter(p => p.product_type === 'cruzeiro').map(p => ({ name: p.name, price_cents: p.price_cents, ...p.data }))
 
   return (
     <QuotationPrintView
       quotation={full.quotation as any}
       lodgings={lodgings as any}
       flights={flights as any}
+      cruises={cruises as any}
       org={{
         name: org.name,
         logo_url: (org as any).logo_url ?? null,

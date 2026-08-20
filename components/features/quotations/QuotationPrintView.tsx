@@ -61,6 +61,25 @@ type Flight = {
   baggage?: string[] | null
 }
 
+type Cruise = {
+  name: string | null
+  price_cents?: number | null
+  cruise_line?: string | null
+  ship_name?: string | null
+  itinerary_name?: string | null
+  embark_date?: string | null
+  disembark_date?: string | null
+  duration_nights?: number | null
+  embark_port?: string | null
+  disembark_port?: string | null
+  cabin_category?: string | null
+  cabin_type?: string | null
+  pkg_drinks?: string | null
+  pkg_internet?: string | null
+  pkg_restaurants?: string | null
+  total_cents?: number | null
+}
+
 type Quotation = {
   id: string
   title: string | null
@@ -183,11 +202,12 @@ function useAutoDensity(ref: React.RefObject<HTMLDivElement>, resetKey: string, 
 }
 
 export default function QuotationPrintView({
-  quotation, lodgings, flights, org,
+  quotation, lodgings, flights, cruises = [], org,
 }: {
   quotation: Quotation
   lodgings: Lodging[]
   flights: Flight[]
+  cruises?: Cruise[]
   org: OrgBranding
 }) {
   const pageRef = useRef<HTMLDivElement>(null)
@@ -295,6 +315,25 @@ export default function QuotationPrintView({
                   Check-in {fmtDate(l.check_in)} · Check-out {fmtDate(l.check_out)}
                   {(l.room_category || l.board) ? ` · ${[l.room_category, l.board].filter(Boolean).join(' · ')}` : ''}
                 </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {cruises.length > 0 && (
+          <div className={DENSITY_GAP[density]}>
+            <SectionLabel>Cruzeiro</SectionLabel>
+            {cruises.map((c, i) => (
+              <div key={i} className={cn('break-inside-avoid', i < cruises.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
+                <p className="font-semibold text-[0.85em]">{c.name || c.cruise_line || 'Cruzeiro'}{c.duration_nights ? ` · ${c.duration_nights} noites` : ''}</p>
+                <p className="text-[0.75em] text-gray-600">
+                  {c.embark_port ? `Embarque ${c.embark_port} ${fmtDate(c.embark_date)}` : ''}
+                  {c.disembark_port ? ` · Desembarque ${c.disembark_port} ${fmtDate(c.disembark_date)}` : ''}
+                  {c.cabin_category ? ` · Cabine ${c.cabin_category}${c.cabin_type ? ` (${c.cabin_type})` : ''}` : ''}
+                </p>
+                {(c.pkg_drinks || c.pkg_internet || c.pkg_restaurants) && (
+                  <p className="text-[0.72em] text-gray-500">{[c.pkg_drinks, c.pkg_internet, c.pkg_restaurants].filter(Boolean).join(' · ')}</p>
+                )}
               </div>
             ))}
           </div>
