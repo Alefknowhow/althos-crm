@@ -10,7 +10,7 @@ import SidebarUserMenu from './SidebarUserMenu'
 import SidebarSupportLink from './SidebarSupportLink'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
-import { isTravelNiche } from '@/lib/niche'
+import { isModuleEnabled } from '@/lib/niche-modules'
 import { checkFeatureAccess } from '@/lib/plans/server'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import {
@@ -221,7 +221,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('cotacoes') && isTravelNiche(org.niche) && (
+        {can('cotacoes') && isModuleEnabled(org.niche, 'cotacoes') && (
           <SidebarNavLink href={`${base}/cotacoes`}>
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -232,7 +232,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
         {/* Ocultos no mobile: ferramentas de construção/configuração, sem
             uso real "na rua" — continuam disponíveis no desktop. */}
-        {TRAVEL_PLANNER_ENABLED && can('roteirista') && isTravelNiche(org.niche) && (
+        {TRAVEL_PLANNER_ENABLED && can('roteirista') && isModuleEnabled(org.niche, 'roteirista') && (
           <div className="hidden md:block">
             <SidebarNavLink href={`${base}/roteirista`}>
               <span className="flex items-center gap-2.5">
@@ -243,7 +243,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {can('ofertas') && isTravelNiche(org.niche) && (
+        {can('ofertas') && isModuleEnabled(org.niche, 'ofertas') && (
           <div className="hidden md:block">
             <SidebarNavLink href={`${base}/ofertas`}>
               <span className="flex items-center gap-2.5">
@@ -254,7 +254,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {can('embarques') && isTravelNiche(org.niche) && (
+        {can('embarques') && isModuleEnabled(org.niche, 'embarques') && (
           <SidebarNavLink href={`${base}/embarques`}>
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -263,7 +263,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('bloqueios') && isTravelNiche(org.niche) && (
+        {can('bloqueios') && isModuleEnabled(org.niche, 'bloqueios') && (
           <SidebarNavLink href={`${base}/bloqueios`}>
             <span className="flex items-center gap-2.5">
               <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -272,7 +272,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('catalog') && !isTravelNiche(org.niche) && (
+        {can('catalog') && isModuleEnabled(org.niche, 'catalogo') && (
           <div className="hidden md:block">
             <SidebarNavLink href={`${base}/catalogo`}>
               <span className="flex items-center gap-2.5">
@@ -283,7 +283,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {can('sales') && !isTravelNiche(org.niche) && (
+        {can('sales') && isModuleEnabled(org.niche, 'vendas') && (
           <SidebarNavLink href={`${base}/vendas`}>
             <span className="flex items-center gap-2.5">
               <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -292,7 +292,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('reservas') && isTravelNiche(org.niche) && (
+        {can('reservas') && isModuleEnabled(org.niche, 'reservas') && (
           <SidebarNavLink href={`${base}/reservas`}>
             <span className="flex items-center gap-2.5">
               <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -301,7 +301,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
-        {can('documentos') && isTravelNiche(org.niche) && (
+        {can('documentos') && isModuleEnabled(org.niche, 'documentos_viagem') && (
           <div className="hidden md:block">
             <SidebarNavLink href={`${base}/documentos`}>
               <span className="flex items-center gap-2.5">
@@ -312,7 +312,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {can('calendar') && !isTravelNiche(org.niche) && (
+        {/* Core extensível — agenda serve pra reunião/atendimento em
+            qualquer nicho (inclusive Viagens), não é substituída pelas
+            Reservas (que são a venda em si, não um compromisso de agenda). */}
+        {can('calendar') && (
           <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
             <span className="flex items-center gap-2.5">
               <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
