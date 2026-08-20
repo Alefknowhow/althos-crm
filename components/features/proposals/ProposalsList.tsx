@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
@@ -135,7 +136,7 @@ export default function ProposalsList({
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
           Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0', selected && 'hidden md:flex')}>
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0 md:px-[5%]', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -180,54 +181,77 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
-        {/* ── List ─────────────────────────────────────────────── */}
+      <div className="md:px-[5%] grid md:grid-cols-[4fr_5fr] gap-4 flex-1 min-h-0">
+        {/* ── List (tabela) ────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto divide-y h-full',
+          'rounded-none border bg-card overflow-auto h-full',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               Nenhuma proposta encontrada com esses filtros.
             </div>
-          ) : filtered.map(p => {
-            const dest = destOf(p)
-            const active = p.id === selectedId
-            const seller = p.created_by ? sellerName.get(p.created_by) : null
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelectedId(p.id)}
-                className={cn(
-                  'w-full text-left p-3 transition-colors',
-                  active ? 'bg-primary/5' : 'hover:bg-muted/50',
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-sm leading-tight line-clamp-2">
-                    {p.client_name || p.title || 'Proposta sem título'}
-                  </span>
-                </div>
-                {dest && (
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
-                  </div>
-                )}
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatCurrency(p.total_cents || 0)}</span>
-                  <span className="text-[11px] text-muted-foreground">{fmtTimestamp(p.created_at)}</span>
-                </div>
-                {seller && (
-                  <div className="mt-1.5">
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
-                      <UserCircle2 className="w-3 h-3" /> {seller}
-                    </Badge>
-                  </div>
-                )}
-              </button>
-            )
-          })}
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead className="hidden lg:table-cell">Destino</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="hidden md:table-cell whitespace-nowrap">Data</TableHead>
+                  <TableHead className="hidden lg:table-cell">Vendedor</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(p => {
+                  const dest = destOf(p)
+                  const active = p.id === selectedId
+                  const seller = p.created_by ? sellerName.get(p.created_by) : null
+                  return (
+                    <TableRow
+                      key={p.id}
+                      className={cn('cursor-pointer', active && 'bg-primary/5')}
+                      onClick={() => setSelectedId(p.id)}
+                    >
+                      <TableCell className="max-w-[220px]">
+                        <span className="font-medium text-sm truncate block">
+                          {p.client_name || p.title || 'Proposta sem título'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell max-w-[180px]">
+                        {dest ? (
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                            <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right text-xs font-medium tabular-nums whitespace-nowrap">
+                        {formatCurrency(p.total_cents || 0)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
+                        {fmtTimestamp(p.created_at)}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {seller ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
+                            <UserCircle2 className="w-3 h-3" /> {seller}
+                          </Badge>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell onClick={ev => ev.stopPropagation()}>
+                        <ProposalRowActions
+                          orgSlug={orgSlug}
+                          p={p}
+                          onDelete={() => setDeleteId(p.id)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </div>
 
         {/* ── Detail ───────────────────────────────────────────── */}
@@ -375,6 +399,89 @@ function DuplicateProposalDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Botão de ação quadrado, só ícone — usado na linha da tabela de propostas
+ *  pra permitir agir direto na lista, sem precisar abrir o detalhe. */
+function RowActionButton({
+  icon: Icon, label, onClick, href, newTab = true, disabled, tone,
+}: {
+  icon: any
+  label: string
+  onClick?: () => void
+  href?: string
+  /** false navega na mesma aba (Editar); true abre em nova aba (Abrir/Gerar PDF). */
+  newTab?: boolean
+  disabled?: boolean
+  tone?: 'destructive'
+}) {
+  const className = cn(
+    'inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-md border border-input bg-background transition-colors',
+    'hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-background',
+    tone === 'destructive' && 'text-destructive hover:bg-destructive/10 hover:text-destructive',
+  )
+  if (href && !disabled) {
+    if (!newTab) {
+      return (
+        <Link href={href} className={className} title={label} aria-label={label}>
+          <Icon className="w-3.5 h-3.5" />
+        </Link>
+      )
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className} title={label} aria-label={label}>
+        <Icon className="w-3.5 h-3.5" />
+      </a>
+    )
+  }
+  return (
+    <button type="button" className={className} title={label} aria-label={label} disabled={disabled} onClick={onClick}>
+      <Icon className="w-3.5 h-3.5" />
+    </button>
+  )
+}
+
+function ProposalRowActions({
+  orgSlug, p, onDelete,
+}: {
+  orgSlug: string
+  p: ProposalRow
+  onDelete: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const [publicUrl, setPublicUrl] = useState('')
+  useEffect(() => {
+    if (p.public_token) setPublicUrl(`${window.location.origin}/p/${p.public_token}`)
+  }, [p.public_token])
+
+  async function copyLink() {
+    if (!publicUrl) return
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch { toast.error('Não foi possível copiar') }
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <RowActionButton icon={Pencil} label="Editar" href={`/app/${orgSlug}/cotacoes/${p.id}`} newTab={false} />
+      <RowActionButton
+        icon={copied ? CheckCircle2 : Copy}
+        label={copied ? 'Copiado' : 'Copiar link'}
+        onClick={copyLink}
+        disabled={!publicUrl}
+      />
+      <RowActionButton
+        icon={ExternalLink}
+        label="Abrir"
+        href={publicUrl || undefined}
+        disabled={!publicUrl}
+      />
+      <RowActionButton icon={FileText} label="Gerar PDF" href={`/app/${orgSlug}/cotacoes/${p.id}/pdf`} />
+      <RowActionButton icon={Trash2} label="Excluir" onClick={onDelete} tone="destructive" />
+    </div>
   )
 }
 
