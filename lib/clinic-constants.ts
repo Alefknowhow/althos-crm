@@ -56,3 +56,16 @@ export const CLINIC_WAITLIST_STATUS_LABEL: Record<ClinicWaitlistStatus, string> 
   agendado: 'Agendado',
   cancelado: 'Cancelado',
 }
+
+export const CLINIC_COMMISSION_STATUSES = ['pendente', 'pago'] as const
+export type ClinicCommissionStatus = (typeof CLINIC_COMMISSION_STATUSES)[number]
+
+export const CLINIC_COMMISSION_SOURCE_TYPES = ['orcamento', 'atendimento', 'pacote', 'manual'] as const
+export type ClinicCommissionSourceType = (typeof CLINIC_COMMISSION_SOURCE_TYPES)[number]
+
+export const CLINIC_COMMISSION_SOURCE_LABEL: Record<ClinicCommissionSourceType, string> = {
+  orcamento: 'Orçamento aprovado',
+  atendimento: 'Atendimento',
+  pacote: 'Pacote',
+  manual: 'Manual',
+}

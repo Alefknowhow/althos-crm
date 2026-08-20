@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicPackageStatus } from '@/lib/clinic-constants'
+import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
 
 /**
  * Vertical Clínicas — Fase 6: Pacotes de sessões pré-pagos. Integrado ao
@@ -61,6 +62,7 @@ export async function listClinicPackages(orgSlug: string): Promise<ClinicPackage
 
 export type ClinicPackageInput = {
   patient_contato_id: string
+  professional_id: string | null
   name: string
   total_sessions: number
   value_cents: number | null
@@ -97,19 +99,37 @@ export async function createClinicPackage(orgSlug: string, input: ClinicPackageI
     financialEntryId = entry?.id ?? null
   }
 
-  const { error } = await supabase.from('clinic_packages').insert({
-    organization_id: org.id,
-    patient_contato_id: input.patient_contato_id,
-    name: input.name.trim(),
-    total_sessions: input.total_sessions,
-    value_cents: input.value_cents || null,
-    valid_until: input.valid_until || null,
-    financial_entry_id: financialEntryId,
-    created_by: user.id,
-  })
+  const { data: pkg, error } = await supabase
+    .from('clinic_packages')
+    .insert({
+      organization_id: org.id,
+      patient_contato_id: input.patient_contato_id,
+      professional_id: input.professional_id || null,
+      name: input.name.trim(),
+      total_sessions: input.total_sessions,
+      value_cents: input.value_cents || null,
+      valid_until: input.valid_until || null,
+      financial_entry_id: financialEntryId,
+      created_by: user.id,
+    })
+    .select('id')
+    .maybeSingle()
   if (error) return { ok: false as const, error: error.message }
+
+  if (pkg && input.value_cents && input.value_cents > 0) {
+    await maybeCreateClinicCommission({
+      organizationId: org.id,
+      professionalId: input.professional_id,
+      patientContatoId: input.patient_contato_id,
+      sourceType: 'pacote',
+      sourceId: pkg.id,
+      baseAmountCents: input.value_cents,
+    })
+  }
+
   revalidatePath(`/app/${orgSlug}/tratamentos`)
   revalidatePath(`/app/${orgSlug}/financeiro`)
+  revalidatePath(`/app/${orgSlug}/comissoes`)
   return { ok: true as const }
 }
 

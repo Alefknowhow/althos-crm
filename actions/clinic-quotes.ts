@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicQuoteStatus } from '@/lib/clinic-constants'
+import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
 
 /**
  * Vertical Clínicas — Fase 4: Orçamentos. Paciente = contatos (Core).
@@ -218,6 +219,28 @@ export async function setClinicQuoteStatus(orgSlug: string, id: string, status: 
 
   const { error } = await supabase.from('clinic_quotes').update(patch).eq('id', id).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
+
+  if (status === 'aprovado') {
+    const { data: quote } = await supabase
+      .from('clinic_quotes')
+      .select('professional_id, patient_contato_id, discount_cents, clinic_quote_items(quantity, unit_price_cents)')
+      .eq('id', id)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (quote) {
+      const total = (quote.clinic_quote_items || []).reduce((a: number, it: any) => a + it.quantity * it.unit_price_cents, 0) - (quote.discount_cents || 0)
+      await maybeCreateClinicCommission({
+        organizationId: org.id,
+        professionalId: quote.professional_id,
+        patientContatoId: quote.patient_contato_id,
+        sourceType: 'orcamento',
+        sourceId: id,
+        baseAmountCents: Math.max(total, 0),
+      })
+    }
+  }
+
   revalidatePath(`/app/${orgSlug}/orcamentos`)
+  revalidatePath(`/app/${orgSlug}/comissoes`)
   return { ok: true as const }
 }

@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicStatus } from '@/lib/clinic-constants'
+import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
 
 /**
  * Vertical Clínicas — Fase 1 (fundação): CRUD de especialidades,
@@ -306,14 +307,40 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
         .eq('appointment_id', appointmentId)
         .maybeSingle()
       if (!existing) {
-        await supabase.from('clinic_attendances').insert({
-          organization_id: org.id,
-          appointment_id: appointmentId,
-          patient_contato_id: appt.lead_id,
-          professional_id: ctx?.professional_id || null,
-          event_type_id: appt.event_type_id || null,
-          attended_at: appt.start_time || new Date().toISOString(),
-        })
+        const { data: attendance } = await supabase
+          .from('clinic_attendances')
+          .insert({
+            organization_id: org.id,
+            appointment_id: appointmentId,
+            patient_contato_id: appt.lead_id,
+            professional_id: ctx?.professional_id || null,
+            event_type_id: appt.event_type_id || null,
+            attended_at: appt.start_time || new Date().toISOString(),
+          })
+          .select('id')
+          .maybeSingle()
+
+        // Comissão automática — base = preço cadastrado no contexto
+        // clínico do serviço (clinic_service_context.price_cents), se
+        // houver serviço e profissional vinculados.
+        if (attendance && appt.event_type_id) {
+          const { data: svcCtx } = await supabase
+            .from('clinic_service_context')
+            .select('price_cents')
+            .eq('event_type_id', appt.event_type_id)
+            .eq('organization_id', org.id)
+            .maybeSingle()
+          if (svcCtx?.price_cents) {
+            await maybeCreateClinicCommission({
+              organizationId: org.id,
+              professionalId: ctx?.professional_id || null,
+              patientContatoId: appt.lead_id,
+              sourceType: 'atendimento',
+              sourceId: attendance.id,
+              baseAmountCents: svcCtx.price_cents,
+            })
+          }
+        }
       }
     }
   } else if (status === 'cancelado' || status === 'no_show') {

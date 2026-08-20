@@ -39,6 +39,7 @@ import {
   ClipboardList,
   ListChecks,
   Hourglass,
+  Percent,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -366,6 +367,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <Hourglass className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Lista de Espera</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('comissoes_clinica') && isModuleEnabled(org.niche, 'comissoes_clinica') && (
+          <SidebarNavLink href={`${base}/comissoes`}>
+            <span className="flex items-center gap-2.5">
+              <Percent className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Comissões</span>
             </span>
           </SidebarNavLink>
         )}

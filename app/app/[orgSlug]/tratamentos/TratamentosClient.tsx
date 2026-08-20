@@ -59,7 +59,7 @@ const EMPTY_TREATMENT: ClinicTreatmentInput = {
   patient_contato_id: '', professional_id: null, event_type_id: null, name: '', total_sessions: 1, notes: null,
 }
 const EMPTY_PACKAGE: ClinicPackageInput = {
-  patient_contato_id: '', name: '', total_sessions: 1, value_cents: null, valid_until: null,
+  patient_contato_id: '', professional_id: null, name: '', total_sessions: 1, value_cents: null, valid_until: null,
 }
 
 export default function TratamentosClient({
@@ -155,6 +155,7 @@ export default function TratamentosClient({
     setPPatientLabel({ id: row.patient_contato_id, name: row.patient_name })
     setPDraft({
       patient_contato_id: row.patient_contato_id,
+      professional_id: null,
       name: row.name,
       total_sessions: row.total_sessions,
       value_cents: row.value_cents,
@@ -346,6 +347,19 @@ export default function TratamentosClient({
                   <Label>Nome do pacote *</Label>
                   <Input value={pDraft.name} onChange={e => setPDraft({ ...pDraft, name: e.target.value })} placeholder="Ex: Pacote 10 sessões — Pilates" required />
                 </div>
+                {!pEditingId && (
+                  <div className="space-y-2">
+                    <Label>Profissional responsável (para comissão)</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                      value={pDraft.professional_id || ''}
+                      onChange={e => setPDraft({ ...pDraft, professional_id: e.target.value || null })}
+                    >
+                      <option value="">(Nenhum)</option>
+                      {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Total de sessões *</Label>
