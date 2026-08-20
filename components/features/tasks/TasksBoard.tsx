@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   LayoutGrid, CalendarDays, Calendar, User2, UserCheck, CheckCircle2, Circle,
-  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ChevronLeft, ChevronRight,
+  Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ChevronLeft, ChevronRight, Search,
 } from 'lucide-react'
 
 type Member = { user_id: string; name: string; email: string }
@@ -43,14 +43,16 @@ type Task = {
 type View = 'split' | 'kanban'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
 type AssigneeFilter = 'all' | 'none' | string
-type DateFilter = 'all' | 'overdue' | 'today' | 'this_week' | 'next_week' | 'this_month'
+type DateFilter = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'next_week' | 'this_month' | 'no_date'
 
 const DATE_FILTERS: { id: DateFilter; label: string }[] = [
   { id: 'overdue',    label: 'Atrasadas' },
   { id: 'today',      label: 'Hoje' },
+  { id: 'tomorrow',   label: 'Amanhã' },
   { id: 'this_week',  label: 'Esta semana' },
   { id: 'next_week',  label: 'Próxima semana' },
   { id: 'this_month', label: 'Este mês' },
+  { id: 'no_date',    label: 'Sem data' },
   { id: 'all',        label: 'Todas' },
 ]
 
@@ -95,6 +97,23 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })
 }
 
+/** Horário opcional (HH:mm) embutido no due_date — data e hora ficam ambas
+ *  ancoradas em UTC (mesma convenção de dueDateOnly/fmtDate), então "sem
+ *  horário definido" é o padrão 00:00 que já existia antes desse campo. */
+function dueTimeOnly(iso?: string | null): string | null {
+  if (!iso) return null
+  const t = iso.split('T')[1]?.slice(0, 5)
+  return t && t !== '00:00' ? t : null
+}
+
+/** Combina data (YYYY-MM-DD) + horário opcional (HH:mm) num ISO em UTC —
+ *  mesma âncora usada em todo o resto do arquivo, então o dia nunca "pula"
+ *  por causa do fuso horário do navegador. */
+function combineDueDate(date: string, time: string): string | null {
+  if (!date) return null
+  return `${date}T${time || '00:00'}:00.000Z`
+}
+
 /** Sort helper: keeps pending tasks on top and pushes completed ones to the
  *  bottom while preserving the incoming order within each group. */
 function doneLast(list: Task[]): Task[] {
@@ -108,12 +127,15 @@ export default function TasksBoard({
   initialColumns,
   orgSlug,
   members = [],
+  currentUserId,
   headerAction,
 }: {
   initialTasks: Task[]
   initialColumns: Column[]
   orgSlug: string
   members?: Member[]
+  /** Usuário logado — habilita o chip rápido "Minhas". */
+  currentUserId?: string
   /** Botão "Nova tarefa", renderizado ao lado dos filtros (desktop). */
   headerAction?: React.ReactNode
 }) {
@@ -125,6 +147,8 @@ export default function TasksBoard({
   const [assignee, setAssignee] = useState<AssigneeFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [onlyMine, setOnlyMine] = useState(false)
+  const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Task | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
@@ -163,21 +187,24 @@ export default function TasksBoard({
   // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
   const bounds = useMemo(() => {
     const now = new Date(); now.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1)
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay())
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
     const nextWeekStart = new Date(weekStart); nextWeekStart.setDate(weekStart.getDate() + 7)
     const nextWeekEnd = new Date(weekEnd); nextWeekEnd.setDate(weekEnd.getDate() + 7)
-    return { now, weekStart, weekEnd, nextWeekStart, nextWeekEnd }
+    return { now, tomorrow, weekStart, weekEnd, nextWeekStart, nextWeekEnd }
   }, [tasks])
 
   function matchesDate(t: Task, f: DateFilter): boolean {
     if (f === 'all') return true
+    if (f === 'no_date') return !t.due_date
     const d = dueDateOnly(t)
     if (!d) return false
-    const { now, weekStart, weekEnd, nextWeekStart, nextWeekEnd } = bounds
+    const { now, tomorrow, weekStart, weekEnd, nextWeekStart, nextWeekEnd } = bounds
     switch (f) {
       case 'overdue':    return d < now && t.status !== 'done'
       case 'today':      return d.getTime() === now.getTime()
+      case 'tomorrow':   return d.getTime() === tomorrow.getTime()
       case 'this_week':  return d >= weekStart && d <= weekEnd
       case 'next_week':  return d >= nextWeekStart && d <= nextWeekEnd
       case 'this_month': return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
@@ -191,19 +218,28 @@ export default function TasksBoard({
     return t.assigned_to === f
   }
 
+  function matchesSearch(t: Task, q: string): boolean {
+    if (!q) return true
+    const needle = q.trim().toLowerCase()
+    if (!needle) return true
+    return t.title.toLowerCase().includes(needle) || (t.description ?? '').toLowerCase().includes(needle)
+  }
+
   const filtered = useMemo(
     () => tasks.filter(t =>
       (priority === 'all' || t.priority === priority) &&
       matchesAssignee(t, assignee) &&
-      matchesDate(t, dateFilter),
+      matchesDate(t, dateFilter) &&
+      (!onlyMine || t.assigned_to === currentUserId) &&
+      matchesSearch(t, search),
     ),
-    [tasks, priority, assignee, dateFilter, bounds],
+    [tasks, priority, assignee, dateFilter, onlyMine, currentUserId, search, bounds],
   )
 
   const dateCounts = useMemo(() => {
-    const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, this_week: 0, next_week: 0, this_month: 0 }
+    const c: Record<DateFilter, number> = { all: tasks.length, overdue: 0, today: 0, tomorrow: 0, this_week: 0, next_week: 0, this_month: 0, no_date: 0 }
     for (const t of tasks) {
-      for (const f of ['overdue', 'today', 'this_week', 'next_week', 'this_month'] as DateFilter[]) {
+      for (const f of ['overdue', 'today', 'tomorrow', 'this_week', 'next_week', 'this_month', 'no_date'] as DateFilter[]) {
         if (matchesDate(t, f)) c[f]++
       }
     }
@@ -214,7 +250,12 @@ export default function TasksBoard({
   // filtros de prioridade/responsável mas ignorando o filtro de data (que na
   // versão mobile deixa de ser exclusivo e vira agrupamento permanente).
   const mobileBuckets = useMemo(() => {
-    const base = tasks.filter(t => (priority === 'all' || t.priority === priority) && matchesAssignee(t, assignee))
+    const base = tasks.filter(t =>
+      (priority === 'all' || t.priority === priority) &&
+      matchesAssignee(t, assignee) &&
+      (!onlyMine || t.assigned_to === currentUserId) &&
+      matchesSearch(t, search),
+    )
     const overdue = base.filter(t => matchesDate(t, 'overdue'))
     const today = base.filter(t => matchesDate(t, 'today'))
     const upcoming = base.filter(t => !matchesDate(t, 'overdue') && !matchesDate(t, 'today'))
@@ -223,7 +264,7 @@ export default function TasksBoard({
       today: doneLast(today),
       upcoming: doneLast(upcoming),
     }
-  }, [tasks, priority, assignee, bounds])
+  }, [tasks, priority, assignee, onlyMine, currentUserId, search, bounds])
 
   // Group tasks by column. Tasks with no/unknown column fall into the first one.
   const byColumn = useMemo(() => {
@@ -378,6 +419,48 @@ export default function TasksBoard({
 
   return (
     <div className="space-y-4">
+      {/* Busca + chip "Minhas" */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por título ou descrição..."
+            className={cn(
+              'h-8 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-xs placeholder:text-muted-foreground',
+              FOCUS_RING,
+            )}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Limpar busca"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        {currentUserId && (
+          <button
+            type="button"
+            onClick={() => setOnlyMine(v => !v)}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors shrink-0',
+              FOCUS_RING,
+              onlyMine
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background hover:bg-muted text-muted-foreground border-border',
+            )}
+          >
+            <User2 className="w-3.5 h-3.5" /> Minhas
+          </button>
+        )}
+      </div>
+
       {/* Date filters — pills on desktop, dropdown on mobile to save space. */}
       <div className="hidden sm:flex flex-wrap items-center gap-1.5">
         {DATE_FILTERS.map(f => {
@@ -875,6 +958,7 @@ function KanbanCard({
   const pm = PRIORITY_META[task.priority]
   const overdue = isOverdue(task)
   const date = fmtDate(task.due_date)
+  const time = dueTimeOnly(task.due_date)
   return (
     <div
       draggable
@@ -905,7 +989,7 @@ function KanbanCard({
             <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4', pm.cls)}>{pm.label}</Badge>
             {date && (
               <span className={cn('inline-flex items-center gap-1 text-[11px]', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
-                <Calendar className="w-3 h-3" />{date}
+                <Calendar className="w-3 h-3" />{date}{time && ` ${time}`}
               </span>
             )}
             {task.leads && (
@@ -938,6 +1022,7 @@ function TaskRow({
   const pm = PRIORITY_META[task.priority]
   const overdue = isOverdue(task)
   const date = fmtDate(task.due_date)
+  const time = dueTimeOnly(task.due_date)
   const statusName = task.status === 'done' ? 'Concluído' : columnName
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
@@ -956,7 +1041,7 @@ function TaskRow({
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{statusName}</span>
-          {date && <span className={overdue ? 'text-destructive font-medium' : ''}>· {date}</span>}
+          {date && <span className={overdue ? 'text-destructive font-medium' : ''}>· {date}{time && ` às ${time}`}</span>}
           {task.assignee_name && (
             <span className="inline-flex items-center gap-1 text-primary/80">
               <UserCheck className="w-3 h-3" />{task.assignee_name}
@@ -1004,10 +1089,12 @@ function EditSheet({
     e.preventDefault()
     if (!task) return
     const fd = new FormData(e.currentTarget)
+    const dueDateRaw = fd.get('due_date') as string
+    const dueTimeRaw = fd.get('due_time') as string
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
-      due_date:    fd.get('due_date')    as string,
+      due_date:    combineDueDate(dueDateRaw, dueTimeRaw) || '',
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       contato_id:     fd.get('contato_id')     as string,
       assigned_to: ((fd.get('assigned_to') as string) === '__unassigned__' ? '' : fd.get('assigned_to') as string),
@@ -1027,6 +1114,7 @@ function EditSheet({
   }
 
   const defaultDate = task?.due_date ? task.due_date.split('T')[0] : ''
+  const defaultTime = dueTimeOnly(task?.due_date) || ''
 
   return (
     <Sheet open={!!task} onOpenChange={o => !o && onClose()}>
@@ -1042,9 +1130,15 @@ function EditSheet({
               <Label>Descrição</Label>
               <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm" defaultValue={task.description || ''} />
             </div>
-            <div className="space-y-2">
-              <Label>Data de Vencimento</Label>
-              <Input type="date" name="due_date" defaultValue={defaultDate} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Data de Vencimento</Label>
+                <Input type="date" name="due_date" defaultValue={defaultDate} />
+              </div>
+              <div className="space-y-2">
+                <Label>Horário <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input type="time" name="due_time" defaultValue={defaultTime} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Prioridade</Label>

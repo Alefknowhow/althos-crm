@@ -44,6 +44,14 @@ type FormValues = z.infer<typeof taskSchema>
 
 type Member = { user_id: string; name: string; email: string }
 
+/** Combina data (YYYY-MM-DD) + horário opcional (HH:mm) num ISO em UTC —
+ *  mesma âncora usada em TasksBoard.tsx (dueDateOnly/fmtDate também tratam
+ *  a data como UTC pra nunca "pular" de dia por causa do fuso do navegador). */
+function combineDueDate(date: string, time: string): string {
+  if (!date) return ''
+  return `${date}T${time || '00:00'}:00.000Z`
+}
+
 interface Props {
   orgSlug:     string
   defaultLead?: { id: string; name: string } | null
@@ -55,6 +63,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
   const router = useRouter()
   const [open, setOpen]         = useState(false)
   const [isPending, startTrans] = useTransition()
+  const [dueTime, setDueTime]   = useState('')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -72,7 +81,8 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
 
   async function onSubmit(values: FormValues) {
     startTrans(async () => {
-      const res = await createTask(orgSlug, values as TaskInput)
+      const payload = { ...values, due_date: combineDueDate(values.due_date || '', dueTime) }
+      const res = await createTask(orgSlug, payload as TaskInput)
       if (!res.ok) {
         toast.error(traduzirErro(res.error, 'Erro ao criar tarefa'))
         return
@@ -81,6 +91,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
       form.reset({
         title: '', description: '', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
       })
+      setDueTime('')
       setOpen(false)
       router.refresh()
     })
@@ -151,6 +162,16 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                   )}
                 />
 
+                {/* Horário (opcional) */}
+                <FormItem>
+                  <FormLabel>Horário <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
+                  <FormControl>
+                    <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} />
+                  </FormControl>
+                </FormItem>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 {/* Prioridade */}
                 <FormField
                   control={form.control}

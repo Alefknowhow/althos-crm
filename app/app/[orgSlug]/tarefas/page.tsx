@@ -1,4 +1,4 @@
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization, requireAuth } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
 import { listTaskColumns } from '@/actions/tasks'
@@ -9,6 +9,7 @@ import { Plus } from 'lucide-react'
 
 export default async function TasksPage({ params }: { params: { orgSlug: string } }) {
   const org = await getCurrentOrganization(params.orgSlug)
+  const user = await requireAuth()
   const supabase = createClient()
 
   // Pull every active-workflow task; the board groups them by custom column
@@ -49,6 +50,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
         initialColumns={columns}
         orgSlug={params.orgSlug}
         members={members}
+        currentUserId={user.id}
         headerAction={<TaskDialog orgSlug={params.orgSlug} members={members} />}
       />
 
