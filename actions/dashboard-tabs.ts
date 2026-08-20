@@ -257,6 +257,51 @@ export async function getCustomerSegmentation(orgId: string): Promise<CustomerSe
   return segmentation
 }
 
+/* -------- Motivos de perda -------- */
+
+export type LossReasonRow = { reason: string; count: number }
+
+/**
+ * Motivos de perda = contatos.close_reason (texto livre, preenchido no
+ * diálogo de mover um lead pra etapa "perdida"/"desqualificada" —
+ * KanbanBoard.tsx::LostMoveDialog) agrupado por texto exato
+ * (case-insensitive, trim). Não é uma taxonomia fixa — como o campo é
+ * livre, motivos parecidos escritos diferente ("sem resposta" vs "Sem
+ * resposta do lead") não se juntam. Ainda assim é dado real, não mock.
+ */
+export async function getLossReasons(orgId: string, limit = 6): Promise<LossReasonRow[]> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contatos')
+    .select('close_reason')
+    .eq('organization_id', orgId)
+    .in('deal_status', ['perdido', 'desqualificado'])
+    .not('close_reason', 'is', null)
+
+  const byReason = new Map<string, number>()
+  for (const r of data || []) {
+    const reason = (r.close_reason || '').trim()
+    if (!reason) continue
+    const key = reason.toLowerCase()
+    byReason.set(key, (byReason.get(key) || 0) + 1)
+  }
+
+  // Mantém a primeira grafia encontrada como rótulo (case original), só a
+  // contagem usa a chave normalizada.
+  const labelByKey = new Map<string, string>()
+  for (const r of data || []) {
+    const reason = (r.close_reason || '').trim()
+    if (!reason) continue
+    const key = reason.toLowerCase()
+    if (!labelByKey.has(key)) labelByKey.set(key, reason)
+  }
+
+  return Array.from(byReason.entries())
+    .map(([key, count]) => ({ reason: labelByKey.get(key) || key, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+}
+
 /* -------- Equipe: conversão por vendedor, negociações abertas, score -------- */
 
 export type SellerConversionRow = { seller_id: string; leads: number; won: number; conversion_pct: number }

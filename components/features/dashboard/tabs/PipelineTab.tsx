@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getAverageTimePerStage } from '@/actions/dashboard'
-import { getTicketMedio } from '@/actions/dashboard-tabs'
+import { getTicketMedio, getLossReasons } from '@/actions/dashboard-tabs'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
@@ -10,8 +10,7 @@ import LeadSourcesWidget from '../LeadSourcesWidget'
 import PipelineAtRiskWidget from '../PipelineAtRiskWidget'
 import SourcePerformanceWidget from '../SourcePerformanceWidget'
 import TimeInStageWidget from '../TimeInStageWidget'
-import MockBarListCard from '../mocks/MockBarListCard'
-import { MOCK_LOSS_REASONS } from '../mocks/mockData'
+import BarListCard from '../BarListCard'
 import { TrendingDown } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
@@ -26,9 +25,10 @@ function fmtCurrency(cents: number): string {
  * na aba Vendas.
  */
 export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
-  const [ticket, timeInStage] = await Promise.all([
+  const [ticket, timeInStage, lossReasons] = await Promise.all([
     getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
     getAverageTimePerStage(ctx.orgId, { pipelineId: ctx.pipelineId }),
+    getLossReasons(ctx.orgId),
   ])
 
   const funnel = ctx.initialFunnel
@@ -116,12 +116,13 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           </Suspense>
         </div>
         <div className="md:col-span-6">
-          <MockBarListCard
+          <BarListCard
             title="Motivos de perda"
-            help="Distribuição dos motivos de negociações perdidas — depende de um campo de motivo de perda, que ainda não existe no cadastro do lead."
+            help="Motivo informado ao mover um lead para perdido/desqualificado — texto livre agrupado por igualdade exata, sem taxonomia fixa."
             icon={TrendingDown}
-            rows={MOCK_LOSS_REASONS}
+            rows={lossReasons.map(r => ({ label: r.reason, value: r.count, valueLabel: String(r.count) }))}
             color="#da1e28"
+            emptyText="Nenhum motivo de perda registrado ainda."
           />
         </div>
       </div>
