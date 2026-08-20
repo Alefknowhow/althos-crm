@@ -46,3 +46,13 @@ export const CLINIC_PACKAGE_STATUS_LABEL: Record<ClinicPackageStatus, string> = 
   expirado: 'Expirado',
   cancelado: 'Cancelado',
 }
+
+export const CLINIC_WAITLIST_STATUSES = ['aguardando', 'contatado', 'agendado', 'cancelado'] as const
+export type ClinicWaitlistStatus = (typeof CLINIC_WAITLIST_STATUSES)[number]
+
+export const CLINIC_WAITLIST_STATUS_LABEL: Record<ClinicWaitlistStatus, string> = {
+  aguardando: 'Aguardando',
+  contatado: 'Contatado',
+  agendado: 'Agendado',
+  cancelado: 'Cancelado',
+}

@@ -38,6 +38,7 @@ import {
   Stethoscope,
   ClipboardList,
   ListChecks,
+  Hourglass,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -356,6 +357,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <ListChecks className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Tratamentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('lista_espera_clinica') && isModuleEnabled(org.niche, 'lista_espera_clinica') && (
+          <SidebarNavLink href={`${base}/lista-espera`}>
+            <span className="flex items-center gap-2.5">
+              <Hourglass className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Lista de Espera</span>
             </span>
           </SidebarNavLink>
         )}

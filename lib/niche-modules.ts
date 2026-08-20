@@ -14,7 +14,7 @@ export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
   | 'cotacoes' | 'roteirista' | 'ofertas' | 'embarques' | 'bloqueios' | 'reservas' | 'documentos_viagem'
   // Módulos específicos da vertical de Clínicas.
-  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica'
+  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica'
   // Módulos genéricos do CRM core, sem uso em Viagens (a agência não tem
   // uma necessidade de agenda de compromissos separada da operação de
   // venda/reserva, e Catálogo/Vendas já têm equivalente na vertical —
@@ -22,7 +22,7 @@ export type ModuleKey =
   | 'catalogo' | 'vendas' | 'agendamentos'
 
 const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarques', 'bloqueios', 'reservas', 'documentos_viagem']
-const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica']
+const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica']
 // "Não-travel" — visível pra qualquer nicho que não seja Viagens (inclui
 // Clínicas, que usa agenda/catálogo igual qualquer negócio genérico).
 const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
