@@ -1,27 +1,42 @@
 'use client'
 
 /**
- * Documento comercial (A4, 1 página) da cotação — gerado via window.print()
- * (sem headless-Chrome/puppeteer: o navegador do usuário é o motor de PDF).
- * Reaproveita 100% os dados já existentes em travel_proposals/
- * quotation_lodgings/quotation_flights (ver actions/quotations.ts,
- * getQuotationFull) — nenhum campo novo foi criado no banco. Seções sem
- * dado correspondente (transfer, seguro, "outros serviços") simplesmente
- * não têm de onde vir informação hoje e por isso nunca renderizam — ver
- * nota no relatório desta tarefa.
+ * Documento comercial da cotação (A4, multi-página) — gerado via
+ * window.print() (sem headless-Chrome/puppeteer: o navegador do usuário é
+ * o motor de PDF). Reaproveita 100% os dados já existentes em
+ * travel_proposals/quotation_products (ver actions/quotations.ts,
+ * getQuotationFull) — nenhum campo novo foi criado no banco.
  *
- * Paleta deliberadamente restrita a branco/preto/cinza + vermelho só como
- * destaque (preço, seção "Atenção") — a cor de marca da org (org.
- * primary_color) NÃO é usada aqui; ela é a linguagem visual da proposta
- * pública (PublicQuotationView), este documento é o "papel timbrado"
- * comercial, mais sóbrio.
+ * Arquitetura: DATA (props) → normalização por tipo → registry
+ * product_type → card component → layout do documento → paginação via CSS
+ * (break-inside: avoid em cada card, sem scaling/compactação artificial —
+ * ao contrário da versão anterior deste componente, este documento CRESCE
+ * verticalmente por quantas páginas forem necessárias; nunca corta ou
+ * encolhe conteúdo pra caber em 1 página).
+ *
+ * Regra absoluta de precificação: o único valor monetário exibido no
+ * documento é quotation.total_cents (box "Total da viagem"). Nenhum card
+ * de produto mostra preço individual, subtotal ou taxa — mesmo quando o
+ * produto tem price_cents/cabin_options com valor próprio no banco (usado
+ * só internamente/no editor). Ver PRODUCT_REGISTRY abaixo.
+ *
+ * QR Code de pagamento: o modelo atual de cotação não tem link/pagamento
+ * online por cotação (não existe integração Asaas nesse nível) — o prop
+ * `payment` é opcional e, ausente/disabled, simplesmente não renderiza o
+ * QR (o header se reorganiza sozinho por ser flex). Fica pronto pra plugar
+ * quando essa feature existir, sem precisar mexer no layout de novo.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Printer, ArrowLeft, Check, X, Phone, Mail, Globe } from 'lucide-react'
+import {
+  Printer, ArrowLeft, Check, X, Phone, Mail, Clock,
+  Plane, Building2, Car, Shield, Ship, Package, User,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
+
+/* ───────────────────────── tipos ───────────────────────── */
 
 type OrgBranding = {
   name: string
@@ -34,64 +49,20 @@ type OrgBranding = {
   website: string | null
 }
 
-type Lodging = {
-  name: string
-  check_in: string | null
-  check_out: string | null
-  room_category: string | null
-  board: string | null
-  photos?: string[] | null
-  price_cents?: number | null
-}
+type Seller = { name: string; email?: string | null; phone?: string | null } | null
 
-type Flight = {
-  leg_type: string
-  from_code: string | null
-  from_city: string | null
-  to_code: string | null
-  to_city: string | null
-  airline: string | null
-  flight_number?: string | null
-  date: string | null
-  departure_time?: string | null
-  arrival_date?: string | null
-  arrival_time?: string | null
-  duration_label: string | null
-  stopover_label: string | null
-  cabin_class: string | null
-  baggage?: string[] | null
-  price_cents?: number | null
-}
+type Payment = { enabled: boolean; url?: string | null; qr_code?: string | null } | null
 
-type Cruise = {
+/** Produto genérico como vem de quotation_products — cada tipo lê de
+ *  `data` os campos que interessam (ver PRODUCT_REGISTRY). */
+type Product = {
+  id: string
+  type: string
   name: string | null
-  price_cents?: number | null
-  cruise_line?: string | null
-  ship_name?: string | null
-  itinerary_name?: string | null
-  embark_date?: string | null
-  disembark_date?: string | null
-  duration_nights?: number | null
-  embark_port?: string | null
-  disembark_port?: string | null
-  cabin_category?: string | null
-  cabin_type?: string | null
-  cabin_price_cents?: number | null
-  taxes_cents?: number | null
-  deck?: string | null
-  location?: string | null
-  view?: string | null
-  cabin_guaranteed?: boolean | null
-  occupancy_label?: string | null
-  pax_adults?: number | null
-  pax_children?: number | null
-  pkg_drinks?: string | null
-  pkg_internet?: string | null
-  pkg_restaurants?: string | null
-  pkg_gratuities?: string | null
-  pkg_others?: string | null
-  cabin_options?: { label: string; price_cents: number | null }[] | null
-  total_cents?: number | null
+  summary: string | null
+  date_start: string | null
+  date_end: string | null
+  data: Record<string, any>
 }
 
 type Quotation = {
@@ -99,35 +70,30 @@ type Quotation = {
   title: string | null
   client_name: string | null
   destinations: { name: string; country?: string | null }[] | null
-  origin_label: string | null
   start_date: string | null
   end_date: string | null
   pax_adults: number | null
   pax_children: number | null
-  occupancy_label: string | null
-  price_per_person_cents: number | null
   total_cents: number | null
   payment_conditions: { label: string; value?: string | null }[] | null
   price_disclaimer: string | null
   included: string[] | null
   not_included: string[] | null
   cancellation_html: string | null
+  important_html?: string | null
   flights_html: string | null
   cover_image_url?: string | null
-  tours_html?: string | null
-  validity_days?: number | null
-  quoted_at?: string | null
   created_at?: string | null
 }
 
+/* ───────────────────────── helpers ───────────────────────── */
+
 function fmtDate(d?: string | null) {
-  if (!d) return '—'
-  // Campos "date" (start_date/check_in/...) vêm como YYYY-MM-DD puro;
-  // já quoted_at/created_at são timestamps completos (com hora/timezone) —
-  // normaliza pegando só a parte da data antes de ancorar em meio-dia,
-  // senão "YYYY-MM-DDTHH:mm:ssZT12:00:00" vira Invalid Date.
+  if (!d) return null
   const datePart = d.slice(0, 10)
-  return new Date(datePart + 'T12:00:00').toLocaleDateString('pt-BR')
+  const dt = new Date(datePart + 'T12:00:00')
+  if (Number.isNaN(dt.getTime())) return null
+  return dt.toLocaleDateString('pt-BR')
 }
 function fmtCurrency(cents: number | null | undefined) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -135,20 +101,19 @@ function fmtCurrency(cents: number | null | undefined) {
 function stripHtml(html?: string | null) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
-/** HTML "vazio" do editor (ex.: <p></p>) não conta como conteúdo — mesma
- *  regra usada em PublicQuotationView, pra decidir se uma seção aparece. */
 function hasHtml(html?: string | null): boolean {
   if (!html) return false
   return html.replace(/<[^>]*>/g, '').trim() !== '' || /<img/i.test(html)
 }
+function nightsBetween(a?: string | null, b?: string | null): number | null {
+  if (!a || !b) return null
+  const d1 = new Date(a.slice(0, 10) + 'T12:00:00')
+  const d2 = new Date(b.slice(0, 10) + 'T12:00:00')
+  if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null
+  const n = Math.round((d2.getTime() - d1.getTime()) / 86400000)
+  return n > 0 ? n : null
+}
 
-/** HTML rico sanitizado no cliente — mesmo padrão de PublicQuotationView,
- *  só que aqui em corpo de texto compacto (sem clique em imagem).
- *  `onReady` avisa o pai quando o conteúdo sanitizado (ou a ausência dele)
- *  já está no DOM — a medição de compactação (useAutoDensity) só pode
- *  rodar depois disso, senão mede a página ANTES do dompurify carregar
- *  (import assíncrono) e decide um nível de fonte que fica pequeno demais
- *  assim que o texto rico aparece. */
 function Rich({ html, className, onReady }: { html?: string | null; className?: string; onReady?: () => void }) {
   const [clean, setClean] = useState('')
   useEffect(() => {
@@ -163,100 +128,304 @@ function Rich({ html, className, onReady }: { html?: string | null; className?: 
   return <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />
 }
 
-function SectionLabel({ icon, children }: { icon?: string; children: React.ReactNode }) {
+/** Label pequeno + valor — bloco de "info field" reutilizado nos grids de
+ *  cada card (check-in/check-out, quarto/regime, etc). Some sozinho se o
+ *  valor não existir, em vez de mostrar "—"/undefined. */
+function InfoField({ label, value }: { label: string; value?: string | number | null }) {
+  if (value == null || value === '') return null
   return (
-    <div className="flex items-center gap-1.5 mb-[0.5em]">
-      <span className="w-[3px] h-[0.9em] bg-gray-800 shrink-0" />
-      <p className="font-bold text-[0.82em] uppercase tracking-wide">{icon ? `${icon} ` : ''}{children}</p>
+    <div className="min-w-0">
+      <p className="text-[6.5pt] uppercase tracking-wide text-[#777]">{label}</p>
+      <p className="text-[8.5pt] font-semibold text-[#111] truncate">{value}</p>
     </div>
   )
 }
 
-/* ── Compactação progressiva ────────────────────────────────────────────
- * O documento precisa caber em UMA página A4 sem cortar conteúdo. Em vez
- * de truncar, reduzimos progressivamente escala de fonte e espaçamento
- * (3 níveis) até o conteúdo real caber na altura útil da página —
- * medido de verdade no DOM, não estimado. */
-const DENSITY_FONT_PX = [11.5, 10.5, 9.5]
-const DENSITY_GAP = ['mb-[1.1em]', 'mb-[0.85em]', 'mb-[0.65em]']
-const DENSITY_HERO_W = ['w-1/2', 'w-[44%]', 'w-[38%]']
-const A4_HEIGHT_MM = 297
-const MM_TO_PX = 3.7795275591
+/* ─────────────── header de cada Product Card ─────────────── */
 
-/** `contentReady` deve só virar true depois que todo HTML rico assíncrono
- *  (ver Rich/onReady acima) já estiver no DOM — medir antes disso mede uma
- *  página artificialmente mais curta e escolhe uma densidade que fica
- *  pequena demais assim que o texto rico aparece. */
-function useAutoDensity(ref: React.RefObject<HTMLDivElement>, resetKey: string, contentReady: boolean) {
-  const [density, setDensity] = useState(0)
-  // Evita reverificar o mesmo nível duas vezes (Strict Mode do React roda
-  // effects 2x em dev) — sem isso, a escalada podia ficar presa num nível
-  // intermediário mesmo com conteúdo ainda maior que uma página A4.
-  const checkedRef = useRef(-1)
-
-  useEffect(() => { setDensity(0); checkedRef.current = -1 }, [resetKey])
-
-  useEffect(() => {
-    if (!contentReady) return
-    if (checkedRef.current === density) return
-    checkedRef.current = density
-    const el = ref.current
-    if (!el) return
-    // scrollHeight já reflete o layout pós-commit deste render — não
-    // precisa esperar rAF/paint (e não pode depender disso: numa aba sem
-    // compositing ativo, requestAnimationFrame nunca dispara).
-    const maxPx = A4_HEIGHT_MM * MM_TO_PX
-    if (el.scrollHeight > maxPx && density < DENSITY_FONT_PX.length - 1) {
-      setDensity(density + 1)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [density, resetKey, contentReady])
-
-  return density
+function CardHeader({ icon: Icon, title, right }: { icon: any; title: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 pb-[2.5mm] mb-[2.5mm] border-b-[0.6pt] border-[#D0D0D0]">
+      <div className="flex items-center gap-[1.8mm] min-w-0">
+        <Icon className="w-[3.6mm] h-[3.6mm] text-[#172A9B] shrink-0" strokeWidth={2} />
+        <p className="text-[13px] font-bold text-[#111] truncate">{title}</p>
+      </div>
+      {right && <p className="text-[7pt] text-[#555] shrink-0">{right}</p>}
+    </div>
+  )
 }
 
-export default function QuotationPrintView({
-  quotation, lodgings, flights, cruises = [], org,
-}: {
-  quotation: Quotation
-  lodgings: Lodging[]
-  flights: Flight[]
-  cruises?: Cruise[]
-  org: OrgBranding
-}) {
-  const pageRef = useRef<HTMLDivElement>(null)
+function CardShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="avoid-break border-[0.8pt] border-[#C8C8C8] rounded-[4mm] bg-white p-[4mm] mb-[5mm]">
+      {children}
+    </div>
+  )
+}
 
-  const destinations = (quotation.destinations || []).map(d => d.name).filter(Boolean).join(', ')
-  const paxLine = `${quotation.pax_adults ?? 0} adulto${(quotation.pax_adults ?? 0) === 1 ? '' : 's'}${quotation.pax_children ? ` · ${quotation.pax_children} criança${quotation.pax_children === 1 ? '' : 's'}` : ''}`
+/* ───────────────────────── Flight card ───────────────────────── */
 
-  const idas = flights.filter(f => f.leg_type === 'outbound')
-  const voltas = flights.filter(f => f.leg_type === 'inbound')
-  const conexoes = flights.filter(f => f.leg_type === 'connection')
-  const legGroups = [
+type FlightLeg = Record<string, any>
+
+function FlightCard({ legs, paxLine }: { legs: FlightLeg[]; paxLine: string }) {
+  const idas = legs.filter(f => f.leg_type === 'outbound')
+  const voltas = legs.filter(f => f.leg_type === 'inbound')
+  const conexoes = legs.filter(f => f.leg_type === 'connection')
+  const groups = [
     { label: 'Ida', legs: idas }, { label: 'Volta', legs: voltas }, { label: 'Conexão', legs: conexoes },
   ].filter(g => g.legs.length > 0)
+
+  const route = [legs[0]?.from_city || legs[0]?.from_code, legs[legs.length - 1]?.to_city || legs[legs.length - 1]?.to_code]
+    .filter(Boolean).join(' — ')
+
+  const allBaggage = Array.from(new Set(legs.flatMap(f => (f.baggage || []) as string[])))
+
+  return (
+    <CardShell>
+      <CardHeader icon={Plane} title="Aéreo" right={paxLine ? `Total (${paxLine})` : undefined} />
+      {route && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{route}</p>}
+
+      {groups.map(group => (
+        <div key={group.label} className="mb-[3mm] last:mb-0">
+          {group.legs.map((f, i) => {
+            const bag = (f.baggage || []).map((k: string) => BAGGAGE_OPTIONS.find(b => b.key === k)?.short).filter(Boolean).join(' · ')
+            const cabin = f.cabin_class ? CABIN_LABELS[f.cabin_class] || f.cabin_class : ''
+            return (
+              <div key={i} className="mb-[2mm] last:mb-0">
+                <p className="text-[8pt] font-semibold text-[#555] mb-[1mm]">
+                  {group.label} {[f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' — ')}
+                </p>
+                <div className="flex items-center gap-[2mm]">
+                  <div className="flex-1 min-w-0">
+                    {(f.date || f.departure_time) && (
+                      <p className="text-[11pt] font-bold text-[#111]">{f.departure_time || ''} {f.from_code || ''}</p>
+                    )}
+                    <p className="text-[7pt] text-[#777]">{f.from_city || ''}</p>
+                  </div>
+                  <div className="flex flex-col items-center px-[2mm] shrink-0">
+                    {f.duration_label && <p className="text-[7pt] text-[#555]">{f.duration_label}</p>}
+                    <div className="w-[16mm] h-[0.6pt] bg-[#D0D0D0] my-[0.8mm]" />
+                    {(f.airline || f.flight_number) && (
+                      <p className="text-[6.5pt] text-[#777]">{[f.airline, f.flight_number].filter(Boolean).join(' ')}</p>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 text-right">
+                    {(f.arrival_date || f.arrival_time) && (
+                      <p className="text-[11pt] font-bold text-[#111]">{f.arrival_time || ''} {f.to_code || ''}</p>
+                    )}
+                    <p className="text-[7pt] text-[#777]">{f.to_city || ''}</p>
+                  </div>
+                </div>
+                {cabin && <p className="text-[7pt] text-[#555] mt-[1mm]">{cabin}</p>}
+                {f.stopover_label && (
+                  <div className="flex items-center gap-[1.5mm] bg-[#F7F7F7] border-[0.6pt] border-[#D0D0D0] rounded-[2mm] px-[3mm] py-[1.5mm] mt-[1.5mm]">
+                    <Clock className="w-[3mm] h-[3mm] text-[#555] shrink-0" />
+                    <p className="text-[7pt] text-[#555]">{f.stopover_label}</p>
+                  </div>
+                )}
+                {bag && <p className="text-[6.5pt] text-[#777] mt-[1mm]">{bag}</p>}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      {allBaggage.length > 0 && (
+        <div className="pt-[2mm] mt-[1mm] border-t-[0.6pt] border-[#D0D0D0]">
+          <p className="text-[7.5pt] font-bold text-[#16845B] mb-[1mm]">
+            Inclui {allBaggage.map(k => BAGGAGE_OPTIONS.find(b => b.key === k)?.label?.toLowerCase()).filter(Boolean).join(', ')}
+          </p>
+        </div>
+      )}
+    </CardShell>
+  )
+}
+
+function FlightsTextCard({ text }: { text: string }) {
+  return (
+    <CardShell>
+      <CardHeader icon={Plane} title="Aéreo" />
+      <p className="text-[8pt] whitespace-pre-wrap text-[#111]">{text}</p>
+    </CardShell>
+  )
+}
+
+/* ───────────────────────── Hotel card ───────────────────────── */
+
+function HotelCard({ p }: { p: Product }) {
+  const d = p.data
+  const nights = nightsBetween(p.date_start, p.date_end)
+  return (
+    <CardShell>
+      <CardHeader icon={Building2} title="Hospedagem" />
+      <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{p.name || 'Hospedagem'}</p>
+      <div className="grid grid-cols-3 gap-x-[3mm] gap-y-[2mm] mb-[2mm]">
+        <InfoField label="Check-in" value={fmtDate(p.date_start)} />
+        <InfoField label="Check-out" value={fmtDate(p.date_end)} />
+        <InfoField label="Noites" value={nights ? `${nights} noite${nights === 1 ? '' : 's'}` : null} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Quarto" value={d.room_category} />
+        <InfoField label="Regime" value={d.board} />
+      </div>
+    </CardShell>
+  )
+}
+
+/* ───────────────────────── Cruise card ───────────────────────── */
+
+function CruiseCard({ p }: { p: Product }) {
+  const d = p.data
+  const cabinLabel = (d.cabin_options?.length ?? 0) > 0
+    ? d.cabin_options.map((o: any) => o.label).filter(Boolean).join(' · ')
+    : [d.cabin_category, d.cabin_type].filter(Boolean).join(' — ') || null
+  const paxLine = d.pax_adults
+    ? `${d.pax_adults} adulto${d.pax_adults === 1 ? '' : 's'}${d.pax_children ? ` · ${d.pax_children} criança${d.pax_children === 1 ? '' : 's'}` : ''}`
+    : null
+  return (
+    <CardShell>
+      <CardHeader icon={Ship} title="Cruzeiro" />
+      <p className="text-[11pt] font-bold text-[#111] mb-[1mm]">{p.name || d.ship_name || d.cruise_line || 'Cruzeiro'}</p>
+      {d.itinerary_name && <p className="text-[8pt] text-[#555] mb-[2.5mm]">{d.itinerary_name}</p>}
+      <div className="grid grid-cols-3 gap-x-[3mm] gap-y-[2mm] mb-[2mm]">
+        <InfoField label="Embarque" value={[d.embark_port, fmtDate(d.embark_date)].filter(Boolean).join(' — ') || null} />
+        <InfoField label="Desembarque" value={[d.disembark_port, fmtDate(d.disembark_date)].filter(Boolean).join(' — ') || null} />
+        <InfoField label="Noites" value={d.duration_nights ? `${d.duration_nights} noites` : null} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Cabine" value={cabinLabel} />
+        <InfoField label="Passageiros" value={paxLine} />
+      </div>
+      {(d.pkg_drinks || d.pkg_internet || d.pkg_restaurants || d.pkg_gratuities) && (
+        <p className="text-[7pt] text-[#777] mt-[2mm] pt-[2mm] border-t-[0.6pt] border-[#D0D0D0]">
+          {[d.pkg_drinks, d.pkg_internet, d.pkg_restaurants, d.pkg_gratuities].filter(Boolean).join(' · ')}
+        </p>
+      )}
+    </CardShell>
+  )
+}
+
+/* ───────────────────────── Transfer / Seguro / genérico ───────────────────────── */
+
+function TransferCard({ p }: { p: Product }) {
+  const d = p.data
+  return (
+    <CardShell>
+      <CardHeader icon={Car} title="Transfer" />
+      {p.name && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{p.name}</p>}
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Origem" value={d.origin} />
+        <InfoField label="Destino" value={d.destination} />
+        <InfoField label="Data" value={fmtDate(p.date_start)} />
+        <InfoField label="Horário" value={d.time} />
+        <InfoField label="Veículo" value={d.vehicle} />
+        <InfoField label="Passageiros" value={d.pax} />
+        <InfoField label="Tipo" value={d.transfer_type} />
+      </div>
+      {p.summary && <p className="text-[7.5pt] text-[#777] mt-[2mm]">{p.summary}</p>}
+    </CardShell>
+  )
+}
+
+function InsuranceCard({ p }: { p: Product }) {
+  const d = p.data
+  return (
+    <CardShell>
+      <CardHeader icon={Shield} title="Seguro viagem" />
+      {(d.insurer || p.name) && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{d.insurer || p.name}</p>}
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Plano" value={d.plan} />
+        <InfoField label="Destino" value={d.destination} />
+        <InfoField label="Período" value={p.date_start ? `${fmtDate(p.date_start)} a ${fmtDate(p.date_end)}` : null} />
+        <InfoField label="Viajantes" value={d.travelers} />
+      </div>
+      {d.coverage && <p className="text-[7.5pt] text-[#777] mt-[2mm]">{d.coverage}</p>}
+    </CardShell>
+  )
+}
+
+/** Passeio/Locação e qualquer tipo futuro sem card dedicado ainda —
+ *  mostra o que existe (nome/resumo/datas) sem inventar campos. */
+function GenericProductCard({ p, label }: { p: Product; label: string }) {
+  return (
+    <CardShell>
+      <CardHeader icon={Package} title={label} />
+      {p.name && <p className="text-[11pt] font-bold text-[#111] mb-[1mm]">{p.name}</p>}
+      {p.summary && <p className="text-[8pt] text-[#555] mb-[2mm]">{p.summary}</p>}
+      {(p.date_start || p.date_end) && (
+        <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+          <InfoField label="Início" value={fmtDate(p.date_start)} />
+          <InfoField label="Fim" value={fmtDate(p.date_end)} />
+        </div>
+      )}
+    </CardShell>
+  )
+}
+
+/* ───────────────────────── registry ───────────────────────── */
+
+const PRODUCT_LABELS: Record<string, string> = {
+  aereo: 'Aéreo', hospedagem: 'Hospedagem', cruzeiro: 'Cruzeiro',
+  transfer: 'Transfer', seguro: 'Seguro viagem', passeio: 'Passeio', locacao: 'Locação',
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Documento
+   ═══════════════════════════════════════════════════════════════════ */
+
+export default function QuotationPrintView({
+  quotation, products, org, seller = null, payment = null,
+}: {
+  quotation: Quotation
+  products: Product[]
+  org: OrgBranding
+  seller?: Seller
+  payment?: Payment
+}) {
+  const destinations = (quotation.destinations || []).map(d => d.name).filter(Boolean).join(', ')
+  const paxLine = quotation.pax_adults
+    ? `${quotation.pax_adults} adulto${quotation.pax_adults === 1 ? '' : 's'}${quotation.pax_children ? ` e ${quotation.pax_children} criança${quotation.pax_children === 1 ? '' : 's'}` : ''}`
+    : ''
+
+  const flightLegs = products.filter(p => p.type === 'aereo').map(p => p.data)
   const flightsHtmlText = stripHtml(quotation.flights_html)
 
-  const heroImage = quotation.cover_image_url || lodgings.find(l => l.photos?.[0])?.photos?.[0] || null
+  // Unidades de renderização, na ordem em que os produtos foram salvos —
+  // todas as pernas de voo viram UM card único (o card é indivisível: um
+  // "Aéreo" com ida/volta/conexão, não um card por perna).
+  const renderUnits = useMemo(() => {
+    const units: { key: string; node: React.ReactNode }[] = []
+    let flightsConsumed = false
+    for (const p of products) {
+      if (p.type === 'aereo') {
+        if (flightsConsumed) continue
+        flightsConsumed = true
+        units.push({ key: 'flights', node: <FlightCard legs={flightLegs} paxLine={paxLine} /> })
+        continue
+      }
+      const label = PRODUCT_LABELS[p.type] || p.type
+      let node: React.ReactNode
+      switch (p.type) {
+        case 'hospedagem': node = <HotelCard p={p} />; break
+        case 'cruzeiro': node = <CruiseCard p={p} />; break
+        case 'transfer': node = <TransferCard p={p} />; break
+        case 'seguro': node = <InsuranceCard p={p} />; break
+        default: node = <GenericProductCard p={p} label={label} />
+      }
+      units.push({ key: p.id, node })
+    }
+    if (!flightsConsumed && flightsHtmlText) {
+      units.unshift({ key: 'flights-text', node: <FlightsTextCard text={flightsHtmlText} /> })
+    }
+    return units
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, flightsHtmlText, paxLine])
 
   const hasIncludedExcluded = (quotation.included?.length ?? 0) > 0 || (quotation.not_included?.length ?? 0) > 0
-  const hasTours = hasHtml(quotation.tours_html)
   const cancellationHasContent = hasHtml(quotation.cancellation_html)
+  const importantHasContent = hasHtml(quotation.important_html)
+  const quotedDate = fmtDate(quotation.created_at)
 
-  const productBreakdown: { label: string; cents: number }[] = [
-    ...lodgings.filter(l => l.price_cents).map(l => ({ label: l.name || 'Hospedagem', cents: l.price_cents! })),
-    ...cruises.filter(c => c.total_cents).map(c => ({ label: c.name || c.cruise_line || 'Cruzeiro', cents: c.total_cents! })),
-    ...flights.filter(f => f.price_cents).map(f => ({ label: [f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || 'Aéreo', cents: f.price_cents! })),
-  ]
-
-  // Cruzeiro com opções de cabine: mostra "Cabine X = R$…" por opção em vez
-  // do total único — cliente escolhe, forma de pagamento é a mesma pra todas.
-  const cruiseCabinBreakdown: { label: string; cents: number }[] = cruises.flatMap(c =>
-    (c.cabin_options || []).filter(o => o.label && o.price_cents).map(o => ({ label: o.label, cents: o.price_cents! })),
-  )
-
-  // "PIX" e "à vista" costumam representar a mesma condição — evita repetir
-  // a mesma linha duas vezes quando o valor descrito é idêntico.
   const paymentConditions = (quotation.payment_conditions || []).reduce<{ label: string; value?: string | null }[]>((acc, p) => {
     const dup = acc.find(x => (x.value || '').trim() && x.value === p.value)
     if (dup) { dup.label = `${dup.label} / ${p.label}`; return acc }
@@ -264,21 +433,12 @@ export default function QuotationPrintView({
     return acc
   }, [])
 
-  // Quantos blocos de HTML rico assíncrono (Rich/dompurify) existem nesta
-  // renderização — a medição de compactação só roda depois que todos
-  // reportarem onReady (ver useAutoDensity acima).
-  const richBlockCount = (hasTours ? 1 : 0) + (cancellationHasContent ? 1 : 0)
-  const [richReadyCount, setRichReadyCount] = useState(0)
-  useEffect(() => { setRichReadyCount(0) }, [quotation.id])
-  const contentReady = richReadyCount >= richBlockCount
-  const onRichReady = () => setRichReadyCount(c => c + 1)
-
-  const density = useAutoDensity(pageRef, quotation.id, contentReady)
+  const qrVisible = !!payment?.enabled && !!payment?.qr_code
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 print:bg-white print:py-0">
       <div className="max-w-[210mm] mx-auto print:hidden mb-4 px-4 flex items-center justify-between">
-        <a href={`/app`} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={e => { e.preventDefault(); window.close() }}>
+        <a href="/app" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={e => { e.preventDefault(); window.close() }}>
           <ArrowLeft className="w-3 h-3" /> Fechar
         </a>
         <Button onClick={() => window.print()}>
@@ -286,256 +446,141 @@ export default function QuotationPrintView({
         </Button>
       </div>
 
-      <div
-        ref={pageRef}
-        data-density={density}
-        style={{ fontSize: `${DENSITY_FONT_PX[density]}px` }}
-        className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-[12mm] print:p-[12mm] text-black"
-      >
-        {/* ── Header compacto ────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4 pb-[0.6em] border-b border-gray-300 break-inside-avoid">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {org.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt={org.name} className="h-[2.8em] w-auto object-contain shrink-0" />
-            )}
-            <p className="text-[1.5em] font-bold leading-tight truncate">{org.name}</p>
-          </div>
-          <div className="text-right text-[0.62em] text-gray-500 flex items-center gap-[0.8em] shrink-0">
-            {org.contact_phone && <span className="flex items-center gap-1"><Phone className="w-[0.9em] h-[0.9em]" /> {org.contact_phone}</span>}
-            {org.contact_email && <span className="flex items-center gap-1"><Mail className="w-[0.9em] h-[0.9em]" /> {org.contact_email}</span>}
-            {org.website && <span className="flex items-center gap-1"><Globe className="w-[0.9em] h-[0.9em]" /> {org.website}</span>}
-          </div>
-        </div>
+      <div className="max-w-[210mm] mx-auto bg-white text-[#111] shadow-sm print:shadow-none doc-page">
+        {/* ── Header: logo | agência | vendedor | QR ─────────────── */}
+        <div className="flex items-start justify-between gap-[4mm] pb-[4mm] mb-[5mm] border-b-[0.8pt] border-[#BDBDBD] avoid-break">
+          {org.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={org.logo_url} alt={org.name} className="shrink-0" style={{ maxWidth: '35mm', maxHeight: '28mm', objectFit: 'contain' }} />
+          )}
 
-        {/* ── Resumo da viagem (texto à esquerda, hero compacto à direita) ── */}
-        <div className={`${DENSITY_GAP[density]} flex items-start gap-[1em] mt-[0.7em] break-inside-avoid`}>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-3 mb-[0.5em]">
-              <p className="font-bold text-[1.35em] uppercase tracking-wide">{quotation.title || 'Orçamento personalizado'}</p>
-              <p className="text-[0.64em] text-gray-400 shrink-0">Código #{quotation.id.slice(0, 8).toUpperCase()}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-x-[1em] gap-y-[0.4em]">
-              <SummaryField label="Cliente" value={quotation.client_name || '—'} />
-              {destinations && <SummaryField label="Destino" value={destinations} />}
-              {quotation.start_date && <SummaryField label="Período" value={`${fmtDate(quotation.start_date)} a ${fmtDate(quotation.end_date)}`} />}
-              <SummaryField label="Passageiros" value={paxLine} />
-            </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9pt] leading-snug"><span className="font-bold">Filial:</span> <span className="font-bold">{org.name}</span></p>
+            {(org.contact_phone || org.contact_email || org.website) && (
+              <p className="text-[8pt] text-[#555] leading-snug mt-[0.5mm]">
+                {[org.contact_phone, org.contact_email, org.website].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {org.cnpj && <p className="text-[7pt] text-[#777] leading-snug">CNPJ {org.cnpj}{org.cadastur ? ` · CADASTUR ${org.cadastur}` : ''}</p>}
           </div>
-          {heroImage && (
-            <div className={`${DENSITY_HERO_W[density]} shrink-0 aspect-[16/9] overflow-hidden rounded-md break-inside-avoid`} style={{ maxWidth: '50%' }}>
+
+          {seller && (
+            <div className="min-w-0 shrink-0 text-right">
+              <p className="text-[9pt] font-bold text-[#111] flex items-center justify-end gap-[1.2mm]"><User className="w-[3mm] h-[3mm] text-[#555]" /> {seller.name}</p>
+              {seller.phone && <p className="text-[8pt] text-[#555] flex items-center justify-end gap-[1.2mm]"><Phone className="w-[2.8mm] h-[2.8mm]" /> {seller.phone}</p>}
+              {seller.email && <p className="text-[8pt] text-[#555] flex items-center justify-end gap-[1.2mm]"><Mail className="w-[2.8mm] h-[2.8mm]" /> {seller.email}</p>}
+            </div>
+          )}
+
+          {qrVisible && (
+            <div className="shrink-0 text-center">
+              <p className="text-[7pt] text-[#555] mb-[1mm] max-w-[25mm]">Leia o QR code e realize o pagamento online</p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImage} alt={destinations || quotation.title || 'Destino'} className="w-full h-full object-cover" />
+              <img src={payment!.qr_code!} alt="QR Code de pagamento" style={{ width: '25mm', height: '25mm' }} />
             </div>
           )}
         </div>
 
-        {/* ── ⚠️ ATENÇÃO — único bloco com vermelho no documento ───── */}
-        <div className="border border-red-200 bg-red-50 px-[0.8em] py-[0.5em] mb-[1em] break-inside-avoid">
-          <p className="text-[0.68em] leading-snug text-red-900">
-            <span className="font-bold">⚠️ ATENÇÃO — </span>
-            Esta é uma cotação. Os serviços estão sujeitos à disponibilidade e os valores podem sofrer alterações até a efetivação da reserva.
-          </p>
+        {/* ── Cabeçalho da cotação: título + data + Total ─────────── */}
+        <div className="flex items-start justify-between gap-[4mm] mb-[6mm] avoid-break">
+          <div className="min-w-0">
+            <p className="text-[17pt] font-bold leading-tight" style={{ color: '#172A9B' }}>Orçamento da sua viagem</p>
+            {quotedDate && <p className="text-[9pt] text-[#555] mt-[1mm]">{quotedDate}</p>}
+            {(quotation.client_name || destinations) && (
+              <p className="text-[8.5pt] text-[#555] mt-[1mm]">
+                {[quotation.client_name, destinations].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 border-[0.8pt] border-[#C9C9C9] rounded-[5mm] px-[5mm] py-[4mm] text-right">
+            <p className="text-[7.5pt] uppercase tracking-wide text-[#777] mb-[1mm]">Total da viagem</p>
+            <p className="text-[16pt] font-bold text-[#111] tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+          </div>
         </div>
 
-        {/* ── Produtos e serviços ────────────────────────────────── */}
-        {lodgings.length > 0 && (
-          <div className={DENSITY_GAP[density]}>
-            <SectionLabel icon="🏨">Hospedagem</SectionLabel>
-            {lodgings.map((l, i) => (
-              <div key={i} className={cn('break-inside-avoid', i < lodgings.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
-                <p className="font-semibold text-[0.85em]">{l.name}</p>
-                <p className="text-[0.75em] text-gray-600">
-                  Check-in {fmtDate(l.check_in)} · Check-out {fmtDate(l.check_out)}
-                  {(l.room_category || l.board) ? ` · ${[l.room_category, l.board].filter(Boolean).join(' · ')}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ── Product Cards ─────────────────────────────────────── */}
+        {renderUnits.map(u => <div key={u.key}>{u.node}</div>)}
 
-        {cruises.length > 0 && (
-          <div className={DENSITY_GAP[density]}>
-            <SectionLabel icon="🚢">Cruzeiro</SectionLabel>
-            {cruises.map((c, i) => (
-              <div key={i} className={cn('break-inside-avoid', i < cruises.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
-                <p className="font-semibold text-[0.85em]">
-                  {c.cruise_line ? `${c.cruise_line} · ` : ''}{c.name || c.ship_name || 'Cruzeiro'}
-                  {c.itinerary_name ? ` · ${c.itinerary_name}` : ''}
-                  {c.duration_nights ? ` · ${c.duration_nights} noites` : ''}
-                </p>
-                <p className="text-[0.75em] text-gray-600">
-                  {c.embark_port ? `Embarque ${c.embark_port} ${fmtDate(c.embark_date)}` : ''}
-                  {c.disembark_port ? ` · Desembarque ${c.disembark_port} ${fmtDate(c.disembark_date)}` : ''}
-                </p>
-                <p className="text-[0.75em] text-gray-600">
-                  {(c.cabin_options?.length ?? 0) > 0
-                    ? `Cabines: ${c.cabin_options!.map(o => o.label).filter(Boolean).join(' · ')}`
-                    : c.cabin_category ? `Cabine ${c.cabin_category}${c.cabin_type ? ` (${c.cabin_type})` : ''}` : ''}
-                  {c.deck ? ` · Deck ${c.deck}` : ''}
-                  {c.view ? ` · Vista ${c.view}` : ''}
-                  {c.cabin_guaranteed ? ' · Categoria garantida' : ''}
-                </p>
-                {(c.pax_adults || c.occupancy_label) && (
-                  <p className="text-[0.72em] text-gray-500">
-                    {c.occupancy_label || `${c.pax_adults ?? 0} adulto${(c.pax_adults ?? 0) === 1 ? '' : 's'}${c.pax_children ? ` · ${c.pax_children} criança${c.pax_children === 1 ? '' : 's'}` : ''}`}
-                  </p>
-                )}
-                {(c.pkg_drinks || c.pkg_internet || c.pkg_restaurants || c.pkg_gratuities || c.pkg_others) && (
-                  <p className="text-[0.72em] text-gray-500">{[c.pkg_drinks, c.pkg_internet, c.pkg_restaurants, c.pkg_gratuities, c.pkg_others].filter(Boolean).join(' · ')}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {legGroups.length > 0 && (
-          <div className={DENSITY_GAP[density]}>
-            <SectionLabel icon="✈️">Voos</SectionLabel>
-            {legGroups.map(group => (
-              <div key={group.label} className="mb-[0.5em] last:mb-0">
-                {group.legs.map((f, i) => {
-                  const bag = (f.baggage || []).map(k => BAGGAGE_OPTIONS.find(b => b.key === k)?.short).filter(Boolean).join(' · ')
-                  const cabin = f.cabin_class ? CABIN_LABELS[f.cabin_class] || f.cabin_class : ''
-                  return (
-                    <div key={i} className="break-inside-avoid text-[0.78em] leading-snug mb-[0.35em] last:mb-0">
-                      <span className="font-semibold">{group.label}: </span>
-                      {[f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || '—'}
-                      {f.airline ? ` · ${f.airline}` : ''}
-                      {f.flight_number ? ` (${f.flight_number})` : ''}
-                      {f.date ? ` · ${fmtDate(f.date)}${f.departure_time ? ` ${f.departure_time}` : ''}` : ''}
-                      {(f.arrival_date || f.arrival_time) ? ` → ${f.arrival_date ? fmtDate(f.arrival_date) : ''}${f.arrival_time ? ` ${f.arrival_time}` : ''}` : ''}
-                      {f.duration_label ? ` · ${f.duration_label}` : ''}
-                      {cabin ? ` · ${cabin}` : ''}
-                      {bag ? ` · ${bag}` : ''}
-                      {f.stopover_label && <span className="block text-gray-500">{f.stopover_label}</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {flightsHtmlText && legGroups.length === 0 && (
-          <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
-            <SectionLabel icon="✈️">Voos</SectionLabel>
-            <p className="text-[0.78em] whitespace-pre-wrap">{flightsHtmlText}</p>
-          </div>
-        )}
-
-        {hasTours && (
-          <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
-            <SectionLabel>Passeios e ingressos</SectionLabel>
-            <Rich html={quotation.tours_html} onReady={onRichReady} className="text-[0.78em] leading-snug [&_p]:mb-[0.3em] [&_ul]:list-disc [&_ul]:pl-[1.2em] [&_ol]:list-decimal [&_ol]:pl-[1.2em]" />
-          </div>
-        )}
-
-        {/* ── Investimento (metade esquerda) + Inclui/Não inclui (direita) ── */}
-        <div className={`${DENSITY_GAP[density]} flex items-start gap-[1em] break-inside-avoid`}>
-          {/* Investimento */}
-          <div className="w-1/2 border border-gray-300 bg-gray-50 px-[1em] py-[0.9em]">
-            <p className="font-bold text-[0.8em] uppercase tracking-wide mb-[0.5em]">Investimento</p>
-            {cruiseCabinBreakdown.length > 0 ? (
-              <ul className="mb-[0.6em] space-y-[0.2em]">
-                {cruiseCabinBreakdown.map((row, i) => (
-                  <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
-                    <span className="truncate">{row.label}</span>
-                    <span className="tabular-nums shrink-0 font-semibold">{fmtCurrency(row.cents)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : productBreakdown.length > 1 && (
-              <ul className="mb-[0.6em] space-y-[0.2em]">
-                {productBreakdown.map((row, i) => (
-                  <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
-                    <span className="truncate">{row.label}</span>
-                    <span className="tabular-nums shrink-0">{fmtCurrency(row.cents)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {cruiseCabinBreakdown.length === 0 && (
-              <div className="flex items-baseline justify-between border-t border-gray-300 pt-[0.5em] gap-[1em]">
-                <p className="font-bold text-[0.82em] uppercase tracking-wide">Total da viagem</p>
-                <p className="text-[1.9em] font-bold text-black leading-none tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+        {/* ── Inclui / Não inclui ───────────────────────────────── */}
+        {hasIncludedExcluded && (
+          <div className="grid grid-cols-2 gap-x-[4mm] mb-[5mm] avoid-break">
+            {(quotation.included?.length ?? 0) > 0 && (
+              <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
+                <p className="text-[9pt] font-bold text-[#111] mb-[2mm]">Incluso</p>
+                <ul className="space-y-[1mm]">
+                  {quotation.included!.map((item, i) => (
+                    <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm]"><Check className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#16845B]" /> {item}</li>
+                  ))}
+                </ul>
               </div>
             )}
-            {quotation.price_per_person_cents != null && quotation.price_per_person_cents > 0 && (
-              <p className="text-[0.78em] text-gray-600 mt-[0.25em] text-right">{fmtCurrency(quotation.price_per_person_cents)} por pessoa</p>
+            {(quotation.not_included?.length ?? 0) > 0 && (
+              <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
+                <p className="text-[9pt] font-bold text-[#111] mb-[2mm]">Não incluso</p>
+                <ul className="space-y-[1mm]">
+                  {quotation.not_included!.map((item, i) => (
+                    <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm] text-[#555]"><X className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#C04A4A]" /> {item}</li>
+                  ))}
+                </ul>
+              </div>
             )}
-            {paymentConditions.length > 0 && (
-              <ul className="mt-[0.6em] pt-[0.5em] border-t border-gray-200 space-y-[0.15em]">
-                {paymentConditions.map((p, i) => (
-                  <li key={i} className="text-[0.76em]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
-                ))}
-              </ul>
+          </div>
+        )}
+
+        {/* ── Forma de pagamento ────────────────────────────────── */}
+        {paymentConditions.length > 0 && (
+          <div className="mb-[5mm] avoid-break">
+            <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Forma de pagamento</p>
+            <ul className="space-y-[0.5mm]">
+              {paymentConditions.map((p, i) => (
+                <li key={i} className="text-[7.5pt] text-[#555]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── Política de cancelamento ──────────────────────────── */}
+        {cancellationHasContent && (
+          <div className="mb-[5mm] avoid-break">
+            <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Política de cancelamento</p>
+            <Rich html={quotation.cancellation_html} className="text-[7.5pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
+          </div>
+        )}
+
+        {/* ── Informações importantes ───────────────────────────── */}
+        {(importantHasContent || quotation.price_disclaimer) && (
+          <div className="mb-[5mm] avoid-break">
+            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Informações importantes</p>
+            {importantHasContent && (
+              <Rich html={quotation.important_html} className="text-[7pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
             )}
             {quotation.price_disclaimer && (
-              <p className="text-[0.68em] text-gray-500 mt-[0.5em] whitespace-pre-wrap">{quotation.price_disclaimer}</p>
+              <p className="text-[7pt] text-[#555] whitespace-pre-wrap mt-[1mm]">{quotation.price_disclaimer}</p>
             )}
-          </div>
-
-          {/* Inclui / Não inclui */}
-          {hasIncludedExcluded && (
-            <div className="w-1/2 space-y-[0.6em]">
-              {(quotation.included?.length ?? 0) > 0 && (
-                <div className="border border-gray-200 px-[0.9em] py-[0.7em]">
-                  <SectionLabel>Inclui</SectionLabel>
-                  <ul className="space-y-[0.2em]">
-                    {quotation.included!.map((item, i) => (
-                      <li key={i} className="text-[0.76em] flex items-start gap-[0.4em]"><Check className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {(quotation.not_included?.length ?? 0) > 0 && (
-                <div className="border border-gray-200 px-[0.9em] py-[0.7em]">
-                  <SectionLabel>Não inclui</SectionLabel>
-                  <ul className="space-y-[0.2em]">
-                    {quotation.not_included!.map((item, i) => (
-                      <li key={i} className="text-[0.76em] flex items-start gap-[0.4em] text-gray-600"><X className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Cancelamento ───────────────────────────────────────── */}
-        {cancellationHasContent && (
-          <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
-            <SectionLabel>Política de cancelamento</SectionLabel>
-            <Rich html={quotation.cancellation_html} onReady={onRichReady} className="text-[0.76em] leading-snug text-gray-700 [&_p]:mb-[0.25em] [&_ul]:list-disc [&_ul]:pl-[1.1em]" />
           </div>
         )}
 
         {/* ── Footer ─────────────────────────────────────────────── */}
-        {(org.cnpj || org.cadastur) && (
-          <div className="pt-[0.6em] mt-[0.6em] border-t border-gray-200 text-center text-[0.6em] text-gray-400 break-inside-avoid">
-            {[org.cnpj && `CNPJ ${org.cnpj}`, org.cadastur && `CADASTUR ${org.cadastur}`].filter(Boolean).join(' · ')}
-          </div>
-        )}
+        <div className="pt-[3mm] mt-[3mm] border-t-[0.6pt] border-[#D0D0D0] text-right avoid-break">
+          <p className="text-[6pt] text-[#777]">ID da cotação: {quotation.id}</p>
+        </div>
       </div>
 
       <style>{`
+        .doc-page {
+          width: 210mm;
+          font-family: Arial, Helvetica, sans-serif;
+          padding: 8mm 10mm;
+        }
         @media print {
           @page { size: A4; margin: 0; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+          .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+        }
+        @media screen {
+          .doc-page { margin-bottom: 24px; }
         }
       `}</style>
     </div>
   )
 }
-
-function SummaryField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[0.6em] uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="text-[0.8em] font-medium truncate">{value}</p>
-    </div>
-  )
-}
-
