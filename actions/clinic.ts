@@ -289,3 +289,79 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
   revalidatePath(`/app/${orgSlug}/agendamentos`)
   return { ok: true as const }
 }
+
+// ── Lembrete automático (24h antes) — template + status ─────────────────────
+
+const REMINDER_TEMPLATE_NAME = 'lembrete_agendamento_24h'
+
+export type ClinicReminderSettings = {
+  templateName: string | null
+  templateStatus: 'local' | 'pending' | 'approved' | 'rejected' | null
+}
+
+export async function getClinicReminderSettings(orgSlug: string): Promise<ClinicReminderSettings> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data: settings } = await supabase
+    .from('org_settings')
+    .select('clinic_reminder_template_name')
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  const templateName = settings?.clinic_reminder_template_name ?? null
+  if (!templateName) return { templateName: null, templateStatus: null }
+
+  const { data: tpl } = await supabase
+    .from('whatsapp_templates')
+    .select('status')
+    .eq('organization_id', org.id)
+    .eq('name', templateName)
+    .maybeSingle()
+
+  return { templateName, templateStatus: (tpl?.status as any) ?? null }
+}
+
+/**
+ * Cria (se ainda não existir) um template de lembrete padrão como rascunho
+ * local, e configura org_settings pra usá-lo. O operador ainda precisa ir em
+ * Templates WhatsApp e clicar "Enviar para aprovação" — o cron de lembrete
+ * só envia depois que o status virar 'approved' na Meta.
+ */
+export async function ensureClinicReminderTemplate(orgSlug: string) {
+  const org = await requireProfissionaisAccess(orgSlug)
+  const supabase = createClient()
+
+  const { data: existing } = await supabase
+    .from('whatsapp_templates')
+    .select('id, name')
+    .eq('organization_id', org.id)
+    .eq('name', REMINDER_TEMPLATE_NAME)
+    .maybeSingle()
+
+  if (!existing) {
+    const { error: createError } = await supabase.from('whatsapp_templates').insert({
+      organization_id: org.id,
+      name: REMINDER_TEMPLATE_NAME,
+      display_name: 'Lembrete de agendamento (24h)',
+      category: 'UTILITY',
+      language: 'pt_BR',
+      header_type: 'none',
+      header_text: null,
+      header_media_url: null,
+      body_text: 'Olá, {{1}}! Passando para lembrar do seu horário amanhã, {{2}} às {{3}}. Até lá! 😊',
+      variable_names: ['nome do paciente', 'data', 'horário'],
+      footer_text: null,
+      status: 'local',
+    })
+    if (createError) return { ok: false as const, error: createError.message }
+  }
+
+  const { error: settingsError } = await supabase
+    .from('org_settings')
+    .upsert({ org_id: org.id, clinic_reminder_template_name: REMINDER_TEMPLATE_NAME }, { onConflict: 'org_id' })
+  if (settingsError) return { ok: false as const, error: settingsError.message }
+
+  revalidatePath(`/app/${orgSlug}/agendamentos`)
+  revalidatePath(`/app/${orgSlug}/whatsapp-templates`)
+  return { ok: true as const }
+}

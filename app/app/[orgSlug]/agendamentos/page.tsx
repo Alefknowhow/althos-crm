@@ -11,7 +11,9 @@ import { PageHeader } from '@/components/ui/page-header'
 import { isClinicNiche } from '@/lib/niche'
 import {
   listClinicSpecialties, listClinicProfessionals, listClinicRooms, listClinicAppointmentContexts,
+  getClinicReminderSettings, type ClinicReminderSettings,
 } from '@/actions/clinic'
+import ClinicReminderCard from '@/components/features/appointments/ClinicReminderCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,20 +39,23 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
   let clinicRooms: { id: string; name: string }[] = []
   let clinicAppointmentContexts: Record<string, any> = {}
   let clinicServiceContexts: Record<string, any> = {}
+  let reminderSettings: ClinicReminderSettings | null = null
   if (isClinic) {
     const allAppointmentIds = [...upcoming, ...past].map((a: any) => a.id)
-    const [specialties, professionals, rooms, apptContexts, svcContextsRows] = await Promise.all([
+    const [specialties, professionals, rooms, apptContexts, svcContextsRows, reminder] = await Promise.all([
       listClinicSpecialties(params.orgSlug),
       listClinicProfessionals(params.orgSlug),
       listClinicRooms(params.orgSlug),
       listClinicAppointmentContexts(params.orgSlug, allAppointmentIds),
       supabase.from('clinic_service_context').select('event_type_id, specialty_id, price_cents, room_id').eq('organization_id', org.id),
+      getClinicReminderSettings(params.orgSlug),
     ])
     clinicSpecialties = specialties.filter(s => s.active)
     clinicProfessionals = professionals.filter(p => p.active)
     clinicRooms = rooms.filter(r => r.active)
     clinicAppointmentContexts = apptContexts
     clinicServiceContexts = Object.fromEntries((svcContextsRows.data || []).map((r: any) => [r.event_type_id, r]))
+    reminderSettings = reminder
   }
 
   const pipelineIds = (pipelinesForStages.data || []).map(p => p.id)
@@ -69,6 +74,10 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
         title="Agendamentos"
         hint="Crie tipos de evento, defina horários disponíveis e gerencie agendamentos."
       />
+
+      {isClinic && reminderSettings && (
+        <ClinicReminderCard orgSlug={params.orgSlug} settings={reminderSettings} />
+      )}
 
       <AppointmentsAdminTabs
         orgSlug={params.orgSlug}
