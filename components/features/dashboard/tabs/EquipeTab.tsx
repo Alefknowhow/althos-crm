@@ -2,9 +2,10 @@ import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getAiCreditsStatus, getAccountIdForOrgSlug } from '@/lib/plans/server'
-import { getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore } from '@/actions/dashboard-tabs'
+import { getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore, getResponseMetrics } from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { listOrgMembers } from '@/actions/sales'
+import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
 import TasksTodayWidget from '../TasksTodayWidget'
@@ -17,16 +18,24 @@ function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
+function fmtMinutes(min: number): string {
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m > 0 ? `${h}h ${m}min` : `${h}h`
+}
+
 /** Equipe — "quem está performando e onde estão os gargalos?". */
 export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
   const accountId = await getAccountIdForOrgSlug(ctx.orgSlug)
-  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members] = await Promise.all([
+  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response] = await Promise.all([
     accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
     getSellerConversionRates(ctx.orgId),
     getSellerOpenDeals(ctx.orgId),
     getSellerPerformanceScore(ctx.orgId),
     getMonthlyRevenueGoal(ctx.orgSlug),
     listOrgMembers(ctx.orgSlug),
+    getResponseMetrics(ctx.orgId, sinceFromPeriod(ctx.period)),
   ])
   const nameById = new Map(members.map((m: any) => [m.id, m.name]))
   const activeSellers = new Set([...conversionRates.map(c => c.seller_id), ...openDeals.map(o => o.seller_id)]).size
@@ -48,15 +57,13 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
         />
         <KpiCard
           label="Tempo médio de resposta"
-          value="12 min"
-          help="Tempo médio entre a mensagem do lead/cliente e a primeira resposta da equipe."
-          mock
+          value={response.avgResponseMinutes !== null ? fmtMinutes(response.avgResponseMinutes) : '—'}
+          help="Tempo médio entre a mensagem do lead/cliente e a próxima resposta na mesma conversa (humana ou automática via IA), no período selecionado."
         />
         <KpiCard
           label="Taxa de resposta"
-          value="87%"
-          help="Percentual de conversas que receberam alguma resposta da equipe."
-          mock
+          value={response.responseRatePct !== null ? `${response.responseRatePct}%` : '—'}
+          help={`Percentual de mensagens recebidas que tiveram alguma resposta depois, no período (${response.answeredCount} de ${response.inboundCount}).`}
         />
       </div>
 

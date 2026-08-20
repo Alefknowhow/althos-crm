@@ -257,6 +257,62 @@ export async function getCustomerSegmentation(orgId: string): Promise<CustomerSe
   return segmentation
 }
 
+/* -------- Tempo/taxa de resposta (WhatsApp) -------- */
+
+export type ResponseMetrics = { avgResponseMinutes: number | null; responseRatePct: number | null; answeredCount: number; inboundCount: number }
+
+/**
+ * Tempo médio de resposta = tempo entre uma mensagem inbound e a próxima
+ * outbound na mesma conversa. Taxa de resposta = % de mensagens inbound que
+ * tiveram alguma outbound depois delas, na janela analisada.
+ * whatsapp_messages.direction/created_at já existiam — não precisou de
+ * nenhuma instrumentação nova, só nunca tinha sido agregado.
+ */
+export async function getResponseMetrics(orgId: string, since: Date, limit = 5000): Promise<ResponseMetrics> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('whatsapp_messages')
+    .select('conversation_id, direction, created_at')
+    .eq('organization_id', orgId)
+    .gte('created_at', since.toISOString())
+    .order('conversation_id', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(limit)
+
+  const byConversation = new Map<string, { direction: string; created_at: string }[]>()
+  for (const m of data || []) {
+    const list = byConversation.get(m.conversation_id) || []
+    list.push({ direction: m.direction, created_at: m.created_at })
+    byConversation.set(m.conversation_id, list)
+  }
+
+  let inboundCount = 0
+  let answeredCount = 0
+  const responseMinutes: number[] = []
+
+  for (const msgs of Array.from(byConversation.values())) {
+    for (let i = 0; i < msgs.length; i++) {
+      if (msgs[i].direction !== 'inbound') continue
+      inboundCount++
+      const next = msgs.slice(i + 1).find((m: { direction: string }) => m.direction === 'outbound')
+      if (next) {
+        answeredCount++
+        const diffMin = (new Date(next.created_at).getTime() - new Date(msgs[i].created_at).getTime()) / 60_000
+        responseMinutes.push(diffMin)
+      }
+    }
+  }
+
+  return {
+    avgResponseMinutes: responseMinutes.length > 0
+      ? Math.round(responseMinutes.reduce((a, v) => a + v, 0) / responseMinutes.length)
+      : null,
+    responseRatePct: inboundCount > 0 ? Math.round((answeredCount / inboundCount) * 100) : null,
+    answeredCount,
+    inboundCount,
+  }
+}
+
 /* -------- Motivos de perda -------- */
 
 export type LossReasonRow = { reason: string; count: number }
