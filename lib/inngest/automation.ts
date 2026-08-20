@@ -235,7 +235,7 @@ export const executeAutomationRun = inngest.createFunction(
                       organization_id: orgId,
                       contato_id: lead.id,
                       title,
-                      status: 'todo',
+                      status: 'open', // CHECK da coluna só aceita open|doing|done — 'todo' não existe, o insert falhava
                       priority: stepDef.config.priority || 'normal',
                       due_date: dueDate.toISOString()
                     })

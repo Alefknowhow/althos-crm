@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { updateAutomation } from '@/actions/automations'
+import { updateAutomation, toggleAutomation } from '@/actions/automations'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AutomationFlow from '@/components/features/automations/AutomationFlow'
 import AutomationRunsPanel from '@/components/features/automations/AutomationRunsPanel'
@@ -17,6 +17,22 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
   const [auto, setAuto] = useState(automation)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('editor')
+  const [togglingActive, setTogglingActive] = useState(false)
+
+  // Persiste na hora, igual o toggle da lista (AutomationsShell.tsx) —
+  // antes só atualizava o state local, e a mudança se perdia se o
+  // usuário navegasse sem clicar em "Salvar Alterações" (bug real,
+  // dois caminhos pro mesmo campo com comportamento diferente).
+  async function handleToggleActive(checked: boolean) {
+    setAuto((prev: any) => ({ ...prev, is_active: checked }))
+    setTogglingActive(true)
+    const res = await toggleAutomation(orgSlug, auto.id, checked)
+    setTogglingActive(false)
+    if (!res?.ok) {
+      setAuto((prev: any) => ({ ...prev, is_active: !checked }))
+      toast.error(res?.error || 'Erro ao atualizar status')
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -51,7 +67,7 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
             className="font-bold border-transparent hover:border-input focus:border-input text-base sm:text-lg h-10 flex-1 min-w-0 lg:w-80 lg:flex-none"
           />
           <div className="flex items-center gap-2 shrink-0">
-            <Switch checked={auto.is_active} onCheckedChange={c => setAuto({...auto, is_active: c})} />
+            <Switch checked={auto.is_active} onCheckedChange={handleToggleActive} disabled={togglingActive} />
             <Label className="text-sm cursor-pointer whitespace-nowrap">{auto.is_active ? 'Ativa' : 'Pausada'}</Label>
           </div>
         </div>
