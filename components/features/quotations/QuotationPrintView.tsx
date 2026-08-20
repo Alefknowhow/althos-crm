@@ -50,7 +50,11 @@ type Flight = {
   to_code: string | null
   to_city: string | null
   airline: string | null
+  flight_number?: string | null
   date: string | null
+  departure_time?: string | null
+  arrival_date?: string | null
+  arrival_time?: string | null
   duration_label: string | null
   stopover_label: string | null
   cabin_class: string | null
@@ -309,7 +313,9 @@ export default function QuotationPrintView({
                       <span className="font-semibold">{group.label}: </span>
                       {[f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || '—'}
                       {f.airline ? ` · ${f.airline}` : ''}
-                      {f.date ? ` · ${fmtDate(f.date)}` : ''}
+                      {f.flight_number ? ` (${f.flight_number})` : ''}
+                      {f.date ? ` · ${fmtDate(f.date)}${f.departure_time ? ` ${f.departure_time}` : ''}` : ''}
+                      {(f.arrival_date || f.arrival_time) ? ` → ${f.arrival_date ? fmtDate(f.arrival_date) : ''}${f.arrival_time ? ` ${f.arrival_time}` : ''}` : ''}
                       {f.duration_label ? ` · ${f.duration_label}` : ''}
                       {cabin ? ` · ${cabin}` : ''}
                       {bag ? ` · ${bag}` : ''}

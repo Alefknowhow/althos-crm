@@ -52,6 +52,8 @@ import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
+import FlightOcrDialog from './FlightOcrDialog'
+import type { ExtractedFlightLeg } from '@/lib/ai/flight-ocr-extract'
 
 const INCLUDED_SUGGESTIONS = [
   'Aéreo ida e volta', 'Bagagem (23kg)', 'Bagagem de mão (10kg)', 'Marcação de assentos',
@@ -490,7 +492,12 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
 
 /* ═════════════ estado do editor ═════════════ */
 type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any; is_alternative_option?: boolean; option_price_per_person_cents?: number | null; option_total_cents?: number | null }
-type Flight = { _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null; airline?: string | null; date?: string | null; duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null }
+type Flight = {
+  _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null;
+  airline?: string | null; flight_number?: string | null;
+  date?: string | null; departure_time?: string | null; arrival_date?: string | null; arrival_time?: string | null;
+  duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null
+}
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
@@ -544,7 +551,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   }))) as Lodging[])
   const [flights, setFlights] = useState<Flight[]>(() => withKeys(initial.flights.map(f => ({
     leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: f.from_city,
-    to_code: f.to_code, to_city: f.to_city, airline: f.airline, date: f.date,
+    to_code: f.to_code, to_city: f.to_city, airline: f.airline, flight_number: (f as any).flight_number,
+    date: f.date, departure_time: (f as any).departure_time,
+    arrival_date: (f as any).arrival_date, arrival_time: (f as any).arrival_time,
     duration_label: f.duration_label, stopover_label: f.stopover_label,
     baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
   }))) as Flight[])
@@ -558,6 +567,27 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [geoBusy, setGeoBusy] = useState<string | null>(null)
   const [saleBusy, setSaleBusy] = useState(false)
   const [extractOpen, setExtractOpen] = useState(false)
+  const [flightOcrOpen, setFlightOcrOpen] = useState(false)
+
+  // "Ler com IA" no bloco Aéreo — cada trecho identificado vira uma nova
+  // linha em "Trecho" (append, nunca substitui o que já existe na lista).
+  function handleFlightLegsExtracted(legs: ExtractedFlightLeg[]) {
+    setFlights(fs => [
+      ...fs,
+      ...legs.map(leg => ({
+        _key: nk(),
+        leg_type: leg.leg_type || (fs.length === 0 ? 'outbound' : 'inbound'),
+        from_code: leg.from_code, from_city: leg.from_city,
+        to_code: leg.to_code, to_city: leg.to_city,
+        airline: leg.airline, flight_number: leg.flight_number,
+        date: leg.departure_date, departure_time: leg.departure_time,
+        arrival_date: leg.arrival_date, arrival_time: leg.arrival_time,
+        duration_label: leg.duration_label, stopover_label: leg.stopover_label,
+        baggage: leg.baggage, cabin_class: leg.cabin_class,
+      })),
+    ])
+    toast.success(`${legs.length} trecho${legs.length === 1 ? '' : 's'} adicionado${legs.length === 1 ? '' : 's'} — revise antes de salvar`)
+  }
 
   // Autopreenchimento com IA — lê um voucher/orçamento (PDF ou imagem) e
   // preenche os campos da cotação. Não sobrescreve o nome do cliente quando
@@ -929,10 +959,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
 
       {/* AÉREO */}
       <EditBlock id="blk-aereo" icon={Plane} title="Aéreo"
-        action={<Button type="button" variant="outline" size="sm"
-          onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [] }])}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
-        </Button>}>
+        action={<div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="sm" onClick={() => setFlightOcrOpen(true)}>
+            <Sparkles className="w-3.5 h-3.5 mr-1" /> Ler com IA
+          </Button>
+          <Button type="button" variant="outline" size="sm"
+            onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [] }])}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
+          </Button>
+        </div>}>
         {flights.length === 0 && <p className="text-sm text-muted-foreground">Nenhum trecho aéreo.</p>}
         <SortableList items={flights} onReorder={setFlights} render={(f) => (
           <>
@@ -953,17 +988,22 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
               <F label="Companhia"><Input placeholder="Copa Airlines" value={f.airline || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, airline: e.target.value } : x))} /></F>
-              {/* Data ocupa a linha toda no mobile — o input nativo dd/mm/aaaa precisa de largura */}
-              <div className="col-span-2 sm:col-span-1"><F label="Data"><Input type="date" className="w-full" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F></div>
+              <F label="Código do voo"><Input placeholder="LA3380; LA3385" value={f.flight_number || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, flight_number: e.target.value } : x))} /></F>
               <F label="Duração"><Input placeholder="≈ 12h total" value={f.duration_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, duration_label: e.target.value } : x))} /></F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <F label="Origem (código)"><Input placeholder="FLN" maxLength={4} value={f.from_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: e.target.value.toUpperCase() } : x))} /></F>
               <F label="Cidade origem"><Input placeholder="Florianópolis" value={f.from_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_city: e.target.value } : x))} /></F>
-              <F label="Destino (código)"><Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: e.target.value.toUpperCase() } : x))} /></F>
+              <F label="Origem (sigla)"><Input placeholder="FLN" maxLength={4} value={f.from_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: e.target.value.toUpperCase() } : x))} /></F>
               <F label="Cidade destino"><Input placeholder="Punta Cana" value={f.to_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_city: e.target.value } : x))} /></F>
+              <F label="Destino (sigla)"><Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: e.target.value.toUpperCase() } : x))} /></F>
             </div>
-            <F label="Escala / observação"><Input placeholder="via Panamá (PTY)" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Data de partida"><Input type="date" className="w-full" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F>
+              <F label="Hora de partida"><Input type="time" className="w-full" value={f.departure_time || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, departure_time: e.target.value } : x))} /></F>
+              <F label="Data de chegada"><Input type="date" className="w-full" value={f.arrival_date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_date: e.target.value } : x))} /></F>
+              <F label="Hora de chegada"><Input type="time" className="w-full" value={f.arrival_time || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_time: e.target.value } : x))} /></F>
+            </div>
+            <F label="Conexão (local + tempo de espera)"><Input placeholder="Panamá (PTY) — 2h35 de conexão" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
             <div className="grid grid-cols-2 gap-2 items-start">
               <F label="Bagagens incluídas">
                 <BaggagePicker value={f.baggage}
@@ -1245,6 +1285,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         title="Autopreencher com IA"
         description="Envie o voucher/orçamento (PDF ou imagem) — a IA lê o documento e preenche cliente, destino, datas, hospedagem, voos e valor. Revise antes de salvar."
         onApply={data => handleExtracted(data)}
+      />
+
+      <FlightOcrDialog
+        orgSlug={orgSlug}
+        open={flightOcrOpen}
+        onOpenChange={setFlightOcrOpen}
+        onApply={legs => handleFlightLegsExtracted(legs)}
       />
     </div>
   )

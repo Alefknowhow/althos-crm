@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { extractTravelDocumentFromFile, extractTravelDocumentFromFileGemini, type ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { extractFinancialDocumentFromFile, extractFinancialDocumentFromFileGemini, type ExtractedFinancialDocument } from '@/lib/ai/financial-document-extract'
+import { extractFlightLegsFromImage, type ExtractedFlightLeg } from '@/lib/ai/flight-ocr-extract'
 import { getPlatformAiKey, hasPlatformAiKey, getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 
@@ -125,5 +126,49 @@ export async function extractFinancialDocument(
     return { ok: true, data }
   } catch (err: any) {
     return { ok: false, error: err?.message || 'Erro ao processar o documento com IA.' }
+  }
+}
+
+/**
+ * "Ler com IA" no bloco Aéreo do editor de cotações — extrai um ou mais
+ * trechos de voo de um print (upload ou colado da área de transferência).
+ * Sempre Gemini Flash, nunca Claude (diferente das outras duas extrações
+ * acima, que respeitam organizations.ocr_provider) — pedido explícito,
+ * mantém esse fluxo específico com um único provider previsível.
+ */
+export async function extractFlightScreenshot(
+  orgSlug: string,
+  input: { base64: string; mediaType: string },
+): Promise<{ ok: true; data: ExtractedFlightLeg[] } | { ok: false; error: string }> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false, error: perm.reason }
+
+  if (!input.base64) return { ok: false, error: 'Arquivo vazio.' }
+  if (!(ALLOWED_MEDIA_TYPES as readonly string[]).includes(input.mediaType)) {
+    return { ok: false, error: 'Formato não suportado. Use PDF, JPG, PNG, WebP ou GIF.' }
+  }
+  if (!hasGeminiKey()) return { ok: false, error: 'IA (Gemini) não configurada.' }
+
+  const accountId = (org as any).account_id as string | null
+  if (accountId) {
+    const credit = await consumeAiCredits({ accountId, action: 'ocr_extract', metadata: { feature: 'flight_ocr', orgSlug } })
+    if (!credit.success) {
+      return {
+        ok: false,
+        error: credit.error === 'insufficient_credits'
+          ? 'Seus créditos de IA acabaram este mês. Faça upgrade ou aguarde a renovação.'
+          : 'Não foi possível validar seus créditos de IA. Tente novamente.',
+      }
+    }
+  }
+
+  try {
+    const data = await extractFlightLegsFromImage(getGeminiKey(), input.base64, input.mediaType as any)
+    if (data.length === 0) return { ok: false, error: 'Não foi possível identificar nenhum trecho de voo neste print.' }
+    return { ok: true, data }
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro ao processar o print com IA.' }
   }
 }

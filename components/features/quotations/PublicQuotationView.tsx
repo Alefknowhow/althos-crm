@@ -64,7 +64,11 @@ export type QuotationFlight = {
   to_code?: string | null
   to_city?: string | null
   airline?: string | null
+  flight_number?: string | null
   date?: string | null
+  departure_time?: string | null
+  arrival_date?: string | null
+  arrival_time?: string | null
   duration_label?: string | null
   stopover_label?: string | null
   baggage?: string[]
@@ -609,18 +613,23 @@ export default function PublicQuotationView({
                   {/* Linha 1: tipo · data · duração · classe */}
                   <div className="fl-top">
                     <span className="fl-leg">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</span>
-                    {fmtDayMonth(f.date) && <span className="fl-meta">{fmtDayMonth(f.date)}</span>}
+                    {fmtDayMonth(f.date) && <span className="fl-meta">{fmtDayMonth(f.date)}{f.departure_time ? ` ${f.departure_time}` : ''}</span>}
+                    {(fmtDayMonth(f.arrival_date) || f.arrival_time) && (
+                      <span className="fl-meta">→ {fmtDayMonth(f.arrival_date) || fmtDayMonth(f.date)}{f.arrival_time ? ` ${f.arrival_time}` : ''}</span>
+                    )}
                     {f.duration_label && <span className="fl-meta">{f.duration_label}</span>}
                     {f.cabin_class && <span className="pill gold fl-cabin">{CABIN_LABELS[f.cabin_class] || f.cabin_class}</span>}
                   </div>
-                  {/* Linha 2: origem → destino · cia */}
+                  {/* Linha 2: origem → destino · cia · código */}
                   <div className="fl-mid">
                     <div className="route">
                       <div className="ap"><div className="code">{f.from_code || '—'}</div><div className="city">{f.from_city || ''}</div></div>
                       <div className="path"><IcPlane /></div>
                       <div className="ap"><div className="code">{f.to_code || '—'}</div><div className="city">{f.to_city || ''}</div></div>
                     </div>
-                    {f.airline && <span className="fl-airline">{f.airline}</span>}
+                    {(f.airline || f.flight_number) && (
+                      <span className="fl-airline">{[f.airline, f.flight_number].filter(Boolean).join(' · ')}</span>
+                    )}
                   </div>
                   {(f.stopover_label || bags.length > 0) && (
                     <div className="fl-bags">
