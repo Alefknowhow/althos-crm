@@ -51,6 +51,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   ajuda: HelpCircle,
   avaliacoes: Star,
   profissionais: Stethoscope,
+  orcamentos: FileSignature,
 }
 
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */

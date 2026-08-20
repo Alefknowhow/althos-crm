@@ -18,3 +18,8 @@ export const CLINIC_STATUS_LABEL: Record<ClinicStatus, string> = {
   reagendado: 'Reagendado',
   no_show: 'Não compareceu',
 }
+
+export const CLINIC_QUOTE_STATUSES = [
+  'rascunho', 'enviado', 'visualizado', 'aprovado', 'recusado', 'expirado', 'cancelado',
+] as const
+export type ClinicQuoteStatus = (typeof CLINIC_QUOTE_STATUSES)[number]
