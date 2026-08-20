@@ -34,8 +34,8 @@ import {
   CheckCircle2, Link2, Image as ImageIcon, Search, Bold, Italic, List, ListOrdered,
   Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
-  ChevronLeft, ChevronRight, Pencil, ShoppingBag,
-  CreditCard, QrCode, Receipt, Ticket,
+  ChevronLeft, ChevronRight, ChevronDown, Pencil, ShoppingBag,
+  CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -385,36 +385,64 @@ function EditBlock({ id, icon: Icon, title, children, action }: { id?: string; i
   )
 }
 
-/** Barra de navegação entre blocos — pula direto pro bloco clicado (evita
- *  scroll cego numa cotação grande). Fica sticky logo abaixo da toolbar. */
-const BLOCK_NAV = [
-  { id: 'blk-capa', label: 'Capa', icon: ImageIcon },
-  { id: 'blk-viagem', label: 'Viagem', icon: MapPin },
-  { id: 'blk-intro', label: 'Introdução', icon: Sparkles },
-  { id: 'blk-hospedagens', label: 'Hospedagens', icon: BedDouble },
-  { id: 'blk-aereo', label: 'Aéreo', icon: Plane },
-  { id: 'blk-mapa', label: 'Mapa', icon: MapIcon },
-  { id: 'blk-itinerario', label: 'Itinerário', icon: Route },
-  { id: 'blk-passeios', label: 'Passeios', icon: Ticket },
-  { id: 'blk-importante', label: 'Importante', icon: AlertTriangle },
-  { id: 'blk-inclui', label: 'O que inclui', icon: CheckCircle2 },
-  { id: 'blk-cancelamento', label: 'Cancelamento', icon: AlertTriangle },
-  { id: 'blk-investimento', label: 'Investimento', icon: Wallet },
-  { id: 'blk-fechamento', label: 'Fechamento', icon: MessageCircle },
+/**
+ * Navegação em 5 grandes grupos (Construtor de Viagens) — substitui a
+ * barra horizontal antiga de 13 blocos, que crescia sem limite conforme
+ * novos produtos/seções eram adicionados. Cada grupo agrupa os EditBlocks
+ * existentes (nenhum bloco foi removido, só reorganizado).
+ */
+const GROUPS = [
+  { id: 'resumo', label: 'Resumo', icon: LayoutGrid },
+  { id: 'produtos', label: 'Produtos', icon: ShoppingBag },
+  { id: 'conteudo', label: 'Conteúdo', icon: FileEdit },
+  { id: 'investimento', label: 'Investimento', icon: Wallet },
+  { id: 'fechamento', label: 'Fechamento', icon: MessageCircle },
 ] as const
+type GroupId = (typeof GROUPS)[number]['id']
 
-function BlockNav() {
+function GroupNav({ active, onChange, completeness }: { active: GroupId; onChange: (g: GroupId) => void; completeness: number }) {
   return (
-    <div className="px-3 sm:px-5 py-1.5 border-t overflow-x-auto">
+    <div className="px-3 sm:px-5 py-1.5 border-t flex items-center gap-2 overflow-x-auto">
       <div className="flex gap-1 w-max">
-        {BLOCK_NAV.map(({ id, label, icon: Icon }) => (
-          <button key={id} type="button"
-            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="inline-flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <Icon className="w-3 h-3" /> {label}
+        {GROUPS.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => onChange(id)}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              active === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}>
+            <Icon className="w-3.5 h-3.5" /> {label}
           </button>
         ))}
       </div>
+      <div className="ml-auto hidden sm:flex items-center gap-1.5 shrink-0" title={`Cotação ${completeness}% completa`}>
+        <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full bg-primary transition-all" style={{ width: `${completeness}%` }} />
+        </div>
+        <span className="text-[11px] text-muted-foreground tabular-nums">{completeness}%</span>
+      </div>
+    </div>
+  )
+}
+
+/** Mostra os filhos só quando é o grupo ativo — os blocos internos não
+ *  precisam ser fisicamente contíguos no JSX (ex.: Introdução fica entre
+ *  Viagem e Hospedagens no arquivo, mas pertence a grupos diferentes);
+ *  várias instâncias com o mesmo id="conteudo" funcionam normalmente. */
+function GroupSection({ id, active, children }: { id: GroupId; active: GroupId; children: React.ReactNode }) {
+  if (id !== active) return null
+  return <>{children}</>
+}
+
+/** Disclosure simples pra separar campos Recomendado/Avançado dos
+ *  Essenciais — não polui a interface principal, mas fica a 1 clique. */
+function Disclosure({ label, children, defaultOpen = false }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-t pt-2.5 mt-2.5">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} /> {label}
+      </button>
+      {open && <div className="space-y-2.5 mt-2.5">{children}</div>}
     </div>
   )
 }
@@ -500,6 +528,31 @@ type Flight = {
 }
 type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 
+/** Dia de itinerário do cruzeiro — porto/data/horários de chegada e
+ *  saída. Mesmo padrão de repeater dos demais (chave local + reorder). */
+type CruiseDay = { _key: string; day_number?: number | null; date?: string | null; port?: string | null; arrival?: string | null; departure?: string | null; note?: string | null }
+
+/** Cruzeiro — primeiro tipo de produto novo do Construtor de Viagens
+ *  (ver actions/quotations.ts: ProductSchema/product_type='cruzeiro').
+ *  Campos essenciais sempre visíveis; recomendados/avançados atrás de
+ *  Disclosure, conforme níveis de informação do módulo. */
+type Cruise = {
+  _key: string
+  cruise_line?: string | null; ship_name?: string | null; itinerary_name?: string | null
+  embark_date?: string | null; disembark_date?: string | null; duration_nights?: number | null
+  embark_port?: string | null; disembark_port?: string | null
+  pax_adults?: number | null; pax_children?: number | null; occupancy_label?: string | null
+  cabin_category?: string | null; cabin_type?: string | null
+  cabin_price_cents?: number | null; taxes_cents?: number | null; total_cents?: number | null
+  // recomendado
+  cabin_number?: string | null; deck?: string | null; location?: string | null; view?: string | null; cabin_guaranteed?: boolean
+  pkg_drinks?: string | null; pkg_internet?: string | null; pkg_restaurants?: string | null; pkg_gratuities?: string | null; pkg_others?: string | null
+  extras_cents?: number | null; discount_cents?: number | null
+  days: CruiseDay[]
+  // avançado/interno — nunca aparece no público/PDF (ver internal_data)
+  supplier?: string | null; fare_code?: string | null; cost_cents?: number | null; internal_notes?: string | null
+}
+
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
   orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]; isOffer?: boolean
 }) {
@@ -575,6 +628,16 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [pins, setPins] = useState<Pin[]>(() => withKeys(initial.map_pins.map(p => ({
     label: p.label || '', type: p.type || 'attraction', lat: p.lat, lng: p.lng,
   }))) as Pin[])
+  const [cruises, setCruises] = useState<Cruise[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'cruzeiro').map(p => {
+    const c = p.data || {}
+    const iv = p.internal_data || {}
+    return {
+      ...c,
+      total_cents: p.price_cents ?? c.total_cents ?? null,
+      days: withKeys((c.days || []) as any[]),
+      supplier: iv.supplier ?? null, fare_code: iv.fare_code ?? null, cost_cents: iv.cost_cents ?? null, internal_notes: iv.internal_notes ?? null,
+    }
+  })) as Cruise[])
 
   const [publicToken, setPublicToken] = useState<string | null>(q0.public_token || null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -583,6 +646,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [saleBusy, setSaleBusy] = useState(false)
   const [extractOpen, setExtractOpen] = useState(false)
   const [flightOcrOpen, setFlightOcrOpen] = useState(false)
+  const [activeGroup, setActiveGroup] = useState<GroupId>('resumo')
 
   // "Ler com IA" no bloco Aéreo — cada trecho identificado vira uma nova
   // linha em "Trecho" (append, nunca substitui o que já existe na lista).
@@ -708,9 +772,18 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         data: { ...f, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any },
         internal_data: {},
       })),
+      ...cruises.map(({ _key, days, total_cents, supplier, fare_code, cost_cents, internal_notes, ...c }) => ({
+        product_type: 'cruzeiro' as const,
+        name: c.ship_name || c.cruise_line || null,
+        summary: [c.itinerary_name, c.duration_nights ? `${c.duration_nights} noites` : null].filter(Boolean).join(' · ') || null,
+        date_start: c.embark_date || null, date_end: c.disembark_date || null,
+        price_cents: total_cents ?? null,
+        data: { ...c, total_cents, days: days.map(({ _key: __k, ...d }) => d) },
+        internal_data: { supplier, fare_code, cost_cents, internal_notes },
+      })),
     ],
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
-  }), [q, lodgings, flights, pins])
+  }), [q, lodgings, flights, cruises, pins])
 
   const firstRun = useRef(true)
   const payloadJson = JSON.stringify(payload)
@@ -731,6 +804,31 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   if (!q.title) missing.push('título')
   if (!q.start_date) missing.push('data de ida')
   if (!q.price_per_person_cents) missing.push('valor por pessoa')
+
+  // Indicador de completude — só o que é realmente necessário pra uma
+  // cotação comercial válida (não bloqueia nada, só orienta o vendedor).
+  const completenessChecks: { label: string; done: boolean }[] = [
+    { label: 'Título', done: !!q.title },
+    { label: 'Destino', done: !!q.destinations[0]?.name },
+    { label: 'Datas da viagem', done: !!q.start_date && !!q.end_date },
+    { label: 'Passageiros', done: q.pax_adults > 0 },
+    { label: 'Pelo menos um produto', done: lodgings.length + flights.length + cruises.length > 0 },
+    { label: 'Valor total', done: q.total_cents > 0 },
+    { label: 'Forma de pagamento', done: q.payment_conditions.length > 0 },
+    { label: 'Validade da tarifa', done: q.validity_days > 0 },
+    { label: 'Política de cancelamento', done: !!q.cancellation_html?.trim() },
+  ]
+  const completeness = Math.round((completenessChecks.filter(c => c.done).length / completenessChecks.length) * 100)
+  const missingLabels = completenessChecks.filter(c => !c.done).map(c => c.label)
+
+  // Investimento centraliza o total, mas cada produto pode ter seu próprio
+  // valor — mostrado aqui só como referência informativa (o total comercial
+  // continua sendo digitado/calculado separadamente, não somado automaticamente,
+  // pra não travar cotações com desconto/pacote fechado).
+  const productBreakdown = [
+    ...lodgings.filter(l => l.option_total_cents != null).map(l => ({ icon: '🏨', label: l.name || 'Hospedagem', price_cents: l.option_total_cents ?? null })),
+    ...cruises.map(c => ({ icon: '🚢', label: c.ship_name || c.cruise_line || 'Cruzeiro', price_cents: c.total_cents ?? null })),
+  ]
 
   async function onGenerateLink(rotate: boolean) {
     if (missing.length && !rotate) {
@@ -860,6 +958,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   /* ═════════════ render ═════════════ */
   const form = (
     <div className="space-y-4 pb-24">
+      <GroupSection id="resumo" active={activeGroup}>
       {/* CAPA */}
       <EditBlock id="blk-capa" icon={ImageIcon} title="Capa">
         <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
@@ -931,12 +1030,24 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         )}
       </EditBlock>
 
+      {missingLabels.length > 0 && (
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">Cotação {completeness}% completa</p>
+          <p>Faltam: {missingLabels.join(', ')}.</p>
+        </div>
+      )}
+      </GroupSection>
+
+      <GroupSection id="conteudo" active={activeGroup}>
       {/* INTRODUÇÃO */}
       <EditBlock id="blk-intro" icon={Sparkles} title="Introdução">
         <RichField value={q.intro_html} onChange={html => setQ(s => ({ ...s, intro_html: html }))}
           placeholder="Mensagem pessoal de abertura para o cliente (com sua assinatura)…" />
       </EditBlock>
 
+      </GroupSection>
+
+      <GroupSection id="produtos" active={activeGroup}>
       {/* HOSPEDAGENS */}
       <EditBlock id="blk-hospedagens" icon={BedDouble} title="Hospedagens"
         action={<Button type="button" variant="outline" size="sm"
@@ -1066,6 +1177,120 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         </div>
       </EditBlock>
 
+      {/* CRUZEIRO — primeiro tipo de produto novo do Construtor de Viagens.
+          Mesma infra de add/editar/ordenar/excluir (SortableList) que
+          Hospedagens/Aéreo já usam; só os campos mudam. */}
+      <EditBlock id="blk-cruzeiro" icon={Ship} title="Cruzeiro"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setCruises(cs => [...cs, {
+            _key: nk(), embark_date: q.start_date || null, disembark_date: q.end_date || null,
+            pax_adults: q.pax_adults || null, pax_children: q.pax_children || null, days: [],
+          }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Cruzeiro
+        </Button>}>
+        {cruises.length === 0 && <p className="text-sm text-muted-foreground">Nenhum cruzeiro nesta cotação.</p>}
+        <SortableList items={cruises} onReorder={setCruises} render={(c) => (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium truncate">
+                {c.ship_name || c.cruise_line || 'Cruzeiro sem nome'}
+                {c.duration_nights ? ` · ${c.duration_nights} noites` : ''}
+              </span>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 -mr-1 text-destructive hover:bg-destructive/10"
+                title="Remover cruzeiro" onClick={() => setCruises(cs => cs.filter(x => x._key !== c._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+
+            {/* Essencial */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <F label="Companhia marítima"><Input placeholder="MSC Cruzeiros" value={c.cruise_line || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cruise_line: e.target.value } : x))} /></F>
+              <F label="Navio"><Input placeholder="MSC Seaview" value={c.ship_name || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, ship_name: e.target.value } : x))} /></F>
+              <F label="Roteiro"><Input placeholder="Caribe" value={c.itinerary_name || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, itinerary_name: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Embarque (data)"><Input type="date" value={c.embark_date || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, embark_date: e.target.value } : x))} /></F>
+              <F label="Desembarque (data)"><Input type="date" value={c.disembark_date || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, disembark_date: e.target.value } : x))} /></F>
+              <F label="Duração (noites)"><Input type="number" min={1} value={c.duration_nights ?? ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, duration_nights: e.target.value ? parseInt(e.target.value) : null } : x))} /></F>
+              <F label="Cabine — categoria"><Input placeholder="Balcony" value={c.cabin_category || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_category: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Porto de embarque"><Input placeholder="Miami" value={c.embark_port || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, embark_port: e.target.value } : x))} /></F>
+              <F label="Porto de desembarque"><Input placeholder="Miami" value={c.disembark_port || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, disembark_port: e.target.value } : x))} /></F>
+              <F label="Adultos"><Input type="number" min={0} value={c.pax_adults ?? ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pax_adults: e.target.value ? parseInt(e.target.value) : null } : x))} /></F>
+              <F label="Crianças"><Input type="number" min={0} value={c.pax_children ?? ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pax_children: e.target.value ? parseInt(e.target.value) : null } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <F label="Valor da cabine (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cabin_price_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_price_cents: strToCents(e.target.value) } : x))} /></F>
+              <F label="Taxas (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.taxes_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, taxes_cents: strToCents(e.target.value) } : x))} /></F>
+              <F label="Total do produto (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.total_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, total_cents: strToCents(e.target.value) } : x))} /></F>
+            </div>
+
+            {/* Recomendado */}
+            <Disclosure label="Mais detalhes da cabine e pacotes">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <F label="Tipo de cabine"><Input placeholder="Varanda" value={c.cabin_type || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_type: e.target.value } : x))} /></F>
+                <F label="Deck"><Input placeholder="9" value={c.deck || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, deck: e.target.value } : x))} /></F>
+                <F label="Localização"><Input placeholder="Meio do navio" value={c.location || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, location: e.target.value } : x))} /></F>
+                <F label="Vista"><Input placeholder="Mar" value={c.view || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, view: e.target.value } : x))} /></F>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-medium">
+                <Switch checked={!!c.cabin_guaranteed} onCheckedChange={v => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_guaranteed: v } : x))} />
+                Cabine garantida (número definido só no embarque)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <F label="Ocupação"><Input placeholder="2 adultos em cabine dupla" value={c.occupancy_label || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, occupancy_label: e.target.value } : x))} /></F>
+                <F label="Desconto (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.discount_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, discount_cents: strToCents(e.target.value) } : x))} /></F>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <F label="Pacote de bebidas"><Input placeholder="Easy Package" value={c.pkg_drinks || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_drinks: e.target.value } : x))} /></F>
+                <F label="Internet"><Input placeholder="2 dispositivos" value={c.pkg_internet || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_internet: e.target.value } : x))} /></F>
+                <F label="Restaurantes"><Input placeholder="Especialidade incluso" value={c.pkg_restaurants || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_restaurants: e.target.value } : x))} /></F>
+                <F label="Gorjetas/taxa de serviço"><Input placeholder="Inclusas" value={c.pkg_gratuities || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_gratuities: e.target.value } : x))} /></F>
+                <F label="Outros pacotes"><Input placeholder="Fotos, spa…" value={c.pkg_others || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_others: e.target.value } : x))} /></F>
+                <F label="Adicionais (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.extras_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, extras_cents: strToCents(e.target.value) } : x))} /></F>
+              </div>
+
+              {/* Itinerário por dia */}
+              <F label="Itinerário (dia a dia)">
+                <div className="space-y-1.5">
+                  {c.days.map((d, i) => (
+                    <div key={d._key} className="grid grid-cols-[36px_1fr_1fr_70px_70px_28px] gap-1.5 items-center">
+                      <Input type="number" min={1} className="text-center px-1" placeholder={`${i + 1}`} value={d.day_number ?? ''}
+                        onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.map(y => y._key === d._key ? { ...y, day_number: e.target.value ? parseInt(e.target.value) : null } : y) } : x))} />
+                      <Input placeholder="Porto/destino (ou 'Navegação')" value={d.port || ''}
+                        onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.map(y => y._key === d._key ? { ...y, port: e.target.value } : y) } : x))} />
+                      <Input type="date" value={d.date || ''}
+                        onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.map(y => y._key === d._key ? { ...y, date: e.target.value } : y) } : x))} />
+                      <Input placeholder="Chegada" value={d.arrival || ''}
+                        onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.map(y => y._key === d._key ? { ...y, arrival: e.target.value } : y) } : x))} />
+                      <Input placeholder="Saída" value={d.departure || ''}
+                        onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.map(y => y._key === d._key ? { ...y, departure: e.target.value } : y) } : x))} />
+                      <Button type="button" variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: x.days.filter(y => y._key !== d._key) } : x))}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, days: [...x.days, { _key: nk(), day_number: x.days.length + 1 }] } : x))}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Dia
+                  </Button>
+                </div>
+              </F>
+            </Disclosure>
+
+            {/* Avançado / interno — nunca aparece na proposta */}
+            <Disclosure label="Informações avançadas (interno, não aparece na proposta)">
+              <div className="grid grid-cols-2 gap-2">
+                <F label="Fornecedor"><Input value={c.supplier || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, supplier: e.target.value } : x))} /></F>
+                <F label="Código da tarifa"><Input value={c.fare_code || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, fare_code: e.target.value } : x))} /></F>
+              </div>
+              <F label="Custo (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cost_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cost_cents: strToCents(e.target.value) } : x))} /></F>
+              <F label="Observações internas"><Textarea rows={2} value={c.internal_notes || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, internal_notes: e.target.value } : x))} /></F>
+            </Disclosure>
+          </>
+        )} />
+      </EditBlock>
+      </GroupSection>
+
+      <GroupSection id="conteudo" active={activeGroup}>
       {/* MAPA */}
       <EditBlock id="blk-mapa" icon={MapIcon} title="Mapa"
         action={<Button type="button" variant="outline" size="sm"
@@ -1140,9 +1365,23 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         <RichField value={q.cancellation_html} onChange={html => setQ(s => ({ ...s, cancellation_html: html }))}
           placeholder="Condições de alteração, cancelamento e reembolso — escreva do jeito que preferir…" />
       </EditBlock>
+      </GroupSection>
 
+      <GroupSection id="investimento" active={activeGroup}>
       {/* INVESTIMENTO */}
       <EditBlock id="blk-investimento" icon={Wallet} title="Investimento">
+        {productBreakdown.length > 0 && (
+          <div className="rounded-lg border bg-muted/20 p-2.5 space-y-1">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Produtos da viagem</p>
+            {productBreakdown.map((p, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground truncate">{p.icon} {p.label}</span>
+                <span className="tabular-nums shrink-0">{p.price_cents != null ? centsToStr(p.price_cents).replace(/^/, 'R$ ') : '—'}</span>
+              </div>
+            ))}
+            <p className="text-[10px] text-muted-foreground pt-1 border-t">O total abaixo continua sendo o valor comercial final — pode diferir da soma dos produtos (descontos, arredondamento, etc.).</p>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <F label="Valor por pessoa (R$)">
             <Input inputMode="decimal" placeholder="8.900,00" defaultValue={centsToStr(q.price_per_person_cents)}
@@ -1225,7 +1464,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             onChange={e => setQ(s => ({ ...s, commission_total_cents: strToCents(e.target.value) }))} /></F>
         </div>
       </EditBlock>
+      </GroupSection>
 
+      <GroupSection id="fechamento" active={activeGroup}>
       {/* FECHAMENTO */}
       <EditBlock id="blk-fechamento" icon={MessageCircle} title="Fechamento">
         <RichField value={q.closing_html} onChange={html => setQ(s => ({ ...s, closing_html: html }))}
@@ -1237,6 +1478,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           <Link href={`/app/${orgSlug}/configuracoes/organizacoes`} className="underline">configurações da agência</Link>.
         </p>
       </EditBlock>
+      </GroupSection>
     </div>
   )
 
@@ -1304,7 +1546,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </span>
         )}
       </div>
-      <BlockNav />
+      <GroupNav active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
       </div>
 
       <div className="mt-4 max-w-4xl mx-auto">{form}</div>
