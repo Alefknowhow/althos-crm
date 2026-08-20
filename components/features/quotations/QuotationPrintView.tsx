@@ -82,7 +82,6 @@ type Quotation = {
   cancellation_html: string | null
   important_html?: string | null
   flights_html: string | null
-  cover_image_url?: string | null
   created_at?: string | null
 }
 
@@ -148,7 +147,7 @@ function CardHeader({ icon: Icon, title, right }: { icon: any; title: string; ri
     <div className="flex items-center justify-between gap-3 pb-[2.5mm] mb-[2.5mm] border-b-[0.6pt] border-[#D0D0D0]">
       <div className="flex items-center gap-[1.8mm] min-w-0">
         <Icon className="w-[3.6mm] h-[3.6mm] text-[#172A9B] shrink-0" strokeWidth={2} />
-        <p className="text-[13px] font-bold text-[#111] truncate">{title}</p>
+        <p className="text-[13pt] font-bold text-[#111] truncate">{title}</p>
       </div>
       {right && <p className="text-[7pt] text-[#555] shrink-0">{right}</p>}
     </div>
@@ -506,7 +505,7 @@ export default function QuotationPrintView({
           <div className="grid grid-cols-2 gap-x-[4mm] mb-[5mm] avoid-break">
             {(quotation.included?.length ?? 0) > 0 && (
               <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
-                <p className="text-[9pt] font-bold text-[#111] mb-[2mm]">Incluso</p>
+                <p className="text-[11pt] font-bold text-[#111] mb-[2mm]">Incluso</p>
                 <ul className="space-y-[1mm]">
                   {quotation.included!.map((item, i) => (
                     <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm]"><Check className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#16845B]" /> {item}</li>
@@ -516,7 +515,7 @@ export default function QuotationPrintView({
             )}
             {(quotation.not_included?.length ?? 0) > 0 && (
               <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
-                <p className="text-[9pt] font-bold text-[#111] mb-[2mm]">Não incluso</p>
+                <p className="text-[11pt] font-bold text-[#111] mb-[2mm]">Não incluso</p>
                 <ul className="space-y-[1mm]">
                   {quotation.not_included!.map((item, i) => (
                     <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm] text-[#555]"><X className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#C04A4A]" /> {item}</li>
@@ -530,7 +529,7 @@ export default function QuotationPrintView({
         {/* ── Forma de pagamento ────────────────────────────────── */}
         {paymentConditions.length > 0 && (
           <div className="mb-[5mm] avoid-break">
-            <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Forma de pagamento</p>
+            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Forma de pagamento</p>
             <ul className="space-y-[0.5mm]">
               {paymentConditions.map((p, i) => (
                 <li key={i} className="text-[7.5pt] text-[#555]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
@@ -542,7 +541,7 @@ export default function QuotationPrintView({
         {/* ── Política de cancelamento ──────────────────────────── */}
         {cancellationHasContent && (
           <div className="mb-[5mm] avoid-break">
-            <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Política de cancelamento</p>
+            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Política de cancelamento</p>
             <Rich html={quotation.cancellation_html} className="text-[7.5pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
           </div>
         )}
