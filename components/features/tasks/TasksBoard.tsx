@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
-  LayoutGrid, List as ListIcon, CalendarDays, Calendar, User2, UserCheck, CheckCircle2, Circle,
+  LayoutGrid, CalendarDays, Calendar, User2, UserCheck, CheckCircle2, Circle,
   Clock, GripVertical, Trash2, Plus, Check, X, Pencil, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
@@ -40,7 +40,7 @@ type Task = {
   leads?: { id: string; name: string } | null
 }
 
-type View = 'kanban' | 'list' | 'calendar'
+type View = 'split' | 'kanban'
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
 type AssigneeFilter = 'all' | 'none' | string
 type DateFilter = 'all' | 'overdue' | 'today' | 'this_week' | 'next_week' | 'this_month'
@@ -120,10 +120,11 @@ export default function TasksBoard({
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [columns, setColumns] = useState<Column[]>(initialColumns)
-  const [view, setView] = useState<View>('kanban')
+  const [view, setView] = useState<View>('split')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [assignee, setAssignee] = useState<AssigneeFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [editing, setEditing] = useState<Task | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
@@ -140,14 +141,15 @@ export default function TasksBoard({
   // Restore preferred view (avoid SSR hydration mismatch by reading after mount).
   useEffect(() => {
     const v = localStorage.getItem('tasks-view')
-    if (v === 'kanban' || v === 'list' || v === 'calendar') setView(v)
+    if (v === 'kanban' || v === 'split') setView(v)
   }, [])
   function pickView(v: View) {
     setView(v)
     localStorage.setItem('tasks-view', v)
   }
 
-  // On mobile, only the list view is available (kanban needs horizontal space).
+  // On mobile, nem o Kanban nem o split calendário+lista cabem lado a lado —
+  // sempre cai na lista agrupada (mesma UI usada há tempos nessa faixa).
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)')
@@ -156,7 +158,7 @@ export default function TasksBoard({
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
   }, [])
-  const effectiveView: View = isMobile && view === 'kanban' ? 'list' : view
+  const effectiveView: View | 'list' = isMobile ? 'list' : view
 
   // Week/month boundaries (recomputed per render — cheap, keeps "today" fresh).
   const bounds = useMemo(() => {
@@ -259,6 +261,13 @@ export default function TasksBoard({
     for (const k of Object.keys(map)) map[k] = doneLast(map[k])
     return map
   }, [filtered])
+
+  // Painel de lista do split view: quando uma data é selecionada no calendário,
+  // restringe à lista daquele dia; senão segue os filtros normais (agrupado por coluna).
+  const splitListTasks = useMemo(() => {
+    if (!selectedDate) return null
+    return tasksByDate[selectedDate] || []
+  }, [selectedDate, tasksByDate])
 
   async function moveTo(taskId: string, columnId: string) {
     const task = tasks.find(t => t.id === taskId)
@@ -409,8 +418,7 @@ export default function TasksBoard({
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="hidden sm:inline-flex rounded-lg border bg-muted/30 p-0.5">
-            <ViewBtn active={view === 'calendar'} onClick={() => pickView('calendar')} icon={CalendarDays} label="Calendário" />
-            <ViewBtn active={view === 'list'} onClick={() => pickView('list')} icon={ListIcon} label="Lista" />
+            <ViewBtn active={view === 'split'} onClick={() => pickView('split')} icon={CalendarDays} label="Calendário" />
             <ViewBtn active={view === 'kanban'} onClick={() => pickView('kanban')} icon={LayoutGrid} label="Kanban" />
           </div>
         </div>
@@ -557,96 +565,6 @@ export default function TasksBoard({
             Nova coluna
           </button>
         </div>
-      ) : effectiveView === 'calendar' ? (
-        <div className="rounded-none border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCalMonth(m => addMonths(m, -1))}
-                className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-                aria-label="Mês anterior"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-sm font-semibold min-w-[130px] text-center capitalize">
-                {calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-              </span>
-              <button
-                onClick={() => setCalMonth(m => addMonths(m, 1))}
-                className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-                aria-label="Próximo mês"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <button
-              onClick={() => setCalMonth(startOfMonth(new Date()))}
-              className={cn('px-2.5 h-7 rounded-md border text-xs font-medium hover:bg-muted transition-colors', FOCUS_RING)}
-            >
-              Hoje
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 border-b">
-            {WEEKDAYS_PT.map(w => (
-              <div key={w} className="py-2 text-center text-[11px] font-medium text-muted-foreground">{w}</div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7">
-            {calDays.map((d, i) => {
-              const key = ymd(d)
-              const dayTasks = tasksByDate[key] || []
-              const inMonth = d.getMonth() === calMonth.getMonth()
-              const isToday = key === ymd(new Date())
-              const visible = dayTasks.slice(0, 3)
-              const overflow = dayTasks.length - visible.length
-              return (
-                <div
-                  key={key}
-                  className={cn(
-                    'min-h-[92px] sm:min-h-[104px] border-b border-r p-1.5',
-                    (i + 1) % 7 === 0 && 'border-r-0',
-                    i >= 35 && 'border-b-0',
-                    !inMonth && 'bg-muted/20',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1',
-                      isToday ? 'bg-primary text-primary-foreground font-semibold'
-                        : inMonth ? 'text-muted-foreground' : 'text-muted-foreground/40',
-                    )}
-                  >
-                    {d.getDate()}
-                  </span>
-                  <div className="space-y-0.5">
-                    {visible.map(t => {
-                      const pm = PRIORITY_META[t.priority]
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => setEditing(t)}
-                          title={t.title}
-                          className={cn(
-                            'w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate border',
-                            pm.cls,
-                            t.status === 'done' && 'opacity-50 line-through',
-                          )}
-                        >
-                          {t.title}
-                        </button>
-                      )
-                    })}
-                    {overflow > 0 && (
-                      <DayOverflowPopover tasks={dayTasks} onOpen={setEditing} label={`+${overflow} mais`} />
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
       ) : isMobile ? (
         <div className="space-y-2">
           {([
@@ -694,48 +612,185 @@ export default function TasksBoard({
           })}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground border rounded-none">Nenhuma tarefa nesta visão.</div>
-          ) : (
-            columns.map(col => {
-              const list = byColumn[col.id] ?? []
-              const isOpen = openColumnId === col.id
-              return (
-                <div key={col.id} className="overflow-hidden rounded-[8px] border bg-card">
-                  <button
-                    type="button"
-                    onClick={() => setOpenColumnId(isOpen ? null : col.id)}
-                    className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+          {/* Calendário — ~40% */}
+          <div className="lg:col-span-2 rounded-none border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCalMonth(m => addMonths(m, -1))}
+                  className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
+                  aria-label="Mês anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-semibold min-w-[130px] text-center capitalize">
+                  {calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => setCalMonth(m => addMonths(m, 1))}
+                  className={cn('flex items-center justify-center h-7 w-7 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
+                  aria-label="Próximo mês"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                onClick={() => { setCalMonth(startOfMonth(new Date())); setSelectedDate(null) }}
+                className={cn('px-2.5 h-7 rounded-md border text-xs font-medium hover:bg-muted transition-colors', FOCUS_RING)}
+              >
+                Hoje
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 border-b">
+              {WEEKDAYS_PT.map(w => (
+                <div key={w} className="py-2 text-center text-[11px] font-medium text-muted-foreground">{w}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7">
+              {calDays.map((d, i) => {
+                const key = ymd(d)
+                const dayTasks = tasksByDate[key] || []
+                const inMonth = d.getMonth() === calMonth.getMonth()
+                const isToday = key === ymd(new Date())
+                const isSelected = key === selectedDate
+                const visible = dayTasks.slice(0, 3)
+                const overflow = dayTasks.length - visible.length
+                return (
+                  <div
+                    key={key}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedDate(prev => (prev === key ? null : key))}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(prev => (prev === key ? null : key)) } }}
+                    className={cn(
+                      'min-h-[92px] sm:min-h-[104px] border-b border-r p-1.5 text-left align-top transition-colors hover:bg-muted/30 cursor-pointer',
+                      (i + 1) % 7 === 0 && 'border-r-0',
+                      i >= 35 && 'border-b-0',
+                      !inMonth && 'bg-muted/20',
+                      isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/40',
+                    )}
                   >
-                    <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
-                    <span className="flex-1 text-sm font-semibold">{col.name}</span>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-                      {list.length}
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1',
+                        isToday ? 'bg-primary text-primary-foreground font-semibold'
+                          : inMonth ? 'text-muted-foreground' : 'text-muted-foreground/40',
+                      )}
+                    >
+                      {d.getDate()}
                     </span>
-                  </button>
-                  {isOpen && (
-                    <div className="divide-y border-t">
-                      {list.length === 0 ? (
-                        <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
-                      ) : (
-                        list.map(task => (
-                          <TaskRow
-                            key={task.id}
-                            task={task}
-                            orgSlug={orgSlug}
-                            columnName={col.name}
-                            onOpen={() => setEditing(task)}
-                            onToggleDone={() => handleToggleDone(task)}
-                          />
-                        ))
+                    <div className="space-y-0.5">
+                      {visible.map(t => {
+                        const pm = PRIORITY_META[t.priority]
+                        return (
+                          <span
+                            key={t.id}
+                            onClick={e => { e.stopPropagation(); setEditing(t) }}
+                            title={t.title}
+                            className={cn(
+                              'block w-full text-left text-[10px] leading-tight px-1 py-0.5 rounded truncate border',
+                              pm.cls,
+                              t.status === 'done' && 'opacity-50 line-through',
+                            )}
+                          >
+                            {t.title}
+                          </span>
+                        )
+                      })}
+                      {overflow > 0 && (
+                        <span
+                          onClick={e => e.stopPropagation()}
+                          className="block"
+                        >
+                          <DayOverflowPopover tasks={dayTasks} onOpen={setEditing} label={`+${overflow} mais`} />
+                        </span>
                       )}
                     </div>
-                  )}
-                </div>
-              )
-            })
-          )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Lista — ~60% */}
+          <div className="lg:col-span-3 space-y-2">
+            {selectedDate ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">
+                  Tarefas em {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(null)}
+                  className={cn('inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground', FOCUS_RING)}
+                >
+                  <X className="w-3.5 h-3.5" /> Limpar filtro
+                </button>
+              </div>
+            ) : null}
+
+            {selectedDate ? (
+              <div className="overflow-hidden rounded-[8px] border bg-card divide-y">
+                {(splitListTasks?.length ?? 0) === 0 ? (
+                  <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa nesse dia.</div>
+                ) : (
+                  splitListTasks!.map(task => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      orgSlug={orgSlug}
+                      columnName={columns.find(c => c.id === task.column_id)?.name ?? columns[0]?.name ?? ''}
+                      onOpen={() => setEditing(task)}
+                      onToggleDone={() => handleToggleDone(task)}
+                    />
+                  ))
+                )}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground border rounded-none">Nenhuma tarefa nesta visão.</div>
+            ) : (
+              columns.map(col => {
+                const list = byColumn[col.id] ?? []
+                const isOpen = openColumnId === col.id
+                return (
+                  <div key={col.id} className="overflow-hidden rounded-[8px] border bg-card">
+                    <button
+                      type="button"
+                      onClick={() => setOpenColumnId(isOpen ? null : col.id)}
+                      className="flex w-full items-center gap-2.5 px-3 py-3 text-left"
+                    >
+                      <ChevronRight className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-90')} />
+                      <span className="flex-1 text-sm font-semibold">{col.name}</span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                        {list.length}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="divide-y border-t">
+                        {list.length === 0 ? (
+                          <div className="p-6 text-center text-xs text-muted-foreground">Nenhuma tarefa aqui.</div>
+                        ) : (
+                          list.map(task => (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              orgSlug={orgSlug}
+                              columnName={col.name}
+                              onOpen={() => setEditing(task)}
+                              onToggleDone={() => handleToggleDone(task)}
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
       )}
 
@@ -974,9 +1029,9 @@ function EditSheet({
   const defaultDate = task?.due_date ? task.due_date.split('T')[0] : ''
 
   return (
-    <Dialog open={!!task} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Editar Tarefa</DialogTitle></DialogHeader>
+    <Sheet open={!!task} onOpenChange={o => !o && onClose()}>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader><SheetTitle>Editar Tarefa</SheetTitle></SheetHeader>
         {task && (
           <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
@@ -1024,15 +1079,15 @@ function EditSheet({
                 </Select>
               </div>
             )}
-            <DialogFooter>
+            <SheetFooter>
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir
               </Button>
               <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
