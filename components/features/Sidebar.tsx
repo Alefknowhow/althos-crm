@@ -179,9 +179,18 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         <SidebarNavLink href={base} exact dataTour="insights">
           <span className="flex items-center gap-2.5">
             <LayoutDashboard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Inicial</span>
+            <span>Dashboards</span>
           </span>
         </SidebarNavLink>
+
+        {can('financial') && (
+          <SidebarNavLink href={`${base}/financeiro`}>
+            <span className="flex items-center gap-2.5">
+              <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Financeiro</span>
+            </span>
+          </SidebarNavLink>
+        )}
 
         {isOwnerOrAdmin && planReports && (
           <SidebarNavLink href={`${base}/relatorios`}>
@@ -466,15 +475,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
         {/* ── Operações ─────────────────────────────── */}
         <SectionLabel>Operações</SectionLabel>
-
-        {can('financial') && (
-          <SidebarNavLink href={`${base}/financeiro`}>
-            <span className="flex items-center gap-2.5">
-              <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Financeiro</span>
-            </span>
-          </SidebarNavLink>
-        )}
 
         {can('automations') && (
           <div className="hidden md:block">

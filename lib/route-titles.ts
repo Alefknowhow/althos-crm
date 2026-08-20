@@ -1,6 +1,6 @@
 /** Rótulo da primeira linha da página, derivado do 1º segmento após /app/{orgSlug}/ — mesmos nomes usados no Sidebar. */
 const ROUTE_TITLES: Record<string, string> = {
-  '': 'Inicial',
+  '': 'Dashboards',
   relatorios: 'Relatórios',
   pipeline: 'Pipeline',
   contatos: 'Contatos',

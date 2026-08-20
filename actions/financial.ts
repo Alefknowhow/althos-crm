@@ -27,6 +27,9 @@ export type FinancialEntryRow = {
   data_pagamento: string | null
   status: 'pendente' | 'pago' | 'vencido' | 'cancelado'
   contato_id: string | null
+  /** Nome do contato vinculado — só presente quando a query fizer o join
+   *  (listFinancialEntries/getFinancialEntry); nunca gravado na tabela. */
+  contato_nome?: string | null
   venda_id: string | null
   operadora: string | null
   /** Só em lançamentos gerados de reservas com comissão retida: 'retida'
@@ -223,7 +226,7 @@ export async function listFinancialEntries(
   const supabase = createClient()
   let query = supabase
     .from('financial_entries')
-    .select('*')
+    .select('*, contatos(name)')
     .eq('organization_id', org.id)
 
   if (filters?.tipo) query = query.eq('tipo', filters.tipo)
@@ -242,7 +245,7 @@ export async function listFinancialEntries(
   }
 
   const { data } = await query.order('competencia', { ascending: false }).limit(1000)
-  return ((data as FinancialEntryRow[]) ?? []).map(withEffectiveStatus)
+  return ((data as any[]) ?? []).map((r: any) => withEffectiveStatus({ ...r, contato_nome: r.contatos?.name ?? null }))
 }
 
 export async function getFinancialEntry(orgSlug: string, id: string): Promise<FinancialEntryRow | null> {
@@ -253,11 +256,11 @@ export async function getFinancialEntry(orgSlug: string, id: string): Promise<Fi
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
-    .select('*')
+    .select('*, contatos(name)')
     .eq('organization_id', org.id)
     .eq('id', id)
     .maybeSingle()
-  return data ? withEffectiveStatus(data as FinancialEntryRow) : null
+  return data ? withEffectiveStatus({ ...(data as any), contato_nome: (data as any).contatos?.name ?? null } as FinancialEntryRow) : null
 }
 
 export async function createFinancialEntry(orgSlug: string, input: Record<string, any>) {
