@@ -5,7 +5,7 @@
 // =====================================================================
 
 /** Classificação do contato. "cliente" é apenas um status, não outra entidade. */
-export const CONTATO_STATUSES = ['lead', 'cliente', 'inativo'] as const
+export const CONTATO_STATUSES = ['lead', 'cliente', 'inativo', 'fornecedor', 'colaborador'] as const
 export type ContatoStatus = (typeof CONTATO_STATUSES)[number]
 
 export const CONTATO_STATUS_META: Record<
@@ -26,6 +26,16 @@ export const CONTATO_STATUS_META: Record<
     label: 'Inativo',
     badgeClass: 'border-zinc-300 text-zinc-600 bg-zinc-50 dark:bg-zinc-800/40',
     dot: 'bg-zinc-400',
+  },
+  fornecedor: {
+    label: 'Fornecedor',
+    badgeClass: 'border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-900/20',
+    dot: 'bg-amber-500',
+  },
+  colaborador: {
+    label: 'Colaborador',
+    badgeClass: 'border-violet-300 text-violet-700 bg-violet-50 dark:bg-violet-900/20',
+    dot: 'bg-violet-500',
   },
 }
 

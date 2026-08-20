@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { parseDate } from '@/lib/csv'
+import { CONTATO_STATUSES } from '@/lib/contatos'
 
 /** Escapa um valor pra célula CSV (aspas duplas + separador). */
 function csvCell(v: unknown): string {
@@ -74,7 +75,7 @@ export async function bulkImportContatos(orgSlug: string, rows: ImportContatoRow
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
-  const validStatus = new Set(['lead', 'cliente', 'inativo'])
+  const validStatus = new Set<string>(CONTATO_STATUSES)
   let imported = 0
   const errors: string[] = []
 
