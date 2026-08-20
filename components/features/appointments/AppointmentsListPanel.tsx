@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/table'
 import { Calendar, ExternalLink, X, Check, CalendarDays, CalendarRange, List as ListIcon } from 'lucide-react'
 import { cancelAppointment, markAppointmentCompleted } from '@/actions/appointments'
+import { setClinicAppointmentStatus, type ClinicAppointmentContext } from '@/actions/clinic'
+import { CLINIC_STATUSES, CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
 import AppointmentsCalendar, {
   type CalendarAppointment,
 } from './AppointmentsCalendar'
@@ -25,11 +27,17 @@ import NewAppointmentDialog from './NewAppointmentDialog'
 
 type Appointment = CalendarAppointment
 
+type ClinicOption = { id: string; name: string }
+
 type Props = {
   orgSlug: string
   upcoming: Appointment[]
   past: Appointment[]
   eventTypes: { id: string; name: string; duration_minutes: number; color: string | null }[]
+  isClinic?: boolean
+  clinicProfessionals?: ClinicOption[]
+  clinicRooms?: ClinicOption[]
+  clinicContexts?: Record<string, ClinicAppointmentContext>
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -65,12 +73,20 @@ function AppointmentRow({
   onCancel,
   onComplete,
   loading,
+  isClinic,
+  clinicContext,
+  professionalName,
+  onClinicStatusChange,
 }: {
   orgSlug: string
   appt: Appointment
   onCancel: (a: Appointment) => void
   onComplete: (a: Appointment) => void
   loading: boolean
+  isClinic?: boolean
+  clinicContext?: ClinicAppointmentContext
+  professionalName?: string | null
+  onClinicStatusChange?: (appt: Appointment, status: ClinicStatus) => void
 }) {
   const et = pickFirst(appt.event_types)
   const lead = pickFirst(appt.leads)
@@ -84,7 +100,9 @@ function AppointmentRow({
           )}
           <div>
             <div className="text-sm font-medium">{et?.name || '—'}</div>
-            <div className="text-xs text-muted-foreground">{et?.duration_minutes} min</div>
+            <div className="text-xs text-muted-foreground">
+              {et?.duration_minutes} min{professionalName ? ` · ${professionalName}` : ''}
+            </div>
           </div>
         </div>
       </TableCell>
@@ -98,6 +116,17 @@ function AppointmentRow({
           <div className="text-[10px] text-muted-foreground mt-1 max-w-[180px] truncate">
             {appt.canceled_reason}
           </div>
+        )}
+        {isClinic && (
+          <select
+            className="mt-1 block h-6 rounded border border-input bg-input/25 px-1 text-[10px]"
+            value={clinicContext?.clinic_status || 'agendado'}
+            onChange={e => onClinicStatusChange?.(appt, e.target.value as ClinicStatus)}
+          >
+            {CLINIC_STATUSES.map(s => (
+              <option key={s} value={s}>{CLINIC_STATUS_LABEL[s]}</option>
+            ))}
+          </select>
         )}
       </TableCell>
       <TableCell>
@@ -141,11 +170,25 @@ function AppointmentRow({
   )
 }
 
-export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTypes }: Props) {
+export default function AppointmentsListPanel({
+  orgSlug, upcoming, past, eventTypes,
+  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {},
+}: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<'week' | 'month' | 'list'>('week')
+  const professionalNameById = new Map(clinicProfessionals.map(p => [p.id, p.name]))
+
+  async function handleClinicStatusChange(a: Appointment, status: ClinicStatus) {
+    const res = await setClinicAppointmentStatus(orgSlug, a.id, status)
+    if (res.ok) {
+      toast.success('Status atualizado')
+      startTransition(() => router.refresh())
+    } else {
+      toast.error(res.error)
+    }
+  }
 
   // Unified list for calendar (it filters by date range itself).
   const all = useMemo(() => [...upcoming, ...past], [upcoming, past])
@@ -209,6 +252,10 @@ export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTy
                   onCancel={handleCancel}
                   onComplete={handleComplete}
                   loading={loading}
+                  isClinic={isClinic}
+                  clinicContext={clinicContexts[a.id]}
+                  professionalName={clinicContexts[a.id]?.professional_id ? professionalNameById.get(clinicContexts[a.id].professional_id!) : null}
+                  onClinicStatusChange={handleClinicStatusChange}
                 />
               ))}
             </TableBody>
@@ -258,7 +305,13 @@ export default function AppointmentsListPanel({ orgSlug, upcoming, past, eventTy
           </button>
         </div>
 
-        <NewAppointmentDialog orgSlug={orgSlug} eventTypes={eventTypes} />
+        <NewAppointmentDialog
+          orgSlug={orgSlug}
+          eventTypes={eventTypes}
+          isClinic={isClinic}
+          clinicProfessionals={clinicProfessionals}
+          clinicRooms={clinicRooms}
+        />
       </div>
 
       {view === 'list' ? (

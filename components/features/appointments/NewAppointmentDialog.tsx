@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus } from 'lucide-react'
 import { createManualAppointment } from '@/actions/appointments'
+import { upsertClinicAppointmentContext } from '@/actions/clinic'
 import { traduzirErro } from '@/lib/utils/error-translator'
 
 type EventType = {
@@ -26,9 +27,16 @@ type EventType = {
   color: string | null
 }
 
+type ClinicOption = { id: string; name: string }
+
 type Props = {
   orgSlug: string
   eventTypes: EventType[]
+  /** true só pra orgs do nicho Clínicas — habilita os campos de
+   *  profissional/sala no agendamento manual. */
+  isClinic?: boolean
+  clinicProfessionals?: ClinicOption[]
+  clinicRooms?: ClinicOption[]
 }
 
 function todayLocal(): string {
@@ -41,7 +49,7 @@ function todayLocal(): string {
   return `${y}-${m}-${day}`
 }
 
-export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
+export default function NewAppointmentDialog({ orgSlug, eventTypes, isClinic = false, clinicProfessionals = [], clinicRooms = [] }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -57,6 +65,8 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
     email: '',
     phone: '',
     notes: '',
+    professionalId: '',
+    roomId: '',
   })
 
   function onEventTypeChange(id: string) {
@@ -92,13 +102,19 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
       guestPhone: form.phone || null,
       notes: form.notes || null,
     })
+    if (res.ok && isClinic && (form.professionalId || form.roomId)) {
+      await upsertClinicAppointmentContext(orgSlug, res.appointmentId, {
+        professional_id: form.professionalId || null,
+        room_id: form.roomId || null,
+      })
+    }
     setSaving(false)
 
     if (res.ok) {
       toast.success('Agendamento criado')
       setOpen(false)
       // Reset minimal fields; keep eventType pick so a busy operator can chain creations.
-      setForm(f => ({ ...f, name: '', email: '', phone: '', notes: '' }))
+      setForm(f => ({ ...f, name: '', email: '', phone: '', notes: '', professionalId: '', roomId: '' }))
       startTransition(() => router.refresh())
     } else {
       toast.error(traduzirErro(res.error, 'Erro ao criar agendamento'))
@@ -210,6 +226,41 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes }: Props) {
               />
             </div>
           </div>
+
+          {isClinic && (clinicProfessionals.length > 0 || clinicRooms.length > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              {clinicProfessionals.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Profissional</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                    value={form.professionalId}
+                    onChange={e => setForm({ ...form, professionalId: e.target.value })}
+                  >
+                    <option value="">Sem profissional definido</option>
+                    {clinicProfessionals.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {clinicRooms.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Sala</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                    value={form.roomId}
+                    onChange={e => setForm({ ...form, roomId: e.target.value })}
+                  >
+                    <option value="">Sem sala definida</option>
+                    {clinicRooms.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Notas</Label>

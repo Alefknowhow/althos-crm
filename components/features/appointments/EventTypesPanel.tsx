@@ -29,6 +29,7 @@ import {
   toggleEventTypeActive,
   deleteEventType,
 } from '@/actions/appointments'
+import { upsertClinicServiceContext, type ClinicServiceContext } from '@/actions/clinic'
 
 type EventType = {
   id: string
@@ -47,12 +48,17 @@ type EventType = {
 
 type Pipeline = { id: string; name: string }
 type Stage = { id: string; name: string; pipeline_id: string }
+type ClinicOption = { id: string; name: string }
 
 type Props = {
   orgSlug: string
   eventTypes: EventType[]
   pipelines: Pipeline[]
   stages: Stage[]
+  isClinic?: boolean
+  clinicSpecialties?: ClinicOption[]
+  clinicRooms?: ClinicOption[]
+  clinicServiceContexts?: Record<string, ClinicServiceContext>
 }
 
 const DEFAULT_DRAFT = {
@@ -65,9 +71,15 @@ const DEFAULT_DRAFT = {
   buffer_after_minutes: 0,
   pipeline_id: '',
   stage_id: '',
+  specialty_id: '',
+  room_id: '',
+  price: '',
 }
 
-export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages }: Props) {
+export default function EventTypesPanel({
+  orgSlug, eventTypes, pipelines, stages,
+  isClinic = false, clinicSpecialties = [], clinicRooms = [], clinicServiceContexts = {},
+}: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -88,6 +100,7 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
 
   function openEdit(et: EventType) {
     setEditingId(et.id)
+    const ctx = clinicServiceContexts[et.id]
     setDraft({
       name: et.name,
       duration_minutes: et.duration_minutes,
@@ -98,6 +111,9 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
       buffer_after_minutes: et.buffer_after_minutes,
       pipeline_id: et.pipeline_id || '',
       stage_id: et.stage_id || '',
+      specialty_id: ctx?.specialty_id || '',
+      room_id: ctx?.room_id || '',
+      price: ctx?.price_cents ? String(ctx.price_cents / 100) : '',
     })
     setDialogOpen(true)
   }
@@ -116,6 +132,16 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
     const res = editingId
       ? await updateEventType(orgSlug, editingId, payload)
       : await createEventType(orgSlug, payload)
+    if (res.ok && isClinic) {
+      const eventTypeId = editingId || (res as any).id
+      if (eventTypeId) {
+        await upsertClinicServiceContext(orgSlug, eventTypeId, {
+          specialty_id: draft.specialty_id || null,
+          room_id: draft.room_id || null,
+          price_cents: draft.price ? Math.round(parseFloat(draft.price.replace(',', '.')) * 100) : null,
+        })
+      }
+    }
     setSaving(false)
     if (res.ok) {
       toast.success(editingId ? 'Atualizado' : 'Tipo de evento criado')
@@ -309,6 +335,44 @@ export default function EventTypesPanel({ orgSlug, eventTypes, pipelines, stages
                   </>
                 )}
               </div>
+
+              {isClinic && (
+                <div className="space-y-3 rounded-md border p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contexto clínico</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Especialidade</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                        value={draft.specialty_id}
+                        onChange={e => setDraft({ ...draft, specialty_id: e.target.value })}
+                      >
+                        <option value="">(Nenhuma)</option>
+                        {clinicSpecialties.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sala padrão</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                        value={draft.room_id}
+                        onChange={e => setDraft({ ...draft, room_id: e.target.value })}
+                      >
+                        <option value="">(Nenhuma)</option>
+                        {clinicRooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preço (R$)</Label>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        value={draft.price}
+                        onChange={e => setDraft({ ...draft, price: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <DialogFooter>
                 <Button type="submit" disabled={saving || draft.name.length < 2}>

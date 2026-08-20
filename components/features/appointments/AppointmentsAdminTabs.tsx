@@ -5,6 +5,7 @@ import { Calendar, Clock, List } from 'lucide-react'
 import EventTypesPanel from './EventTypesPanel'
 import AvailabilityPanel from './AvailabilityPanel'
 import AppointmentsListPanel from './AppointmentsListPanel'
+import type { ClinicServiceContext, ClinicAppointmentContext } from '@/actions/clinic'
 
 type EventType = {
   id: string
@@ -31,6 +32,7 @@ type Availability = {
 
 type Pipeline = { id: string; name: string; is_default: boolean }
 type Stage = { id: string; name: string; pipeline_id: string }
+type ClinicOption = { id: string; name: string }
 
 type Props = {
   orgSlug: string
@@ -40,6 +42,12 @@ type Props = {
   past: any[]
   pipelines: Pipeline[]
   stages: Stage[]
+  isClinic?: boolean
+  clinicSpecialties?: ClinicOption[]
+  clinicProfessionals?: ClinicOption[]
+  clinicRooms?: ClinicOption[]
+  clinicServiceContexts?: Record<string, ClinicServiceContext>
+  clinicAppointmentContexts?: Record<string, ClinicAppointmentContext>
 }
 
 export default function AppointmentsAdminTabs(props: Props) {
@@ -65,6 +73,10 @@ export default function AppointmentsAdminTabs(props: Props) {
           eventTypes={props.eventTypes}
           pipelines={props.pipelines}
           stages={props.stages}
+          isClinic={props.isClinic}
+          clinicSpecialties={props.clinicSpecialties}
+          clinicRooms={props.clinicRooms}
+          clinicServiceContexts={props.clinicServiceContexts}
         />
       </TabsContent>
 
@@ -82,6 +94,10 @@ export default function AppointmentsAdminTabs(props: Props) {
           upcoming={props.upcoming}
           past={props.past}
           eventTypes={props.eventTypes}
+          isClinic={props.isClinic}
+          clinicProfessionals={props.clinicProfessionals}
+          clinicRooms={props.clinicRooms}
+          clinicContexts={props.clinicAppointmentContexts}
         />
       </TabsContent>
     </Tabs>

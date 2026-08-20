@@ -8,6 +8,10 @@ import { listPipelines } from '@/actions/pipeline'
 import { createClient } from '@/lib/supabase/server'
 import AppointmentsAdminTabs from '@/components/features/appointments/AppointmentsAdminTabs'
 import { PageHeader } from '@/components/ui/page-header'
+import { isClinicNiche } from '@/lib/niche'
+import {
+  listClinicSpecialties, listClinicProfessionals, listClinicRooms, listClinicAppointmentContexts,
+} from '@/actions/clinic'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +19,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
   const supabase = createClient()
+  const isClinic = isClinicNiche((org as any).niche)
 
   const [eventTypes, availabilities, upcoming, past, pipelines, pipelinesForStages] = await Promise.all([
     listEventTypes(params.orgSlug),
@@ -24,6 +29,29 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
     listPipelines(params.orgSlug),
     supabase.from('pipelines').select('id').eq('organization_id', org.id),
   ])
+
+  // Contexto clínico — só busca quando o nicho é Clínicas, pra não pagar
+  // essas queries extras em nenhum outro tenant.
+  let clinicSpecialties: { id: string; name: string }[] = []
+  let clinicProfessionals: { id: string; name: string }[] = []
+  let clinicRooms: { id: string; name: string }[] = []
+  let clinicAppointmentContexts: Record<string, any> = {}
+  let clinicServiceContexts: Record<string, any> = {}
+  if (isClinic) {
+    const allAppointmentIds = [...upcoming, ...past].map((a: any) => a.id)
+    const [specialties, professionals, rooms, apptContexts, svcContextsRows] = await Promise.all([
+      listClinicSpecialties(params.orgSlug),
+      listClinicProfessionals(params.orgSlug),
+      listClinicRooms(params.orgSlug),
+      listClinicAppointmentContexts(params.orgSlug, allAppointmentIds),
+      supabase.from('clinic_service_context').select('event_type_id, specialty_id, price_cents, room_id').eq('organization_id', org.id),
+    ])
+    clinicSpecialties = specialties.filter(s => s.active)
+    clinicProfessionals = professionals.filter(p => p.active)
+    clinicRooms = rooms.filter(r => r.active)
+    clinicAppointmentContexts = apptContexts
+    clinicServiceContexts = Object.fromEntries((svcContextsRows.data || []).map((r: any) => [r.event_type_id, r]))
+  }
 
   const pipelineIds = (pipelinesForStages.data || []).map(p => p.id)
   const { data: stages } =
@@ -50,6 +78,12 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
         past={past as any[]}
         pipelines={pipelines}
         stages={stages || []}
+        isClinic={isClinic}
+        clinicSpecialties={clinicSpecialties}
+        clinicProfessionals={clinicProfessionals}
+        clinicRooms={clinicRooms}
+        clinicServiceContexts={clinicServiceContexts}
+        clinicAppointmentContexts={clinicAppointmentContexts}
       />
     </div>
   )
