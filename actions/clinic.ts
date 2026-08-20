@@ -282,11 +282,46 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
   // Sincronização mínima com o status Core (appointments.status).
   if (status === 'realizado') {
     await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointmentId).eq('organization_id', org.id)
+
+    // Cria automaticamente um registro de atendimento (Fase 5) — se ainda
+    // não existir um pra esse agendamento (idempotente via unique index em
+    // appointment_id). Preenche o mínimo a partir do próprio agendamento;
+    // o profissional preenche observações/recomendações/retorno depois.
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('lead_id, event_type_id, start_time')
+      .eq('id', appointmentId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    const { data: ctx } = await supabase
+      .from('clinic_appointment_context')
+      .select('professional_id')
+      .eq('appointment_id', appointmentId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (appt?.lead_id) {
+      const { data: existing } = await supabase
+        .from('clinic_attendances')
+        .select('id')
+        .eq('appointment_id', appointmentId)
+        .maybeSingle()
+      if (!existing) {
+        await supabase.from('clinic_attendances').insert({
+          organization_id: org.id,
+          appointment_id: appointmentId,
+          patient_contato_id: appt.lead_id,
+          professional_id: ctx?.professional_id || null,
+          event_type_id: appt.event_type_id || null,
+          attended_at: appt.start_time || new Date().toISOString(),
+        })
+      }
+    }
   } else if (status === 'cancelado' || status === 'no_show') {
     await supabase.from('appointments').update({ status: 'canceled' }).eq('id', appointmentId).eq('organization_id', org.id)
   }
 
   revalidatePath(`/app/${orgSlug}/agendamentos`)
+  revalidatePath(`/app/${orgSlug}/atendimentos`)
   return { ok: true as const }
 }
 

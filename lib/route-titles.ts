@@ -29,6 +29,7 @@ const ROUTE_TITLES: Record<string, string> = {
   avaliacoes: 'Avaliações do Google',
   profissionais: 'Profissionais',
   orcamentos: 'Orçamentos',
+  atendimentos: 'Atendimentos',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */

@@ -26,6 +26,7 @@ export type PermissionKey =
   // Nicho de clínicas
   | 'profissionais'
   | 'orcamentos_clinica'
+  | 'atendimentos_clinica'
   | 'conversations'
   | 'social'
   | 'insights'
@@ -70,6 +71,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   // Clínicas (só orgs do nicho de clínicas)
   { key: 'profissionais', label: 'Profissionais',     section: 'Clínicas' },
   { key: 'orcamentos_clinica', label: 'Orçamentos',   section: 'Clínicas' },
+  { key: 'atendimentos_clinica', label: 'Atendimentos', section: 'Clínicas' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
@@ -135,6 +137,7 @@ export function defaultMemberPermissions(): Permissions {
     roteirista:    false,
     profissionais: false,
     orcamentos_clinica: false,
+    atendimentos_clinica: false,
     marketing:     false,
     automations:   false,
     templates:     false,
@@ -147,7 +150,7 @@ export function defaultMemberPermissions(): Permissions {
 const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
   'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos', 'roteirista',
 ])
-const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica'])
+const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica', 'atendimentos_clinica'])
 
 /**
  * Group modules by section for rendering. Pass `isTravel` to hide the

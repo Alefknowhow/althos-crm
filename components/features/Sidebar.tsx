@@ -36,6 +36,7 @@ import {
   Sparkles,
   Star,
   Stethoscope,
+  ClipboardList,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -336,6 +337,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Orçamentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('atendimentos_clinica') && isModuleEnabled(org.niche, 'atendimentos_clinica') && (
+          <SidebarNavLink href={`${base}/atendimentos`}>
+            <span className="flex items-center gap-2.5">
+              <ClipboardList className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Atendimentos</span>
             </span>
           </SidebarNavLink>
         )}
