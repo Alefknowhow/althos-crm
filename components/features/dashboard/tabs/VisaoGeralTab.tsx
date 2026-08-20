@@ -70,8 +70,8 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-7">
-          <Suspense fallback={<Skeleton className="h-[340px] w-full" />}>
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
             <RevenueVsGoalWidget
               orgId={ctx.orgId}
               orgSlug={ctx.orgSlug}
@@ -81,8 +81,8 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
             />
           </Suspense>
         </div>
-        <div className="md:col-span-5">
-          <Suspense fallback={<Skeleton className="h-[340px] w-full" />}>
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
             <ConversionFunnelWidget
               orgSlug={ctx.orgSlug}
               pipelineId={ctx.pipelineId}
@@ -95,20 +95,24 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-6">
-          <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <LeadSourcesWidget orgId={ctx.orgId} period={ctx.period} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
         <div className="md:col-span-6">
-          <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
           </Suspense>
         </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
-        <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-8">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+            <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
+          </Suspense>
+        </div>
+      </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="visao-geral" />

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy, Medal } from 'lucide-react'
 import { getSellersRanking } from '@/actions/dashboard'
 import { listOrgMembers } from '@/actions/sales'
+import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -31,8 +32,8 @@ export default async function SellersRankingWidget({
   const memberById = new Map(members.map((m: any) => [m.id, m]))
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <CardHeader className="shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Trophy className="w-4 h-4 text-amber-500" />
           Ranking de Vendedores
@@ -41,7 +42,7 @@ export default async function SellersRankingWidget({
           Últimos 30 dias. Vendas concluídas, por valor.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             <p>Nenhuma venda no período.</p>
@@ -50,7 +51,7 @@ export default async function SellersRankingWidget({
             </p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+          <div className="space-y-2 pr-1">
             {rows.map((row, idx) => {
               const member = memberById.get(row.seller_id) as any
               const name = member?.name || 'Usuário removido'

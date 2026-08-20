@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { getAtRiskLeads } from '@/actions/dashboard'
 import { createClient } from '@/lib/supabase/server'
+import { CHART_CARD_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -43,8 +44,8 @@ export default async function PipelineAtRiskWidget({
   const totalAtRisk = stages.reduce((a, s) => a + s.at_risk_count, 0)
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+    <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 shrink-0">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -60,14 +61,14 @@ export default async function PipelineAtRiskWidget({
           </Badge>
         ) : null}
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0">
         {stages.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
+          <div className="h-full flex flex-col items-center justify-center text-center text-sm text-muted-foreground">
             <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-70" />
             Nenhum lead parado há mais de 7 dias. Pipeline saudável.
           </div>
         ) : (
-          <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+          <div className="h-full overflow-y-auto pr-1 space-y-4">
             {stages.map(stage => (
               <div key={stage.stage_id}>
                 <div className="flex items-center justify-between mb-2">

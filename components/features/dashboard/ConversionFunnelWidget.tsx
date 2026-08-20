@@ -4,14 +4,14 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Filter, TrendingDown, ArrowDown, Loader2 } from 'lucide-react'
+import { Filter, ArrowRight, Loader2 } from 'lucide-react'
 import {
   fetchFunnel,
   type FunnelPeriod,
   type FunnelSource,
   type FunnelResult,
 } from '@/actions/funnel'
+import { CHART_CARD_H } from './dashboardSizes'
 
 type SourceOptions = {
   forms: Array<{ id: string; name: string }>
@@ -103,8 +103,8 @@ export default function ConversionFunnelWidget({
   const hasAnyData = result.total_leads > 0
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0">
+    <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 shrink-0 pb-2">
         <div>
           <CardTitle className="text-base">Funil de Conversão</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
@@ -162,9 +162,9 @@ export default function ConversionFunnelWidget({
           {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0 flex flex-col">
         {/* Summary row */}
-        <div className="grid grid-cols-3 gap-3 mb-5 pb-5 border-b">
+        <div className="grid grid-cols-3 gap-3 mb-3 pb-3 border-b shrink-0">
           <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
               Leads no funil
@@ -178,9 +178,6 @@ export default function ConversionFunnelWidget({
             <div className="text-xl font-bold tabular-nums mt-0.5">
               {result.overall_conversion_pct.toFixed(1)}%
             </div>
-            <div className="text-[10px] text-muted-foreground">
-              do 1º ao último estágio
-            </div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
@@ -192,67 +189,53 @@ export default function ConversionFunnelWidget({
           </div>
         </div>
 
-        {/* Funnel bars */}
+        {/* Funil horizontal — etapas lado a lado, largura fixa cada uma,
+            rola no eixo X se não couberem todas na largura do card. Altura
+            do card nunca varia com o número de etapas. */}
         {!hasAnyData ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
             Nenhum lead corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="flex-1 min-h-0 flex items-stretch gap-1.5 overflow-x-auto pb-1">
             {result.stages.map((stage, idx) => {
-              // Each bar is centered; its width tapers with the stage count so
-              // the whole stack forms a funnel. A floor keeps small/zero stages
-              // wide enough to stay legible.
-              const widthPct = Math.max(28, (stage.count / maxCount) * 100)
+              const heightPct = Math.max(20, (stage.count / maxCount) * 100)
               const color = stage.color || '#0f62fe'
-              const showConvBadge = idx > 0
-              const isWorrying =
-                showConvBadge && stage.conversion_from_previous > 0 && stage.conversion_from_previous < 30
 
               return (
-                <div key={stage.id}>
-                  {showConvBadge && (
-                    <div className="flex items-center justify-center my-1">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] gap-1 ${
-                          isWorrying
-                            ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        <ArrowDown className="w-2.5 h-2.5" />
-                        {stage.conversion_from_previous.toFixed(0)}% conversão
-                        {isWorrying && <TrendingDown className="w-2.5 h-2.5 ml-0.5" />}
-                      </Badge>
-                    </div>
-                  )}
-                  {/* Centered, tapering bar — clicável, leva pro Pipeline */}
+                <div key={stage.id} className="flex items-stretch shrink-0">
                   <div
                     role="button"
                     tabIndex={0}
                     onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
                     onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
                     title="Ver no Pipeline"
-                    className="mx-auto h-11 rounded-md flex items-center justify-between px-3 gap-3 transition-all duration-300 cursor-pointer hover:brightness-95"
-                    style={{
-                      width: `${widthPct}%`,
-                      backgroundColor: `${color}26`,
-                      border: `1px solid ${color}55`,
-                    }}
+                    className="w-[132px] rounded-md flex flex-col justify-end p-2 gap-1.5 cursor-pointer transition-all hover:brightness-95"
+                    style={{ backgroundColor: `${color}14`, border: `1px solid ${color}40` }}
                   >
-                    <span className="text-sm font-medium truncate">{stage.name}</span>
-                    <span className="text-right shrink-0">
-                      <span className="block text-sm font-bold tabular-nums leading-tight">
-                        {stage.count}
-                      </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate">{stage.name}</div>
+                      <div className="text-lg font-bold tabular-nums leading-tight">{stage.count}</div>
                       {stage.value_cents > 0 && (
-                        <span className="block text-[10px] text-muted-foreground tabular-nums leading-tight">
+                        <div className="text-[10px] text-muted-foreground tabular-nums truncate">
                           {fmtCurrency(stage.value_cents)}
-                        </span>
+                        </div>
                       )}
-                    </span>
+                      {idx > 0 && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {stage.conversion_from_previous.toFixed(0)}% da anterior
+                        </div>
+                      )}
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${color}20` }}>
+                      <div className="h-full rounded-full" style={{ width: `${heightPct}%`, backgroundColor: color }} />
+                    </div>
                   </div>
+                  {idx < result.stages.length - 1 && (
+                    <div className="flex items-center px-1 shrink-0">
+                      <ArrowRight className="w-4 h-4 text-muted-foreground/50" />
+                    </div>
+                  )}
                 </div>
               )
             })}

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock } from 'lucide-react'
 import { getAverageTimePerStage } from '@/actions/dashboard'
+import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtDays(days: number): string {
   if (days < 1) return '< 1d'
@@ -26,8 +27,8 @@ export default async function TimeInStageWidget({
 
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+        <CardHeader className="shrink-0">
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
             Tempo por estágio
@@ -36,8 +37,8 @@ export default async function TimeInStageWidget({
             Quanto tempo seus leads ficam em cada etapa.
           </p>
         </CardHeader>
-        <CardContent>
-          <div className="py-8 text-center text-sm text-muted-foreground">
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center text-sm text-muted-foreground">
             Dados insuficientes — precisa de algumas movimentações entre estágios.
           </div>
         </CardContent>
@@ -48,8 +49,8 @@ export default async function TimeInStageWidget({
   const maxAvg = Math.max(1, ...rows.map(r => r.avg_days))
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <CardHeader className="shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
           Tempo médio por estágio
@@ -58,8 +59,8 @@ export default async function TimeInStageWidget({
           Últimos 90 dias. Estágio mais demorado = gargalo do funil.
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
+        <div className="space-y-2 pr-1">
           {rows.map(row => {
             const widthPct = (row.avg_days / maxAvg) * 100
             const isBottleneck = row.avg_days === maxAvg && row.avg_days > 0

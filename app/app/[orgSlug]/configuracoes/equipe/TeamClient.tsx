@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   inviteTeamMember,
   updateMemberPermissions,
+  updateMemberMonthlyGoal,
   removeMember,
   cancelInvitation,
   setOrgVisibility,
@@ -271,6 +272,9 @@ function EditPermissionsDialog({
   const [permissions, setPermissions] = useState<Permissions>(
     initialRole === 'admin' ? allPermissions() : (current?.permissions ?? defaultMemberPermissions())
   )
+  const [goalInput, setGoalInput] = useState(
+    current?.monthly_goal_cents ? String(current.monthly_goal_cents / 100) : ''
+  )
   const [saving, setSaving] = useState(false)
 
   function handleRoleChange(r: 'admin' | 'member') {
@@ -284,13 +288,23 @@ function EditPermissionsDialog({
       return
     }
     setSaving(true)
-    const res = await updateMemberPermissions(orgSlug, current.membership_id, permissions, role)
-    if (res.ok) {
+    const trimmedGoal = goalInput.trim()
+    const goalCents = trimmedGoal ? Math.round(parseFloat(trimmedGoal.replace(',', '.')) * 100) : null
+    if (trimmedGoal && (Number.isNaN(goalCents) || (goalCents as number) < 0)) {
+      toast.error('Meta mensal inválida.')
+      setSaving(false)
+      return
+    }
+    const [permRes, goalRes] = await Promise.all([
+      updateMemberPermissions(orgSlug, current.membership_id, permissions, role),
+      updateMemberMonthlyGoal(orgSlug, current.membership_id, goalCents),
+    ])
+    if (permRes.ok && goalRes.ok) {
       toast.success('Permissões atualizadas!')
       router.refresh()
       onClose()
     } else {
-      toast.error(res.error)
+      toast.error(permRes.error || goalRes.error)
     }
     setSaving(false)
   }
@@ -333,6 +347,22 @@ function EditPermissionsDialog({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Meta mensal individual <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              inputMode="decimal"
+              placeholder="Deixe em branco pra usar a meta da empresa dividida entre os vendedores"
+              value={goalInput}
+              onChange={e => setGoalInput(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Usada no dashboard (aba Equipe). Sem valor aqui, o sistema usa a meta mensal da empresa dividida igualmente entre os vendedores ativos.
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -87,7 +87,7 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[340px] w-full" />}>
+      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
         <ConversionFunnelWidget
           orgSlug={ctx.orgSlug}
           pipelineId={ctx.pipelineId}
@@ -111,7 +111,7 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-6">
-          <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <TimeInStageWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
@@ -127,9 +127,13 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
         </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
-        <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-8">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+            <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
+          </Suspense>
+        </div>
+      </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="pipeline" />

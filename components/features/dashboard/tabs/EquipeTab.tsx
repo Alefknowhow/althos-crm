@@ -1,14 +1,15 @@
 import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getAiCreditsStatus, getAccountIdForOrgSlug } from '@/lib/plans/server'
-import { getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore, getResponseMetrics } from '@/actions/dashboard-tabs'
+import {
+  getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore,
+  getResponseMetrics, getEffectiveSellerGoals, getAiAnsweredCount,
+} from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { listOrgMembers } from '@/actions/sales'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
-import TasksTodayWidget from '../TasksTodayWidget'
 import BarListCard from '../BarListCard'
 import { UserCheck, ListChecks, Award } from 'lucide-react'
 import InsightCard from '../InsightCard'
@@ -28,22 +29,33 @@ function fmtMinutes(min: number): string {
 /** Equipe — "quem está performando e onde estão os gargalos?". */
 export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
   const accountId = await getAccountIdForOrgSlug(ctx.orgSlug)
-  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response] = await Promise.all([
+  const since = sinceFromPeriod(ctx.period)
+  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response, aiAnswered] = await Promise.all([
     accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
     getSellerConversionRates(ctx.orgId),
     getSellerOpenDeals(ctx.orgId),
     getSellerPerformanceScore(ctx.orgId),
     getMonthlyRevenueGoal(ctx.orgSlug),
     listOrgMembers(ctx.orgSlug),
-    getResponseMetrics(ctx.orgId, sinceFromPeriod(ctx.period)),
+    getResponseMetrics(ctx.orgId, since),
+    getAiAnsweredCount(ctx.orgId, since),
   ])
   const nameById = new Map(members.map((m: any) => [m.id, m.name]))
-  const activeSellers = new Set([...conversionRates.map(c => c.seller_id), ...openDeals.map(o => o.seller_id)]).size
-  const individualGoalCents = monthlyGoalCents && activeSellers > 0 ? Math.round(monthlyGoalCents / activeSellers) : null
+  const activeSellerIds = Array.from(new Set([...conversionRates.map(c => c.seller_id), ...openDeals.map(o => o.seller_id)]))
+
+  // Meta individual: usa o valor configurado por vendedor (Configurações ›
+  // Equipe) quando existir; senão cai no fallback (meta da empresa ÷ nº de
+  // vendedores ativos). O KPI abaixo mostra a média entre os efetivos.
+  const sellerGoals = await getEffectiveSellerGoals(ctx.orgId, activeSellerIds, monthlyGoalCents)
+  const goalsWithValue = sellerGoals.filter(g => g.goal_cents !== null)
+  const avgGoalCents = goalsWithValue.length > 0
+    ? Math.round(goalsWithValue.reduce((a, g) => a + (g.goal_cents || 0), 0) / goalsWithValue.length)
+    : null
+  const anyIndividual = sellerGoals.some(g => g.is_individual)
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
           label="Créditos de IA"
           value={credits ? `${credits.available}` : '—'}
@@ -51,9 +63,10 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
         />
         <KpiCard
           label="Meta individual (média)"
-          value={individualGoalCents === null ? '—' : fmtCurrency(individualGoalCents)}
-          help="Meta mensal da empresa dividida igualmente entre os vendedores ativos — não há meta individual configurável por vendedor ainda."
-          mock
+          value={avgGoalCents === null ? '—' : fmtCurrency(avgGoalCents)}
+          help={anyIndividual
+            ? 'Média entre a meta individual configurada (quando houver) e o fallback — meta da empresa ÷ vendedores ativos, pra quem não tem meta própria. Configurável em Configurações › Equipe.'
+            : 'Nenhum vendedor tem meta individual configurada ainda — mostrando a meta da empresa dividida igualmente entre os ativos. Configurável em Configurações › Equipe.'}
         />
         <KpiCard
           label="Tempo médio de resposta"
@@ -65,11 +78,16 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
           value={response.responseRatePct !== null ? `${response.responseRatePct}%` : '—'}
           help={`Percentual de mensagens recebidas que tiveram alguma resposta depois, no período (${response.answeredCount} de ${response.inboundCount}).`}
         />
+        <KpiCard
+          label="Mensagens respondidas pela IA"
+          value={String(aiAnswered)}
+          help="Mensagens de clientes/leads respondidas automaticamente pela IA (sem intervenção humana) no período selecionado."
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-4">
-          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
+          <Suspense fallback={<div className="h-[320px] w-full rounded-md bg-muted/30 animate-pulse" />}>
             <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
           </Suspense>
         </div>
@@ -103,30 +121,17 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <BarListCard
-          title="Score de performance"
-          help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
-          icon={Award}
-          rows={scores.map(s => ({
-            label: nameById.get(s.seller_id) || 'Usuário removido',
-            value: s.score,
-            valueLabel: `${s.score}`,
-          }))}
-          color="#0f62fe"
-          emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
-        />
-        <Suspense fallback={<Skeleton className="h-[280px] w-full" />}>
-          <TasksTodayWidget orgId={ctx.orgId} orgSlug={ctx.orgSlug} />
-        </Suspense>
-      </div>
-
-      <KpiCard
-        label="Mensagens respondidas pela IA"
-        value="342 no período"
-        help="Quantidade de mensagens de clientes/leads respondidas automaticamente pela IA, sem intervenção humana."
-        mock
-        className="md:max-w-sm"
+      <BarListCard
+        title="Score de performance"
+        help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
+        icon={Award}
+        rows={scores.map(s => ({
+          label: nameById.get(s.seller_id) || 'Usuário removido',
+          value: s.score,
+          valueLabel: `${s.score}`,
+        }))}
+        color="#0f62fe"
+        emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
       />
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>

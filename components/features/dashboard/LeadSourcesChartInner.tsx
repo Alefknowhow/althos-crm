@@ -18,7 +18,7 @@ export default function LeadSourcesChartInner({ data }: LeadSourcesChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
 
   return (
-    <div className="h-[300px] w-full relative">
+    <div className="h-full w-full relative">
       {/* Center label inside donut */}
       {total > 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-9">

@@ -29,7 +29,7 @@ export type TeamMember = {
   /** Per-org visibility across the whole account (for the visibility matrix). */
   orgs:         MemberOrgVisibility[]
   /** Membership in the CURRENTLY-open org (used by the permissions dialog). */
-  current_org:  { membership_id: string; role: string; permissions: Permissions } | null
+  current_org:  { membership_id: string; role: string; permissions: Permissions; monthly_goal_cents: number | null } | null
 }
 
 export type PendingInvitation = {
@@ -88,7 +88,7 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
   if (!accountId) {
     const { data: memberships } = await admin
       .from('memberships')
-      .select('id, user_id, role, permissions, created_at, hidden')
+      .select('id, user_id, role, permissions, created_at, hidden, monthly_goal_cents')
       .eq('organization_id', org.id)
       .order('created_at', { ascending: true })
 
@@ -104,7 +104,7 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
         is_owner:     m.role === 'owner',
         joined_at:    m.created_at,
         orgs:         [{ org_id: org.id, org_name: (org as any).name ?? orgSlug, membership_id: m.id, hidden: !!(m as any).hidden }],
-        current_org:  { membership_id: m.id, role: m.role, permissions: (m.permissions ?? {}) as Permissions },
+        current_org:  { membership_id: m.id, role: m.role, permissions: (m.permissions ?? {}) as Permissions, monthly_goal_cents: (m as any).monthly_goal_cents ?? null },
       })
     }
 
@@ -153,7 +153,7 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
 
   const { data: allMemberships } = await admin
     .from('memberships')
-    .select('id, organization_id, user_id, role, permissions, hidden')
+    .select('id, organization_id, user_id, role, permissions, hidden, monthly_goal_cents')
     .in('organization_id', safeOrgIds)
 
   // The set of people in the account = account_members ∪ anyone with a membership.
@@ -188,7 +188,7 @@ export async function getTeamData(orgSlug: string): Promise<TeamData> {
         return { org_id: o.id, org_name: o.name, membership_id: mm?.id ?? null, hidden: !!mm?.hidden }
       }),
       current_org: cur
-        ? { membership_id: cur.id, role: cur.role, permissions: (cur.permissions ?? {}) as Permissions }
+        ? { membership_id: cur.id, role: cur.role, permissions: (cur.permissions ?? {}) as Permissions, monthly_goal_cents: (cur as any).monthly_goal_cents ?? null }
         : null,
     })
   }
@@ -429,6 +429,30 @@ export async function updateMemberPermissions(
   if (error) return { ok: false as const, error: error.message }
 
   revalidatePath(`/app/${orgSlug}/configuracoes/equipe`)
+  return { ok: true as const }
+}
+
+/** Meta mensal individual do vendedor (Configurações › Equipe). null = volta
+ *  a usar o fallback (meta da empresa ÷ nº de vendedores ativos). */
+export async function updateMemberMonthlyGoal(
+  orgSlug:      string,
+  membershipId: string,
+  goalCents:    number | null,
+) {
+  await requireAuth()
+  const org   = await getCurrentOrganization(orgSlug)
+  const admin = createAdminClient()
+
+  const { error } = await admin
+    .from('memberships')
+    .update({ monthly_goal_cents: goalCents })
+    .eq('id', membershipId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/configuracoes/equipe`)
+  revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
 

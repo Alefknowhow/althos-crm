@@ -88,50 +88,39 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-5">
-          <BarListCard
-            title="Segmentação de clientes"
-            help="Distribuição por comportamento de compra: novo, ativo, recorrente, VIP e em risco."
-            icon={Layers}
-            rows={SEGMENT_ORDER.map(k => ({ label: SEGMENT_LABEL[k], value: segmentation[k], valueLabel: String(segmentation[k]) }))}
-            color="#0f62fe"
-            emptyText="Nenhum cliente com compra concluída ainda."
-          />
-        </div>
-        <div className="md:col-span-7">
-          <BarListCard
-            title="Clientes por cidade"
-            help="Clientes ativos agrupados por cidade cadastrada."
-            icon={MapPin}
-            rows={cities.map(c => ({ label: c.city, value: c.customers, valueLabel: String(c.customers) }))}
-            color="#0f62fe"
-            emptyText="Nenhum cliente com cidade cadastrada."
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-6">
-          <BarListCard
-            title="Clientes VIP"
-            help="Top 5 clientes por valor total histórico comprado."
-            icon={Crown}
-            rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
-            color="#f1c21b"
-            emptyText="Nenhuma venda concluída registrada ainda."
-          />
-        </div>
-        <div className="md:col-span-6">
-          <BarListCard
-            title="Clientes em risco"
-            help="Clientes sem nenhuma compra há mais de 90 dias, ordenados pelo mais tempo parado."
-            icon={AlertTriangle}
-            rows={atRiskCustomers.map(c => ({ label: c.name, value: c.days_since_last_sale, valueLabel: `${c.days_since_last_sale}d` }))}
-            color="#da1e28"
-            emptyText="Nenhum cliente parado há mais de 90 dias."
-          />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <BarListCard
+          title="Segmentação de clientes"
+          help="Distribuição por comportamento de compra: novo, ativo, recorrente, VIP e em risco."
+          icon={Layers}
+          rows={SEGMENT_ORDER.map(k => ({ label: SEGMENT_LABEL[k], value: segmentation[k], valueLabel: String(segmentation[k]) }))}
+          color="#0f62fe"
+          emptyText="Nenhum cliente com compra concluída ainda."
+        />
+        <BarListCard
+          title="Clientes por cidade"
+          help="Clientes ativos agrupados por cidade cadastrada."
+          icon={MapPin}
+          rows={cities.map(c => ({ label: c.city, value: c.customers, valueLabel: String(c.customers) }))}
+          color="#0f62fe"
+          emptyText="Nenhum cliente com cidade cadastrada."
+        />
+        <BarListCard
+          title="Clientes VIP"
+          help="Top 5 clientes por valor total histórico comprado."
+          icon={Crown}
+          rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
+          color="#f1c21b"
+          emptyText="Nenhuma venda concluída registrada ainda."
+        />
+        <BarListCard
+          title="Clientes em risco"
+          help="Clientes sem nenhuma compra há mais de 90 dias, ordenados pelo mais tempo parado."
+          icon={AlertTriangle}
+          rows={atRiskCustomers.map(c => ({ label: c.name, value: c.days_since_last_sale, valueLabel: `${c.days_since_last_sale}d` }))}
+          color="#da1e28"
+          emptyText="Nenhum cliente parado há mais de 90 dias."
+        />
       </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>

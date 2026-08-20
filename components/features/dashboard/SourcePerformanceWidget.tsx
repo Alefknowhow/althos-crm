@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Compass, Trophy } from 'lucide-react'
 import { getSourcePerformance } from '@/actions/dashboard'
+import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -29,8 +30,8 @@ export default async function SourcePerformanceWidget({
     : -1
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <CardHeader className="shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Compass className="w-4 h-4 text-blue-600" />
           Performance por Origem
@@ -39,13 +40,13 @@ export default async function SourcePerformanceWidget({
           Últimos 90 dias. Quem traz lead bom (não só lead).
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             Sem dados nos últimos 90 dias.
           </div>
         ) : (
-          <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+          <div className="space-y-3 pr-1">
             {rows.map((r, idx) => {
               const widthPct = (r.total_value_cents / maxValue) * 100
               const isBest = idx === bestSourceIdx && r.total_value_cents > 0

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { TrendingUp, Trophy, Loader2 } from 'lucide-react'
 import { fetchRevenueForecast } from '@/actions/dashboard-forecast'
 import type { RevenueForecast } from '@/actions/dashboard'
+import { CHART_CARD_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -48,8 +49,8 @@ export default function RevenueForecastCard({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+    <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 shrink-0 pb-2">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-600" />
@@ -75,16 +76,16 @@ export default function RevenueForecastCard({
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex-1 min-h-0 flex flex-col gap-3">
         {/* Big number */}
-        <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-900/5 border border-emerald-200 dark:border-emerald-800">
+        <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-900/5 border border-emerald-200 dark:border-emerald-800 shrink-0">
           <div className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-medium">
             Projeção combinada (mês)
           </div>
-          <div className="text-3xl font-bold tabular-nums mt-1 text-emerald-900 dark:text-emerald-100">
+          <div className="text-2xl font-bold tabular-nums mt-1 text-emerald-900 dark:text-emerald-100">
             {fmtCurrency(forecast.combined_forecast_cents)}
           </div>
-          <div className="flex items-center gap-3 mt-2 text-[11px] text-emerald-800 dark:text-emerald-200">
+          <div className="flex items-center gap-3 mt-1.5 text-[11px] text-emerald-800 dark:text-emerald-200">
             <span className="inline-flex items-center gap-1">
               <Trophy className="w-3 h-3" />
               Já ganho:{' '}
@@ -102,14 +103,15 @@ export default function RevenueForecastCard({
           </div>
         </div>
 
-        {/* Per-stage breakdown */}
+        {/* Per-stage breakdown — rola dentro do espaço restante, nunca
+            empurra o card a crescer conforme o número de estágios. */}
         {forecast.stages.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">
             Sem dados no pipeline pra projetar.
           </p>
         ) : (
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2 sticky top-0 bg-card">
               Por estágio
             </div>
             <div className="space-y-2">
@@ -161,11 +163,6 @@ export default function RevenueForecastCard({
             </div>
           </div>
         )}
-
-        <div className="text-[10px] text-muted-foreground border-t pt-3">
-          Probabilidades aprendidas dos últimos 90 dias. Estágios com pouco histórico usam
-          peso linear baseado na posição.
-        </div>
       </CardContent>
     </Card>
   )

@@ -55,8 +55,8 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-7">
-          <Suspense fallback={<Skeleton className="h-[340px] w-full" />}>
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
             <RevenueVsGoalWidget
               orgId={ctx.orgId}
               orgSlug={ctx.orgSlug}
@@ -66,8 +66,8 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
             />
           </Suspense>
         </div>
-        <div className="md:col-span-5">
-          <Suspense fallback={<Skeleton className="h-[340px] w-full" />}>
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
             <RevenueForecastWidget orgId={ctx.orgId} orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
@@ -75,7 +75,7 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-6">
-          <Suspense fallback={<Skeleton className="h-[300px] w-full" />}>
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <TopProductsWidget orgId={ctx.orgId} since={sinceFromPeriod(ctx.period)} />
           </Suspense>
         </div>

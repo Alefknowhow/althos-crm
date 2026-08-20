@@ -193,6 +193,43 @@ export async function getAtRiskCustomers(orgId: string, thresholdDays = 90, limi
   return atRisk.sort((a, b) => b.days_since_last_sale - a.days_since_last_sale).slice(0, limit)
 }
 
+export type SellerGoalRow = { seller_id: string; goal_cents: number | null; is_individual: boolean }
+
+/**
+ * Meta mensal efetiva por vendedor ativo: usa `memberships.monthly_goal_cents`
+ * quando preenchida; senão cai no fallback (meta da empresa ÷ nº de
+ * vendedores ativos). `activeSellerIds` é quem já apareceu em conversão ou
+ * negociações abertas no período — mesma definição usada no resto da aba
+ * Equipe, pra não inventar um critério de "ativo" novo.
+ */
+export async function getEffectiveSellerGoals(
+  orgId: string,
+  activeSellerIds: string[],
+  companyMonthlyGoalCents: number | null,
+): Promise<SellerGoalRow[]> {
+  if (activeSellerIds.length === 0) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('memberships')
+    .select('user_id, monthly_goal_cents')
+    .eq('organization_id', orgId)
+    .in('user_id', activeSellerIds)
+
+  const individualByUser = new Map((data || []).map(m => [m.user_id, m.monthly_goal_cents as number | null]))
+  const fallbackCents = companyMonthlyGoalCents && activeSellerIds.length > 0
+    ? Math.round(companyMonthlyGoalCents / activeSellerIds.length)
+    : null
+
+  return activeSellerIds.map(seller_id => {
+    const individual = individualByUser.get(seller_id) ?? null
+    return {
+      seller_id,
+      goal_cents: individual ?? fallbackCents,
+      is_individual: individual !== null,
+    }
+  })
+}
+
 export type RepurchaseRate = { pct: number; repeatCustomers: number; totalCustomers: number }
 
 /** Taxa de recompra = % de clientes (com ao menos 1 venda concluída) que
@@ -255,6 +292,24 @@ export async function getCustomerSegmentation(orgId: string): Promise<CustomerSe
     segmentation.ativo++
   }
   return segmentation
+}
+
+/**
+ * Mensagens respondidas pela IA = whatsapp_messages onde a IA de fato
+ * mandou a resposta sozinha. `sent_by_name = 'IA'` já era gravado pelo
+ * atendente automático (lib/inngest/whatsapp-inbound.ts) — não precisou de
+ * coluna nova, só nunca tinha virado métrica de dashboard.
+ */
+export async function getAiAnsweredCount(orgId: string, since: Date): Promise<number> {
+  const supabase = createClient()
+  const { count } = await supabase
+    .from('whatsapp_messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('direction', 'outbound')
+    .eq('sent_by_name', 'IA')
+    .gte('created_at', since.toISOString())
+  return count || 0
 }
 
 /* -------- Tempo/taxa de resposta (WhatsApp) -------- */

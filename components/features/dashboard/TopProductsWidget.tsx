@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package } from 'lucide-react'
 import { getTopProducts } from '@/actions/dashboard-tabs'
+import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -11,15 +12,15 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
   const maxQty = Math.max(1, ...rows.map(r => r.quantity))
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <CardHeader className="pb-2 shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Package className="w-4 h-4 text-violet-600" />
           Mais vendidos
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">Produtos/serviços com mais unidades vendidas no período.</p>
       </CardHeader>
-      <CardContent className="flex-1 max-h-[240px] overflow-y-auto">
+      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         {rows.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma venda com produto associado no período.

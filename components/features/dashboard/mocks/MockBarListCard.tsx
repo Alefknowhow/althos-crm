@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { LucideIcon } from 'lucide-react'
 import MockBadge from '../MockBadge'
+import { COMPACT_CARD_H, LIST_SCROLL_H } from '../dashboardSizes'
 
 export type MockBarRow = { label: string; value: number; valueLabel: string }
 
@@ -20,8 +21,8 @@ export default function MockBarListCard({
   const maxValue = Math.max(1, ...rows.map(r => r.value))
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <CardHeader className="pb-2 shrink-0">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2">
             {Icon && <Icon className="w-4 h-4" style={{ color }} />}
@@ -31,7 +32,7 @@ export default function MockBarListCard({
         </div>
         <p className="text-xs text-muted-foreground mt-1">{help}</p>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto">
+      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         <div className="space-y-3">
           {rows.map(r => (
             <div key={r.label}>
