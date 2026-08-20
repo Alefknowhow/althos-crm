@@ -530,6 +530,14 @@ function ProposalDetail({
       </div>
 
       <div className="p-4 space-y-5">
+        {Array.isArray(p.photos) && p.photos.length > 0 && p.photos[0] && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={p.photos[0]}
+            alt="Foto de capa"
+            className="w-full max-h-56 object-cover rounded-lg border"
+          />
+        )}
         <div className="text-2xl font-bold tabular-nums">{formatCurrency(p.total_cents || 0)}</div>
 
         <div className="grid sm:grid-cols-2 gap-4">

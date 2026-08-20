@@ -54,6 +54,8 @@ import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialo
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import FlightOcrDialog from './FlightOcrDialog'
 import type { ExtractedFlightLeg } from '@/lib/ai/flight-ocr-extract'
+import CruiseOcrDialog from './CruiseOcrDialog'
+import type { ExtractedCruise } from '@/lib/ai/cruise-ocr-extract'
 
 const INCLUDED_SUGGESTIONS = [
   'Aéreo ida e volta', 'Bagagem (23kg)', 'Bagagem de mão (10kg)', 'Marcação de assentos',
@@ -78,6 +80,21 @@ function centsToStr(c?: number | null) {
 function strToCents(s: string) {
   const n = parseFloat((s || '').replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) ? Math.round(n * 100) : 0
+}
+
+/** Duração do trecho calculada a partir de partida/chegada — só quando
+ *  data+hora de ambos os lados estão preenchidos; senão fica null (o
+ *  campo cai de volta pro texto digitado à mão, ex.: "≈ 12h total"). */
+function computeFlightDuration(f: { date?: string | null; departure_time?: string | null; arrival_date?: string | null; arrival_time?: string | null }): string | null {
+  if (!f.date || !f.departure_time || !f.arrival_time) return null
+  const dep = new Date(`${f.date}T${f.departure_time}`)
+  const arr = new Date(`${f.arrival_date || f.date}T${f.arrival_time}`)
+  if (Number.isNaN(dep.getTime()) || Number.isNaN(arr.getTime())) return null
+  let diffMin = Math.round((arr.getTime() - dep.getTime()) / 60000)
+  if (diffMin <= 0) return null
+  const h = Math.floor(diffMin / 60)
+  const m = diffMin % 60
+  return m > 0 ? `${h}h${m}min` : `${h}h`
 }
 
 async function compressAndUpload(orgSlug: string, file: File): Promise<string | null> {
@@ -400,9 +417,10 @@ const GROUPS = [
 ] as const
 type GroupId = (typeof GROUPS)[number]['id']
 
-function GroupNav({ active, onChange, completeness }: { active: GroupId; onChange: (g: GroupId) => void; completeness: number }) {
+/** Nav horizontal — só no mobile, onde uma barra lateral fixa não cabe. */
+function GroupNavMobile({ active, onChange, completeness }: { active: GroupId; onChange: (g: GroupId) => void; completeness: number }) {
   return (
-    <div className="px-3 sm:px-5 py-1.5 border-t flex items-center gap-2 overflow-x-auto">
+    <div className="px-3 py-1.5 border-t flex items-center gap-2 overflow-x-auto md:hidden">
       <div className="flex gap-1 w-max">
         {GROUPS.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" onClick={() => onChange(id)}
@@ -413,13 +431,40 @@ function GroupNav({ active, onChange, completeness }: { active: GroupId; onChang
           </button>
         ))}
       </div>
-      <div className="ml-auto hidden sm:flex items-center gap-1.5 shrink-0" title={`Cotação ${completeness}% completa`}>
+      <div className="ml-auto flex items-center gap-1.5 shrink-0" title={`Cotação ${completeness}% completa`}>
         <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className="h-full bg-primary transition-all" style={{ width: `${completeness}%` }} />
         </div>
         <span className="text-[11px] text-muted-foreground tabular-nums">{completeness}%</span>
       </div>
     </div>
+  )
+}
+
+/** Nav vertical — barra lateral fixa em desktop (não rola com o resto da
+ *  tela), ganha espaço vertical que antes ia pra uma 2ª linha horizontal. */
+function GroupNavSidebar({ active, onChange, completeness }: { active: GroupId; onChange: (g: GroupId) => void; completeness: number }) {
+  return (
+    <nav className="hidden md:flex md:flex-col gap-3 w-44 shrink-0 sticky top-[52px] self-start pt-2">
+      <div>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+          <span>Completude</span><span className="tabular-nums">{completeness}%</span>
+        </div>
+        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full bg-primary transition-all" style={{ width: `${completeness}%` }} />
+        </div>
+      </div>
+      <div className="space-y-0.5">
+        {GROUPS.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => onChange(id)}
+            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-medium transition-colors text-left ${
+              active === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}>
+            <Icon className="w-4 h-4 shrink-0" /> {label}
+          </button>
+        ))}
+      </div>
+    </nav>
   )
 }
 
@@ -647,6 +692,26 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [extractOpen, setExtractOpen] = useState(false)
   const [flightOcrOpen, setFlightOcrOpen] = useState(false)
   const [activeGroup, setActiveGroup] = useState<GroupId>('resumo')
+  const [flightsTextOpen, setFlightsTextOpen] = useState(() => !!initial.quotation.flights_html?.trim())
+  const [cruiseOcrOpen, setCruiseOcrOpen] = useState(false)
+
+  // "Ler com IA" no bloco Cruzeiro — cria um cruzeiro novo com os campos
+  // preenchidos (append, igual ao OCR de voo — nunca sobrescreve o que já
+  // existe na lista).
+  function handleCruiseExtracted(data: ExtractedCruise) {
+    setCruises(cs => [...cs, {
+      _key: nk(),
+      cruise_line: data.cruise_line, ship_name: data.ship_name, itinerary_name: data.itinerary_name,
+      embark_date: data.embark_date, disembark_date: data.disembark_date, duration_nights: data.duration_nights,
+      embark_port: data.embark_port, disembark_port: data.disembark_port,
+      pax_adults: data.pax_adults, pax_children: data.pax_children,
+      cabin_category: data.cabin_category, cabin_type: data.cabin_type,
+      cabin_price_cents: data.cabin_price_cents, taxes_cents: data.taxes_cents, total_cents: data.total_cents,
+      pkg_drinks: data.pkg_drinks, pkg_internet: data.pkg_internet, pkg_restaurants: data.pkg_restaurants, pkg_gratuities: data.pkg_gratuities,
+      days: withKeys(data.days.map(d => ({ day_number: d.day_number, date: d.date, port: d.port, arrival: d.arrival, departure: d.departure }))),
+    }])
+    toast.success('Cruzeiro adicionado — revise antes de salvar')
+  }
 
   // "Ler com IA" no bloco Aéreo — cada trecho identificado vira uma nova
   // linha em "Trecho" (append, nunca substitui o que já existe na lista).
@@ -769,7 +834,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         name: [f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || null,
         date_start: f.date || null, date_end: f.arrival_date || f.date || null,
         price_cents: null,
-        data: { ...f, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any },
+        data: { ...f, duration_label: computeFlightDuration(f) || f.duration_label, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any },
         internal_data: {},
       })),
       ...cruises.map(({ _key, days, total_cents, supplier, fare_code, cost_cents, internal_notes, ...c }) => ({
@@ -1131,7 +1196,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               </F>
               <F label="Companhia"><Input placeholder="Copa Airlines" value={f.airline || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, airline: e.target.value } : x))} /></F>
               <F label="Código do voo"><Input placeholder="LA3380; LA3385" value={f.flight_number || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, flight_number: e.target.value } : x))} /></F>
-              <F label="Duração"><Input placeholder="≈ 12h total" value={f.duration_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, duration_label: e.target.value } : x))} /></F>
+              <F label="Duração" hint={computeFlightDuration(f) ? 'calculada automaticamente' : undefined}>
+                {computeFlightDuration(f) ? (
+                  <Input disabled value={computeFlightDuration(f) || ''} />
+                ) : (
+                  <Input placeholder="≈ 12h total" value={f.duration_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, duration_label: e.target.value } : x))} />
+                )}
+              </F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <F label="Cidade origem"><Input placeholder="Florianópolis" value={f.from_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_city: e.target.value } : x))} /></F>
@@ -1166,14 +1237,25 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         )} />
 
         <div className="mt-3 pt-3 border-t">
-          <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
-            Alternativa: descreva o aéreo em texto livre (cole prints da passagem direto no texto)
-          </p>
-          <ItineraryEditor orgSlug={orgSlug} value={q.flights_html || ''}
-            onChange={html => setQ(s => ({ ...s, flights_html: html }))} />
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Use os trechos estruturados acima OU este campo — se preenchido, ele aparece no lugar dos trechos na proposta.
-          </p>
+          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+            <Switch checked={flightsTextOpen} onCheckedChange={v => {
+              setFlightsTextOpen(v)
+              // Desligar limpa o texto — senão ele fica escondido mas ainda
+              // preenchido, e continuaria substituindo os trechos estruturados
+              // na proposta (regra: texto livre tem prioridade quando não vazio).
+              if (!v) setQ(s => ({ ...s, flights_html: '' }))
+            }} />
+            Alternativa: descrever o aéreo em texto livre (cole prints da passagem direto no texto)
+          </label>
+          {flightsTextOpen && (
+            <div className="mt-2">
+              <ItineraryEditor orgSlug={orgSlug} value={q.flights_html || ''}
+                onChange={html => setQ(s => ({ ...s, flights_html: html }))} />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Use os trechos estruturados acima OU este campo — se preenchido, ele aparece no lugar dos trechos na proposta.
+              </p>
+            </div>
+          )}
         </div>
       </EditBlock>
 
@@ -1181,13 +1263,18 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           Mesma infra de add/editar/ordenar/excluir (SortableList) que
           Hospedagens/Aéreo já usam; só os campos mudam. */}
       <EditBlock id="blk-cruzeiro" icon={Ship} title="Cruzeiro"
-        action={<Button type="button" variant="outline" size="sm"
-          onClick={() => setCruises(cs => [...cs, {
-            _key: nk(), embark_date: q.start_date || null, disembark_date: q.end_date || null,
-            pax_adults: q.pax_adults || null, pax_children: q.pax_children || null, days: [],
-          }])}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Cruzeiro
-        </Button>}>
+        action={<div className="flex items-center gap-1.5">
+          <Button type="button" variant="outline" size="sm" onClick={() => setCruiseOcrOpen(true)}>
+            <Sparkles className="w-3.5 h-3.5 mr-1" /> Ler com IA
+          </Button>
+          <Button type="button" variant="outline" size="sm"
+            onClick={() => setCruises(cs => [...cs, {
+              _key: nk(), embark_date: q.start_date || null, disembark_date: q.end_date || null,
+              pax_adults: q.pax_adults || null, pax_children: q.pax_children || null, days: [],
+            }])}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Cruzeiro
+          </Button>
+        </div>}>
         {cruises.length === 0 && <p className="text-sm text-muted-foreground">Nenhum cruzeiro nesta cotação.</p>}
         <SortableList items={cruises} onReorder={setCruises} render={(c) => (
           <>
@@ -1540,16 +1627,14 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </Button>
           </>
         )}
-        {missing.length > 0 && (
-          <span className="w-full sm:w-auto inline-flex items-center gap-1.5 text-[11px] text-amber-600">
-            <AlertTriangle className="w-3.5 h-3.5" /> Pendentes: {missing.join(', ')}
-          </span>
-        )}
       </div>
-      <GroupNav active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
+      <GroupNavMobile active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
       </div>
 
-      <div className="mt-4 max-w-4xl mx-auto">{form}</div>
+      <div className="mt-[3px] flex gap-4 items-start">
+        <GroupNavSidebar active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
+        <div className="flex-1 min-w-0 max-w-4xl">{form}</div>
+      </div>
 
       <DocumentExtractDialog
         orgSlug={orgSlug}
@@ -1565,6 +1650,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         open={flightOcrOpen}
         onOpenChange={setFlightOcrOpen}
         onApply={legs => handleFlightLegsExtracted(legs)}
+      />
+
+      <CruiseOcrDialog
+        orgSlug={orgSlug}
+        open={cruiseOcrOpen}
+        onOpenChange={setCruiseOcrOpen}
+        onApply={data => handleCruiseExtracted(data)}
       />
     </div>
   )
