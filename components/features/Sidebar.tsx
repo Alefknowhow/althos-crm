@@ -37,6 +37,7 @@ import {
   Star,
   Stethoscope,
   ClipboardList,
+  ListChecks,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -346,6 +347,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <ClipboardList className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Atendimentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('tratamentos_clinica') && isModuleEnabled(org.niche, 'tratamentos_clinica') && (
+          <SidebarNavLink href={`${base}/tratamentos`}>
+            <span className="flex items-center gap-2.5">
+              <ListChecks className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Tratamentos</span>
             </span>
           </SidebarNavLink>
         )}

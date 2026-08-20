@@ -23,3 +23,26 @@ export const CLINIC_QUOTE_STATUSES = [
   'rascunho', 'enviado', 'visualizado', 'aprovado', 'recusado', 'expirado', 'cancelado',
 ] as const
 export type ClinicQuoteStatus = (typeof CLINIC_QUOTE_STATUSES)[number]
+
+export const CLINIC_TREATMENT_STATUSES = [
+  'planejado', 'em_andamento', 'concluido', 'pausado', 'cancelado',
+] as const
+export type ClinicTreatmentStatus = (typeof CLINIC_TREATMENT_STATUSES)[number]
+
+export const CLINIC_TREATMENT_STATUS_LABEL: Record<ClinicTreatmentStatus, string> = {
+  planejado: 'Planejado',
+  em_andamento: 'Em andamento',
+  concluido: 'Concluído',
+  pausado: 'Pausado',
+  cancelado: 'Cancelado',
+}
+
+export const CLINIC_PACKAGE_STATUSES = ['ativo', 'utilizado', 'expirado', 'cancelado'] as const
+export type ClinicPackageStatus = (typeof CLINIC_PACKAGE_STATUSES)[number]
+
+export const CLINIC_PACKAGE_STATUS_LABEL: Record<ClinicPackageStatus, string> = {
+  ativo: 'Ativo',
+  utilizado: 'Utilizado',
+  expirado: 'Expirado',
+  cancelado: 'Cancelado',
+}
