@@ -23,6 +23,8 @@ export type PermissionKey =
   | 'explorar_voos'
   | 'documentos'
   | 'roteirista'
+  // Nicho de clínicas
+  | 'profissionais'
   | 'conversations'
   | 'social'
   | 'insights'
@@ -64,6 +66,8 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'explorar_voos', label: 'Explorar Voos',     section: 'Viagens' },
   { key: 'documentos',    label: 'Documentos',        section: 'Viagens' },
   { key: 'roteirista',    label: 'Travel Planner',    section: 'Viagens' },
+  // Clínicas (só orgs do nicho de clínicas)
+  { key: 'profissionais', label: 'Profissionais',     section: 'Clínicas' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
@@ -127,6 +131,7 @@ export function defaultMemberPermissions(): Permissions {
     explorar_voos: false,
     documentos:    false,
     roteirista:    false,
+    profissionais: false,
     marketing:     false,
     automations:   false,
     templates:     false,
@@ -139,7 +144,7 @@ export function defaultMemberPermissions(): Permissions {
 const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
   'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos', 'roteirista',
 ])
-const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar'])
+const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais'])
 
 /**
  * Group modules by section for rendering. Pass `isTravel` to hide the

@@ -2,12 +2,18 @@
 // vertical-specific tabs/features. Keep this list as the single source of truth.
 
 export const NICHE_TRAVEL = 'viagens'
+export const NICHE_CLINIC = 'Clínicas'
 
 export type Niche = typeof NICHE_TRAVEL | string
 
 export function isTravelNiche(niche?: string | null): boolean {
   const n = (niche || '').toLowerCase()
   return n === NICHE_TRAVEL || n.includes('viag') || n.includes('travel')
+}
+
+export function isClinicNiche(niche?: string | null): boolean {
+  const n = (niche || '').toLowerCase()
+  return n.includes('clinic') || n.includes('clínic')
 }
 
 /**

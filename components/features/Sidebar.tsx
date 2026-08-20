@@ -35,6 +35,7 @@ import {
   Armchair,
   Sparkles,
   Star,
+  Stethoscope,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -317,6 +318,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Agendamentos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('profissionais') && isModuleEnabled(org.niche, 'profissionais') && (
+          <SidebarNavLink href={`${base}/profissionais`}>
+            <span className="flex items-center gap-2.5">
+              <Stethoscope className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Profissionais</span>
             </span>
           </SidebarNavLink>
         )}
