@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Filter, ArrowRight, Loader2 } from 'lucide-react'
+import { Filter, Loader2 } from 'lucide-react'
 import {
   fetchFunnel,
   type FunnelPeriod,
@@ -189,53 +189,50 @@ export default function ConversionFunnelWidget({
           </div>
         </div>
 
-        {/* Funil horizontal — etapas lado a lado, largura fixa cada uma,
-            rola no eixo X se não couberem todas na largura do card. Altura
-            do card nunca varia com o número de etapas. */}
+        {/* Funil em colunas verticais — cada etapa é uma barra que cresce de
+            baixo pra cima, proporcional à contagem. Largura fixa por coluna,
+            rola no eixo X se não couberem todas. Altura do card nunca varia
+            com o número de etapas. */}
         {!hasAnyData ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
             Nenhum lead corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex items-stretch gap-1.5 overflow-x-auto pb-1">
+          <div className="flex-1 min-h-0 flex items-stretch gap-4 overflow-x-auto pt-2 pb-1">
             {result.stages.map((stage, idx) => {
-              const heightPct = Math.max(20, (stage.count / maxCount) * 100)
+              const heightPct = Math.max(6, (stage.count / maxCount) * 100)
               const color = stage.color || '#0f62fe'
 
               return (
-                <div key={stage.id} className="flex items-stretch shrink-0">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
-                    onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
-                    title="Ver no Pipeline"
-                    className="w-[132px] rounded-md flex flex-col justify-end p-2 gap-1.5 cursor-pointer transition-all hover:brightness-95"
-                    style={{ backgroundColor: `${color}14`, border: `1px solid ${color}40` }}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium truncate">{stage.name}</div>
-                      <div className="text-lg font-bold tabular-nums leading-tight">{stage.count}</div>
-                      {stage.value_cents > 0 && (
-                        <div className="text-[10px] text-muted-foreground tabular-nums truncate">
-                          {fmtCurrency(stage.value_cents)}
-                        </div>
-                      )}
-                      {idx > 0 && (
-                        <div className="text-[10px] text-muted-foreground mt-0.5">
-                          {stage.conversion_from_previous.toFixed(0)}% da anterior
-                        </div>
-                      )}
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${color}20` }}>
-                      <div className="h-full rounded-full" style={{ width: `${heightPct}%`, backgroundColor: color }} />
-                    </div>
+                <div key={stage.id} className="flex flex-col items-center w-[92px] shrink-0">
+                  {/* Área da coluna — a barra fica ancorada embaixo e cresce
+                      pra cima conforme o valor. */}
+                  <div className="flex-1 w-full flex items-end justify-center min-h-0">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
+                      onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
+                      title="Ver no Pipeline"
+                      className="w-11 rounded-t-md cursor-pointer transition-all hover:brightness-95"
+                      style={{ height: `${heightPct}%`, backgroundColor: color }}
+                    />
                   </div>
-                  {idx < result.stages.length - 1 && (
-                    <div className="flex items-center px-1 shrink-0">
-                      <ArrowRight className="w-4 h-4 text-muted-foreground/50" />
-                    </div>
-                  )}
+                  {/* Rótulos — eixo X do "gráfico" */}
+                  <div className="mt-2 text-center min-w-0 w-full">
+                    <div className="text-base font-bold tabular-nums leading-tight">{stage.count}</div>
+                    <div className="text-xs font-medium truncate" title={stage.name}>{stage.name}</div>
+                    {stage.value_cents > 0 && (
+                      <div className="text-[10px] text-muted-foreground tabular-nums truncate">
+                        {fmtCurrency(stage.value_cents)}
+                      </div>
+                    )}
+                    {idx > 0 && (
+                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+                        {stage.conversion_from_previous.toFixed(0)}%
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
