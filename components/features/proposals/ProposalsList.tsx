@@ -136,7 +136,7 @@ export default function ProposalsList({
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
           Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0 md:px-[5%]', selected && 'hidden md:flex')}>
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0 md:px-[1%]', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -181,7 +181,7 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="md:px-[5%] grid md:grid-cols-[4fr_5fr] gap-4 flex-1 min-h-0">
+      <div className="md:px-[1%] grid md:grid-cols-[50fr_48fr] gap-4 flex-1 min-h-0">
         {/* ── List (tabela) ────────────────────────────────────── */}
         <div className={cn(
           'rounded-none border bg-card overflow-auto h-full',
@@ -262,11 +262,9 @@ export default function ProposalsList({
           {selected
             ? <ProposalDetail
                 key={selected.id}
-                orgSlug={orgSlug}
                 p={selected}
                 sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
                 onBack={() => setSelectedId(null)}
-                onDelete={() => setDeleteId(selected.id)}
                 onDuplicate={() => setDuplicateFor(selected)}
               />
             : (
@@ -498,28 +496,15 @@ function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; val
 }
 
 function ProposalDetail({
-  orgSlug, p, sellerName, onBack, onDelete, onDuplicate,
+  p, sellerName, onBack, onDuplicate,
 }: {
-  orgSlug: string
   p: ProposalRow
   sellerName: string | null
   onBack: () => void
-  onDelete: () => void
   onDuplicate: () => void
 }) {
   const dest = destOf(p)
-  const [publicUrl, setPublicUrl] = useState('')
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    if (p.public_token) setPublicUrl(`${window.location.origin}/p/${p.public_token}`)
-  }, [p.public_token])
-
   const travelers = Array.isArray(p.travelers) ? p.travelers : []
-
-  async function copyLink() {
-    try { await navigator.clipboard.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1800) }
-    catch { toast.error('Não foi possível copiar') }
-  }
 
   return (
     <div className="flex flex-col w-full">
@@ -533,29 +518,6 @@ function ProposalDetail({
           <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <Button asChild size="sm" title="Abrir editor">
-            <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} aria-label="Abrir editor">
-              <Pencil className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir editor</span>
-            </Link>
-          </Button>
-          <Button type="button" variant="outline" size="sm" asChild title="Gerar PDF">
-            <Link href={`/app/${orgSlug}/cotacoes/${p.id}/pdf`} target="_blank" rel="noopener noreferrer" aria-label="Gerar PDF">
-              <FileText className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar PDF</span>
-            </Link>
-          </Button>
-          {p.public_token && (
-            <>
-              <Button type="button" variant="outline" size="sm" asChild title="Abrir / PDF">
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir / PDF">
-                  <ExternalLink className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Abrir / PDF</span>
-                </a>
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 sm:mr-1.5" />}
-                <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar link'}</span>
-              </Button>
-            </>
-          )}
           <Button
             type="button" variant="outline" size="sm"
             onClick={onDuplicate}
@@ -563,15 +525,6 @@ function ProposalDetail({
             aria-label="Copiar proposta para outro lead/contato"
           >
             <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Copiar p/ lead</span>
-          </Button>
-          <Button
-            type="button" variant="outline" size="icon"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Excluir proposta"
-            title="Excluir proposta"
-          >
-            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
