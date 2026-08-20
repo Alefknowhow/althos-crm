@@ -14,6 +14,8 @@ import PipelineTab from '@/components/features/dashboard/tabs/PipelineTab'
 import VendasTab from '@/components/features/dashboard/tabs/VendasTab'
 import ClientesTab from '@/components/features/dashboard/tabs/ClientesTab'
 import EquipeTab from '@/components/features/dashboard/tabs/EquipeTab'
+import ClinicaTab from '@/components/features/dashboard/tabs/ClinicaTab'
+import { isClinicNiche } from '@/lib/niche'
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
@@ -148,6 +150,13 @@ export default async function OrgDashboard({
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
             <EquipeTab ctx={ctx} />
           </Suspense>
+        }
+        clinica={
+          isClinicNiche((org as any).niche) ? (
+            <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+              <ClinicaTab orgSlug={params.orgSlug} />
+            </Suspense>
+          ) : undefined
         }
       />
 
