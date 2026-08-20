@@ -577,6 +577,10 @@ type Pin = { _key: string; label: string; type: string; lat?: number | null; lng
  *  saída. Mesmo padrão de repeater dos demais (chave local + reorder). */
 type CruiseDay = { _key: string; day_number?: number | null; date?: string | null; port?: string | null; arrival?: string | null; departure?: string | null; note?: string | null }
 
+/** Opção de cabine — cliente escolhe entre 2+ categorias de cabine pro
+ *  mesmo cruzeiro, cada uma com seu próprio valor. */
+type CruiseCabinOption = { _key: string; label: string; price_cents: number | null }
+
 /** Cruzeiro — primeiro tipo de produto novo do Construtor de Viagens
  *  (ver actions/quotations.ts: ProductSchema/product_type='cruzeiro').
  *  Campos essenciais sempre visíveis; recomendados/avançados atrás de
@@ -589,6 +593,11 @@ type Cruise = {
   pax_adults?: number | null; pax_children?: number | null; occupancy_label?: string | null
   cabin_category?: string | null; cabin_type?: string | null
   cabin_price_cents?: number | null; taxes_cents?: number | null; total_cents?: number | null
+  // Opções de cabine — quando preenchido, o cliente escolhe entre elas (ver
+  // Investimento na proposta pública/impressão: mostra "Cabine X = R$…" por
+  // opção, com a mesma forma de pagamento pra todas). Deixa cabin_category/
+  // cabin_price_cents acima como o valor "padrão" pra quando só há 1 opção.
+  cabin_options?: CruiseCabinOption[]
   // recomendado
   cabin_number?: string | null; deck?: string | null; location?: string | null; view?: string | null; cabin_guaranteed?: boolean
   pkg_drinks?: string | null; pkg_internet?: string | null; pkg_restaurants?: string | null; pkg_gratuities?: string | null; pkg_others?: string | null
@@ -680,6 +689,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       ...c,
       total_cents: p.price_cents ?? c.total_cents ?? null,
       days: withKeys((c.days || []) as any[]),
+      cabin_options: withKeys((c.cabin_options || []) as any[]),
       supplier: iv.supplier ?? null, fare_code: iv.fare_code ?? null, cost_cents: iv.cost_cents ?? null, internal_notes: iv.internal_notes ?? null,
     }
   })) as Cruise[])
@@ -837,13 +847,13 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         data: { ...f, duration_label: computeFlightDuration(f) || f.duration_label, baggage: f.baggage as any, cabin_class: (f.cabin_class || null) as any },
         internal_data: {},
       })),
-      ...cruises.map(({ _key, days, total_cents, supplier, fare_code, cost_cents, internal_notes, ...c }) => ({
+      ...cruises.map(({ _key, days, cabin_options, total_cents, supplier, fare_code, cost_cents, internal_notes, ...c }) => ({
         product_type: 'cruzeiro' as const,
         name: c.ship_name || c.cruise_line || null,
         summary: [c.itinerary_name, c.duration_nights ? `${c.duration_nights} noites` : null].filter(Boolean).join(' · ') || null,
         date_start: c.embark_date || null, date_end: c.disembark_date || null,
         price_cents: total_cents ?? null,
-        data: { ...c, total_cents, days: days.map(({ _key: __k, ...d }) => d) },
+        data: { ...c, total_cents, days: days.map(({ _key: __k, ...d }) => d), cabin_options: (cabin_options || []).map(({ _key: __k, ...o }) => o).filter(o => o.label || o.price_cents) },
         internal_data: { supplier, fare_code, cost_cents, internal_notes },
       })),
     ],
@@ -1309,6 +1319,34 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Valor da cabine (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cabin_price_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_price_cents: strToCents(e.target.value) } : x))} /></F>
               <F label="Taxas (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.taxes_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, taxes_cents: strToCents(e.target.value) } : x))} /></F>
               <F label="Total do produto (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.total_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, total_cents: strToCents(e.target.value) } : x))} /></F>
+            </div>
+
+            {/* Opções de cabine — cliente escolhe entre 2+ categorias, cada
+                uma com seu valor; deixe vazio se só há uma opção (usa o
+                campo "Valor da cabine" acima). */}
+            <div className="border rounded-md p-2.5 bg-muted/30">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Opções de cabine (cliente escolhe)</p>
+                <Button type="button" variant="outline" size="sm" className="h-6 text-[11px] px-2"
+                  onClick={() => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: [...(x.cabin_options || []), { _key: nk(), label: '', price_cents: null }] } : x))}>
+                  <Plus className="w-3 h-3 mr-1" /> Opção
+                </Button>
+              </div>
+              {(c.cabin_options || []).length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Nenhuma — a proposta usa o valor único da cabine acima.</p>
+              )}
+              {(c.cabin_options || []).map(opt => (
+                <div key={opt._key} className="flex items-center gap-1.5 mb-1.5 last:mb-0">
+                  <Input placeholder="Ex.: Cabine Balcony" value={opt.label}
+                    onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, label: e.target.value } : o) } : x))} />
+                  <Input className="w-32 shrink-0" inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(opt.price_cents)}
+                    onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, price_cents: strToCents(e.target.value) } : o) } : x))} />
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive"
+                    onClick={() => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).filter(o => o._key !== opt._key) } : x))}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
             </div>
 
             {/* Recomendado */}

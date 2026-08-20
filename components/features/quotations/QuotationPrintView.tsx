@@ -76,9 +76,21 @@ type Cruise = {
   disembark_port?: string | null
   cabin_category?: string | null
   cabin_type?: string | null
+  cabin_price_cents?: number | null
+  taxes_cents?: number | null
+  deck?: string | null
+  location?: string | null
+  view?: string | null
+  cabin_guaranteed?: boolean | null
+  occupancy_label?: string | null
+  pax_adults?: number | null
+  pax_children?: number | null
   pkg_drinks?: string | null
   pkg_internet?: string | null
   pkg_restaurants?: string | null
+  pkg_gratuities?: string | null
+  pkg_others?: string | null
+  cabin_options?: { label: string; price_cents: number | null }[] | null
   total_cents?: number | null
 }
 
@@ -119,15 +131,6 @@ function fmtDate(d?: string | null) {
 }
 function fmtCurrency(cents: number | null | undefined) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
-}
-/** "Cotação válida até: DD/MM/AAAA" — quoted_at/created_at + validity_days,
- *  em vez do texto "válida por N dias" (menos escaneável num documento). */
-function validUntil(from?: string | null, days?: number | null): string | null {
-  if (!from || !days) return null
-  const base = new Date(from.slice(0, 10) + 'T12:00:00')
-  if (Number.isNaN(base.getTime())) return null
-  base.setDate(base.getDate() + days)
-  return base.toLocaleDateString('pt-BR')
 }
 function stripHtml(html?: string | null) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -176,7 +179,7 @@ function SectionLabel({ icon, children }: { icon?: string; children: React.React
  * medido de verdade no DOM, não estimado. */
 const DENSITY_FONT_PX = [11.5, 10.5, 9.5]
 const DENSITY_GAP = ['mb-[1.1em]', 'mb-[0.85em]', 'mb-[0.65em]']
-const DENSITY_HERO_W = ['w-[42%]', 'w-[36%]', 'w-[30%]']
+const DENSITY_HERO_W = ['w-1/2', 'w-[44%]', 'w-[38%]']
 const A4_HEIGHT_MM = 297
 const MM_TO_PX = 3.7795275591
 
@@ -239,14 +242,27 @@ export default function QuotationPrintView({
   const hasIncludedExcluded = (quotation.included?.length ?? 0) > 0 || (quotation.not_included?.length ?? 0) > 0
   const hasTours = hasHtml(quotation.tours_html)
   const cancellationHasContent = hasHtml(quotation.cancellation_html)
-  const hasValidity = !!quotation.validity_days && quotation.validity_days > 0
-  const validUntilLabel = validUntil(quotation.quoted_at || quotation.created_at, quotation.validity_days)
 
   const productBreakdown: { label: string; cents: number }[] = [
     ...lodgings.filter(l => l.price_cents).map(l => ({ label: l.name || 'Hospedagem', cents: l.price_cents! })),
     ...cruises.filter(c => c.total_cents).map(c => ({ label: c.name || c.cruise_line || 'Cruzeiro', cents: c.total_cents! })),
     ...flights.filter(f => f.price_cents).map(f => ({ label: [f.from_city || f.from_code, f.to_city || f.to_code].filter(Boolean).join(' → ') || 'Aéreo', cents: f.price_cents! })),
   ]
+
+  // Cruzeiro com opções de cabine: mostra "Cabine X = R$…" por opção em vez
+  // do total único — cliente escolhe, forma de pagamento é a mesma pra todas.
+  const cruiseCabinBreakdown: { label: string; cents: number }[] = cruises.flatMap(c =>
+    (c.cabin_options || []).filter(o => o.label && o.price_cents).map(o => ({ label: o.label, cents: o.price_cents! })),
+  )
+
+  // "PIX" e "à vista" costumam representar a mesma condição — evita repetir
+  // a mesma linha duas vezes quando o valor descrito é idêntico.
+  const paymentConditions = (quotation.payment_conditions || []).reduce<{ label: string; value?: string | null }[]>((acc, p) => {
+    const dup = acc.find(x => (x.value || '').trim() && x.value === p.value)
+    if (dup) { dup.label = `${dup.label} / ${p.label}`; return acc }
+    acc.push({ ...p })
+    return acc
+  }, [])
 
   // Quantos blocos de HTML rico assíncrono (Rich/dompurify) existem nesta
   // renderização — a medição de compactação só roda depois que todos
@@ -281,9 +297,9 @@ export default function QuotationPrintView({
           <div className="flex items-center gap-2.5 min-w-0">
             {org.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt={org.name} className="h-[2em] w-auto object-contain shrink-0" />
+              <img src={org.logo_url} alt={org.name} className="h-[2.8em] w-auto object-contain shrink-0" />
             )}
-            <p className="text-[1.1em] font-bold leading-tight truncate">{org.name}</p>
+            <p className="text-[1.5em] font-bold leading-tight truncate">{org.name}</p>
           </div>
           <div className="text-right text-[0.62em] text-gray-500 flex items-center gap-[0.8em] shrink-0">
             {org.contact_phone && <span className="flex items-center gap-1"><Phone className="w-[0.9em] h-[0.9em]" /> {org.contact_phone}</span>}
@@ -296,7 +312,7 @@ export default function QuotationPrintView({
         <div className={`${DENSITY_GAP[density]} flex items-start gap-[1em] mt-[0.7em] break-inside-avoid`}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-3 mb-[0.5em]">
-              <p className="font-bold text-[1.05em] uppercase tracking-wide">{quotation.title || 'Orçamento personalizado'}</p>
+              <p className="font-bold text-[1.35em] uppercase tracking-wide">{quotation.title || 'Orçamento personalizado'}</p>
               <p className="text-[0.64em] text-gray-400 shrink-0">Código #{quotation.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <div className="grid grid-cols-2 gap-x-[1em] gap-y-[0.4em]">
@@ -307,7 +323,7 @@ export default function QuotationPrintView({
             </div>
           </div>
           {heroImage && (
-            <div className={`${DENSITY_HERO_W[density]} shrink-0 aspect-[16/9] overflow-hidden rounded-md break-inside-avoid`} style={{ maxWidth: '38%' }}>
+            <div className={`${DENSITY_HERO_W[density]} shrink-0 aspect-[16/9] overflow-hidden rounded-md break-inside-avoid`} style={{ maxWidth: '50%' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={heroImage} alt={destinations || quotation.title || 'Destino'} className="w-full h-full object-cover" />
             </div>
@@ -343,14 +359,30 @@ export default function QuotationPrintView({
             <SectionLabel icon="🚢">Cruzeiro</SectionLabel>
             {cruises.map((c, i) => (
               <div key={i} className={cn('break-inside-avoid', i < cruises.length - 1 && 'mb-[0.6em] pb-[0.6em] border-b border-gray-100')}>
-                <p className="font-semibold text-[0.85em]">{c.name || c.cruise_line || 'Cruzeiro'}{c.duration_nights ? ` · ${c.duration_nights} noites` : ''}</p>
+                <p className="font-semibold text-[0.85em]">
+                  {c.cruise_line ? `${c.cruise_line} · ` : ''}{c.name || c.ship_name || 'Cruzeiro'}
+                  {c.itinerary_name ? ` · ${c.itinerary_name}` : ''}
+                  {c.duration_nights ? ` · ${c.duration_nights} noites` : ''}
+                </p>
                 <p className="text-[0.75em] text-gray-600">
                   {c.embark_port ? `Embarque ${c.embark_port} ${fmtDate(c.embark_date)}` : ''}
                   {c.disembark_port ? ` · Desembarque ${c.disembark_port} ${fmtDate(c.disembark_date)}` : ''}
-                  {c.cabin_category ? ` · Cabine ${c.cabin_category}${c.cabin_type ? ` (${c.cabin_type})` : ''}` : ''}
                 </p>
-                {(c.pkg_drinks || c.pkg_internet || c.pkg_restaurants) && (
-                  <p className="text-[0.72em] text-gray-500">{[c.pkg_drinks, c.pkg_internet, c.pkg_restaurants].filter(Boolean).join(' · ')}</p>
+                <p className="text-[0.75em] text-gray-600">
+                  {(c.cabin_options?.length ?? 0) > 0
+                    ? `Cabines: ${c.cabin_options!.map(o => o.label).filter(Boolean).join(' · ')}`
+                    : c.cabin_category ? `Cabine ${c.cabin_category}${c.cabin_type ? ` (${c.cabin_type})` : ''}` : ''}
+                  {c.deck ? ` · Deck ${c.deck}` : ''}
+                  {c.view ? ` · Vista ${c.view}` : ''}
+                  {c.cabin_guaranteed ? ' · Categoria garantida' : ''}
+                </p>
+                {(c.pax_adults || c.occupancy_label) && (
+                  <p className="text-[0.72em] text-gray-500">
+                    {c.occupancy_label || `${c.pax_adults ?? 0} adulto${(c.pax_adults ?? 0) === 1 ? '' : 's'}${c.pax_children ? ` · ${c.pax_children} criança${c.pax_children === 1 ? '' : 's'}` : ''}`}
+                  </p>
+                )}
+                {(c.pkg_drinks || c.pkg_internet || c.pkg_restaurants || c.pkg_gratuities || c.pkg_others) && (
+                  <p className="text-[0.72em] text-gray-500">{[c.pkg_drinks, c.pkg_internet, c.pkg_restaurants, c.pkg_gratuities, c.pkg_others].filter(Boolean).join(' · ')}</p>
                 )}
               </div>
             ))}
@@ -399,81 +431,83 @@ export default function QuotationPrintView({
           </div>
         )}
 
-        {/* ── Inclui / Não inclui ────────────────────────────────── */}
-        {hasIncludedExcluded && (
-          <div className={`${DENSITY_GAP[density]} grid grid-cols-2 gap-x-[1.2em] break-inside-avoid`}>
-            {(quotation.included?.length ?? 0) > 0 && (
-              <div>
-                <SectionLabel>Inclui</SectionLabel>
-                <ul className="space-y-[0.2em]">
-                  {quotation.included!.map((item, i) => (
-                    <li key={i} className="text-[0.76em] flex items-start gap-[0.4em]"><Check className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
-                  ))}
-                </ul>
+        {/* ── Investimento (metade esquerda) + Inclui/Não inclui (direita) ── */}
+        <div className={`${DENSITY_GAP[density]} flex items-start gap-[1em] break-inside-avoid`}>
+          {/* Investimento */}
+          <div className="w-1/2 border border-gray-300 bg-gray-50 px-[1em] py-[0.9em]">
+            <p className="font-bold text-[0.8em] uppercase tracking-wide mb-[0.5em]">Investimento</p>
+            {cruiseCabinBreakdown.length > 0 ? (
+              <ul className="mb-[0.6em] space-y-[0.2em]">
+                {cruiseCabinBreakdown.map((row, i) => (
+                  <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
+                    <span className="truncate">{row.label}</span>
+                    <span className="tabular-nums shrink-0 font-semibold">{fmtCurrency(row.cents)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : productBreakdown.length > 1 && (
+              <ul className="mb-[0.6em] space-y-[0.2em]">
+                {productBreakdown.map((row, i) => (
+                  <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
+                    <span className="truncate">{row.label}</span>
+                    <span className="tabular-nums shrink-0">{fmtCurrency(row.cents)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {cruiseCabinBreakdown.length === 0 && (
+              <div className="flex items-baseline justify-between border-t border-gray-300 pt-[0.5em] gap-[1em]">
+                <p className="font-bold text-[0.82em] uppercase tracking-wide">Total da viagem</p>
+                <p className="text-[1.9em] font-bold text-black leading-none tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
               </div>
             )}
-            {(quotation.not_included?.length ?? 0) > 0 && (
-              <div>
-                <SectionLabel>Não inclui</SectionLabel>
-                <ul className="space-y-[0.2em]">
-                  {quotation.not_included!.map((item, i) => (
-                    <li key={i} className="text-[0.76em] flex items-start gap-[0.4em] text-gray-600"><X className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
-                  ))}
-                </ul>
-              </div>
+            {quotation.price_per_person_cents != null && quotation.price_per_person_cents > 0 && (
+              <p className="text-[0.78em] text-gray-600 mt-[0.25em] text-right">{fmtCurrency(quotation.price_per_person_cents)} por pessoa</p>
+            )}
+            {paymentConditions.length > 0 && (
+              <ul className="mt-[0.6em] pt-[0.5em] border-t border-gray-200 space-y-[0.15em]">
+                {paymentConditions.map((p, i) => (
+                  <li key={i} className="text-[0.76em]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
+                ))}
+              </ul>
+            )}
+            {quotation.price_disclaimer && (
+              <p className="text-[0.68em] text-gray-500 mt-[0.5em] whitespace-pre-wrap">{quotation.price_disclaimer}</p>
             )}
           </div>
-        )}
 
-        {/* ── Investimento ───────────────────────────────────────── */}
-        <div className={`${DENSITY_GAP[density]} border border-gray-300 bg-gray-50 px-[1em] py-[0.9em] break-inside-avoid`}>
-          <p className="font-bold text-[0.8em] uppercase tracking-wide mb-[0.5em]">Investimento</p>
-          {productBreakdown.length > 1 && (
-            <ul className="mb-[0.6em] space-y-[0.2em]">
-              {productBreakdown.map((row, i) => (
-                <li key={i} className="flex items-baseline justify-between text-[0.76em] text-gray-700 gap-[1em]">
-                  <span className="truncate">{row.label}</span>
-                  <span className="tabular-nums shrink-0">{fmtCurrency(row.cents)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex items-baseline justify-between border-t border-gray-300 pt-[0.5em] gap-[1em]">
-            <p className="font-bold text-[0.82em] uppercase tracking-wide">Total da viagem</p>
-            <p className="text-[1.9em] font-bold text-black leading-none tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
-          </div>
-          {quotation.price_per_person_cents != null && quotation.price_per_person_cents > 0 && (
-            <p className="text-[0.78em] text-gray-600 mt-[0.25em] text-right">{fmtCurrency(quotation.price_per_person_cents)} por pessoa</p>
-          )}
-          {(quotation.payment_conditions?.length ?? 0) > 0 && (
-            <ul className="mt-[0.6em] pt-[0.5em] border-t border-gray-200 space-y-[0.15em]">
-              {quotation.payment_conditions!.map((p, i) => (
-                <li key={i} className="text-[0.76em]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
-              ))}
-            </ul>
-          )}
-          {quotation.price_disclaimer && (
-            <p className="text-[0.68em] text-gray-500 mt-[0.5em] whitespace-pre-wrap">{quotation.price_disclaimer}</p>
+          {/* Inclui / Não inclui */}
+          {hasIncludedExcluded && (
+            <div className="w-1/2 space-y-[0.6em]">
+              {(quotation.included?.length ?? 0) > 0 && (
+                <div className="border border-gray-200 px-[0.9em] py-[0.7em]">
+                  <SectionLabel>Inclui</SectionLabel>
+                  <ul className="space-y-[0.2em]">
+                    {quotation.included!.map((item, i) => (
+                      <li key={i} className="text-[0.76em] flex items-start gap-[0.4em]"><Check className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(quotation.not_included?.length ?? 0) > 0 && (
+                <div className="border border-gray-200 px-[0.9em] py-[0.7em]">
+                  <SectionLabel>Não inclui</SectionLabel>
+                  <ul className="space-y-[0.2em]">
+                    {quotation.not_included!.map((item, i) => (
+                      <li key={i} className="text-[0.76em] flex items-start gap-[0.4em] text-gray-600"><X className="w-[0.85em] h-[0.85em] mt-[0.15em] shrink-0" /> {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
-        {/* ── Validade / Cancelamento ────────────────────────────── */}
-        {(hasValidity || cancellationHasContent) && (
-          <div className={`${DENSITY_GAP[density]} grid ${hasValidity && cancellationHasContent ? 'grid-cols-2' : 'grid-cols-1'} gap-x-[1.2em] break-inside-avoid`}>
-            {hasValidity && (
-              <div>
-                <SectionLabel>Validade da tarifa</SectionLabel>
-                <p className="text-[0.76em] text-gray-700">
-                  {validUntilLabel ? <>Cotação válida até: <span className="font-semibold">{validUntilLabel}</span></> : `Tarifa válida por ${quotation.validity_days} dia${quotation.validity_days === 1 ? '' : 's'}.`} Sujeita à disponibilidade até a confirmação da reserva.
-                </p>
-              </div>
-            )}
-            {cancellationHasContent && (
-              <div>
-                <SectionLabel>Política de cancelamento</SectionLabel>
-                <Rich html={quotation.cancellation_html} onReady={onRichReady} className="text-[0.76em] leading-snug text-gray-700 [&_p]:mb-[0.25em] [&_ul]:list-disc [&_ul]:pl-[1.1em]" />
-              </div>
-            )}
+        {/* ── Cancelamento ───────────────────────────────────────── */}
+        {cancellationHasContent && (
+          <div className={`${DENSITY_GAP[density]} break-inside-avoid`}>
+            <SectionLabel>Política de cancelamento</SectionLabel>
+            <Rich html={quotation.cancellation_html} onReady={onRichReady} className="text-[0.76em] leading-snug text-gray-700 [&_p]:mb-[0.25em] [&_ul]:list-disc [&_ul]:pl-[1.1em]" />
           </div>
         )}
 
