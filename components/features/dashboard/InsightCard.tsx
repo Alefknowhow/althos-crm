@@ -21,16 +21,18 @@ const KIND_STYLES = {
 // fonte real.
 const TAB_KEYWORDS: Record<string, string[]> = {
   'visao-geral': [],
-  comercial: ['/pipeline', 'funil', 'conversão', 'lead'],
-  'vendas-clientes': ['/vendas', 'venda', 'cliente', 'receita'],
-  'equipe-atendimento': ['/equipe', 'vendedor', 'resposta', 'atendimento'],
+  pipeline: ['/pipeline', 'funil', 'conversão', 'lead'],
+  vendas: ['/vendas', 'venda', 'receita', 'produto'],
+  clientes: ['/vendas', 'cliente', 'ltv', 'recompra'],
+  equipe: ['/equipe', 'vendedor', 'resposta', 'atendimento'],
 }
 
 const MOCK_FALLBACK: Record<string, string> = {
   'visao-geral': 'Nenhum sinal relevante no momento — sua operação está estável comparado ao período anterior.',
-  comercial: 'Uma campanha específica concentra a maior parte das conversões recentes — considere realocar orçamento.',
-  'vendas-clientes': '3 clientes VIP não compram há mais de 60 dias — vale um contato de reativação.',
-  'equipe-atendimento': 'Um vendedor concentra mais de 50% dos leads atribuídos — considere redistribuir.',
+  pipeline: 'Uma campanha específica concentra a maior parte das conversões recentes — considere realocar orçamento.',
+  vendas: 'A receita cresceu em relação ao período anterior — confira o detalhamento por produto.',
+  clientes: '3 clientes VIP não compram há mais de 60 dias — vale um contato de reativação.',
+  equipe: 'Um vendedor concentra mais de 50% dos leads atribuídos — considere redistribuir.',
 }
 
 export default async function InsightCard({ orgSlug, tab }: { orgSlug: string; tab: string }) {

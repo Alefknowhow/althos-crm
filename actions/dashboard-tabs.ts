@@ -193,6 +193,70 @@ export async function getAtRiskCustomers(orgId: string, thresholdDays = 90, limi
   return atRisk.sort((a, b) => b.days_since_last_sale - a.days_since_last_sale).slice(0, limit)
 }
 
+export type RepurchaseRate = { pct: number; repeatCustomers: number; totalCustomers: number }
+
+/** Taxa de recompra = % de clientes (com ao menos 1 venda concluída) que
+ *  compraram mais de uma vez — substitui o valor fixo "24%" que existia
+ *  antes; os dados pra calcular isso de verdade já existiam
+ *  (fetchCompletedSalesWithContact), só não tinha sido agregado ainda. */
+export async function getRepurchaseRate(orgId: string): Promise<RepurchaseRate> {
+  const rows = await fetchCompletedSalesWithContact(orgId)
+  const byCustomer = new Map<string, number>()
+  for (const r of rows) {
+    if (!r.contato_id) continue
+    byCustomer.set(r.contato_id, (byCustomer.get(r.contato_id) || 0) + 1)
+  }
+  const totalCustomers = byCustomer.size
+  const repeatCustomers = Array.from(byCustomer.values()).filter(n => n >= 2).length
+  return {
+    pct: totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 1000) / 10 : 0,
+    repeatCustomers,
+    totalCustomers,
+  }
+}
+
+export type CustomerSegment = 'novo' | 'ativo' | 'recorrente' | 'vip' | 'em_risco'
+export type CustomerSegmentation = Record<CustomerSegment, number>
+
+/**
+ * Segmentação de clientes por comportamento de compra — critério objetivo,
+ * sem campo manual de classificação:
+ * - Novo: 1 compra, feita nos últimos 30 dias.
+ * - Em risco: sem compra há 90+ dias (mesmo critério de getAtRiskCustomers).
+ * - VIP: entre os 10% de maior LTV (mínimo 1 cliente), e não está em risco.
+ * - Recorrente: 2+ compras, não é VIP nem está em risco.
+ * - Ativo: 1 compra, fora da janela de "novo", não está em risco.
+ */
+export async function getCustomerSegmentation(orgId: string): Promise<CustomerSegmentation> {
+  const rows = await fetchCompletedSalesWithContact(orgId)
+  const byCustomer = new Map<string, { count: number; total: number; lastSale: string }>()
+  for (const r of rows) {
+    if (!r.contato_id) continue
+    const cur = byCustomer.get(r.contato_id) || { count: 0, total: 0, lastSale: r.sale_date }
+    cur.count += 1
+    cur.total += r.amount_cents
+    if (r.sale_date > cur.lastSale) cur.lastSale = r.sale_date
+    byCustomer.set(r.contato_id, cur)
+  }
+
+  const entries = Array.from(byCustomer.entries())
+  const vipThreshold = entries.length > 0
+    ? [...entries].sort((a, b) => b[1].total - a[1].total)[Math.max(0, Math.ceil(entries.length * 0.1) - 1)][1].total
+    : 0
+
+  const now = Date.now()
+  const segmentation: CustomerSegmentation = { novo: 0, ativo: 0, recorrente: 0, vip: 0, em_risco: 0 }
+  for (const [, c] of entries) {
+    const daysSinceLast = Math.floor((now - new Date(c.lastSale).getTime()) / 86_400_000)
+    if (daysSinceLast >= 90) { segmentation.em_risco++; continue }
+    if (c.total >= vipThreshold && vipThreshold > 0) { segmentation.vip++; continue }
+    if (c.count >= 2) { segmentation.recorrente++; continue }
+    if (daysSinceLast <= 30) { segmentation.novo++; continue }
+    segmentation.ativo++
+  }
+  return segmentation
+}
+
 /* -------- Equipe: conversão por vendedor, negociações abertas, score -------- */
 
 export type SellerConversionRow = { seller_id: string; leads: number; won: number; conversion_pct: number }

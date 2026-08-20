@@ -10,9 +10,10 @@ import PinnedCardsGrid from '@/components/features/dashboard/PinnedCardsGrid'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import DashboardTabsShell from '@/components/features/dashboard/DashboardTabsShell'
 import VisaoGeralTab from '@/components/features/dashboard/tabs/VisaoGeralTab'
-import ComercialTab from '@/components/features/dashboard/tabs/ComercialTab'
-import VendasClientesTab from '@/components/features/dashboard/tabs/VendasClientesTab'
-import EquipeAtendimentoTab from '@/components/features/dashboard/tabs/EquipeAtendimentoTab'
+import PipelineTab from '@/components/features/dashboard/tabs/PipelineTab'
+import VendasTab from '@/components/features/dashboard/tabs/VendasTab'
+import ClientesTab from '@/components/features/dashboard/tabs/ClientesTab'
+import EquipeTab from '@/components/features/dashboard/tabs/EquipeTab'
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
@@ -128,19 +129,24 @@ export default async function OrgDashboard({
             <VisaoGeralTab ctx={ctx} />
           </Suspense>
         }
-        comercial={
+        pipeline={
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-            <ComercialTab ctx={ctx} />
+            <PipelineTab ctx={ctx} />
           </Suspense>
         }
-        vendasClientes={
+        vendas={
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-            <VendasClientesTab ctx={ctx} />
+            <VendasTab ctx={ctx} />
           </Suspense>
         }
-        equipeAtendimento={
+        clientes={
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-            <EquipeAtendimentoTab ctx={ctx} />
+            <ClientesTab ctx={ctx} />
+          </Suspense>
+        }
+        equipe={
+          <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+            <EquipeTab ctx={ctx} />
           </Suspense>
         }
       />

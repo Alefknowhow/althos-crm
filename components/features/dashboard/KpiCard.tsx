@@ -31,7 +31,7 @@ export default function KpiCard({
     trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-muted-foreground'
 
   return (
-    <Card className={cn('flex flex-col justify-between p-2.5 sm:p-4 h-full min-w-0', className)}>
+    <Card className={cn('flex flex-col justify-between p-2.5 sm:p-4 h-full min-h-[100px] sm:min-h-[108px] min-w-0', className)}>
       <div className="flex items-start justify-between gap-1.5">
         <span className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{label}</span>
         <TooltipProvider delayDuration={150}>

@@ -17,7 +17,8 @@ function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
-export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) {
+/** Equipe — "quem está performando e onde estão os gargalos?". */
+export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
   const accountId = await getAccountIdForOrgSlug(ctx.orgSlug)
   const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members] = await Promise.all([
     accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
@@ -32,12 +33,18 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
   const individualGoalCents = monthlyGoalCents && activeSellers > 0 ? Math.round(monthlyGoalCents / activeSellers) : null
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           label="Créditos de IA"
           value={credits ? `${credits.available}` : '—'}
           help="Créditos de IA disponíveis no plano atual para o mês corrente (incluídos + comprados − usados)."
+        />
+        <KpiCard
+          label="Meta individual (média)"
+          value={individualGoalCents === null ? '—' : fmtCurrency(individualGoalCents)}
+          help="Meta mensal da empresa dividida igualmente entre os vendedores ativos — não há meta individual configurável por vendedor ainda."
+          mock
         />
         <KpiCard
           label="Tempo médio de resposta"
@@ -51,24 +58,9 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
           help="Percentual de conversas que receberam alguma resposta da equipe."
           mock
         />
-        <KpiCard
-          label="Reputação"
-          value="4.7 ★"
-          help="Nota média de avaliações públicas (ex.: Google Meu Negócio). Requer integração externa."
-          mock
-        />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard
-          label="Meta individual (média)"
-          value={individualGoalCents === null ? '—' : fmtCurrency(individualGoalCents)}
-          help="Meta mensal da empresa dividida igualmente entre os vendedores ativos — não há meta individual configurável por vendedor ainda."
-          mock
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-4">
           <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
@@ -104,7 +96,7 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <BarListCard
           title="Score de performance"
           help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
@@ -122,20 +114,16 @@ export default async function EquipeAtendimentoTab({ ctx }: { ctx: WidgetCtx }) 
         </Suspense>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-12">
-          <KpiCard
-            label="Mensagens respondidas pela IA"
-            value="342 no período"
-            help="Quantidade de mensagens de clientes/leads respondidas automaticamente pela IA, sem intervenção humana."
-            mock
-            className="md:max-w-sm"
-          />
-        </div>
-      </div>
+      <KpiCard
+        label="Mensagens respondidas pela IA"
+        value="342 no período"
+        help="Quantidade de mensagens de clientes/leads respondidas automaticamente pela IA, sem intervenção humana."
+        mock
+        className="md:max-w-sm"
+      />
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
-        <InsightCard orgSlug={ctx.orgSlug} tab="equipe-atendimento" />
+        <InsightCard orgSlug={ctx.orgSlug} tab="equipe" />
       </Suspense>
     </div>
   )
