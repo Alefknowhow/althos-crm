@@ -17,6 +17,10 @@ import {
   type PropertyRow, type PropertyMediaRow,
 } from '@/actions/properties'
 import { uploadSaleVoucher } from '@/actions/upload'
+import PropertyInterestsSection from './PropertyInterestsSection'
+import PropertyVisitsSection from './PropertyVisitsSection'
+import type { PropertyInterestRow } from '@/actions/property-interests'
+import type { PropertyVisitRow } from '@/actions/property-visits'
 
 type Contato = { id: string; name: string; phone: string | null }
 type Member = { user_id: string; name: string; email: string }
@@ -53,8 +57,11 @@ function F({ label, children, className }: { label: string; children: React.Reac
 }
 
 export default function PropertyEditor({
-  orgSlug, property, media: initialMedia, contatos, members,
-}: { orgSlug: string; property: PropertyRow; media: PropertyMediaRow[]; contatos: Contato[]; members: Member[] }) {
+  orgSlug, property, media: initialMedia, contatos, members, interests = [], visits = [],
+}: {
+  orgSlug: string; property: PropertyRow; media: PropertyMediaRow[]; contatos: Contato[]; members: Member[]
+  interests?: PropertyInterestRow[]; visits?: PropertyVisitRow[]
+}) {
   const router = useRouter()
   const [p, setP] = useState(property)
   const [media, setMedia] = useState(initialMedia)
@@ -328,6 +335,9 @@ export default function PropertyEditor({
           </F>
         </CardContent>
       </Card>
+
+      <PropertyInterestsSection orgSlug={orgSlug} mode={{ type: 'property', propertyId: p.id }} initial={interests} contatos={contatos} />
+      <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'property', propertyId: p.id }} initial={visits} contatos={contatos} members={members} />
     </div>
   )
 }

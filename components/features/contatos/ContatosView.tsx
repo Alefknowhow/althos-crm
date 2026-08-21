@@ -39,6 +39,8 @@ import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/action
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
+import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
+import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
 import CopyButton from '@/components/ui/copy-button'
 
 // ── Tipos vindos da página (server) ──────────────────────────────────
@@ -77,6 +79,8 @@ type Selected = {
   documents: any[]
   sales: Sale[]
   relationships: any[]
+  propertyInterests?: any[]
+  propertyVisits?: any[]
 } | null
 
 type Filters = Record<string, string | undefined>
@@ -95,6 +99,8 @@ interface Props {
   savedFilters: SavedFilter[]
   filters: Filters
   isTravel: boolean
+  isRealEstate?: boolean
+  properties?: { id: string; title: string; code: string | null }[]
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode
 }
@@ -144,6 +150,8 @@ export default function ContatosView({
   savedFilters,
   filters,
   isTravel,
+  isRealEstate,
+  properties = [],
   members,
   statusTabs,
 }: Props) {
@@ -375,6 +383,8 @@ export default function ContatosView({
               onBack={() => setMobileDetail(false)}
               members={members}
               isTravel={isTravel}
+              isRealEstate={isRealEstate}
+              properties={properties}
             />
           ) : (
             <div className="h-full grid place-items-center p-10 text-center">
@@ -556,13 +566,15 @@ function ListAvatar({ name, url }: { name: string; url: string | null }) {
 
 // ── Painel de detalhe ────────────────────────────────────────────────
 function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel,
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [],
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
   onBack: () => void
   members: { id: string; name: string }[]
   isTravel: boolean
+  isRealEstate?: boolean
+  properties?: { id: string; title: string; code: string | null }[]
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -810,6 +822,14 @@ function DetailPanel({
 
       {/* Parentesco */}
       <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
+
+      {/* Imóveis de interesse / Visitas — só nicho imobiliário */}
+      {isRealEstate && (
+        <>
+          <PropertyInterestsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyInterests || []} properties={properties} />
+          <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyVisits || []} properties={properties} members={members.map(m => ({ user_id: m.id, name: m.name }))} />
+        </>
+      )}
 
       {/* Histórico de compras */}
       {selected.sales.length > 0 && (

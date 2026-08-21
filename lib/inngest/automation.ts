@@ -23,6 +23,12 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'clinic.appointment.confirmed' },
       { event: 'clinic.quote.approved' },
       { event: 'clinic.attendance.completed' },
+      // Vertical Imobiliárias — ciclo de vida de visitas (Fase 2), mesmo
+      // motor genérico, sem engine paralela.
+      { event: 'imoveis.visit.scheduled' },
+      { event: 'imoveis.visit.confirmed' },
+      { event: 'imoveis.visit.canceled' },
+      { event: 'imoveis.visit.completed' },
     ]
   },
   async ({ event, step }: { event: any; step: any }) => {

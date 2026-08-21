@@ -9,7 +9,10 @@ import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
 import { resolveContatoAvatars } from '@/actions/contatos'
-import { isTravelNiche } from '@/lib/niche'
+import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
+import { listProperties } from '@/actions/properties'
+import { listInterestsByContato } from '@/actions/property-interests'
+import { listVisitsByContato } from '@/actions/property-visits'
 
 const PAGE_SIZE = 50
 
@@ -103,7 +106,9 @@ export default async function ContatosPage({
   const from = page * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
-  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members] =
+  const realEstate = isRealEstateNiche(org.niche)
+
+  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members, properties] =
     await Promise.all([
       q.order('updated_at', { ascending: false }).range(from, to),
       supabase
@@ -115,6 +120,7 @@ export default async function ContatosPage({
       listSavedFilters(params.orgSlug, 'leads'),
       supabase.from('contatos').select('tags, source').eq('organization_id', org.id).limit(1000),
       listOrgMembers(params.orgSlug),
+      realEstate ? listProperties(params.orgSlug) : Promise.resolve([]),
     ])
 
   // Distinct tags + sources for the filter UI.
@@ -149,7 +155,7 @@ export default async function ContatosPage({
   const selId = searchParams.sel || ''
   let selected: any = null
   if (selId) {
-    const [{ data: contato }, { data: documents }, { data: sales }, relationships] =
+    const [{ data: contato }, { data: documents }, { data: sales }, relationships, interests, visits] =
       await Promise.all([
         supabase
           .from('contatos')
@@ -170,6 +176,8 @@ export default async function ContatosPage({
           .eq('organization_id', org.id)
           .order('sale_date', { ascending: false }),
         listRelationships(params.orgSlug, selId),
+        realEstate ? listInterestsByContato(params.orgSlug, selId) : Promise.resolve([]),
+        realEstate ? listVisitsByContato(params.orgSlug, selId) : Promise.resolve([]),
       ])
     if (contato) {
       const [resolvedContato] = await resolveContatoAvatars(params.orgSlug, [contato as any])
@@ -178,6 +186,8 @@ export default async function ContatosPage({
         documents: documents || [],
         sales: sales || [],
         relationships,
+        propertyInterests: interests,
+        propertyVisits: visits,
       }
     }
   }
@@ -249,6 +259,8 @@ export default async function ContatosPage({
         savedFilters={savedFilters}
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
+        isRealEstate={realEstate}
+        properties={properties}
         members={members}
         statusTabs={statusTabs}
       />

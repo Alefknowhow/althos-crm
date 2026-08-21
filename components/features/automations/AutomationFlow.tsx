@@ -61,6 +61,11 @@ const TRIGGER_TYPES = [
   { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento' },
   { id: 'clinic.quote.approved',        label: 'Orçamento Aprovado (Clínica)',     desc: 'Dispara quando um orçamento é marcado como aprovado' },
   { id: 'clinic.attendance.completed',  label: 'Atendimento Realizado (Clínica)', desc: 'Dispara quando um atendimento é registrado como realizado' },
+  // Vertical Imobiliárias — sem configuração extra (igual appointment.booked).
+  { id: 'imoveis.visit.scheduled', label: 'Visita Agendada (Imóveis)',   desc: 'Dispara quando uma visita a um imóvel é agendada' },
+  { id: 'imoveis.visit.confirmed', label: 'Visita Confirmada (Imóveis)', desc: 'Dispara quando o lead confirma a visita' },
+  { id: 'imoveis.visit.canceled',  label: 'Visita Cancelada (Imóveis)',  desc: 'Dispara quando a visita é cancelada' },
+  { id: 'imoveis.visit.completed', label: 'Visita Realizada (Imóveis)',  desc: 'Dispara quando a visita é marcada como realizada' },
 ] as const
 
 const STEP_TYPES = [
@@ -122,6 +127,10 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'clinic.appointment.confirmed') return 'Paciente confirmou o agendamento'
   if (type === 'clinic.quote.approved')        return 'Orçamento aprovado'
   if (type === 'clinic.attendance.completed')  return 'Atendimento registrado como realizado'
+  if (type === 'imoveis.visit.scheduled') return 'Nova visita agendada'
+  if (type === 'imoveis.visit.confirmed') return 'Lead confirmou a visita'
+  if (type === 'imoveis.visit.canceled')  return 'Visita cancelada'
+  if (type === 'imoveis.visit.completed') return 'Visita registrada como realizada'
   return ''
 }
 
