@@ -570,7 +570,14 @@ type CruiseDay = { _key: string; day_number?: number | null; date?: string | nul
 
 /** Opção de cabine — cliente escolhe entre 2+ categorias de cabine pro
  *  mesmo cruzeiro, cada uma com seu próprio valor. */
-type CruiseCabinOption = { _key: string; label: string; price_cents: number | null }
+type CruiseCabinOption = {
+  _key: string; label: string
+  deck?: string | null; location?: string | null; view?: string | null
+  price_cents: number | null
+}
+/** Pacote de bebidas com valor de upgrade opcional — mesma lógica das
+ *  opções de cabine (a base já inclui um pacote; esse é o custo extra pra
+ *  subir de nível). */
 
 /** Cruzeiro — primeiro tipo de produto novo do Construtor de Viagens
  *  (ver actions/quotations.ts: ProductSchema/product_type='cruzeiro').
@@ -591,7 +598,8 @@ type Cruise = {
   cabin_options?: CruiseCabinOption[]
   // recomendado
   cabin_number?: string | null; deck?: string | null; location?: string | null; view?: string | null; cabin_guaranteed?: boolean
-  pkg_drinks?: string | null; pkg_internet?: string | null; pkg_restaurants?: string | null; pkg_gratuities?: string | null; pkg_others?: string | null
+  pkg_drinks?: string | null; pkg_drinks_upgrade_cents?: number | null
+  pkg_internet?: string | null; pkg_restaurants?: string | null; pkg_gratuities?: string | null; pkg_others?: string | null
   extras_cents?: number | null; discount_cents?: number | null
   days: CruiseDay[]
   // avançado/interno — nunca aparece no público/PDF (ver internal_data)
@@ -1484,7 +1492,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Embarque (data)"><Input type="date" value={c.embark_date || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, embark_date: e.target.value } : x))} /></F>
               <F label="Desembarque (data)"><Input type="date" value={c.disembark_date || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, disembark_date: e.target.value } : x))} /></F>
               <F label="Duração (noites)"><Input type="number" min={1} value={c.duration_nights ?? ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, duration_nights: e.target.value ? parseInt(e.target.value) : null } : x))} /></F>
-              <F label="Cabine — categoria"><Input placeholder="Balcony" value={c.cabin_category || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_category: e.target.value } : x))} /></F>
+              <F label="Cabine — Tipo de cabine"><Input placeholder="Balcony" value={c.cabin_category || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_category: e.target.value } : x))} /></F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <F label="Porto de embarque"><Input placeholder="Miami" value={c.embark_port || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, embark_port: e.target.value } : x))} /></F>
@@ -1493,14 +1501,29 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Crianças"><Input type="number" min={0} value={c.pax_children ?? ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pax_children: e.target.value ? parseInt(e.target.value) : null } : x))} /></F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <F label="Valor da cabine (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cabin_price_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_price_cents: strToCents(e.target.value) } : x))} /></F>
-              <F label="Taxas (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.taxes_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, taxes_cents: strToCents(e.target.value) } : x))} /></F>
-              <F label="Total do produto (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.total_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, total_cents: strToCents(e.target.value) } : x))} /></F>
+              <F label="Valor da cabine (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cabin_price_cents)}
+                onChange={e => { const v = strToCents(e.target.value); setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_price_cents: v, total_cents: (v || 0) + (x.taxes_cents || 0) } : x)) }} /></F>
+              <F label="Taxas (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.taxes_cents)}
+                onChange={e => { const v = strToCents(e.target.value); setCruises(cs => cs.map(x => x._key === c._key ? { ...x, taxes_cents: v, total_cents: (x.cabin_price_cents || 0) + (v || 0) } : x)) }} /></F>
+              <F label="Valor do produto (R$)" hint="taxas + valor da cabine">
+                <Input disabled value={centsToStr((c.cabin_price_cents || 0) + (c.taxes_cents || 0))} />
+              </F>
             </div>
 
-            {/* Opções de cabine — cliente escolhe entre 2+ categorias, cada
-                uma com seu valor; deixe vazio se só há uma opção (usa o
-                campo "Valor da cabine" acima). */}
+            {/* Categoria/deck/localização/vista da cabine base — ficam
+                acima de "Opções de cabine" por pedido explícito (eram
+                antes recolhidos no Disclosure "Mais detalhes"). */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Categoria"><Input placeholder="Varanda" value={c.cabin_type || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_type: e.target.value } : x))} /></F>
+              <F label="Deck"><Input placeholder="9" value={c.deck || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, deck: e.target.value } : x))} /></F>
+              <F label="Localização"><Input placeholder="Meio do navio" value={c.location || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, location: e.target.value } : x))} /></F>
+              <F label="Vista"><Input placeholder="Mar" value={c.view || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, view: e.target.value } : x))} /></F>
+            </div>
+
+            {/* Opções de cabine — cliente escolhe entre 2+ categorias. O
+                valor de cada opção é o UPGRADE em relação à cabine base
+                acima (0 pra base, positivo pras demais) — é isso que
+                aparece no orçamento impresso/público como "+ R$X upgrade". */}
             <div className="border rounded-md p-2.5 bg-muted/30">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Opções de cabine (cliente escolhe)</p>
@@ -1510,13 +1533,29 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Button>
               </div>
               {(c.cabin_options || []).length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Nenhuma — a proposta usa o valor único da cabine acima.</p>
+                <p className="text-[11px] text-muted-foreground">Nenhuma — a proposta usa só a cabine base acima.</p>
+              )}
+              {(c.cabin_options || []).length > 0 && (
+                <div className="hidden sm:grid grid-cols-[1fr_90px_1fr_90px_110px_32px] gap-1.5 mb-1 px-0.5">
+                  <span className="text-[10px] text-muted-foreground">Tipo da cabine</span>
+                  <span className="text-[10px] text-muted-foreground">Deck</span>
+                  <span className="text-[10px] text-muted-foreground">Localização</span>
+                  <span className="text-[10px] text-muted-foreground">Vista</span>
+                  <span className="text-[10px] text-muted-foreground">Valor upgrade</span>
+                  <span />
+                </div>
               )}
               {(c.cabin_options || []).map(opt => (
-                <div key={opt._key} className="flex items-center gap-1.5 mb-1.5 last:mb-0">
+                <div key={opt._key} className="grid grid-cols-2 sm:grid-cols-[1fr_90px_1fr_90px_110px_32px] gap-1.5 mb-1.5 last:mb-0">
                   <Input placeholder="Ex.: Cabine Balcony" value={opt.label}
                     onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, label: e.target.value } : o) } : x))} />
-                  <Input className="w-32 shrink-0" inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(opt.price_cents)}
+                  <Input placeholder="Deck" value={opt.deck || ''}
+                    onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, deck: e.target.value } : o) } : x))} />
+                  <Input placeholder="Localização" value={opt.location || ''}
+                    onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, location: e.target.value } : o) } : x))} />
+                  <Input placeholder="Vista" value={opt.view || ''}
+                    onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, view: e.target.value } : o) } : x))} />
+                  <Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(opt.price_cents)}
                     onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).map(o => o._key === opt._key ? { ...o, price_cents: strToCents(e.target.value) } : o) } : x))} />
                   <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive"
                     onClick={() => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_options: (x.cabin_options || []).filter(o => o._key !== opt._key) } : x))}>
@@ -1528,12 +1567,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
 
             {/* Recomendado */}
             <Disclosure label="Mais detalhes da cabine e pacotes">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <F label="Tipo de cabine"><Input placeholder="Varanda" value={c.cabin_type || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_type: e.target.value } : x))} /></F>
-                <F label="Deck"><Input placeholder="9" value={c.deck || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, deck: e.target.value } : x))} /></F>
-                <F label="Localização"><Input placeholder="Meio do navio" value={c.location || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, location: e.target.value } : x))} /></F>
-                <F label="Vista"><Input placeholder="Mar" value={c.view || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, view: e.target.value } : x))} /></F>
-              </div>
               <label className="flex items-center gap-2 text-xs font-medium">
                 <Switch checked={!!c.cabin_guaranteed} onCheckedChange={v => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cabin_guaranteed: v } : x))} />
                 Cabine garantida (número definido só no embarque)
@@ -1544,6 +1577,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <F label="Pacote de bebidas"><Input placeholder="Easy Package" value={c.pkg_drinks || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_drinks: e.target.value } : x))} /></F>
+                <F label="Valor upgrade bebidas (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.pkg_drinks_upgrade_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_drinks_upgrade_cents: strToCents(e.target.value) } : x))} /></F>
                 <F label="Internet"><Input placeholder="2 dispositivos" value={c.pkg_internet || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_internet: e.target.value } : x))} /></F>
                 <F label="Restaurantes"><Input placeholder="Especialidade incluso" value={c.pkg_restaurants || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_restaurants: e.target.value } : x))} /></F>
                 <F label="Gorjetas/taxa de serviço"><Input placeholder="Inclusas" value={c.pkg_gratuities || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, pkg_gratuities: e.target.value } : x))} /></F>

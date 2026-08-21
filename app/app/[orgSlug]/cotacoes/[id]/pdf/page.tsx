@@ -53,6 +53,10 @@ export default async function QuotationPrintPage({
         contact_phone: (org as any).contact_phone ?? null,
         contact_email: (org as any).contact_email ?? null,
         website: (org as any).website ?? null,
+        address_street: (org as any).address_street ?? null,
+        address_city: (org as any).address_city ?? null,
+        address_state: (org as any).address_state ?? null,
+        address_zip: (org as any).address_zip ?? null,
       }}
     />
   )

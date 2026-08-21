@@ -31,7 +31,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Printer, ArrowLeft, Check, X, Phone, Mail, Clock,
-  Plane, Building2, Car, Shield, Ship, Package, User, Ticket, KeyRound,
+  Plane, Building2, Car, Shield, Ship, Package, User, Ticket, KeyRound, ArrowUpRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -47,6 +47,10 @@ type OrgBranding = {
   contact_phone: string | null
   contact_email: string | null
   website: string | null
+  address_street: string | null
+  address_city: string | null
+  address_state: string | null
+  address_zip: string | null
 }
 
 type Seller = { name: string; email?: string | null; phone?: string | null } | null
@@ -114,6 +118,13 @@ function fmtPhone(phone?: string | null): string | null {
   if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
   return phone
+}
+/** 99999-999 — cep já vem só com dígitos ou já formatado do cadastro da
+ *  agência; normaliza pros dois casos. */
+function fmtCep(cep?: string | null): string | null {
+  if (!cep) return null
+  const digits = cep.replace(/\D/g, '')
+  return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : cep
 }
 const FARE_CONDITION_LABELS: Record<string, string> = {
   nao_reembolsavel: 'Não reembolsável',
@@ -314,12 +325,18 @@ function HotelCard({ p }: { p: Product }) {
 
 function CruiseCard({ p }: { p: Product }) {
   const d = p.data
-  const cabinLabel = (d.cabin_options?.length ?? 0) > 0
-    ? d.cabin_options.map((o: any) => o.label).filter(Boolean).join(' · ')
-    : [d.cabin_category, d.cabin_type].filter(Boolean).join(' — ') || null
+  const baseCabinLabel = [d.cabin_category, d.cabin_type].filter(Boolean).join(' — ') || null
+  const cabinOptions: { label: string; deck?: string | null; location?: string | null; view?: string | null; price_cents?: number | null }[] = d.cabin_options || []
   const paxLine = d.pax_adults
     ? `${d.pax_adults} adulto${d.pax_adults === 1 ? '' : 's'}${d.pax_children ? ` · ${d.pax_children} criança${d.pax_children === 1 ? '' : 's'}` : ''}`
     : null
+  const packageParts = [
+    d.pkg_drinks && `(Pacote de bebidas) ${d.pkg_drinks}`,
+    d.pkg_internet && `(Internet) ${d.pkg_internet}`,
+    d.pkg_restaurants && `(Restaurantes) ${d.pkg_restaurants}`,
+    d.pkg_gratuities && `(Taxas de serviço) ${d.pkg_gratuities}`,
+    d.pkg_others && `(Outros) ${d.pkg_others}`,
+  ].filter(Boolean)
   return (
     <CardShell>
       <CardHeader icon={Ship} title="Cruzeiro" />
@@ -331,12 +348,41 @@ function CruiseCard({ p }: { p: Product }) {
         <InfoField label="Noites" value={d.duration_nights ? `${d.duration_nights} noites` : null} />
       </div>
       <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
-        <InfoField label="Cabine" value={cabinLabel} />
+        <InfoField label="Cabine" value={baseCabinLabel} />
         <InfoField label="Passageiros" value={paxLine} />
       </div>
-      {(d.pkg_drinks || d.pkg_internet || d.pkg_restaurants || d.pkg_gratuities) && (
+
+      {cabinOptions.length > 0 && (
+        <div className="mt-[2.5mm]">
+          <p className="text-[6.5pt] text-[#777] mb-[1.5mm]">
+            Preço com base na cabine {baseCabinLabel || 'mais econômica'} — confira as opções de upgrade abaixo.
+          </p>
+          {cabinOptions.filter(o => o.label).map((o, i) => (
+            <div key={i} className="flex items-center gap-[1.5mm] bg-[#F7F7F7] border-[0.6pt] border-[#D0D0D0] rounded-[2mm] px-[3mm] py-[1.5mm] mb-[1mm] last:mb-0">
+              <ArrowUpRight className="w-[3mm] h-[3mm] text-[#555] shrink-0" />
+              <p className="text-[7pt] text-[#555]">
+                <span className="font-semibold text-[#111]">{o.label}</span>
+                {[o.deck && `Deck ${o.deck}`, o.location, o.view].filter(Boolean).length > 0
+                  ? ` — ${[o.deck && `Deck ${o.deck}`, o.location, o.view].filter(Boolean).join(' · ')}` : ''}
+                {o.price_cents ? ` — upgrade ${fmtCurrency(o.price_cents)}` : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d.pkg_drinks_upgrade_cents > 0 && (
+        <div className="flex items-center gap-[1.5mm] bg-[#F7F7F7] border-[0.6pt] border-[#D0D0D0] rounded-[2mm] px-[3mm] py-[1.5mm] mt-[1mm]">
+          <ArrowUpRight className="w-[3mm] h-[3mm] text-[#555] shrink-0" />
+          <p className="text-[7pt] text-[#555]">
+            <span className="font-semibold text-[#111]">Pacote de bebidas superior</span> — upgrade {fmtCurrency(d.pkg_drinks_upgrade_cents)}
+          </p>
+        </div>
+      )}
+
+      {packageParts.length > 0 && (
         <p className="text-[7pt] text-[#777] mt-[2mm] pt-[2mm] border-t-[0.6pt] border-[#D0D0D0]">
-          {[d.pkg_drinks, d.pkg_internet, d.pkg_restaurants, d.pkg_gratuities].filter(Boolean).join(' · ')}
+          {packageParts.join(' · ')}
         </p>
       )}
     </CardShell>
@@ -452,6 +498,12 @@ export default function QuotationPrintView({
   seller?: Seller
   payment?: Payment
 }) {
+  const addressLine = [
+    org.address_street,
+    [org.address_city, org.address_state].filter(Boolean).join(' - '),
+    fmtCep(org.address_zip) && `CEP ${fmtCep(org.address_zip)}`,
+  ].filter(Boolean).join(' · ') || null
+
   const destinations = (quotation.destinations || []).map(d => d.name).filter(Boolean).join(', ')
   const paxLine = quotation.pax_adults
     ? `${quotation.pax_adults} adulto${quotation.pax_adults === 1 ? '' : 's'}${quotation.pax_children ? ` e ${quotation.pax_children} criança${quotation.pax_children === 1 ? '' : 's'}` : ''}`
@@ -532,6 +584,7 @@ export default function QuotationPrintView({
             {org.contact_phone && <p className="text-[8pt] text-[#555] leading-snug mt-[0.5mm]">{fmtPhone(org.contact_phone)}</p>}
             {org.contact_email && <p className="text-[8pt] text-[#555] leading-snug">{org.contact_email}</p>}
             {org.website && <p className="text-[8pt] text-[#555] leading-snug">{org.website}</p>}
+            {addressLine && <p className="text-[8pt] text-[#555] leading-snug mt-[1.5mm]">{addressLine}</p>}
             {org.cnpj && <p className="text-[7pt] text-[#777] leading-snug mt-[0.5mm]">CNPJ {org.cnpj}{org.cadastur ? ` · CADASTUR ${org.cadastur}` : ''}</p>}
           </div>
 
@@ -558,10 +611,22 @@ export default function QuotationPrintView({
             <p className="text-[17pt] font-bold leading-tight" style={{ color: '#172A9B' }}>Orçamento da sua viagem</p>
             {quotedDateExtenso && <p className="text-[8.5pt] text-[#555] mt-[1mm]">Esta cotação foi realizada no dia {quotedDateExtenso}</p>}
           </div>
-          <div className="shrink-0 border-[0.8pt] border-[#C9C9C9] rounded-[5mm] px-[5mm] py-[4mm] text-right">
-            <p className="text-[7.5pt] uppercase tracking-wide text-[#777] mb-[1mm]">Total da viagem</p>
-            <p className="text-[16pt] font-bold text-[#111] tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
-            <p className="text-[6.5pt] text-[#777] mt-[0.5mm]">Taxas e impostos incluídos</p>
+          <div className="shrink-0 flex items-start gap-[3mm]">
+            {paymentConditions.length > 0 && (
+              <div className="border-[0.8pt] border-[#C9C9C9] rounded-[5mm] px-[4mm] py-[3.5mm]">
+                <p className="text-[7pt] font-bold uppercase tracking-wide text-[#777] mb-[1.5mm]">Forma de pagamento</p>
+                <ul className="space-y-[0.5mm]">
+                  {paymentConditions.map((p, i) => (
+                    <li key={i} className="text-[7.5pt] text-[#555] whitespace-nowrap">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="border-[0.8pt] border-[#C9C9C9] rounded-[5mm] px-[5mm] py-[4mm] text-right">
+              <p className="text-[7.5pt] uppercase tracking-wide text-[#777] mb-[1mm]">Total da viagem</p>
+              <p className="text-[16pt] font-bold text-[#111] tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+              <p className="text-[6.5pt] text-[#777] mt-[0.5mm]">Taxas e impostos incluídos</p>
+            </div>
           </div>
         </div>
 
@@ -634,18 +699,6 @@ export default function QuotationPrintView({
           </div>
         )}
 
-        {/* ── Forma de pagamento ────────────────────────────────── */}
-        {paymentConditions.length > 0 && (
-          <div className="mb-[5mm] avoid-break">
-            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Forma de pagamento</p>
-            <ul className="space-y-[0.5mm]">
-              {paymentConditions.map((p, i) => (
-                <li key={i} className="text-[7.5pt] text-[#555]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {/* ── Footer ─────────────────────────────────────────────── */}
         <div className="pt-[3mm] mt-[3mm] border-t-[0.6pt] border-[#D0D0D0] text-right avoid-break">
           <p className="text-[6pt] text-[#777]">ID da cotação: {quotation.id}</p>
@@ -659,7 +712,12 @@ export default function QuotationPrintView({
           padding: 8mm 10mm;
         }
         @media print {
-          @page { size: A4; margin: 0; }
+          /* Margem no @page (não no padding do .doc-page) porque é a única
+             forma de aplicar o mesmo respiro em TODAS as páginas físicas —
+             um padding no elemento só afeta o topo da primeira página e o
+             fim da última quando o conteúdo é paginado pelo navegador. */
+          @page { size: A4; margin: 10mm 0; }
+          .doc-page { padding: 0 10mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .avoid-break { break-inside: avoid; page-break-inside: avoid; }
         }
