@@ -33,7 +33,7 @@ import {
   CheckCircle2, Link2, Image as ImageIcon, Search,
   MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
-  ChevronLeft, ChevronRight, ChevronDown, Pencil, ShoppingBag,
+  ChevronLeft, ChevronRight, ChevronDown, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
   Car, Shield, KeyRound, Star, Repeat,
 } from 'lucide-react'
@@ -656,7 +656,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
     total_cents: (q0.total_cents || 0) as number,
-    total_manual: false,
     payment_conditions: (Array.isArray(q0.payment_conditions) ? q0.payment_conditions : [])
       .map((x: any) => {
         // Normaliza labels antigos para os 3 métodos fixos (Pix/Cartão/Boleto).
@@ -777,9 +776,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     toast.success(`${legs.length} trecho${legs.length === 1 ? '' : 's'} adicionado${legs.length === 1 ? '' : 's'} — revise antes de salvar`)
   }
 
-  // Autopreenchimento com IA — lê um voucher/orçamento (PDF ou imagem) e
-  // preenche os campos da cotação. Não sobrescreve o nome do cliente quando
-  // já há um contato vinculado (o nome continua vindo de lá).
+  // Autopreenchimento com IA — lê um orçamento/voucher (PDF ou imagem) e
+  // preenche TODOS os produtos identificados (hospedagem, voo, cruzeiro,
+  // transfer, seguro, passeio, locação), valores e políticas. Nunca
+  // sobrescreve produtos que já existem na cotação (append-only, como o
+  // "Ler com IA" de cada bloco) — só os campos do topo (cliente/datas/
+  // total/políticas) são preenchidos se ainda estiverem vazios. Não
+  // sobrescreve o nome do cliente quando já há um contato vinculado.
+  const PAYMENT_FORM_LABEL: Record<string, string> = { pix: 'Pix', cartao: 'Cartão de crédito', boleto: 'Boleto' }
+
   function handleExtracted(data: ExtractedTravelDocument) {
     setQ(s => ({
       ...s,
@@ -791,38 +796,84 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       end_date: data.data_volta || s.end_date,
       operadora: data.operadora || s.operadora,
       total_cents: data.valor_total_cents || s.total_cents,
-      total_manual: data.valor_total_cents ? true : s.total_manual,
+      important_html: hasHtml(s.important_html) ? s.important_html : (data.informacoes_importantes ? `<p>${data.informacoes_importantes}</p>` : s.important_html),
+      cancellation_html: hasHtml(s.cancellation_html) ? s.cancellation_html : (data.politica_cancelamento ? `<p>${data.politica_cancelamento}</p>` : s.cancellation_html),
+      payment_conditions: data.condicoes_pagamento.reduce((acc, c) => {
+        if (!c.forma) return acc
+        const label = PAYMENT_FORM_LABEL[c.forma]
+        if (acc.some(p => p.label === label)) return acc
+        return [...acc, { label, value: c.condicao || '' }]
+      }, s.payment_conditions),
     }))
-    if (data.hotel) {
-      setLodgings(ls => ls.length === 0
-        ? [{ _key: nk(), name: data.hotel!, photos: [], check_in: data.data_ida, check_out: data.data_volta }]
-        : ls.map((l, i) => i === 0 ? { ...l, name: l.name || data.hotel! } : l))
+
+    if (data.hospedagens.length > 0) {
+      setLodgings(ls => [...ls, ...data.hospedagens.map(h => ({
+        _key: nk(), name: h.nome || '', photos: [] as string[],
+        check_in: h.check_in, check_out: h.check_out, check_in_time: '15:00', check_out_time: '12:00',
+        room_category: h.categoria_quarto, board: h.regime,
+      }))])
     }
     if (data.voos.length > 0) {
-      setFlights(fs => fs.length > 0 ? fs : data.voos.map((v, i) => ({
+      setFlights(fs => [...fs, ...data.voos.map((v, i) => ({
         _key: nk(),
-        leg_type: v.sentido === 'volta' ? 'inbound' : v.sentido === 'ida' ? 'outbound' : (i === 0 ? 'outbound' : 'inbound'),
+        leg_type: v.sentido === 'volta' ? 'inbound' as const : v.sentido === 'ida' ? 'outbound' as const : (i === 0 ? 'outbound' as const : 'inbound' as const),
         airline: v.companhia || undefined,
         date: v.data || undefined,
         from_city: v.origem || undefined,
         to_city: v.destino || undefined,
-        baggage: [],
-      })))
+        baggage: [] as string[],
+      }))])
     }
-    toast.success('Campos preenchidos a partir do documento. Revise antes de salvar.')
+    if (data.cruzeiros.length > 0) {
+      setCruises(cs => [...cs, ...data.cruzeiros.map(c => ({
+        _key: nk(), cruise_line: c.companhia, ship_name: c.navio, itinerary_name: c.roteiro,
+        embark_port: c.embarque_porto, embark_date: c.embarque_data,
+        disembark_port: c.desembarque_porto, disembark_date: c.desembarque_data,
+        duration_nights: c.noites, cabin_category: c.cabine, days: [] as any[],
+      }))])
+    }
+    if (data.transfers.length > 0) {
+      setTransfers(ts => [...ts, ...data.transfers.map(t => ({
+        _key: nk(), origin: t.origem, destination: t.destino, date: t.data, time: t.horario,
+        vehicle: t.veiculo, transfer_type: t.tipo,
+      }))])
+    }
+    if (data.seguros.length > 0) {
+      setInsurances(ins => [...ins, ...data.seguros.map(sg => ({
+        _key: nk(), insurer: sg.seguradora, plan: sg.plano, destination: sg.destino,
+        coverage: sg.cobertura, date_start: sg.data_inicio, date_end: sg.data_fim,
+      }))])
+    }
+    if (data.passeios.length > 0) {
+      setTours(ts => [...ts, ...data.passeios.map(p => ({
+        _key: nk(), name: p.nome, description: p.descricao, date: p.data, duration_label: p.duracao,
+      }))])
+    }
+    if (data.locacoes.length > 0) {
+      setRentals(rs => [...rs, ...data.locacoes.map(l => ({
+        _key: nk(), company: l.locadora, vehicle_category: l.categoria_veiculo,
+        pickup_location: l.retirada_local, dropoff_location: l.devolucao_local,
+        pickup_date: l.retirada_data, dropoff_date: l.devolucao_data,
+      }))])
+    }
+
+    const productCount = data.hospedagens.length + data.voos.length + data.cruzeiros.length
+      + data.transfers.length + data.seguros.length + data.passeios.length + data.locacoes.length
+    toast.success(productCount > 0
+      ? `${productCount} produto${productCount === 1 ? '' : 's'} adicionado${productCount === 1 ? '' : 's'} — revise antes de salvar`
+      : 'Campos preenchidos a partir do documento. Revise antes de salvar.')
   }
 
   const paxTotal = (q.pax_adults || 0) + (q.pax_children || 0)
 
-  // total automático = por pessoa × pax (com toggle manual)
+  // valor por pessoa automático = total ÷ pax (o total é sempre o campo editável)
   useEffect(() => {
-    if (q.total_manual) return
-    const auto = (q.price_per_person_cents || 0) * Math.max(paxTotal, 1)
-    if (q.price_per_person_cents != null && auto !== q.total_cents) {
-      setQ(s => ({ ...s, total_cents: auto }))
+    const auto = paxTotal > 0 ? Math.round((q.total_cents || 0) / paxTotal) : null
+    if (auto !== q.price_per_person_cents) {
+      setQ(s => ({ ...s, price_per_person_cents: auto }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.price_per_person_cents, paxTotal, q.total_manual])
+  }, [q.total_cents, paxTotal])
 
   // Datas da viagem são a fonte única — check-in/check-out de hospedagem e as
   // datas de voo (ida/volta) seguem a data da viagem automaticamente. Só não
@@ -1738,19 +1789,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <F label="Valor por pessoa (R$)">
-            <Input inputMode="decimal" placeholder="8.900,00" defaultValue={centsToStr(q.price_per_person_cents)}
-              onChange={e => setQ(s => ({ ...s, price_per_person_cents: strToCents(e.target.value) || null }))} />
+          <F label="Total (R$)">
+            <Input inputMode="decimal" placeholder="17.800,00" defaultValue={centsToStr(q.total_cents)}
+              onChange={e => setQ(s => ({ ...s, total_cents: strToCents(e.target.value) || 0 }))} />
           </F>
-          <F label={`Total${paxTotal ? ` · ${paxTotal} pessoas` : ''}`} hint={q.total_manual ? 'valor manual' : 'calculado automaticamente'}>
-            <div className="flex gap-1.5">
-              <Input inputMode="decimal" value={centsToStr(q.total_cents)} disabled={!q.total_manual}
-                onChange={e => setQ(s => ({ ...s, total_cents: strToCents(e.target.value) }))} />
-              <Button type="button" variant={q.total_manual ? 'default' : 'outline'} size="sm" className="shrink-0"
-                title="Alternar total manual" onClick={() => setQ(s => ({ ...s, total_manual: !s.total_manual }))}>
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-            </div>
+          <F label={`Valor por pessoa${paxTotal ? ` · ${paxTotal} pessoas` : ''}`} hint="calculado automaticamente">
+            <Input inputMode="decimal" value={centsToStr(q.price_per_person_cents)} disabled />
           </F>
         </div>
         {lodgings.some(l => l.is_alternative_option) && (
@@ -1898,6 +1942,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         <div className="flex-1 min-w-0 flex justify-center">
           <div className="w-full max-w-4xl">{form}</div>
         </div>
+        {/* Espaçador simétrico à sidebar — sem isso o conteúdo fica
+            centralizado só no espaço restante (que já começa deslocado pra
+            direita pela largura da sidebar), não na tela inteira. */}
+        <div className="hidden md:block w-44 shrink-0" aria-hidden />
       </div>
 
       <DocumentExtractDialog

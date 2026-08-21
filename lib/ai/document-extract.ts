@@ -1,8 +1,14 @@
 /**
  * Extração de dados de documentos de viagem (voucher de operadora, print de
- * reserva, etc.) via visão do Claude — sem lib de OCR separada. O SDK
- * suporta blocos de conteúdo `image` (base64 jpeg/png/gif/webp) e
- * `document` (base64 PDF) nativamente em `messages.create`.
+ * reserva, orçamento completo, etc.) via visão do Claude — sem lib de OCR
+ * separada. O SDK suporta blocos de conteúdo `image` (base64 jpeg/png/gif/
+ * webp) e `document` (base64 PDF) nativamente em `messages.create`.
+ *
+ * Cobre todos os tipos de produto do Construtor de Viagens (hospedagem,
+ * aéreo, cruzeiro, transfer, seguro, passeio, locação de veículo) — o botão
+ * "Autopreencher com IA" do editor de cotações lê um documento (orçamento
+ * de fornecedor, voucher, etc.) e preenche todos os produtos identificados,
+ * não só hotel/voo como na versão anterior.
  *
  * Mesmo padrão de `lib/ai/qualifier.ts`: tool_choice forçado garante saída
  * estruturada, sem parsing de markdown.
@@ -14,6 +20,9 @@ import { GoogleGenAI, Type } from '@google/genai'
 export type ExtractedTravelDocument = {
   cliente: string | null
   destino: string | null
+  /** Nome da primeira hospedagem extraída — usado pelas telas de Reservas/
+   *  Financeiro, que só lidam com um hotel por vez (ver `hospedagens` pra
+   *  a lista completa, usada pelo editor de Cotações). */
   hotel: string | null
   operadora: string | null
   localizador_pacote: string | null
@@ -29,7 +38,62 @@ export type ExtractedTravelDocument = {
     horario: string | null
     sentido: 'ida' | 'volta' | null
   }[]
+  hospedagens: {
+    nome: string | null
+    check_in: string | null
+    check_out: string | null
+    categoria_quarto: string | null
+    regime: string | null
+  }[]
+  cruzeiros: {
+    companhia: string | null
+    navio: string | null
+    roteiro: string | null
+    embarque_porto: string | null
+    embarque_data: string | null
+    desembarque_porto: string | null
+    desembarque_data: string | null
+    noites: number | null
+    cabine: string | null
+  }[]
+  transfers: {
+    origem: string | null
+    destino: string | null
+    data: string | null
+    horario: string | null
+    veiculo: string | null
+    tipo: string | null
+  }[]
+  seguros: {
+    seguradora: string | null
+    plano: string | null
+    destino: string | null
+    cobertura: string | null
+    data_inicio: string | null
+    data_fim: string | null
+  }[]
+  passeios: {
+    nome: string | null
+    descricao: string | null
+    data: string | null
+    duracao: string | null
+  }[]
+  locacoes: {
+    locadora: string | null
+    categoria_veiculo: string | null
+    retirada_local: string | null
+    devolucao_local: string | null
+    retirada_data: string | null
+    devolucao_data: string | null
+  }[]
+  condicoes_pagamento: {
+    forma: 'pix' | 'cartao' | 'boleto' | null
+    condicao: string | null
+  }[]
+  /** Espelha `transfers.length > 0` — mantido pra compatibilidade com
+   *  Reservas/Financeiro (ver `transfers` pra a lista completa). */
   traslado: boolean
+  /** Espelha `seguros.length > 0` — ver nota de `traslado` acima. */
   seguro: boolean
   valor_total_cents: number | null
   observacoes: string | null
@@ -45,13 +109,13 @@ export type ExtractedTravelDocument = {
 
 const EXTRACT_TOOL: Anthropic.Messages.Tool = {
   name: 'extract_travel_document',
-  description: 'Extrai os dados estruturados de um voucher, reserva ou orçamento de viagem.',
+  description: 'Extrai os dados estruturados de um orçamento, voucher ou reserva de viagem — todos os produtos presentes (hospedagem, voo, cruzeiro, transfer, seguro, passeio, locação de veículo), valores e políticas.',
   input_schema: {
     type: 'object',
     properties: {
       cliente: { type: ['string', 'null'], description: 'Nome do cliente/passageiro principal, se identificável' },
       destino: { type: ['string', 'null'], description: 'Destino principal da viagem' },
-      hotel: { type: ['string', 'null'], description: 'Nome do hotel/hospedagem' },
+      hotel: { type: ['string', 'null'], description: 'Nome da primeira/principal hospedagem (também detalhada em `hospedagens`)' },
       operadora: { type: ['string', 'null'], description: 'Operadora/companhia responsável pelo pacote' },
       localizador_pacote: { type: ['string', 'null'], description: 'Código localizador do pacote/reserva' },
       localizador_aereo: { type: ['string', 'null'], description: 'Código localizador do voo (PNR)' },
@@ -59,6 +123,7 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
       data_volta: { type: ['string', 'null'], description: 'Data de volta no formato YYYY-MM-DD' },
       voos: {
         type: 'array',
+        description: 'Todos os trechos aéreos do documento',
         items: {
           type: 'object',
           properties: {
@@ -73,13 +138,118 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
           required: ['companhia', 'numero', 'data', 'origem', 'destino', 'horario', 'sentido'],
         },
       },
+      hospedagens: {
+        type: 'array',
+        description: 'Todas as hospedagens/hotéis do documento (pode ser mais de um, ex.: roteiro com 2 cidades)',
+        items: {
+          type: 'object',
+          properties: {
+            nome: { type: ['string', 'null'] },
+            check_in: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            check_out: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            categoria_quarto: { type: ['string', 'null'], description: 'Ex.: "Standard", "Suíte vista mar"' },
+            regime: { type: ['string', 'null'], description: 'Ex.: "Café da manhã", "All inclusive"' },
+          },
+          required: ['nome', 'check_in', 'check_out', 'categoria_quarto', 'regime'],
+        },
+      },
+      cruzeiros: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            companhia: { type: ['string', 'null'] },
+            navio: { type: ['string', 'null'] },
+            roteiro: { type: ['string', 'null'] },
+            embarque_porto: { type: ['string', 'null'] },
+            embarque_data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            desembarque_porto: { type: ['string', 'null'] },
+            desembarque_data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            noites: { type: ['integer', 'null'] },
+            cabine: { type: ['string', 'null'], description: 'Categoria da cabine, ex.: "Varanda"' },
+          },
+          required: ['companhia', 'navio', 'roteiro', 'embarque_porto', 'embarque_data', 'desembarque_porto', 'desembarque_data', 'noites', 'cabine'],
+        },
+      },
+      transfers: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            origem: { type: ['string', 'null'] },
+            destino: { type: ['string', 'null'] },
+            data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            horario: { type: ['string', 'null'] },
+            veiculo: { type: ['string', 'null'] },
+            tipo: { type: ['string', 'null'], description: 'Ex.: "Privativo", "Compartilhado"' },
+          },
+          required: ['origem', 'destino', 'data', 'horario', 'veiculo', 'tipo'],
+        },
+      },
+      seguros: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            seguradora: { type: ['string', 'null'] },
+            plano: { type: ['string', 'null'] },
+            destino: { type: ['string', 'null'] },
+            cobertura: { type: ['string', 'null'], description: 'Resumo das principais coberturas' },
+            data_inicio: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            data_fim: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+          },
+          required: ['seguradora', 'plano', 'destino', 'cobertura', 'data_inicio', 'data_fim'],
+        },
+      },
+      passeios: {
+        type: 'array',
+        description: 'Passeios, ingressos e atrações mencionados',
+        items: {
+          type: 'object',
+          properties: {
+            nome: { type: ['string', 'null'] },
+            descricao: { type: ['string', 'null'] },
+            data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            duracao: { type: ['string', 'null'], description: 'Ex.: "4 horas"' },
+          },
+          required: ['nome', 'descricao', 'data', 'duracao'],
+        },
+      },
+      locacoes: {
+        type: 'array',
+        description: 'Locação de veículo/carro',
+        items: {
+          type: 'object',
+          properties: {
+            locadora: { type: ['string', 'null'] },
+            categoria_veiculo: { type: ['string', 'null'] },
+            retirada_local: { type: ['string', 'null'] },
+            devolucao_local: { type: ['string', 'null'] },
+            retirada_data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+            devolucao_data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+          },
+          required: ['locadora', 'categoria_veiculo', 'retirada_local', 'devolucao_local', 'retirada_data', 'devolucao_data'],
+        },
+      },
+      condicoes_pagamento: {
+        type: 'array',
+        description: 'Formas de pagamento e condições mencionadas (Pix, cartão, boleto)',
+        items: {
+          type: 'object',
+          properties: {
+            forma: { type: ['string', 'null'], enum: ['pix', 'cartao', 'boleto', null] },
+            condicao: { type: ['string', 'null'], description: 'Ex.: "à vista", "em até 10x sem juros"' },
+          },
+          required: ['forma', 'condicao'],
+        },
+      },
       traslado: { type: 'boolean', description: 'true se o documento menciona traslado incluso' },
       seguro: { type: 'boolean', description: 'true se o documento menciona seguro viagem incluso' },
       valor_total_cents: { type: ['integer', 'null'], description: 'Valor total em centavos, se houver um valor monetário no documento' },
       observacoes: { type: ['string', 'null'], description: 'Outras informações relevantes não cobertas pelos campos acima, em 1-2 frases' },
-      informacoes_importantes: { type: ['string', 'null'], description: 'Informações importantes do documento — contatos de emergência, telefone de assistência, como buscar atendimento durante a viagem, etc.' },
+      informacoes_importantes: { type: ['string', 'null'], description: 'Informações importantes do documento — documentação exigida, vacinas, contatos de emergência, o que o cliente precisa saber antes de fechar' },
       informacoes_servico: { type: ['string', 'null'], description: 'Informações sobre os serviços contratados — o que está incluso, horários, condições de uso, etc.' },
-      politica_cancelamento: { type: ['string', 'null'], description: 'Texto da política/regras de cancelamento e multas, se houver' },
+      politica_cancelamento: { type: ['string', 'null'], description: 'Texto da política/regras de cancelamento, alteração e multas, se houver' },
       viajantes: {
         type: 'array',
         description: 'Lista de viajantes/passageiros mencionados no documento (nome, data de nascimento, CPF), sem duplicar a mesma pessoa',
@@ -94,7 +264,7 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
         },
       },
     },
-    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
+    required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'hospedagens', 'cruzeiros', 'transfers', 'seguros', 'passeios', 'locacoes', 'condicoes_pagamento', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
   },
 }
 
@@ -112,13 +282,13 @@ export async function extractTravelDocumentFromFile(
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1200,
-    system: 'Você extrai dados estruturados de documentos de viagem (vouchers de operadora, reservas, orçamentos) em português do Brasil. Responda sempre com a ferramenta extract_travel_document. Quando um campo não estiver presente no documento, use null (ou array vazio para voos, ou false para traslado/seguro).',
+    max_tokens: 2400,
+    system: 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Responda sempre com a ferramenta extract_travel_document. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável).',
     messages: [{
       role: 'user',
       content: [
         contentBlock,
-        { type: 'text', text: 'Extraia os dados deste documento de viagem.' },
+        { type: 'text', text: 'Extraia os dados deste documento de viagem — todos os produtos, valores e políticas.' },
       ],
     }],
     tools: [EXTRACT_TOOL],
@@ -133,7 +303,12 @@ export async function extractTravelDocumentFromFile(
   return normalizeExtractedDocument(toolBlock.input)
 }
 
-const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (vouchers de operadora, reservas, orçamentos) em português do Brasil. Quando um campo não estiver presente no documento, use null (ou array vazio para voos, ou false para traslado/seguro).'
+const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável).'
+
+const arrayField = (props: Record<string, any>, required: string[]) => ({
+  type: Type.ARRAY,
+  items: { type: Type.OBJECT, properties: props, required },
+})
 
 const GEMINI_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -144,23 +319,69 @@ const GEMINI_RESPONSE_SCHEMA = {
     operadora: { type: Type.STRING, nullable: true },
     localizador_pacote: { type: Type.STRING, nullable: true },
     localizador_aereo: { type: Type.STRING, nullable: true },
-    data_ida: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
-    data_volta: { type: Type.STRING, nullable: true, description: 'YYYY-MM-DD' },
-    voos: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          companhia: { type: Type.STRING, nullable: true },
-          numero: { type: Type.STRING, nullable: true },
-          data: { type: Type.STRING, nullable: true },
-          origem: { type: Type.STRING, nullable: true },
-          destino: { type: Type.STRING, nullable: true },
-          horario: { type: Type.STRING, nullable: true },
-          sentido: { type: Type.STRING, nullable: true, enum: ['ida', 'volta'] },
-        },
-      },
-    },
+    data_ida: { type: Type.STRING, nullable: true },
+    data_volta: { type: Type.STRING, nullable: true },
+    voos: arrayField({
+      companhia: { type: Type.STRING, nullable: true },
+      numero: { type: Type.STRING, nullable: true },
+      data: { type: Type.STRING, nullable: true },
+      origem: { type: Type.STRING, nullable: true },
+      destino: { type: Type.STRING, nullable: true },
+      horario: { type: Type.STRING, nullable: true },
+      sentido: { type: Type.STRING, nullable: true, enum: ['ida', 'volta'] },
+    }, []),
+    hospedagens: arrayField({
+      nome: { type: Type.STRING, nullable: true },
+      check_in: { type: Type.STRING, nullable: true },
+      check_out: { type: Type.STRING, nullable: true },
+      categoria_quarto: { type: Type.STRING, nullable: true },
+      regime: { type: Type.STRING, nullable: true },
+    }, []),
+    cruzeiros: arrayField({
+      companhia: { type: Type.STRING, nullable: true },
+      navio: { type: Type.STRING, nullable: true },
+      roteiro: { type: Type.STRING, nullable: true },
+      embarque_porto: { type: Type.STRING, nullable: true },
+      embarque_data: { type: Type.STRING, nullable: true },
+      desembarque_porto: { type: Type.STRING, nullable: true },
+      desembarque_data: { type: Type.STRING, nullable: true },
+      noites: { type: Type.INTEGER, nullable: true },
+      cabine: { type: Type.STRING, nullable: true },
+    }, []),
+    transfers: arrayField({
+      origem: { type: Type.STRING, nullable: true },
+      destino: { type: Type.STRING, nullable: true },
+      data: { type: Type.STRING, nullable: true },
+      horario: { type: Type.STRING, nullable: true },
+      veiculo: { type: Type.STRING, nullable: true },
+      tipo: { type: Type.STRING, nullable: true },
+    }, []),
+    seguros: arrayField({
+      seguradora: { type: Type.STRING, nullable: true },
+      plano: { type: Type.STRING, nullable: true },
+      destino: { type: Type.STRING, nullable: true },
+      cobertura: { type: Type.STRING, nullable: true },
+      data_inicio: { type: Type.STRING, nullable: true },
+      data_fim: { type: Type.STRING, nullable: true },
+    }, []),
+    passeios: arrayField({
+      nome: { type: Type.STRING, nullable: true },
+      descricao: { type: Type.STRING, nullable: true },
+      data: { type: Type.STRING, nullable: true },
+      duracao: { type: Type.STRING, nullable: true },
+    }, []),
+    locacoes: arrayField({
+      locadora: { type: Type.STRING, nullable: true },
+      categoria_veiculo: { type: Type.STRING, nullable: true },
+      retirada_local: { type: Type.STRING, nullable: true },
+      devolucao_local: { type: Type.STRING, nullable: true },
+      retirada_data: { type: Type.STRING, nullable: true },
+      devolucao_data: { type: Type.STRING, nullable: true },
+    }, []),
+    condicoes_pagamento: arrayField({
+      forma: { type: Type.STRING, nullable: true, enum: ['pix', 'cartao', 'boleto'] },
+      condicao: { type: Type.STRING, nullable: true },
+    }, []),
     traslado: { type: Type.BOOLEAN },
     seguro: { type: Type.BOOLEAN },
     valor_total_cents: { type: Type.INTEGER, nullable: true },
@@ -168,22 +389,16 @@ const GEMINI_RESPONSE_SCHEMA = {
     informacoes_importantes: { type: Type.STRING, nullable: true },
     informacoes_servico: { type: Type.STRING, nullable: true },
     politica_cancelamento: { type: Type.STRING, nullable: true },
-    viajantes: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          nome: { type: Type.STRING, nullable: true },
-          data_nascimento: { type: Type.STRING, nullable: true },
-          cpf: { type: Type.STRING, nullable: true },
-        },
-      },
-    },
+    viajantes: arrayField({
+      nome: { type: Type.STRING, nullable: true },
+      data_nascimento: { type: Type.STRING, nullable: true },
+      cpf: { type: Type.STRING, nullable: true },
+    }, []),
   },
-  required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
+  required: ['cliente', 'destino', 'hotel', 'operadora', 'localizador_pacote', 'localizador_aereo', 'data_ida', 'data_volta', 'voos', 'hospedagens', 'cruzeiros', 'transfers', 'seguros', 'passeios', 'locacoes', 'condicoes_pagamento', 'traslado', 'seguro', 'valor_total_cents', 'observacoes', 'informacoes_importantes', 'informacoes_servico', 'politica_cancelamento', 'viajantes'],
 }
 
-/** Mesma extração, via Gemini Flash 2.5 (visão nativa a imagem/PDF inline). */
+/** Mesma extração, via Gemini Flash (visão nativa a imagem/PDF inline). */
 export async function extractTravelDocumentFromFileGemini(
   apiKey: string,
   base64: string,
@@ -197,7 +412,7 @@ export async function extractTravelDocumentFromFileGemini(
       role: 'user',
       parts: [
         { inlineData: { mimeType: mediaType, data: base64 } },
-        { text: 'Extraia os dados deste documento de viagem.' },
+        { text: 'Extraia os dados deste documento de viagem — todos os produtos, valores e políticas.' },
       ],
     }],
     config: {
@@ -213,40 +428,117 @@ export async function extractTravelDocumentFromFileGemini(
   return normalizeExtractedDocument(JSON.parse(text))
 }
 
+function str(v: any, max: number): string | null {
+  return typeof v === 'string' && v.trim() ? v.slice(0, max) : null
+}
+function date(v: any): string | null {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null
+}
+function int(v: any): number | null {
+  return v != null && Number.isFinite(Number(v)) ? Math.round(Number(v)) : null
+}
+
 function normalizeExtractedDocument(parsed: any): ExtractedTravelDocument {
+  const hospedagens = Array.isArray(parsed.hospedagens)
+    ? parsed.hospedagens.slice(0, 10).map((h: any) => ({
+        nome: str(h?.nome, 200),
+        check_in: date(h?.check_in),
+        check_out: date(h?.check_out),
+        categoria_quarto: str(h?.categoria_quarto, 120),
+        regime: str(h?.regime, 80),
+      })).filter((h: any) => h.nome)
+    : []
+  const transfers = Array.isArray(parsed.transfers)
+    ? parsed.transfers.slice(0, 10).map((t: any) => ({
+        origem: str(t?.origem, 120),
+        destino: str(t?.destino, 120),
+        data: date(t?.data),
+        horario: str(t?.horario, 40),
+        veiculo: str(t?.veiculo, 120),
+        tipo: str(t?.tipo, 80),
+      })).filter((t: any) => t.origem || t.destino)
+    : []
+  const seguros = Array.isArray(parsed.seguros)
+    ? parsed.seguros.slice(0, 5).map((s: any) => ({
+        seguradora: str(s?.seguradora, 120),
+        plano: str(s?.plano, 120),
+        destino: str(s?.destino, 120),
+        cobertura: str(s?.cobertura, 600),
+        data_inicio: date(s?.data_inicio),
+        data_fim: date(s?.data_fim),
+      })).filter((s: any) => s.seguradora || s.plano)
+    : []
   return {
-    cliente: typeof parsed.cliente === 'string' ? parsed.cliente.slice(0, 200) : null,
-    destino: typeof parsed.destino === 'string' ? parsed.destino.slice(0, 200) : null,
-    hotel: typeof parsed.hotel === 'string' ? parsed.hotel.slice(0, 200) : null,
-    operadora: typeof parsed.operadora === 'string' ? parsed.operadora.slice(0, 160) : null,
-    localizador_pacote: typeof parsed.localizador_pacote === 'string' ? parsed.localizador_pacote.slice(0, 80) : null,
-    localizador_aereo: typeof parsed.localizador_aereo === 'string' ? parsed.localizador_aereo.slice(0, 80) : null,
-    data_ida: /^\d{4}-\d{2}-\d{2}$/.test(parsed.data_ida) ? parsed.data_ida : null,
-    data_volta: /^\d{4}-\d{2}-\d{2}$/.test(parsed.data_volta) ? parsed.data_volta : null,
+    cliente: str(parsed.cliente, 200),
+    destino: str(parsed.destino, 200),
+    hotel: str(parsed.hotel, 200) || hospedagens[0]?.nome || null,
+    operadora: str(parsed.operadora, 160),
+    localizador_pacote: str(parsed.localizador_pacote, 80),
+    localizador_aereo: str(parsed.localizador_aereo, 80),
+    data_ida: date(parsed.data_ida),
+    data_volta: date(parsed.data_volta),
     voos: Array.isArray(parsed.voos)
       ? parsed.voos.slice(0, 10).map((v: any) => ({
-          companhia: typeof v?.companhia === 'string' ? v.companhia.slice(0, 120) : null,
-          numero: typeof v?.numero === 'string' ? v.numero.slice(0, 40) : null,
-          data: /^\d{4}-\d{2}-\d{2}$/.test(v?.data) ? v.data : null,
-          origem: typeof v?.origem === 'string' ? v.origem.slice(0, 120) : null,
-          destino: typeof v?.destino === 'string' ? v.destino.slice(0, 120) : null,
-          horario: typeof v?.horario === 'string' ? v.horario.slice(0, 40) : null,
+          companhia: str(v?.companhia, 120),
+          numero: str(v?.numero, 40),
+          data: date(v?.data),
+          origem: str(v?.origem, 120),
+          destino: str(v?.destino, 120),
+          horario: str(v?.horario, 40),
           sentido: v?.sentido === 'ida' || v?.sentido === 'volta' ? v.sentido : null,
         }))
       : [],
-    traslado: !!parsed.traslado,
-    seguro: !!parsed.seguro,
-    valor_total_cents: Number.isFinite(Number(parsed.valor_total_cents)) && parsed.valor_total_cents != null
-      ? Math.round(Number(parsed.valor_total_cents))
-      : null,
-    observacoes: typeof parsed.observacoes === 'string' ? parsed.observacoes.slice(0, 600) : null,
-    informacoes_importantes: typeof parsed.informacoes_importantes === 'string' ? parsed.informacoes_importantes.slice(0, 1000) : null,
-    informacoes_servico: typeof parsed.informacoes_servico === 'string' ? parsed.informacoes_servico.slice(0, 1000) : null,
-    politica_cancelamento: typeof parsed.politica_cancelamento === 'string' ? parsed.politica_cancelamento.slice(0, 1000) : null,
+    hospedagens,
+    cruzeiros: Array.isArray(parsed.cruzeiros)
+      ? parsed.cruzeiros.slice(0, 5).map((c: any) => ({
+          companhia: str(c?.companhia, 120),
+          navio: str(c?.navio, 120),
+          roteiro: str(c?.roteiro, 160),
+          embarque_porto: str(c?.embarque_porto, 120),
+          embarque_data: date(c?.embarque_data),
+          desembarque_porto: str(c?.desembarque_porto, 120),
+          desembarque_data: date(c?.desembarque_data),
+          noites: int(c?.noites),
+          cabine: str(c?.cabine, 80),
+        })).filter((c: any) => c.navio || c.companhia)
+      : [],
+    transfers,
+    seguros,
+    passeios: Array.isArray(parsed.passeios)
+      ? parsed.passeios.slice(0, 15).map((p: any) => ({
+          nome: str(p?.nome, 200),
+          descricao: str(p?.descricao, 600),
+          data: date(p?.data),
+          duracao: str(p?.duracao, 40),
+        })).filter((p: any) => p.nome)
+      : [],
+    locacoes: Array.isArray(parsed.locacoes)
+      ? parsed.locacoes.slice(0, 5).map((l: any) => ({
+          locadora: str(l?.locadora, 120),
+          categoria_veiculo: str(l?.categoria_veiculo, 120),
+          retirada_local: str(l?.retirada_local, 160),
+          devolucao_local: str(l?.devolucao_local, 160),
+          retirada_data: date(l?.retirada_data),
+          devolucao_data: date(l?.devolucao_data),
+        })).filter((l: any) => l.locadora || l.retirada_local)
+      : [],
+    condicoes_pagamento: Array.isArray(parsed.condicoes_pagamento)
+      ? parsed.condicoes_pagamento.slice(0, 5).map((c: any) => ({
+          forma: c?.forma === 'pix' || c?.forma === 'cartao' || c?.forma === 'boleto' ? c.forma : null,
+          condicao: str(c?.condicao, 200),
+        })).filter((c: any) => c.forma)
+      : [],
+    traslado: !!parsed.traslado || transfers.length > 0,
+    seguro: !!parsed.seguro || seguros.length > 0,
+    valor_total_cents: int(parsed.valor_total_cents),
+    observacoes: str(parsed.observacoes, 600),
+    informacoes_importantes: str(parsed.informacoes_importantes, 1000),
+    informacoes_servico: str(parsed.informacoes_servico, 1000),
+    politica_cancelamento: str(parsed.politica_cancelamento, 1000),
     viajantes: Array.isArray(parsed.viajantes)
       ? parsed.viajantes.slice(0, 20).map((v: any) => ({
-          nome: typeof v?.nome === 'string' ? v.nome.slice(0, 200) : null,
-          data_nascimento: /^\d{4}-\d{2}-\d{2}$/.test(v?.data_nascimento) ? v.data_nascimento : null,
+          nome: str(v?.nome, 200),
+          data_nascimento: date(v?.data_nascimento),
           cpf: typeof v?.cpf === 'string' ? v.cpf.replace(/\D/g, '').slice(0, 14) : null,
         })).filter((v: any) => v.nome || v.cpf || v.data_nascimento)
       : [],
