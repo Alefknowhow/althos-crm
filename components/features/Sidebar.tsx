@@ -42,6 +42,7 @@ import {
   Percent,
   CalendarCheck2,
   Home,
+  Handshake,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -405,6 +406,24 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <Home className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Imóveis</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
+          <SidebarNavLink href={`${base}/propostas`}>
+            <span className="flex items-center gap-2.5">
+              <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Propostas</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
+          <SidebarNavLink href={`${base}/negociacoes`}>
+            <span className="flex items-center gap-2.5">
+              <Handshake className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Negociações</span>
             </span>
           </SidebarNavLink>
         )}
