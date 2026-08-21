@@ -41,6 +41,7 @@ const ROUTE_TITLES: Record<string, string> = {
   negociacoes: 'Negociações',
   'produtos-seguro': 'Produtos de Seguro',
   seguradoras: 'Seguradoras',
+  'cotacoes-seguro': 'Cotações',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */

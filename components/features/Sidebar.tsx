@@ -446,6 +446,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             {/* ── Seguros ───────────────────────────── */}
             <SectionLabel>Seguros</SectionLabel>
 
+            <SidebarNavLink href={`${base}/cotacoes-seguro`}>
+              <span className="flex items-center gap-2.5">
+                <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Cotações</span>
+              </span>
+            </SidebarNavLink>
+
             <SidebarNavLink href={`${base}/produtos-seguro`}>
               <span className="flex items-center gap-2.5">
                 <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
