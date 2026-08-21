@@ -19,10 +19,8 @@ import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS as DndCSS } from '@dnd-kit/utilities'
-import { useEditor, EditorContent, type Editor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-
+import { cn } from '@/lib/utils'
+import { cityFromAirportCode } from '@/lib/airports'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -31,17 +29,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Upload, Loader2, Copy, ExternalLink,
-  CheckCircle2, Link2, Image as ImageIcon, Search, Bold, Italic, List, ListOrdered,
-  Link as LinkIcon, MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
+  CheckCircle2, Link2, Image as ImageIcon, Search,
+  MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, ChevronDown, Pencil, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
-  Car, Shield, KeyRound,
+  Car, Shield, KeyRound, Star, Repeat,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
+const FARE_CONDITIONS = [
+  { key: 'nao_reembolsavel', label: 'Não reembolsável' },
+  { key: 'alteracao_com_custo', label: 'Permite alteração com custo' },
+  { key: 'nao_permite_alteracao', label: 'Não permite alteração' },
+] as const
+
 const PAYMENT_METHODS = [
-  { label: 'Pix', icon: QrCode, placeholder: 'Ex.: à vista com 5% de desconto' },
+  { label: 'Pix', icon: QrCode, placeholder: 'Ex.: à vista' },
   { label: 'Cartão de crédito', icon: CreditCard, placeholder: 'Ex.: até 12x sem juros' },
   { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
 ] as const
@@ -118,58 +122,34 @@ async function compressAndUpload(orgSlug: string, file: File): Promise<string | 
 }
 
 /* ═════════════ rich text simples (bold/italic/lista/link) ═════════════ */
-function RichField({ value, onChange, placeholder, minH = 120 }: {
-  value: string; onChange: (html: string) => void; placeholder?: string; minH?: number
-}) {
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: false, codeBlock: false, blockquote: false, horizontalRule: false,
-        link: { openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
-      }),
-      Placeholder.configure({ placeholder: placeholder || 'Escreva aqui…' }),
-    ],
-    content: value || '',
-    // editor vazio persiste como '' (não '<p></p>') para o bloco sumir da entrega
-    onUpdate({ editor }) { onChange(editor.isEmpty ? '' : editor.getHTML()) },
-    editorProps: {
-      attributes: { class: `prose prose-sm dark:prose-invert max-w-none focus:outline-none px-3 py-2`, style: `min-height:${minH}px` },
-    },
-  })
-  const setLink = useCallback(() => {
-    if (!editor) return
-    const prev = editor.getAttributes('link').href
-    const url = window.prompt('URL do link', prev || 'https://')
-    if (url === null) return
-    if (url === '') editor.chain().focus().extendMarkRange('link').unsetLink().run()
-    else editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
-  }, [editor])
-  if (!editor) return <div className="border rounded-md p-3 text-xs text-muted-foreground">Carregando…</div>
-  const TB = ({ act, on, title, children }: any) => (
-    <button type="button" title={title} onClick={on}
-      className={`inline-flex items-center justify-center w-7 h-7 rounded text-sm ${act ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}>
-      {children}
-    </button>
-  )
+
+function hasHtml(html?: string | null): boolean {
+  return !!html && html.replace(/<[^>]*>/g, '').trim() !== ''
+}
+
+/** Bloco de texto rico com toggle ativar/desativar — mesmo padrão do
+ *  "Alternativa: descrever o aéreo em texto livre" em Produtos. Desligar
+ *  limpa o conteúdo (senão fica escondido mas ainda preenchido, e a seção
+ *  continuaria aparecendo na proposta). Editor com toolbar completa
+ *  (negrito/itálico/sublinhado/título/lista/alinhamento/imagem/desfazer),
+ *  igual ao Itinerário. */
+function ToggleRichField({ orgSlug, value, onChange }: { orgSlug: string; value: string; onChange: (html: string) => void }) {
+  const [open, setOpen] = useState(() => hasHtml(value))
   return (
-    <div className="border rounded-md bg-background">
-      <div className="border-b px-1.5 py-1 flex gap-0.5">
-        <TB title="Negrito" act={editor.isActive('bold')} on={() => editor.chain().focus().toggleBold().run()}><Bold className="w-3.5 h-3.5" /></TB>
-        <TB title="Itálico" act={editor.isActive('italic')} on={() => editor.chain().focus().toggleItalic().run()}><Italic className="w-3.5 h-3.5" /></TB>
-        <TB title="Lista" act={editor.isActive('bulletList')} on={() => editor.chain().focus().toggleBulletList().run()}><List className="w-3.5 h-3.5" /></TB>
-        <TB title="Lista numerada" act={editor.isActive('orderedList')} on={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered className="w-3.5 h-3.5" /></TB>
-        <TB title="Link" act={editor.isActive('link')} on={setLink}><LinkIcon className="w-3.5 h-3.5" /></TB>
-      </div>
-      <EditorContent editor={editor} />
-    </div>
+    <>
+      <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+        <Switch checked={open} onCheckedChange={v => { setOpen(v); if (!v) onChange('') }} />
+        {open ? 'Ativo — aparece na proposta' : 'Inativo — não aparece na proposta'}
+      </label>
+      {open && <div className="mt-2"><ItineraryEditor orgSlug={orgSlug} value={value} onChange={onChange} /></div>}
+    </>
   )
 }
 
 /* ═════════════ upload de imagem (única) com colar/arrastar ═════════════ */
 function CoverUpload({
-  orgSlug, url, onChange, unsplashHint,
-}: { orgSlug: string; url?: string | null; onChange: (u: string | null) => void; unsplashHint?: string }) {
+  orgSlug, url, onChange, unsplashHint, compact = false,
+}: { orgSlug: string; url?: string | null; onChange: (u: string | null) => void; unsplashHint?: string; compact?: boolean }) {
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const handle = useCallback(async (file?: File | null) => {
@@ -182,7 +162,7 @@ function CoverUpload({
   return (
     <div className="space-y-2">
       <div
-        className="relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 aspect-video flex items-center justify-center text-center"
+        className={cn('relative border-2 border-dashed rounded-lg overflow-hidden bg-muted/30 aspect-video flex items-center justify-center text-center', compact && 'text-xs')}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files?.[0]) }}
         onPaste={e => { const f = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))?.getAsFile(); if (f) { e.preventDefault(); handle(f) } }}
@@ -195,16 +175,20 @@ function CoverUpload({
                 proporção padrão da capa é 16:9. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt="Capa" className="w-full h-full object-contain" />
-            <div className="absolute bottom-2 right-2 flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            <div className={cn('absolute flex gap-1', compact ? 'bottom-1 right-1' : 'bottom-2 right-2 gap-2')}>
+              <Button type="button" size={compact ? 'icon' : 'sm'} variant="secondary" className={compact ? 'w-6 h-6' : undefined} onClick={() => inputRef.current?.click()} disabled={busy}>
+                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
               </Button>
-              <Button type="button" size="sm" variant="destructive" onClick={() => onChange(null)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              <Button type="button" size={compact ? 'icon' : 'sm'} variant="destructive" className={compact ? 'w-6 h-6' : undefined} onClick={() => onChange(null)}><Trash2 className="w-3 h-3" /></Button>
             </div>
           </>
         ) : (
-          <button type="button" className="p-6 text-sm text-muted-foreground w-full" onClick={() => inputRef.current?.click()}>
-            {busy ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : <><ImageIcon className="w-6 h-6 mx-auto mb-2" />Clique, cole (Ctrl+V) ou arraste a imagem de capa</>}
+          <button type="button" className={cn('text-muted-foreground w-full', compact ? 'p-2' : 'p-6 text-sm')} onClick={() => inputRef.current?.click()}>
+            {busy ? <Loader2 className={cn('animate-spin mx-auto', compact ? 'w-4 h-4' : 'w-5 h-5')} /> : (
+              compact
+                ? <><ImageIcon className="w-4 h-4 mx-auto mb-1" />Capa</>
+                : <><ImageIcon className="w-6 h-6 mx-auto mb-2" />Clique, cole (Ctrl+V) ou arraste a imagem de capa</>
+            )}
           </button>
         )}
       </div>
@@ -565,7 +549,9 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
 }
 
 /* ═════════════ estado do editor ═════════════ */
-type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; room_category?: string | null; board?: string | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any; is_alternative_option?: boolean; option_price_per_person_cents?: number | null; option_total_cents?: number | null }
+type Lodging = { _key: string; name: string; check_in?: string | null; check_out?: string | null; check_in_time?: string | null; check_out_time?: string | null; room_category?: string | null; board?: string | null; star_rating?: number | null; description_html?: string | null; photos: string[]; lat?: number | null; lng?: number | null; tripadvisor_location_id?: string | null; tripadvisor_data?: any; is_alternative_option?: boolean; option_price_per_person_cents?: number | null; option_total_cents?: number | null }
+
+const BOARD_OPTIONS = ['Somente Quarto', 'Café da manhã', 'Meia pensão', 'Pensão completa', 'All inclusive']
 type Flight = {
   _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null;
   airline?: string | null; flight_number?: string | null;
@@ -617,6 +603,7 @@ type Transfer = {
   origin?: string | null; destination?: string | null
   date?: string | null; time?: string | null
   vehicle?: string | null; pax?: string | null; transfer_type?: string | null
+  round_trip?: boolean
   notes?: string | null
 }
 type Insurance = {
@@ -660,6 +647,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     cancellation_html: q0.cancellation_html || '',
     itinerary_html: q0.itinerary_html || '',
     flights_html: (q0 as any).flights_html || '',
+    flight_fare_conditions: ((q0 as any).flight_fare_conditions || []) as string[],
     tours_html: (q0 as any).tours_html || '',
     included: (q0.included || []) as string[], not_included: (q0.not_included || []) as string[],
     price_per_person_cents: (q0.price_per_person_cents ?? null) as number | null,
@@ -691,7 +679,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [lodgings, setLodgings] = useState<Lodging[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'hospedagem').map(p => {
     const l = p.data || {}
     return {
-      name: p.name || '', check_in: l.check_in, check_out: l.check_out, room_category: l.room_category,
+      name: p.name || '', check_in: l.check_in, check_out: l.check_out,
+      check_in_time: l.check_in_time ?? '15:00', check_out_time: l.check_out_time ?? '12:00',
+      room_category: l.room_category, star_rating: l.star_rating ?? null,
       board: l.board, description_html: l.description_html, photos: (l.photos || []) as string[],
       lat: l.lat, lng: l.lng, tripadvisor_location_id: l.tripadvisor_location_id, tripadvisor_data: l.tripadvisor_data,
       is_alternative_option: !!l.is_alternative_option,
@@ -702,8 +692,8 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [flights, setFlights] = useState<Flight[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'aereo').map(p => {
     const f = p.data || {}
     return {
-      leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: f.from_city,
-      to_code: f.to_code, to_city: f.to_city, airline: f.airline, flight_number: f.flight_number,
+      leg_type: f.leg_type || 'outbound', from_code: f.from_code, from_city: cityFromAirportCode(f.from_code) || f.from_city,
+      to_code: f.to_code, to_city: cityFromAirportCode(f.to_code) || f.to_city, airline: f.airline, flight_number: f.flight_number,
       date: f.date, departure_time: f.departure_time,
       arrival_date: f.arrival_date, arrival_time: f.arrival_time,
       duration_label: f.duration_label, stopover_label: f.stopover_label,
@@ -858,6 +848,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     cancellation_html: q.cancellation_html || null,
     itinerary_html: q.itinerary_html || null,
     flights_html: q.flights_html || null,
+    flight_fare_conditions: q.flight_fare_conditions,
     tours_html: q.tours_html || null,
     included: q.included.filter(Boolean), not_included: q.not_included.filter(Boolean),
     price_per_person_cents: q.price_per_person_cents, total_cents: q.total_cents,
@@ -1104,8 +1095,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       <GroupSection id="resumo" active={activeGroup}>
       {/* CAPA */}
       <EditBlock id="blk-capa" icon={ImageIcon} title="Capa">
-        <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
-        <F label="Subtítulo (H2)"><Input value={q.subtitle} onChange={e => setQ(s => ({ ...s, subtitle: e.target.value }))} placeholder="Ex.: All-inclusive no Caribe — sol, mar e descanso" /></F>
+        <div className="grid grid-cols-2 gap-3">
+          <F label="Título (H1 do hero)"><Input value={q.title} onChange={e => setQ(s => ({ ...s, title: e.target.value }))} placeholder="Ex.: Punta Cana, 7 noites à beira-mar" /></F>
+          <F label="Subtítulo (H2)"><Input value={q.subtitle} onChange={e => setQ(s => ({ ...s, subtitle: e.target.value }))} placeholder="Ex.: All-inclusive no Caribe — sol, mar e descanso" /></F>
+        </div>
         {isOffer ? (
           <div className="grid grid-cols-2 gap-3">
             <F label="Categoria (vitrine)"><Input value={q.offer_category} onChange={e => setQ(s => ({ ...s, offer_category: e.target.value }))} placeholder="Ex.: Praia, Lua de mel, Nacional" /></F>
@@ -1117,60 +1110,68 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </F>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <F label="Contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring) — o nome do cliente vem daqui">
-              <Select value={q.contato_id || 'none'}
-                onValueChange={v => setQ(s => {
-                  const lead = leads.find(l => l.id === v)
-                  return { ...s, contato_id: v === 'none' ? null : v, client_name: v === 'none' ? s.client_name : (lead?.name || s.client_name) }
-                })}>
-                <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem vínculo</SelectItem>
-                  {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </F>
-            <F label="Nome do cliente" hint={q.contato_id ? 'vem do contato vinculado acima' : undefined}>
-              <Input value={q.client_name} disabled={!!q.contato_id}
-                onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" />
-            </F>
+          <div className="flex gap-3 items-start">
+            <div className="flex-1 min-w-0 space-y-3">
+              <F label="Contato do CRM" hint="liga a cotação ao lead da pipeline (timeline + lead scoring) — o nome do cliente vem daqui">
+                <Select value={q.contato_id || 'none'}
+                  onValueChange={v => setQ(s => {
+                    const lead = leads.find(l => l.id === v)
+                    return { ...s, contato_id: v === 'none' ? null : v, client_name: v === 'none' ? s.client_name : (lead?.name || s.client_name) }
+                  })}>
+                  <SelectTrigger><SelectValue placeholder="Sem vínculo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem vínculo</SelectItem>
+                    {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Nome do cliente" hint={q.contato_id ? 'vem do contato vinculado acima' : undefined}>
+                <Input value={q.client_name} disabled={!!q.contato_id}
+                  onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" />
+              </F>
+            </div>
+            <div className="w-40 shrink-0">
+              <F label="Imagem de capa">
+                <CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))}
+                  unsplashHint={q.destinations[0]?.name || ''} compact />
+              </F>
+            </div>
           </div>
         )}
-        <F label="Imagem de capa">
-          <CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))}
-            unsplashHint={q.destinations[0]?.name || ''} />
-        </F>
+        {isOffer && (
+          <F label="Imagem de capa">
+            <CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))}
+              unsplashHint={q.destinations[0]?.name || ''} />
+          </F>
+        )}
       </EditBlock>
 
       {/* VIAGEM */}
       <EditBlock id="blk-viagem" icon={MapPin} title="Viagem">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <F label="Origem"><Input value={q.origin_label} onChange={e => setQ(s => ({ ...s, origin_label: e.target.value }))} placeholder="Florianópolis" /></F>
           <F label="Destino"><Input placeholder="Ilhéus, Brasil" value={q.destinations[0]?.name || ''}
             onChange={e => setQ(s => ({ ...s, destinations: [{ name: e.target.value, country: '' }] }))} /></F>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
           <F label="Data de ida"><Input type="date" value={q.start_date} onChange={e => setQ(s => ({ ...s, start_date: e.target.value }))} /></F>
           <F label="Data de volta"><Input type="date" value={q.end_date} onChange={e => setQ(s => ({ ...s, end_date: e.target.value }))} /></F>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Adultos"><Input type="number" min={0} value={q.pax_adults} onChange={e => setQ(s => ({ ...s, pax_adults: Math.max(0, parseInt(e.target.value) || 0) }))} /></F>
-          <F label="Crianças"><Input type="number" min={0} value={q.pax_children} onChange={e => {
+        <div className="flex flex-wrap items-end gap-3">
+          <F label="Adultos"><Input type="number" min={0} maxLength={3} className="w-16" value={q.pax_adults} onChange={e => setQ(s => ({ ...s, pax_adults: Math.max(0, parseInt(e.target.value) || 0) }))} /></F>
+          <F label="Crianças"><Input type="number" min={0} maxLength={3} className="w-16" value={q.pax_children} onChange={e => {
             const n = Math.max(0, parseInt(e.target.value) || 0)
             setQ(s => ({ ...s, pax_children: n, children_ages: s.children_ages.slice(0, n) }))
           }} /></F>
+          {q.pax_children > 0 && (
+            <F label="Idades das crianças">
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from({ length: q.pax_children }).map((_, i) => (
+                  <Input key={i} type="number" min={0} max={17} className="w-16" value={q.children_ages[i] ?? ''}
+                    onChange={e => setQ(s => { const n = [...s.children_ages]; n[i] = Math.min(17, Math.max(0, parseInt(e.target.value) || 0)); return { ...s, children_ages: n } })} />
+                ))}
+              </div>
+            </F>
+          )}
         </div>
-        {q.pax_children > 0 && (
-          <F label="Idades das crianças">
-            <div className="flex flex-wrap gap-1.5">
-              {Array.from({ length: q.pax_children }).map((_, i) => (
-                <Input key={i} type="number" min={0} max={17} className="w-16" value={q.children_ages[i] ?? ''}
-                  onChange={e => setQ(s => { const n = [...s.children_ages]; n[i] = Math.min(17, Math.max(0, parseInt(e.target.value) || 0)); return { ...s, children_ages: n } })} />
-              ))}
-            </div>
-          </F>
-        )}
       </EditBlock>
 
       {missingLabels.length > 0 && (
@@ -1184,64 +1185,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       <GroupSection id="conteudo" active={activeGroup}>
       {/* INTRODUÇÃO */}
       <EditBlock id="blk-intro" icon={Sparkles} title="Introdução">
-        <RichField value={q.intro_html} onChange={html => setQ(s => ({ ...s, intro_html: html }))}
-          placeholder="Mensagem pessoal de abertura para o cliente (com sua assinatura)…" />
+        <ToggleRichField orgSlug={orgSlug} value={q.intro_html} onChange={html => setQ(s => ({ ...s, intro_html: html }))} />
       </EditBlock>
 
       </GroupSection>
 
       <GroupSection id="produtos" active={activeGroup}>
-      {/* HOSPEDAGENS */}
-      <EditBlock id="blk-hospedagens" icon={BedDouble} title="Hospedagens"
-        action={<Button type="button" variant="outline" size="sm"
-          onClick={() => setLodgings(ls => [...ls, { _key: nk(), name: '', photos: [], check_in: q.start_date || null, check_out: q.end_date || null }])}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Hospedagem
-        </Button>}>
-        {lodgings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma hospedagem.</p>}
-        <SortableList items={lodgings} onReorder={setLodgings} render={(l) => (
-          <>
-            <div className="flex gap-1.5">
-              <Input className="flex-1" placeholder="Nome do hotel/resort" value={l.name}
-                onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, name: e.target.value } : x))} />
-              <Button type="button" variant="outline" size="sm" className="shrink-0" disabled={taBusy === l._key}
-                title="Buscar no TripAdvisor (nota, fotos, localização)" onClick={() => taLookup(l)}>
-                {taBusy === l._key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                <span className="ml-1 hidden sm:inline">TripAdvisor</span>
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                onClick={() => setLodgings(ls => ls.filter(x => x._key !== l._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
-            </div>
-            {l.tripadvisor_data && (
-              <>
-                <p className="text-[11px] text-emerald-600">✓ TripAdvisor vinculado{l.tripadvisor_data.rating ? ` · nota ${l.tripadvisor_data.rating}` : ''}{l.tripadvisor_data.reviews_count ? ` · ${l.tripadvisor_data.reviews_count} avaliações` : ''}</p>
-                {l.tripadvisor_data.address && (
-                  <p className="text-[11px] text-muted-foreground">📍 {l.tripadvisor_data.address}</p>
-                )}
-              </>
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              <F label="Check-in"><Input type="date" value={l.check_in || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_in: e.target.value } : x))} /></F>
-              <F label="Check-out"><Input type="date" value={l.check_out || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_out: e.target.value } : x))} /></F>
-              <F label="Categoria do quarto"><Input placeholder="Suíte The Level · vista jardim" value={l.room_category || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, room_category: e.target.value } : x))} /></F>
-              <F label="Regime"><Input placeholder="All-Inclusive" value={l.board || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, board: e.target.value } : x))} /></F>
-            </div>
-            <F label="Descrição">
-              <RichField minH={80} value={l.description_html || ''} placeholder="Por que essa hospedagem é a escolha certa…"
-                onChange={html => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, description_html: html } : x))} />
-            </F>
-            <F label="Fotos">
-              <PhotoGallery orgSlug={orgSlug} photos={l.photos}
-                onChange={p => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, photos: p } : x))} />
-            </F>
-            <label className="flex items-center gap-2 text-xs font-medium rounded-lg border p-2.5 bg-muted/20">
-              <Switch checked={!!l.is_alternative_option}
-                onCheckedChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, is_alternative_option: v } : x))} />
-              Esta é uma opção alternativa (cliente escolhe esta OU outra hospedagem — preços editados em Investimento)
-            </label>
-          </>
-        )} />
-      </EditBlock>
-
       {/* AÉREO */}
       <EditBlock id="blk-aereo" icon={Plane} title="Aéreo"
         action={<div className="flex items-center gap-1.5">
@@ -1253,6 +1202,23 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
           </Button>
         </div>}>
+        <div className="flex flex-wrap gap-1.5">
+          {FARE_CONDITIONS.map(fc => {
+            const active = q.flight_fare_conditions.includes(fc.key)
+            return (
+              <button key={fc.key} type="button"
+                onClick={() => setQ(s => ({
+                  ...s,
+                  flight_fare_conditions: active ? s.flight_fare_conditions.filter(k => k !== fc.key) : [...s.flight_fare_conditions, fc.key],
+                }))}
+                className={`px-2.5 py-1 rounded-full border text-xs transition-colors ${
+                  active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                }`}>
+                {fc.label}
+              </button>
+            )
+          })}
+        </div>
         {flights.length === 0 && <p className="text-sm text-muted-foreground">Nenhum trecho aéreo.</p>}
         <SortableList items={flights} onReorder={setFlights} render={(f) => (
           <>
@@ -1282,11 +1248,19 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 )}
               </F>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <F label="Cidade origem"><Input placeholder="Florianópolis" value={f.from_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_city: e.target.value } : x))} /></F>
-              <F label="Origem (sigla)"><Input placeholder="FLN" maxLength={4} value={f.from_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: e.target.value.toUpperCase() } : x))} /></F>
-              <F label="Cidade destino"><Input placeholder="Punta Cana" value={f.to_city || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_city: e.target.value } : x))} /></F>
-              <F label="Destino (sigla)"><Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: e.target.value.toUpperCase() } : x))} /></F>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Origem (sigla)" hint={cityFromAirportCode(f.from_code) || (f.from_code ? 'sigla não reconhecida' : undefined)}>
+                <Input placeholder="FLN" maxLength={4} value={f.from_code || ''} onChange={e => {
+                  const code = e.target.value.toUpperCase()
+                  setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: code, from_city: cityFromAirportCode(code) || x.from_city } : x))
+                }} />
+              </F>
+              <F label="Destino (sigla)" hint={cityFromAirportCode(f.to_code) || (f.to_code ? 'sigla não reconhecida' : undefined)}>
+                <Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => {
+                  const code = e.target.value.toUpperCase()
+                  setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: code, to_city: cityFromAirportCode(code) || x.to_city } : x))
+                }} />
+              </F>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <F label="Data de partida"><Input type="date" className="w-full" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F>
@@ -1335,6 +1309,81 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </div>
           )}
         </div>
+      </EditBlock>
+
+      {/* HOSPEDAGENS */}
+      <EditBlock id="blk-hospedagens" icon={BedDouble} title="Hospedagens"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setLodgings(ls => [...ls, { _key: nk(), name: '', photos: [], check_in: q.start_date || null, check_out: q.end_date || null, check_in_time: '15:00', check_out_time: '12:00' }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Hospedagem
+        </Button>}>
+        {lodgings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma hospedagem.</p>}
+        <SortableList items={lodgings} onReorder={setLodgings} render={(l) => (
+          <>
+            <div className="flex gap-1.5">
+              <Input className="flex-1" placeholder="Nome do hotel/resort" value={l.name}
+                onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, name: e.target.value } : x))} />
+              <Button type="button" variant="outline" size="sm" className="shrink-0" disabled={taBusy === l._key}
+                title="Buscar no TripAdvisor (nota, fotos, localização)" onClick={() => taLookup(l)}>
+                {taBusy === l._key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                <span className="ml-1 hidden sm:inline">TripAdvisor</span>
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={() => setLodgings(ls => ls.filter(x => x._key !== l._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            {l.tripadvisor_data && (
+              <>
+                <p className="text-[11px] text-emerald-600">✓ TripAdvisor vinculado{l.tripadvisor_data.rating ? ` · nota ${l.tripadvisor_data.rating}` : ''}{l.tripadvisor_data.reviews_count ? ` · ${l.tripadvisor_data.reviews_count} avaliações` : ''}</p>
+                {l.tripadvisor_data.address && (
+                  <p className="text-[11px] text-muted-foreground">📍 {l.tripadvisor_data.address}</p>
+                )}
+              </>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Check-in"><Input type="date" value={l.check_in || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_in: e.target.value } : x))} /></F>
+              <F label="Horário check-in"><Input type="time" value={l.check_in_time ?? '15:00'} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_in_time: e.target.value } : x))} /></F>
+              <F label="Check-out"><Input type="date" value={l.check_out || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_out: e.target.value } : x))} /></F>
+              <F label="Horário check-out"><Input type="time" value={l.check_out_time ?? '12:00'} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, check_out_time: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <F label="Categoria do quarto"><Input placeholder="Suíte The Level · vista jardim" value={l.room_category || ''} onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, room_category: e.target.value } : x))} /></F>
+              <F label="Regime">
+                <Select value={l.board || 'none'} onValueChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, board: v === 'none' ? null : v } : x))}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não exibir</SelectItem>
+                    {BOARD_OPTIONS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Categoria do hotel">
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Select value={l.star_rating ? String(l.star_rating) : 'none'} onValueChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, star_rating: v === 'none' ? null : parseInt(v) } : x))}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Não exibir</SelectItem>
+                      {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n} estrela{n > 1 ? 's' : ''}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </F>
+            </div>
+            <F label="Descrição">
+              <ItineraryEditor orgSlug={orgSlug} value={l.description_html || ''}
+                onChange={html => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, description_html: html } : x))} />
+            </F>
+            <F label="Fotos">
+              <PhotoGallery orgSlug={orgSlug} photos={l.photos}
+                onChange={p => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, photos: p } : x))} />
+            </F>
+            <label className="flex items-center gap-2 text-xs font-medium rounded-lg border p-2.5 bg-muted/20">
+              <Switch checked={!!l.is_alternative_option}
+                onCheckedChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, is_alternative_option: v } : x))} />
+              Esta é uma opção alternativa (cliente escolhe esta OU outra hospedagem — preços editados em Investimento)
+            </label>
+          </>
+        )} />
       </EditBlock>
 
       {/* CRUZEIRO — primeiro tipo de produto novo do Construtor de Viagens.
@@ -1491,7 +1540,14 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         {transfers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum transfer.</p>}
         <SortableList items={transfers} onReorder={setTransfers} render={(t) => (
           <>
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <button type="button"
+                onClick={() => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, round_trip: !x.round_trip } : x))}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition-colors ${
+                  t.round_trip ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                }`}>
+                <Repeat className="w-3.5 h-3.5" /> Ida e volta
+              </button>
               <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
                 onClick={() => setTransfers(ts => ts.filter(x => x._key !== t._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
@@ -1638,20 +1694,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           onChange={html => setQ(s => ({ ...s, itinerary_html: html }))} />
       </EditBlock>
 
-      {/* PASSEIOS E INGRESSOS — texto livre rico, mesmo padrão do Itinerário */}
-      <EditBlock id="blk-passeios" icon={Ticket} title="Passeios e Ingressos">
-        <p className="text-[11px] text-muted-foreground">
-          Descreva passeios, ingressos de parques etc. Cole prints (Ctrl+V) ou arraste
-          imagens, e formate o texto como preferir.
-        </p>
-        <ItineraryEditor orgSlug={orgSlug} value={q.tours_html}
-          onChange={html => setQ(s => ({ ...s, tours_html: html }))} />
-      </EditBlock>
-
       {/* IMPORTANTE */}
       <EditBlock id="blk-importante" icon={AlertTriangle} title="Importante">
-        <RichField value={q.important_html} onChange={html => setQ(s => ({ ...s, important_html: html }))}
-          placeholder="Documentos, vacinas, clima, seguro, dicas — o que o cliente precisa saber antes de fechar…" />
+        <ToggleRichField orgSlug={orgSlug} value={q.important_html} onChange={html => setQ(s => ({ ...s, important_html: html }))} />
       </EditBlock>
 
       {/* O QUE INCLUI */}
@@ -1664,8 +1709,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
 
       {/* POLÍTICAS DE CANCELAMENTO */}
       <EditBlock id="blk-cancelamento" icon={AlertTriangle} title="Políticas de cancelamento">
-        <RichField value={q.cancellation_html} onChange={html => setQ(s => ({ ...s, cancellation_html: html }))}
-          placeholder="Condições de alteração, cancelamento e reembolso — escreva do jeito que preferir…" />
+        <ToggleRichField orgSlug={orgSlug} value={q.cancellation_html} onChange={html => setQ(s => ({ ...s, cancellation_html: html }))} />
       </EditBlock>
       </GroupSection>
 
@@ -1722,37 +1766,32 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           </F>
         )}
         <F label="Formas de pagamento">
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {PAYMENT_METHODS.map(m => {
-                const active = q.payment_conditions.some(p => p.label === m.label)
-                const Icon = m.icon
-                return (
-                  <button key={m.label} type="button"
+          <div className="space-y-1.5">
+            {PAYMENT_METHODS.map(m => {
+              const active = q.payment_conditions.some(p => p.label === m.label)
+              const cond = q.payment_conditions.find(p => p.label === m.label)
+              const Icon = m.icon
+              return (
+                <div key={m.label} className="flex items-center gap-2">
+                  <button type="button"
                     onClick={() => setQ(s => ({
                       ...s,
                       payment_conditions: active
                         ? s.payment_conditions.filter(p => p.label !== m.label)
                         : [...s.payment_conditions, { label: m.label, value: '' }],
                     }))}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm transition-colors w-40 shrink-0 ${
                       active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
                     }`}>
                     <Icon className="w-4 h-4" /> {m.label}
                   </button>
-                )
-              })}
-            </div>
-            {PAYMENT_METHODS.filter(m => q.payment_conditions.some(p => p.label === m.label)).map(m => {
-              const cond = q.payment_conditions.find(p => p.label === m.label)
-              return (
-                <div key={m.label} className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground w-28 shrink-0">{m.label}</span>
-                  <Input className="flex-1" placeholder={m.placeholder} value={cond?.value || ''}
-                    onChange={e => setQ(s => ({
-                      ...s,
-                      payment_conditions: s.payment_conditions.map(p => p.label === m.label ? { ...p, value: e.target.value } : p),
-                    }))} />
+                  {active && (
+                    <Input className="flex-1" placeholder={m.placeholder} value={cond?.value || ''}
+                      onChange={e => setQ(s => ({
+                        ...s,
+                        payment_conditions: s.payment_conditions.map(p => p.label === m.label ? { ...p, value: e.target.value } : p),
+                      }))} />
+                  )}
                 </div>
               )
             })}
@@ -1771,8 +1810,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       <GroupSection id="fechamento" active={activeGroup}>
       {/* FECHAMENTO */}
       <EditBlock id="blk-fechamento" icon={MessageCircle} title="Fechamento">
-        <RichField value={q.closing_html} onChange={html => setQ(s => ({ ...s, closing_html: html }))}
-          placeholder="Texto final de convite à reserva (título + parágrafo)…" minH={80} />
+        <ItineraryEditor orgSlug={orgSlug} value={q.closing_html} onChange={html => setQ(s => ({ ...s, closing_html: html }))} />
         <p className="text-[11px] text-muted-foreground">
           Os botões de WhatsApp usam o número configurado da agência
           {initial.org_settings?.whatsapp_number ? ` (${initial.org_settings.whatsapp_number})` : ' — nenhum configurado'}.

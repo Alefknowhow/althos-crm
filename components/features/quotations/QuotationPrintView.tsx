@@ -82,6 +82,7 @@ type Quotation = {
   cancellation_html: string | null
   important_html?: string | null
   flights_html: string | null
+  flight_fare_conditions?: string[] | null
   created_at?: string | null
 }
 
@@ -96,6 +97,28 @@ function fmtDate(d?: string | null) {
 }
 function fmtCurrency(cents: number | null | undefined) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
+}
+/** "20 de agosto de 2026" — data por extenso, usada na frase "Esta cotação
+ *  foi realizada no dia…" abaixo do título. */
+function fmtDateExtenso(d?: string | null): string | null {
+  if (!d) return null
+  const dt = new Date(d.slice(0, 10) + 'T12:00:00')
+  if (Number.isNaN(dt.getTime())) return null
+  return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+/** (dd) xxxxx-xxxx — extrai só os dígitos e formata; se não tiver DDD (10/11
+ *  dígitos) retorna o texto original sem tentar adivinhar. */
+function fmtPhone(phone?: string | null): string | null {
+  if (!phone) return null
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return phone
+}
+const FARE_CONDITION_LABELS: Record<string, string> = {
+  nao_reembolsavel: 'Não reembolsável',
+  alteracao_com_custo: 'Permite alteração com custo',
+  nao_permite_alteracao: 'Não permite alteração',
 }
 function stripHtml(html?: string | null) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -166,7 +189,7 @@ function CardShell({ children }: { children: React.ReactNode }) {
 
 type FlightLeg = Record<string, any>
 
-function FlightCard({ legs, paxLine }: { legs: FlightLeg[]; paxLine: string }) {
+function FlightCard({ legs }: { legs: FlightLeg[] }) {
   const idas = legs.filter(f => f.leg_type === 'outbound')
   const voltas = legs.filter(f => f.leg_type === 'inbound')
   const conexoes = legs.filter(f => f.leg_type === 'connection')
@@ -181,13 +204,13 @@ function FlightCard({ legs, paxLine }: { legs: FlightLeg[]; paxLine: string }) {
 
   return (
     <CardShell>
-      <CardHeader icon={Plane} title="Aéreo" right={paxLine ? `Total (${paxLine})` : undefined} />
+      <CardHeader icon={Plane} title="Aéreo" />
       {route && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{route}</p>}
 
       {groups.map(group => (
         <div key={group.label} className="mb-[3mm] last:mb-0">
           {group.legs.map((f, i) => {
-            const bag = (f.baggage || []).map((k: string) => BAGGAGE_OPTIONS.find(b => b.key === k)?.short).filter(Boolean).join(' · ')
+            const bag = BAGGAGE_OPTIONS.filter(b => (f.baggage || []).includes(b.key)).map(b => b.short).join(' · ')
             const cabin = f.cabin_class ? CABIN_LABELS[f.cabin_class] || f.cabin_class : ''
             return (
               <div key={i} className="mb-[2mm] last:mb-0">
@@ -232,7 +255,7 @@ function FlightCard({ legs, paxLine }: { legs: FlightLeg[]; paxLine: string }) {
       {allBaggage.length > 0 && (
         <div className="pt-[2mm] mt-[1mm] border-t-[0.6pt] border-[#D0D0D0]">
           <p className="text-[7.5pt] font-bold text-[#16845B] mb-[1mm]">
-            Inclui {allBaggage.map(k => BAGGAGE_OPTIONS.find(b => b.key === k)?.label?.toLowerCase()).filter(Boolean).join(', ')}
+            Inclui {BAGGAGE_OPTIONS.filter(b => allBaggage.includes(b.key)).map(b => b.label.toLowerCase()).join(', ')}
           </p>
         </div>
       )}
@@ -254,19 +277,29 @@ function FlightsTextCard({ text }: { text: string }) {
 function HotelCard({ p }: { p: Product }) {
   const d = p.data
   const nights = nightsBetween(p.date_start, p.date_end)
+  const address = d.tripadvisor_data?.address as string | undefined
   return (
     <CardShell>
       <CardHeader icon={Building2} title="Hospedagem" />
-      <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{p.name || 'Hospedagem'}</p>
-      <div className="grid grid-cols-3 gap-x-[3mm] gap-y-[2mm] mb-[2mm]">
-        <InfoField label="Check-in" value={fmtDate(p.date_start)} />
-        <InfoField label="Check-out" value={fmtDate(p.date_end)} />
-        <InfoField label="Noites" value={nights ? `${nights} noite${nights === 1 ? '' : 's'}` : null} />
+      <div className="flex items-center gap-[1.5mm] mb-[1mm]">
+        <p className="text-[11pt] font-bold text-[#111]">{p.name || 'Hospedagem'}</p>
+        {d.star_rating > 0 && <span className="text-[8pt] text-[#C9A227]">{'★'.repeat(d.star_rating)}</span>}
       </div>
-      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+      {address && <p className="text-[7pt] text-[#777] mb-[2mm]">{address}</p>}
+      <div className="grid grid-cols-4 gap-x-[3mm] gap-y-[2mm] mb-[2mm]">
+        <InfoField label="Check-in" value={fmtDate(p.date_start)} />
+        <InfoField label="Horário" value={d.check_in_time} />
+        <InfoField label="Check-out" value={fmtDate(p.date_end)} />
+        <InfoField label="Horário" value={d.check_out_time} />
+      </div>
+      <div className="grid grid-cols-3 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Noites" value={nights ? `${nights} noite${nights === 1 ? '' : 's'}` : null} />
         <InfoField label="Quarto" value={d.room_category} />
         <InfoField label="Regime" value={d.board} />
       </div>
+      {hasHtml(d.description_html) && (
+        <Rich html={d.description_html} className="text-[7.5pt] leading-snug text-[#555] mt-[2mm] pt-[2mm] border-t-[0.6pt] border-[#D0D0D0] [&_p]:mb-[1mm]" />
+      )}
     </CardShell>
   )
 }
@@ -431,7 +464,7 @@ export default function QuotationPrintView({
       if (p.type === 'aereo') {
         if (flightsConsumed) continue
         flightsConsumed = true
-        units.push({ key: 'flights', node: <FlightCard legs={flightLegs} paxLine={paxLine} /> })
+        units.push({ key: 'flights', node: <FlightCard legs={flightLegs} /> })
         continue
       }
       const label = PRODUCT_LABELS[p.type] || p.type
@@ -457,7 +490,8 @@ export default function QuotationPrintView({
   const hasIncludedExcluded = (quotation.included?.length ?? 0) > 0 || (quotation.not_included?.length ?? 0) > 0
   const cancellationHasContent = hasHtml(quotation.cancellation_html)
   const importantHasContent = hasHtml(quotation.important_html)
-  const quotedDate = fmtDate(quotation.created_at)
+  const quotedDateExtenso = fmtDateExtenso(quotation.created_at)
+  const fareConditions = quotation.flight_fare_conditions || []
 
   const paymentConditions = (quotation.payment_conditions || []).reduce<{ label: string; value?: string | null }[]>((acc, p) => {
     const dup = acc.find(x => (x.value || '').trim() && x.value === p.value)
@@ -488,13 +522,11 @@ export default function QuotationPrintView({
           )}
 
           <div className="min-w-0 flex-1">
-            <p className="text-[9pt] leading-snug"><span className="font-bold">Filial:</span> <span className="font-bold">{org.name}</span></p>
-            {(org.contact_phone || org.contact_email || org.website) && (
-              <p className="text-[8pt] text-[#555] leading-snug mt-[0.5mm]">
-                {[org.contact_phone, org.contact_email, org.website].filter(Boolean).join(' · ')}
-              </p>
-            )}
-            {org.cnpj && <p className="text-[7pt] text-[#777] leading-snug">CNPJ {org.cnpj}{org.cadastur ? ` · CADASTUR ${org.cadastur}` : ''}</p>}
+            <p className="text-[9pt] leading-snug"><span className="font-bold">Agência:</span> <span className="font-bold">{org.name}</span></p>
+            {org.contact_phone && <p className="text-[8pt] text-[#555] leading-snug mt-[0.5mm]">{fmtPhone(org.contact_phone)}</p>}
+            {org.contact_email && <p className="text-[8pt] text-[#555] leading-snug">{org.contact_email}</p>}
+            {org.website && <p className="text-[8pt] text-[#555] leading-snug">{org.website}</p>}
+            {org.cnpj && <p className="text-[7pt] text-[#777] leading-snug mt-[0.5mm]">CNPJ {org.cnpj}{org.cadastur ? ` · CADASTUR ${org.cadastur}` : ''}</p>}
           </div>
 
           {seller && (
@@ -515,46 +547,89 @@ export default function QuotationPrintView({
         </div>
 
         {/* ── Cabeçalho da cotação: título + data + Total ─────────── */}
-        <div className="flex items-start justify-between gap-[4mm] mb-[6mm] avoid-break">
+        <div className="flex items-start justify-between gap-[4mm] mb-[3mm] avoid-break">
           <div className="min-w-0">
             <p className="text-[17pt] font-bold leading-tight" style={{ color: '#172A9B' }}>Orçamento da sua viagem</p>
-            {quotedDate && <p className="text-[9pt] text-[#555] mt-[1mm]">{quotedDate}</p>}
-            {(quotation.client_name || destinations) && (
-              <p className="text-[8.5pt] text-[#555] mt-[1mm]">
-                {[quotation.client_name, destinations].filter(Boolean).join(' · ')}
-              </p>
-            )}
+            {quotedDateExtenso && <p className="text-[8.5pt] text-[#555] mt-[1mm]">Esta cotação foi realizada no dia {quotedDateExtenso}</p>}
           </div>
           <div className="shrink-0 border-[0.8pt] border-[#C9C9C9] rounded-[5mm] px-[5mm] py-[4mm] text-right">
             <p className="text-[7.5pt] uppercase tracking-wide text-[#777] mb-[1mm]">Total da viagem</p>
             <p className="text-[16pt] font-bold text-[#111] tabular-nums">{fmtCurrency(quotation.total_cents)}</p>
+            <p className="text-[6.5pt] text-[#777] mt-[0.5mm]">Taxas e impostos incluídos</p>
           </div>
+        </div>
+
+        {/* ── Cliente / destino / datas / pax + etiquetas de tarifa ── */}
+        <div className="mb-[4mm] avoid-break">
+          <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[1.5mm]">
+            {quotation.client_name && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Nome do Cliente:</span> {quotation.client_name}</p>}
+            {destinations && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Destino:</span> {destinations}</p>}
+            {fmtDate(quotation.start_date) && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Data de ida:</span> {fmtDate(quotation.start_date)}</p>}
+            {fmtDate(quotation.end_date) && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Data de retorno:</span> {fmtDate(quotation.end_date)}</p>}
+          </div>
+          {(paxLine || fareConditions.length > 0) && (
+            <div className="flex flex-wrap items-center gap-[1.5mm] mt-[2mm]">
+              {paxLine && <span className="text-[7.5pt] text-[#555]">{paxLine}</span>}
+              {fareConditions.map(fc => (
+                <span key={fc} className="text-[6.5pt] text-[#555] border-[0.6pt] border-[#D0D0D0] rounded-full px-[2mm] py-[0.5mm]">{FARE_CONDITION_LABELS[fc] || fc}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── ⚠️ ATENÇÃO — único bloco com vermelho no documento ───── */}
+        <div className="border border-red-200 bg-red-50 px-[3mm] py-[2mm] mb-[5mm] avoid-break">
+          <p className="text-[7pt] leading-snug text-red-900">
+            <span className="font-bold">ATENÇÃO — </span>
+            Esta é uma simples cotação. Nenhum dos componentes selecionados está confirmado até que seja efetivada a reserva. Os valores podem sofrer alterações em virtude de disponibilidade e câmbio.
+          </p>
         </div>
 
         {/* ── Product Cards ─────────────────────────────────────── */}
         {renderUnits.map(u => <div key={u.key}>{u.node}</div>)}
 
-        {/* ── Inclui / Não inclui ───────────────────────────────── */}
+        {/* ── Informações importantes ───────────────────────────── */}
+        {(importantHasContent || quotation.price_disclaimer) && (
+          <div className="mb-[5mm] avoid-break">
+            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Informações importantes</p>
+            {importantHasContent && (
+              <Rich html={quotation.important_html} className="text-[7pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
+            )}
+            {quotation.price_disclaimer && (
+              <p className="text-[7pt] text-[#555] whitespace-pre-wrap mt-[1mm]">{quotation.price_disclaimer}</p>
+            )}
+          </div>
+        )}
+
+        {/* ── Política de cancelamento ──────────────────────────── */}
+        {cancellationHasContent && (
+          <div className="mb-[5mm] avoid-break">
+            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Política de cancelamento</p>
+            <Rich html={quotation.cancellation_html} className="text-[7.5pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
+          </div>
+        )}
+
+        {/* ── Inclui / Não inclui — card único, listas horizontais ── */}
         {hasIncludedExcluded && (
-          <div className="grid grid-cols-2 gap-x-[4mm] mb-[5mm] avoid-break">
+          <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm] mb-[5mm] avoid-break">
             {(quotation.included?.length ?? 0) > 0 && (
-              <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
-                <p className="text-[11pt] font-bold text-[#111] mb-[2mm]">Incluso</p>
-                <ul className="space-y-[1mm]">
+              <div className={(quotation.not_included?.length ?? 0) > 0 ? 'mb-[2.5mm] pb-[2.5mm] border-b-[0.6pt] border-[#D0D0D0]' : undefined}>
+                <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Incluso</p>
+                <div className="flex flex-wrap gap-x-[4mm] gap-y-[1mm]">
                   {quotation.included!.map((item, i) => (
-                    <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm]"><Check className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#16845B]" /> {item}</li>
+                    <span key={i} className="text-[7.5pt] flex items-center gap-[1mm] whitespace-nowrap"><Check className="w-[3mm] h-[3mm] shrink-0 text-[#16845B]" /> {item}</span>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
             {(quotation.not_included?.length ?? 0) > 0 && (
-              <div className="border-[0.8pt] border-[#D0D0D0] rounded-[4mm] p-[4mm]">
-                <p className="text-[11pt] font-bold text-[#111] mb-[2mm]">Não incluso</p>
-                <ul className="space-y-[1mm]">
+              <div>
+                <p className="text-[9pt] font-bold text-[#111] mb-[1.5mm]">Não incluso</p>
+                <div className="flex flex-wrap gap-x-[4mm] gap-y-[1mm]">
                   {quotation.not_included!.map((item, i) => (
-                    <li key={i} className="text-[7.5pt] flex items-start gap-[1.5mm] text-[#555]"><X className="w-[3mm] h-[3mm] mt-[0.3mm] shrink-0 text-[#C04A4A]" /> {item}</li>
+                    <span key={i} className="text-[7.5pt] flex items-center gap-[1mm] text-[#555] whitespace-nowrap"><X className="w-[3mm] h-[3mm] shrink-0 text-[#C04A4A]" /> {item}</span>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
@@ -569,27 +644,6 @@ export default function QuotationPrintView({
                 <li key={i} className="text-[7.5pt] text-[#555]">• {p.label}{p.value ? ` — ${p.value}` : ''}</li>
               ))}
             </ul>
-          </div>
-        )}
-
-        {/* ── Política de cancelamento ──────────────────────────── */}
-        {cancellationHasContent && (
-          <div className="mb-[5mm] avoid-break">
-            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Política de cancelamento</p>
-            <Rich html={quotation.cancellation_html} className="text-[7.5pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
-          </div>
-        )}
-
-        {/* ── Informações importantes ───────────────────────────── */}
-        {(importantHasContent || quotation.price_disclaimer) && (
-          <div className="mb-[5mm] avoid-break">
-            <p className="text-[11pt] font-bold text-[#111] mb-[1.5mm]">Informações importantes</p>
-            {importantHasContent && (
-              <Rich html={quotation.important_html} className="text-[7pt] leading-snug text-[#555] [&_p]:mb-[1mm] [&_ul]:list-disc [&_ul]:pl-[4mm]" />
-            )}
-            {quotation.price_disclaimer && (
-              <p className="text-[7pt] text-[#555] whitespace-pre-wrap mt-[1mm]">{quotation.price_disclaimer}</p>
-            )}
           </div>
         )}
 
