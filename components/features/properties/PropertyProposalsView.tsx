@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileSignature, Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-header'
 import { createProposal, setProposalStatus, type PropertyProposalRow, type PropertyProposalStatus } from '@/actions/property-proposals'
 
 type PropertyOption = { id: string; title: string; code: string | null }
@@ -86,16 +87,28 @@ export default function PropertyProposalsView({
 
   return (
     <div className={fixedPropertyId ? '' : 'p-4 sm:p-6 space-y-4'}>
+      {!fixedPropertyId && (
+        <PageHeader
+          title="Propostas"
+          hint="Propostas de compra ou locação feitas a leads."
+          actions={
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" /> Nova proposta
+            </Button>
+          }
+        />
+      )}
       <div className="flex items-center justify-between gap-3">
-        {!fixedPropertyId && (
-          <div>
-            <h1 className="text-xl font-semibold flex items-center gap-2"><FileSignature className="w-5 h-5" /> Propostas</h1>
-            <p className="text-sm text-muted-foreground">{proposals.length} proposta{proposals.length === 1 ? '' : 's'}</p>
-          </div>
+        {!fixedPropertyId ? (
+          <p className="text-sm text-muted-foreground">{proposals.length} proposta{proposals.length === 1 ? '' : 's'}</p>
+        ) : (
+          <span />
         )}
-        <Button size={fixedPropertyId ? 'sm' : 'default'} variant={fixedPropertyId ? 'outline' : 'default'} onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Nova proposta
-        </Button>
+        {fixedPropertyId && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Nova proposta
+          </Button>
+        )}
       </div>
 
       <div className={fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card'}>

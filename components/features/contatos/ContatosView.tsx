@@ -41,6 +41,8 @@ import CustomerDocuments from '@/components/features/customers/CustomerDocuments
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
+import PropertyPreferencesCard from '@/components/features/properties/PropertyPreferencesCard'
+import PropertyMatchSuggestions from '@/components/features/properties/PropertyMatchSuggestions'
 import CopyButton from '@/components/ui/copy-button'
 
 // ── Tipos vindos da página (server) ──────────────────────────────────
@@ -81,6 +83,7 @@ type Selected = {
   relationships: any[]
   propertyInterests?: any[]
   propertyVisits?: any[]
+  propertyPreferences?: any
 } | null
 
 type Filters = Record<string, string | undefined>
@@ -828,6 +831,8 @@ function DetailPanel({
         <>
           <PropertyInterestsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyInterests || []} properties={properties} />
           <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyVisits || []} properties={properties} members={members.map(m => ({ user_id: m.id, name: m.name }))} />
+          <PropertyPreferencesCard orgSlug={orgSlug} contatoId={c.id} initial={selected.propertyPreferences || null} />
+          <PropertyMatchSuggestions orgSlug={orgSlug} contatoId={c.id} />
         </>
       )}
 

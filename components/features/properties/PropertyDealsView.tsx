@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Handshake, Plus, Loader2, X } from 'lucide-react'
+import { Plus, Loader2, X } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-header'
 import { closeDeal, cancelDeal, type PropertyDealRow } from '@/actions/property-deals'
 import type { PropertyProposalRow } from '@/actions/property-proposals'
 
@@ -88,16 +89,28 @@ export default function PropertyDealsView({
 
   return (
     <div className={fixedPropertyId ? '' : 'p-4 sm:p-6 space-y-4'}>
+      {!fixedPropertyId && (
+        <PageHeader
+          title="Negociações"
+          hint="Negócios fechados — venda ou locação."
+          actions={
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" /> Fechar negócio
+            </Button>
+          }
+        />
+      )}
       <div className="flex items-center justify-between gap-3">
-        {!fixedPropertyId && (
-          <div>
-            <h1 className="text-xl font-semibold flex items-center gap-2"><Handshake className="w-5 h-5" /> Negociações</h1>
-            <p className="text-sm text-muted-foreground">{deals.length} negócio{deals.length === 1 ? '' : 's'} fechado{deals.length === 1 ? '' : 's'}</p>
-          </div>
+        {!fixedPropertyId ? (
+          <p className="text-sm text-muted-foreground">{deals.length} negócio{deals.length === 1 ? '' : 's'} fechado{deals.length === 1 ? '' : 's'}</p>
+        ) : (
+          <span />
         )}
-        <Button size={fixedPropertyId ? 'sm' : 'default'} variant={fixedPropertyId ? 'outline' : 'default'} onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Fechar negócio
-        </Button>
+        {fixedPropertyId && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Fechar negócio
+          </Button>
+        )}
       </div>
 
       <div className={fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card'}>

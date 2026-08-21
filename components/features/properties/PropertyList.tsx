@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Search, Home, Loader2 } from 'lucide-react'
+import { Plus, Search, Loader2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-header'
 import type { PropertyRow } from '@/actions/properties'
 
 type Member = { user_id: string; name: string; email: string }
@@ -51,15 +52,16 @@ export default function PropertyList({
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><Home className="w-5 h-5" /> Imóveis</h1>
-          <p className="text-sm text-muted-foreground">{properties.length} imóve{properties.length === 1 ? 'l' : 'is'} cadastrado{properties.length === 1 ? '' : 's'}</p>
-        </div>
-        <Button disabled={creating} onClick={() => { setCreating(true); router.push(`/app/${orgSlug}/imoveis/novo`) }}>
-          {creating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Plus className="w-4 h-4 mr-1.5" />} Novo imóvel
-        </Button>
-      </div>
+      <PageHeader
+        title="Imóveis"
+        hint="Cadastro de imóveis da agência."
+        actions={
+          <Button disabled={creating} onClick={() => { setCreating(true); router.push(`/app/${orgSlug}/imoveis/novo`) }}>
+            {creating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Plus className="w-4 h-4 mr-1.5" />} Novo imóvel
+          </Button>
+        }
+      />
+      <p className="text-sm text-muted-foreground">{properties.length} imóve{properties.length === 1 ? 'l' : 'is'} cadastrado{properties.length === 1 ? '' : 's'}</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">

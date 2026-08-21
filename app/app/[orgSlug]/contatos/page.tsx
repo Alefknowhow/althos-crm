@@ -188,6 +188,7 @@ export default async function ContatosPage({
         relationships,
         propertyInterests: interests,
         propertyVisits: visits,
+        propertyPreferences: (resolvedContato as any).property_preferences || null,
       }
     }
   }
