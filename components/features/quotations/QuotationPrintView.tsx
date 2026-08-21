@@ -237,7 +237,10 @@ function FlightCard({ legs, fareConditions }: { legs: FlightLeg[]; fareCondition
                 <div className="flex items-center gap-[2mm]">
                   <div className="flex-1 min-w-0">
                     {(f.date || f.departure_time) && (
-                      <p className="text-[11pt] font-bold text-[#111]">{f.departure_time || ''} {f.from_code || ''}</p>
+                      <p className="text-[11pt] font-bold text-[#111]">
+                        {f.departure_time || ''} {f.from_code || ''}
+                        {fmtDate(f.date) && <span className="text-[7pt] font-normal text-[#777]"> · {fmtDate(f.date)}</span>}
+                      </p>
                     )}
                     <p className="text-[7pt] text-[#777]">{f.from_city || ''}</p>
                   </div>
@@ -250,7 +253,10 @@ function FlightCard({ legs, fareConditions }: { legs: FlightLeg[]; fareCondition
                   </div>
                   <div className="flex-1 min-w-0 text-right">
                     {(f.arrival_date || f.arrival_time) && (
-                      <p className="text-[11pt] font-bold text-[#111]">{f.arrival_time || ''} {f.to_code || ''}</p>
+                      <p className="text-[11pt] font-bold text-[#111]">
+                        {fmtDate(f.arrival_date || f.date) && <span className="text-[7pt] font-normal text-[#777]">{fmtDate(f.arrival_date || f.date)} · </span>}
+                        {f.arrival_time || ''} {f.to_code || ''}
+                      </p>
                     )}
                     <p className="text-[7pt] text-[#777]">{f.to_city || ''}</p>
                   </div>
