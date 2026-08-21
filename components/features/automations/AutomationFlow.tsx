@@ -66,6 +66,7 @@ const TRIGGER_TYPES = [
   { id: 'imoveis.visit.confirmed', label: 'Visita Confirmada (Imóveis)', desc: 'Dispara quando o lead confirma a visita' },
   { id: 'imoveis.visit.canceled',  label: 'Visita Cancelada (Imóveis)',  desc: 'Dispara quando a visita é cancelada' },
   { id: 'imoveis.visit.completed', label: 'Visita Realizada (Imóveis)',  desc: 'Dispara quando a visita é marcada como realizada' },
+  { id: 'imoveis.proposal.sent',   label: 'Proposta Enviada (Imóveis)',  desc: 'Dispara quando uma proposta de imóvel é marcada como enviada' },
   { id: 'imoveis.deal.closed',     label: 'Negócio Fechado (Imóveis)',   desc: 'Dispara quando uma venda ou locação é registrada' },
 ] as const
 
@@ -132,6 +133,7 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'imoveis.visit.confirmed') return 'Lead confirmou a visita'
   if (type === 'imoveis.visit.canceled')  return 'Visita cancelada'
   if (type === 'imoveis.visit.completed') return 'Visita registrada como realizada'
+  if (type === 'imoveis.proposal.sent')   return 'Proposta enviada'
   if (type === 'imoveis.deal.closed')     return 'Negócio fechado'
   return ''
 }

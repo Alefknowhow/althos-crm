@@ -29,6 +29,7 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'imoveis.visit.confirmed' },
       { event: 'imoveis.visit.canceled' },
       { event: 'imoveis.visit.completed' },
+      { event: 'imoveis.proposal.sent' },
       { event: 'imoveis.deal.closed' },
     ]
   },

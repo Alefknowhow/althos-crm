@@ -35,6 +35,7 @@ const ROUTE_TITLES: Record<string, string> = {
   comissoes: 'Comissões',
   retornos: 'Retornos',
   imoveis: 'Imóveis',
+  'pipeline-imoveis': 'Pipeline',
   visitas: 'Visitas',
   propostas: 'Propostas',
   negociacoes: 'Negociações',

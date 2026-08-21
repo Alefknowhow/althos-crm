@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { inngest } from '@/lib/inngest/client'
 import { revalidatePath } from 'next/cache'
 
 /**
@@ -132,8 +133,21 @@ export async function updateProposal(orgSlug: string, id: string, input: unknown
 export async function setProposalStatus(orgSlug: string, id: string, status: PropertyProposalStatus) {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
-  const { error } = await supabase.from('property_proposals').update({ status }).eq('id', id).eq('organization_id', org.id)
-  if (error) return { ok: false as const, error: error.message }
+  const { data: proposal, error } = await supabase
+    .from('property_proposals')
+    .update({ status })
+    .eq('id', id).eq('organization_id', org.id)
+    .select('property_id, contato_id')
+    .maybeSingle()
+  if (error || !proposal) return { ok: false as const, error: error?.message || 'Proposta não encontrada' }
+
+  if (status === 'sent') {
+    await inngest.send({
+      name: 'imoveis.proposal.sent',
+      data: { orgId: org.id, leadId: proposal.contato_id, propertyId: proposal.property_id, proposalId: id },
+    })
+  }
+
   revalidatePath(`/app/${orgSlug}/propostas`)
   return { ok: true as const }
 }

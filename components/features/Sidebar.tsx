@@ -411,6 +411,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         )}
 
         {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
+          <SidebarNavLink href={`${base}/pipeline-imoveis`}>
+            <span className="flex items-center gap-2.5">
+              <Kanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Pipeline</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
           <SidebarNavLink href={`${base}/visitas`}>
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
