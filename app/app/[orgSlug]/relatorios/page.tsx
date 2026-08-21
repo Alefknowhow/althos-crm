@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { minimumPlanFor, getPlanMeta } from '@/lib/plans/config'
-import { isTravelNiche } from '@/lib/niche'
+import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
 import ReportsClient from '@/components/features/reports/ReportsClient'
 import { PageHeader } from '@/components/ui/page-header'
 
@@ -47,7 +47,7 @@ export default async function RelatoriosPage({ params }: { params: { orgSlug: st
         <PageHeader title="Relatórios" hint="Escolha o período e exporte em PDF ou Excel." />
       </div>
 
-      <ReportsClient orgSlug={params.orgSlug} isTravel={isTravelNiche(org.niche)} />
+      <ReportsClient orgSlug={params.orgSlug} isTravel={isTravelNiche(org.niche)} isImobiliaria={isRealEstateNiche(org.niche)} />
     </div>
   )
 }

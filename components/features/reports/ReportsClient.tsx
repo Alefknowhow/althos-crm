@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins, ChevronDown, ChevronRight, ExternalLink, Home } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label'
 import { getReport, type ReportType, type ReportData } from '@/actions/reports'
 import { toCsv, downloadCsv } from '@/lib/reports/csv'
 
-type Props = { orgSlug: string; isTravel?: boolean }
+type Props = { orgSlug: string; isTravel?: boolean; isImobiliaria?: boolean }
 
-const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean }[] = [
+const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean; imobiliariaOnly?: boolean }[] = [
   { type: 'leads', label: 'Leads', icon: <FileBarChart className="h-4 w-4" /> },
   { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" /> },
   { type: 'appointments', label: 'Agendamentos', icon: <CalendarDays className="h-4 w-4" /> },
   { type: 'commission', label: 'Comissões', icon: <Coins className="h-4 w-4" />, travelOnly: true },
+  { type: 'imoveis', label: 'Imóveis', icon: <Home className="h-4 w-4" />, imobiliariaOnly: true },
 ]
 
 function ymd(d: Date): string {
@@ -53,8 +54,8 @@ const ERROR_MSG: Record<string, string> = {
   query_error: 'Erro ao buscar os dados. Tente novamente.',
 }
 
-export default function ReportsClient({ orgSlug, isTravel = false }: Props) {
-  const reports = REPORTS.filter(r => !r.travelOnly || isTravel)
+export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria = false }: Props) {
+  const reports = REPORTS.filter(r => (!r.travelOnly || isTravel) && (!r.imobiliariaOnly || isImobiliaria))
   const init = presetRange(30)
   const [type, setType] = useState<ReportType>('leads')
   const [from, setFrom] = useState(init.from)

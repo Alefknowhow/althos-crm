@@ -17,7 +17,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { isTravelNiche } from '@/lib/niche'
 
-export type ReportType = 'leads' | 'sales' | 'appointments' | 'commission'
+export type ReportType = 'leads' | 'sales' | 'appointments' | 'commission' | 'imoveis'
 
 export interface ReportColumn {
   key: string
@@ -55,6 +55,7 @@ const TITLES: Record<ReportType, string> = {
   sales: 'Relatório de Vendas',
   appointments: 'Relatório de Agendamentos',
   commission: 'Relatório de Comissões',
+  imoveis: 'Relatório de Imóveis',
 }
 
 function brl(cents: number | null | undefined): string {
@@ -354,6 +355,47 @@ export async function getReport(
           pct: totalGross > 0 ? `${((totalCommission / totalGross) * 100).toFixed(1)}%` : '—',
         },
         saleDetails,
+      },
+    }
+  }
+
+  if (type === 'imoveis') {
+    const { data, error } = await supabase
+      .from('property_deals')
+      .select('closed_at, deal_type, final_price_cents, commission_cents, status, properties(title, code), contatos(name)')
+      .eq('organization_id', org.id)
+      .gte('closed_at', startISO)
+      .lte('closed_at', endISO)
+      .order('closed_at', { ascending: false })
+    if (error) return { ok: false, error: 'query_error' }
+
+    const rows = (data || []).map(d => ({
+      closed_at: dt(d.closed_at as string),
+      property: relName((d as any).properties) || (d as any).properties?.code || '—',
+      lead: relName((d as any).contatos) || '—',
+      deal_type: d.deal_type === 'locacao' ? 'Locação' : 'Venda',
+      status: d.status === 'aberto' ? 'Fechado' : 'Cancelado',
+      commission: brl(d.commission_cents as number),
+      amount: brl(d.final_price_cents as number),
+    }))
+    const totalValue = (data || []).reduce((a, d) => a + ((d.final_price_cents as number) || 0), 0)
+    const totalCommission = (data || []).reduce((a, d) => a + ((d.commission_cents as number) || 0), 0)
+
+    return {
+      ok: true,
+      data: {
+        ...base,
+        columns: [
+          { key: 'closed_at', label: 'Data' },
+          { key: 'property', label: 'Imóvel' },
+          { key: 'lead', label: 'Lead' },
+          { key: 'deal_type', label: 'Tipo' },
+          { key: 'status', label: 'Status' },
+          { key: 'commission', label: 'Comissão', align: 'right' },
+          { key: 'amount', label: 'Valor', align: 'right' },
+        ],
+        rows,
+        totals: { property: `${rows.length} negócio(s)`, commission: brl(totalCommission), amount: brl(totalValue) },
       },
     }
   }
