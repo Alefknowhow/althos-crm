@@ -29,12 +29,11 @@ const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
 // "Não-travel" — visível pra qualquer nicho que não seja Viagens (inclui
 // Clínicas, que usa agenda/catálogo igual qualquer negócio genérico).
 const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
-// Dentro de GENERIC_ONLY, vendas/agendamentos também não fazem sentido pra
-// Imobiliária — vendas duplica Negociações (property_deals, Fase 3) e
-// agendamentos duplica Visitas (property_visits, Fase 2), ambos já
-// modelados na própria vertical. Catálogo continua valendo (sem
-// equivalente em Imóveis).
-const NOT_REAL_ESTATE: ModuleKey[] = ['vendas', 'agendamentos']
+// Dentro de GENERIC_ONLY, nada faz sentido pra Imobiliária: vendas duplica
+// Negociações (property_deals, Fase 3), agendamentos duplica Visitas
+// (property_visits, Fase 2), e catálogo não tem equivalente na vertical —
+// o CRM de imóveis não vende produtos de catálogo genérico.
+const NOT_REAL_ESTATE: ModuleKey[] = ['vendas', 'agendamentos', 'catalogo']
 
 /** Todo módulo não listado em TRAVEL_ONLY/CLINIC_ONLY/REAL_ESTATE_ONLY/
  *  GENERIC_ONLY é Core puro/extensível — sempre visível, independente do

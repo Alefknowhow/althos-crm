@@ -207,7 +207,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         <SectionLabel>Vendas</SectionLabel>
 
         {can('pipeline') && (
-          <SidebarNavLink href={`${base}/pipeline`} dataTour="pipeline">
+          <SidebarNavLink
+            href={isModuleEnabled(org.niche, 'imoveis') ? `${base}/pipeline-imoveis` : `${base}/pipeline`}
+            dataTour="pipeline"
+          >
             <span className="flex items-center gap-2.5">
               <Kanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Pipeline</span>
@@ -406,15 +409,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <Home className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Imóveis</span>
-            </span>
-          </SidebarNavLink>
-        )}
-
-        {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
-          <SidebarNavLink href={`${base}/pipeline-imoveis`}>
-            <span className="flex items-center gap-2.5">
-              <Kanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Pipeline</span>
             </span>
           </SidebarNavLink>
         )}
