@@ -58,9 +58,13 @@ export default function PropertyDealsView({
   function applyProposal(id: string) {
     setProposalId(id)
     const p = proposals.find(x => x.id === id)
-    if (p) {
-      setPropertyId(p.property_id); setContatoId(p.contato_id); setDealType(p.operation_type)
-      if (p.offered_price_cents) setFinalPrice(centsToStr(p.offered_price_cents))
+    // Proposta pode ter vários imóveis (Fase 8) — negócio fecha sempre em
+    // UM imóvel específico, então usa o primeiro item como ponto de partida
+    // (o usuário pode trocar o Select de imóvel antes de fechar).
+    const firstItem = p?.items?.[0]
+    if (p && firstItem) {
+      setPropertyId(firstItem.propertyId); setContatoId(p.contato_id); setDealType(p.operation_type)
+      if (firstItem.priceCents) setFinalPrice(centsToStr(firstItem.priceCents))
     }
   }
 
@@ -171,7 +175,9 @@ export default function PropertyDealsView({
                   <SelectContent>
                     <SelectItem value="none">Nenhuma — preencher do zero</SelectItem>
                     {proposals.filter(p => p.status !== 'won' && p.status !== 'lost').map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.property_title || p.property_code} — {p.contato_name}</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.items.length > 1 ? `${p.items.length} imóveis` : (p.items[0]?.title || p.items[0]?.code || 'Imóvel')} — {p.contato_name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

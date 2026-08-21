@@ -9,8 +9,8 @@ import PropertyProposalsView from '@/components/features/properties/PropertyProp
 export const dynamic = 'force-dynamic'
 
 export default async function PropertyProposalsPage({
-  params,
-}: { params: { orgSlug: string } }) {
+  params, searchParams,
+}: { params: { orgSlug: string }; searchParams?: { preselect?: string; contato?: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isRealEstateNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
@@ -21,12 +21,16 @@ export default async function PropertyProposalsPage({
     listLeadsForPicker(params.orgSlug),
   ])
 
+  const preselectedPropertyIds = searchParams?.preselect ? searchParams.preselect.split(',').filter(Boolean) : undefined
+
   return (
     <PropertyProposalsView
       orgSlug={params.orgSlug}
       proposals={proposals}
       properties={properties}
       contatos={contatos}
+      preselectedPropertyIds={preselectedPropertyIds}
+      preselectedContatoId={searchParams?.contato}
     />
   )
 }
