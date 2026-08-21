@@ -189,7 +189,7 @@ function CardShell({ children }: { children: React.ReactNode }) {
 
 type FlightLeg = Record<string, any>
 
-function FlightCard({ legs }: { legs: FlightLeg[] }) {
+function FlightCard({ legs, fareConditions }: { legs: FlightLeg[]; fareConditions: string[] }) {
   const idas = legs.filter(f => f.leg_type === 'outbound')
   const voltas = legs.filter(f => f.leg_type === 'inbound')
   const conexoes = legs.filter(f => f.leg_type === 'connection')
@@ -204,7 +204,13 @@ function FlightCard({ legs }: { legs: FlightLeg[] }) {
 
   return (
     <CardShell>
-      <CardHeader icon={Plane} title="Aéreo" />
+      <CardHeader icon={Plane} title="Aéreo" right={fareConditions.length > 0 && (
+        <span className="flex flex-wrap justify-end gap-[1mm]">
+          {fareConditions.map(fc => (
+            <span key={fc} className="text-[6.5pt] text-[#555] border-[0.6pt] border-[#D0D0D0] rounded-full px-[2mm] py-[0.5mm] whitespace-nowrap">{FARE_CONDITION_LABELS[fc] || fc}</span>
+          ))}
+        </span>
+      )} />
       {route && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{route}</p>}
 
       {groups.map(group => (
@@ -453,6 +459,7 @@ export default function QuotationPrintView({
 
   const flightLegs = products.filter(p => p.type === 'aereo').map(p => p.data)
   const flightsHtmlText = stripHtml(quotation.flights_html)
+  const fareConditions = quotation.flight_fare_conditions || []
 
   // Unidades de renderização, na ordem em que os produtos foram salvos —
   // todas as pernas de voo viram UM card único (o card é indivisível: um
@@ -464,7 +471,7 @@ export default function QuotationPrintView({
       if (p.type === 'aereo') {
         if (flightsConsumed) continue
         flightsConsumed = true
-        units.push({ key: 'flights', node: <FlightCard legs={flightLegs} /> })
+        units.push({ key: 'flights', node: <FlightCard legs={flightLegs} fareConditions={fareConditions} /> })
         continue
       }
       const label = PRODUCT_LABELS[p.type] || p.type
@@ -485,13 +492,12 @@ export default function QuotationPrintView({
     }
     return units
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, flightsHtmlText, paxLine])
+  }, [products, flightsHtmlText, paxLine, fareConditions])
 
   const hasIncludedExcluded = (quotation.included?.length ?? 0) > 0 || (quotation.not_included?.length ?? 0) > 0
   const cancellationHasContent = hasHtml(quotation.cancellation_html)
   const importantHasContent = hasHtml(quotation.important_html)
   const quotedDateExtenso = fmtDateExtenso(quotation.created_at)
-  const fareConditions = quotation.flight_fare_conditions || []
 
   const paymentConditions = (quotation.payment_conditions || []).reduce<{ label: string; value?: string | null }[]>((acc, p) => {
     const dup = acc.find(x => (x.value || '').trim() && x.value === p.value)
@@ -567,14 +573,7 @@ export default function QuotationPrintView({
             {fmtDate(quotation.start_date) && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Data de ida:</span> {fmtDate(quotation.start_date)}</p>}
             {fmtDate(quotation.end_date) && <p className="text-[8.5pt] text-[#111]"><span className="text-[#777]">Data de retorno:</span> {fmtDate(quotation.end_date)}</p>}
           </div>
-          {(paxLine || fareConditions.length > 0) && (
-            <div className="flex flex-wrap items-center gap-[1.5mm] mt-[2mm]">
-              {paxLine && <span className="text-[7.5pt] text-[#555]">{paxLine}</span>}
-              {fareConditions.map(fc => (
-                <span key={fc} className="text-[6.5pt] text-[#555] border-[0.6pt] border-[#D0D0D0] rounded-full px-[2mm] py-[0.5mm]">{FARE_CONDITION_LABELS[fc] || fc}</span>
-              ))}
-            </div>
-          )}
+          {paxLine && <p className="text-[7.5pt] text-[#555] mt-[2mm]">{paxLine}</p>}
         </div>
 
         {/* ── ⚠️ ATENÇÃO — único bloco com vermelho no documento ───── */}

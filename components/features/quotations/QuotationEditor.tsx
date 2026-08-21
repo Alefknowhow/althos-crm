@@ -663,6 +663,11 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           : (x?.label || '')
         return { label, value: x?.value || '' }
       })
+      // O editor só suporta esses 3 métodos fixos — qualquer label antigo
+      // que não bateu na normalização acima (ex.: "À vista") é lixo de uma
+      // versão anterior da tela e é descartado aqui, senão fica preso pra
+      // sempre no dado (a UI não tem como editá-lo/removê-lo).
+      .filter((x: any) => PAYMENT_METHODS.some(m => m.label === x.label))
       // Descarta duplicatas do mesmo método, mantendo a primeira.
       .filter((x: any, i: number, arr: any[]) => arr.findIndex(y => y.label === x.label) === i),
     price_disclaimer: q0.price_disclaimer || '',

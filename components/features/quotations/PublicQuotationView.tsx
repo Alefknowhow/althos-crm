@@ -1272,14 +1272,14 @@ const CSS = `
 /* Investimento */
 .alq .invest{background:linear-gradient(160deg,var(--navy),var(--navy-soft));color:#fff;border-radius:var(--radius);
   padding:38px 34px;margin-top:22px;box-shadow:0 20px 50px rgba(0,0,0,.22)}
-.alq .invest .eyebrow{color:var(--gold-soft)}
+.alq .invest .eyebrow{color:#fff}
 .alq .invest h3{color:#fff;font-size:21px;font-weight:700;margin:8px 0 24px}
 .alq .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:26px}
 .alq .price-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:20px}
 .alq .price-card.total{border-color:rgba(15,98,254,.55);background:rgba(15,98,254,.12)}
 .alq .price-card .lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.66)}
 .alq .price-card .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:30px;margin-top:6px;line-height:1}
-.alq .price-card.total .amt{color:var(--gold-soft)}
+.alq .price-card.total .amt{color:#fff}
 .alq .price-card .note{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px}
 .alq .opt-note{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:18px}
 .alq .opt-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:26px}
@@ -1289,12 +1289,12 @@ const CSS = `
 .alq .opt-room{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
 .alq .opt-prices{display:flex;gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
 .alq .opt-prices .lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.6)}
-.alq .opt-prices .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:20px;color:var(--gold-soft);margin-top:4px}
+.alq .opt-prices .amt{font-family:'Inter',sans-serif;font-weight:700;font-size:20px;color:#fff;margin-top:4px}
 .alq .pay{display:flex;flex-wrap:wrap;gap:10px;border-top:1px solid rgba(255,255,255,.14);padding-top:20px}
 .alq .pay .row{display:flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;color:rgba(255,255,255,.9);
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px}
 .alq .pay .row span{color:rgba(255,255,255,.7)}
-.alq .pay .row b{color:var(--gold-soft);font-weight:600}
+.alq .pay .row b{color:#fff;font-weight:600}
 .alq .disclaimer{margin-top:20px;font-size:11.5px;color:rgba(255,255,255,.5);line-height:1.5}
 @media(max-width:560px){.alq .invest{padding:28px 22px}.alq .price-grid{grid-template-columns:1fr}}
 
