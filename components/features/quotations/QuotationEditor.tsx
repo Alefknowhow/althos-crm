@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Upload, Loader2, Copy, ExternalLink,
   CheckCircle2, Link2, Image as ImageIcon, Search,
@@ -226,41 +227,44 @@ function UnsplashPicker({
     unsplashTrackDownload(orgSlug, p.downloadLocation)
   }
 
-  if (!open) {
-    return (
+  return (
+    <>
       <Button type="button" size="sm" variant="outline" onClick={openPicker} className="w-full">
         <Search className="w-3.5 h-3.5 mr-1.5" /> Buscar foto no Unsplash
       </Button>
-    )
-  }
-
-  return (
-    <div className="border rounded-lg p-2.5 space-y-2 bg-muted/20">
-      <div className="flex gap-1.5">
-        <Input value={query} onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search(query) } }}
-          placeholder="Ex.: praia caribe, montanha, cidade europeia…" className="h-8 text-xs" />
-        <Button type="button" size="sm" className="h-8" onClick={() => search(query)} disabled={busy}>
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setOpen(false)}>Fechar</Button>
-      </div>
-      {results && results.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5">
-          {results.map(p => (
-            <button key={p.id} type="button" onClick={() => pick(p)}
-              className="relative rounded overflow-hidden aspect-square group border hover:ring-2 hover:ring-primary">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.thumbUrl} alt={p.author} className="w-full h-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-      {results && results.length === 0 && !busy && (
-        <p className="text-[11px] text-muted-foreground">Nenhuma foto encontrada. Tente outro termo.</p>
-      )}
-      <p className="text-[10px] text-muted-foreground">Fotos via Unsplash — atribuição registrada automaticamente.</p>
-    </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Buscar foto no Unsplash</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2.5">
+            <div className="flex gap-1.5">
+              <Input value={query} onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search(query) } }}
+                placeholder="Ex.: praia caribe, montanha, cidade europeia…" autoFocus />
+              <Button type="button" onClick={() => search(query)} disabled={busy}>
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </Button>
+            </div>
+            {results && results.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 max-h-[60vh] overflow-y-auto">
+                {results.map(p => (
+                  <button key={p.id} type="button" onClick={() => pick(p)}
+                    className="relative rounded-lg overflow-hidden aspect-square group border hover:ring-2 hover:ring-primary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.thumbUrl} alt={p.author} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {results && results.length === 0 && !busy && (
+              <p className="text-[11px] text-muted-foreground">Nenhuma foto encontrada. Tente outro termo.</p>
+            )}
+            <p className="text-[10px] text-muted-foreground">Fotos via Unsplash — atribuição registrada automaticamente.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -1135,10 +1139,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                   onChange={e => setQ(s => ({ ...s, client_name: e.target.value }))} placeholder="Ex.: Ricardo Almeida" />
               </F>
             </div>
-            <div className="w-40 shrink-0">
+            <div className="w-1/2 shrink-0">
               <F label="Imagem de capa">
                 <CoverUpload orgSlug={orgSlug} url={q.cover_image_url} onChange={u => setQ(s => ({ ...s, cover_image_url: u }))}
-                  unsplashHint={q.destinations[0]?.name || ''} compact />
+                  unsplashHint={q.destinations[0]?.name || ''} />
               </F>
             </div>
           </div>
@@ -1891,7 +1895,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
 
       <div className="mt-[3px] flex gap-4 items-start">
         <GroupNavSidebar active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
-        <div className="flex-1 min-w-0 max-w-4xl">{form}</div>
+        <div className="flex-1 min-w-0 flex justify-center">
+          <div className="w-full max-w-4xl">{form}</div>
+        </div>
       </div>
 
       <DocumentExtractDialog
