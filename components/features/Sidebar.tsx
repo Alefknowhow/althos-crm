@@ -466,6 +466,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
                 <span>Seguradoras</span>
               </span>
             </SidebarNavLink>
+
+            <SidebarNavLink href={`${base}/apolices`}>
+              <span className="flex items-center gap-2.5">
+                <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Apólices</span>
+              </span>
+            </SidebarNavLink>
           </>
         )}
 

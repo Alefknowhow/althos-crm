@@ -31,6 +31,9 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'imoveis.visit.completed' },
       { event: 'imoveis.proposal.sent' },
       { event: 'imoveis.deal.closed' },
+      // Vertical Seguros — ciclo de vida de apólices (Fase 3), mesmo
+      // motor genérico, sem engine paralela.
+      { event: 'seguros.policy.issued' },
     ]
   },
   async ({ event, step }: { event: any; step: any }) => {

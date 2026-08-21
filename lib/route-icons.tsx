@@ -65,6 +65,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   'produtos-seguro': Package,
   seguradoras: Building2,
   'cotacoes-seguro': FileSignature,
+  apolices: FileStack,
 }
 
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */

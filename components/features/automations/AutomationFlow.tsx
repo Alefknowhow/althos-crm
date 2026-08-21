@@ -68,6 +68,7 @@ const TRIGGER_TYPES = [
   { id: 'imoveis.visit.completed', label: 'Visita Realizada (Imóveis)',  desc: 'Dispara quando a visita é marcada como realizada' },
   { id: 'imoveis.proposal.sent',   label: 'Proposta Enviada (Imóveis)',  desc: 'Dispara quando uma proposta de imóvel é marcada como enviada' },
   { id: 'imoveis.deal.closed',     label: 'Negócio Fechado (Imóveis)',   desc: 'Dispara quando uma venda ou locação é registrada' },
+  { id: 'seguros.policy.issued',   label: 'Apólice Emitida (Seguros)',   desc: 'Dispara quando uma apólice é emitida' },
 ] as const
 
 const STEP_TYPES = [
@@ -135,6 +136,7 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'imoveis.visit.completed') return 'Visita registrada como realizada'
   if (type === 'imoveis.proposal.sent')   return 'Proposta enviada'
   if (type === 'imoveis.deal.closed')     return 'Negócio fechado'
+  if (type === 'seguros.policy.issued')   return 'Apólice emitida'
   return ''
 }
 
