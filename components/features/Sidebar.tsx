@@ -43,6 +43,7 @@ import {
   CalendarCheck2,
   Home,
   Handshake,
+  Building2,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -438,6 +439,27 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span>Negociações</span>
             </span>
           </SidebarNavLink>
+        )}
+
+        {isModuleEnabled(org.niche, 'seguros') && (can('seguros')) && (
+          <>
+            {/* ── Seguros ───────────────────────────── */}
+            <SectionLabel>Seguros</SectionLabel>
+
+            <SidebarNavLink href={`${base}/produtos-seguro`}>
+              <span className="flex items-center gap-2.5">
+                <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Produtos</span>
+              </span>
+            </SidebarNavLink>
+
+            <SidebarNavLink href={`${base}/seguradoras`}>
+              <span className="flex items-center gap-2.5">
+                <Building2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Seguradoras</span>
+              </span>
+            </SidebarNavLink>
+          </>
         )}
 
         {/* ── Comunicação ───────────────────────────── */}

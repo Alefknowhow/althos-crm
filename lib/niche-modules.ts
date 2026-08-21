@@ -8,7 +8,7 @@
 // uma lista XXX_ONLY aqui, sem tocar nos componentes que chamam
 // isModuleEnabled().
 
-import { isTravelNiche, isClinicNiche, isRealEstateNiche } from './niche'
+import { isTravelNiche, isClinicNiche, isRealEstateNiche, isInsuranceNiche } from './niche'
 
 export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
@@ -17,6 +17,8 @@ export type ModuleKey =
   | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica' | 'comissoes_clinica' | 'retornos_clinica'
   // Módulos específicos da vertical de Imobiliárias.
   | 'imoveis'
+  // Módulos específicos da vertical de Seguros.
+  | 'seguros'
   // Módulos genéricos do CRM core, sem uso em Viagens (a agência não tem
   // uma necessidade de agenda de compromissos separada da operação de
   // venda/reserva, e Catálogo/Vendas já têm equivalente na vertical —
@@ -26,6 +28,7 @@ export type ModuleKey =
 const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarques', 'bloqueios', 'reservas', 'documentos_viagem']
 const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica']
 const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
+const INSURANCE_ONLY: ModuleKey[] = ['seguros']
 // "Não-travel" — visível pra qualquer nicho que não seja Viagens (inclui
 // Clínicas, que usa agenda/catálogo igual qualquer negócio genérico).
 const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
@@ -36,17 +39,21 @@ const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
 const NOT_REAL_ESTATE: ModuleKey[] = ['vendas', 'agendamentos', 'catalogo']
 
 /** Todo módulo não listado em TRAVEL_ONLY/CLINIC_ONLY/REAL_ESTATE_ONLY/
- *  GENERIC_ONLY é Core puro/extensível — sempre visível, independente do
- *  nicho (ex.: Pipeline, Tarefas, Agendamentos — clínica usa agenda igual
- *  qualquer outro nicho genérico, por isso não está em nenhuma lista
- *  aqui). */
+ *  INSURANCE_ONLY/GENERIC_ONLY é Core puro/extensível — sempre visível,
+ *  independente do nicho (ex.: Pipeline, Tarefas, Agendamentos — clínica
+ *  usa agenda igual qualquer outro nicho genérico, por isso não está em
+ *  nenhuma lista aqui). Seguros (Fase 1) ainda não exclui nada de
+ *  GENERIC_ONLY — o CRM genérico continua em uso até cotações/apólices
+ *  existirem nas próximas fases. */
 export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey): boolean {
   const travel = isTravelNiche(niche)
   const clinic = isClinicNiche(niche)
   const realEstate = isRealEstateNiche(niche)
+  const insurance = isInsuranceNiche(niche)
   if (TRAVEL_ONLY.includes(key)) return travel
   if (CLINIC_ONLY.includes(key)) return clinic
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate
+  if (INSURANCE_ONLY.includes(key)) return insurance
   if (GENERIC_ONLY.includes(key)) return !travel && !(realEstate && NOT_REAL_ESTATE.includes(key))
   return true
 }
