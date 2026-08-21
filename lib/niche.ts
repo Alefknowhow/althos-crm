@@ -16,6 +16,11 @@ export function isClinicNiche(niche?: string | null): boolean {
   return n.includes('clinic') || n.includes('clínic')
 }
 
+export function isRealEstateNiche(niche?: string | null): boolean {
+  const n = (niche || '').toLowerCase()
+  return n.includes('imob')
+}
+
 /**
  * Selectable niches. `value` is what gets stored on organizations.niche;
  * `label` is the display name. The travel value (NICHE_TRAVEL) unlocks the

@@ -41,6 +41,7 @@ import {
   Hourglass,
   Percent,
   CalendarCheck2,
+  Home,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -395,6 +396,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <Percent className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Comissões</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('imoveis') && isModuleEnabled(org.niche, 'imoveis') && (
+          <SidebarNavLink href={`${base}/imoveis`}>
+            <span className="flex items-center gap-2.5">
+              <Home className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Imóveis</span>
             </span>
           </SidebarNavLink>
         )}
