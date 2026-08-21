@@ -527,27 +527,21 @@ function BaggagePicker({ value, onChange }: { value: string[]; onChange: (v: str
     mao: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="6" y="7" width="12" height="14" rx="2" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3M10 11v6M14 11v6" /></svg>,
     despachada: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4"><rect x="4" y="6" width="16" height="14" rx="2" /><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 10v6M16 10v6M12 10v6" /></svg>,
   }
-  const selected = BAGGAGE_OPTIONS.filter(o => value.includes(o.key))
   return (
-    <div>
-      <div className="flex gap-1">
-        {BAGGAGE_OPTIONS.map(o => {
-          const on = value.includes(o.key)
-          return (
-            <button key={o.key} type="button" title={o.label}
-              onClick={() => onChange(on ? value.filter(k => k !== o.key) : [...value, o.key])}
-              className={`inline-flex items-center justify-center w-9 h-9 rounded-md border transition-colors ${
-                on ? 'bg-primary text-primary-foreground border-primary'
-                   : 'bg-background text-muted-foreground border-border hover:bg-muted'
-              }`}>
-              {ICONS[o.key]}
-            </button>
-          )
-        })}
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        {selected.length > 0 ? `Inclui: ${selected.map(o => o.label).join(' · ')}` : 'Nenhuma franquia selecionada'}
-      </p>
+    <div className="flex gap-1">
+      {BAGGAGE_OPTIONS.map(o => {
+        const on = value.includes(o.key)
+        return (
+          <button key={o.key} type="button" title={o.label}
+            onClick={() => onChange(on ? value.filter(k => k !== o.key) : [...value, o.key])}
+            className={`inline-flex items-center justify-center w-9 h-9 rounded-md border transition-colors ${
+              on ? 'bg-primary text-primary-foreground border-primary'
+                 : 'bg-background text-muted-foreground border-border hover:bg-muted'
+            }`}>
+            {ICONS[o.key]}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -1340,22 +1334,24 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 <F label="Conexão (local + tempo de espera)"><Input placeholder="Panamá (PTY) — 2h35 de conexão" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
               </div>
             </div>
-            <div className="flex flex-wrap items-start gap-2">
-              <div className="w-44 shrink-0">
-                <F label="Partida (data e hora)">
-                  <Input type="datetime-local" className="w-full" value={f.date && f.departure_time ? `${f.date}T${f.departure_time}` : ''} onChange={e => {
-                    const [date, time] = e.target.value.split('T')
-                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: date || null, departure_time: time || null } : x))
-                  }} />
-                </F>
-              </div>
-              <div className="w-44 shrink-0">
-                <F label="Chegada (data e hora)">
-                  <Input type="datetime-local" className="w-full" value={f.arrival_date && f.arrival_time ? `${f.arrival_date}T${f.arrival_time}` : ''} onChange={e => {
-                    const [date, time] = e.target.value.split('T')
-                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_date: date || null, arrival_time: time || null } : x))
-                  }} />
-                </F>
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                <div className="w-56 shrink-0">
+                  <F label="Partida (data e hora)">
+                    <Input type="datetime-local" className="w-full" value={f.date && f.departure_time ? `${f.date}T${f.departure_time}` : ''} onChange={e => {
+                      const [date, time] = e.target.value.split('T')
+                      setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: date || null, departure_time: time || null } : x))
+                    }} />
+                  </F>
+                </div>
+                <div className="w-56 shrink-0">
+                  <F label="Chegada (data e hora)">
+                    <Input type="datetime-local" className="w-full" value={f.arrival_date && f.arrival_time ? `${f.arrival_date}T${f.arrival_time}` : ''} onChange={e => {
+                      const [date, time] = e.target.value.split('T')
+                      setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_date: date || null, arrival_time: time || null } : x))
+                    }} />
+                  </F>
+                </div>
               </div>
               <div className="shrink-0">
                 <F label="Bagagens incluídas">
