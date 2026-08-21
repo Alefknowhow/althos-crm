@@ -59,6 +59,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   comissoes: Percent,
   retornos: CalendarCheck2,
   imoveis: Home,
+  visitas: CalendarClock,
   propostas: FileSignature,
   negociacoes: Handshake,
 }

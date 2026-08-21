@@ -29,6 +29,12 @@ const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
 // "Não-travel" — visível pra qualquer nicho que não seja Viagens (inclui
 // Clínicas, que usa agenda/catálogo igual qualquer negócio genérico).
 const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
+// Dentro de GENERIC_ONLY, vendas/agendamentos também não fazem sentido pra
+// Imobiliária — vendas duplica Negociações (property_deals, Fase 3) e
+// agendamentos duplica Visitas (property_visits, Fase 2), ambos já
+// modelados na própria vertical. Catálogo continua valendo (sem
+// equivalente em Imóveis).
+const NOT_REAL_ESTATE: ModuleKey[] = ['vendas', 'agendamentos']
 
 /** Todo módulo não listado em TRAVEL_ONLY/CLINIC_ONLY/REAL_ESTATE_ONLY/
  *  GENERIC_ONLY é Core puro/extensível — sempre visível, independente do
@@ -42,6 +48,6 @@ export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey
   if (TRAVEL_ONLY.includes(key)) return travel
   if (CLINIC_ONLY.includes(key)) return clinic
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate
-  if (GENERIC_ONLY.includes(key)) return !travel
+  if (GENERIC_ONLY.includes(key)) return !travel && !(realEstate && NOT_REAL_ESTATE.includes(key))
   return true
 }

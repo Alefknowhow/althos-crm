@@ -75,6 +75,27 @@ export async function listVisitsByProperty(orgSlug: string, propertyId: string):
   return (data || []).map(mapRow)
 }
 
+/**
+ * Todas as visitas da org, com filtros opcionais — alimenta o módulo
+ * dedicado /visitas (Fase 6), a "agenda do corretor" pedida pelo usuário.
+ */
+export async function listVisits(orgSlug: string, filters: {
+  brokerUserId?: string; status?: PropertyVisitStatus; from?: string; to?: string
+} = {}): Promise<PropertyVisitRow[]> {
+  const { org } = await requireAccess(orgSlug)
+  const supabase = createClient()
+  let query = supabase
+    .from('property_visits')
+    .select('*, properties(title, code), contatos(name)')
+    .eq('organization_id', org.id)
+  if (filters.brokerUserId) query = query.eq('broker_user_id', filters.brokerUserId)
+  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.from) query = query.gte('scheduled_at', filters.from)
+  if (filters.to) query = query.lte('scheduled_at', filters.to)
+  const { data } = await query.order('scheduled_at', { ascending: true }).limit(500)
+  return (data || []).map(mapRow)
+}
+
 export async function scheduleVisit(orgSlug: string, input: {
   propertyId: string; contatoId: string; brokerUserId?: string | null; scheduledAt: string; notes?: string | null
 }) {
