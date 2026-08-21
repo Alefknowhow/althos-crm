@@ -493,3 +493,172 @@ export async function getSellerPerformanceScore(orgId: string, windowDays = 30):
     })
     .sort((a, b) => b.score - a.score)
 }
+
+/* -------- Redesign da aba Equipe: faturamento/comissão mensal, comparativo, destinos -------- */
+
+export type MonthlySalesRow = {
+  seller_id: string | null
+  month: string // YYYY-MM
+  revenue_cents: number
+  commission_cents: number | null
+  sales_count: number
+}
+
+/**
+ * Vendas por vendedor, agregadas por mês, nos últimos `monthsBack` meses.
+ * Niche-aware como fetchNormalizedSales, mas inclui commission_cents (só
+ * existe em travel_sales — a tabela genérica `sales` não tem conceito de
+ * comissão, por isso não é o caso de estender fetchNormalizedSales, que é
+ * usado por vários outros consumidores). Granularidade por vendedor+mês
+ * permite ao client agregar por mês (somando todos) ou por vendedor
+ * selecionado, sem nova ida ao servidor.
+ */
+export async function getMonthlySalesBySeller(orgId: string, monthsBack = 6): Promise<MonthlySalesRow[]> {
+  const supabase = createClient()
+  const since = new Date()
+  since.setMonth(since.getMonth() - (monthsBack - 1), 1)
+  since.setHours(0, 0, 0, 0)
+
+  const hasCommission = await isOrgTravelNiche(supabase, orgId)
+  const bucket = new Map<string, { revenue: number; commission: number; count: number }>()
+
+  if (hasCommission) {
+    const { data } = await supabase
+      .from('travel_sales')
+      .select('total_cents, commission_cents, created_at, created_by, status')
+      .eq('organization_id', orgId)
+      .gte('created_at', since.toISOString())
+    for (const r of (data || []) as any[]) {
+      if (r.status === 'canceled') continue
+      const month = String(r.created_at).slice(0, 7)
+      const key = `${r.created_by || '__none__'}|${month}`
+      const cur = bucket.get(key) || { revenue: 0, commission: 0, count: 0 }
+      cur.revenue += r.total_cents || 0
+      cur.commission += r.commission_cents || 0
+      cur.count += 1
+      bucket.set(key, cur)
+    }
+  } else {
+    const { data } = await supabase
+      .from('sales')
+      .select('amount_cents, sale_date, seller_id, status')
+      .eq('organization_id', orgId)
+      .gte('sale_date', since.toISOString().slice(0, 10))
+      .neq('status', 'cancelled')
+    for (const r of (data || []) as any[]) {
+      const month = String(r.sale_date).slice(0, 7)
+      const key = `${r.seller_id || '__none__'}|${month}`
+      const cur = bucket.get(key) || { revenue: 0, commission: 0, count: 0 }
+      cur.revenue += r.amount_cents || 0
+      cur.count += 1
+      bucket.set(key, cur)
+    }
+  }
+
+  return Array.from(bucket.entries()).map(([key, v]) => {
+    const [sellerId, month] = key.split('|')
+    return {
+      seller_id: sellerId === '__none__' ? null : sellerId,
+      month,
+      revenue_cents: v.revenue,
+      commission_cents: hasCommission ? v.commission : null,
+      sales_count: v.count,
+    }
+  })
+}
+
+export type SellerComparisonRow = {
+  seller_id: string | null
+  sales_count: number
+  revenue_cents: number
+  commission_cents: number | null
+  avg_ticket_cents: number
+}
+
+/**
+ * Comparativo de vendedores no período — espelha a agregação do relatório
+ * de Comissões (actions/reports.ts, linhas 267-313), sem CSV/impressão,
+ * pra alimentar o card de comparação da aba Equipe.
+ */
+export async function getSellerComparison(orgId: string, since: Date): Promise<SellerComparisonRow[]> {
+  const supabase = createClient()
+  const hasCommission = await isOrgTravelNiche(supabase, orgId)
+  const bucket = new Map<string, { revenue: number; commission: number; count: number }>()
+
+  if (hasCommission) {
+    const { data } = await supabase
+      .from('travel_sales')
+      .select('total_cents, commission_cents, created_at, created_by, status')
+      .eq('organization_id', orgId)
+      .gte('created_at', since.toISOString())
+    for (const r of (data || []) as any[]) {
+      if (r.status === 'canceled') continue
+      const key = r.created_by || '__none__'
+      const cur = bucket.get(key) || { revenue: 0, commission: 0, count: 0 }
+      cur.revenue += r.total_cents || 0
+      cur.commission += r.commission_cents || 0
+      cur.count += 1
+      bucket.set(key, cur)
+    }
+  } else {
+    const { data } = await supabase
+      .from('sales')
+      .select('amount_cents, sale_date, seller_id, status')
+      .eq('organization_id', orgId)
+      .gte('sale_date', since.toISOString().slice(0, 10))
+      .neq('status', 'cancelled')
+    for (const r of (data || []) as any[]) {
+      const key = r.seller_id || '__none__'
+      const cur = bucket.get(key) || { revenue: 0, commission: 0, count: 0 }
+      cur.revenue += r.amount_cents || 0
+      cur.count += 1
+      bucket.set(key, cur)
+    }
+  }
+
+  return Array.from(bucket.entries())
+    .map(([key, v]) => ({
+      seller_id: key === '__none__' ? null : key,
+      sales_count: v.count,
+      revenue_cents: v.revenue,
+      commission_cents: hasCommission ? v.commission : null,
+      avg_ticket_cents: v.count > 0 ? Math.round(v.revenue / v.count) : 0,
+    }))
+    .sort((a, b) => b.revenue_cents - a.revenue_cents)
+}
+
+export type TopDestinationRow = { destination: string; sales_count: number; total_cents: number }
+
+/**
+ * Destinos mais vendidos — Viagens-only (travel_sales.destination não tem
+ * equivalente na tabela genérica `sales`), mesma assimetria que já existe
+ * entre getTopProducts (genérico, [] pra Viagens) e este (Viagens, [] pros
+ * demais nichos).
+ */
+export async function getTopDestinations(orgId: string, since: Date, limit = 6): Promise<TopDestinationRow[]> {
+  const supabase = createClient()
+  if (!(await isOrgTravelNiche(supabase, orgId))) return []
+
+  const { data } = await supabase
+    .from('travel_sales')
+    .select('destination, total_cents, created_at, status')
+    .eq('organization_id', orgId)
+    .neq('status', 'canceled')
+    .gte('created_at', since.toISOString())
+    .not('destination', 'is', null)
+
+  const byDestination = new Map<string, { count: number; total: number }>()
+  for (const r of (data || []) as any[]) {
+    const dest = (r.destination as string)?.trim()
+    if (!dest) continue
+    const cur = byDestination.get(dest) || { count: 0, total: 0 }
+    cur.count += 1
+    cur.total += r.total_cents || 0
+    byDestination.set(dest, cur)
+  }
+
+  return Array.from(byDestination.entries())
+    .map(([destination, v]) => ({ destination, sales_count: v.count, total_cents: v.total }))
+    .sort((a, b) => b.total_cents - a.total_cents)
+    .slice(0, limit)
+}

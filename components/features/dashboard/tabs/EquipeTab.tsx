@@ -4,6 +4,8 @@ import { getAiCreditsStatus, getAccountIdForOrgSlug } from '@/lib/plans/server'
 import {
   getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore,
   getResponseMetrics, getEffectiveSellerGoals, getAiAnsweredCount,
+  getMonthlySalesBySeller, getSellerComparison, getTopDestinations,
+  getVipCustomers, getTopProducts,
 } from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { listOrgMembers } from '@/actions/sales'
@@ -11,7 +13,9 @@ import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
 import BarListCard from '../BarListCard'
-import { UserCheck, ListChecks, Award } from 'lucide-react'
+import RankTable from '../RankTable'
+import EquipeTeamSection from '../EquipeTeamSection'
+import { UserCheck, ListChecks, Award, Star, MapPin, Package } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -30,7 +34,10 @@ function fmtMinutes(min: number): string {
 export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
   const accountId = await getAccountIdForOrgSlug(ctx.orgSlug)
   const since = sinceFromPeriod(ctx.period)
-  const [credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response, aiAnswered] = await Promise.all([
+  const [
+    credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response, aiAnswered,
+    monthlySales, sellerComparison, topDestinations, vipCustomers, topProducts,
+  ] = await Promise.all([
     accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
     getSellerConversionRates(ctx.orgId),
     getSellerOpenDeals(ctx.orgId),
@@ -39,7 +46,13 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
     listOrgMembers(ctx.orgSlug),
     getResponseMetrics(ctx.orgId, since),
     getAiAnsweredCount(ctx.orgId, since),
+    getMonthlySalesBySeller(ctx.orgId, 6),
+    getSellerComparison(ctx.orgId, since),
+    getTopDestinations(ctx.orgId, since),
+    getVipCustomers(ctx.orgId),
+    getTopProducts(ctx.orgId, since),
   ])
+  const hasCommission = sellerComparison.some(r => r.commission_cents != null)
   const nameById = new Map(members.map((m: any) => [m.id, m.name]))
   const activeSellerIds = Array.from(new Set([...conversionRates.map(c => c.seller_id), ...openDeals.map(o => o.seller_id)]))
 
@@ -133,6 +146,51 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
         color="#0f62fe"
         emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
       />
+
+      <EquipeTeamSection
+        monthlyRows={monthlySales}
+        comparisonRows={sellerComparison}
+        sellers={members.map((m: any) => ({ id: m.id, name: m.name }))}
+        hasCommission={hasCommission}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <RankTable
+          title="Rank de clientes"
+          help="Clientes com maior valor total comprado (histórico completo)."
+          icon={Star}
+          rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
+          color="#f1c21b"
+          emptyText="Sem vendas com cliente associado ainda."
+        />
+        {topDestinations.length > 0 && (
+          <RankTable
+            title="Rank de destinos"
+            help="Destinos mais vendidos no período, por faturamento."
+            icon={MapPin}
+            rows={topDestinations.map(d => ({
+              label: d.destination,
+              subLabel: `${d.sales_count} venda${d.sales_count === 1 ? '' : 's'}`,
+              value: d.total_cents,
+              valueLabel: fmtCurrency(d.total_cents),
+            }))}
+            color="#1192e8"
+          />
+        )}
+        <RankTable
+          title="Rank de produtos"
+          help="Produtos/serviços mais vendidos no período, por quantidade."
+          icon={Package}
+          rows={topProducts.map(p => ({
+            label: p.name,
+            subLabel: p.type || undefined,
+            value: p.quantity,
+            valueLabel: `${p.quantity}`,
+          }))}
+          color="#24a148"
+          emptyText="Sem vendas de produtos do catálogo no período."
+        />
+      </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="equipe" />
