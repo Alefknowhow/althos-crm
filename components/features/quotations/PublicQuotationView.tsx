@@ -89,6 +89,16 @@ export type QuotationPin = { label?: string; type?: string; lat: number; lng: nu
  *  Aéreo/Hospedagem (ver quotation_products, product_type='cruzeiro').
  *  `data` carrega os campos específicos (mesmo shape gravado pelo editor,
  *  QuotationEditor.tsx/type Cruise) — só o essencial é lido aqui. */
+export type QuotationOtherProduct = {
+  id?: string
+  product_type: 'transfer' | 'passeio' | 'seguro' | 'locacao' | string
+  name?: string | null
+  summary?: string | null
+  date_start?: string | null
+  date_end?: string | null
+  data?: Record<string, any>
+}
+
 export type QuotationCruise = {
   id?: string
   name?: string | null
@@ -148,6 +158,9 @@ export type PublicQuotation = {
   lodgings?: QuotationLodging[]
   flights?: QuotationFlight[]
   cruises?: QuotationCruise[]
+  /** Transfer/Passeio/Seguro/Locação — tipos "esqueleto" do Construtor de
+   *  Viagens (ver quotation_products, product_type in ('transfer','passeio','seguro','locacao')). */
+  other_products?: QuotationOtherProduct[]
   itinerary_days?: QuotationDay[]
   map_pins?: QuotationPin[]
   org?: QuotationOrg
@@ -384,6 +397,11 @@ export default function PublicQuotationView({
   const altLodgings = lodgings.filter(l => l.is_alternative_option)
   const flights = data.flights || []
   const cruises = data.cruises || []
+  const otherProducts = data.other_products || []
+  const transfers = otherProducts.filter(p => p.product_type === 'transfer')
+  const insurances = otherProducts.filter(p => p.product_type === 'seguro')
+  const tours = otherProducts.filter(p => p.product_type === 'passeio')
+  const rentals = otherProducts.filter(p => p.product_type === 'locacao')
   const days = data.itinerary_days || []
   const included = data.included || []
   const notIncluded = data.not_included || []
@@ -719,6 +737,87 @@ export default function PublicQuotationView({
                       ))}
                     </div>
                   )}
+                </div>
+              )
+            })}
+          </Block>
+        )}
+
+        {/* ───── TRANSFERS ───── */}
+        {transfers.length > 0 && (
+          <Block num={num()} title="Transfer" sub={transfers.length > 1 ? `${transfers.length} transfers` : undefined}>
+            {transfers.map((t, i) => {
+              const d_ = t.data || {}
+              return (
+                <div key={t.id || i} style={{ marginBottom: i < transfers.length - 1 ? 14 : 0, paddingBottom: i < transfers.length - 1 ? 14 : 0, borderBottom: i < transfers.length - 1 ? '1px solid var(--line)' : undefined }}>
+                  {t.name && <p style={{ fontWeight: 600, marginBottom: 4 }}>{t.name}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
+                    {d_.origin && <div><div style={{ opacity: 0.6, fontSize: 11 }}>ORIGEM</div>{d_.origin}</div>}
+                    {d_.destination && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DESTINO</div>{d_.destination}</div>}
+                    {fmtDayMonth(t.date_start) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DATA</div>{fmtDayMonth(t.date_start)}{d_.time ? ` · ${d_.time}` : ''}</div>}
+                    {d_.vehicle && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VEÍCULO</div>{d_.vehicle}</div>}
+                    {d_.pax && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PASSAGEIROS</div>{d_.pax}</div>}
+                    {d_.transfer_type && <div><div style={{ opacity: 0.6, fontSize: 11 }}>TIPO</div>{d_.transfer_type}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </Block>
+        )}
+
+        {/* ───── SEGURO VIAGEM ───── */}
+        {insurances.length > 0 && (
+          <Block num={num()} title="Seguro viagem" sub={insurances.length > 1 ? `${insurances.length} seguros` : undefined}>
+            {insurances.map((s, i) => {
+              const d_ = s.data || {}
+              return (
+                <div key={s.id || i} style={{ marginBottom: i < insurances.length - 1 ? 14 : 0, paddingBottom: i < insurances.length - 1 ? 14 : 0, borderBottom: i < insurances.length - 1 ? '1px solid var(--line)' : undefined }}>
+                  {(d_.insurer || s.name) && <p style={{ fontWeight: 600, marginBottom: 4 }}>{d_.insurer || s.name}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
+                    {d_.plan && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PLANO</div>{d_.plan}</div>}
+                    {d_.destination && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DESTINO</div>{d_.destination}</div>}
+                    {(fmtDayMonth(s.date_start) || fmtDayMonth(s.date_end)) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PERÍODO</div>{fmtDayMonth(s.date_start)} a {fmtDayMonth(s.date_end)}</div>}
+                    {d_.travelers && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VIAJANTES</div>{d_.travelers}</div>}
+                  </div>
+                  {d_.coverage && <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{d_.coverage}</p>}
+                </div>
+              )
+            })}
+          </Block>
+        )}
+
+        {/* ───── PASSEIOS/INGRESSOS ESTRUTURADOS ───── */}
+        {tours.length > 0 && (
+          <Block num={num()} title="Ingressos e passeios" sub={tours.length > 1 ? `${tours.length} passeios` : undefined}>
+            {tours.map((t, i) => {
+              const d_ = t.data || {}
+              return (
+                <div key={t.id || i} style={{ marginBottom: i < tours.length - 1 ? 14 : 0, paddingBottom: i < tours.length - 1 ? 14 : 0, borderBottom: i < tours.length - 1 ? '1px solid var(--line)' : undefined }}>
+                  {t.name && <p style={{ fontWeight: 600, marginBottom: 4 }}>{t.name}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
+                    {fmtDayMonth(t.date_start) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DATA</div>{fmtDayMonth(t.date_start)}</div>}
+                    {d_.duration_label && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DURAÇÃO</div>{d_.duration_label}</div>}
+                    {d_.includes && <div><div style={{ opacity: 0.6, fontSize: 11 }}>INCLUI</div>{d_.includes}</div>}
+                  </div>
+                  {t.summary && <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{t.summary}</p>}
+                </div>
+              )
+            })}
+          </Block>
+        )}
+
+        {/* ───── LOCAÇÃO DE VEÍCULO ───── */}
+        {rentals.length > 0 && (
+          <Block num={num()} title="Locação de veículo" sub={rentals.length > 1 ? `${rentals.length} locações` : undefined}>
+            {rentals.map((r, i) => {
+              const d_ = r.data || {}
+              return (
+                <div key={r.id || i} style={{ marginBottom: i < rentals.length - 1 ? 14 : 0, paddingBottom: i < rentals.length - 1 ? 14 : 0, borderBottom: i < rentals.length - 1 ? '1px solid var(--line)' : undefined }}>
+                  {(d_.company || r.name) && <p style={{ fontWeight: 600, marginBottom: 4 }}>{[d_.company, d_.vehicle_category].filter(Boolean).join(' — ') || r.name}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
+                    {d_.pickup_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>RETIRADA</div>{d_.pickup_location}{fmtDayMonth(r.date_start) ? ` · ${fmtDayMonth(r.date_start)}` : ''}</div>}
+                    {d_.dropoff_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DEVOLUÇÃO</div>{d_.dropoff_location}{fmtDayMonth(r.date_end) ? ` · ${fmtDayMonth(r.date_end)}` : ''}</div>}
+                  </div>
                 </div>
               )
             })}

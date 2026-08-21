@@ -31,7 +31,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Printer, ArrowLeft, Check, X, Phone, Mail, Clock,
-  Plane, Building2, Car, Shield, Ship, Package, User,
+  Plane, Building2, Car, Shield, Ship, Package, User, Ticket, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -343,8 +343,40 @@ function InsuranceCard({ p }: { p: Product }) {
   )
 }
 
-/** Passeio/Locação e qualquer tipo futuro sem card dedicado ainda —
- *  mostra o que existe (nome/resumo/datas) sem inventar campos. */
+function TourCard({ p }: { p: Product }) {
+  const d = p.data
+  return (
+    <CardShell>
+      <CardHeader icon={Ticket} title="Passeio" />
+      {p.name && <p className="text-[11pt] font-bold text-[#111] mb-[1mm]">{p.name}</p>}
+      {p.summary && <p className="text-[8pt] text-[#555] mb-[2mm]">{p.summary}</p>}
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Data" value={fmtDate(p.date_start)} />
+        <InfoField label="Duração" value={d.duration_label} />
+      </div>
+      {d.includes && <p className="text-[7.5pt] text-[#777] mt-[2mm]">Inclui: {d.includes}</p>}
+    </CardShell>
+  )
+}
+
+function RentalCard({ p }: { p: Product }) {
+  const d = p.data
+  return (
+    <CardShell>
+      <CardHeader icon={KeyRound} title="Locação de veículo" />
+      {(d.company || p.name) && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{[d.company, d.vehicle_category].filter(Boolean).join(' — ') || p.name}</p>}
+      <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
+        <InfoField label="Retirada" value={d.pickup_location} />
+        <InfoField label="Devolução" value={d.dropoff_location} />
+        <InfoField label="Data de retirada" value={fmtDate(p.date_start)} />
+        <InfoField label="Data de devolução" value={fmtDate(p.date_end)} />
+      </div>
+    </CardShell>
+  )
+}
+
+/** Qualquer tipo futuro sem card dedicado ainda — mostra o que existe
+ *  (nome/resumo/datas) sem inventar campos. */
 function GenericProductCard({ p, label }: { p: Product; label: string }) {
   return (
     <CardShell>
@@ -409,6 +441,8 @@ export default function QuotationPrintView({
         case 'cruzeiro': node = <CruiseCard p={p} />; break
         case 'transfer': node = <TransferCard p={p} />; break
         case 'seguro': node = <InsuranceCard p={p} />; break
+        case 'passeio': node = <TourCard p={p} />; break
+        case 'locacao': node = <RentalCard p={p} />; break
         default: node = <GenericProductCard p={p} label={label} />
       }
       units.push({ key: p.id, node })

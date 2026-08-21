@@ -36,6 +36,7 @@ import {
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, ChevronDown, Pencil, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
+  Car, Shield, KeyRound,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -607,6 +608,36 @@ type Cruise = {
   supplier?: string | null; fare_code?: string | null; cost_cents?: number | null; internal_notes?: string | null
 }
 
+/** Transfer/Seguro/Locação/Passeio — tipos "esqueleto" do Construtor de
+ *  Viagens (produto_type já existe no banco desde a migração original;
+ *  faltava só o editor). Campos alinhados ao que QuotationPrintView já lê
+ *  de cada `data` (TransferCard/InsuranceCard/RentalCard/TourCard). */
+type Transfer = {
+  _key: string
+  origin?: string | null; destination?: string | null
+  date?: string | null; time?: string | null
+  vehicle?: string | null; pax?: string | null; transfer_type?: string | null
+  notes?: string | null
+}
+type Insurance = {
+  _key: string
+  insurer?: string | null; plan?: string | null; destination?: string | null
+  date_start?: string | null; date_end?: string | null
+  travelers?: string | null; coverage?: string | null
+}
+type Tour = {
+  _key: string
+  name?: string | null; description?: string | null
+  date?: string | null; duration_label?: string | null; includes?: string | null
+}
+type Rental = {
+  _key: string
+  company?: string | null; vehicle_category?: string | null
+  pickup_location?: string | null; dropoff_location?: string | null
+  pickup_date?: string | null; dropoff_date?: string | null
+  notes?: string | null
+}
+
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
   orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]; isOffer?: boolean
 }) {
@@ -693,6 +724,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       supplier: iv.supplier ?? null, fare_code: iv.fare_code ?? null, cost_cents: iv.cost_cents ?? null, internal_notes: iv.internal_notes ?? null,
     }
   })) as Cruise[])
+  const [transfers, setTransfers] = useState<Transfer[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'transfer').map(p => ({ ...(p.data || {}), date: p.data?.date ?? p.date_start ?? null }))) as Transfer[])
+  const [insurances, setInsurances] = useState<Insurance[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'seguro').map(p => ({ ...(p.data || {}), date_start: p.data?.date_start ?? p.date_start ?? null, date_end: p.data?.date_end ?? p.date_end ?? null }))) as Insurance[])
+  const [tours, setTours] = useState<Tour[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'passeio').map(p => ({ ...(p.data || {}), name: p.name ?? p.data?.name ?? null, date: p.data?.date ?? p.date_start ?? null }))) as Tour[])
+  const [rentals, setRentals] = useState<Rental[]>(() => withKeys(initialProducts.filter(p => p.product_type === 'locacao').map(p => ({ ...(p.data || {}), pickup_date: p.data?.pickup_date ?? p.date_start ?? null, dropoff_date: p.data?.dropoff_date ?? p.date_end ?? null }))) as Rental[])
 
   const [publicToken, setPublicToken] = useState<string | null>(q0.public_token || null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -856,9 +891,42 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         data: { ...c, total_cents, days: days.map(({ _key: __k, ...d }) => d), cabin_options: (cabin_options || []).map(({ _key: __k, ...o }) => o).filter(o => o.label || o.price_cents) },
         internal_data: { supplier, fare_code, cost_cents, internal_notes },
       })),
+      ...transfers.map(({ _key, ...t }) => ({
+        product_type: 'transfer' as const,
+        name: [t.origin, t.destination].filter(Boolean).join(' → ') || null,
+        date_start: t.date || null, date_end: null,
+        price_cents: null,
+        data: { ...t },
+        internal_data: {},
+      })),
+      ...insurances.map(({ _key, ...s }) => ({
+        product_type: 'seguro' as const,
+        name: s.insurer || null,
+        date_start: s.date_start || null, date_end: s.date_end || null,
+        price_cents: null,
+        data: { ...s },
+        internal_data: {},
+      })),
+      ...tours.map(({ _key, name, description, ...t }) => ({
+        product_type: 'passeio' as const,
+        name: name || null,
+        summary: description || null,
+        date_start: t.date || null, date_end: null,
+        price_cents: null,
+        data: { name, ...t },
+        internal_data: {},
+      })),
+      ...rentals.map(({ _key, ...r }) => ({
+        product_type: 'locacao' as const,
+        name: [r.company, r.vehicle_category].filter(Boolean).join(' — ') || null,
+        date_start: r.pickup_date || null, date_end: r.dropoff_date || null,
+        price_cents: null,
+        data: { ...r },
+        internal_data: {},
+      })),
     ],
     map_pins: pins.filter(p => p.lat != null && p.lng != null).map(p => ({ label: p.label, type: p.type as any, lat: p.lat!, lng: p.lng! })),
-  }), [q, lodgings, flights, cruises, pins])
+  }), [q, lodgings, flights, cruises, transfers, insurances, tours, rentals, pins])
 
   const firstRun = useRef(true)
   const payloadJson = JSON.stringify(payload)
@@ -887,7 +955,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     { label: 'Destino', done: !!q.destinations[0]?.name },
     { label: 'Datas da viagem', done: !!q.start_date && !!q.end_date },
     { label: 'Passageiros', done: q.pax_adults > 0 },
-    { label: 'Pelo menos um produto', done: lodgings.length + flights.length + cruises.length > 0 },
+    { label: 'Pelo menos um produto', done: lodgings.length + flights.length + cruises.length + transfers.length + insurances.length + tours.length + rentals.length > 0 },
     { label: 'Valor total', done: q.total_cents > 0 },
     { label: 'Forma de pagamento', done: q.payment_conditions.length > 0 },
     { label: 'Validade da tarifa', done: q.validity_days > 0 },
@@ -1410,6 +1478,115 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Custo (R$)"><Input inputMode="decimal" placeholder="0,00" defaultValue={centsToStr(c.cost_cents)} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, cost_cents: strToCents(e.target.value) } : x))} /></F>
               <F label="Observações internas"><Textarea rows={2} value={c.internal_notes || ''} onChange={e => setCruises(cs => cs.map(x => x._key === c._key ? { ...x, internal_notes: e.target.value } : x))} /></F>
             </Disclosure>
+          </>
+        )} />
+      </EditBlock>
+
+      {/* TRANSFERS */}
+      <EditBlock id="blk-transfers" icon={Car} title="Transfers"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setTransfers(ts => [...ts, { _key: nk(), date: q.start_date || null }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Transfer
+        </Button>}>
+        {transfers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum transfer.</p>}
+        <SortableList items={transfers} onReorder={setTransfers} render={(t) => (
+          <>
+            <div className="flex justify-end">
+              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={() => setTransfers(ts => ts.filter(x => x._key !== t._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Origem"><Input placeholder="Aeroporto GIG" value={t.origin || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, origin: e.target.value } : x))} /></F>
+              <F label="Destino"><Input placeholder="Hotel" value={t.destination || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, destination: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Data"><Input type="date" value={t.date || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, date: e.target.value } : x))} /></F>
+              <F label="Horário"><Input type="time" value={t.time || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, time: e.target.value } : x))} /></F>
+              <F label="Veículo"><Input placeholder="Sedan executivo" value={t.vehicle || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, vehicle: e.target.value } : x))} /></F>
+              <F label="Passageiros"><Input placeholder="3 pessoas" value={t.pax || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, pax: e.target.value } : x))} /></F>
+            </div>
+            <F label="Tipo"><Input placeholder="Privativo / Compartilhado" value={t.transfer_type || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, transfer_type: e.target.value } : x))} /></F>
+          </>
+        )} />
+      </EditBlock>
+
+      {/* SEGUROS */}
+      <EditBlock id="blk-seguros" icon={Shield} title="Seguro viagem"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setInsurances(ins => [...ins, { _key: nk(), date_start: q.start_date || null, date_end: q.end_date || null }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Seguro
+        </Button>}>
+        {insurances.length === 0 && <p className="text-sm text-muted-foreground">Nenhum seguro.</p>}
+        <SortableList items={insurances} onReorder={setInsurances} render={(s) => (
+          <>
+            <div className="flex justify-end">
+              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={() => setInsurances(ins => ins.filter(x => x._key !== s._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Seguradora"><Input placeholder="Assist Card" value={s.insurer || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, insurer: e.target.value } : x))} /></F>
+              <F label="Plano"><Input placeholder="Gold 60" value={s.plan || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, plan: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <F label="Destino"><Input placeholder="Nacional / Internacional" value={s.destination || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, destination: e.target.value } : x))} /></F>
+              <F label="Início"><Input type="date" value={s.date_start || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, date_start: e.target.value } : x))} /></F>
+              <F label="Fim"><Input type="date" value={s.date_end || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, date_end: e.target.value } : x))} /></F>
+              <F label="Viajantes"><Input placeholder="3 viajantes" value={s.travelers || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, travelers: e.target.value } : x))} /></F>
+            </div>
+            <F label="Coberturas principais"><Textarea rows={2} placeholder="Cobertura médica de até R$ 60.000, cancelamento de viagem…" value={s.coverage || ''} onChange={e => setInsurances(ins => ins.map(x => x._key === s._key ? { ...x, coverage: e.target.value } : x))} /></F>
+          </>
+        )} />
+      </EditBlock>
+
+      {/* PASSEIOS/INGRESSOS (estruturados) */}
+      <EditBlock id="blk-tours" icon={Ticket} title="Ingressos e passeios"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setTours(ts => [...ts, { _key: nk(), date: q.start_date || null }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Passeio
+        </Button>}>
+        {tours.length === 0 && <p className="text-sm text-muted-foreground">Nenhum passeio/ingresso estruturado — use &quot;Passeios e Ingressos&quot; em Conteúdo pra texto livre.</p>}
+        <SortableList items={tours} onReorder={setTours} render={(t) => (
+          <>
+            <div className="flex gap-1.5">
+              <Input className="flex-1" placeholder="City Tour Rio de Janeiro" value={t.name || ''} onChange={e => setTours(ts => ts.map(x => x._key === t._key ? { ...x, name: e.target.value } : x))} />
+              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={() => setTours(ts => ts.filter(x => x._key !== t._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <F label="Data"><Input type="date" value={t.date || ''} onChange={e => setTours(ts => ts.map(x => x._key === t._key ? { ...x, date: e.target.value } : x))} /></F>
+              <F label="Duração"><Input placeholder="4 horas" value={t.duration_label || ''} onChange={e => setTours(ts => ts.map(x => x._key === t._key ? { ...x, duration_label: e.target.value } : x))} /></F>
+              <F label="Inclui"><Input placeholder="Guia, transporte" value={t.includes || ''} onChange={e => setTours(ts => ts.map(x => x._key === t._key ? { ...x, includes: e.target.value } : x))} /></F>
+            </div>
+            <F label="Descrição"><Textarea rows={2} placeholder="Cristo Redentor + Pão de Açúcar" value={t.description || ''} onChange={e => setTours(ts => ts.map(x => x._key === t._key ? { ...x, description: e.target.value } : x))} /></F>
+          </>
+        )} />
+      </EditBlock>
+
+      {/* LOCAÇÃO DE VEÍCULO */}
+      <EditBlock id="blk-locacao" icon={KeyRound} title="Locação de veículo"
+        action={<Button type="button" variant="outline" size="sm"
+          onClick={() => setRentals(rs => [...rs, { _key: nk(), pickup_date: q.start_date || null, dropoff_date: q.end_date || null }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Locação
+        </Button>}>
+        {rentals.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma locação.</p>}
+        <SortableList items={rentals} onReorder={setRentals} render={(r) => (
+          <>
+            <div className="flex justify-end">
+              <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                onClick={() => setRentals(rs => rs.filter(x => x._key !== r._key))}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Locadora"><Input placeholder="Localiza" value={r.company || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, company: e.target.value } : x))} /></F>
+              <F label="Categoria do veículo"><Input placeholder="Econômico / SUV" value={r.vehicle_category || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, vehicle_category: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Local de retirada"><Input placeholder="Aeroporto GIG" value={r.pickup_location || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, pickup_location: e.target.value } : x))} /></F>
+              <F label="Local de devolução"><Input placeholder="Aeroporto GIG" value={r.dropoff_location || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, dropoff_location: e.target.value } : x))} /></F>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F label="Retirada"><Input type="date" value={r.pickup_date || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, pickup_date: e.target.value } : x))} /></F>
+              <F label="Devolução"><Input type="date" value={r.dropoff_date || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, dropoff_date: e.target.value } : x))} /></F>
+            </div>
           </>
         )} />
       </EditBlock>
