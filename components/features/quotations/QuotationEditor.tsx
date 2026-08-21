@@ -1266,7 +1266,7 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             <Sparkles className="w-3.5 h-3.5 mr-1" /> Ler com IA
           </Button>
           <Button type="button" variant="outline" size="sm"
-            onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [] }])}>
+            onClick={() => setFlights(fs => [...fs, { _key: nk(), leg_type: fs.length === 0 ? 'outbound' : 'inbound', baggage: [], cabin_class: 'economica' }])}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Trecho
           </Button>
         </div>}>
@@ -1307,43 +1307,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
               <F label="Companhia"><Input placeholder="Copa Airlines" value={f.airline || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, airline: e.target.value } : x))} /></F>
-              <F label="Código do voo"><Input placeholder="LA3380; LA3385" value={f.flight_number || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, flight_number: e.target.value } : x))} /></F>
-              <F label="Duração" hint={computeFlightDuration(f) ? 'calculada automaticamente' : undefined}>
-                {computeFlightDuration(f) ? (
-                  <Input disabled value={computeFlightDuration(f) || ''} />
-                ) : (
-                  <Input placeholder="≈ 12h total" value={f.duration_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, duration_label: e.target.value } : x))} />
-                )}
-              </F>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <F label="Origem (sigla)" hint={cityFromAirportCode(f.from_code) || (f.from_code ? 'sigla não reconhecida' : undefined)}>
-                <Input placeholder="FLN" maxLength={4} value={f.from_code || ''} onChange={e => {
-                  const code = e.target.value.toUpperCase()
-                  setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: code, from_city: cityFromAirportCode(code) || x.from_city } : x))
-                }} />
-              </F>
-              <F label="Destino (sigla)" hint={cityFromAirportCode(f.to_code) || (f.to_code ? 'sigla não reconhecida' : undefined)}>
-                <Input placeholder="PUJ" maxLength={4} value={f.to_code || ''} onChange={e => {
-                  const code = e.target.value.toUpperCase()
-                  setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: code, to_city: cityFromAirportCode(code) || x.to_city } : x))
-                }} />
-              </F>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <F label="Data de partida"><Input type="date" className="w-full" value={f.date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: e.target.value } : x))} /></F>
-              <F label="Hora de partida"><Input type="time" className="w-full" value={f.departure_time || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, departure_time: e.target.value } : x))} /></F>
-              <F label="Data de chegada"><Input type="date" className="w-full" value={f.arrival_date || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_date: e.target.value } : x))} /></F>
-              <F label="Hora de chegada"><Input type="time" className="w-full" value={f.arrival_time || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_time: e.target.value } : x))} /></F>
-            </div>
-            <F label="Conexão (local + tempo de espera)"><Input placeholder="Panamá (PTY) — 2h35 de conexão" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
-            <div className="grid grid-cols-2 gap-2 items-start">
-              <F label="Bagagens incluídas">
-                <BaggagePicker value={f.baggage}
-                  onChange={b => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, baggage: b } : x))} />
-              </F>
+              <F label="Código do voo"><Input placeholder="LA3380" value={f.flight_number || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, flight_number: e.target.value } : x))} /></F>
               <F label="Classe">
-                <Select value={f.cabin_class || 'none'}
+                <Select value={f.cabin_class || 'economica'}
                   onValueChange={v => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, cabin_class: v === 'none' ? null : v } : x))}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
@@ -1352,6 +1318,51 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                   </SelectContent>
                 </Select>
               </F>
+            </div>
+            <div className="flex flex-wrap items-start gap-2">
+              <div className="w-20 shrink-0">
+                <F label="Origem" hint={cityFromAirportCode(f.from_code) || (f.from_code ? 'sigla não reconhecida' : undefined)}>
+                  <Input placeholder="FLN" maxLength={3} value={f.from_code || ''} onChange={e => {
+                    const code = e.target.value.toUpperCase()
+                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, from_code: code, from_city: cityFromAirportCode(code) || x.from_city } : x))
+                  }} />
+                </F>
+              </div>
+              <div className="w-20 shrink-0">
+                <F label="Destino" hint={cityFromAirportCode(f.to_code) || (f.to_code ? 'sigla não reconhecida' : undefined)}>
+                  <Input placeholder="PUJ" maxLength={3} value={f.to_code || ''} onChange={e => {
+                    const code = e.target.value.toUpperCase()
+                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, to_code: code, to_city: cityFromAirportCode(code) || x.to_city } : x))
+                  }} />
+                </F>
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <F label="Conexão (local + tempo de espera)"><Input placeholder="Panamá (PTY) — 2h35 de conexão" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-start gap-2">
+              <div className="w-44 shrink-0">
+                <F label="Partida (data e hora)">
+                  <Input type="datetime-local" className="w-full" value={f.date && f.departure_time ? `${f.date}T${f.departure_time}` : ''} onChange={e => {
+                    const [date, time] = e.target.value.split('T')
+                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, date: date || null, departure_time: time || null } : x))
+                  }} />
+                </F>
+              </div>
+              <div className="w-44 shrink-0">
+                <F label="Chegada (data e hora)">
+                  <Input type="datetime-local" className="w-full" value={f.arrival_date && f.arrival_time ? `${f.arrival_date}T${f.arrival_time}` : ''} onChange={e => {
+                    const [date, time] = e.target.value.split('T')
+                    setFlights(fs => fs.map(x => x._key === f._key ? { ...x, arrival_date: date || null, arrival_time: time || null } : x))
+                  }} />
+                </F>
+              </div>
+              <div className="shrink-0">
+                <F label="Bagagens incluídas">
+                  <BaggagePicker value={f.baggage}
+                    onChange={b => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, baggage: b } : x))} />
+                </F>
+              </div>
             </div>
           </>
         )} />
