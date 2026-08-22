@@ -26,6 +26,13 @@ export function isInsuranceNiche(niche?: string | null): boolean {
   return n.includes('segur')
 }
 
+export const NICHE_TRAFFIC = 'trafego'
+
+export function isTrafficNiche(niche?: string | null): boolean {
+  const n = (niche || '').toLowerCase()
+  return n.includes('tráfego') || n.includes('trafego')
+}
+
 /**
  * Selectable niches. `value` is what gets stored on organizations.niche;
  * `label` is the display name. The travel value (NICHE_TRAVEL) unlocks the
@@ -42,5 +49,6 @@ export const NICHE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'Imobiliária',  label: 'Imobiliárias' },
   { value: 'advocacia',    label: 'Advocacia' },
   { value: 'seguros',      label: 'Corretora de Seguros' },
+  { value: NICHE_TRAFFIC,  label: 'Agência de Tráfego' },
   { value: 'Outros',       label: 'Outros' },
 ]

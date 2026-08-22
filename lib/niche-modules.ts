@@ -8,7 +8,7 @@
 // uma lista XXX_ONLY aqui, sem tocar nos componentes que chamam
 // isModuleEnabled().
 
-import { isTravelNiche, isClinicNiche, isRealEstateNiche, isInsuranceNiche } from './niche'
+import { isTravelNiche, isClinicNiche, isRealEstateNiche, isInsuranceNiche, isTrafficNiche } from './niche'
 
 export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
@@ -19,6 +19,8 @@ export type ModuleKey =
   | 'imoveis'
   // Módulos específicos da vertical de Seguros.
   | 'seguros'
+  // Módulos específicos da vertical de Agências de Tráfego.
+  | 'trafego'
   // Módulos genéricos do CRM core, sem uso em Viagens (a agência não tem
   // uma necessidade de agenda de compromissos separada da operação de
   // venda/reserva, e Catálogo/Vendas já têm equivalente na vertical —
@@ -29,6 +31,7 @@ const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarque
 const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica']
 const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
 const INSURANCE_ONLY: ModuleKey[] = ['seguros']
+const TRAFFIC_ONLY: ModuleKey[] = ['trafego']
 // "Não-travel" — visível pra qualquer nicho que não seja Viagens (inclui
 // Clínicas, que usa agenda/catálogo igual qualquer negócio genérico).
 const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
@@ -50,10 +53,12 @@ export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey
   const clinic = isClinicNiche(niche)
   const realEstate = isRealEstateNiche(niche)
   const insurance = isInsuranceNiche(niche)
+  const traffic = isTrafficNiche(niche)
   if (TRAVEL_ONLY.includes(key)) return travel
   if (CLINIC_ONLY.includes(key)) return clinic
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate
   if (INSURANCE_ONLY.includes(key)) return insurance
+  if (TRAFFIC_ONLY.includes(key)) return traffic
   if (GENERIC_ONLY.includes(key)) return !travel && !(realEstate && NOT_REAL_ESTATE.includes(key))
   return true
 }

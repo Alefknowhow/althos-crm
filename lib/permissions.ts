@@ -34,6 +34,8 @@ export type PermissionKey =
   | 'imoveis'
   // Nicho de seguros
   | 'seguros'
+  // Nicho de agências de tráfego
+  | 'trafego'
   | 'conversations'
   | 'social'
   | 'insights'
@@ -86,6 +88,8 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'imoveis',        label: 'Imóveis',           section: 'Imobiliárias' },
   // Seguros (só orgs do nicho de seguros)
   { key: 'seguros',        label: 'Seguros',           section: 'Seguros' },
+  // Agências de Tráfego (só orgs do nicho de tráfego)
+  { key: 'trafego',        label: 'Agências de Tráfego', section: 'Agências de Tráfego' },
   // Comunicação
   { key: 'conversations', label: 'Conversas (WA)',    section: 'Comunicação' },
   { key: 'social',        label: 'Social · DMs',      section: 'Comunicação' },
@@ -157,6 +161,7 @@ export function defaultMemberPermissions(): Permissions {
     comissoes_clinica: false,
     imoveis:       false,
     seguros:       false,
+    trafego:       false,
     marketing:     false,
     automations:   false,
     templates:     false,
@@ -169,7 +174,7 @@ export function defaultMemberPermissions(): Permissions {
 const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
   'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos', 'roteirista',
 ])
-const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'imoveis', 'seguros'])
+const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'imoveis', 'seguros', 'trafego'])
 
 /**
  * Group modules by section for rendering. Pass `isTravel` to hide the

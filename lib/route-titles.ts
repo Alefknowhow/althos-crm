@@ -46,6 +46,25 @@ const ROUTE_TITLES: Record<string, string> = {
   sinistros: 'Sinistros',
 }
 
+/**
+ * Vertical Agências de Tráfego — única vertical com rotas aninhadas sob um
+ * segmento pai (`/agencias-trafego/clientes`, etc., pedido explícito do
+ * prompt de fundação). Chave de 2 segmentos, tentada ANTES do fallback de 1
+ * segmento em getPageTitle/PageIcon — retrocompatível, nenhuma rota de 1
+ * segmento já existente muda de comportamento.
+ */
+const ROUTE_TITLES_2SEG: Record<string, string> = {
+  'agencias-trafego': 'Visão Geral',
+  'agencias-trafego/clientes': 'Clientes',
+  'agencias-trafego/trafego': 'Tráfego',
+  'agencias-trafego/leads': 'Leads',
+  'agencias-trafego/vendas': 'Vendas',
+  'agencias-trafego/performance': 'Performance',
+  'agencias-trafego/equipe': 'Equipe',
+  'agencias-trafego/financeiro': 'Financeiro',
+  'agencias-trafego/relatorios': 'Relatórios',
+}
+
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */
 export function getRouteSegment(pathname: string, orgSlug: string): string {
   const prefix = `/app/${orgSlug}`
@@ -53,6 +72,14 @@ export function getRouteSegment(pathname: string, orgSlug: string): string {
   return rest.split('/').filter(Boolean)[0] ?? ''
 }
 
+/** 1º + 2º segmentos após /app/{orgSlug}/, unidos por "/" — só usado pra
+ *  verticais com rotas aninhadas (ver ROUTE_TITLES_2SEG acima). */
+export function getRouteSegment2(pathname: string, orgSlug: string): string {
+  const prefix = `/app/${orgSlug}`
+  const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname
+  return rest.split('/').filter(Boolean).slice(0, 2).join('/')
+}
+
 export function getPageTitle(pathname: string, orgSlug: string): string {
-  return ROUTE_TITLES[getRouteSegment(pathname, orgSlug)] ?? ''
+  return ROUTE_TITLES_2SEG[getRouteSegment2(pathname, orgSlug)] ?? ROUTE_TITLES[getRouteSegment(pathname, orgSlug)] ?? ''
 }

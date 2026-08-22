@@ -7,9 +7,10 @@ import {
   FileStack, Calendar, MessageSquare, Megaphone, FileText, Wallet, Zap,
   Mail, Settings, HelpCircle, Send, Star, Stethoscope, ClipboardList, ListChecks, Hourglass, Percent, CalendarCheck2,
   Home, Handshake, Building2, ShieldAlert,
+  Target, TrendingUp, UsersRound, FileBarChart,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { getRouteSegment } from '@/lib/route-titles'
+import { getRouteSegment, getRouteSegment2 } from '@/lib/route-titles'
 
 /** lucide-react não tem ícone de Instagram (removido por licenciamento) —
  *  mesmo SVG inline usado no Sidebar. */
@@ -69,10 +70,25 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   sinistros: ShieldAlert,
 }
 
+/** Vertical Agências de Tráfego — rotas aninhadas, mesmo esquema de chave de
+ *  2 segmentos de ROUTE_TITLES_2SEG (lib/route-titles.ts). */
+const ROUTE_ICONS_2SEG: Record<string, LucideIcon> = {
+  'agencias-trafego': LayoutDashboard,
+  'agencias-trafego/clientes': Users,
+  'agencias-trafego/trafego': Target,
+  'agencias-trafego/leads': Megaphone,
+  'agencias-trafego/vendas': ShoppingCart,
+  'agencias-trafego/performance': TrendingUp,
+  'agencias-trafego/equipe': UsersRound,
+  'agencias-trafego/financeiro': Wallet,
+  'agencias-trafego/relatorios': FileBarChart,
+}
+
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */
 export function PageIcon({ orgSlug, className }: { orgSlug: string; className?: string }) {
   const pathname = usePathname() ?? ''
+  const segment2 = getRouteSegment2(pathname, orgSlug)
   const segment = getRouteSegment(pathname, orgSlug)
-  const Icon = ROUTE_ICONS[segment] || LayoutDashboard
+  const Icon = ROUTE_ICONS_2SEG[segment2] || ROUTE_ICONS[segment] || LayoutDashboard
   return <Icon className={className} />
 }
