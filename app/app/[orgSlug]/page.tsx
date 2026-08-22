@@ -32,7 +32,7 @@ export default async function OrgDashboard({
   searchParams,
 }: {
   params: { orgSlug: string }
-  searchParams: { period?: string; pipeline_id?: string; metric?: string; seller_id?: string }
+  searchParams: { period?: string; pipeline_id?: string; metric?: string; seller_id?: string; tab?: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const user = await requireAuth()
@@ -114,6 +114,7 @@ export default async function OrgDashboard({
       </Suspense>
 
       <DashboardTabsShell
+        defaultTab={searchParams.tab}
         stickyHeader={
           <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">

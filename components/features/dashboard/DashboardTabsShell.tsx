@@ -12,6 +12,7 @@ export default function DashboardTabsShell({
   equipe,
   clinica,
   imoveis,
+  defaultTab,
 }: {
   /** Filtros/título da Inicial — renderizado junto com as abas dentro do
    *  mesmo container sticky, pra ambos ficarem fixos ao rolar a página. */
@@ -25,12 +26,18 @@ export default function DashboardTabsShell({
   clinica?: ReactNode
   /** Só passado quando a org é do nicho Imobiliária — aba opcional. */
   imoveis?: ReactNode
+  /** Deep-link pra uma aba específica (ex.: ?tab=equipe) — opcional, cai
+   *  pra "Visão Geral" quando ausente/inválido. Não muda nenhum
+   *  comportamento existente pra quem não passa essa prop. */
+  defaultTab?: string
 }) {
   const extraTabs = (clinica ? 1 : 0) + (imoveis ? 1 : 0)
   const tabCount = 5 + extraTabs
   const gridColsClass = tabCount === 7 ? 'grid-cols-7' : tabCount === 6 ? 'grid-cols-6' : 'grid-cols-5'
+  const validTabs = ['visao-geral', 'pipeline', 'vendas', 'clientes', 'equipe', ...(clinica ? ['clinica'] : []), ...(imoveis ? ['imoveis'] : [])]
+  const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
   return (
-    <Tabs defaultValue="visao-geral" className="space-y-4">
+    <Tabs defaultValue={initialTab} className="space-y-4">
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 space-y-2 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
         {stickyHeader}
         {/* Mobile: grid de N colunas iguais numa linha só (célula do grid dá

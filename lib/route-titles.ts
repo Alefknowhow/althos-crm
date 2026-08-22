@@ -48,21 +48,19 @@ const ROUTE_TITLES: Record<string, string> = {
 
 /**
  * Vertical Agências de Tráfego — única vertical com rotas aninhadas sob um
- * segmento pai (`/agencias-trafego/clientes`, etc., pedido explícito do
- * prompt de fundação). Chave de 2 segmentos, tentada ANTES do fallback de 1
- * segmento em getPageTitle/PageIcon — retrocompatível, nenhuma rota de 1
- * segmento já existente muda de comportamento.
+ * segmento pai. Só as páginas sem equivalente genérico (Visão Geral,
+ * Tráfego, Leads, Performance) vivem aqui — Clientes/Vendas/Equipe/
+ * Financeiro/Relatórios foram removidas na Etapa 2 (Fase B): a vertical
+ * adapta as telas genéricas existentes em vez de duplicá-las. Chave de 2
+ * segmentos, tentada ANTES do fallback de 1 segmento em
+ * getPageTitle/PageIcon — retrocompatível, nenhuma rota de 1 segmento já
+ * existente muda de comportamento.
  */
 const ROUTE_TITLES_2SEG: Record<string, string> = {
   'agencias-trafego': 'Visão Geral',
-  'agencias-trafego/clientes': 'Clientes',
   'agencias-trafego/trafego': 'Tráfego',
   'agencias-trafego/leads': 'Leads',
-  'agencias-trafego/vendas': 'Vendas',
   'agencias-trafego/performance': 'Performance',
-  'agencias-trafego/equipe': 'Equipe',
-  'agencias-trafego/financeiro': 'Financeiro',
-  'agencias-trafego/relatorios': 'Relatórios',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */

@@ -7,7 +7,7 @@ import {
   FileStack, Calendar, MessageSquare, Megaphone, FileText, Wallet, Zap,
   Mail, Settings, HelpCircle, Send, Star, Stethoscope, ClipboardList, ListChecks, Hourglass, Percent, CalendarCheck2,
   Home, Handshake, Building2, ShieldAlert,
-  Target, TrendingUp, UsersRound, FileBarChart,
+  Target, TrendingUp,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { getRouteSegment, getRouteSegment2 } from '@/lib/route-titles'
@@ -74,14 +74,9 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
  *  2 segmentos de ROUTE_TITLES_2SEG (lib/route-titles.ts). */
 const ROUTE_ICONS_2SEG: Record<string, LucideIcon> = {
   'agencias-trafego': LayoutDashboard,
-  'agencias-trafego/clientes': Users,
   'agencias-trafego/trafego': Target,
   'agencias-trafego/leads': Megaphone,
-  'agencias-trafego/vendas': ShoppingCart,
   'agencias-trafego/performance': TrendingUp,
-  'agencias-trafego/equipe': UsersRound,
-  'agencias-trafego/financeiro': Wallet,
-  'agencias-trafego/relatorios': FileBarChart,
 }
 
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */

@@ -47,8 +47,6 @@ import {
   ShieldAlert,
   Target,
   TrendingUp,
-  UsersRound,
-  FileBarChart,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -500,13 +498,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               </span>
             </SidebarNavLink>
 
-            <SidebarNavLink href={`${base}/agencias-trafego/clientes`}>
-              <span className="flex items-center gap-2.5">
-                <Users className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Clientes</span>
-              </span>
-            </SidebarNavLink>
-
             <SidebarNavLink href={`${base}/agencias-trafego/trafego`}>
               <span className="flex items-center gap-2.5">
                 <Target className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -521,13 +512,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               </span>
             </SidebarNavLink>
 
-            <SidebarNavLink href={`${base}/agencias-trafego/vendas`}>
-              <span className="flex items-center gap-2.5">
-                <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Vendas</span>
-              </span>
-            </SidebarNavLink>
-
             <SidebarNavLink href={`${base}/agencias-trafego/performance`}>
               <span className="flex items-center gap-2.5">
                 <TrendingUp className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -535,26 +519,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               </span>
             </SidebarNavLink>
 
-            <SidebarNavLink href={`${base}/agencias-trafego/equipe`}>
-              <span className="flex items-center gap-2.5">
-                <UsersRound className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Equipe</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/agencias-trafego/financeiro`}>
-              <span className="flex items-center gap-2.5">
-                <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Financeiro</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/agencias-trafego/relatorios`}>
-              <span className="flex items-center gap-2.5">
-                <FileBarChart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Relatórios</span>
-              </span>
-            </SidebarNavLink>
           </>
         )}
 
