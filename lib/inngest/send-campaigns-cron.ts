@@ -1,19 +1,27 @@
 /**
- * Cron das Campanhas de Envio (disparo em massa). A cada 2 minutos:
- *   1. Vira `scheduled -> sending` as campanhas com scheduled_at <= now()
- *      (cobre "enviar agora" também, já que scheduled_at fica null nesse caso).
- *   2. Pra cada campanha em `sending`, processa um lote de destinatários
- *      pendentes — cap conservador (40/tick ~= 1.200/hora) em relação ao
- *      nível mais baixo de mensageria da Meta, pra não derrubar a qualidade
- *      do número numa primeira campanha grande.
- *   3. Campanhas em massa NÃO tocam whatsapp_conversations/inbox — misturar
- *      milhares de envios de campanha com atendimento real enterraria
- *      conversas de verdade. A auditoria fica na tela de detalhe da campanha.
- *   4. Quando não sobra nenhuma linha pending/sending da campanha, marca
- *      completed.
+ * Campanhas de Envio (disparo em massa) — orientado a evento, não a
+ * polling (2026-08-22, economia de custo Inngest). Era uma cron rodando a
+ * cada 2-5 min o dia inteiro (centenas de execuções/dia mesmo sem nenhuma
+ * campanha ativa); agora é 1 execução por campanha, do início ao fim.
  *
- * Processa WhatsApp e e-mail (Resend) — cap de 40/tick pro WhatsApp
- * (mensageria da Meta), 100/tick pro e-mail (Resend aguenta mais volume).
+ * Disparo: actions/send-campaigns.ts::materializeAndScheduleCampaign manda
+ * o evento `campaign/send.requested` depois de materializar os
+ * destinatários. resendFailedRecipient manda de novo pra reativar uma
+ * campanha já 'completed' quando o usuário reenvia um item falho.
+ *
+ * Uma única execução, do início ao fim:
+ *   1. Se `scheduled_at` é no futuro, `step.sleepUntil` até lá (sem
+ *      consumir cota — sleep é de graça no Inngest, só volta a rodar
+ *      quando chega a hora).
+ *   2. Processa em lotes com `step.sleep` entre eles pra respeitar o
+ *      limite de mensageria da Meta — MESMA pausa de 90s entre lotes de 40
+ *      que a cron de 2min tinha, só que sem ficar recriando a execução do
+ *      zero a cada tick.
+ *   3. Marca `completed` quando não sobra nenhum pending/sending.
+ *
+ * `concurrency` por campaignId evita 2 disparos da mesma campanha rodando
+ * ao mesmo tempo (ex.: reenvio manual enquanto o envio original ainda não
+ * terminou).
  */
 
 import { inngest } from './client'
@@ -23,83 +31,73 @@ import { getResend, clientEmailFrom } from '@/lib/resend'
 import { renderTemplate } from '@/lib/inngest/functions'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
-// Era a cada 2 min com 40/100 por tick (720 execuções/dia mesmo sem
-// campanha nenhuma rodando) — 5 min corta o volume base em mais da metade;
-// o batch por tick sobe (40→100 WhatsApp, 100→250 e-mail) pra manter a
-// MESMA vazão/hora de antes (ver auditoria de custo Inngest, 2026-08-22).
-const WHATSAPP_BATCH_PER_TICK = 100
-const EMAIL_BATCH_PER_TICK = 250
+const WHATSAPP_BATCH = 40
+const EMAIL_BATCH = 100
+const WHATSAPP_PACE = '90 seconds' // ~1.200/hora, mesmo teto conservador de antes
 
-export const sendCampaignsCronFn = inngest.createFunction(
+export const sendCampaignFn = inngest.createFunction(
   {
-    id:       'send-campaigns',
-    name:     'Campanhas de Envio: processa fila',
-    retries:  1,
-    triggers: [{ cron: '*/5 * * * *' }],
+    id:      'send-campaign',
+    name:    'Campanhas de Envio: processa uma campanha',
+    retries: 2,
+    concurrency: { key: 'event.data.campaignId', limit: 1 },
+    triggers: [{ event: 'campaign/send.requested' }],
   },
-  async ({ step }: { step: any }) => {
+  async ({ event, step }: { event: any; step: any }) => {
+    const { campaignId } = event.data as { campaignId: string }
     const admin = createAdminClient()
-    const nowISO = new Date().toISOString()
 
-    await step.run('activate-due-campaigns', async () => {
-      await admin
-        .from('send_campaigns')
-        .update({ status: 'sending', started_at: nowISO })
-        .eq('status', 'scheduled')
-        .or(`scheduled_at.is.null,scheduled_at.lte.${nowISO}`)
+    const campaign: any = await step.run('fetch-campaign', async () => {
+      const { data } = await admin.from('send_campaigns').select('*').eq('id', campaignId).maybeSingle()
+      return data
     })
+    if (!campaign || campaign.status === 'canceled' || campaign.status === 'draft') {
+      return { skipped: campaign?.status || 'not_found' }
+    }
 
-    const activeCampaigns: Array<{ id: string; organization_id: string; wa_template_name: string; wa_template_language: string; wa_header_type: string | null; wa_header_media_url: string | null; wa_header_storage_object_id: string | null }> =
-      await step.run('fetch-active-whatsapp-campaigns', async () => {
-        const { data } = await admin
-          .from('send_campaigns')
-          .select('id, organization_id, wa_template_name, wa_template_language, wa_header_type, wa_header_media_url, wa_header_storage_object_id')
-          .eq('status', 'sending')
-          .eq('channel', 'whatsapp')
-        return data || []
-      })
+    if (campaign.scheduled_at && new Date(campaign.scheduled_at).getTime() > Date.now()) {
+      await step.sleepUntil('wait-for-schedule', campaign.scheduled_at)
+    }
+
+    await step.run('mark-sending', async () => {
+      await admin.from('send_campaigns').update({ status: 'sending', started_at: new Date().toISOString() }).eq('id', campaignId).neq('status', 'canceled')
+    })
 
     let sent = 0
     let failed = 0
+    let batchIndex = 0
 
-    for (const campaign of activeCampaigns) {
-      const pending: Array<{ id: string; contact_phone: string | null }> = await step.run(`fetch-pending-${campaign.id}`, async () => {
-        const { data } = await admin
-          .from('send_campaign_recipients')
-          .select('id, contact_phone')
-          .eq('campaign_id', campaign.id)
-          .eq('status', 'pending')
-          .limit(WHATSAPP_BATCH_PER_TICK)
-        return data || []
-      })
+    if (campaign.channel === 'whatsapp') {
+      const headerMediaUrl: string | undefined = campaign.wa_header_storage_object_id
+        ? (await step.run('resolve-header-media', () => resolveSystemSignedUrl(campaign.wa_header_storage_object_id))) ?? undefined
+        : campaign.wa_header_media_url || undefined
 
-      if (pending.length > 0) {
-        const org: { whatsapp_phone_number_id: string | null; whatsapp_access_token: string | null } | null =
-          await step.run(`fetch-org-config-${campaign.id}`, async () => {
-            const { data } = await admin
-              .from('organizations')
-              .select('whatsapp_phone_number_id, whatsapp_access_token')
-              .eq('id', campaign.organization_id)
-              .maybeSingle()
-            return data
-          })
+      while (true) {
+        const pending: Array<{ id: string; contact_phone: string | null }> = await step.run(`fetch-pending-${batchIndex}`, async () => {
+          const canceled = await admin.from('send_campaigns').select('status').eq('id', campaignId).maybeSingle()
+          if (canceled.data?.status === 'canceled') return []
+          const { data } = await admin
+            .from('send_campaign_recipients')
+            .select('id, contact_phone')
+            .eq('campaign_id', campaignId)
+            .eq('status', 'pending')
+            .limit(WHATSAPP_BATCH)
+          return data || []
+        })
+        if (pending.length === 0) break
 
-        // Resolve uma signed URL fresca por tick (a campanha pode levar
-        // dias pra terminar — nunca reusa uma URL guardada de um tick
-        // anterior). resolveSystemSignedUrl já cacheia por 48h, então
-        // isso não gera um novo signing a cada 2 minutos.
-        const headerMediaUrl: string | undefined = campaign.wa_header_storage_object_id
-          ? (await step.run(`resolve-header-media-${campaign.id}`, () => resolveSystemSignedUrl(campaign.wa_header_storage_object_id!))) ?? undefined
-          : campaign.wa_header_media_url || undefined
+        const org: any = await step.run(`fetch-org-config-${batchIndex}`, async () => {
+          const { data } = await admin
+            .from('organizations')
+            .select('whatsapp_phone_number_id, whatsapp_access_token')
+            .eq('id', campaign.organization_id)
+            .maybeSingle()
+          return data
+        })
 
         for (const recipient of pending) {
           const claimed: boolean = await step.run(`claim-${recipient.id}`, async () => {
-            const { data } = await admin
-              .from('send_campaign_recipients')
-              .update({ status: 'sending' })
-              .eq('id', recipient.id)
-              .eq('status', 'pending')
-              .select('id')
+            const { data } = await admin.from('send_campaign_recipients').update({ status: 'sending' }).eq('id', recipient.id).eq('status', 'pending').select('id')
             return !!(data && data.length > 0)
           })
           if (!claimed) continue
@@ -123,78 +121,37 @@ export const sendCampaignsCronFn = inngest.createFunction(
           })
 
           await step.run(`finalize-${recipient.id}`, async () => {
-            await admin
-              .from('send_campaign_recipients')
-              .update({
-                status: result.ok ? 'sent' : 'failed',
-                sent_at: result.ok ? new Date().toISOString() : null,
-                meta_message_id: result.messageId || null,
-                error: result.ok ? null : result.error,
-              })
-              .eq('id', recipient.id)
+            await admin.from('send_campaign_recipients').update({
+              status: result.ok ? 'sent' : 'failed',
+              sent_at: result.ok ? new Date().toISOString() : null,
+              meta_message_id: result.messageId || null,
+              error: result.ok ? null : result.error,
+            }).eq('id', recipient.id)
           })
 
           if (result.ok) sent++
           else failed++
         }
 
-        await step.run(`bump-counts-${campaign.id}`, async () => {
-          const { count: sentCount } = await admin
-            .from('send_campaign_recipients')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('status', 'sent')
-          const { count: failedCount } = await admin
-            .from('send_campaign_recipients')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('status', 'failed')
-          await admin
-            .from('send_campaigns')
-            .update({ sent_count: sentCount || 0, failed_count: failedCount || 0 })
-            .eq('id', campaign.id)
-        })
+        batchIndex++
+        await step.sleep(`pace-${batchIndex}`, WHATSAPP_PACE)
       }
+    } else {
+      while (true) {
+        const pending: Array<{ id: string; contact_name: string | null; contact_email: string | null }> = await step.run(`fetch-pending-email-${batchIndex}`, async () => {
+          const canceled = await admin.from('send_campaigns').select('status').eq('id', campaignId).maybeSingle()
+          if (canceled.data?.status === 'canceled') return []
+          const { data } = await admin
+            .from('send_campaign_recipients')
+            .select('id, contact_name, contact_email')
+            .eq('campaign_id', campaignId)
+            .eq('status', 'pending')
+            .limit(EMAIL_BATCH)
+          return data || []
+        })
+        if (pending.length === 0) break
 
-      await step.run(`maybe-complete-${campaign.id}`, async () => {
-        const { count: remaining } = await admin
-          .from('send_campaign_recipients')
-          .select('id', { count: 'exact', head: true })
-          .eq('campaign_id', campaign.id)
-          .in('status', ['pending', 'sending'])
-        if (!remaining) {
-          await admin
-            .from('send_campaigns')
-            .update({ status: 'completed', completed_at: new Date().toISOString() })
-            .eq('id', campaign.id)
-        }
-      })
-    }
-
-    // ── E-mail (Resend) ─────────────────────────────────────────────────────
-    const activeEmailCampaigns: Array<{ id: string; organization_id: string; email_template_id: string | null }> =
-      await step.run('fetch-active-email-campaigns', async () => {
-        const { data } = await admin
-          .from('send_campaigns')
-          .select('id, organization_id, email_template_id')
-          .eq('status', 'sending')
-          .eq('channel', 'email')
-        return data || []
-      })
-
-    for (const campaign of activeEmailCampaigns) {
-      const pending: Array<{ id: string; contact_name: string | null; contact_email: string | null }> = await step.run(`fetch-pending-email-${campaign.id}`, async () => {
-        const { data } = await admin
-          .from('send_campaign_recipients')
-          .select('id, contact_name, contact_email')
-          .eq('campaign_id', campaign.id)
-          .eq('status', 'pending')
-          .limit(EMAIL_BATCH_PER_TICK)
-        return data || []
-      })
-
-      if (pending.length > 0) {
-        const [org, template]: [{ name: string } | null, { subject: string | null; body_html: string | null } | null] = await step.run(`fetch-email-context-${campaign.id}`, async () => {
+        const [org, template]: [any, any] = await step.run(`fetch-email-context-${batchIndex}`, async () => {
           const [orgRes, templateRes] = await Promise.all([
             admin.from('organizations').select('name').eq('id', campaign.organization_id).maybeSingle(),
             campaign.email_template_id
@@ -206,12 +163,7 @@ export const sendCampaignsCronFn = inngest.createFunction(
 
         for (const recipient of pending) {
           const claimed: boolean = await step.run(`claim-email-${recipient.id}`, async () => {
-            const { data } = await admin
-              .from('send_campaign_recipients')
-              .update({ status: 'sending' })
-              .eq('id', recipient.id)
-              .eq('status', 'pending')
-              .select('id')
+            const { data } = await admin.from('send_campaign_recipients').update({ status: 'sending' }).eq('id', recipient.id).eq('status', 'pending').select('id')
             return !!(data && data.length > 0)
           })
           if (!claimed) continue
@@ -223,12 +175,7 @@ export const sendCampaignsCronFn = inngest.createFunction(
               const variables = { lead: { name: recipient.contact_name || '' }, org: { name: org?.name || '' } }
               const subject = renderTemplate(template.subject || '', variables)
               const html = renderTemplate(template.body_html || '', variables)
-              const { data, error } = await getResend().emails.send({
-                from: clientEmailFrom(org?.name),
-                to: recipient.contact_email,
-                subject,
-                html,
-              })
+              const { data, error } = await getResend().emails.send({ from: clientEmailFrom(org?.name), to: recipient.contact_email, subject, html })
               if (error) throw error
               return { ok: true, id: data?.id }
             } catch (e: any) {
@@ -237,54 +184,38 @@ export const sendCampaignsCronFn = inngest.createFunction(
           })
 
           await step.run(`finalize-email-${recipient.id}`, async () => {
-            await admin
-              .from('send_campaign_recipients')
-              .update({
-                status: result.ok ? 'sent' : 'failed',
-                sent_at: result.ok ? new Date().toISOString() : null,
-                resend_id: result.id || null,
-                error: result.ok ? null : result.error,
-              })
-              .eq('id', recipient.id)
+            await admin.from('send_campaign_recipients').update({
+              status: result.ok ? 'sent' : 'failed',
+              sent_at: result.ok ? new Date().toISOString() : null,
+              resend_id: result.id || null,
+              error: result.ok ? null : result.error,
+            }).eq('id', recipient.id)
           })
 
           if (result.ok) sent++
           else failed++
         }
 
-        await step.run(`bump-counts-email-${campaign.id}`, async () => {
-          const { count: sentCount } = await admin
-            .from('send_campaign_recipients')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('status', 'sent')
-          const { count: failedCount } = await admin
-            .from('send_campaign_recipients')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('status', 'failed')
-          await admin
-            .from('send_campaigns')
-            .update({ sent_count: sentCount || 0, failed_count: failedCount || 0 })
-            .eq('id', campaign.id)
-        })
+        batchIndex++
+        // E-mail não tem o mesmo limite de mensageria do WhatsApp — pausa curta só
+        // pra não martelar o Resend em loop apertado.
+        await step.sleep(`pace-email-${batchIndex}`, '10 seconds')
       }
-
-      await step.run(`maybe-complete-email-${campaign.id}`, async () => {
-        const { count: remaining } = await admin
-          .from('send_campaign_recipients')
-          .select('id', { count: 'exact', head: true })
-          .eq('campaign_id', campaign.id)
-          .in('status', ['pending', 'sending'])
-        if (!remaining) {
-          await admin
-            .from('send_campaigns')
-            .update({ status: 'completed', completed_at: new Date().toISOString() })
-            .eq('id', campaign.id)
-        }
-      })
     }
 
+    await step.run('bump-counts', async () => {
+      const { count: sentCount } = await admin.from('send_campaign_recipients').select('id', { count: 'exact', head: true }).eq('campaign_id', campaignId).eq('status', 'sent')
+      const { count: failedCount } = await admin.from('send_campaign_recipients').select('id', { count: 'exact', head: true }).eq('campaign_id', campaignId).eq('status', 'failed')
+      await admin.from('send_campaigns').update({ sent_count: sentCount || 0, failed_count: failedCount || 0 }).eq('id', campaignId)
+    })
+
+    await step.run('maybe-complete', async () => {
+      const { count: remaining } = await admin.from('send_campaign_recipients').select('id', { count: 'exact', head: true }).eq('campaign_id', campaignId).in('status', ['pending', 'sending'])
+      if (!remaining) {
+        await admin.from('send_campaigns').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', campaignId).neq('status', 'canceled')
+      }
+    })
+
     return { sent, failed }
-  }
+  },
 )

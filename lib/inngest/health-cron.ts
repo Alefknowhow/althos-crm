@@ -1,68 +1,28 @@
 /**
- * Inngest cron that probes every organization's integrations on a fixed
- * cadence and records the result in `integration_health_checks`, plus a daily
- * retention sweep.
+ * Saúde das integrações — desligado o probe automático em background
+ * (2026-08-22, economia de custo Inngest). Ficava rodando 1 step POR ORG a
+ * cada 15-30 min incondicionalmente, o que escala mal com nº de tenants
+ * (era o maior risco de custo do painel de saúde a longo prazo — ver
+ * auditoria de custo Inngest).
  *
- *  1. integration-health-check — every 15 minutes, runs all probes per org.
- *  2. integration-health-prune — daily, deletes rows older than 35 days.
+ * A verificação agora é só sob demanda: botão "Verificar agora" na tela
+ * Configurações → Integrações → Saúde, que chama
+ * actions/health.ts::runHealthCheckNow diretamente (Server Action comum,
+ * NÃO passa pelo Inngest, não conta pra cota de execuções).
+ *
+ * Trade-off: sem o probe periódico, o histórico/gráfico de uptime
+ * (integration_health_checks) só ganha pontos novos quando alguém clica
+ * "Verificar agora" — não é mais um monitoramento contínuo. Se no futuro
+ * isso precisar voltar a rodar sozinho, a forma barata de fazer é reduzir
+ * a query pra só orgs com pelo menos uma integração configurada (hoje
+ * probe roda pra org nenhuma configurada também) antes de reativar a cron.
+ *
+ * Mantém só a limpeza diária (histórico >35 dias) — 1 execução/dia, custo
+ * desprezível.
  */
 
 import { inngest } from './client'
-import { createAdminClient } from '@/lib/supabase/server'
-import { runHealthChecksForOrg, pruneHealthHistory } from '@/lib/health/run'
-
-// ---------------------------------------------------------------------------
-// 1. Health probe — every 15 minutes
-// ---------------------------------------------------------------------------
-
-export const integrationHealthCheckFn = inngest.createFunction(
-  {
-    id: 'integration-health-check',
-    name: 'Saúde das integrações',
-    retries: 1,
-    // Bound concurrency so a large fleet doesn't hammer Meta/Resend at once.
-    concurrency: { limit: 5 },
-    // Era a cada 15 min — 30 min ainda detecta uma integração caída em tempo
-    // razoável (isso não é um SLA de uptime, é um painel informativo) e corta
-    // pela metade tanto o nº de execuções quanto o nº de steps/org (ver
-    // auditoria de custo Inngest, 2026-08-22). O crescimento real que precisa
-    // de atenção quando a base de orgs aumentar é 1 step POR ORG por tick —
-    // ver comentário abaixo.
-    triggers: [{ cron: '*/30 * * * *' }],
-  },
-  async ({ step }: { step: any }) => {
-    const admin = createAdminClient()
-
-    // Only real tenants — skip internal/platform orgs. Bounded for safety.
-    const orgs: Array<{
-      id: string
-      whatsapp_phone_number_id: string | null
-      whatsapp_access_token: string | null
-      email_from_address: string | null
-    }> = await step.run('fetch-orgs', async () => {
-      const { data } = await admin
-        .from('organizations')
-        .select('id, whatsapp_phone_number_id, whatsapp_access_token, email_from_address')
-        .limit(1000)
-      return data || []
-    })
-
-    let checked = 0
-    for (const org of orgs) {
-      // One durable step per org: failures isolate and Inngest checkpoints.
-      await step.run(`probe-${org.id}`, async () => {
-        await runHealthChecksForOrg(org)
-        checked++
-      })
-    }
-
-    return { checked }
-  },
-)
-
-// ---------------------------------------------------------------------------
-// 2. Retention sweep — daily at 03:00
-// ---------------------------------------------------------------------------
+import { pruneHealthHistory } from '@/lib/health/run'
 
 export const integrationHealthPruneFn = inngest.createFunction(
   {

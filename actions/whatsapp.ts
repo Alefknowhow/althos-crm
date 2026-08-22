@@ -8,6 +8,7 @@ import { listOrgMembers } from '@/actions/team'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { getProfilesMap } from '@/lib/profiles'
 import { uploadFile, getObjectSignedUrl } from '@/actions/storage'
+import { inngest } from '@/lib/inngest/client'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -701,6 +702,13 @@ export async function scheduleWhatsappMessage(
     .single()
 
   if (error) return { ok: false as const, error: error.message }
+
+  // Acorda exatamente no horário de envio (step.sleepUntil) em vez de
+  // depender de uma cron rodando o dia inteiro — ver lib/inngest/scheduled-messages-cron.ts.
+  await inngest.send({
+    name: 'whatsapp/message.scheduled',
+    data: { scheduledId: row.id, sendAt: row.send_at },
+  })
 
   revalidatePath(`/app/${orgSlug}/conversas`)
   return { ok: true as const, scheduled: row as ScheduledMessage }

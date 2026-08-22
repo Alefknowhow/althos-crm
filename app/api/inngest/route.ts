@@ -6,13 +6,13 @@ import { qualifyLeadFn } from '@/lib/inngest/qualifier'
 import { pushOverdueTasksFn, pushWhatsappMessageFn, pushInstagramMessageFn, pushInstagramCommentFn } from '@/lib/inngest/push'
 import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirthdayFn } from '@/lib/inngest/automation-crons'
 import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-emails'
-import { integrationHealthCheckFn, integrationHealthPruneFn } from '@/lib/inngest/health-cron'
+import { integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
-import { scheduledWhatsappMessagesFn } from '@/lib/inngest/scheduled-messages-cron'
+import { scheduledWhatsappMessageFn, scheduledMessagesReconcileFn } from '@/lib/inngest/scheduled-messages-cron'
 import { proposalEventFn } from '@/lib/inngest/proposal-events'
 import { dashboardInsightsCronFn } from '@/lib/inngest/dashboard-insights-cron'
 import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
-import { sendCampaignsCronFn } from '@/lib/inngest/send-campaigns-cron'
+import { sendCampaignFn } from '@/lib/inngest/send-campaigns-cron'
 import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
 import { processWhatsappInboundFn } from '@/lib/inngest/whatsapp-inbound'
 import { backupDatabaseCronFn, backupStorageCronFn, backupRetentionCronFn } from '@/lib/inngest/backup-cron'
@@ -45,14 +45,14 @@ export const { GET, POST, PUT } = serve({
     automationCustomerBirthdayFn,
     trialWarningEmailFn,
     trialExpiredEmailFn,
-    integrationHealthCheckFn,
     integrationHealthPruneFn,
     generateSystemAlertsFn,
-    scheduledWhatsappMessagesFn,
+    scheduledWhatsappMessageFn,
+    scheduledMessagesReconcileFn,
     proposalEventFn,
     dashboardInsightsCronFn,
     marketingSyncCronFn,
-    sendCampaignsCronFn,
+    sendCampaignFn,
     processInstagramInboundFn,
     processWhatsappInboundFn,
     backupDatabaseCronFn,

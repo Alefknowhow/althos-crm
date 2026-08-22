@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+import { inngest } from '@/lib/inngest/client'
 
 const UPGRADE_ERROR = 'Campanhas de Envio não estão incluídas no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -221,6 +222,10 @@ export async function materializeAndScheduleCampaign(orgSlug: string, campaignId
 
   if (updateError) return { ok: false as const, error: updateError.message }
 
+  // Dispara a execução (imediata ou dorme até scheduled_at) em vez de
+  // esperar a cron pegar — ver lib/inngest/send-campaigns-cron.ts.
+  await inngest.send({ name: 'campaign/send.requested', data: { campaignId: campaign.id } })
+
   revalidatePath(`/app/${orgSlug}/campanhas`)
   revalidatePath(`/app/${orgSlug}/campanhas/${campaignId}`)
   return { ok: true as const }
@@ -301,6 +306,14 @@ export async function resendFailedRecipient(orgSlug: string, recipientId: string
     .eq('status', 'failed')
 
   if (error) return { ok: false as const, error: error.message }
+
+  // Campanha pode já estar 'completed' — reativa o processamento pra esse
+  // item reenviado (a function trata status != canceled/draft como válido).
+  const { data: recipient } = await supabase.from('send_campaign_recipients').select('campaign_id').eq('id', recipientId).maybeSingle()
+  if (recipient) {
+    await inngest.send({ name: 'campaign/send.requested', data: { campaignId: recipient.campaign_id } })
+  }
+
   return { ok: true as const }
 }
 
