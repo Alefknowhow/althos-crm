@@ -19,6 +19,8 @@ const adAccountInput = z.object({
   name: z.string().min(2),
   external_id: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  /** Agências de Tráfego — vincula a conta a um cliente (contatos.id). */
+  contato_id: z.string().uuid().optional().nullable(),
 })
 
 export async function listAdAccounts(orgSlug: string) {
@@ -29,10 +31,78 @@ export async function listAdAccounts(orgSlug: string) {
   const supabase = createClient()
   const { data } = await supabase
     .from('ad_accounts')
-    .select('id, provider, name, external_id, status, notes, created_at')
+    .select('id, provider, name, external_id, status, notes, contato_id, created_at')
     .eq('organization_id', org.id)
     .order('created_at', { ascending: true })
   return data || []
+}
+
+/** Agências de Tráfego — contas de anúncio vinculadas a um cliente específico. */
+export async function listAdAccountsByClient(orgSlug: string, contatoId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('ad_accounts')
+    .select('id, provider, name, external_id, status, notes, created_at')
+    .eq('organization_id', org.id)
+    .eq('contato_id', contatoId)
+    .order('created_at', { ascending: true })
+  return data || []
+}
+
+/**
+ * Agências de Tráfego — campanhas + gasto/impressões/cliques dos últimos
+ * `days` dias, só das contas vinculadas ao cliente. Reaproveita
+ * campaign_metrics_daily já usada por getMarketingOverview.
+ */
+export async function listCampaignsByClient(orgSlug: string, contatoId: string, days = 30) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return []
+  const supabase = createClient()
+
+  const { data: accounts } = await supabase
+    .from('ad_accounts')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('contato_id', contatoId)
+  const accountIds = (accounts || []).map(a => a.id)
+  if (accountIds.length === 0) return []
+
+  const { data: campaigns } = await supabase
+    .from('campaigns')
+    .select('id, name, objective, status, started_at, ended_at, ad_account_id, ad_accounts(name, provider)')
+    .eq('organization_id', org.id)
+    .in('ad_account_id', accountIds)
+    .order('created_at', { ascending: false })
+  if (!campaigns || campaigns.length === 0) return []
+
+  const since = new Date()
+  since.setDate(since.getDate() - days)
+  const { data: metrics } = await supabase
+    .from('campaign_metrics_daily')
+    .select('campaign_id, impressions, clicks, spend_cents')
+    .eq('organization_id', org.id)
+    .in('campaign_id', campaigns.map(c => c.id))
+    .gte('date', since.toISOString().slice(0, 10))
+
+  const totals = new Map<string, { impressions: number; clicks: number; spend_cents: number }>()
+  for (const m of metrics || []) {
+    const cur = totals.get(m.campaign_id) || { impressions: 0, clicks: 0, spend_cents: 0 }
+    cur.impressions += m.impressions || 0
+    cur.clicks += m.clicks || 0
+    cur.spend_cents += m.spend_cents || 0
+    totals.set(m.campaign_id, cur)
+  }
+
+  return campaigns.map(c => ({
+    ...c,
+    metrics: totals.get(c.id) || { impressions: 0, clicks: 0, spend_cents: 0 },
+  }))
 }
 
 export async function createAdAccount(orgSlug: string, raw: unknown) {
@@ -53,6 +123,7 @@ export async function createAdAccount(orgSlug: string, raw: unknown) {
       name: parsed.data.name,
       external_id: parsed.data.external_id || null,
       notes: parsed.data.notes || null,
+      contato_id: parsed.data.contato_id || null,
       status: 'active',
     })
     .select('id')

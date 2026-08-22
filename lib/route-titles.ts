@@ -58,8 +58,7 @@ const ROUTE_TITLES: Record<string, string> = {
  */
 const ROUTE_TITLES_2SEG: Record<string, string> = {
   'agencias-trafego': 'Visão Geral',
-  'agencias-trafego/trafego': 'Tráfego',
-  'agencias-trafego/leads': 'Leads',
+  'agencias-trafego/trafego': 'Clientes',
   'agencias-trafego/performance': 'Performance',
 }
 

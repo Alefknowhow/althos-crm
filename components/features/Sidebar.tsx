@@ -501,14 +501,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <SidebarNavLink href={`${base}/agencias-trafego/trafego`}>
               <span className="flex items-center gap-2.5">
                 <Target className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Tráfego</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/agencias-trafego/leads`}>
-              <span className="flex items-center gap-2.5">
-                <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Leads</span>
+                <span>Clientes</span>
               </span>
             </SidebarNavLink>
 

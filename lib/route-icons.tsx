@@ -75,7 +75,6 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
 const ROUTE_ICONS_2SEG: Record<string, LucideIcon> = {
   'agencias-trafego': LayoutDashboard,
   'agencias-trafego/trafego': Target,
-  'agencias-trafego/leads': Megaphone,
   'agencias-trafego/performance': TrendingUp,
 }
 

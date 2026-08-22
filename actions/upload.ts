@@ -151,3 +151,51 @@ export async function uploadSaleVoucher(
   const name = (file.name || `voucher.${ext}`).replace(/[\r\n"]/g, '').slice(0, 120)
   return { ok: true, url: publicUrl, name }
 }
+
+const CREATIVE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'application/pdf': 'pdf',
+}
+const CREATIVE_MAX_BYTES = 30 * 1024 * 1024 // 30 MB — cobre criativo de vídeo curto
+
+/**
+ * Upload de criativo de campanha (imagem, vídeo curto ou PDF) pra aprovação
+ * do cliente (Vertical Agências de Tráfego). Mesmo bucket `form-assets`,
+ * prefixo `creatives/` — nenhum helper existente cobre os 3 tipos juntos.
+ */
+export async function uploadCreativeAsset(
+  orgSlug: string,
+  formData: FormData,
+): Promise<{ ok: true; url: string; mediaType: 'image' | 'video' | 'pdf' } | { ok: false; error: string }> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const file = formData.get('file') as File | null
+  if (!file || file.size === 0) return { ok: false, error: 'Arquivo vazio' }
+
+  const ext = CREATIVE_TYPES[file.type]
+  if (!ext) return { ok: false, error: 'Formato não suportado. Use JPG, PNG, WebP, GIF, MP4, MOV ou PDF.' }
+  if (file.size > CREATIVE_MAX_BYTES) return { ok: false, error: 'Arquivo muito grande. O limite é 30 MB.' }
+
+  const mediaType: 'image' | 'video' | 'pdf' = file.type.startsWith('video/')
+    ? 'video'
+    : file.type === 'application/pdf' ? 'pdf' : 'image'
+
+  const path = `${org.id}/creatives/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const bytes = await file.arrayBuffer()
+
+  const { error: uploadError } = await supabase.storage
+    .from('form-assets')
+    .upload(path, bytes, { contentType: file.type, upsert: false })
+
+  if (uploadError) return { ok: false, error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage.from('form-assets').getPublicUrl(path)
+  return { ok: true, url: publicUrl, mediaType }
+}
