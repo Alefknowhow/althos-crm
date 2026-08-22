@@ -1,23 +1,21 @@
 import { redirect } from 'next/navigation'
-import { Target } from 'lucide-react'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { isTrafficNiche } from '@/lib/niche'
-import PlaceholderPage from '@/components/features/agencias-trafego/PlaceholderPage'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Vertical Agências de Tráfego — Etapa 2, Fase F. O módulo "Marketing"
+ * genérico (`/marketing`) já é uma tela real e completa de Tráfego: contas
+ * de anúncio Meta Ads via OAuth, campanhas, métricas, drill-down por
+ * conjunto/anúncio (`actions/marketing.ts`). Não duplicar — só redireciona
+ * pra lá, mesma resolução que a Fase B já deu pra Vendas/Financeiro/etc.
+ */
 export default async function AgenciaTrafegoTrafegoPage({
   params,
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isTrafficNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
-
-  return (
-    <PlaceholderPage
-      icon={Target}
-      title="Nenhuma campanha conectada ainda"
-      description="Investimento, campanhas e mídia aparecem aqui assim que essa tela for especificada."
-    />
-  )
+  redirect(`/app/${params.orgSlug}/marketing`)
 }
