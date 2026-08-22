@@ -9,12 +9,10 @@ import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
 import { resolveContatoAvatars } from '@/actions/contatos'
-import { isTravelNiche, isRealEstateNiche, isTrafficNiche } from '@/lib/niche'
+import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
 import { listProperties } from '@/actions/properties'
 import { listInterestsByContato } from '@/actions/property-interests'
 import { listVisitsByContato } from '@/actions/property-visits'
-import { listAdAccountsByClient, listCampaignsByClient } from '@/actions/marketing'
-import { listCreatives } from '@/actions/campaign-creatives'
 
 const PAGE_SIZE = 50
 
@@ -109,7 +107,6 @@ export default async function ContatosPage({
   const to = from + PAGE_SIZE - 1
 
   const realEstate = isRealEstateNiche(org.niche)
-  const traffic = isTrafficNiche(org.niche)
 
   const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members, properties] =
     await Promise.all([
@@ -158,7 +155,7 @@ export default async function ContatosPage({
   const selId = searchParams.sel || ''
   let selected: any = null
   if (selId) {
-    const [{ data: contato }, { data: documents }, { data: sales }, relationships, interests, visits, trafficAccounts, trafficCreatives] =
+    const [{ data: contato }, { data: documents }, { data: sales }, relationships, interests, visits] =
       await Promise.all([
         supabase
           .from('contatos')
@@ -181,12 +178,9 @@ export default async function ContatosPage({
         listRelationships(params.orgSlug, selId),
         realEstate ? listInterestsByContato(params.orgSlug, selId) : Promise.resolve([]),
         realEstate ? listVisitsByContato(params.orgSlug, selId) : Promise.resolve([]),
-        traffic ? listAdAccountsByClient(params.orgSlug, selId) : Promise.resolve([]),
-        traffic ? listCreatives(params.orgSlug, selId) : Promise.resolve([]),
       ])
     if (contato) {
       const [resolvedContato] = await resolveContatoAvatars(params.orgSlug, [contato as any])
-      const trafficCampaigns = traffic ? await listCampaignsByClient(params.orgSlug, selId) : []
       selected = {
         contato: resolvedContato,
         documents: documents || [],
@@ -195,10 +189,6 @@ export default async function ContatosPage({
         propertyInterests: interests,
         propertyVisits: visits,
         propertyPreferences: (resolvedContato as any).property_preferences || null,
-        trafficClientProfile: (resolvedContato as any).traffic_client_profile || null,
-        trafficAdAccounts: trafficAccounts,
-        trafficCampaigns,
-        trafficCreatives,
       }
     }
   }
@@ -271,7 +261,6 @@ export default async function ContatosPage({
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
         isRealEstate={realEstate}
-        isTraffic={traffic}
         properties={properties}
         members={members}
         statusTabs={statusTabs}

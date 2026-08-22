@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic'
 /**
  * Vertical Agências de Tráfego — lista de clientes gerenciados (contatos com
  * status='cliente'), com resumo de campanhas ativas, gasto (30d) e criativos
- * pendentes. Clicar abre o detalhe do cliente em /contatos (mesmo
- * DetailPanel que já tem Perfil/Campanhas/Criativos — sem tela paralela).
+ * pendentes. Clicar abre o painel dedicado do cliente (Dados/Histórico/
+ * Criativos) — camada separada de Contatos, que continua genérico.
  */
 export default async function AgenciaTrafegoTrafegoPage({
   params,
@@ -94,11 +94,6 @@ export default async function AgenciaTrafegoTrafegoPage({
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Clientes de tráfego</h1>
-        <p className="text-sm text-muted-foreground mt-1">Campanhas, gasto e aprovações por cliente.</p>
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {clients.map(client => {
           const accountIds = accountIdsByClient.get(client.id) || []
@@ -111,7 +106,7 @@ export default async function AgenciaTrafegoTrafegoPage({
           return (
             <Link
               key={client.id}
-              href={`/app/${params.orgSlug}/contatos?sel=${client.id}`}
+              href={`/app/${params.orgSlug}/agencias-trafego/trafego/${client.id}`}
               className="block bg-card border rounded-lg p-4 hover:border-primary/50 transition-colors"
             >
               <div className="font-medium truncate">{client.name}</div>

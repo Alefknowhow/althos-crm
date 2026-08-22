@@ -27,11 +27,6 @@ export default async function AgenciaTrafegoPerformancePage({
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Performance</h1>
-        <p className="text-sm text-muted-foreground mt-1">Últimos 30 dias.</p>
-      </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Receita 30d" value={formatCurrency(totalRevenue)} help="Soma das vendas concluídas nos últimos 30 dias." />
         <KpiCard label="Vendas 30d" value={String(totalSales)} help="Quantidade de vendas concluídas nos últimos 30 dias." />

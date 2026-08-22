@@ -42,9 +42,6 @@ import ContatoRelationships from '@/components/features/contatos/ContatoRelation
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
 import PropertyPreferencesCard from '@/components/features/properties/PropertyPreferencesCard'
-import TrafficClientProfileCard from '@/components/features/agencias-trafego/TrafficClientProfileCard'
-import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/TrafficClientCampaignsCard'
-import CampaignCreativesSection from '@/components/features/agencias-trafego/CampaignCreativesSection'
 import PropertyMatchSuggestions from '@/components/features/properties/PropertyMatchSuggestions'
 import CopyButton from '@/components/ui/copy-button'
 
@@ -87,10 +84,6 @@ type Selected = {
   propertyInterests?: any[]
   propertyVisits?: any[]
   propertyPreferences?: any
-  trafficClientProfile?: any
-  trafficAdAccounts?: any[]
-  trafficCampaigns?: any[]
-  trafficCreatives?: any[]
 } | null
 
 type Filters = Record<string, string | undefined>
@@ -110,9 +103,6 @@ interface Props {
   filters: Filters
   isTravel: boolean
   isRealEstate?: boolean
-  /** Agências de Tráfego — mostra perfil de gestão do cliente, campanhas
-   *  vinculadas e aprovação de criativos no detalhe do contato. */
-  isTraffic?: boolean
   properties?: { id: string; title: string; code: string | null }[]
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode
@@ -164,7 +154,6 @@ export default function ContatosView({
   filters,
   isTravel,
   isRealEstate,
-  isTraffic,
   properties = [],
   members,
   statusTabs,
@@ -398,7 +387,6 @@ export default function ContatosView({
               members={members}
               isTravel={isTravel}
               isRealEstate={isRealEstate}
-              isTraffic={isTraffic}
               properties={properties}
             />
           ) : (
@@ -581,7 +569,7 @@ function ListAvatar({ name, url }: { name: string; url: string | null }) {
 
 // ── Painel de detalhe ────────────────────────────────────────────────
 function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, isTraffic, properties = [],
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [],
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -589,7 +577,6 @@ function DetailPanel({
   members: { id: string; name: string }[]
   isTravel: boolean
   isRealEstate?: boolean
-  isTraffic?: boolean
   properties?: { id: string; title: string; code: string | null }[]
 }) {
   const router = useRouter()
@@ -846,20 +833,6 @@ function DetailPanel({
           <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyVisits || []} properties={properties} members={members.map(m => ({ user_id: m.id, name: m.name }))} />
           <PropertyPreferencesCard orgSlug={orgSlug} contatoId={c.id} initial={selected.propertyPreferences || null} />
           <PropertyMatchSuggestions orgSlug={orgSlug} contatoId={c.id} />
-        </>
-      )}
-
-      {/* Gestão de cliente de tráfego pago — só nicho Agências de Tráfego */}
-      {isTraffic && (
-        <>
-          <TrafficClientProfileCard orgSlug={orgSlug} contatoId={c.id} initial={selected.trafficClientProfile || null} />
-          <TrafficClientCampaignsCard
-            orgSlug={orgSlug}
-            contatoId={c.id}
-            accounts={selected.trafficAdAccounts || []}
-            campaigns={selected.trafficCampaigns || []}
-          />
-          <CampaignCreativesSection orgSlug={orgSlug} contatoId={c.id} creatives={selected.trafficCreatives || []} />
         </>
       )}
 
