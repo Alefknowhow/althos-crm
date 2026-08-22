@@ -6,7 +6,7 @@ import {
   PlaneTakeoff, Store, CalendarClock, Package, ShoppingCart, Receipt,
   FileStack, Calendar, MessageSquare, Megaphone, FileText, Wallet, Zap,
   Mail, Settings, HelpCircle, Send, Star, Stethoscope, ClipboardList, ListChecks, Hourglass, Percent, CalendarCheck2,
-  Home, Handshake, Building2,
+  Home, Handshake, Building2, ShieldAlert,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { getRouteSegment } from '@/lib/route-titles'
@@ -66,6 +66,7 @@ const ROUTE_ICONS: Record<string, LucideIcon | typeof InstagramGlyph> = {
   seguradoras: Building2,
   'cotacoes-seguro': FileSignature,
   apolices: FileStack,
+  sinistros: ShieldAlert,
 }
 
 /** Ícone da página atual, alinhado ao mesmo mapeamento de lib/route-titles.ts. */

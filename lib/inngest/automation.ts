@@ -115,6 +115,7 @@ export const processAutomationEventVerticals = inngest.createFunction(
       // motor genérico, sem engine paralela.
       { event: 'seguros.policy.issued' },
       { event: 'seguros.policy.renewal_due' },
+      { event: 'seguros.claim.opened' },
     ]
   },
   handleAutomationEvent,
