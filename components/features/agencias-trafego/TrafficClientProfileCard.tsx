@@ -37,10 +37,17 @@ export default function TrafficClientProfileCard({
   const [referenceLinks, setReferenceLinks] = useState(initial?.referenceLinks || '')
   const [contractStart, setContractStart] = useState(initial?.contractStart || '')
   const [notes, setNotes] = useState(initial?.notes || '')
+  const [targetRoas, setTargetRoas] = useState(initial?.targetRoas != null ? String(initial.targetRoas) : '')
+  const [targetCpl, setTargetCpl] = useState(centsToStr(initial?.targetCpl != null ? initial.targetCpl * 100 : null))
+  const [targetLeads, setTargetLeads] = useState(initial?.targetLeads != null ? String(initial.targetLeads) : '')
+  const [targetRevenue, setTargetRevenue] = useState(centsToStr(initial?.targetRevenueCents))
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
     setSaving(true)
+    const roas = parseFloat(targetRoas.replace(',', '.'))
+    const leads = parseInt(targetLeads, 10)
+    const cplCents = strToCents(targetCpl)
     const res = await saveTrafficClientProfile(orgSlug, contatoId, {
       niche: niche || null,
       objective,
@@ -50,6 +57,10 @@ export default function TrafficClientProfileCard({
       referenceLinks: referenceLinks || null,
       contractStart: contractStart || null,
       notes: notes || null,
+      targetRoas: Number.isFinite(roas) && roas > 0 ? roas : null,
+      targetCpl: cplCents != null ? cplCents / 100 : null,
+      targetLeads: Number.isFinite(leads) && leads > 0 ? leads : null,
+      targetRevenueCents: strToCents(targetRevenue),
     })
     setSaving(false)
     if (!res.ok) { toast.error(res.error); return }
@@ -106,6 +117,29 @@ export default function TrafficClientProfileCard({
           <label className="text-xs font-medium text-muted-foreground">Observações</label>
           <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
+
+        <div className="pt-2 border-t space-y-3">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Metas</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">ROAS alvo</label>
+              <Input inputMode="decimal" placeholder="Ex.: 4" value={targetRoas} onChange={e => setTargetRoas(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">CPL alvo (R$)</label>
+              <Input inputMode="decimal" placeholder="0,00" value={targetCpl} onChange={e => setTargetCpl(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Leads/mês alvo</label>
+              <Input inputMode="numeric" value={targetLeads} onChange={e => setTargetLeads(e.target.value.replace(/\D/g, ''))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Receita/mês alvo (R$)</label>
+              <Input inputMode="decimal" placeholder="0,00" value={targetRevenue} onChange={e => setTargetRevenue(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
         <Button size="sm" onClick={handleSave} disabled={saving}>
           {saving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />} Salvar perfil
         </Button>

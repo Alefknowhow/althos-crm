@@ -57,18 +57,17 @@ export async function listAdAccountsByClient(orgSlug: string, contatoId: string)
  * Agências de Tráfego — campanhas + gasto/impressões/cliques dos últimos
  * `days` dias, só das contas vinculadas ao cliente. Reaproveita
  * campaign_metrics_daily já usada por getMarketingOverview.
+ *
+ * Núcleo sem auth (recebe orgId já resolvido) — usado tanto pela action
+ * pública (session cookie) quanto pelas tools do Agent Layer (token,
+ * lib/agent/tools/campaigns.ts), que não têm cookie de sessão pra passar
+ * por requireAuth()/getCurrentOrganization().
  */
-export async function listCampaignsByClient(orgSlug: string, contatoId: string, days = 30) {
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
-  if (!perm.allowed) return []
-  const supabase = createClient()
-
+export async function listCampaignsByClientCore(supabase: ReturnType<typeof createClient>, orgId: string, contatoId: string, days = 30) {
   const { data: accounts } = await supabase
     .from('ad_accounts')
     .select('id')
-    .eq('organization_id', org.id)
+    .eq('organization_id', orgId)
     .eq('contato_id', contatoId)
   const accountIds = (accounts || []).map(a => a.id)
   if (accountIds.length === 0) return []
@@ -76,7 +75,7 @@ export async function listCampaignsByClient(orgSlug: string, contatoId: string, 
   const { data: campaigns } = await supabase
     .from('campaigns')
     .select('id, name, objective, status, started_at, ended_at, ad_account_id, ad_accounts(name, provider)')
-    .eq('organization_id', org.id)
+    .eq('organization_id', orgId)
     .in('ad_account_id', accountIds)
     .order('created_at', { ascending: false })
   if (!campaigns || campaigns.length === 0) return []
@@ -86,7 +85,7 @@ export async function listCampaignsByClient(orgSlug: string, contatoId: string, 
   const { data: metrics } = await supabase
     .from('campaign_metrics_daily')
     .select('campaign_id, impressions, clicks, spend_cents')
-    .eq('organization_id', org.id)
+    .eq('organization_id', orgId)
     .in('campaign_id', campaigns.map(c => c.id))
     .gte('date', since.toISOString().slice(0, 10))
 
@@ -103,6 +102,15 @@ export async function listCampaignsByClient(orgSlug: string, contatoId: string, 
     ...c,
     metrics: totals.get(c.id) || { impressions: 0, clicks: 0, spend_cents: 0 },
   }))
+}
+
+export async function listCampaignsByClient(orgSlug: string, contatoId: string, days = 30) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return []
+  const supabase = createClient()
+  return listCampaignsByClientCore(supabase, org.id, contatoId, days)
 }
 
 export async function createAdAccount(orgSlug: string, raw: unknown) {

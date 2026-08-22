@@ -22,6 +22,12 @@ export type TrafficClientProfile = {
   referenceLinks?: string | null
   contractStart?: string | null
   notes?: string | null
+  /** Metas — usadas por get_client_targets (Etapa 3, Agent Layer) pra
+   *  comparar resultado real vs. meta configurada pelo gestor. */
+  targetRoas?: number | null
+  targetCpl?: number | null
+  targetLeads?: number | null
+  targetRevenueCents?: number | null
 }
 
 const ProfileSchema = z.object({
@@ -33,6 +39,10 @@ const ProfileSchema = z.object({
   referenceLinks: z.string().max(2000).nullable().optional(),
   contractStart: z.string().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  targetRoas: z.number().min(0).nullable().optional(),
+  targetCpl: z.number().min(0).nullable().optional(),
+  targetLeads: z.number().int().min(0).nullable().optional(),
+  targetRevenueCents: z.number().int().min(0).nullable().optional(),
 })
 
 async function requireAccess(orgSlug: string) {

@@ -14,7 +14,7 @@ export type TaskInput = z.infer<typeof taskSchema>
 /** Returns the org's first (position 0) column id, creating a default
  *  "A Fazer" column when none exists yet. Keeps every org with at least one
  *  column so the board always has somewhere to drop tasks. */
-async function ensureDefaultColumnId(supabase: ReturnType<typeof createClient>, orgId: string): Promise<string | null> {
+export async function ensureDefaultColumnId(supabase: ReturnType<typeof createClient>, orgId: string): Promise<string | null> {
   const { data: existing } = await supabase
     .from('task_columns')
     .select('id')
