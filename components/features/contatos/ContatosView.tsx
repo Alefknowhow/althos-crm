@@ -103,6 +103,10 @@ interface Props {
   filters: Filters
   isTravel: boolean
   isRealEstate?: boolean
+  /** Agências de Tráfego (Etapa 2, Fase D) — hoje só marca o contexto;
+   *  Contatos já cobre origem (allSources)/segmentação lead-cliente-inativo
+   *  (statusTabs) genericamente, sem precisar de bloco extra ainda. */
+  isTraffic?: boolean
   properties?: { id: string; title: string; code: string | null }[]
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode

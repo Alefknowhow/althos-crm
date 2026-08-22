@@ -9,7 +9,7 @@ import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
 import { resolveContatoAvatars } from '@/actions/contatos'
-import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
+import { isTravelNiche, isRealEstateNiche, isTrafficNiche } from '@/lib/niche'
 import { listProperties } from '@/actions/properties'
 import { listInterestsByContato } from '@/actions/property-interests'
 import { listVisitsByContato } from '@/actions/property-visits'
@@ -261,6 +261,7 @@ export default async function ContatosPage({
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
         isRealEstate={realEstate}
+        isTraffic={isTrafficNiche(org.niche)}
         properties={properties}
         members={members}
         statusTabs={statusTabs}

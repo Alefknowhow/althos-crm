@@ -16,7 +16,8 @@ import ClientesTab from '@/components/features/dashboard/tabs/ClientesTab'
 import EquipeTab from '@/components/features/dashboard/tabs/EquipeTab'
 import ClinicaTab from '@/components/features/dashboard/tabs/ClinicaTab'
 import ImobiliariaTab from '@/components/features/dashboard/tabs/ImobiliariaTab'
-import { isClinicNiche, isRealEstateNiche } from '@/lib/niche'
+import TrafegoTab from '@/components/features/dashboard/tabs/TrafegoTab'
+import { isClinicNiche, isRealEstateNiche, isTrafficNiche } from '@/lib/niche'
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
@@ -164,6 +165,13 @@ export default async function OrgDashboard({
           isRealEstateNiche((org as any).niche) ? (
             <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
               <ImobiliariaTab orgSlug={params.orgSlug} />
+            </Suspense>
+          ) : undefined
+        }
+        trafego={
+          isTrafficNiche((org as any).niche) ? (
+            <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+              <TrafegoTab orgSlug={params.orgSlug} />
             </Suspense>
           ) : undefined
         }
