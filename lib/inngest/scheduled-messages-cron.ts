@@ -18,7 +18,10 @@ export const scheduledWhatsappMessagesFn = inngest.createFunction(
     id:       'scheduled-whatsapp-messages',
     name:     'WhatsApp: envios agendados',
     retries:  1,
-    triggers: [{ cron: '* * * * *' }],
+    // Era a cada 1 min (1.440 execuções/dia mesmo sem nada agendado) — 3 min
+    // é imperceptível pra quem agenda uma mensagem e corta o volume base em
+    // 2/3 (ver auditoria de custo Inngest, 2026-08-22).
+    triggers: [{ cron: '*/3 * * * *' }],
   },
   async ({ step }: { step: any }) => {
     const admin = createAdminClient()

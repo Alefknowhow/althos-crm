@@ -22,7 +22,13 @@ export const integrationHealthCheckFn = inngest.createFunction(
     retries: 1,
     // Bound concurrency so a large fleet doesn't hammer Meta/Resend at once.
     concurrency: { limit: 5 },
-    triggers: [{ cron: '*/15 * * * *' }],
+    // Era a cada 15 min — 30 min ainda detecta uma integração caída em tempo
+    // razoável (isso não é um SLA de uptime, é um painel informativo) e corta
+    // pela metade tanto o nº de execuções quanto o nº de steps/org (ver
+    // auditoria de custo Inngest, 2026-08-22). O crescimento real que precisa
+    // de atenção quando a base de orgs aumentar é 1 step POR ORG por tick —
+    // ver comentário abaixo.
+    triggers: [{ cron: '*/30 * * * *' }],
   },
   async ({ step }: { step: any }) => {
     const admin = createAdminClient()

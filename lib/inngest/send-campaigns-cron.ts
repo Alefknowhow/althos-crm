@@ -23,15 +23,19 @@ import { getResend, clientEmailFrom } from '@/lib/resend'
 import { renderTemplate } from '@/lib/inngest/functions'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
-const WHATSAPP_BATCH_PER_TICK = 40
-const EMAIL_BATCH_PER_TICK = 100
+// Era a cada 2 min com 40/100 por tick (720 execuções/dia mesmo sem
+// campanha nenhuma rodando) — 5 min corta o volume base em mais da metade;
+// o batch por tick sobe (40→100 WhatsApp, 100→250 e-mail) pra manter a
+// MESMA vazão/hora de antes (ver auditoria de custo Inngest, 2026-08-22).
+const WHATSAPP_BATCH_PER_TICK = 100
+const EMAIL_BATCH_PER_TICK = 250
 
 export const sendCampaignsCronFn = inngest.createFunction(
   {
     id:       'send-campaigns',
     name:     'Campanhas de Envio: processa fila',
     retries:  1,
-    triggers: [{ cron: '*/2 * * * *' }],
+    triggers: [{ cron: '*/5 * * * *' }],
   },
   async ({ step }: { step: any }) => {
     const admin = createAdminClient()
