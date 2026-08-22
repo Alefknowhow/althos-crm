@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle, TrendingDown, TrendingUp, Info, X } from 'lucide-react'
-import { dismissInsight, type DashboardInsight } from '@/actions/dashboard-insights'
+import { AlertTriangle, TrendingDown, TrendingUp, Info, X, Sparkles, Loader2 } from 'lucide-react'
+import { dismissInsight, generateInsightsNow, type DashboardInsight } from '@/actions/dashboard-insights'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -25,18 +27,24 @@ export default function InsightsStrip({
   orgSlug: string
   initialInsights: DashboardInsight[]
 }) {
+  const router = useRouter()
   const [insights, setInsights] = useState(initialInsights)
-  const [, startTransition] = useTransition()
-
-  if (insights.length === 0) return null
+  const [isPending, startTransition] = useTransition()
 
   function handleDismiss(id: string) {
     setInsights(prev => prev.filter(i => i.id !== id))
     startTransition(() => { dismissInsight(orgSlug, id) })
   }
 
+  function handleGenerate() {
+    startTransition(async () => {
+      await generateInsightsNow(orgSlug)
+      router.refresh()
+    })
+  }
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {insights.map(insight => {
         const Icon = (insight.icon && ICONS[insight.icon]) || Info
         const href = `/app/${orgSlug}${insight.deep_link || ''}`
@@ -64,6 +72,17 @@ export default function InsightsStrip({
           </div>
         )
       })}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 rounded-full text-xs gap-1.5"
+        disabled={isPending}
+        onClick={handleGenerate}
+      >
+        {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+        {insights.length === 0 ? 'Gerar Insights' : 'Atualizar'}
+      </Button>
     </div>
   )
 }

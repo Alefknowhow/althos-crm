@@ -1,9 +1,10 @@
 'use server'
 
 import { cache } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
+import { generateInsightsForOrg } from '@/lib/dashboard/insights-detectors'
 
 export type DashboardInsight = {
   id: string
@@ -43,4 +44,22 @@ export async function dismissInsight(orgSlug: string, id: string) {
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
+}
+
+/**
+ * Botão "Gerar Insights" na Inicial — recálculo sob demanda. Substitui a
+ * cron Inngest que rodava a cada 4h pra toda org incondicionalmente (ver
+ * lib/dashboard/insights-detectors.ts). Server Action comum, não passa
+ * pelo Inngest.
+ */
+export async function generateInsightsNow(orgSlug: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const admin = createAdminClient()
+  try {
+    const count = await generateInsightsForOrg(admin, org.id)
+    revalidatePath(`/app/${orgSlug}`)
+    return { ok: true as const, count }
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao gerar insights.' }
+  }
 }

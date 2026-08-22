@@ -1,21 +1,27 @@
 /**
  * Insights automáticos da Inicial: detecções por regra/threshold, SEM
- * chamar IA (o painel só lê o que este job já pré-computou — nenhum crédito
- * é gasto no render). Roda a cada 4h, uma passada por organização.
+ * chamar IA (o painel só lê o que já foi pré-computado — nenhum crédito é
+ * gasto). Era recalculado por uma cron Inngest a cada 4h, 1 step por org
+ * incondicionalmente (~144 execuções/dia mesmo sem ninguém olhando o
+ * Dashboard) — trocado por geração sob demanda via botão "Gerar Insights"
+ * na Inicial (ver actions/dashboard-insights.ts::generateInsightsNow).
  *
  * Três detecções, deliberadamente simples e determinísticas:
  *   1. Risco: leads presos há mais de 7 dias sem nenhuma atualização.
  *   2. Variação: leads novos dos últimos 7 dias vs. os 7 anteriores.
  *   3. Variação: receita realizada dos últimos 7 dias vs. os 7 anteriores.
+ *   4. Variação: despesa por categoria (Financeiro) dos últimos 7 dias vs.
+ *      os 7 anteriores.
  */
 
-import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { fetchNormalizedSales } from '@/lib/dashboard/sales-source'
 
 const DAY = 86_400_000
 
-async function detectStaleLeads(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+type Admin = ReturnType<typeof createAdminClient>
+
+async function detectStaleLeads(admin: Admin, orgId: string) {
   const { data: pipelines } = await admin.from('pipelines').select('id').eq('organization_id', orgId)
   const pipelineIds = (pipelines || []).map(p => p.id)
   if (pipelineIds.length === 0) return null
@@ -49,7 +55,7 @@ async function detectStaleLeads(admin: ReturnType<typeof createAdminClient>, org
   }
 }
 
-async function detectLeadsChange(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+async function detectLeadsChange(admin: Admin, orgId: string) {
   const now = new Date()
   const start7 = new Date(now.getTime() - 7 * DAY)
   const prevStart = new Date(start7.getTime() - 7 * DAY)
@@ -90,7 +96,7 @@ async function detectLeadsChange(admin: ReturnType<typeof createAdminClient>, or
   return null
 }
 
-async function detectRevenueChange(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+async function detectRevenueChange(admin: Admin, orgId: string) {
   const now = new Date()
   const start7 = new Date(now.getTime() - 7 * DAY)
   const prevStart = new Date(start7.getTime() - 7 * DAY)
@@ -136,7 +142,7 @@ async function detectRevenueChange(admin: ReturnType<typeof createAdminClient>, 
  * (fora do nicho de Agências de Viagens, ou que ainda não usam o módulo)
  * simplesmente não retornam linhas — sem necessidade de gate por nicho aqui.
  */
-async function detectExpenseCategoryChange(admin: ReturnType<typeof createAdminClient>, orgId: string) {
+async function detectExpenseCategoryChange(admin: Admin, orgId: string) {
   const now = new Date()
   const start7 = new Date(now.getTime() - 7 * DAY)
   const prevStart = new Date(start7.getTime() - 7 * DAY)
@@ -190,50 +196,21 @@ async function detectExpenseCategoryChange(admin: ReturnType<typeof createAdminC
       }
 }
 
-export const dashboardInsightsCronFn = inngest.createFunction(
-  {
-    id: 'dashboard-insights-cron',
-    name: 'Inicial: insights automáticos',
-    retries: 1,
-    triggers: [{ cron: '0 */4 * * *' }],
-  },
-  async ({ step }: { step: any }) => {
-    const admin = createAdminClient()
+/** Recalcula os insights de uma org: renova a lista inteira (delete os não-dispensados + insere os novos). */
+export async function generateInsightsForOrg(admin: Admin, orgId: string): Promise<number> {
+  const results = await Promise.all([
+    detectStaleLeads(admin, orgId),
+    detectLeadsChange(admin, orgId),
+    detectRevenueChange(admin, orgId),
+    detectExpenseCategoryChange(admin, orgId),
+  ])
+  const rows = results.filter((r): r is NonNullable<typeof r> => !!r)
 
-    const orgs: { id: string }[] = await step.run('fetch-orgs', async () => {
-      const { data } = await admin.from('organizations').select('id')
-      return data || []
-    })
+  // Insights são uma camada "ao vivo", não um histórico — limpa os
+  // não-dispensados da org antes de inserir os novos.
+  await admin.from('dashboard_insights').delete().eq('organization_id', orgId).is('dismissed_at', null)
 
-    let created = 0
-
-    for (const org of orgs) {
-      await step.run(`insights-${org.id}`, async () => {
-        const results = await Promise.all([
-          detectStaleLeads(admin, org.id),
-          detectLeadsChange(admin, org.id),
-          detectRevenueChange(admin, org.id),
-          detectExpenseCategoryChange(admin, org.id),
-        ])
-        const rows = results.filter((r): r is NonNullable<typeof r> => !!r)
-
-        // Renova a cada rodada: os insights são uma camada "ao vivo", não um
-        // histórico — limpa os não-dispensados da org antes de inserir os
-        // novos, senão a mesma condição geraria um chip duplicado a cada 4h.
-        await admin
-          .from('dashboard_insights')
-          .delete()
-          .eq('organization_id', org.id)
-          .is('dismissed_at', null)
-
-        if (rows.length === 0) return
-        await admin.from('dashboard_insights').insert(
-          rows.map(r => ({ organization_id: org.id, ...r })),
-        )
-        created += rows.length
-      })
-    }
-
-    return { orgsProcessed: orgs.length, insightsCreated: created }
-  },
-)
+  if (rows.length === 0) return 0
+  await admin.from('dashboard_insights').insert(rows.map(r => ({ organization_id: orgId, ...r })))
+  return rows.length
+}

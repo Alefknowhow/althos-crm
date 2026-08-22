@@ -10,7 +10,6 @@ import { integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
 import { scheduledWhatsappMessageFn, scheduledMessagesReconcileFn } from '@/lib/inngest/scheduled-messages-cron'
 import { proposalEventFn } from '@/lib/inngest/proposal-events'
-import { dashboardInsightsCronFn } from '@/lib/inngest/dashboard-insights-cron'
 import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
 import { sendCampaignFn } from '@/lib/inngest/send-campaigns-cron'
 import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
@@ -51,7 +50,6 @@ export const { GET, POST, PUT } = serve({
     scheduledWhatsappMessageFn,
     scheduledMessagesReconcileFn,
     proposalEventFn,
-    dashboardInsightsCronFn,
     marketingSyncCronFn,
     sendCampaignFn,
     processInstagramInboundFn,
