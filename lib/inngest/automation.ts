@@ -4,6 +4,76 @@ import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
 import { sendPushToOrg } from '@/actions/push'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
+// Inngest limita 10 triggers por function — com Core + Clínicas + Imóveis +
+// Seguros a lista passou de 10, então o processamento (mesmo corpo,
+// compartilhado) foi dividido em 2 functions só pra caber no limite. Ao
+// adicionar um evento de automação novo, coloque na function com espaço
+// sobrando (a de menos triggers) em vez de sempre na primeira.
+async function handleAutomationEvent({ event, step }: { event: any; step: any }) {
+  const supabase = createAdminClient()
+  const { orgId, leadId, formId, stageId, tag } = event.data as {
+    orgId:    string
+    leadId:   string | undefined
+    formId?:  string
+    stageId?: string
+    tag?:     string
+  }
+
+  // Some triggers don't have a leadId — skip those.
+  if (!leadId) return { matched: 0 }
+
+  const { data: automations } = await supabase
+    .from('automations')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .eq('trigger_type', event.name)
+
+  if (!automations || automations.length === 0) return { matched: 0 }
+
+  let matchedCount = 0
+
+  for (const auto of automations) {
+    let isMatch = true
+    if (event.name === 'form.submitted' && auto.trigger_config.formId) {
+      if (auto.trigger_config.formId !== formId) isMatch = false
+    }
+    if (event.name === 'lead.stage_changed' && auto.trigger_config.stageId) {
+      if (auto.trigger_config.stageId !== stageId) isMatch = false
+    }
+    if (event.name === 'lead.tag_added' && auto.trigger_config.tag) {
+      if (auto.trigger_config.tag !== tag) isMatch = false
+    }
+    // task.overdue, lead.stale, appointment.booked: no extra filter needed at this layer
+
+    if (isMatch) {
+      matchedCount++
+      await step.run(`create-run-${auto.id}`, async () => {
+        const { data: run, error } = await supabase.from('automation_runs').insert({
+          organization_id: orgId,
+          automation_id: auto.id,
+          contato_id: leadId,
+          status: 'running',
+          current_step: 0,
+          started_at: new Date().toISOString(),
+          trigger_payload: event.data ?? {},
+        }).select().single()
+
+        if (error || !run) {
+          throw new Error(`Falha ao criar automation_run para automation ${auto.id}: ${error?.message}`)
+        }
+
+        await inngest.send({
+          name: 'automation.run.execute',
+          data: { runId: run.id, orgId }
+        })
+      })
+    }
+  }
+
+  return { matched: matchedCount }
+}
+
 export const processAutomationEvent = inngest.createFunction(
   {
     id: 'automation-process',
@@ -23,6 +93,16 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'clinic.appointment.confirmed' },
       { event: 'clinic.quote.approved' },
       { event: 'clinic.attendance.completed' },
+    ]
+  },
+  handleAutomationEvent,
+)
+
+export const processAutomationEventVerticals = inngest.createFunction(
+  {
+    id: 'automation-process-verticals',
+    concurrency: { key: 'event.data.orgId', limit: 5 },
+    triggers: [
       // Vertical Imobiliárias — ciclo de vida de visitas (Fase 2), mesmo
       // motor genérico, sem engine paralela.
       { event: 'imoveis.visit.scheduled' },
@@ -37,70 +117,7 @@ export const processAutomationEvent = inngest.createFunction(
       { event: 'seguros.policy.renewal_due' },
     ]
   },
-  async ({ event, step }: { event: any; step: any }) => {
-    const supabase = createAdminClient()
-    const { orgId, leadId, formId, stageId, tag } = event.data as {
-      orgId:    string
-      leadId:   string | undefined
-      formId?:  string
-      stageId?: string
-      tag?:     string
-    }
-
-    // Some triggers don't have a leadId — skip those.
-    if (!leadId) return { matched: 0 }
-
-    const { data: automations } = await supabase
-      .from('automations')
-      .select('*')
-      .eq('organization_id', orgId)
-      .eq('is_active', true)
-      .eq('trigger_type', event.name)
-
-    if (!automations || automations.length === 0) return { matched: 0 }
-
-    let matchedCount = 0
-
-    for (const auto of automations) {
-      let isMatch = true
-      if (event.name === 'form.submitted' && auto.trigger_config.formId) {
-        if (auto.trigger_config.formId !== formId) isMatch = false
-      }
-      if (event.name === 'lead.stage_changed' && auto.trigger_config.stageId) {
-        if (auto.trigger_config.stageId !== stageId) isMatch = false
-      }
-      if (event.name === 'lead.tag_added' && auto.trigger_config.tag) {
-        if (auto.trigger_config.tag !== tag) isMatch = false
-      }
-      // task.overdue, lead.stale, appointment.booked: no extra filter needed at this layer
-
-      if (isMatch) {
-        matchedCount++
-        await step.run(`create-run-${auto.id}`, async () => {
-          const { data: run, error } = await supabase.from('automation_runs').insert({
-            organization_id: orgId,
-            automation_id: auto.id,
-            contato_id: leadId,
-            status: 'running',
-            current_step: 0,
-            started_at: new Date().toISOString(),
-            trigger_payload: event.data ?? {},
-          }).select().single()
-
-          if (error || !run) {
-            throw new Error(`Falha ao criar automation_run para automation ${auto.id}: ${error?.message}`)
-          }
-
-          await inngest.send({
-            name: 'automation.run.execute',
-            data: { runId: run.id, orgId }
-          })
-        })
-      }
-    }
-
-    return { matched: matchedCount }
-  }
+  handleAutomationEvent,
 )
 
 export const executeAutomationRun = inngest.createFunction(
