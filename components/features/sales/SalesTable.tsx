@@ -25,6 +25,10 @@ interface Props {
   members: Member[]
   products: Product[]
   currentUserId: string
+  /** Agências de Tráfego (Etapa 2, Fase G) — mostra a origem do lead
+   *  (contatos.source) como coluna extra, já disponível no join com
+   *  `leads` em `listSales`, sem inventar campo novo. */
+  isTraffic?: boolean
 }
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -33,7 +37,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Cancelada', className: 'bg-muted text-muted-foreground' },
 }
 
-export default function SalesTable({ orgSlug, sales, members, products, currentUserId }: Props) {
+export default function SalesTable({ orgSlug, sales, members, products, currentUserId, isTraffic }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
@@ -75,6 +79,7 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
             <TableHead>Data</TableHead>
             <TableHead>Item</TableHead>
             <TableHead className="hidden sm:table-cell">Lead</TableHead>
+            {isTraffic && <TableHead className="hidden lg:table-cell">Origem</TableHead>}
             <TableHead className="hidden lg:table-cell">Vendedor</TableHead>
             <TableHead className="text-right">Valor</TableHead>
             <TableHead className="hidden lg:table-cell">Pagamento</TableHead>
@@ -114,6 +119,9 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                   </div>
                 </TableCell>
                 <TableCell className="text-sm hidden sm:table-cell">{s.leads?.name || '—'}</TableCell>
+                {isTraffic && (
+                  <TableCell className="text-sm hidden lg:table-cell">{s.leads?.source || '—'}</TableCell>
+                )}
                 <TableCell className="text-sm hidden lg:table-cell">{memberName(s.seller_id)}</TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatCurrency(s.amount_cents || 0)}

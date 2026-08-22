@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { listSales, listActiveProducts, listOrgMembers } from '@/actions/sales'
@@ -6,11 +6,13 @@ import SalesTable from '@/components/features/sales/SalesTable'
 import SaleDialog from '@/components/features/sales/SaleDialog'
 import { formatCurrency } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
+import { isTrafficNiche } from '@/lib/niche'
 
 export const dynamic = 'force-dynamic'
 
 export default async function VendasPage({ params }: { params: { orgSlug: string } }) {
   const user = await requireAuth()
+  const org = await getCurrentOrganization(params.orgSlug)
   const [sales, products, members] = await Promise.all([
     listSales(params.orgSlug),
     listActiveProducts(params.orgSlug),
@@ -65,6 +67,7 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
         members={members}
         products={products}
         currentUserId={user.id}
+        isTraffic={isTrafficNiche(org.niche)}
       />
     </div>
   )
