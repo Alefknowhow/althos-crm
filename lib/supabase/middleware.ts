@@ -54,7 +54,8 @@ function classifyRoute(pathname: string): 'public' | 'authenticated' | 'super_ad
     pathname.startsWith('/docs/')    ||  // documentation
     pathname.startsWith('/api/webhooks/') ||  // webhook receivers (self-authenticate)
     pathname.startsWith('/api/inngest')    ||  // Inngest event API
-    pathname.startsWith('/api/track/')         // tracking da proposta pública (sem login)
+    pathname.startsWith('/api/track/')     ||  // tracking da proposta pública (sem login)
+    pathname.startsWith('/api/mcp')            // Althos MCP Server — autentica via Bearer token (agent_tokens), não cookie de sessão
   ) {
     return 'public'
   }
