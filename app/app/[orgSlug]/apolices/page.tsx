@@ -6,6 +6,7 @@ import { listQuotes } from '@/actions/insurance-quotes'
 import { listInsuranceProducts } from '@/actions/insurance-products'
 import { listInsurers } from '@/actions/insurers'
 import { listLeadsForPicker } from '@/actions/travel-proposals'
+import { getInsuranceRenewalSettings } from '@/actions/insurance-settings'
 import InsurancePoliciesView from '@/components/features/insurance/InsurancePoliciesView'
 
 export const dynamic = 'force-dynamic'
@@ -17,12 +18,13 @@ export default async function InsurancePoliciesPage({
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isInsuranceNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
 
-  const [policies, quotes, products, insurers, contatos] = await Promise.all([
+  const [policies, quotes, products, insurers, contatos, renewalReminderDays] = await Promise.all([
     listPolicies(params.orgSlug),
     listQuotes(params.orgSlug),
     listInsuranceProducts(params.orgSlug),
     listInsurers(params.orgSlug),
     listLeadsForPicker(params.orgSlug),
+    getInsuranceRenewalSettings(params.orgSlug),
   ])
 
   return (
@@ -33,6 +35,7 @@ export default async function InsurancePoliciesPage({
       products={products}
       insurers={insurers}
       contatos={contatos}
+      renewalReminderDays={renewalReminderDays}
     />
   )
 }

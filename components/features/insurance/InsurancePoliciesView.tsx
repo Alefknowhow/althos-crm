@@ -9,13 +9,16 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Loader2, X } from 'lucide-react'
+import { Plus, Loader2, X, BellRing } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
 import { issuePolicy, cancelPolicy, type InsurancePolicyRow, type InsurancePolicyStatus } from '@/actions/insurance-policies'
+import { saveInsuranceRenewalSettings } from '@/actions/insurance-settings'
 import type { InsuranceQuoteRow } from '@/actions/insurance-quotes'
 import type { InsuranceProductRow } from '@/actions/insurance-products'
 import type { InsurerRow } from '@/actions/insurers'
+
+const REMINDER_DAY_OPTIONS = [120, 90, 60, 30, 15]
 
 type ContatoOption = { id: string; name: string }
 
@@ -38,7 +41,7 @@ function strToCents(s: string) {
 function fmtDate(d: string) { return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') }
 
 export default function InsurancePoliciesView({
-  orgSlug, policies, quotes, products, insurers, contatos,
+  orgSlug, policies, quotes, products, insurers, contatos, renewalReminderDays,
 }: {
   orgSlug: string
   policies: InsurancePolicyRow[]
@@ -46,6 +49,7 @@ export default function InsurancePoliciesView({
   products: InsuranceProductRow[]
   insurers: InsurerRow[]
   contatos: ContatoOption[]
+  renewalReminderDays: number[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -61,6 +65,30 @@ export default function InsurancePoliciesView({
   const [commission, setCommission] = useState('')
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  const [remindersOpen, setRemindersOpen] = useState(false)
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set(renewalReminderDays))
+  const [savingReminders, setSavingReminders] = useState(false)
+
+  function toggleReminderDay(day: number) {
+    setSelectedDays(prev => {
+      const next = new Set(prev)
+      if (next.has(day)) next.delete(day)
+      else next.add(day)
+      return next
+    })
+  }
+
+  async function handleSaveReminders() {
+    if (selectedDays.size === 0) { toast.error('Marque ao menos um prazo.'); return }
+    setSavingReminders(true)
+    const res = await saveInsuranceRenewalSettings(orgSlug, Array.from(selectedDays))
+    setSavingReminders(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Lembretes de renovação salvos')
+    setRemindersOpen(false)
+    router.refresh()
+  }
 
   const openQuotes = quotes.filter(q => q.status !== 'aprovada' && q.status !== 'recusada' && q.status !== 'cancelada')
   const selectedQuote = quotes.find(q => q.id === quoteId)
@@ -116,9 +144,14 @@ export default function InsurancePoliciesView({
         title="Apólices"
         hint="Contratos de seguro emitidos."
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Emitir apólice
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setRemindersOpen(true)}>
+              <BellRing className="w-4 h-4 mr-1.5" /> Lembretes de renovação
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" /> Emitir apólice
+            </Button>
+          </div>
         }
       />
       <p className="text-sm text-muted-foreground">{policies.length} apólice{policies.length === 1 ? '' : 's'}</p>
@@ -260,6 +293,41 @@ export default function InsurancePoliciesView({
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleIssue} disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />} Emitir apólice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={remindersOpen} onOpenChange={setRemindersOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Lembretes de renovação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Quantos dias antes do vencimento a apólice deve gerar uma tarefa automática pro corretor.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {REMINDER_DAY_OPTIONS.map(day => {
+                const active = selectedDays.has(day)
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleReminderDay(day)}
+                    aria-pressed={active}
+                    className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                      active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                    }`}
+                  >
+                    {day} dias
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemindersOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveReminders} disabled={savingReminders}>
+              {savingReminders && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />} Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

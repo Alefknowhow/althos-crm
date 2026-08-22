@@ -34,6 +34,7 @@ export const processAutomationEvent = inngest.createFunction(
       // Vertical Seguros — ciclo de vida de apólices (Fase 3), mesmo
       // motor genérico, sem engine paralela.
       { event: 'seguros.policy.issued' },
+      { event: 'seguros.policy.renewal_due' },
     ]
   },
   async ({ event, step }: { event: any; step: any }) => {
