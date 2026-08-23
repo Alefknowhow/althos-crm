@@ -129,14 +129,14 @@ export default function CustomerProfileForm({
       <CardHeader>
         <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {/* Documentos */}
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+        <div className="rounded-lg border border-border/80 p-3.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
             Documentos
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-1.5 w-44">
               <div className="flex items-center gap-1.5">
                 <Label className="text-xs">CPF</Label>
                 <CopyButton value={form.cpf} label="CPF" />
@@ -148,7 +148,7 @@ export default function CustomerProfileForm({
                 inputMode="numeric"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-36">
               <Label className="text-xs">RG</Label>
               <Input
                 value={form.rg}
@@ -156,9 +156,9 @@ export default function CustomerProfileForm({
                 placeholder="00.000.000-0"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-40">
               <div className="flex items-center gap-1.5">
-                <Label className="text-xs">Data de nascimento</Label>
+                <Label className="text-xs">Nascimento</Label>
                 <CopyButton value={form.date_of_birth} label="Data de nascimento" />
               </div>
               <Input
@@ -171,21 +171,21 @@ export default function CustomerProfileForm({
         </div>
 
         {/* Passaporte e Visto */}
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+        <div className="rounded-lg border border-border/80 p-3.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
             Passaporte e Visto
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Número do passaporte</Label>
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-1.5 w-40">
+              <Label className="text-xs">Nº do passaporte</Label>
               <Input
                 value={form.passport_number}
                 onChange={e => setForm({ ...form, passport_number: e.target.value.toUpperCase() })}
                 placeholder="AB123456"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Validade do passaporte</Label>
+            <div className="space-y-1.5 w-40">
+              <Label className="text-xs">Validade</Label>
               <Input
                 type="date"
                 value={form.passport_expiry}
@@ -208,12 +208,12 @@ export default function CustomerProfileForm({
         </div>
 
         {/* Endereço */}
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+        <div className="rounded-lg border border-border/80 p-3.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
             Endereço
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <div className="space-y-1.5 md:col-span-2">
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-1.5 w-36">
               <Label className="text-xs">CEP</Label>
               <div className="flex gap-1">
                 <Input
@@ -229,6 +229,7 @@ export default function CustomerProfileForm({
                   onClick={lookupCep}
                   disabled={cepLoading}
                   title="Buscar endereço pelo CEP"
+                  className="shrink-0 px-2"
                 >
                   {cepLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -238,7 +239,7 @@ export default function CustomerProfileForm({
                 </Button>
               </div>
             </div>
-            <div className="space-y-1.5 md:col-span-4">
+            <div className="space-y-1.5 flex-1 min-w-[220px]">
               <Label className="text-xs">Rua / Logradouro</Label>
               <Input
                 value={form.street}
@@ -246,8 +247,7 @@ export default function CustomerProfileForm({
                 placeholder="Rua das Acácias"
               />
             </div>
-
-            <div className="space-y-1.5 md:col-span-1">
+            <div className="space-y-1.5 w-20">
               <Label className="text-xs">Número</Label>
               <Input
                 value={form.number}
@@ -255,7 +255,7 @@ export default function CustomerProfileForm({
                 placeholder="123"
               />
             </div>
-            <div className="space-y-1.5 md:col-span-2">
+            <div className="space-y-1.5 flex-1 min-w-[160px]">
               <Label className="text-xs">Complemento</Label>
               <Input
                 value={form.complement}
@@ -263,7 +263,7 @@ export default function CustomerProfileForm({
                 placeholder="Apto 502, Bloco B"
               />
             </div>
-            <div className="space-y-1.5 md:col-span-3">
+            <div className="space-y-1.5 flex-1 min-w-[160px]">
               <Label className="text-xs">Bairro</Label>
               <Input
                 value={form.district}
@@ -271,8 +271,7 @@ export default function CustomerProfileForm({
                 placeholder="Centro"
               />
             </div>
-
-            <div className="space-y-1.5 md:col-span-3">
+            <div className="space-y-1.5 flex-1 min-w-[160px]">
               <Label className="text-xs">Cidade</Label>
               <Input
                 value={form.city}
@@ -280,7 +279,7 @@ export default function CustomerProfileForm({
                 placeholder="Itajaí"
               />
             </div>
-            <div className="space-y-1.5 md:col-span-1">
+            <div className="space-y-1.5 w-16">
               <Label className="text-xs">UF</Label>
               <Input
                 value={form.state}
@@ -289,7 +288,7 @@ export default function CustomerProfileForm({
                 maxLength={2}
               />
             </div>
-            <div className="space-y-1.5 md:col-span-2">
+            <div className="space-y-1.5 w-20">
               <Label className="text-xs">País</Label>
               <Input
                 value={form.country}
@@ -302,8 +301,8 @@ export default function CustomerProfileForm({
         </div>
 
         {/* Observações */}
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+        <div className="rounded-lg border border-border/80 p-3.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
             Observações internas
           </div>
           <Textarea
