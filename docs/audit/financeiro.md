@@ -1,72 +1,60 @@
 # Auditoria — Módulo Financeiro
 
-> Gerado em 2026-07-29. Faz parte da auditoria completa do app. Ver também os demais docs em `docs/audit/`.
+> Gerado em 2026-07-29, **revisado em 2026-08-23** como parte da retomada
+> da auditoria completa. Ver também `docs/audit/vendas.md` e
+> `docs/audit/agencias-trafego.md`.
 
 ## 1. Rotas
 
 | Rota | Arquivo | Função |
 |---|---|---|
-| `/app/[orgSlug]/financeiro` | `app/app/[orgSlug]/financeiro/page.tsx` | Única página. `requireAuth` + redirect se `!isTravelNiche`. Busca `listFinancialEntries` + `listFinancialSettings` em paralelo, renderiza `PageHeader` + `FinanceiroTabs`, passando um `<FinancialDashboard/>` já instanciado server-side como prop `ReactNode` (padrão interessante: componente client montado no servidor e passado como children). Sem sub-rota `[id]` — seleção de lançamento é estado client-side, **não é possível deep-link/bookmark** de um lançamento específico. |
+| `/app/[orgSlug]/financeiro` | `app/app/[orgSlug]/financeiro/page.tsx` | Única página. **Correção à auditoria original**: o texto de Jul/29 dizia que o módulo era exclusivo do nicho viagem — isso está **desatualizado**; hoje a página não faz gate de nicho nenhum, é genérica pra qualquer org (confirmado no código atual). `requireAuth` + `getCurrentOrganization`, busca `listFinancialEntries` + `listFinancialSettings` em paralelo. Sem sub-rota `[id]` — lançamento selecionado não é deep-linkável (ainda aberto). |
 
 ## 2. Componentes
 
-| Componente | Papel | Problemas encontrados |
-|---|---|---|
-| `FinanceiroTabs.tsx` | Shell com 3 abas (Lançamentos/Dashboard/Configurações). | Sem tratamento mobile específico além do `Tabs` genérico. |
-| `FinancialDashboard.tsx` | KPIs, 2 gráficos, próximos vencimentos, DRE simplificado. | Breakpoints inconsistentes: KPIs quebram em `sm` (640px), gráficos em `lg` (1024px) — entre 640–1024px fica "3 KPIs lado a lado mas 1 gráfico por linha". Tabela de DRE sem `overflow-x-auto` — nomes de categoria longos podem forçar scroll horizontal da página inteira. Lista de vencimentos com `max-h-[280px] overflow-y-auto` aninhado dentro do scroll da página — scroll duplo no mobile. Um spinner único bloqueia todo o dashboard a cada troca de período, sem skeleton por seção. |
-| `FinancialEntriesView.tsx` | Lista mestre + editor split view de lançamentos. | Altura calculada com número mágico `h-[calc(100dvh-19rem)]` — frágil a mudanças de altura do header/abas. Barra de filtros (busca + 2 selects + 2 botões) pode quebrar em várias linhas em telas ~360px, sem UI compacta alternativa (ex: sheet de filtros). Grid do editor com 10 campos numa coluna única no mobile sem agrupamento — edição vira um scroll longo sem seções. `StatusQuickMenu` é um badge pequeno como trigger — alvo de toque provavelmente abaixo de 24-44px recomendado. |
-| `FinancialSettingsView.tsx` | Cards de configuração (categoria/subcategoria/centro de custo/conta/operadora/forma de pagamento). | Input de `payment_day` sem validação inline (só toast de erro no submit, sem dica de faixa válida 1-31 antes disso). Listas com `max-h-64 overflow-y-auto` sem busca — difícil de escanear listas longas, scroll aninhado dentro do scroll da página. |
-| `FinancialCsvImporter.tsx` | Importador de CSV client-side (`lib/csv.ts`). | Tabela de preview sem `overflow-x-auto` — clipping em diálogos estreitos. **Toda linha importada recebe `categoria: 'A categorizar'` hardcoded** — exige recategorização manual completa depois de qualquer importação. Detecção de tipo (receita/despesa) só pelo sinal `-` no início do valor bruto — bancos que usam parênteses pra negativo (`(150,00)`) são classificados errado. Lista de sinônimos de cabeçalho hardcoded, sem UI de correção manual se a detecção errar. |
-| Gráficos (`CashFlowChart`, `DailyCashFlowChart`, `ExpensesByCategoryChart`) | Recharts via `next/dynamic({ssr:false})`. | Altura fixa `h-[280px]` **não responsiva** — no mobile os gráficos ficam achatados/largos demais, dificultando leitura de tendência. |
+Sem mudança desde a auditoria original — `FinanceiroTabs`, `FinancialDashboard`, `FinancialEntriesView`, `FinancialSettingsView`, `FinancialCsvImporter`, gráficos Recharts. Todos os problemas de UI/mobile listados em Jul/29 **continuam abertos** (breakpoints inconsistentes, número mágico de altura, filtros sem UI compacta, gráficos com altura fixa, listas sem busca) — não foram tocados nesta sessão, que focou em segurança/dados.
 
 ## 3. Server Actions
 
-### `actions/financial.ts` (`financial_entries`)
+### `actions/financial.ts`
 
-| Action | Propósito | Tabela |
-|---|---|---|
-| `syncSaleRevenueEntry` | **Ponte Reservas → Financeiro**: cria/atualiza entrada de receita de comissão, agendada no dia de pagamento configurado do operador. Idempotente por `venda_id`. | Lê `financial_settings` (payment_day); escreve `financial_entries` |
-| `listFinancialEntries` / `getFinancialEntry` | Leitura com filtros | `financial_entries` |
-| `createFinancialEntry` | Insere; se `is_recurring`, gera 11 ocorrências futuras agrupadas por `recurrence_group_id` (permissão `financial`) | `financial_entries` |
-| `updateFinancialEntry` / `deleteFinancialEntry` | Editar/excluir (permissão `financial`; delete bloqueado sob impersonação) | `financial_entries`, Storage `financial-attachments` |
-| `bulkCreateFinancialEntries` | Import CSV — insere como `status:'pago'` (permissão `financial`) | `financial_entries` |
-| `suggestCategoryForEntry` | Sugestão de categoria via IA (Claude Haiku) | nenhuma (só chamada LLM) |
-| `uploadFinancialAttachment`/`deleteFinancialAttachment`/`getFinancialAttachmentUrl` | Anexos (PDF/imagem, ≤15MB) | `financial_entries.anexos`, Storage |
-| `getFinancialSummary`, `getCashFlowSeries`, `getExpensesByCategory`, `getSimpleDRE`, `getDailyCashFlow`, `getUpcomingDueEntries`, `getFinancialDashboardData` | Agregações read-only pro dashboard | `financial_entries` reads |
+**Achado principal desta revisão — corrigido**: as 12 funções de agregação read-only do dashboard (`getFinancialSummary`, `getFinancialKpis`, `getCashFlowSeries`, `getExpensesByCategory`, `getRevenueBreakdown`, `getExpenseBreakdown`, `getSimpleDRE`, `getDailyCashFlow`, `getUpcomingDueEntries`, `getCashFlowProjection`, `getAccountsOverview`, `getStrategicIndicators`) resolviam a org mas **nunca chamavam `checkMemberPermission`** — só as actions de escrita e as de leitura mais óbvias (`listFinancialEntries`, `getFinancialEntry`) checavam. Qualquer membro autenticado da organização, mesmo com `permissions.financial` explicitamente `false`, conseguia ler receita/despesa/fluxo de caixa/contas a pagar-receber/indicadores estratégicos completos chamando a Server Action diretamente (sem precisar da UI). **Corrigido**: `requireFinancialAccess()` centraliza a checagem, aplicada nas 12 funções.
 
-### `actions/financial-settings.ts` (`financial_settings`)
+`syncSaleRevenueEntry` não precisa desse gate — é uma chamada interna disparada depois que `saveTravelSaleAndGenerateTasks` (Reservas) já validou a permissão de quem está salvando a venda; não é invocável diretamente pelo cliente com um `orgSlug` arbitrário de fora desse fluxo.
 
-- `listFinancialSettings`, `createFinancialSetting`, `updateFinancialSettingPaymentDay`, `deleteFinancialSetting` (CRUD das 6 listas de configuração, permissão `financial`, delete bloqueado sob impersonação).
+### `actions/financial-settings.ts`
+
+Todas as 4 funções (`listFinancialSettings`, `createFinancialSetting`, `updateFinancialSettingPaymentSchedule`, `deleteFinancialSetting`) já checavam `checkMemberPermission('financial')` — **sem gap encontrado aqui**, nada a corrigir.
 
 ## 4. Permissões
 
-Chave: **`financial`**. **Gap significativo**: todas as actions de **leitura** (`listFinancialEntries`, `getFinancialEntry`, `listFinancialSettings`, `getFinancialAttachmentUrl`, todas as agregações do dashboard, `suggestCategoryForEntry`) **não chamam `checkMemberPermission`** — só as mutantes checam. A página em si só verifica nicho, não permissão. Qualquer membro autenticado — mesmo com `permissions.financial` explicitamente `false` — pode ver todos os dados financeiros (lançamentos, anexos via URL assinada, dashboard) chamando as actions diretamente. Guard de impersonação também inconsistente: `deleteFinancialEntry`/`deleteFinancialSetting` bloqueiam, mas create/update não.
+Chave: **`financial`**. Gap de leitura da auditoria original (item 1) **corrigido nesta revisão** — as 12 agregações listadas acima. A página em si ainda não chama `checkMemberPermission` diretamente, mas como toda a cadeia de dados abaixo dela agora falha fechado (lança erro/retorna vazio sem permissão), não há mais vazamento de dado — mesma situação já observada em Vendas.
+
+**Guard de impersonação — reclassificado, não é bug**: a auditoria original apontava "inconsistente: só os deletes bloqueiam, create/update não" como problema. Revisão confirma que esse é o **padrão consistente do projeto inteiro** (`deleteFinancialEntry`, `deleteFinancialSetting`, `deleteAdAccount`, `attachSignedContract`-adjacent flows, etc. bloqueiam; criações/edições reversíveis não) — impersonação existe pra suporte/debug, e bloquear só o irreversível (hard delete) é a decisão de design deliberada, não uma lacuna. Removido da lista de problemas.
 
 ## 5. Conexões com outros módulos
 
-- **Reservas → Financeiro**: `saveTravelSaleAndGenerateTasks` chama `syncSaleRevenueEntry` após salvar uma venda — único ponto de entrada externo no módulo.
-- **Config de dia de pagamento do operador**: `financial_settings` (`type='operadora'`, `payment_day`) é lido via match `ilike` contra `sale.operator`. **Se o nome do operador em Reservas não bater** (typo, capitalização diferente, ou operador não cadastrado), a entrada é criada **sem vencimento**, silenciosamente — sem aviso de volta pra UI de Reservas.
-- Nenhum outro arquivo importa `actions/financial.ts`/`financial-settings.ts` fora do próprio módulo e de `travel-sales.ts`.
-- Visibilidade no menu depende de `isTravelNiche` — orgs fora do nicho viagem nunca alcançam o módulo.
+- **Reservas → Financeiro**: `syncSaleRevenueEntry`, sem mudança.
+- **Vendas (genérico) → Financeiro**: **novo nesta sessão** — `createSale` (`actions/sales.ts`) gera parcelas em `financial_entries` quando a venda é de um plano recorrente (nicho tráfego). Ainda não existe pra vendas avulsas comuns (ver `docs/audit/vendas.md`, achado #3).
+- **Config de dia de pagamento do operador**: sem mudança — `ilike` contra `sale.operator`, ainda falha silenciosamente sem vencimento se o nome não bater (achado antigo, ainda aberto, não corrigido nesta rodada — é uma melhoria de UX/robustez, não uma falha de segurança).
 
 ## 6. Notas de mobile
 
-- Dashboard: sem lógica mobile dedicada além dos breakpoints de grid — tudo empilha em coluna única, mas os gráficos mantêm altura fixa de 280px independente da largura.
-- Lista/editor de lançamentos: única adaptação mobile genuína do módulo — painel único por vez (lista OU editor) com seta de voltar, escondendo a barra de filtros quando um lançamento está selecionado.
-- Configurações e importador de CSV: sem lógica mobile específica, dependem do wrap padrão de grid/flex.
+Sem mudança — ver auditoria original.
 
-## Lista de problemas concretos
+## Lista de problemas concretos (atualizada)
 
-1. **[Segurança]** Página só verifica nicho, não permissão `financial`; actions de leitura sem `checkMemberPermission`.
-2. Guard de impersonação inconsistente (só nos deletes).
-3. `syncSaleRevenueEntry` — match de operador por `ilike` sem feedback de falha; comissão fica sem vencimento silenciosamente.
-4. `FinancialDashboard` — breakpoints inconsistentes entre KPIs (`sm`) e gráficos (`lg`).
-5. Tabela de DRE sem `overflow-x-auto`.
-6. `FinancialEntriesView` — altura com número mágico `19rem`, frágil a mudanças de layout.
-7. Barra de filtros pode quebrar em várias linhas em telas muito estreitas.
-8. Tabela de preview do importador de CSV sem scroll horizontal.
-9. **[Funcional]** Todo import de CSV cai em "A categorizar" — recategorização manual completa sempre necessária.
-10. Detecção de tipo (receita/despesa) por sinal `-` só — bancos com parênteses pra negativo classificam errado.
-11. Gráficos com altura fixa não responsiva — achatados no mobile.
-12. Listas de configuração sem busca, `max-h-64` com scroll aninhado.
-13. Sem sub-rota `[id]` — lançamento selecionado não é deep-linkável nem sobrevive a refresh/voltar.
+1. ~~**[Segurança]** Página só verifica nicho, não permissão~~ — **Parcialmente resolvido**: a premissa "só verifica nicho" estava desatualizada (a página não gateia por nicho há tempo); o gap real (agregações sem `checkMemberPermission`) foi encontrado e corrigido nesta revisão.
+2. ~~Guard de impersonação inconsistente~~ — **Reclassificado**: é o padrão consistente do projeto (só bloqueia hard-delete), não um bug.
+3. `syncSaleRevenueEntry` — match de operador por `ilike` sem feedback de falha — **ainda aberto**.
+4. `FinancialDashboard` — breakpoints inconsistentes entre KPIs e gráficos — **ainda aberto**.
+5. Tabela de DRE sem `overflow-x-auto` — **ainda aberto**.
+6. `FinancialEntriesView` — altura com número mágico — **ainda aberto**.
+7. Barra de filtros pode quebrar em telas estreitas — **ainda aberto**.
+8. Tabela de preview do CSV sem scroll horizontal — **ainda aberto**.
+9. **[Funcional]** Import de CSV sempre cai em "A categorizar" — **ainda aberto**.
+10. Detecção de tipo por sinal `-` só (não trata parênteses) — **ainda aberto**.
+11. Gráficos com altura fixa não responsiva — **ainda aberto**.
+12. Listas de configuração sem busca — **ainda aberto**.
+13. Sem sub-rota `[id]` — lançamento não é deep-linkável — **ainda aberto**.
+14. **[Segurança, novo]** 12 agregações do dashboard sem checagem de permissão — **corrigido nesta revisão**.
