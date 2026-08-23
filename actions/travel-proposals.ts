@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { checkContatoPermission } from '@/actions/contatos'
 import { revalidatePath } from 'next/cache'
 
 export type ProposalRow = {
@@ -84,7 +85,10 @@ export async function listProposals(orgSlug: string): Promise<ProposalRow[]> {
 }
 
 export async function getProposal(orgSlug: string, id: string): Promise<ProposalRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return null
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_proposals')
@@ -233,7 +237,10 @@ export type LeadProposalRow = {
 }
 
 export async function listProposalsForLead(orgSlug: string, leadId: string): Promise<LeadProposalRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_proposals')
@@ -246,8 +253,15 @@ export async function listProposalsForLead(orgSlug: string, leadId: string): Pro
 }
 
 // Lightweight lead list for the proposal → pipeline link picker.
+// Reaproveitada por várias verticais (Cotações, Seguros, Imóveis, Reservas)
+// como picker de contato — não é domínio exclusivo de 'cotacoes', por isso
+// usa checkContatoPermission (libera com pipeline/leads/clients) em vez de
+// travar por 'cotacoes' e quebrar os outros chamadores.
 export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string; name: string; phone: string | null }[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')

@@ -209,7 +209,10 @@ export async function deleteBudgetDocument(orgSlug: string, id: string) {
 }
 
 export async function getBudgetDocumentSourceUrl(orgSlug: string, id: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
 
   const { data: doc } = await supabase

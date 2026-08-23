@@ -240,7 +240,10 @@ export type OfferRow = {
 }
 
 export async function listOffers(orgSlug: string): Promise<OfferRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_proposals')
@@ -446,8 +449,10 @@ function pickTranslation(items: any[] | undefined, preferred = 'pt'): string | u
 }
 
 export async function tripadvisorLookup(orgSlug: string, query: string) {
-  await requireAuth()
-  await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
 
   const key = process.env.TRIPADVISOR_API_KEY
   if (!key) {
@@ -497,8 +502,10 @@ export async function tripadvisorLookup(orgSlug: string, query: string) {
 
 /* ─────────── Unsplash (busca de foto de capa) ─────────── */
 export async function unsplashSearch(orgSlug: string, query: string) {
-  await requireAuth()
-  await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
 
   const key = process.env.UNSPLASH_ACCESS_KEY
   if (!key) {
@@ -533,8 +540,10 @@ export async function unsplashSearch(orgSlug: string, query: string) {
 
 /** Aciona o endpoint de download da Unsplash (obrigatório pelos termos de uso ao usar uma foto). */
 export async function unsplashTrackDownload(orgSlug: string, downloadLocation: string) {
-  await requireAuth()
-  await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return { ok: false as const }
   const key = process.env.UNSPLASH_ACCESS_KEY
   if (!key || !downloadLocation) return { ok: false as const }
   try {
