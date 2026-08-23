@@ -1,6 +1,39 @@
 # Auditoria — Módulo Cotações
 
-> Gerado em 2026-07-29. Faz parte da auditoria completa do app. Ver também `docs/audit/pipeline.md`, `docs/audit/contatos.md`, `docs/audit/reservas.md`.
+> Gerado em 2026-07-29, **revisado em 2026-08-23** (retomada da auditoria
+> completa). Ver também `docs/audit/pipeline.md`, `docs/audit/contatos.md`,
+> `docs/audit/reservas.md`.
+
+## 0. Status 2026-08-23
+
+`CotacoesTabs.tsx` (achado #1, exclusão sem commit) **não existe mais no
+repo** — resolvido em algum momento fora desta sessão. `ProposalBuilder.tsx`
+(1212 linhas) e `PublicProposalView.tsx` (927 linhas) — confirmados código
+morto (zero importadores, superados por `QuotationEditor`/
+`PublicQuotationView`) e **removidos nesta revisão**.
+
+`BudgetDocumentsView.tsx`/`BudgetDocumentPrintView.tsx`/`actions/budget-documents.ts`
+(Orçamento IA) **mantidos como estão** — decisão deliberada: é uma
+feature inteira (tabela própria, CRUD completo, rota de impressão viva)
+órfã só de navegação, não código morto de verdade; removê-la fecha a
+porta pra religar sem reconstruir. Fica documentado como recomendação
+(religar no menu ou decidir descontinuar formalmente), não como
+correção automática.
+
+Gap de permissão real encontrado e corrigido: `getProposal`,
+`listProposalsForLead`, `listOffers`, `getBudgetDocumentSourceUrl` (mais
+sensível — URL assinada de documento) sem `checkMemberPermission`.
+`listLeadsForPicker` também sem nenhuma checagem (nem `requireAuth`) —
+mas é reaproveitada por Seguros/Imóveis/Reservas além de Cotações, então
+foi gateada por `checkContatoPermission` (domínio certo) em vez de
+`cotacoes` (que quebraria os outros chamadores). `tripadvisorLookup`/
+`unsplashSearch`/`unsplashTrackDownload` só tinham `requireAuth` — usam
+chave de API compartilhada de toda a plataforma (não por-org), então
+qualquer membro de qualquer org podia consumir a cota mesmo sem a
+permissão `cotacoes`; gateadas também. `geocodePlace` (Nominatim/OSM,
+serviço gratuito sem chave) deixado como está — já exige sessão
+autenticada, que é a única proteção que faz sentido pra um serviço sem
+custo/cota.
 
 ## 1. Rotas
 
@@ -28,9 +61,9 @@ Não existe rota pública para os documentos de Orçamento IA — só a página 
 | `BudgetDocumentPrintView.tsx` (267 linhas) | PDF whitelabel de um Orçamento IA. | Mesmo problema de inalcançabilidade acima. |
 | `OffersList.tsx` (93 linhas) | Lista de `/ofertas` — linhas de `travel_proposals` com `is_offer=true`. | Viva, ligada à `app/app/[orgSlug]/ofertas/page.tsx`. Compartilha a mesma tabela/editor de Cotações. |
 | `ItineraryEditor.tsx` (195 linhas) | Editor de roteiro dia-a-dia. | Vivo, usado por `QuotationEditor` e pelo `ProposalBuilder` morto. |
-| `ProposalBuilder.tsx` (1212 linhas) | Editor de proposta legado, anterior ao split-view. | **Código morto** — zero importadores em todo o repo. Substituído por `QuotationEditor`. Deveria ser removido/arquivado. |
-| `PublicProposalView.tsx` (927 linhas) | Renderizador público anterior, predecessor do `PublicQuotationView`. | **Código morto** — zero importadores; `/p/[token]` usa `PublicQuotationView`. |
-| `CotacoesTabs.tsx` | Antes envolvia `ProposalsList` + `BudgetDocumentsView` em `Tabs`. | **Deletado da working tree mas a exclusão está sem commit** (`git status` mostra ` D`); `git show HEAD:...` ainda retorna o arquivo completo. Nada importa mais. Estado inconsistente — precisa commitar a remoção ou restaurar se a aba "Orçamento IA" for voltar. |
+| ~~`ProposalBuilder.tsx`~~ (1212 linhas) | Editor de proposta legado, anterior ao split-view. | **Removido em 2026-08-23** — confirmado zero importadores. |
+| ~~`PublicProposalView.tsx`~~ (927 linhas) | Renderizador público anterior, predecessor do `PublicQuotationView`. | **Removido em 2026-08-23** — confirmado zero importadores. |
+| ~~`CotacoesTabs.tsx`~~ | Antes envolvia `ProposalsList` + `BudgetDocumentsView` em `Tabs`. | **Não existe mais no repo** — resolvido fora desta sessão. |
 
 ## 3. Server Actions
 
@@ -53,7 +86,7 @@ Todas as actions mutantes de `quotations.ts`/`travel-proposals.ts` (exceto `geoc
 
 ## 4. Permissões
 
-Chave: **`cotacoes`**, módulo `TRAVEL_ONLY_KEYS` (só relevante pra orgs de viagem). Padrão `false` pra membros não-admin — precisa ser concedida explicitamente. Enforcement server-side existe em toda action mutante. **Gap encontrado**: as actions de leitura (`listProposals`, `getQuotationFull`, `getBudgetDocument`, `listBudgetDocuments`) não chamam `checkMemberPermission` — dependem só do redirect `isTravelNiche` na página; um membro sem a permissão `cotacoes` (mas em org de nicho viagem) poderia potencialmente invocar essas actions diretamente.
+Chave: **`cotacoes`**, módulo `TRAVEL_ONLY_KEYS` (só relevante pra orgs de viagem). Padrão `false` pra membros não-admin. `listProposals`/`getQuotationFull`/`getBudgetDocument`/`listBudgetDocuments` (achado original) **já checavam** antes desta revisão — corrigido fora desta sessão. Gaps reais encontrados e corrigidos em 2026-08-23: `getProposal`, `listProposalsForLead`, `listOffers`, `getBudgetDocumentSourceUrl`, `tripadvisorLookup`, `unsplashSearch`, `unsplashTrackDownload`. `listLeadsForPicker` gateada por `checkContatoPermission` (não `cotacoes` — é reaproveitada por Seguros/Imóveis/Reservas).
 
 ## 5. Conexões com outros módulos
 
@@ -74,13 +107,13 @@ Chave: **`cotacoes`**, módulo `TRAVEL_ONLY_KEYS` (só relevante pra orgs de via
 
 ## Lista de problemas concretos
 
-1. `CotacoesTabs.tsx` deletado mas sem commit — repo em estado inconsistente, precisa resolver (commitar remoção ou restaurar).
-2. "Orçamento IA" completamente inalcançável da UI, apesar de componente/actions/tabela/rota de impressão ainda funcionarem entre si — código órfão.
-3. `ProposalBuilder.tsx` (1212 linhas) e `PublicProposalView.tsx` (927 linhas) — código morto, zero importadores, deveriam ser removidos.
+1. ~~`CotacoesTabs.tsx` deletado mas sem commit~~ — **Resolvido** (arquivo não existe mais).
+2. "Orçamento IA" completamente inalcançável da UI — **ainda aberto, decisão deliberada** (ver seção 0): religar no menu ou descontinuar formalmente é decisão de produto, não código morto puro.
+3. ~~`ProposalBuilder.tsx`/`PublicProposalView.tsx` — código morto~~ — **Removidos em 2026-08-23.**
 4. `QuotationEditor.tsx:1076` — toolbar sticky com `top: -20` hardcoded + margens negativas, frágil a mudanças no shell.
 5. `QuotationEditor.tsx:1151,1146` — sizing do preview com números mágicos não compartilhados.
 6. Ambos os painéis do split-view sempre montados — Leaflet/Tiptap rodando fora de tela no mobile.
 7. `ProposalsList.tsx:138,202,251` — lógica de visibilidade duplicada em 3 lugares.
 8. Rota `[id]/orcamento` reusa nome de segmento pra entidade diferente (`budget_documents.id` vs `travel_proposals.id`) — confuso na manutenção.
-9. Sem `checkMemberPermission` nos paths de leitura — só o redirect de nicho protege.
-10. `tripadvisorLookup`/`geocodePlace` sem cache/rate-limit — cliques repetidos batem na API externa toda vez.
+9. ~~Sem `checkMemberPermission` nos paths de leitura~~ — **Corrigido em 2026-08-23** (ver seção 4).
+10. `tripadvisorLookup`/`geocodePlace` sem cache/rate-limit — cliques repetidos batem na API externa toda vez. **Ainda aberto** (agora ao menos gateado por permissão, mas sem cache/throttle).
