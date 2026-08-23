@@ -11,6 +11,11 @@ export const saleInputSchema = z.object({
   installments: z.coerce.number().int().min(1).default(1).optional(),
   status: z.enum(['pending', 'completed', 'cancelled']).default('completed'),
   notes: z.string().optional().nullable(),
+  /** Assinatura de plano recorrente (Agências de Tráfego) — data de
+   *  início do serviço + duração (snapshot do produto no momento da
+   *  venda), usados pra gerar as parcelas mensais em financial_entries. */
+  service_start_date: z.string().optional().nullable(),
+  duration_months: z.coerce.number().int().min(1).optional().nullable(),
 })
 
 export type SaleInput = z.infer<typeof saleInputSchema>

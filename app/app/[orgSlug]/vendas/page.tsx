@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic'
 export default async function VendasPage({ params }: { params: { orgSlug: string } }) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
+  const traffic = isTrafficNiche(org.niche)
   const [sales, products, members] = await Promise.all([
     listSales(params.orgSlug),
     listActiveProducts(params.orgSlug),
@@ -36,6 +37,7 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
             members={members}
             products={products}
             currentUserId={user.id}
+            isTraffic={traffic}
             trigger={
               <Button title="Registrar venda" aria-label="Registrar venda">
                 <Plus className="w-4 h-4 sm:mr-1.5" />
@@ -67,7 +69,7 @@ export default async function VendasPage({ params }: { params: { orgSlug: string
         members={members}
         products={products}
         currentUserId={user.id}
-        isTraffic={isTrafficNiche(org.niche)}
+        isTraffic={traffic}
       />
     </div>
   )

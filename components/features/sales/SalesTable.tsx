@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, FileSignature } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteSale } from '@/actions/sales'
 import { formatCurrency } from '@/lib/utils'
 import SaleDialog from './SaleDialog'
+import PlanoContratoManagerDialog from '@/components/features/agencias-trafego/PlanoContratoManagerDialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -41,6 +42,7 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
+  const [contractSaleId, setContractSaleId] = useState<string | null>(null)
 
   const memberName = (id: string | null) => {
     if (!id) return '—'
@@ -135,12 +137,24 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
+                    {isTraffic && s.duration_months && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        title="Contrato"
+                        onClick={() => setContractSaleId(s.id)}
+                      >
+                        <FileSignature className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     <SaleDialog
                       orgSlug={orgSlug}
                       members={members}
                       products={products}
                       currentUserId={currentUserId}
                       initial={s}
+                      isTraffic={isTraffic}
                       trigger={
                         <Button size="icon" variant="ghost" className="h-8 w-8">
                           <Pencil className="w-3.5 h-3.5" />
@@ -181,6 +195,16 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {contractSaleId && (
+        <PlanoContratoManagerDialog
+          orgSlug={orgSlug}
+          saleId={contractSaleId}
+          clientName={sales.find(s => s.id === contractSaleId)?.leads?.name || null}
+          clientEmail={null}
+          open={!!contractSaleId}
+          onOpenChange={o => !o && setContractSaleId(null)}
+        />
+      )}
     </div>
   )
 }

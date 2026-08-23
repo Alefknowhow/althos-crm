@@ -22,14 +22,19 @@ function fmtCurrencyBr(cents: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
-export async function getContractRenderData(orgSlug: string, saleId: string) {
+/** Motor de contrato genérico por `saleId` — aceita venda de Viagens
+ *  (travel_sales, `sale_id`) ou venda genérica (sales, `sales_generic_id`,
+ *  usada por Agências de Tráfego). `kind` é decidido pelo caller, que já
+ *  sabe de onde veio o botão — evita uma query extra pra descobrir o tipo. */
+export type ContractKind = 'travel' | 'generic'
+
+function contractRefColumn(kind: ContractKind): 'sale_id' | 'sales_generic_id' {
+  return kind === 'generic' ? 'sales_generic_id' : 'sale_id'
+}
+
+export async function getContractRenderData(orgSlug: string, saleId: string, kind: ContractKind = 'travel') {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-
-  const sale = await getTravelSale(orgSlug, saleId)
-  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
-
-  await markContractGenerated(orgSlug, saleId)
 
   const orgBranding = {
     name: org.name,
@@ -41,6 +46,67 @@ export async function getContractRenderData(orgSlug: string, saleId: string) {
     contact_email: (org as any).contact_email ?? null,
     address_street: (org as any).address_street ?? null,
   }
+
+  if (kind === 'generic') {
+    const supabase = createClient()
+    const { data: sale } = await supabase
+      .from('sales')
+      .select('id, amount_cents, sale_date, payment_method, service_start_date, duration_months, contatos(name), products(name, contract_template_id)')
+      .eq('id', saleId).eq('organization_id', org.id).maybeSingle()
+    if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+
+    const client: any = (sale as any).contatos
+    const product: any = (sale as any).products
+    const startDate = sale.service_start_date ? new Date(sale.service_start_date + 'T12:00:00') : null
+    const endDate = startDate && sale.duration_months
+      ? new Date(startDate.getFullYear(), startDate.getMonth() + sale.duration_months, startDate.getDate())
+      : null
+
+    const planoSale = {
+      id: sale.id,
+      client_name: client?.name || '',
+      plano: product?.name || '',
+      valor_mensal_cents: sale.amount_cents,
+      duracao_meses: sale.duration_months,
+      data_inicio: sale.service_start_date,
+      data_fim: endDate ? endDate.toISOString().slice(0, 10) : null,
+      forma_pagamento: sale.payment_method,
+    }
+
+    const templateId = product?.contract_template_id
+    if (templateId) {
+      const supabase2 = createClient()
+      const { data: template } = await supabase2.from('document_templates').select('body_html').eq('id', templateId).eq('organization_id', org.id).maybeSingle()
+      if (template) {
+        const bodyHtml = renderTemplate(template.body_html, {
+          sale: {
+            cliente: planoSale.client_name,
+            plano: planoSale.plano,
+            valor_mensal: fmtCurrencyBr(planoSale.valor_mensal_cents),
+            duracao_meses: planoSale.duracao_meses ? String(planoSale.duracao_meses) : '',
+            data_inicio: fmtDateBr(planoSale.data_inicio),
+            data_fim: fmtDateBr(planoSale.data_fim),
+            forma_pagamento: planoSale.forma_pagamento || '',
+          },
+          org: {
+            nome: org.name,
+            cnpj: orgBranding.cnpj || '',
+            cadastur: orgBranding.cadastur || '',
+            telefone: orgBranding.contact_phone || '',
+            email: orgBranding.contact_email || '',
+            endereco: orgBranding.address_street || '',
+          },
+        })
+        return { ok: true as const, hasTemplate: true as const, bodyHtml, sale: planoSale, org: orgBranding }
+      }
+    }
+    return { ok: true as const, hasTemplate: false as const, sale: planoSale, org: orgBranding }
+  }
+
+  const sale = await getTravelSale(orgSlug, saleId)
+  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+
+  await markContractGenerated(orgSlug, saleId)
 
   const template = await getOrgContractTemplate(orgSlug)
 
@@ -126,7 +192,7 @@ async function getApiKeyOrFail(orgId: string) {
 
 // ─── Contrato da venda ────────────────────────────────────────────────────
 
-export async function getSaleContract(orgSlug: string, saleId: string) {
+export async function getSaleContract(orgSlug: string, saleId: string, kind: ContractKind = 'travel') {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -134,7 +200,7 @@ export async function getSaleContract(orgSlug: string, saleId: string) {
   const { data } = await supabase
     .from('sale_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq(contractRefColumn(kind), saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -143,10 +209,11 @@ export async function getSaleContract(orgSlug: string, saleId: string) {
   return data
 }
 
-export async function uploadContractPdf(orgSlug: string, saleId: string, base64Pdf: string) {
+export async function uploadContractPdf(orgSlug: string, saleId: string, base64Pdf: string, kind: ContractKind = 'travel') {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
+  const col = contractRefColumn(kind)
 
   const bytes = Buffer.from(base64Pdf, 'base64')
   const path = `${org.id}/${saleId}/${Date.now()}-contrato.pdf`
@@ -159,7 +226,7 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
   const { data: existing } = await supabase
     .from('sale_contracts')
     .select('id')
-    .eq('sale_id', saleId)
+    .eq(col, saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -174,7 +241,7 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
   } else {
     const { error } = await supabase.from('sale_contracts').insert({
       organization_id: org.id,
-      sale_id: saleId,
+      [col]: saleId,
       pdf_path: path,
       status: 'draft',
       created_by: user.id,
@@ -182,7 +249,7 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
     if (error) return { ok: false as const, error: error.message }
   }
 
-  revalidatePath(`/app/${orgSlug}/reservas`)
+  revalidatePath(`/app/${orgSlug}/${kind === 'generic' ? 'vendas' : 'reservas'}`)
   return { ok: true as const }
 }
 
@@ -191,9 +258,11 @@ export async function sendContractForSignature(
   saleId: string,
   signer: { name: string; email?: string; phone?: string },
   signer2: { name: string; email?: string; phone?: string },
+  kind: ContractKind = 'travel',
 ) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
+  const col = contractRefColumn(kind)
 
   const keyRes = await getApiKeyOrFail(org.id)
   if (!keyRes.ok) return keyRes
@@ -201,7 +270,7 @@ export async function sendContractForSignature(
   const { data: contract } = await supabase
     .from('sale_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq(col, saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -216,12 +285,19 @@ export async function sendContractForSignature(
     .download(contract.pdf_path)
   if (downloadError || !file) return { ok: false as const, error: downloadError?.message || 'Não foi possível ler o PDF salvo.' }
 
-  const { data: sale } = await supabase.from('travel_sales').select('sale_number').eq('id', saleId).maybeSingle()
+  let docTitle = saleId
+  if (kind === 'generic') {
+    const { data: sale } = await supabase.from('sales').select('id, products(name)').eq('id', saleId).maybeSingle()
+    docTitle = (sale as any)?.products?.name || saleId
+  } else {
+    const { data: sale } = await supabase.from('travel_sales').select('sale_number').eq('id', saleId).maybeSingle()
+    docTitle = sale?.sale_number || saleId
+  }
 
   try {
     const doc = await createAutentiqueDocument(
       keyRes.apiKey,
-      `Contrato ${sale?.sale_number || saleId}`,
+      `Contrato ${docTitle}`,
       [
         { name: signer.name, email: signer.email, phone: signer.phone },
         { name: signer2.name, email: signer2.email, phone: signer2.phone },
@@ -251,14 +327,14 @@ export async function sendContractForSignature(
       .eq('id', contract.id)
     if (error) return { ok: false as const, error: error.message }
 
-    revalidatePath(`/app/${orgSlug}/reservas`)
+    revalidatePath(`/app/${orgSlug}/${kind === 'generic' ? 'vendas' : 'reservas'}`)
     return { ok: true as const, link }
   } catch (e: any) {
     return { ok: false as const, error: e.message || 'Erro ao enviar para assinatura na Autentique.' }
   }
 }
 
-export async function refreshContractStatus(orgSlug: string, saleId: string) {
+export async function refreshContractStatus(orgSlug: string, saleId: string, kind: ContractKind = 'travel') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
@@ -268,7 +344,7 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
   const { data: contract } = await supabase
     .from('sale_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq(contractRefColumn(kind), saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -291,7 +367,9 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
       if (contract.status !== 'signed') {
         updates.status = 'signed'
         updates.signed_at = new Date().toISOString()
-        await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
+        if (kind === 'travel') {
+          await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
+        }
       }
       // Backfill mesmo se já estava marcado como assinado — o webhook pode
       // ter marcado o status sem conseguir buscar o PDF ainda.
@@ -300,7 +378,7 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
       }
     }
     await supabase.from('sale_contracts').update(updates).eq('id', contract.id)
-    revalidatePath(`/app/${orgSlug}/reservas`)
+    revalidatePath(`/app/${orgSlug}/${kind === 'generic' ? 'vendas' : 'reservas'}`)
     return { ok: true as const, status: updates.status || contract.status }
   } catch (e: any) {
     console.error('refreshContractStatus error:', e)
@@ -308,14 +386,14 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
   }
 }
 
-export async function getContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf') {
+export async function getContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf', kind: ContractKind = 'travel') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
     .from('sale_contracts')
     .select('pdf_path, signed_pdf_path')
-    .eq('sale_id', saleId)
+    .eq(contractRefColumn(kind), saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -335,14 +413,14 @@ export async function getContractFileUrl(orgSlug: string, saleId: string, which:
   return { ok: true as const, url: signed.signedUrl }
 }
 
-export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string, conversationId: string) {
+export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string, conversationId: string, kind: ContractKind = 'travel') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
     .from('sale_contracts')
     .select('signature_link')
-    .eq('sale_id', saleId)
+    .eq(contractRefColumn(kind), saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -353,14 +431,14 @@ export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string
   return sendWhatsappMessage(orgSlug, conversationId, `Segue o link para assinatura do seu contrato: ${contract.signature_link}`)
 }
 
-export async function sendContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string) {
+export async function sendContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string, kind: ContractKind = 'travel') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
     .from('sale_contracts')
     .select('signature_link')
-    .eq('sale_id', saleId)
+    .eq(contractRefColumn(kind), saleId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)

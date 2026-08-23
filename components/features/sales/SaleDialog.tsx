@@ -14,7 +14,7 @@ import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { traduzirErro } from '@/lib/utils/error-translator'
 
 type Member = { id: string; name: string; email: string; role: string }
-type Product = { id: string; name: string; type: string; price_cents: number }
+type Product = { id: string; name: string; type: string; price_cents: number; is_recurring?: boolean; duration_months?: number | null }
 
 interface Props {
   orgSlug: string
@@ -23,9 +23,12 @@ interface Props {
   currentUserId: string
   trigger: React.ReactNode
   initial?: any
+  /** Agências de Tráfego — revela campos de assinatura (início do serviço +
+   *  duração) quando o produto selecionado é um plano recorrente. */
+  isTraffic?: boolean
 }
 
-export default function SaleDialog({ orgSlug, members, products, currentUserId, trigger, initial }: Props) {
+export default function SaleDialog({ orgSlug, members, products, currentUserId, trigger, initial, isTraffic }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -41,6 +44,10 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
   const [installments, setInstallments] = useState<number>(initial?.installments || 1)
   const [status, setStatus] = useState<'pending' | 'completed' | 'cancelled'>(initial?.status || 'completed')
   const [notes, setNotes] = useState<string>(initial?.notes || '')
+  const [serviceStartDate, setServiceStartDate] = useState<string>(initial?.service_start_date || new Date().toISOString().slice(0, 10))
+  const [durationMonths, setDurationMonths] = useState<number | ''>(initial?.duration_months || '')
+
+  const selectedProduct = products.find(x => x.id === productId)
 
   const handleProductChange = (id: string) => {
     setProductId(id)
@@ -49,6 +56,9 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
       const total = p.price_cents * quantity
       setAmountCents(total)
       setAmountDisplay(formatCurrency(total))
+    }
+    if (p?.is_recurring && !durationMonths) {
+      setDurationMonths(p.duration_months || '')
     }
   }
 
@@ -82,6 +92,8 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
         installments,
         status,
         notes: notes || null,
+        service_start_date: isTraffic && selectedProduct?.is_recurring ? serviceStartDate : null,
+        duration_months: isTraffic && selectedProduct?.is_recurring && durationMonths ? durationMonths : null,
       }
       const res = initial
         ? await updateSale(orgSlug, initial.id, payload)
@@ -187,6 +199,24 @@ export default function SaleDialog({ orgSlug, members, products, currentUserId, 
               </Select>
             </div>
           </div>
+
+          {isTraffic && selectedProduct?.is_recurring && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3">
+              <div className="space-y-1.5">
+                <Label>Início do serviço (assinatura)</Label>
+                <Input type="date" value={serviceStartDate} onChange={e => setServiceStartDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Duração (meses)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={durationMonths}
+                  onChange={e => setDurationMonths(e.target.value ? parseInt(e.target.value) : '')}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Vendedor</Label>

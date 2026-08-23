@@ -76,11 +76,37 @@ export async function createSale(orgSlug: string, input: unknown) {
     installments: v.installments || 1,
     status: v.status,
     notes: v.notes || null,
+    service_start_date: v.service_start_date || null,
+    duration_months: v.duration_months || null,
   }).select().single()
 
   if (error) {
     console.error('createSale error:', error)
     return { ok: false, error: error.message || 'Erro ao registrar venda' }
+  }
+
+  // Assinatura de plano recorrente (Agências de Tráfego) — gera 1 lançamento
+  // por mês em financial_entries, mesmo padrão de parcelamento já usado em
+  // actions/insurance-policies.ts::issuePolicy (installment_group_id/
+  // parcela_numero/parcela_total), só que aqui cada mês tem o mesmo valor
+  // (mensalidade), sem dividir/arredondar. Alimenta o fluxo de
+  // caixa/projeções já existentes sem lógica de projeção nova.
+  if (v.duration_months && v.duration_months > 1 && v.service_start_date) {
+    const groupId = crypto.randomUUID()
+    const startBase = new Date(v.service_start_date + 'T12:00:00')
+    const rows = Array.from({ length: v.duration_months }, (_, i) => {
+      const due = new Date(startBase)
+      due.setMonth(due.getMonth() + i)
+      return {
+        organization_id: org.id, tipo: 'receita', categoria: 'Assinatura de plano',
+        valor_cents: v.amount_cents, status: 'pendente', contato_id: v.contato_id || null,
+        sales_generic_id: data.id, vencimento: due.toISOString().slice(0, 10),
+        installment_group_id: groupId, parcela_numero: i + 1, parcela_total: v.duration_months,
+        created_by: user.id,
+      }
+    })
+    const { error: entriesError } = await supabase.from('financial_entries').insert(rows)
+    if (entriesError) console.error('createSale recurring entries error:', entriesError)
   }
 
   // Push: notify opted-in members of the new sale (best-effort, honours the
@@ -168,7 +194,7 @@ export async function listActiveProducts(orgSlug: string) {
   const supabase = createClient()
   const { data } = await supabase
     .from('products')
-    .select('id, name, type, price_cents')
+    .select('id, name, type, price_cents, is_recurring, duration_months')
     .eq('organization_id', org.id)
     .eq('is_active', true)
     .order('name')
