@@ -46,7 +46,6 @@ import {
   Building2,
   ShieldAlert,
   Target,
-  TrendingUp,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -491,24 +490,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             {/* ── Agências de Tráfego ───────────────────── */}
             <SectionLabel>Agências de Tráfego</SectionLabel>
 
-            <SidebarNavLink href={`${base}/agencias-trafego`}>
-              <span className="flex items-center gap-2.5">
-                <LayoutDashboard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Visão Geral</span>
-              </span>
-            </SidebarNavLink>
-
             <SidebarNavLink href={`${base}/agencias-trafego/trafego`}>
               <span className="flex items-center gap-2.5">
                 <Target className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                 <span>Clientes</span>
-              </span>
-            </SidebarNavLink>
-
-            <SidebarNavLink href={`${base}/agencias-trafego/performance`}>
-              <span className="flex items-center gap-2.5">
-                <TrendingUp className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Performance</span>
               </span>
             </SidebarNavLink>
 

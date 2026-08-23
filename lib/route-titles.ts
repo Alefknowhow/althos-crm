@@ -57,9 +57,7 @@ const ROUTE_TITLES: Record<string, string> = {
  * existente muda de comportamento.
  */
 const ROUTE_TITLES_2SEG: Record<string, string> = {
-  'agencias-trafego': 'Visão Geral',
   'agencias-trafego/trafego': 'Clientes',
-  'agencias-trafego/performance': 'Performance',
 }
 
 /** 1º segmento após /app/{orgSlug}/ — usado tanto pro título quanto pro ícone da página. */
