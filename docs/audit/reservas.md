@@ -1,6 +1,8 @@
 # Auditoria — Módulo Reservas
 
-> Gerado em 2026-07-29. Faz parte da auditoria completa do app. Ver também `docs/audit/pipeline.md`, `docs/audit/contatos.md`, `docs/audit/cotacoes.md`.
+> Gerado em 2026-07-29, **revisado em 2026-08-23** (retomada da auditoria
+> completa). Ver também `docs/audit/pipeline.md`, `docs/audit/contatos.md`,
+> `docs/audit/cotacoes.md`.
 
 ## 1. Rotas
 
@@ -46,8 +48,8 @@ Todas as 4 rotas duplicam verbatim o mesmo guard `requireAuth` → `getCurrentOr
 | `updateTravelSale` | Patch genérico dos campos editáveis (permissão `reservas`) | `travel_sales`: WRITABLE (client_name, destination, datas, total_cents, hotel_name, airline, operator, services, included_items, vouchers, travelers, payment_method, locators, commission_cents, notes, cancellation_policy, important_info, service_info, **flights**) |
 | `deleteTravelSale` | Exclusão (bloqueada sob impersonação, permissão `reservas`) | `travel_sales` |
 | `cancelTravelSale` | Cancela + cria crédito de viagem via `createCredit` | `travel_sales.status`; `travel_credits` insert |
-| `toggleSaleChecklistStep` | Alterna uma das 4 colunas de checklist | `travel_sales` — **código morto**, nenhum caller encontrado no app |
-| `markContractGenerated` | Marca `contrato_gerado_at` (idempotente) | `travel_sales.contrato_gerado_at` — **sem `checkMemberPermission`**, único gap de permissão do arquivo |
+| ~~`toggleSaleChecklistStep`~~ | Alterna uma das 4 colunas de checklist | **Removido em 2026-08-23** — confirmado código morto, nenhum caller no app |
+| `markContractGenerated` | Marca `contrato_gerado_at` (idempotente) | `travel_sales.contrato_gerado_at` — já tinha `checkMemberPermission` antes desta revisão (corrigido fora desta sessão) |
 | `getContatoTravelerInfo` | Pré-preenche viajante a partir do contato | `contatos` (nome/cpf/data nasc.) |
 | `attachSignedContract` | Anexa contrato assinado ao array `vouchers` | `travel_sales.vouchers` |
 | `createTravelSale` | "Nova venda" manual; prefill opcional de proposta | `travel_sales` insert; lê `travel_proposals`; cria notificação |
@@ -62,11 +64,11 @@ Todas as 4 rotas duplicam verbatim o mesmo guard `requireAuth` → `getCurrentOr
 
 ## 4. Permissões
 
-Chave: **`reservas`**. `checkMemberPermission(org.id, user.id, 'reservas')` chamado em toda action mutante (`updateTravelSale`, `deleteTravelSale`, `cancelTravelSale`, `attachSignedContract`, `createTravelSale`, `saveTravelSaleAndGenerateTasks`). **Gap**: `markContractGenerated` (chamada em todo acesso à página de contrato) não checa permissão — só escopo de org.
+Chave: **`reservas`**. Toda action mutante já checava (`updateTravelSale`, `deleteTravelSale`, `cancelTravelSale`, `attachSignedContract`, `createTravelSale`, `saveTravelSaleAndGenerateTasks`, `markContractGenerated`). **Gap real encontrado nesta revisão**: 3 funções de leitura sem checagem — `listTravelSales`, `getTravelSale` (usada também por `actions/contracts.ts::getContractRenderData` na geração de contrato) e `getContatoTravelerInfo`. **Corrigidas.**
 
 ## 5. Conexões com outros módulos
 
-- **Contatos**: `sale.contato_id` FK; `getContatoTravelerInfo` puxa dados de viajante. **Bug encontrado**: o link "Ver venda de origem" de um crédito de viagem no `/contatos/[id]` monta `?venda=<id>`, mas a página de Reservas só lê `searchParams.sale` — o parâmetro nunca bate, o deep-link **não funciona** (abre a lista normal, sem pré-selecionar nada).
+- **Contatos**: `sale.contato_id` FK; `getContatoTravelerInfo` puxa dados de viajante. O bug de deep-link (`?venda=` vs `?sale=`) reportado em Jul/29 **já não existe** — confirmado que `/contatos/[id]` usa `?sale=${c.origem_sale_id}`, batendo com o que `reservas/page.tsx` lê. Corrigido fora desta sessão.
 - **Cotações**: `sale.proposal_id` FK; `createTravelSale`/`maybeCreateTravelSaleOnWon` usam `mapProposalToSaleFields` pra prefill a partir de uma proposta.
 - **Tarefas**: `saveTravelSaleAndGenerateTasks` insere em `tasks` com `sale_id`+`contato_id`; `SaleTasksList` lê/alterna via `actions/tasks.ts`.
 - **Documentos**: geração de contrato lê `document_templates`/`organizations.contract_template_id`; voucher/contrato são impressos client-side (`window.print()`), sem PDF persistido a menos que o usuário reenvie manualmente.
@@ -83,9 +85,9 @@ Chave: **`reservas`**. `checkMemberPermission(org.id, user.id, 'reservas')` cham
 ## Lista de problemas concretos
 
 1. `TravelSalesView.tsx` está em `components/features/proposals/`, não `reservas/` — inconsistência de local.
-2. **Bug de deep-link**: `?venda=` (Contatos) vs `?sale=` (Reservas) nunca batem — "Ver venda de origem" não funciona.
-3. `toggleSaleChecklistStep` e suas 4 colunas — código morto, nenhuma UI chama.
-4. `markContractGenerated` sem `checkMemberPermission` — único gap de permissão do arquivo.
+2. ~~**Bug de deep-link**: `?venda=` vs `?sale=`~~ — **Já corrigido** (confirmado nesta revisão, fora desta sessão).
+3. ~~`toggleSaleChecklistStep` e suas 4 colunas — código morto~~ — **Removido em 2026-08-23.**
+4. ~~`markContractGenerated` sem `checkMemberPermission`~~ — **Já corrigido** antes desta revisão. Gap real encontrado: `listTravelSales`/`getTravelSale`/`getContatoTravelerInfo` sem checagem — **corrigido em 2026-08-23.**
 5. CSS de impressão duplicado verbatim em 3 componentes — devia ser compartilhado.
 6. 3 condições booleanas independentes controlando o mesmo estado de "qual painel mostrar" no mobile.
 7. Cabeçalho mobile duplicado (bloco `md:hidden` inteiro repetindo dados do bloco desktop).
