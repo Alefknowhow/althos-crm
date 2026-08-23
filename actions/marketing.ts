@@ -46,7 +46,7 @@ export async function listAdAccountsByClient(orgSlug: string, contatoId: string)
   const supabase = createClient()
   const { data } = await supabase
     .from('ad_accounts')
-    .select('id, provider, name, external_id, status, notes, created_at')
+    .select('id, provider, name, external_id, status, notes, created_at, updated_at')
     .eq('organization_id', org.id)
     .eq('contato_id', contatoId)
     .order('created_at', { ascending: true })
@@ -84,23 +84,24 @@ export async function listCampaignsByClientCore(supabase: ReturnType<typeof crea
   since.setDate(since.getDate() - days)
   const { data: metrics } = await supabase
     .from('campaign_metrics_daily')
-    .select('campaign_id, impressions, clicks, spend_cents')
+    .select('campaign_id, impressions, clicks, spend_cents, meta_leads')
     .eq('organization_id', orgId)
     .in('campaign_id', campaigns.map(c => c.id))
     .gte('date', since.toISOString().slice(0, 10))
 
-  const totals = new Map<string, { impressions: number; clicks: number; spend_cents: number }>()
+  const totals = new Map<string, { impressions: number; clicks: number; spend_cents: number; leads: number }>()
   for (const m of metrics || []) {
-    const cur = totals.get(m.campaign_id) || { impressions: 0, clicks: 0, spend_cents: 0 }
+    const cur = totals.get(m.campaign_id) || { impressions: 0, clicks: 0, spend_cents: 0, leads: 0 }
     cur.impressions += m.impressions || 0
     cur.clicks += m.clicks || 0
     cur.spend_cents += m.spend_cents || 0
+    cur.leads += (m as any).meta_leads || 0
     totals.set(m.campaign_id, cur)
   }
 
   return campaigns.map(c => ({
     ...c,
-    metrics: totals.get(c.id) || { impressions: 0, clicks: 0, spend_cents: 0 },
+    metrics: totals.get(c.id) || { impressions: 0, clicks: 0, spend_cents: 0, leads: 0 },
   }))
 }
 

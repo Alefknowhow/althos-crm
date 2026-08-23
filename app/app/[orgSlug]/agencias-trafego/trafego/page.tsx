@@ -1,30 +1,34 @@
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { Megaphone } from 'lucide-react'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { isTrafficNiche } from '@/lib/niche'
 import EmptyState from '@/components/ui/empty-state'
-import { formatCurrency } from '@/lib/utils'
+import { Megaphone } from 'lucide-react'
+import TrafegoCommandCenter, { type ClientCardData } from '@/components/features/agencias-trafego/TrafegoCommandCenter'
+import { computeClientHealthStatus } from '@/lib/trafego/health-status'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Vertical Agências de Tráfego — lista de clientes gerenciados (contatos com
- * status='cliente'), com resumo de campanhas ativas, gasto (30d) e criativos
- * pendentes. Clicar abre o painel dedicado do cliente (Dados/Histórico/
- * Criativos) — camada separada de Contatos, que continua genérico.
+ * Tela principal da vertical Tráfego — "Traffic Command Center". Carrega só
+ * o resumo por cliente (não a performance detalhada — isso fica pra quando
+ * o gestor abre o cliente, ver trafego/[id]/page.tsx). Uma passada em lote
+ * (contas → campanhas → métricas de 60d) em vez de 1 query por cliente.
  */
 export default async function AgenciaTrafegoTrafegoPage({
   params,
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTrafficNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  if (!isTrafficNiche(org.niche)) {
+    const { redirect } = await import('next/navigation')
+    redirect(`/app/${params.orgSlug}`)
+  }
 
   const supabase = createClient()
-  const since30d = new Date()
-  since30d.setDate(since30d.getDate() - 30)
+  const now = new Date()
+  const since60d = new Date(now.getTime() - 59 * 86_400_000)
+  const since30d = new Date(now.getTime() - 29 * 86_400_000)
+  const boundary30dStr = since30d.toISOString().slice(0, 10)
 
   const { data: clients } = await supabase
     .from('contatos')
@@ -46,22 +50,29 @@ export default async function AgenciaTrafegoTrafegoPage({
   }
 
   const clientIds = clients.map(c => c.id)
-  const [{ data: accounts }, { data: creatives }] = await Promise.all([
-    supabase.from('ad_accounts').select('id, contato_id').eq('organization_id', org.id).in('contato_id', clientIds),
+  const [{ data: accounts }, { data: creativesPending }, { data: sales30d }] = await Promise.all([
+    supabase.from('ad_accounts').select('id, contato_id, provider, updated_at, created_at').eq('organization_id', org.id).in('contato_id', clientIds),
     supabase.from('campaign_creatives').select('id, contato_id, status').eq('organization_id', org.id).in('contato_id', clientIds).eq('status', 'pendente'),
+    supabase.from('sales').select('contato_id, amount_cents').eq('organization_id', org.id).in('contato_id', clientIds).eq('status', 'completed').gte('sale_date', boundary30dStr),
   ])
 
   const accountIdsByClient = new Map<string, string[]>()
+  const platformByClient = new Map<string, string>()
+  const lastSyncByClient = new Map<string, string>()
   for (const a of accounts || []) {
     if (!a.contato_id) continue
     const arr = accountIdsByClient.get(a.contato_id) || []
     arr.push(a.id)
     accountIdsByClient.set(a.contato_id, arr)
+    if (!platformByClient.has(a.contato_id)) platformByClient.set(a.contato_id, a.provider)
+    const ts = a.updated_at || a.created_at
+    const prevTs = lastSyncByClient.get(a.contato_id)
+    if (ts && (!prevTs || ts > prevTs)) lastSyncByClient.set(a.contato_id, ts)
   }
   const allAccountIds = (accounts || []).map(a => a.id)
 
-  let campaignsByAccount = new Map<string, { id: string; status: string }[]>()
-  let spendByCampaign = new Map<string, number>()
+  const campaignsByAccount = new Map<string, { id: string; status: string }[]>()
+  const metricsByCampaign = new Map<string, { current: { spend: number; leads: number }; previous: { spend: number; leads: number } }>()
   if (allAccountIds.length > 0) {
     const { data: campaigns } = await supabase
       .from('campaigns')
@@ -77,60 +88,78 @@ export default async function AgenciaTrafegoTrafegoPage({
     if (campaignIds.length > 0) {
       const { data: metrics } = await supabase
         .from('campaign_metrics_daily')
-        .select('campaign_id, spend_cents')
+        .select('campaign_id, date, spend_cents, meta_leads')
         .eq('organization_id', org.id)
         .in('campaign_id', campaignIds)
-        .gte('date', since30d.toISOString().slice(0, 10))
+        .gte('date', since60d.toISOString().slice(0, 10))
       for (const m of metrics || []) {
-        spendByCampaign.set(m.campaign_id, (spendByCampaign.get(m.campaign_id) || 0) + (m.spend_cents || 0))
+        const bucket = m.date >= boundary30dStr ? 'current' : 'previous'
+        const cur = metricsByCampaign.get(m.campaign_id) || { current: { spend: 0, leads: 0 }, previous: { spend: 0, leads: 0 } }
+        cur[bucket].spend += m.spend_cents || 0
+        cur[bucket].leads += (m as any).meta_leads || 0
+        metricsByCampaign.set(m.campaign_id, cur)
       }
     }
   }
 
   const pendingByClient = new Map<string, number>()
-  for (const cr of creatives || []) {
+  for (const cr of creativesPending || []) {
     pendingByClient.set(cr.contato_id, (pendingByClient.get(cr.contato_id) || 0) + 1)
   }
+  const revenueByClient = new Map<string, number>()
+  for (const s of sales30d || []) {
+    revenueByClient.set(s.contato_id, (revenueByClient.get(s.contato_id) || 0) + (s.amount_cents || 0))
+  }
+
+  const cards: ClientCardData[] = clients.map(client => {
+    const accountIds = accountIdsByClient.get(client.id) || []
+    const campaignRows = accountIds.flatMap(id => campaignsByAccount.get(id) || [])
+    const activeCampaigns = campaignRows.filter(c => c.status === 'active').length
+
+    let spend = 0, prevSpend = 0, leads = 0, prevLeads = 0
+    for (const c of campaignRows) {
+      const m = metricsByCampaign.get(c.id)
+      if (!m) continue
+      spend += m.current.spend; prevSpend += m.previous.spend
+      leads += m.current.leads; prevLeads += m.previous.leads
+    }
+    const revenue = revenueByClient.get(client.id) || 0
+    const cplCents = leads > 0 ? spend / leads : null
+    const roas = spend > 0 ? revenue / spend : null
+    const profile = (client.traffic_client_profile as any) || null
+
+    const health = computeClientHealthStatus({
+      investmentCents: spend,
+      cplCents,
+      targetCpl: profile?.targetCpl ?? null,
+      roas,
+      targetRoas: profile?.targetRoas ?? null,
+    })
+
+    const lastSyncIso = lastSyncByClient.get(client.id) || null
+    const lastSyncDaysAgo = lastSyncIso ? Math.floor((now.getTime() - new Date(lastSyncIso).getTime()) / 86_400_000) : null
+
+    return {
+      id: client.id,
+      name: client.name,
+      niche: profile?.niche || null,
+      platform: platformByClient.get(client.id) || null,
+      health,
+      investmentCents: spend,
+      prevInvestmentCents: prevSpend,
+      leads,
+      prevLeads,
+      cplCents,
+      roas,
+      activeCampaigns,
+      pendingCreatives: pendingByClient.get(client.id) || 0,
+      lastSyncDaysAgo,
+    }
+  })
 
   return (
-    <div className="p-4 sm:p-6 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {clients.map(client => {
-          const accountIds = accountIdsByClient.get(client.id) || []
-          const campaignRows = accountIds.flatMap(id => campaignsByAccount.get(id) || [])
-          const activeCampaigns = campaignRows.filter(c => c.status === 'active').length
-          const spend = campaignRows.reduce((a, c) => a + (spendByCampaign.get(c.id) || 0), 0)
-          const pending = pendingByClient.get(client.id) || 0
-          const niche = client.traffic_client_profile?.niche
-
-          return (
-            <Link
-              key={client.id}
-              href={`/app/${params.orgSlug}/agencias-trafego/trafego/${client.id}`}
-              className="block bg-card border rounded-lg p-4 hover:border-primary/50 transition-colors"
-            >
-              <div className="font-medium truncate">{client.name}</div>
-              {niche && <div className="text-xs text-muted-foreground mt-0.5">{niche}</div>}
-              <div className="mt-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Campanhas ativas</span>
-                  <span className="font-medium tabular-nums">{activeCampaigns}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Gasto (30d)</span>
-                  <span className="font-medium tabular-nums">{formatCurrency(spend)}</span>
-                </div>
-                {pending > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Criativos pendentes</span>
-                    <span className="font-medium tabular-nums text-amber-600">{pending}</span>
-                  </div>
-                )}
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+    <div className="p-4 sm:p-6">
+      <TrafegoCommandCenter orgSlug={params.orgSlug} clients={cards} />
     </div>
   )
 }

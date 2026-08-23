@@ -18,6 +18,7 @@ export type TrafficClientProfile = {
   objective?: 'leads' | 'vendas' | 'reconhecimento' | 'trafego_site' | 'outro'
   monthlyBudgetCents?: number | null
   targetAudience?: string | null
+  /** @deprecated texto livre antigo — mantido só por compatibilidade com registros já salvos. Regras novas vão em `optimizationRules`. */
   rules?: string | null
   referenceLinks?: string | null
   contractStart?: string | null
@@ -28,6 +29,26 @@ export type TrafficClientProfile = {
   targetCpl?: number | null
   targetLeads?: number | null
   targetRevenueCents?: number | null
+  targetCpaCents?: number | null
+  // Empresa
+  website?: string | null
+  instagram?: string | null
+  region?: string | null
+  // Público (granular — targetAudience acima segue como visão geral em texto livre)
+  audienceAgeRange?: string | null
+  audienceProfile?: string | null
+  audienceInterests?: string | null
+  // Oferta
+  product?: string | null
+  avgTicketCents?: number | null
+  marginPct?: number | null
+  mainOffer?: string | null
+  differentials?: string | null
+  // Estratégia
+  strategyNotes?: string | null
+  // Regras de otimização — lista estruturada (não texto livre), pensada
+  // pra futura leitura pelo Agent Layer antes de sugerir/aplicar uma ação.
+  optimizationRules?: string[]
 }
 
 const ProfileSchema = z.object({
@@ -43,6 +64,20 @@ const ProfileSchema = z.object({
   targetCpl: z.number().min(0).nullable().optional(),
   targetLeads: z.number().int().min(0).nullable().optional(),
   targetRevenueCents: z.number().int().min(0).nullable().optional(),
+  targetCpaCents: z.number().int().min(0).nullable().optional(),
+  website: z.string().max(300).nullable().optional(),
+  instagram: z.string().max(150).nullable().optional(),
+  region: z.string().max(200).nullable().optional(),
+  audienceAgeRange: z.string().max(100).nullable().optional(),
+  audienceProfile: z.string().max(500).nullable().optional(),
+  audienceInterests: z.string().max(500).nullable().optional(),
+  product: z.string().max(200).nullable().optional(),
+  avgTicketCents: z.number().int().min(0).nullable().optional(),
+  marginPct: z.number().min(0).max(100).nullable().optional(),
+  mainOffer: z.string().max(500).nullable().optional(),
+  differentials: z.string().max(500).nullable().optional(),
+  strategyNotes: z.string().max(3000).nullable().optional(),
+  optimizationRules: z.array(z.string().max(300)).max(30).optional(),
 })
 
 async function requireAccess(orgSlug: string) {
@@ -76,6 +111,14 @@ export async function saveTrafficClientProfile(orgSlug: string, contatoId: strin
     .eq('id', contatoId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
+  await supabase.from('contato_activities').insert({
+    contato_id: contatoId,
+    organization_id: org.id,
+    type: 'traffic_profile_updated',
+    payload: {},
+  })
+
   revalidatePath(`/app/${orgSlug}/contatos`)
+  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}`)
   return { ok: true as const }
 }

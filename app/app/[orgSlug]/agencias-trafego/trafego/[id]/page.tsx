@@ -5,6 +5,8 @@ import { isTrafficNiche } from '@/lib/niche'
 import { getTrafficClientProfile } from '@/actions/traffic-client-profile'
 import { listAdAccountsByClient, listCampaignsByClient } from '@/actions/marketing'
 import { listCreatives } from '@/actions/campaign-creatives'
+import { listClientActivity } from '@/actions/trafego-history'
+import { getClientPerformanceComparison, getClientDailySeries } from '@/actions/trafego-performance'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +28,10 @@ export default async function TrafficClientDetailPage({
 
   if (!client) redirect(`/app/${params.orgSlug}/agencias-trafego/trafego`)
 
-  const [profile, accounts, campaigns, creatives, { data: sales }] = await Promise.all([
+  const now = new Date()
+  const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
+
+  const [profile, accounts, campaigns, creatives, { data: sales }, activities, { current, previous }, series] = await Promise.all([
     getTrafficClientProfile(params.orgSlug, params.id),
     listAdAccountsByClient(params.orgSlug, params.id),
     listCampaignsByClient(params.orgSlug, params.id),
@@ -37,7 +42,20 @@ export default async function TrafficClientDetailPage({
       .eq('contato_id', params.id)
       .eq('organization_id', org.id)
       .order('sale_date', { ascending: false }),
+    listClientActivity(params.orgSlug, params.id),
+    getClientPerformanceComparison(params.orgSlug, params.id, range30d),
+    getClientDailySeries(params.orgSlug, params.id, range30d),
   ])
+
+  const lastSyncedAt = (accounts as any[])
+    .map(a => a.updated_at || a.created_at)
+    .filter(Boolean)
+    .sort()
+    .pop() as string | undefined
+  const lastSyncDaysAgo = lastSyncedAt ? Math.floor((now.getTime() - new Date(lastSyncedAt).getTime()) / 86_400_000) : null
+  const lastSyncLabel = lastSyncedAt
+    ? (lastSyncDaysAgo === 0 ? 'hoje' : lastSyncDaysAgo === 1 ? 'há 1 dia' : `há ${lastSyncDaysAgo} dias`)
+    : null
 
   return (
     <ClientDetailShell
@@ -49,6 +67,12 @@ export default async function TrafficClientDetailPage({
       campaigns={campaigns as any[]}
       creatives={creatives}
       sales={(sales || []) as any[]}
+      activities={activities}
+      performanceCurrent={current}
+      performancePrevious={previous}
+      performanceSeries={series}
+      lastSyncLabel={lastSyncLabel}
+      lastSyncDaysAgo={lastSyncDaysAgo}
     />
   )
 }

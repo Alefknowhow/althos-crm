@@ -126,6 +126,7 @@ export const getClientTargetsTool: ToolDef<{ client: string }> = {
       client: resolved.name,
       targetRoas: profile.targetRoas ?? null,
       targetCpl: profile.targetCpl ?? null,
+      targetCpaCents: profile.targetCpaCents ?? null,
       targetLeads: profile.targetLeads ?? null,
       targetRevenueCents: profile.targetRevenueCents ?? null,
     }

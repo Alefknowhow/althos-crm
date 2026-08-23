@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
@@ -124,6 +124,26 @@ export async function respondToCreativePublic(token: string, status: 'aprovado' 
   if (!res.ok) return { ok: false as const, error: 'Falha ao registrar resposta' }
   const success = await res.json()
   if (!success) return { ok: false as const, error: 'Link inválido ou expirado' }
+
+  // Histórico do cliente (contato_activities, Core) — best-effort, nunca
+  // bloqueia a resposta do cliente se a busca/gravação falhar.
+  try {
+    const admin = createAdminClient()
+    const { data: creative } = await admin
+      .from('campaign_creatives')
+      .select('id, contato_id, organization_id, title')
+      .eq('public_token', token)
+      .maybeSingle()
+    if (creative) {
+      await admin.from('contato_activities').insert({
+        contato_id: creative.contato_id,
+        organization_id: creative.organization_id,
+        type: 'traffic_creative_status_changed',
+        payload: { title: creative.title, status, comment },
+      })
+    }
+  } catch { /* best-effort */ }
+
   return { ok: true as const }
 }
 

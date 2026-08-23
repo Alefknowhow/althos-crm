@@ -19,7 +19,7 @@ type CampaignRow = {
   objective: string | null
   status: string
   ad_accounts: { name: string; provider: string } | null
-  metrics: { impressions: number; clicks: number; spend_cents: number }
+  metrics: { impressions: number; clicks: number; spend_cents: number; leads?: number }
 }
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
