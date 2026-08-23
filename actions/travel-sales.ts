@@ -62,9 +62,6 @@ export type FlightSegment = {
   sentido?: 'ida' | 'volta' | null
 }
 
-export type ChecklistStep =
-  | 'contrato_assinado' | 'voucher_entregue' | 'embarque_realizado' | 'posvenda_concluido'
-
 const WRITABLE = [
   'status', 'client_name', 'destination', 'departure_date', 'return_date',
   'negotiation_days', 'total_cents', 'hotel_name', 'airline', 'operator', 'services',
@@ -98,7 +95,10 @@ function pick(input: Record<string, any>): Record<string, any> {
 }
 
 export async function listTravelSales(orgSlug: string): Promise<TravelSaleRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_sales')
@@ -110,7 +110,10 @@ export async function listTravelSales(orgSlug: string): Promise<TravelSaleRow[]>
 }
 
 export async function getTravelSale(orgSlug: string, id: string): Promise<TravelSaleRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return null
   const supabase = createClient()
   const { data } = await supabase
     .from('travel_sales')
@@ -244,37 +247,6 @@ export async function cancelTravelSale(
  * "Contrato gerado" é setado por `markContractGenerated` (não por aqui);
  * as 4 restantes são marcáveis/desmarcáveis manualmente pelo usuário.
  */
-export async function toggleSaleChecklistStep(
-  orgSlug: string,
-  saleId: string,
-  step: ChecklistStep,
-  done: boolean,
-) {
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
-  if (!perm.allowed) return { ok: false as const, error: perm.reason }
-
-  const CHECKLIST_STEPS: ChecklistStep[] = [
-    'contrato_assinado', 'voucher_entregue', 'embarque_realizado', 'posvenda_concluido',
-  ]
-  if (!CHECKLIST_STEPS.includes(step)) return { ok: false as const, error: 'Etapa inválida.' }
-  const column = `${step}_at`
-
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('travel_sales')
-    .update({ [column]: done ? new Date().toISOString() : null })
-    .eq('id', saleId)
-    .eq('organization_id', org.id)
-    .select()
-    .single()
-
-  if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao atualizar etapa' }
-  revalidatePath(`/app/${orgSlug}/reservas`)
-  return { ok: true as const, data: data as TravelSaleRow }
-}
-
 /**
  * Marca "contrato gerado" na venda — idempotente (só seta na primeira
  * vez). Chamado pela rota de impressão do contrato ao carregar.
@@ -310,7 +282,10 @@ export async function markContractGenerated(orgSlug: string, saleId: string) {
  */
 /** Dados do contato usados pra preencher um viajante da venda (nome, nascimento, CPF). */
 export async function getContatoTravelerInfo(orgSlug: string, contatoId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')
