@@ -1,9 +1,12 @@
 import { getProduct } from '@/actions/products'
+import { listDocumentTemplates } from '@/actions/document-templates'
+import { getCurrentOrganization } from '@/lib/supabase/types'
+import { isTrafficNiche } from '@/lib/niche'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
-import { ArrowLeft, Edit, Package, Clock, Tag, BarChart3, StickyNote } from 'lucide-react'
+import { ArrowLeft, Edit, Package, Clock, Tag, BarChart3, StickyNote, FileSignature } from 'lucide-react'
 import Link from 'next/link'
 import ProductDialog from '@/components/features/catalog/ProductDialog'
 import { redirect } from 'next/navigation'
@@ -14,13 +17,19 @@ export default async function ProductDetailsPage({
   params: { orgSlug: string, id: string }
 }) {
   const { orgSlug, id } = params
-  const result = await getProduct(orgSlug, id)
+  const org = await getCurrentOrganization(orgSlug)
+  const traffic = isTrafficNiche(org.niche)
+  const [result, documentTemplates] = await Promise.all([
+    getProduct(orgSlug, id),
+    traffic ? listDocumentTemplates(orgSlug) : Promise.resolve([]),
+  ])
 
   if (!result.ok || !result.data) {
     redirect(`/app/${orgSlug}/catalogo`)
   }
 
   const product = result.data
+  const contractTemplateName = documentTemplates.find(t => t.id === product.contract_template_id)?.name
 
   return (
     <div className="space-y-6">
@@ -40,10 +49,12 @@ export default async function ProductDetailsPage({
           <p className="text-sm text-muted-foreground capitalize">{product.type === 'service' ? 'Serviço' : 'Produto'}</p>
         </div>
         <div className="flex gap-2">
-          <ProductDialog 
-            orgSlug={orgSlug} 
-            product={product} 
-            trigger={<Button variant="outline"><Edit className="w-4 h-4 mr-2" /> Editar Item</Button>} 
+          <ProductDialog
+            orgSlug={orgSlug}
+            product={product}
+            isTraffic={traffic}
+            documentTemplates={documentTemplates}
+            trigger={<Button variant="outline"><Edit className="w-4 h-4 mr-2" /> Editar Item</Button>}
           />
         </div>
       </div>
@@ -105,6 +116,25 @@ export default async function ProductDetailsPage({
                 <p className="text-sm font-mono">{product.sku || 'Sem código'}</p>
               </div>
             </div>
+
+            {traffic && product.is_recurring && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                     <Clock className="w-4 h-4" />
+                     <span className="text-xs font-bold uppercase tracking-wider">Duração do plano</span>
+                  </div>
+                  <p className="text-sm font-medium">{product.duration_months ? `${product.duration_months} meses` : 'Não definida'}</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                     <FileSignature className="w-4 h-4" />
+                     <span className="text-xs font-bold uppercase tracking-wider">Contrato do plano</span>
+                  </div>
+                  <p className="text-sm font-medium">{contractTemplateName || 'Nenhum vinculado'}</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

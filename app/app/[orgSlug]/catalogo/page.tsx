@@ -1,4 +1,7 @@
 import { listProducts, getCategories } from '@/actions/products'
+import { listDocumentTemplates } from '@/actions/document-templates'
+import { getCurrentOrganization } from '@/lib/supabase/types'
+import { isTrafficNiche } from '@/lib/niche'
 import CatalogFilters from '@/components/features/catalog/CatalogFilters'
 import CatalogSplit from '@/components/features/catalog/CatalogSplit'
 import ProductDialog from '@/components/features/catalog/ProductDialog'
@@ -23,16 +26,22 @@ export default async function CatalogPage({
   const isActive = searchParams.active !== 'false'
   const page = parseInt(searchParams.page || '1')
 
-  const result = await listProducts(orgSlug, {
-    search,
-    type: type === 'all' ? undefined : type,
-    category,
-    isActive,
-    page,
-  })
+  const org = await getCurrentOrganization(orgSlug)
+  const traffic = isTrafficNiche(org.niche)
+
+  const [result, categoriesResult, documentTemplates] = await Promise.all([
+    listProducts(orgSlug, {
+      search,
+      type: type === 'all' ? undefined : type,
+      category,
+      isActive,
+      page,
+    }),
+    getCategories(orgSlug),
+    traffic ? listDocumentTemplates(orgSlug) : Promise.resolve([]),
+  ])
 
   const products = result.ok ? result.data : []
-  const categoriesResult = await getCategories(orgSlug)
   const categories = categoriesResult.ok ? (categoriesResult.data as string[]) : []
 
   // Function to build tab URL
@@ -47,9 +56,9 @@ export default async function CatalogPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Catálogo de Produtos e Serviços"
-        hint="Gerencie o que você oferece aos seus clientes."
-        actions={<ProductDialog orgSlug={orgSlug} categories={categories} />}
+        title={traffic ? 'Planos' : 'Catálogo de Produtos e Serviços'}
+        hint={traffic ? 'Os planos que sua agência oferece aos clientes de tráfego.' : 'Gerencie o que você oferece aos seus clientes.'}
+        actions={<ProductDialog orgSlug={orgSlug} categories={categories} isTraffic={traffic} documentTemplates={documentTemplates} />}
       />
 
       <div className="space-y-4">
@@ -71,7 +80,7 @@ export default async function CatalogPage({
         
         {products && products.length > 0 ? (
           <div className="space-y-4">
-            <CatalogSplit products={products} orgSlug={orgSlug} categories={categories} />
+            <CatalogSplit products={products} orgSlug={orgSlug} categories={categories} isTraffic={traffic} documentTemplates={documentTemplates} />
 
             {/* Simple Pagination */}
             {result.count && result.count > 25 && (

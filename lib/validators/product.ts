@@ -15,6 +15,11 @@ export const productSchema = z.object({
   stock_count: z.number().int().optional().nullable(),
   is_active: z.boolean().default(true),
   notes: z.string().optional().nullable(),
+  /** Plano de assinatura mensal (Agências de Tráfego, mas genérico —
+   *  qualquer vertical pode usar). */
+  is_recurring: z.boolean().optional().default(false),
+  duration_months: z.number().int().min(1).optional().nullable(),
+  contract_template_id: z.string().uuid().optional().nullable(),
   created_at: z.date().or(z.string()).optional(),
   updated_at: z.date().or(z.string()).optional(),
 });

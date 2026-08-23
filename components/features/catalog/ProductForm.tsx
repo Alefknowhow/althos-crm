@@ -11,11 +11,13 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createProduct, updateProduct } from '@/actions/products'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { z } from 'zod'
+import type { DocumentTemplateRow } from '@/actions/document-templates'
 
 type ProductFormValues = z.infer<typeof productInputSchema>
 
@@ -24,9 +26,14 @@ interface ProductFormProps {
   initialData?: any
   onSuccess?: (data: any) => void
   categories?: string[]
+  /** Agências de Tráfego — revela campos de plano recorrente (duração +
+   *  contrato padrão do plano). Genérico o bastante pra outras verticais
+   *  usarem também, mas só exibido quando pedido explicitamente. */
+  isTraffic?: boolean
+  documentTemplates?: DocumentTemplateRow[]
 }
 
-export default function ProductForm({ orgSlug, initialData, onSuccess, categories = [] }: ProductFormProps) {
+export default function ProductForm({ orgSlug, initialData, onSuccess, categories = [], isTraffic, documentTemplates = [] }: ProductFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -44,8 +51,13 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
       stock_count: initialData?.stock_count || (initialData?.type === 'product' ? 0 : null),
       is_active: initialData?.is_active ?? true,
       notes: initialData?.notes || '',
+      is_recurring: initialData?.is_recurring || false,
+      duration_months: initialData?.duration_months || null,
+      contract_template_id: initialData?.contract_template_id || null,
     },
   })
+
+  const isRecurring = form.watch('is_recurring')
 
   const productType = form.watch('type')
 
@@ -268,6 +280,77 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
             </FormItem>
           )}
         />
+
+        {isTraffic && (
+          <div className="space-y-4 rounded-lg border p-4">
+            <FormField
+              control={form.control}
+              name="is_recurring"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Plano recorrente (assinatura mensal)</FormLabel>
+                    <FormDescription>
+                      A venda deste plano vira uma assinatura com duração e contrato.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {isRecurring && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="duration_months"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duração padrão (meses)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Ex: 12"
+                          {...field}
+                          value={field.value || ''}
+                          onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contract_template_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contrato deste plano</FormLabel>
+                      <Select value={field.value || ''} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Nenhum template selecionado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {documentTemplates.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Templates são criados em Configurações → Documentos.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <FormField
           control={form.control}
