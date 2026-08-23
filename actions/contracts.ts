@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { createAutentiqueDocument, getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
 import { sendWhatsappMessage } from '@/actions/whatsapp'
@@ -9,6 +10,14 @@ import { getResend, clientEmailFrom } from '@/lib/resend'
 import { getTravelSale, markContractGenerated } from '@/actions/travel-sales'
 import { getOrgContractTemplate } from '@/actions/document-templates'
 import { renderTemplate } from '@/lib/inngest/functions'
+
+async function requireAccess(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!check.allowed) throw new Error(check.reason || 'Sem permissão')
+  return { org, user }
+}
 
 // ─── Dados pra renderizar o contrato fora da página de print (usado pra
 // gerar o PDF direto no dialog, sem iframe — a CSP do app bloqueia
@@ -23,8 +32,7 @@ function fmtCurrencyBr(cents: number) {
 }
 
 export async function getContractRenderData(orgSlug: string, saleId: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
 
   const sale = await getTravelSale(orgSlug, saleId)
   if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
@@ -131,8 +139,7 @@ export async function getApiKeyOrFail(orgId: string) {
 // ─── Contrato da venda (Reservas / Viagens — travel_sales) ────────────────
 
 export async function getSaleContract(orgSlug: string, saleId: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data } = await supabase
@@ -148,8 +155,7 @@ export async function getSaleContract(orgSlug: string, saleId: string) {
 }
 
 export async function uploadContractPdf(orgSlug: string, saleId: string, base64Pdf: string) {
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, user } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const bytes = Buffer.from(base64Pdf, 'base64')
@@ -196,7 +202,7 @@ export async function sendContractForSignature(
   signer: { name: string; email?: string; phone?: string },
   signer2: { name: string; email?: string; phone?: string },
 ) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const keyRes = await getApiKeyOrFail(org.id)
@@ -263,7 +269,7 @@ export async function sendContractForSignature(
 }
 
 export async function refreshContractStatus(orgSlug: string, saleId: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const keyRes = await getApiKeyOrFail(org.id)
@@ -313,7 +319,7 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
 }
 
 export async function getContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf') {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
@@ -340,7 +346,7 @@ export async function getContractFileUrl(orgSlug: string, saleId: string, which:
 }
 
 export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string, conversationId: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
@@ -358,7 +364,7 @@ export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string
 }
 
 export async function sendContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
