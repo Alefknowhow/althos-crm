@@ -19,14 +19,14 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import {
-  getSaleContract,
-  uploadContractPdf,
-  sendContractForSignature,
-  refreshContractStatus,
-  getContractFileUrl,
-  sendContractLinkByEmail,
-  getContractRenderData,
-} from '@/actions/contracts'
+  getPlanSaleContract,
+  uploadPlanContractPdf,
+  sendPlanContractForSignature,
+  refreshPlanContractStatus,
+  getPlanContractFileUrl,
+  sendPlanContractLinkByEmail,
+  getPlanContractRenderData,
+} from '@/actions/plan-contracts'
 import PlanContractPrintView from '@/components/features/agencias-trafego/PlanContractPrintView'
 
 type Props = {
@@ -47,9 +47,9 @@ const STATUS_META: Record<string, { label: string; className: string; icon: any 
 
 /**
  * Gestão de contrato de assinatura de plano (Agências de Tráfego) — mesmo
- * fluxo/UI de ContratoManagerDialog (Reservas), sempre passando kind:
- * 'generic' pras actions em actions/contracts.ts, que aceitam venda da
- * tabela genérica sales além de travel_sales.
+ * fluxo/UI de ContratoManagerDialog (Reservas), mas usando
+ * actions/plan-contracts.ts + tabela plan_contracts própria, não
+ * compartilhada com sale_contracts (Reservas/Viagens).
  */
 export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, open, onOpenChange }: Props) {
   const [contract, setContract] = useState<any>(null)
@@ -70,7 +70,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    getSaleContract(orgSlug, saleId, 'generic').then(c => {
+    getPlanSaleContract(orgSlug, saleId).then(c => {
       setContract(c)
       setSignerName(prev => c?.signer_name || prev)
       setSignerEmail(prev => c?.signer_email || prev)
@@ -83,14 +83,14 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   }, [open, orgSlug, saleId])
 
   async function reload() {
-    const c = await getSaleContract(orgSlug, saleId, 'generic')
+    const c = await getPlanSaleContract(orgSlug, saleId)
     setContract(c)
   }
 
   async function handleGenerate() {
     setGenerating(true)
     try {
-      const data = await getContractRenderData(orgSlug, saleId, 'generic')
+      const data = await getPlanContractRenderData(orgSlug, saleId)
       if (!data.ok) throw new Error(data.error)
 
       flushSync(() => setRenderData(data))
@@ -126,7 +126,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       }
 
       const base64 = pdf.output('datauristring').split(',')[1]
-      const res = await uploadContractPdf(orgSlug, saleId, base64, 'generic')
+      const res = await uploadPlanContractPdf(orgSlug, saleId, base64)
       if (!res.ok) {
         toast.error(res.error)
       } else {
@@ -159,7 +159,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       return
     }
     setSending(true)
-    const res = await sendContractForSignature(
+    const res = await sendPlanContractForSignature(
       orgSlug,
       saleId,
       {
@@ -172,7 +172,6 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
         email: signer2Email.trim() || undefined,
         phone: signer2Phone.trim() || undefined,
       },
-      'generic',
     )
     setSending(false)
     if (!res.ok) {
@@ -185,7 +184,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
 
   async function handleRefresh() {
     setRefreshing(true)
-    const res = await refreshContractStatus(orgSlug, saleId, 'generic')
+    const res = await refreshPlanContractStatus(orgSlug, saleId)
     setRefreshing(false)
     if (!res.ok) {
       toast.error(res.error)
@@ -196,7 +195,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   }
 
   async function handleView(which: 'pdf' | 'signed') {
-    const res = await getContractFileUrl(orgSlug, saleId, which, 'generic')
+    const res = await getPlanContractFileUrl(orgSlug, saleId, which)
     if (!res.ok) {
       toast.error(res.error)
       return
@@ -209,7 +208,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       toast.error('Informe o e-mail de destino.')
       return
     }
-    const res = await sendContractLinkByEmail(orgSlug, saleId, emailTo.trim(), 'generic')
+    const res = await sendPlanContractLinkByEmail(orgSlug, saleId, emailTo.trim())
     if (!res.ok) toast.error(res.error)
     else toast.success('Link enviado por e-mail.')
   }

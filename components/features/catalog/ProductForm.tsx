@@ -328,7 +328,17 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
                   name="contract_template_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contrato deste plano</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Contrato deste plano</FormLabel>
+                        <a
+                          href={`/app/${orgSlug}/documentos`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Criar/editar contratos
+                        </a>
+                      </div>
                       <Select value={field.value || ''} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
@@ -342,7 +352,7 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Templates são criados em Configurações → Documentos.
+                        Abre em outra aba — depois de criar/editar, volte aqui e selecione na lista.
                       </FormDescription>
                     </FormItem>
                   )}

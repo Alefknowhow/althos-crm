@@ -4,16 +4,18 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { createAutentiqueDocument, getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
-import { sendWhatsappMessage } from '@/actions/whatsapp'
 import { getResend, clientEmailFrom } from '@/lib/resend'
-import { getTravelSale, markContractGenerated } from '@/actions/travel-sales'
-import { getOrgContractTemplate } from '@/actions/document-templates'
 import { renderTemplate } from '@/lib/inngest/functions'
+import { getApiKeyOrFail } from '@/actions/contracts'
 
-// ─── Dados pra renderizar o contrato fora da página de print (usado pra
-// gerar o PDF direto no dialog, sem iframe — a CSP do app bloqueia
-// frame-ancestors mesmo same-origin, então a página de print não pode ser
-// embutida em iframe) ─────────────────────────────────────────────────────
+/**
+ * Contrato de assinatura de plano (Agências de Tráfego) — tabela própria
+ * (plan_contracts, migration 0194), NÃO compartilhada com sale_contracts
+ * (Reservas/Viagens). Mesma estrutura/fluxo (Autentique), copiada, não
+ * reaproveitada por referência — só a credencial de API (getApiKeyOrFail)
+ * é compartilhada, por ser configuração da organização, não dado de
+ * contrato.
+ */
 
 function fmtDateBr(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : ''
@@ -22,14 +24,34 @@ function fmtCurrencyBr(cents: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
-export async function getContractRenderData(orgSlug: string, saleId: string) {
+export async function getPlanContractRenderData(orgSlug: string, saleId: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
 
-  const sale = await getTravelSale(orgSlug, saleId)
+  const { data: sale } = await supabase
+    .from('sales')
+    .select('id, amount_cents, sale_date, payment_method, service_start_date, duration_months, contatos(name), products(name, contract_template_id)')
+    .eq('id', saleId).eq('organization_id', org.id).maybeSingle()
   if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
 
-  await markContractGenerated(orgSlug, saleId)
+  const client: any = (sale as any).contatos
+  const product: any = (sale as any).products
+  const startDate = sale.service_start_date ? new Date(sale.service_start_date + 'T12:00:00') : null
+  const endDate = startDate && sale.duration_months
+    ? new Date(startDate.getFullYear(), startDate.getMonth() + sale.duration_months, startDate.getDate())
+    : null
+
+  const planoSale = {
+    id: sale.id,
+    client_name: client?.name || '',
+    plano: product?.name || '',
+    valor_mensal_cents: sale.amount_cents,
+    duracao_meses: sale.duration_months,
+    data_inicio: sale.service_start_date,
+    data_fim: endDate ? endDate.toISOString().slice(0, 10) : null,
+    forma_pagamento: sale.payment_method,
+  }
 
   const orgBranding = {
     name: org.name,
@@ -42,101 +64,42 @@ export async function getContractRenderData(orgSlug: string, saleId: string) {
     address_street: (org as any).address_street ?? null,
   }
 
-  const template = await getOrgContractTemplate(orgSlug)
-
-  if (template) {
-    const bodyHtml = renderTemplate(template.body_html, {
-      sale: {
-        cliente: sale.client_name || '',
-        destino: sale.destination || '',
-        hotel: sale.hotel_name || '',
-        data_ida: fmtDateBr(sale.departure_date),
-        data_volta: fmtDateBr(sale.return_date),
-        valor_total: fmtCurrencyBr(sale.total_cents),
-        forma_pagamento: sale.payment_method || '',
-        operadora: sale.operator || '',
-        companhia_aerea: sale.airline || '',
-        localizador_pacote: sale.package_locator || '',
-        localizador_aereo: sale.air_locator || '',
-        politica_cancelamento: sale.cancellation_policy || '',
-        informacoes_importantes: sale.important_info || '',
-        informacoes_servico: sale.service_info || '',
-        observacoes: sale.notes || '',
-      },
-      org: {
-        nome: org.name,
-        cnpj: orgBranding.cnpj || '',
-        cadastur: orgBranding.cadastur || '',
-        telefone: orgBranding.contact_phone || '',
-        email: orgBranding.contact_email || '',
-        endereco: orgBranding.address_street || '',
-      },
-    })
-    return { ok: true as const, hasTemplate: true as const, bodyHtml, sale, org: orgBranding }
+  const templateId = product?.contract_template_id
+  if (templateId) {
+    const { data: template } = await supabase.from('document_templates').select('body_html').eq('id', templateId).eq('organization_id', org.id).maybeSingle()
+    if (template) {
+      const bodyHtml = renderTemplate(template.body_html, {
+        sale: {
+          cliente: planoSale.client_name,
+          plano: planoSale.plano,
+          valor_mensal: fmtCurrencyBr(planoSale.valor_mensal_cents),
+          duracao_meses: planoSale.duracao_meses ? String(planoSale.duracao_meses) : '',
+          data_inicio: fmtDateBr(planoSale.data_inicio),
+          data_fim: fmtDateBr(planoSale.data_fim),
+          forma_pagamento: planoSale.forma_pagamento || '',
+        },
+        org: {
+          nome: org.name,
+          cnpj: orgBranding.cnpj || '',
+          cadastur: orgBranding.cadastur || '',
+          telefone: orgBranding.contact_phone || '',
+          email: orgBranding.contact_email || '',
+          endereco: orgBranding.address_street || '',
+        },
+      })
+      return { ok: true as const, hasTemplate: true as const, bodyHtml, sale: planoSale, org: orgBranding }
+    }
   }
-
-  return { ok: true as const, hasTemplate: false as const, sale, org: orgBranding }
+  return { ok: true as const, hasTemplate: false as const, sale: planoSale, org: orgBranding }
 }
 
-// ─── Chave de API (Configurações > Integrações) ──────────────────────────────
-// Compartilhada entre Reservas (Viagens) e Planos (Tráfego) — é uma
-// credencial da integração Autentique da organização, não um dado de
-// contrato; os dados/tabelas de contrato em si são separados
-// (sale_contracts vs. plan_contracts).
-
-export async function getOrgAutentiqueConfig(orgSlug: string) {
+export async function getPlanSaleContract(orgSlug: string, saleId: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data } = await supabase
-    .from('organizations')
-    .select('autentique_api_key')
-    .eq('id', org.id)
-    .maybeSingle()
-
-  return { has_api_key: !!data?.autentique_api_key }
-}
-
-export async function saveOrgAutentiqueConfig(orgSlug: string, apiKey: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  if (!apiKey.trim()) return { ok: false as const, error: 'Informe a chave de API.' }
-
-  const { error } = await supabase
-    .from('organizations')
-    .update({ autentique_api_key: apiKey.trim() })
-    .eq('id', org.id)
-
-  if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/autentique`)
-  return { ok: true as const }
-}
-
-export async function getApiKeyOrFail(orgId: string) {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('organizations')
-    .select('autentique_api_key')
-    .eq('id', orgId)
-    .maybeSingle()
-  if (!data?.autentique_api_key) {
-    return { ok: false as const, error: 'Configure a chave da API Autentique em Configurações > Integrações.' }
-  }
-  return { ok: true as const, apiKey: data.autentique_api_key as string }
-}
-
-// ─── Contrato da venda (Reservas / Viagens — travel_sales) ────────────────
-
-export async function getSaleContract(orgSlug: string, saleId: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const { data } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('*')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
@@ -147,7 +110,7 @@ export async function getSaleContract(orgSlug: string, saleId: string) {
   return data
 }
 
-export async function uploadContractPdf(orgSlug: string, saleId: string, base64Pdf: string) {
+export async function uploadPlanContractPdf(orgSlug: string, saleId: string, base64Pdf: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -156,12 +119,12 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
   const path = `${org.id}/${saleId}/${Date.now()}-contrato.pdf`
 
   const { error: uploadError } = await supabase.storage
-    .from('sale-contracts')
+    .from('plan-contracts')
     .upload(path, bytes, { contentType: 'application/pdf', upsert: false })
   if (uploadError) return { ok: false as const, error: uploadError.message }
 
   const { data: existing } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('id')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
@@ -171,12 +134,12 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
 
   if (existing) {
     const { error } = await supabase
-      .from('sale_contracts')
+      .from('plan_contracts')
       .update({ pdf_path: path, status: 'draft', updated_at: new Date().toISOString() })
       .eq('id', existing.id)
     if (error) return { ok: false as const, error: error.message }
   } else {
-    const { error } = await supabase.from('sale_contracts').insert({
+    const { error } = await supabase.from('plan_contracts').insert({
       organization_id: org.id,
       sale_id: saleId,
       pdf_path: path,
@@ -186,11 +149,11 @@ export async function uploadContractPdf(orgSlug: string, saleId: string, base64P
     if (error) return { ok: false as const, error: error.message }
   }
 
-  revalidatePath(`/app/${orgSlug}/reservas`)
+  revalidatePath(`/app/${orgSlug}/vendas`)
   return { ok: true as const }
 }
 
-export async function sendContractForSignature(
+export async function sendPlanContractForSignature(
   orgSlug: string,
   saleId: string,
   signer: { name: string; email?: string; phone?: string },
@@ -203,7 +166,7 @@ export async function sendContractForSignature(
   if (!keyRes.ok) return keyRes
 
   const { data: contract } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('*')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
@@ -216,16 +179,17 @@ export async function sendContractForSignature(
   if (!signer2.email && !signer2.phone) return { ok: false as const, error: 'Informe e-mail ou telefone do signatário da agência.' }
 
   const { data: file, error: downloadError } = await supabase.storage
-    .from('sale-contracts')
+    .from('plan-contracts')
     .download(contract.pdf_path)
   if (downloadError || !file) return { ok: false as const, error: downloadError?.message || 'Não foi possível ler o PDF salvo.' }
 
-  const { data: sale } = await supabase.from('travel_sales').select('sale_number').eq('id', saleId).maybeSingle()
+  const { data: sale } = await supabase.from('sales').select('id, products(name)').eq('id', saleId).maybeSingle()
+  const docTitle = (sale as any)?.products?.name || saleId
 
   try {
     const doc = await createAutentiqueDocument(
       keyRes.apiKey,
-      `Contrato ${sale?.sale_number || saleId}`,
+      `Contrato ${docTitle}`,
       [
         { name: signer.name, email: signer.email, phone: signer.phone },
         { name: signer2.name, email: signer2.email, phone: signer2.phone },
@@ -233,12 +197,10 @@ export async function sendContractForSignature(
       file,
       'contrato.pdf',
     )
-    // Signatures voltam na mesma ordem em que os signatários foram enviados —
-    // o link do cliente (índice 0) é o que usamos nos atalhos de reenvio.
     const link = doc.signatures?.[0]?.link?.short_link || null
 
     const { error } = await supabase
-      .from('sale_contracts')
+      .from('plan_contracts')
       .update({
         status: 'sent',
         autentique_document_id: doc.id,
@@ -255,14 +217,14 @@ export async function sendContractForSignature(
       .eq('id', contract.id)
     if (error) return { ok: false as const, error: error.message }
 
-    revalidatePath(`/app/${orgSlug}/reservas`)
+    revalidatePath(`/app/${orgSlug}/vendas`)
     return { ok: true as const, link }
   } catch (e: any) {
     return { ok: false as const, error: e.message || 'Erro ao enviar para assinatura na Autentique.' }
   }
 }
 
-export async function refreshContractStatus(orgSlug: string, saleId: string) {
+export async function refreshPlanContractStatus(orgSlug: string, saleId: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
@@ -270,7 +232,7 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
   if (!keyRes.ok) return keyRes
 
   const { data: contract } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('*')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
@@ -283,41 +245,35 @@ export async function refreshContractStatus(orgSlug: string, saleId: string) {
   try {
     const doc = await getAutentiqueDocumentStatus(keyRes.apiKey, contract.autentique_document_id)
     if (!doc) {
-      console.error('refreshContractStatus: Autentique retornou documento nulo', { documentId: contract.autentique_document_id })
+      console.error('refreshPlanContractStatus: Autentique retornou documento nulo', { documentId: contract.autentique_document_id })
       return { ok: false as const, error: 'Documento não encontrado na Autentique. Confira se ele ainda existe na sua conta.' }
     }
     const signed = isDocumentSignedByKnownSigners(doc, [contract.signer_email, contract.signer2_email])
-    if (!signed) {
-      console.log('refreshContractStatus: ainda não assinado', { documentId: contract.autentique_document_id, signatures: doc.signatures })
-    }
     const updates: Record<string, any> = { updated_at: new Date().toISOString() }
     if (signed) {
       if (contract.status !== 'signed') {
         updates.status = 'signed'
         updates.signed_at = new Date().toISOString()
-        await supabase.from('travel_sales').update({ contrato_assinado_at: new Date().toISOString() }).eq('id', saleId).eq('organization_id', org.id)
       }
-      // Backfill mesmo se já estava marcado como assinado — o webhook pode
-      // ter marcado o status sem conseguir buscar o PDF ainda.
       if (doc.files?.signed && !contract.signed_pdf_path) {
         updates.signed_pdf_path = doc.files.signed
       }
     }
-    await supabase.from('sale_contracts').update(updates).eq('id', contract.id)
-    revalidatePath(`/app/${orgSlug}/reservas`)
+    await supabase.from('plan_contracts').update(updates).eq('id', contract.id)
+    revalidatePath(`/app/${orgSlug}/vendas`)
     return { ok: true as const, status: updates.status || contract.status }
   } catch (e: any) {
-    console.error('refreshContractStatus error:', e)
+    console.error('refreshPlanContractStatus error:', e)
     return { ok: false as const, error: e.message || 'Erro ao consultar status na Autentique.' }
   }
 }
 
-export async function getContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf') {
+export async function getPlanContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf') {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('pdf_path, signed_pdf_path')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
@@ -328,41 +284,21 @@ export async function getContractFileUrl(orgSlug: string, saleId: string, which:
   const path = which === 'signed' ? contract?.signed_pdf_path : contract?.pdf_path
   if (!path) return { ok: false as const, error: 'Arquivo não encontrado.' }
 
-  // O PDF assinado devolvido pela Autentique é uma URL pública deles, não um
-  // path do nosso Storage — nesse caso é só repassar a URL.
   if (which === 'signed' && /^https?:\/\//.test(path)) {
     return { ok: true as const, url: path }
   }
 
-  const { data: signed, error } = await supabase.storage.from('sale-contracts').createSignedUrl(path, 60 * 5)
+  const { data: signed, error } = await supabase.storage.from('plan-contracts').createSignedUrl(path, 60 * 5)
   if (error || !signed?.signedUrl) return { ok: false as const, error: error?.message || 'Não foi possível assinar URL.' }
   return { ok: true as const, url: signed.signedUrl }
 }
 
-export async function sendContractLinkByWhatsapp(orgSlug: string, saleId: string, conversationId: string) {
+export async function sendPlanContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
-    .from('sale_contracts')
-    .select('signature_link')
-    .eq('sale_id', saleId)
-    .eq('organization_id', org.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!contract?.signature_link) return { ok: false as const, error: 'Envie o contrato para assinatura primeiro.' }
-
-  return sendWhatsappMessage(orgSlug, conversationId, `Segue o link para assinatura do seu contrato: ${contract.signature_link}`)
-}
-
-export async function sendContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string) {
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const { data: contract } = await supabase
-    .from('sale_contracts')
+    .from('plan_contracts')
     .select('signature_link')
     .eq('sale_id', saleId)
     .eq('organization_id', org.id)
