@@ -8,12 +8,24 @@ import { isAccessBlocked } from '@/lib/billing/plans'
 
 const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
+/** Auditoria (2026-08-23): listPipelines/createPipeline/renamePipeline/
+ *  setDefaultPipeline/deletePipeline/getPipelinesAndStages resolviam a org
+ *  mas nunca checavam a permissão granular 'pipeline' — só CRUD de etapa
+ *  (createStage/updateStage/reorderStages/deleteStage) já checava. */
+async function requirePipelineAccess(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'pipeline')
+  return { org, user, allowed: check.allowed, reason: check.allowed ? undefined : check.reason }
+}
+
 /**
  * List all pipelines for an org with stage counts and lead counts — used by
  * the pipeline manager page and the kanban switcher dropdown.
  */
 export async function listPipelines(orgSlug: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, allowed } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return []
   const supabase = createClient()
 
   const { data: pipelines } = await supabase
@@ -45,8 +57,8 @@ export async function listPipelines(orgSlug: string) {
 }
 
 export async function createPipeline(orgSlug: string, name: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -90,7 +102,8 @@ export async function createPipeline(orgSlug: string, name: string) {
 }
 
 export async function renamePipeline(orgSlug: string, pipelineId: string, name: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -115,7 +128,8 @@ export async function renamePipeline(orgSlug: string, pipelineId: string, name: 
  * a stored procedure overkill for this scale.
  */
 export async function setDefaultPipeline(orgSlug: string, pipelineId: string) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -142,7 +156,8 @@ export async function deletePipeline(orgSlug: string, pipelineId: string) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
-  const org = await getCurrentOrganization(orgSlug)
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
@@ -187,6 +202,12 @@ export async function deletePipeline(orgSlug: string, pipelineId: string) {
 
 // Used by the automations editor to populate stage dropdowns for
 // "move to stage" actions. Returns stages from every pipeline of the org.
+// Usada pelo editor de Automações e por Campanhas pra popular dropdowns de
+// etapa — chamadores legítimos podem ter permissão 'automations'/'campanhas'
+// sem ter 'pipeline'. Só expõe nomes de pipeline/etapa (sem dado de lead),
+// então mantém apenas autenticação de org (já embutida em
+// getCurrentOrganization) em vez de gatear por 'pipeline' e quebrar esses
+// fluxos legítimos.
 export async function getPipelinesAndStages(orgSlug: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()

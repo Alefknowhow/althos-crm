@@ -1,5 +1,6 @@
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { getProfilesMap } from '@/lib/profiles'
 import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
@@ -13,7 +14,10 @@ export default async function PipelinePage({
   params: { orgSlug: string }
   searchParams?: { pipeline_id?: string }
 }) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'pipeline')
+  if (!perm.allowed) redirect(`/app/${params.orgSlug}`)
   const supabase = createClient()
 
   // List all org pipelines so the switcher knows what to offer.
