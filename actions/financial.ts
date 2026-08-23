@@ -12,6 +12,19 @@ import {
 } from '@/lib/financial/recurrence'
 import { uploadFile, deleteObject, getObjectSignedUrl } from '@/actions/storage'
 
+/** Auditoria (2026-08-23): as agregações read-only do dashboard (resumo,
+ *  KPIs, fluxo de caixa, DRE, etc.) resolviam a org mas nunca checavam a
+ *  permissão granular 'financial' — qualquer membro autenticado da
+ *  organização conseguia ler dado financeiro completo via chamada direta
+ *  da Server Action, independente da permissão concedida. */
+async function requireFinancialAccess(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!check.allowed) throw new Error(check.reason || 'Sem permissão')
+  return { org, user }
+}
+
 export type FinancialEntryRow = {
   id: string
   organization_id: string
@@ -671,7 +684,7 @@ export async function getFinancialSummary(
   orgSlug: string,
   range: { from: string; to: string },
 ): Promise<{ receitas_cents: number; despesas_cents: number; saldo_cents: number }> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -712,7 +725,7 @@ function trendOf(delta: number | null, higherIsBetter: boolean): 'up' | 'down' |
 export type FinancialKpis = Awaited<ReturnType<typeof getFinancialKpis>>
 
 export async function getFinancialKpis(orgSlug: string, range: { from: string; to: string }) {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const prev = previousRange(range)
 
@@ -797,7 +810,7 @@ export async function getCashFlowSeries(
   orgSlug: string,
   months = 6,
 ): Promise<{ month: string; receitas_cents: number; despesas_cents: number }[]> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
   const now = new Date()
@@ -833,7 +846,7 @@ export async function getExpensesByCategory(
   orgSlug: string,
   range: { from: string; to: string },
 ): Promise<{ categoria: string; valor_cents: number }[]> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -880,7 +893,7 @@ function groupSum(rows: { label: string | null; valor_cents: number }[]): { labe
  * colunas nem joins pesados com travel_sales.
  */
 export async function getRevenueBreakdown(orgSlug: string, range: { from: string; to: string }): Promise<RevenueBreakdown> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -927,7 +940,7 @@ export type ExpenseBreakdown = {
  * (is_recurring — lançamentos recorrentes materializados) vs. variáveis.
  */
 export async function getExpenseBreakdown(orgSlug: string, range: { from: string; to: string }): Promise<ExpenseBreakdown> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -955,7 +968,7 @@ export async function getSimpleDRE(
   orgSlug: string,
   range: { from: string; to: string },
 ): Promise<{ receita_total_cents: number; despesas_por_categoria: { categoria: string; valor_cents: number }[]; resultado_cents: number }> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -986,7 +999,7 @@ export async function getDailyCashFlow(
   orgSlug: string,
   range: { from: string; to: string },
 ): Promise<{ day: string; receitas_cents: number; despesas_cents: number; saldo_cents: number }[]> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('financial_entries')
@@ -1027,7 +1040,7 @@ export type UpcomingDueEntry = {
 }
 
 export async function getUpcomingDueEntries(orgSlug: string, days = 30): Promise<UpcomingDueEntry[]> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
   const today = new Date()
@@ -1060,7 +1073,7 @@ export type CashFlowProjection = {
  * "se nada mais entrar além do que já está lançado, como fica o caixa".
  */
 export async function getCashFlowProjection(orgSlug: string, horizonDays = 90): Promise<CashFlowProjection> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
   const today = new Date()
@@ -1129,7 +1142,7 @@ export type AccountsOverview = {
  * aplica, pra dar uma leitura rápida de "o que precisa de ação agora".
  */
 export async function getAccountsOverview(orgSlug: string): Promise<AccountsOverview> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
   const today = new Date()
@@ -1176,7 +1189,7 @@ export type StrategicIndicators = {
  * completa não existir.
  */
 export async function getStrategicIndicators(orgSlug: string, range: { from: string; to: string }): Promise<StrategicIndicators> {
-  const org = await getCurrentOrganization(orgSlug)
+  const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
   const [monthly, dre, expenseBreakdown, kpis] = await Promise.all([
