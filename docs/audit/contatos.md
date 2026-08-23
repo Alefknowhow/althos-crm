@@ -1,6 +1,25 @@
 # Auditoria — Módulo Contatos
 
-> Gerado em 2026-07-29. Faz parte da auditoria completa do app (layout/mobile + funcional). Ver também `docs/audit/pipeline.md`, `docs/audit/reservas.md`, `docs/audit/cotacoes.md`.
+> Gerado em 2026-07-29, **revisado em 2026-08-23** (retomada da auditoria
+> completa). Ver também `docs/audit/pipeline.md`, `docs/audit/reservas.md`,
+> `docs/audit/cotacoes.md`, `docs/audit/vendas.md`, `docs/audit/financeiro.md`.
+
+## 0. Atualização 2026-08-23
+
+O achado crítico da seção 4 (zero permissão em `actions/contatos.ts`)
+estava **parcialmente desatualizado**: entre Jul/29 e agora, alguém
+introduziu um helper `checkContatoPermission()` e aplicou em boa parte
+das ~35 funções exportadas — mas **11 ficaram de fora**, incluindo
+`getDocumentSignedUrl` (gera URL assinada pra documentos de contato —
+CPF/RG/passaporte — sem checar nada) e `requestLeadQualification`
+(consome créditos de IA pagos da org). `actions/relationships.ts`
+continuava com **zero** checagem nas 3 funções, exatamente como
+reportado originalmente. **Todos os 14 gaps corrigidos nesta revisão**
+— ver detalhe na seção 4 atualizada.
+
+Também removido código morto confirmado:
+`components/features/customers/{CustomersSplit,CustomersTable,AddCustomerDialog}.tsx`
+— resolve o achado #18 da lista original.
 
 ## 1. Rotas
 
@@ -45,7 +64,7 @@ Relacionados: `actions/relationships.ts` (`contato_relationships`), `actions/tra
 
 ## 4. Permissões
 
-**Achado crítico**: `lib/permissions.ts` define as chaves `'leads'`/`'clients'`, mas **nenhuma action de `actions/contatos.ts` ou `actions/relationships.ts` chama `checkMemberPermission`**. O bloqueio existe só na UI (`components/features/Sidebar.tsx:177-178,384` — o link "Contatos" só aparece se `can('leads') || can('clients')`). Qualquer membro autenticado pode ler/editar/excluir qualquer contato, subir/apagar documentos, mudar tags/status e reabrir negociações direto pela rota ou pela action, independente da permissão configurada para seu papel. `isAccessBlocked` (congelamento de billing) é respeitado; a permissão por papel, não.
+Chaves `'leads'`/`'clients'`/`'pipeline'` (`checkContatoPermission` libera se QUALQUER uma das três estiver concedida — Contatos serve as 3 telas). **Status em 2026-08-23: cobertura completa.** As 11 funções sem checagem foram corrigidas nesta revisão: `addLeadNote`, `getLead`, `requestLeadQualification`, `findDuplicateLead`, `searchLeads`, `listCustomers`, `getCustomer`, `getContatoPanel`, `listContatoDeals`, `getDocumentSignedUrl`, `getContatoTravelLinks`. `actions/relationships.ts` (parentesco) também corrigido nas 3 funções — reaproveita `checkContatoPermission` exportado de `contatos.ts`. `isAccessBlocked` (congelamento de billing) continua respeitado nas mutações.
 
 ## 5. Conexões com outros módulos
 
@@ -68,7 +87,7 @@ Relacionados: `actions/relationships.ts` (`contato_relationships`), `actions/tra
 
 ## Lista de problemas concretos (para priorização)
 
-1. **[Segurança]** Nenhuma verificação de permissão server-side em `actions/contatos.ts`/`actions/relationships.ts` — qualquer membro pode ler/editar/excluir contatos e documentos independente do papel.
+1. ~~**[Segurança]** Nenhuma verificação de permissão server-side em `actions/contatos.ts`/`actions/relationships.ts`~~ — **Corrigido em 2026-08-23** (11 + 3 funções, ver seção 4).
 2. `contatos/page.tsx:114` — scan de tags/fontes distintas sem índice, `.limit(1000)` — trunca silenciosamente acima de 1000 contatos.
 3. `contatos/importar/page.tsx:32` — parsing de CSV ingênuo, quebra com campos entre aspas contendo vírgula.
 4. `ContatosView.tsx` — monólito de 1274 linhas, deveria ser dividido.
@@ -85,5 +104,5 @@ Relacionados: `actions/relationships.ts` (`contato_relationships`), `actions/tra
 15. `ContatosView.tsx:336-350` — paginação sem loading/disabled state.
 16. `ContatosView.tsx:952-957` — padrão de `Dialog` sem `DialogTrigger asChild`.
 17. `contatos/[id]/page.tsx:148` — ações de IA/e-mail escondidas abaixo de `md` na página completa.
-18. `CustomersSplit.tsx`/`CustomersTable.tsx`/`AddCustomerDialog.tsx` — possível código morto/duplicado, confirmar uso.
+18. ~~`CustomersSplit.tsx`/`CustomersTable.tsx`/`AddCustomerDialog.tsx`~~ — **Confirmado código morto e removido em 2026-08-23.**
 19. `listContatoDeals` e outras leituras sem paginação para históricos longos.
