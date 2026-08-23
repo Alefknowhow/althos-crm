@@ -11,7 +11,7 @@ export default async function TasksTodayWidget({ orgId, orgSlug }: { orgId: stri
   
   const { data: tasks } = await supabase
     .from('tasks')
-    .select('*, leads(id, name)')
+    .select('*, leads:contatos(id, name)')
     .eq('organization_id', orgId)
     .eq('status', 'open')
     .lt('due_date', tomorrow.toISOString())

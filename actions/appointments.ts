@@ -218,7 +218,7 @@ export async function listAppointments(
   let q = supabase
     .from('appointments')
     .select(
-      'id, start_time, end_time, status, guest_name, guest_email, guest_phone, notes, location, canceled_at, canceled_reason, event_type_id, contato_id, event_types(name, color, duration_minutes), leads(id, name)',
+      'id, start_time, end_time, status, guest_name, guest_email, guest_phone, notes, location, canceled_at, canceled_reason, event_type_id, contato_id, event_types(name, color, duration_minutes), leads:contatos(id, name)',
     )
     .eq('organization_id', org.id)
 

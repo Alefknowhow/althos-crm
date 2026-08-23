@@ -19,7 +19,7 @@ export async function listSales(orgSlug: string) {
 
   const { data, error } = await supabase
     .from('sales')
-    .select('*, leads(id, name, source), products(id, name, type)')
+    .select('*, leads:contatos(id, name, source), products(id, name, type)')
     .eq('organization_id', org.id)
     .order('sale_date', { ascending: false })
     .order('created_at', { ascending: false })
@@ -39,7 +39,7 @@ export async function getSale(orgSlug: string, id: string) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('sales')
-    .select('*, leads(id, name), products(id, name, type, price_cents)')
+    .select('*, leads:contatos(id, name), products(id, name, type, price_cents)')
     .eq('id', id)
     .eq('organization_id', org.id)
     .maybeSingle()
