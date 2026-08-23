@@ -31,23 +31,6 @@ export async function listSales(orgSlug: string) {
   return data || []
 }
 
-export async function getSale(orgSlug: string, id: string) {
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'sales')
-  if (!perm.allowed) return { ok: false, error: perm.reason }
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('sales')
-    .select('*, leads:contatos(id, name), products(id, name, type, price_cents)')
-    .eq('id', id)
-    .eq('organization_id', org.id)
-    .maybeSingle()
-  if (error) return { ok: false, error: error.message }
-  if (!data) return { ok: false, error: 'Venda não encontrada' }
-  return { ok: true, data }
-}
-
 export async function createSale(orgSlug: string, input: unknown) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
