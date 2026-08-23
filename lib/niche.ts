@@ -33,6 +33,18 @@ export function isTrafficNiche(niche?: string | null): boolean {
   return n.includes('tráfego') || n.includes('trafego')
 }
 
+/** Chave canônica de nicho (usada pra filtrar conteúdo por vertical — ver lib/help/content.ts). Null = sem nicho/CRM genérico. */
+export type NicheKey = 'viagens' | 'trafego' | 'clinicas' | 'imoveis' | 'seguros'
+
+export function nicheKeyFor(niche?: string | null): NicheKey | null {
+  if (isTravelNiche(niche)) return 'viagens'
+  if (isTrafficNiche(niche)) return 'trafego'
+  if (isClinicNiche(niche)) return 'clinicas'
+  if (isRealEstateNiche(niche)) return 'imoveis'
+  if (isInsuranceNiche(niche)) return 'seguros'
+  return null
+}
+
 /**
  * Selectable niches. `value` is what gets stored on organizations.niche;
  * `label` is the display name. The travel value (NICHE_TRAVEL) unlocks the

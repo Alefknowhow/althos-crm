@@ -26,6 +26,10 @@ import {
   BookOpen,
   LifeBuoy,
   Plane,
+  TrendingUp,
+  Stethoscope,
+  Home,
+  Shield,
 } from 'lucide-react'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -39,6 +43,10 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   BookOpen,
   Plane,
+  TrendingUp,
+  Stethoscope,
+  Home,
+  Shield,
 }
 
 function CategoryIcon({ name, className }: { name: string; className?: string }) {

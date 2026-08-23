@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { serializeHelpForAI } from '@/lib/help/content'
+import { nicheKeyFor, type NicheKey } from '@/lib/niche'
 import { BRAND } from '@/lib/constants/brand'
 
 export type SupportRole = 'user' | 'assistant'
@@ -16,11 +17,17 @@ export type SupportReply = {
   error?: string
 }
 
-// Cache the serialized manual once per server instance — it never changes at runtime.
-let MANUAL_CACHE: string | null = null
-function getManual(): string {
-  if (MANUAL_CACHE === null) MANUAL_CACHE = serializeHelpForAI()
-  return MANUAL_CACHE
+// Cache o manual serializado por nicho (Core + vertical da org) — ele não
+// muda em runtime, só varia por qual vertical está pedindo.
+const MANUAL_CACHE = new Map<string, string>()
+function getManual(nicheKey: NicheKey | null): string {
+  const key = nicheKey ?? '__core__'
+  let cached = MANUAL_CACHE.get(key)
+  if (cached === undefined) {
+    cached = serializeHelpForAI(nicheKey)
+    MANUAL_CACHE.set(key, cached)
+  }
+  return cached
 }
 
 const HANDOFF_TOKEN = '[[HANDOFF]]'
@@ -40,13 +47,15 @@ export async function askSupport(
     // Centralized platform token (env) — same key for every account.
     const apiKey = process.env.ANTHROPIC_API_KEY || ''
     let model = 'claude-haiku-4-5'
+    let nicheKey: NicheKey | null = null
     try {
       const { data: org } = await supabase
         .from('organizations')
-        .select('ai_qualifier_model')
+        .select('ai_qualifier_model, niche')
         .eq('slug', orgSlug)
         .maybeSingle()
       if (org?.ai_qualifier_model) model = org.ai_qualifier_model
+      nicheKey = nicheKeyFor(org?.niche)
     } catch {
       /* ignore — use platform defaults */
     }
@@ -80,8 +89,8 @@ export async function askSupport(
       },
       {
         type: 'text' as const,
-        text: getManual(),
-        // Prompt caching: the large manual block is stable across calls.
+        text: getManual(nicheKey),
+        // Prompt caching: the manual block is stable across calls for the same niche.
         cache_control: { type: 'ephemeral' as const },
       },
     ]
