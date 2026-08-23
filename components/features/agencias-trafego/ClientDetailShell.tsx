@@ -97,7 +97,7 @@ export default function ClientDetailShell({
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
-          <ClientSyncPanel orgSlug={orgSlug} accounts={accounts} />
+          <ClientSyncPanel orgSlug={orgSlug} clientId={clientId} accounts={accounts} performance={performanceCurrent} />
           <TrafficClientCampaignsCard orgSlug={orgSlug} contatoId={clientId} accounts={accounts} campaigns={campaigns} />
         </TabsContent>
 

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { isTrafficNiche } from '@/lib/niche'
@@ -7,13 +8,15 @@ import { listAdAccountsByClient, listCampaignsByClient } from '@/actions/marketi
 import { listCreatives } from '@/actions/campaign-creatives'
 import { listClientActivity } from '@/actions/trafego-history'
 import { getClientPerformanceComparison, getClientDailySeries } from '@/actions/trafego-performance'
+import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads-oauth'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
+import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function TrafficClientDetailPage({
-  params,
-}: { params: { orgSlug: string; id: string } }) {
+  params, searchParams,
+}: { params: { orgSlug: string; id: string }; searchParams: { meta_step?: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
   if (!isTrafficNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
@@ -27,6 +30,30 @@ export default async function TrafficClientDetailPage({
     .maybeSingle()
 
   if (!client) redirect(`/app/${params.orgSlug}/agencias-trafego/trafego`)
+
+  // Voltando do OAuth do Facebook (app/api/meta-ads/connect com clientId) —
+  // mostra a seleção de contas em vez do painel normal do cliente.
+  if (searchParams.meta_step === 'select') {
+    const cookieStore = cookies()
+    const token = cookieStore.get('meta_ads_pending_token')?.value
+    const pendingOrg = cookieStore.get('meta_ads_pending_org')?.value
+    const pendingClient = cookieStore.get('meta_ads_pending_client')?.value
+
+    if (token && pendingOrg === params.orgSlug && pendingClient === params.id) {
+      let options: MetaAdAccountOption[] = []
+      let error: string | null = null
+      try {
+        options = await listAdAccountsForToken(token)
+      } catch (e: any) {
+        error = e?.message || 'Falha ao listar contas de anúncio'
+      }
+      return (
+        <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+          <SelectMetaAdAccountsForClient orgSlug={params.orgSlug} clientId={params.id} options={options} listError={error} />
+        </div>
+      )
+    }
+  }
 
   const now = new Date()
   const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }

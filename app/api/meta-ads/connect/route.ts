@@ -7,6 +7,7 @@ import { signState, buildOAuthDialogUrl, isMetaAdsOAuthConfigured } from '@/lib/
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const orgSlug = searchParams.get('orgSlug')
+  const clientId = searchParams.get('clientId') || undefined
   if (!orgSlug) return NextResponse.json({ error: 'orgSlug obrigatório' }, { status: 400 })
 
   if (!isMetaAdsOAuthConfigured()) {
@@ -24,6 +25,6 @@ export async function GET(req: Request) {
     )
   }
 
-  const state = signState({ orgSlug, ts: Date.now() })
+  const state = signState({ orgSlug, ts: Date.now(), clientId })
   return NextResponse.redirect(buildOAuthDialogUrl(state))
 }

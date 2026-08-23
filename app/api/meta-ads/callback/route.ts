@@ -9,9 +9,15 @@ import {
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'
 const PENDING_TOKEN_COOKIE = 'meta_ads_pending_token'
 const PENDING_ORG_COOKIE = 'meta_ads_pending_org'
+const PENDING_CLIENT_COOKIE = 'meta_ads_pending_client'
 
-function back(orgSlug: string, qs: string) {
-  return NextResponse.redirect(`${BASE}/app/${orgSlug}/marketing/contas?${qs}`)
+/** Sem clientId: fluxo genérico de Marketing → Contas. Com clientId: volta
+ *  pra aba Performance do cliente na vertical Tráfego. */
+function back(orgSlug: string, qs: string, clientId?: string) {
+  const path = clientId
+    ? `/app/${orgSlug}/agencias-trafego/trafego/${clientId}`
+    : `/app/${orgSlug}/marketing/contas`
+  return NextResponse.redirect(`${BASE}${path}?${qs}`)
 }
 
 /**
@@ -30,13 +36,13 @@ export async function GET(req: Request) {
   if (!parsed) {
     return NextResponse.redirect(`${BASE}/?meta_ads_error=invalid_state`)
   }
-  const { orgSlug } = parsed
+  const { orgSlug, clientId } = parsed
 
   if (oauthError) {
-    return back(orgSlug, `error=oauth&msg=${encodeURIComponent(oauthError)}`)
+    return back(orgSlug, `error=oauth&msg=${encodeURIComponent(oauthError)}`, clientId)
   }
   if (!code) {
-    return back(orgSlug, 'error=missing_code')
+    return back(orgSlug, 'error=missing_code', clientId)
   }
 
   try {
@@ -45,16 +51,21 @@ export async function GET(req: Request) {
     // Confere que o token é válido antes de seguir (falha rápido, mensagem clara).
     await getMetaUserProfile(longToken)
 
-    const res = back(orgSlug, 'step=select')
+    const res = back(orgSlug, clientId ? 'meta_step=select' : 'step=select', clientId)
     res.cookies.set(PENDING_TOKEN_COOKIE, longToken, {
       httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, path: '/',
     })
     res.cookies.set(PENDING_ORG_COOKIE, orgSlug, {
       httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, path: '/',
     })
+    if (clientId) {
+      res.cookies.set(PENDING_CLIENT_COOKIE, clientId, {
+        httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, path: '/',
+      })
+    }
     return res
   } catch (e: any) {
     console.error('[meta-ads callback]', e?.message)
-    return back(orgSlug, `error=exchange&msg=${encodeURIComponent(e?.message || 'erro')}`)
+    return back(orgSlug, `error=exchange&msg=${encodeURIComponent(e?.message || 'erro')}`, clientId)
   }
 }

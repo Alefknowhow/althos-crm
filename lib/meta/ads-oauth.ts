@@ -38,13 +38,13 @@ function stateSecret(): string {
 
 // ── CSRF state (signed, stateless) ───────────────────────────────────────────
 
-export function signState(payload: { orgSlug: string; ts: number }): string {
+export function signState(payload: { orgSlug: string; ts: number; clientId?: string }): string {
   const raw = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const sig = createHmac('sha256', stateSecret()).update(raw).digest('base64url')
   return `${raw}.${sig}`
 }
 
-export function verifyState(state: string): { orgSlug: string; ts: number } | null {
+export function verifyState(state: string): { orgSlug: string; ts: number; clientId?: string } | null {
   const [raw, sig] = state.split('.')
   if (!raw || !sig) return null
   const expected = createHmac('sha256', stateSecret()).update(raw).digest('base64url')

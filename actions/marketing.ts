@@ -544,6 +544,71 @@ export async function connectMetaAdsAccounts(orgSlug: string, selectedAccountIds
 }
 
 /**
+ * Igual connectMetaAdsAccounts, mas vinculando cada conta escolhida ao
+ * cliente de tráfego (ad_accounts.contato_id) — usado pelo fluxo OAuth
+ * disparado da aba Performance de um cliente (app/api/meta-ads/connect com
+ * clientId, ver lib/meta/ads-oauth.ts::signState). Sem isso as contas
+ * conectadas ficariam soltas no nível da org, sem dono.
+ */
+export async function connectMetaAdsAccountsForClient(orgSlug: string, clientId: string, selectedAccountIds: string[]) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const cookieStore = cookies()
+  const token = cookieStore.get('meta_ads_pending_token')?.value
+  const pendingOrg = cookieStore.get('meta_ads_pending_org')?.value
+  const pendingClient = cookieStore.get('meta_ads_pending_client')?.value
+  if (!token || pendingOrg !== orgSlug || pendingClient !== clientId) {
+    return { ok: false as const, error: 'Sessão de conexão expirada, tente conectar novamente' }
+  }
+
+  const { data: client } = await createClient()
+    .from('contatos').select('id').eq('id', clientId).eq('organization_id', org.id).maybeSingle()
+  if (!client) return { ok: false as const, error: 'Cliente não encontrado' }
+
+  const { listAdAccountsForToken } = await import('@/lib/meta/ads-oauth')
+  let available
+  try {
+    available = await listAdAccountsForToken(token)
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao validar contas de anúncio' }
+  }
+  const availableIds = new Set(available.map(a => a.id))
+  const validSelected = selectedAccountIds.filter(id => availableIds.has(id))
+  if (validSelected.length === 0) {
+    return { ok: false as const, error: 'Nenhuma conta válida selecionada' }
+  }
+
+  const supabase = createClient()
+  const expiresAt = new Date(Date.now() + 55 * 24 * 3600 * 1000).toISOString() // ~55 dias
+  await supabase
+    .from('organizations')
+    .update({ meta_ads_access_token: token, meta_ads_token_expires_at: expiresAt })
+    .eq('id', org.id)
+
+  let accountsConnected = 0
+  for (const accountId of validSelected) {
+    const meta = available.find(a => a.id === accountId)
+    if (!meta) continue
+    const { error } = await supabase
+      .from('ad_accounts')
+      .upsert(
+        { organization_id: org.id, provider: 'meta', name: meta.name, external_id: meta.id, status: 'active', contato_id: clientId },
+        { onConflict: 'organization_id,provider,external_id' },
+      )
+    if (!error) accountsConnected++
+  }
+
+  cookieStore.delete('meta_ads_pending_token')
+  cookieStore.delete('meta_ads_pending_org')
+  cookieStore.delete('meta_ads_pending_client')
+  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${clientId}`)
+  return { ok: true as const, accountsConnected }
+}
+
+/**
  * Bulk import of daily metrics rows. Used by CSV upload — the row format is
  * intentionally minimal (campaign_name OR campaign_id + date + spend + optional
  * counters), so we can ingest exports from Meta, Google Ads, etc. with the same
