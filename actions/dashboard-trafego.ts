@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { fetchNormalizedSales } from '@/lib/dashboard/sales-source'
 
 /**
@@ -27,8 +28,16 @@ export type TrafegoDashboardMetrics = {
   hasGoalData: boolean
 }
 
+const EMPTY_METRICS: TrafegoDashboardMetrics = {
+  revenueCents: 0, salesCount: 0, activeClients: 0, newClients: 0, leadsGenerated: 0,
+  hasMediaData: false, hasGoalData: false,
+}
+
 export async function getTrafegoDashboardMetrics(orgSlug: string): Promise<TrafegoDashboardMetrics> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!check.allowed) return EMPTY_METRICS
   const supabase = createClient()
 
   const since30d = new Date()

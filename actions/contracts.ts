@@ -93,8 +93,10 @@ export async function getContractRenderData(orgSlug: string, saleId: string) {
 // (sale_contracts vs. plan_contracts).
 
 export async function getOrgAutentiqueConfig(orgSlug: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'settings')
+  if (!check.allowed) return { has_api_key: false }
   const supabase = createClient()
 
   const { data } = await supabase
@@ -107,8 +109,10 @@ export async function getOrgAutentiqueConfig(orgSlug: string) {
 }
 
 export async function saveOrgAutentiqueConfig(orgSlug: string, apiKey: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'settings')
+  if (!check.allowed) return { ok: false as const, error: check.reason || 'Sem permissão' }
   const supabase = createClient()
 
   if (!apiKey.trim()) return { ok: false as const, error: 'Informe a chave de API.' }
