@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { RELATIONSHIP_KINDS, type RelationshipRow } from '@/lib/relationships'
+import { checkContatoPermission } from '@/actions/contatos'
 
 // =====================================================================
 // Parentesco / vínculos entre contatos (contato_relationships).
@@ -20,8 +21,10 @@ export async function listRelationships(
   orgSlug: string,
   contatoId: string,
 ): Promise<RelationshipRow[]> {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
   const supabase = createClient()
 
   const { data, error } = await supabase
@@ -65,8 +68,10 @@ const addSchema = z.object({
  * sem contato próprio, ex.: familiar que viaja junto mas nunca vai virar lead).
  */
 export async function addRelationship(orgSlug: string, raw: unknown) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
 
   const parsed = addSchema.safeParse(raw)
@@ -112,8 +117,10 @@ export async function deleteRelationship(
   relationshipId: string,
   contatoId: string,
 ) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
 
   const { error } = await supabase

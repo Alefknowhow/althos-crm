@@ -16,7 +16,7 @@ const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatur
  * Clientes — libera se o membro tiver acesso a QUALQUER um dos módulos que
  * dependem desta tabela.
  */
-async function checkContatoPermission(orgId: string, userId: string) {
+export async function checkContatoPermission(orgId: string, userId: string) {
   const [pipeline, leads, clients] = await Promise.all([
     checkMemberPermission(orgId, userId, 'pipeline'),
     checkMemberPermission(orgId, userId, 'leads'),
@@ -127,6 +127,8 @@ export async function createLead(orgSlug: string, formData: FormData) {
 export async function addLeadNote(orgSlug: string, leadId: string, formData: FormData) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false, error: perm.reason }
   const supabase = createClient()
 
   const text = formData.get('text') as string
@@ -384,7 +386,10 @@ export async function moveLeadToStage(
 }
 
 export async function getLead(orgSlug: string, leadId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { lead: null, activities: [], automation_runs: [] }
   const supabase = createClient()
 
   const { data: lead } = await supabase.from('contatos').select('*, pipeline_stages(name)').eq('id', leadId).eq('organization_id', org.id).maybeSingle()
@@ -488,8 +493,10 @@ export async function updateContatoInternalNotes(orgSlug: string, contatoId: str
 }
 
 export async function requestLeadQualification(orgSlug: string, leadId: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, reason: perm.reason || 'Sem permissão' }
 
   const { runLeadQualification } = await import('@/lib/ai/run-qualification')
   const result = await runLeadQualification(leadId, org.id, null)
@@ -587,7 +594,10 @@ export async function findDuplicateLead(
   orgSlug: string,
   payload: { email?: string; phone?: string },
 ) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { match: null }
   const supabase = createClient()
 
   const email = (payload.email || '').trim().toLowerCase()
@@ -611,7 +621,10 @@ export async function findDuplicateLead(
 }
 
 export async function searchLeads(orgSlug: string, query: string, limit = 20) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
   const supabase = createClient()
 
   const q = (query || '').trim()
@@ -664,7 +677,10 @@ export type CustomerListRow = {
 }
 
 export async function listCustomers(orgSlug: string): Promise<CustomerListRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
   const supabase = createClient()
 
   const { data: leads } = await supabase
@@ -723,7 +739,10 @@ export async function listCustomers(orgSlug: string): Promise<CustomerListRow[]>
 }
 
 export async function getCustomer(orgSlug: string, leadId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return null
   const supabase = createClient()
 
   const [{ data: lead }, { data: sales }, { data: activities }, { data: documents }] = await Promise.all([
@@ -937,7 +956,10 @@ export async function createContato(orgSlug: string, raw: unknown) {
 /* -------- Detalhe completo para o painel master-detail -------- */
 
 export async function getContatoPanel(orgSlug: string, contatoId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
 
   const [{ data: contato }, { data: documents }, { data: sales }] = await Promise.all([
@@ -1215,7 +1237,10 @@ export type ContatoDeal = {
 
 /** Histórico completo de negócios do contato (fonte: tabela `negocios`). */
 export async function listContatoDeals(orgSlug: string, contatoId: string): Promise<ContatoDeal[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
   const supabase = createClient()
   const { data } = await supabase
     .from('negocios')
@@ -1425,7 +1450,10 @@ export async function deleteCustomerDocument(orgSlug: string, documentId: string
 }
 
 export async function getDocumentSignedUrl(orgSlug: string, documentId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason || 'Sem permissão' }
   const supabase = createClient()
 
   const { data: doc } = await supabase
@@ -1474,8 +1502,10 @@ export type ContatoReservationLink = {
 }
 
 export async function getContatoTravelLinks(orgSlug: string, contatoId: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { quotes: [], reservations: [] }
   const supabase = createClient()
 
   const [{ data: quotes }, { data: reservations }] = await Promise.all([
