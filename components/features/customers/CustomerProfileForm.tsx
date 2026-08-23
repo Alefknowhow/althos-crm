@@ -13,6 +13,7 @@ import { upsertCustomerProfile } from '@/actions/contatos'
 import CopyButton from '@/components/ui/copy-button'
 
 type Profile = {
+  name?: string | null
   cpf: string | null
   rg: string | null
   passport_number: string | null
@@ -61,6 +62,7 @@ export default function CustomerProfileForm({
   const [cepLoading, setCepLoading] = useState(false)
 
   const [form, setForm] = useState({
+    name: initial?.name || '',
     cpf: initial?.cpf || '',
     rg: initial?.rg || '',
     passport_number: initial?.passport_number || '',
@@ -114,7 +116,9 @@ export default function CustomerProfileForm({
 
   async function save() {
     setSaving(true)
-    const res = await upsertCustomerProfile(orgSlug, leadId, form)
+    const { name, ...rest } = form
+    const payload = name.trim() ? { name: name.trim(), ...rest } : rest
+    const res = await upsertCustomerProfile(orgSlug, leadId, payload)
     setSaving(false)
     if (res.ok) {
       toast.success('Dados do cliente salvos')
@@ -136,7 +140,15 @@ export default function CustomerProfileForm({
             Documentos
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className="space-y-1.5 w-44">
+            <div className="space-y-1.5 w-64">
+              <Label className="text-xs">Nome completo</Label>
+              <Input
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="Nome do cliente"
+              />
+            </div>
+            <div className="space-y-1.5 w-40">
               <div className="flex items-center gap-1.5">
                 <Label className="text-xs">CPF</Label>
                 <CopyButton value={form.cpf} label="CPF" />
@@ -148,7 +160,7 @@ export default function CustomerProfileForm({
                 inputMode="numeric"
               />
             </div>
-            <div className="space-y-1.5 w-36">
+            <div className="space-y-1.5 w-40">
               <Label className="text-xs">RG</Label>
               <Input
                 value={form.rg}

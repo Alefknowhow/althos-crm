@@ -32,11 +32,12 @@ import {
 import {
   createContato, setContatoStatus, uploadContatoAvatar, removeContatoAvatar,
   getContatoTravelLinks, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead,
-  type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal,
+  type ContatoQuoteLink, type ContatoReservationLink, type ContatoDeal, type ContatoContactPoint,
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
+import CustomerContactForm from '@/components/features/customers/CustomerContactForm'
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
@@ -44,6 +45,12 @@ import PropertyVisitsSection from '@/components/features/properties/PropertyVisi
 import PropertyPreferencesCard from '@/components/features/properties/PropertyPreferencesCard'
 import PropertyMatchSuggestions from '@/components/features/properties/PropertyMatchSuggestions'
 import CopyButton from '@/components/ui/copy-button'
+import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
+import RequalifyButton from '@/components/features/ai/RequalifyButton'
+import SendEmailDialog from '@/components/features/SendEmailDialog'
+import TaskCard from '@/components/features/TaskCard'
+import TaskDialog from '@/components/features/TaskDialog'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 // ── Tipos vindos da página (server) ──────────────────────────────────
 type ListRow = {
@@ -84,6 +91,12 @@ type Selected = {
   propertyInterests?: any[]
   propertyVisits?: any[]
   propertyPreferences?: any
+  contactPoints: ContatoContactPoint[]
+  activities: any[]
+  tasks: any[]
+  emailSends: any[]
+  templates: any[]
+  whatsappConv: any | null
 } | null
 
 type Filters = Record<string, string | undefined>
@@ -106,6 +119,7 @@ interface Props {
   properties?: { id: string; title: string; code: string | null }[]
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode
+  orgName: string
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -157,6 +171,7 @@ export default function ContatosView({
   properties = [],
   members,
   statusTabs,
+  orgName,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -388,6 +403,7 @@ export default function ContatosView({
               isTravel={isTravel}
               isRealEstate={isRealEstate}
               properties={properties}
+              orgName={orgName}
             />
           ) : (
             <div className="h-full grid place-items-center p-10 text-center">
@@ -569,7 +585,7 @@ function ListAvatar({ name, url }: { name: string; url: string | null }) {
 
 // ── Painel de detalhe ────────────────────────────────────────────────
 function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [],
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -578,6 +594,7 @@ function DetailPanel({
   isTravel: boolean
   isRealEstate?: boolean
   properties?: { id: string; title: string; code: string | null }[]
+  orgName: string
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -670,7 +687,10 @@ function DetailPanel({
         </button>
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
+            <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
@@ -691,11 +711,7 @@ function DetailPanel({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" asChild>
-          <Link href={`/app/${orgSlug}/contatos/${c.id}`}>
-            <ExternalLink className="w-4 h-4 mr-1.5" /> Página completa
-          </Link>
-        </Button>
+        <RequalifyButton orgSlug={orgSlug} leadId={c.id} />
         {c.phone && (
           <Button size="sm" variant="outline" asChild>
             <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
@@ -704,11 +720,7 @@ function DetailPanel({
           </Button>
         )}
         {c.email && (
-          <Button size="sm" variant="outline" asChild>
-            <a href={`mailto:${c.email}`}>
-              <Mail className="w-4 h-4 mr-1.5" /> E-mail
-            </a>
-          </Button>
+          <SendEmailDialog orgSlug={orgSlug} lead={c} templates={selected.templates} org={{ name: orgName }} />
         )}
         {c.status === 'cliente' && (
           <Button size="sm" variant="outline" onClick={handleReopen} disabled={reopening}>
@@ -812,8 +824,51 @@ function DetailPanel({
         </div>
       )}
 
-      {/* Cadastro: endereço, documentos, passaporte */}
+      {/* Contato: e-mail/telefone principal + adicionais */}
+      <CustomerContactForm
+        orgSlug={orgSlug}
+        contatoId={c.id}
+        initialEmail={c.email}
+        initialPhone={c.phone}
+        initialPoints={selected.contactPoints}
+      />
+
+      {/* Cadastro: nome, documentos, endereço, passaporte */}
       <CustomerProfileForm orgSlug={orgSlug} leadId={c.id} initial={c} />
+
+      {/* Créditos de Cancelamento — detalhado (o saldo já aparece no card acima) */}
+      {isTravel && credits.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+            Créditos de cancelamento
+          </p>
+          <div className="space-y-1.5">
+            {credits.map(cr => {
+              const saldo = cr.valor_cents - cr.valor_usado_cents
+              const statusLabel = cr.status === 'used' ? 'Utilizado' : cr.status === 'cancelled' ? 'Cancelado' : cr.validade && new Date(cr.validade) < new Date() ? 'Expirado' : 'Disponível'
+              return (
+                <div key={cr.id} className="border rounded-lg px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{cr.operadora}</span>
+                    <span className="font-semibold tabular-nums">{fmtCurrency(saldo)}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span>{fmtDate(cr.data_emissao)}</span>
+                    {cr.validade && <span>· Válido até {fmtDate(cr.validade)}</span>}
+                    <Badge variant="outline" className="text-[9px] px-1 py-0">{statusLabel}</Badge>
+                    {cr.origem_sale_id && (
+                      <Link href={`/app/${orgSlug}/reservas?sale=${cr.origem_sale_id}`} className="text-primary hover:underline">
+                        Ver venda de origem
+                      </Link>
+                    )}
+                  </div>
+                  {cr.observacoes && <div className="text-xs text-muted-foreground mt-1">{cr.observacoes}</div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Documentos (fotos / arquivos) */}
       <CustomerDocuments
@@ -853,6 +908,105 @@ function DetailPanel({
           </div>
         </div>
       )}
+
+      {/* WhatsApp */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">WhatsApp</CardTitle></CardHeader>
+        <CardContent>
+          {selected.whatsappConv ? (
+            <div className="space-y-3">
+              <div className="text-sm border rounded-lg p-3 bg-muted/20 flex flex-col items-center justify-center text-center gap-1.5">
+                <div className="font-semibold">{selected.whatsappConv.contact_name || selected.whatsappConv.contact_phone}</div>
+                <div className="text-muted-foreground text-xs">{selected.whatsappConv.contact_phone}</div>
+                <div className="text-[11px] mt-1 bg-primary/10 text-primary px-2 py-1 rounded-full">
+                  Última interação: {fmtDate(selected.whatsappConv.last_message_at)}
+                </div>
+              </div>
+              <Link href={`/app/${orgSlug}/conversas?id=${selected.whatsappConv.id}`} className="flex w-full">
+                <Button className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white">Abrir Conversa WhatsApp</Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-4">Sem conversas registradas via WhatsApp Cloud API.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tarefas */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Tarefas</CardTitle>
+          <TaskDialog orgSlug={orgSlug} defaultLead={{ id: c.id, name: c.name }} />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {selected.tasks.length > 0 ? selected.tasks.map(task => (
+              <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
+            )) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma tarefa vinculada.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Timeline de Atividades */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Timeline de Atividades</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {selected.activities.length > 0 ? selected.activities.map((act: any) => (
+              <div key={act.id} className="flex gap-3 border-b pb-3 last:border-0 last:pb-0">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs">
+                  {act.type === 'manual_created' ? '🚀' : act.type === 'note' ? '📝' : act.type === 'ai_qualified' ? '✨' : act.type.startsWith('email') ? '✉️' : act.type.startsWith('credit_') ? '🎫' : '⚙️'}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {act.type === 'manual_created' ? 'Contato criado manualmente'
+                      : act.type === 'note' ? 'Nota adicionada'
+                      : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)`
+                      : act.type === 'email_sent' ? 'E-mail enviado'
+                      : act.type === 'email_opened' ? 'E-mail aberto'
+                      : act.type === 'credit_created' ? `Crédito de cancelamento gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})`
+                      : act.type === 'credit_used' ? `Crédito de cancelamento utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}`
+                      : act.type}
+                  </div>
+                  {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
+                  {act.type === 'ai_qualified' && (
+                    <div className="text-xs mt-1 text-muted-foreground italic">
+                      {act.payload?.reason}
+                      {act.payload?.concerns?.length > 0 && <div className="mt-1">⚠ {act.payload.concerns.join(' · ')}</div>}
+                    </div>
+                  )}
+                  {act.type === 'email_sent' && <div className="text-xs mt-1 text-muted-foreground">Assunto: {act.payload.subject} (Template: {act.payload.template_name})</div>}
+                  <div className="text-[11px] text-muted-foreground mt-1">{new Date(act.created_at).toLocaleString('pt-BR')}</div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade registrada.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Histórico de E-mails */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Histórico de E-mails</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {selected.emailSends.length > 0 ? selected.emailSends.map((es: any) => (
+              <div key={es.id} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
+                <div>
+                  <div className="text-sm font-medium">{(Array.isArray(es.email_templates) ? es.email_templates[0]?.name : es.email_templates?.name) || 'Template removido'}</div>
+                  <div className="text-[11px] text-muted-foreground">{new Date(es.created_at).toLocaleString('pt-BR')}</div>
+                </div>
+                <Badge variant={es.status === 'sent' ? 'default' : es.status === 'opened' ? 'secondary' : es.status === 'failed' || es.status === 'bounced' ? 'destructive' : 'outline'}>{es.status}</Badge>
+              </div>
+            )) : (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum e-mail enviado.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

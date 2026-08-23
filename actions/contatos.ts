@@ -788,6 +788,7 @@ export async function getCustomer(orgSlug: string, leadId: string) {
 /* -------- Cadastro (dados de contato) -------- */
 
 const profileSchema = z.object({
+  name: z.string().min(1).optional(),
   cpf: z.string().optional().nullable(),
   rg: z.string().optional().nullable(),
   passport_number: z.string().optional().nullable(),
@@ -832,6 +833,93 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
 
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/contatos/${leadId}`)
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
+}
+
+/* -------- Contato: e-mail/telefone principal + pontos de contato extras -------- */
+
+const primaryContactSchema = z.object({
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')).nullable(),
+  phone: z.string().optional().nullable(),
+})
+
+/** Atualiza o e-mail/telefone principal (contatos.email/phone) — usados em busca, WhatsApp, etc. */
+export async function updateContatoPrimaryContact(orgSlug: string, contatoId: string, raw: unknown) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const parsed = primaryContactSchema.safeParse(raw)
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
+
+  const { error } = await supabase
+    .from('contatos')
+    .update({ email: parsed.data.email || null, phone: parsed.data.phone || null })
+    .eq('id', contatoId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
+}
+
+export type ContatoContactPoint = { id: string; kind: 'email' | 'phone'; label: string | null; value: string }
+
+export async function listContatoContactPoints(orgSlug: string, contatoId: string): Promise<ContatoContactPoint[]> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contato_contact_points')
+    .select('id, kind, label, value')
+    .eq('contato_id', contatoId)
+    .eq('organization_id', org.id)
+    .order('created_at', { ascending: true })
+  return (data as ContatoContactPoint[]) || []
+}
+
+export async function addContatoContactPoint(
+  orgSlug: string,
+  contatoId: string,
+  kind: 'email' | 'phone',
+  label: string,
+  value: string,
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  if (!value.trim()) return { ok: false as const, error: 'Preencha o valor.' }
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('contato_contact_points')
+    .insert({ organization_id: org.id, contato_id: contatoId, kind, label: label.trim() || null, value: value.trim() })
+    .select('id, kind, label, value')
+    .single()
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const, point: data as ContatoContactPoint }
+}
+
+export async function removeContatoContactPoint(orgSlug: string, pointId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('contato_contact_points')
+    .delete()
+    .eq('id', pointId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const }
 }

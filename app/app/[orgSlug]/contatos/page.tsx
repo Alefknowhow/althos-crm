@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { listSavedFilters } from '@/actions/saved_filters'
 import { listRelationships } from '@/actions/relationships'
 import { listOrgMembers } from '@/actions/sales'
-import { resolveContatoAvatars } from '@/actions/contatos'
+import { resolveContatoAvatars, listContatoContactPoints } from '@/actions/contatos'
 import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
 import { listProperties } from '@/actions/properties'
 import { listInterestsByContato } from '@/actions/property-interests'
@@ -155,7 +155,11 @@ export default async function ContatosPage({
   const selId = searchParams.sel || ''
   let selected: any = null
   if (selId) {
-    const [{ data: contato }, { data: documents }, { data: sales }, relationships, interests, visits] =
+    const [
+      { data: contato }, { data: documents }, { data: sales }, relationships, interests, visits,
+      contactPoints, { data: activities }, { data: tasks }, { data: emailSends }, { data: templates },
+      { data: whatsappConv },
+    ] =
       await Promise.all([
         supabase
           .from('contatos')
@@ -178,6 +182,29 @@ export default async function ContatosPage({
         listRelationships(params.orgSlug, selId),
         realEstate ? listInterestsByContato(params.orgSlug, selId) : Promise.resolve([]),
         realEstate ? listVisitsByContato(params.orgSlug, selId) : Promise.resolve([]),
+        listContatoContactPoints(params.orgSlug, selId),
+        supabase
+          .from('contato_activities')
+          .select('id, type, payload, created_at')
+          .eq('contato_id', selId)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('tasks')
+          .select('id, title, status, priority, due_date, contato_id')
+          .eq('contato_id', selId)
+          .order('due_date', { ascending: true }),
+        supabase
+          .from('email_sends')
+          .select('id, status, created_at, email_templates(name)')
+          .eq('contato_id', selId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('email_templates')
+          .select('id, name, subject')
+          .eq('organization_id', org.id)
+          .order('name', { ascending: true }),
+        supabase.from('whatsapp_conversations').select('*').eq('contato_id', selId).maybeSingle(),
       ])
     if (contato) {
       const [resolvedContato] = await resolveContatoAvatars(params.orgSlug, [contato as any])
@@ -189,6 +216,12 @@ export default async function ContatosPage({
         propertyInterests: interests,
         propertyVisits: visits,
         propertyPreferences: (resolvedContato as any).property_preferences || null,
+        contactPoints,
+        activities: activities || [],
+        tasks: tasks || [],
+        emailSends: emailSends || [],
+        templates: templates || [],
+        whatsappConv: whatsappConv || null,
       }
     }
   }
@@ -261,6 +294,7 @@ export default async function ContatosPage({
         filters={searchParams}
         isTravel={isTravelNiche(org.niche)}
         isRealEstate={realEstate}
+        orgName={org.name}
         properties={properties}
         members={members}
         statusTabs={statusTabs}
