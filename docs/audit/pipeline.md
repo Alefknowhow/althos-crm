@@ -1,6 +1,20 @@
 # Auditoria — Módulo Pipeline
 
-> Gerado em 2026-07-29. Faz parte da auditoria completa do app. Ver também `docs/audit/contatos.md`, `docs/audit/reservas.md`, `docs/audit/cotacoes.md`.
+> Gerado em 2026-07-29, **revisado em 2026-08-23** (retomada da auditoria
+> completa). Ver também `docs/audit/contatos.md`, `docs/audit/reservas.md`,
+> `docs/audit/cotacoes.md`.
+
+## 0. Confirmação arquitetural (pedido explícito do usuário)
+
+**Pipeline continua sendo um módulo único/core, reaproveitado por
+todos os nichos — confirmado, nenhuma duplicação encontrada.**
+`/pipeline-imoveis` (Imobiliárias) é só uma rota fina de redirect
+(`ensureRealEstatePipeline` get-or-create + `redirect` pro
+`/pipeline?pipeline_id=X`), não um board próprio — reaproveita
+`KanbanBoard.tsx` 100%. Nenhuma outra vertical (Seguros, Tráfego,
+Clínicas) criou pipeline/board dedicado. `pipelines.kind` (coluna
+usada só por Imóveis pra marcar "esse é o pipeline imobiliário") é
+metadado, não uma bifurcação de código.
 
 ## 1. Rotas
 
@@ -39,7 +53,7 @@ Sem `loading.tsx`/`error.tsx` — um fetch lento de `contatos`/`pipeline_stages`
 | `renamePipeline` / `setDefaultPipeline` / `deletePipeline` | Editar/definir padrão/excluir (só se sem leads e não padrão) | `pipelines`, leitura de `contatos` |
 | `createStage` / `updateStage` / `reorderStages` / `deleteStage` | CRUD de etapas | `pipeline_stages` |
 
-**Achado**: nenhuma dessas 10 actions chama `checkMemberPermission`; `createStage`/`updateStage`/`reorderStages`/`deleteStage` sequer chamam `requireAuth()`, dependendo só da RLS do Supabase.
+**Status em 2026-08-23**: `createStage`/`updateStage`/`reorderStages`/`deleteStage` já checavam `checkMemberPermission('pipeline')` (corrigido em algum momento entre Jul/29 e agora, fora desta sessão). As **outras 6** (`listPipelines`, `createPipeline`, `renamePipeline`, `setDefaultPipeline`, `deletePipeline`, `getPipelinesAndStages`) não checavam — **corrigidas nesta revisão**, exceto `getPipelinesAndStages` (decisão deliberada: consumida por Automações/Campanhas, que podem ter permissão própria sem ter `pipeline`; só expõe nomes de pipeline/etapa, sem dado de lead — gatear quebraria fluxo legítimo sem ganho real de segurança, documentado inline no código).
 
 ### `actions/contatos.ts` (subconjunto usado pelo Pipeline)
 
@@ -53,7 +67,7 @@ Sem `loading.tsx`/`error.tsx` — um fetch lento de `contatos`/`pipeline_stages`
 
 ## 4. Permissões
 
-Chave: **`pipeline`**. Enforcement encontrado **só em `components/features/Sidebar.tsx:168-169`** (visibilidade do link) e repasse pro `BottomNav`. A rota `/pipeline` **não chama `checkMemberPermission`** em lugar nenhum, nem nenhuma das actions usadas (`moveLeadToStage`, `createLead`, `updateLead`, `deleteLead`, `assignLead`, etc.) — dependem só de `getCurrentOrganization` (escopo de org) e RLS. Um membro com `pipeline: false` explícito ainda consegue ler/escrever tudo via URL direta ou chamada de action — a permissão só esconde o link do menu.
+Chave: **`pipeline`**. **Status em 2026-08-23**: as actions de lead usadas pelo board (`moveLeadToStage`, `createLead`, `updateLead`, `deleteLead`, `assignLead`, etc., em `actions/contatos.ts`) **já checam permissão** — via `checkContatoPermission` (libera se `pipeline`/`leads`/`clients`, corrigido na auditoria de Contatos desta mesma sessão). O gap real era a **página `/pipeline` em si**, que nunca checava nada e montava o board completo (nomes/valores/tags/e-mail/telefone de todos os leads) pra qualquer membro autenticado da org, mesmo com `pipeline: false` explícito — **corrigido nesta revisão** (`checkMemberPermission` + redirect no topo da página). `listPipelines`/`createPipeline`/`renamePipeline`/`setDefaultPipeline`/`deletePipeline` também corrigidos (seção 3).
 
 ## 5. Conexões com outros módulos
 
@@ -93,7 +107,7 @@ Chave: **`pipeline`**. Enforcement encontrado **só em `components/features/Side
 15. Import dinâmico de `sonner` inconsistente com o resto do módulo.
 16. `PipelineConfigDialog` não permite renomear etapa; color picker sem validação de contraste.
 17. `PipelineKpiBar` usa breakpoint de viewport dentro de um modal de largura fixa.
-18. **[Segurança]** Nenhuma verificação de permissão server-side — enforcement só no menu lateral.
-19. `actions/pipeline.ts`: `createStage`/`updateStage`/`reorderStages`/`deleteStage` sem `requireAuth()`.
+18. ~~**[Segurança]** Nenhuma verificação de permissão server-side~~ — **Corrigido em 2026-08-23**: página `/pipeline` + 5 actions de `actions/pipeline.ts` (ver seção 4).
+19. ~~`actions/pipeline.ts`: `createStage`/`updateStage`/`reorderStages`/`deleteStage` sem `requireAuth()`~~ — **Desatualizado**: essas 4 já checavam permissão antes desta revisão (corrigido em algum ponto entre Jul/29 e Ago/23, fora desta sessão).
 20. `moveLeadToStage` tem 5+ efeitos colaterais sem transação/rollback compartilhado — falha parcial (ex: CAPI) deixa mudanças já commitadas.
 21. Sem `loading.tsx`/`error.tsx` na rota — fetch lento gera blank layout shift.
