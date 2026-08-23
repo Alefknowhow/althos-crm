@@ -19,8 +19,8 @@ primeiro caso de uso real).
 |---|---|---|---|
 | 1 | `actions/contracts.ts` (Reservas/Viagens) nunca chamava `checkMemberPermission` — qualquer membro autenticado da org (independente da permissão `reservas`) conseguia gerar/enviar contrato pra assinatura, baixar PDF assinado e reenviar link por e-mail/WhatsApp via chamada direta da Server Action. **Pré-existente, não introduzido nesta sessão.** | Alta | ✅ Corrigido |
 | 2 | `actions/plan-contracts.ts` (Planos/Tráfego, criado nesta sessão) replicava o mesmo gap — copiado de `contracts.ts` sem notar a ausência do check. | Alta | ✅ Corrigido |
-| 3 | `actions/dashboard-trafego.ts::getTrafegoDashboardMetrics` e `actions/trafego-performance.ts::getClientPerformanceSummaryCore` não checam a permissão granular `trafego` — só a associação à org (via `getCurrentOrganization`, que já embute `requireAuth`). Um membro da org sem a permissão `trafego` liberada ainda consegue ler métricas de dashboard/performance da vertical via chamada direta. | Média (dado agregado, não PII/financeiro direto) | ⏳ Não corrigido — flagar |
-| 4 | `getOrgAutentiqueConfig`/`saveOrgAutentiqueConfig` (`actions/contracts.ts`) também só checam `requireAuth`, sem permissão granular — qualquer membro pode ler se a integração está configurada e **sobrescrever a API key da Autentique da organização inteira**. | Média-Alta (é uma credencial de integração, escopo org-wide) | ⏳ Não corrigido — recomendo gate por `settings` (padrão de outras configs de integração no projeto) |
+| 3 | `actions/dashboard-trafego.ts::getTrafegoDashboardMetrics` não checava a permissão granular `trafego` — só a associação à org. `getClientPerformanceSummaryCore` (Agent Layer) **não precisou de fix** — o Execution Engine (`lib/agent/execute.ts`) já checa `trafego` antes de chamar essa função core, por design. | Média (dado agregado, não PII/financeiro direto) | ✅ Corrigido |
+| 4 | `getOrgAutentiqueConfig`/`saveOrgAutentiqueConfig` (`actions/contracts.ts`) só checavam `requireAuth`, sem permissão granular — qualquer membro podia ler se a integração estava configurada e **sobrescrever a API key da Autentique da organização inteira**. | Média-Alta (é uma credencial de integração, escopo org-wide) | ✅ Corrigido (gate por `settings`) |
 | 5 | RLS conferida em todas as tabelas novas (`agent_tokens`, `agent_audit_log`, `campaign_creatives`, `plan_contracts`) — todas com policy padrão `organization_id IN (SELECT get_user_organizations())` + policy de super-admin. Sem gap encontrado aqui. | — | OK |
 | 6 | RPC pública `update_public_creative_status` (aprovação de criativo) restringe corretamente a escrita a `status`/`client_comment` do registro do token — não permite alterar outro campo nem outro registro. Sem gap encontrado. | — | OK |
 
@@ -48,8 +48,8 @@ primeiro caso de uso real).
 | Item | Situação |
 |---|---|
 | `components/features/leads/LeadsView.tsx` (1147 linhas) | **Órfão** — zero imports em todo o projeto. Foi brevemente ligado numa rota (`/agencias-trafego/leads`) na Fase E da Etapa 2, mas essa rota foi removida na correção seguinte (duplicava o Pipeline). Componente pronto, funcional, mas sem consumidor. Decisão: manter (pode ser útil no futuro) ou apagar — recomendo perguntar ao usuário antes de decidir. |
-| `lib/agencias-trafego/types.ts` | **Órfão** — tipos conceituais da Etapa 1 (fundação), zero import em qualquer lugar. Nunca usados depois que as telas reais foram implementadas com tipos próprios inline. Seguro remover. |
-| `components/features/agencias-trafego/PlaceholderPage.tsx` | **Órfão** — usado só pelas rotas Visão Geral/Tráfego/Leads/Performance da Etapa 1, todas substituídas ou removidas nas correções seguintes. Seguro remover. |
+| `lib/agencias-trafego/types.ts` | ✅ Removido nesta auditoria. |
+| `components/features/agencias-trafego/PlaceholderPage.tsx` | ✅ Removido nesta auditoria. |
 
 ## 5. Caminhos quebrados
 
@@ -66,9 +66,8 @@ Nenhum link morto encontrado nas telas atuais (`/agencias-trafego/trafego`, `/ag
 
 ## 7. Recomendações de robustez (não-bloqueantes)
 
-1. Aplicar gate de permissão em `getOrgAutentiqueConfig`/`saveOrgAutentiqueConfig` (achado #4 da seção 1).
-2. Aplicar `checkMemberPermission(org.id, user.id, 'trafego')` em `getTrafegoDashboardMetrics`/`getClientPerformanceSummaryCore` por consistência (achado #3).
-3. Decidir o destino de `LeadsView.tsx` (reaproveitar, arquivar ou remover).
-4. Remover `lib/agencias-trafego/types.ts` e `PlaceholderPage.tsx` (código morto confirmado).
-5. Considerar estado visual explícito no botão "Contrato" da `SalesTable` em vez de ocultá-lo silenciosamente.
-6. Documentar (comentário + talvez aviso na UI) que editar uma venda existente não gera parcelas retroativas — só a criação.
+Itens 1, 2 e 4 da rodada anterior já corrigidos. Restam:
+
+1. Decidir o destino de `LeadsView.tsx` (reaproveitar, arquivar ou remover) — não removido por ser código funcional (1147 linhas), diferente dos outros dois órfãos que eram só placeholder.
+2. Considerar estado visual explícito no botão "Contrato" da `SalesTable` em vez de ocultá-lo silenciosamente.
+3. Documentar (comentário + talvez aviso na UI) que editar uma venda existente não gera parcelas retroativas — só a criação.
