@@ -11,6 +11,7 @@ import SidebarSupportLink from './SidebarSupportLink'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { isModuleEnabled } from '@/lib/niche-modules'
+import { isTrafficNiche } from '@/lib/niche'
 import { checkFeatureAccess } from '@/lib/plans/server'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import {
@@ -300,7 +301,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <SidebarNavLink href={`${base}/catalogo`}>
               <span className="flex items-center gap-2.5">
                 <Package className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Catálogo</span>
+                <span>{isTrafficNiche(org.niche) ? 'Planos' : 'Catálogo'}</span>
               </span>
             </SidebarNavLink>
           </div>
