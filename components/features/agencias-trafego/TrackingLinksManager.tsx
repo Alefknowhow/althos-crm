@@ -9,14 +9,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Plus, Copy, Trash2, MousePointerClick } from 'lucide-react'
 import { createTrackingLink, deleteTrackingLink, type TrackingLink } from '@/actions/tracking-links'
+import type { LinkPerformance } from '@/actions/trafego-tracking'
+import { formatCurrency } from '@/lib/utils'
 
 export default function TrackingLinksManager({
-  orgSlug, clientId, initial,
+  orgSlug, clientId, initial, performance,
 }: {
   orgSlug: string
   clientId: string
   initial: TrackingLink[]
+  performance: LinkPerformance[]
 }) {
+  const perfByLink = new Map(performance.map(p => [p.linkId, p]))
   const router = useRouter()
   const [links, setLinks] = useState(initial)
   const [destinationUrl, setDestinationUrl] = useState('')
@@ -78,25 +82,38 @@ export default function TrackingLinksManager({
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum link criado ainda.</p>
         ) : (
           <div className="space-y-2">
-            {links.map(l => (
-              <div key={l.id} className="flex items-center justify-between text-sm border rounded-md p-2.5">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{l.label || `/r/${l.code}`}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    /r/{l.code} → {l.destination_url}
+            {links.map(l => {
+              const p = perfByLink.get(l.id)
+              return (
+                <div key={l.id} className="border rounded-md p-2.5 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{l.label || `/r/${l.code}`}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        /r/{l.code} → {l.destination_url}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <span className="text-xs text-muted-foreground tabular-nums">{l.clicks_count} clique{l.clicks_count !== 1 ? 's' : ''}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyLink(l.code)} title="Copiar link">
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(l.id)} title="Excluir">
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
+                  {p && p.clicks > 0 && (
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                      <span><span className="font-medium text-foreground">{p.leads}</span> lead{p.leads !== 1 ? 's' : ''} (último clique antes da conversão)</span>
+                      <span><span className="font-medium text-foreground">{p.sales}</span> venda{p.sales !== 1 ? 's' : ''}</span>
+                      {p.revenueCents > 0 && <span className="font-medium text-foreground">{formatCurrency(p.revenueCents)}</span>}
+                      {p.clickToLeadPct != null && <span>{p.clickToLeadPct.toFixed(1)}% conversão</span>}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 shrink-0 ml-3">
-                  <span className="text-xs text-muted-foreground tabular-nums">{l.clicks_count} clique{l.clicks_count !== 1 ? 's' : ''}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyLink(l.code)} title="Copiar link">
-                    <Copy className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(l.id)} title="Excluir">
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </CardContent>

@@ -11,12 +11,17 @@ import FremecInfo from './FremecInfo'
 import type { DocumentTemplateRow } from '@/actions/document-templates'
 
 export default function DocumentosTabs({
-  orgSlug, templates, medifTemplateInfo, fremecTemplateInfo,
+  orgSlug, templates, medifTemplateInfo, fremecTemplateInfo, showMedifFremec = true,
 }: {
   orgSlug: string
   templates: DocumentTemplateRow[]
   medifTemplateInfo: { name: string } | null
   fremecTemplateInfo: { name: string } | null
+  /** MEDIF/FREMEC são específicos de assistência médica/cadeira de rodas em
+   *  embarque — exclusivos de Viagens. Outros nichos (ex.: Tráfego, que
+   *  chega aqui só pra criar/editar modelo de contrato de plano) só veem
+   *  a aba Modelos. */
+  showMedifFremec?: boolean
 }) {
   const [tab, setTab] = useState('modelos')
   const templatesRef = useRef<DocumentTemplatesViewHandle>(null)
@@ -26,8 +31,8 @@ export default function DocumentosTabs({
       <div className="flex items-center justify-between gap-2 shrink-0">
         <TabsList>
           <TabsTrigger value="modelos">Modelos</TabsTrigger>
-          <TabsTrigger value="medif">MEDIF</TabsTrigger>
-          <TabsTrigger value="fremec">FREMEC</TabsTrigger>
+          {showMedifFremec && <TabsTrigger value="medif">MEDIF</TabsTrigger>}
+          {showMedifFremec && <TabsTrigger value="fremec">FREMEC</TabsTrigger>}
         </TabsList>
         {tab === 'modelos' && (
           <Button onClick={() => templatesRef.current?.openNew()}>
@@ -38,16 +43,20 @@ export default function DocumentosTabs({
       <TabsContent value="modelos" className="flex-1 min-h-0 flex flex-col">
         <DocumentTemplatesView ref={templatesRef} orgSlug={orgSlug} templates={templates} />
       </TabsContent>
-      <TabsContent value="medif">
-        <AttachmentTemplateView orgSlug={orgSlug} documentType="medif" templateInfo={medifTemplateInfo}>
-          <MedifInfo />
-        </AttachmentTemplateView>
-      </TabsContent>
-      <TabsContent value="fremec">
-        <AttachmentTemplateView orgSlug={orgSlug} documentType="fremec" templateInfo={fremecTemplateInfo}>
-          <FremecInfo />
-        </AttachmentTemplateView>
-      </TabsContent>
+      {showMedifFremec && (
+        <TabsContent value="medif">
+          <AttachmentTemplateView orgSlug={orgSlug} documentType="medif" templateInfo={medifTemplateInfo}>
+            <MedifInfo />
+          </AttachmentTemplateView>
+        </TabsContent>
+      )}
+      {showMedifFremec && (
+        <TabsContent value="fremec">
+          <AttachmentTemplateView orgSlug={orgSlug} documentType="fremec" templateInfo={fremecTemplateInfo}>
+            <FremecInfo />
+          </AttachmentTemplateView>
+        </TabsContent>
+      )}
     </Tabs>
   )
 }

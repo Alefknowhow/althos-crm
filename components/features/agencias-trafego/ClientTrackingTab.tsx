@@ -7,7 +7,7 @@ import { ChevronDown, Waypoints } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import TrackingLinksManager from './TrackingLinksManager'
 import type { TrackingLink } from '@/actions/tracking-links'
-import type { ClientTrackingFunnel, ConvertedLead } from '@/actions/trafego-tracking'
+import type { ClientTrackingFunnel, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
 
 const STEPS: { key: keyof ClientTrackingFunnel; label: string; format: 'currency' | 'number' }[] = [
   { key: 'investmentCents', label: 'Investimento', format: 'currency' },
@@ -28,13 +28,14 @@ function fmt(value: number, format: 'currency' | 'number'): string {
  * links e a jornada multi-touch de cada lead convertido.
  */
 export default function ClientTrackingTab({
-  orgSlug, clientId, funnel, journeys, initialLinks,
+  orgSlug, clientId, funnel, journeys, initialLinks, linkPerformance,
 }: {
   orgSlug: string
   clientId: string
   funnel: ClientTrackingFunnel
   journeys: ConvertedLead[]
   initialLinks: TrackingLink[]
+  linkPerformance: LinkPerformance[]
 }) {
   const hasData = funnel.clicks > 0 || initialLinks.length > 0
 
@@ -96,7 +97,7 @@ export default function ClientTrackingTab({
         </Card>
       )}
 
-      <TrackingLinksManager orgSlug={orgSlug} clientId={clientId} initial={initialLinks} />
+      <TrackingLinksManager orgSlug={orgSlug} clientId={clientId} initial={initialLinks} performance={linkPerformance} />
     </div>
   )
 }

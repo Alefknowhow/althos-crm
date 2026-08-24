@@ -11,7 +11,7 @@ import { getClientPerformanceComparison, getClientDailySeries } from '@/actions/
 import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads-oauth'
 import { listAssignableMetaAdAccounts } from '@/actions/marketing'
 import { listTrackingLinksByClient } from '@/actions/tracking-links'
-import { getClientTrackingFunnel, listClientConvertedJourneys } from '@/actions/trafego-tracking'
+import { getClientTrackingFunnel, listClientConvertedJourneys, listLinkPerformance } from '@/actions/trafego-tracking'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 
@@ -61,7 +61,7 @@ export default async function TrafficClientDetailPage({
   const now = new Date()
   const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
 
-  const [profile, accounts, campaigns, creatives, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks] = await Promise.all([
+  const [profile, accounts, campaigns, creatives, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance] = await Promise.all([
     getTrafficClientProfile(params.orgSlug, params.id),
     listAdAccountsByClient(params.orgSlug, params.id),
     listCampaignsByClient(params.orgSlug, params.id),
@@ -78,6 +78,7 @@ export default async function TrafficClientDetailPage({
     getClientTrackingFunnel(params.orgSlug, params.id, range30d),
     listClientConvertedJourneys(params.orgSlug, params.id, range30d),
     listTrackingLinksByClient(params.orgSlug, params.id),
+    listLinkPerformance(params.orgSlug, params.id, range30d),
   ])
 
   const lastSyncedAt = (accounts as any[])
@@ -127,6 +128,7 @@ export default async function TrafficClientDetailPage({
       trackingFunnel={trackingFunnel}
       trackingJourneys={trackingJourneys}
       trackingLinks={trackingLinks}
+      trackingLinkPerformance={trackingLinkPerformance}
     />
   )
 }

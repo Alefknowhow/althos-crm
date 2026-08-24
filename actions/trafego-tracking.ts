@@ -100,6 +100,112 @@ export async function getClientTrackingFunnel(
   }
 }
 
+export type LinkPerformance = {
+  linkId: string
+  code: string
+  label: string | null
+  clicks: number
+  leads: number
+  sales: number
+  revenueCents: number
+  clickToLeadPct: number | null
+}
+
+/**
+ * Performance por link individual — modelo de atribuição **last-touch**:
+ * o lead é creditado ao último clique antes da conversão (mesmo clique que
+ * grava `contatos.tracking_link_id` em submitPublicForm). Cada clique da
+ * jornada continua registrado em tracking_clicks pra quem quiser analisar
+ * multi-touch depois (ver listClientConvertedJourneys) — este cálculo é só
+ * "qual link levou o crédito da conversão", não "todos os links que
+ * participaram". Sem CPL/ROAS por link aqui de propósito: o investimento é
+ * medido por campanha (campaign_metrics_daily), não por link individual —
+ * ratear o gasto por link daria um número inventado, não medido.
+ */
+export async function listLinkPerformance(
+  orgSlug: string,
+  contatoId: string,
+  range: { from: Date; to: Date },
+): Promise<LinkPerformance[]> {
+  const org = await requireAccess(orgSlug)
+  const supabase = createClient()
+  const fromIso = range.from.toISOString()
+  const toIso = range.to.toISOString()
+
+  const { data: links } = await supabase
+    .from('tracking_links')
+    .select('id, code, label')
+    .eq('organization_id', org.id)
+    .eq('contato_id', contatoId)
+  if (!links || links.length === 0) return []
+  const linkIds = links.map(l => l.id)
+
+  // Cliques por link (todos, não só os que converteram).
+  const { data: clickRows } = await supabase
+    .from('tracking_clicks')
+    .select('link_id')
+    .in('link_id', linkIds)
+    .gte('created_at', fromIso)
+    .lte('created_at', toIso)
+  const clicksByLink = new Map<string, number>()
+  for (const c of clickRows || []) clicksByLink.set(c.link_id, (clicksByLink.get(c.link_id) || 0) + 1)
+
+  // Leads last-touch: contatos.tracking_link_id aponta pro link que recebeu
+  // o crédito — é o mesmo campo já usado pela atribuição no Marketing geral
+  // (ver actions/marketing.ts::getMarketingOverview).
+  const { data: leadRows } = await supabase
+    .from('contatos')
+    .select('id, tracking_link_id')
+    .in('tracking_link_id', linkIds)
+    .gte('created_at', fromIso)
+    .lte('created_at', toIso)
+  const leadsByLink = new Map<string, string[]>()
+  for (const l of leadRows || []) {
+    if (!l.tracking_link_id) continue
+    const arr = leadsByLink.get(l.tracking_link_id) || []
+    arr.push(l.id)
+    leadsByLink.set(l.tracking_link_id, arr)
+  }
+
+  const allLeadIds = (leadRows || []).map(l => l.id)
+  const salesByLead = new Map<string, { count: number; revenue: number }>()
+  if (allLeadIds.length > 0) {
+    const { data: salesRows } = await supabase
+      .from('sales')
+      .select('contato_id, amount_cents')
+      .in('contato_id', allLeadIds)
+      .eq('organization_id', org.id)
+      .eq('status', 'completed')
+    for (const s of salesRows || []) {
+      const cur = salesByLead.get(s.contato_id) || { count: 0, revenue: 0 }
+      cur.count += 1
+      cur.revenue += s.amount_cents || 0
+      salesByLead.set(s.contato_id, cur)
+    }
+  }
+
+  return links.map(link => {
+    const clicks = clicksByLink.get(link.id) || 0
+    const leadIds = leadsByLink.get(link.id) || []
+    let sales = 0
+    let revenueCents = 0
+    for (const leadId of leadIds) {
+      const s = salesByLead.get(leadId)
+      if (s) { sales += s.count; revenueCents += s.revenue }
+    }
+    return {
+      linkId: link.id,
+      code: link.code,
+      label: link.label,
+      clicks,
+      leads: leadIds.length,
+      sales,
+      revenueCents,
+      clickToLeadPct: clicks > 0 ? (leadIds.length / clicks) * 100 : null,
+    }
+  })
+}
+
 /** Leads convertidos por um link deste cliente, com a jornada completa de cliques (multi-touch). */
 export async function listClientConvertedJourneys(
   orgSlug: string,
