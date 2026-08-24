@@ -8,9 +8,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Search, Save, Loader2 } from 'lucide-react'
-import { upsertCustomerProfile } from '@/actions/contatos'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Search, Save, Loader2, Plus, X, Mail, Phone } from 'lucide-react'
+import {
+  upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
+  removeContatoContactPoint, type ContatoContactPoint,
+} from '@/actions/contatos'
 import CopyButton from '@/components/ui/copy-button'
+import CustomerDocuments, { type CustomerDoc } from '@/components/features/customers/CustomerDocuments'
+
+// Campos de digitação desta tela ganham um fundo mais escuro no dark mode
+// pra destacar visualmente a área preenchível dentro dos blocos com borda.
+const DARK_FIELD = 'dark:bg-black/40 dark:border-white/10'
 
 type Profile = {
   name?: string | null
@@ -29,10 +40,11 @@ type Profile = {
   state: string | null
   country: string | null
   address_notes: string | null
+  email?: string | null
+  phone?: string | null
 } | null
 
 function maskCpf(v: string): string {
-  // 000.000.000-00
   const d = v.replace(/\D/g, '').slice(0, 11)
   let out = d
   if (d.length > 9) out = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
@@ -42,19 +54,31 @@ function maskCpf(v: string): string {
 }
 
 function maskCep(v: string): string {
-  // 00000-000
   const d = v.replace(/\D/g, '').slice(0, 8)
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
 }
+
+/** Rótulo com altura fixa — evita que um CopyButton condicional (só aparece
+ * com valor preenchido) empurre o input de uma coluna pra baixo em relação
+ * às colunas vizinhas sem o botão. */
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <div className="h-5 flex items-center gap-1.5">{children}</div>
+}
+
+const CONTACT_LABEL_PRESETS = ['Trabalho', 'Pessoal', 'Outro']
 
 export default function CustomerProfileForm({
   orgSlug,
   leadId,
   initial,
+  initialContactPoints,
+  initialDocuments,
 }: {
   orgSlug: string
   leadId: string
   initial: Profile
+  initialContactPoints: ContatoContactPoint[]
+  initialDocuments: CustomerDoc[]
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -63,12 +87,14 @@ export default function CustomerProfileForm({
 
   const [form, setForm] = useState({
     name: initial?.name || '',
+    date_of_birth: initial?.date_of_birth || '',
+    email: initial?.email || '',
+    phone: initial?.phone || '',
     cpf: initial?.cpf || '',
     rg: initial?.rg || '',
     passport_number: initial?.passport_number || '',
     passport_expiry: initial?.passport_expiry || '',
     has_us_visa: initial?.has_us_visa ?? false,
-    date_of_birth: initial?.date_of_birth || '',
     postal_code: initial?.postal_code || '',
     street: initial?.street || '',
     number: initial?.number || '',
@@ -79,6 +105,12 @@ export default function CustomerProfileForm({
     country: initial?.country || 'BR',
     address_notes: initial?.address_notes || '',
   })
+
+  const [points, setPoints] = useState<ContatoContactPoint[]>(initialContactPoints)
+  const [newKind, setNewKind] = useState<'email' | 'phone'>('phone')
+  const [newLabel, setNewLabel] = useState(CONTACT_LABEL_PRESETS[0])
+  const [newValue, setNewValue] = useState('')
+  const [addingPoint, setAddingPoint] = useState(false)
 
   /**
    * ViaCEP free public API — given a CEP (digits only), fills street, district,
@@ -114,18 +146,37 @@ export default function CustomerProfileForm({
     }
   }
 
+  // Único botão de salvar pro cadastro inteiro — segurança contra edição
+  // acidental (nada grava sozinho enquanto a pessoa digita).
   async function save() {
     setSaving(true)
-    const { name, ...rest } = form
+    const { email, phone, name, ...rest } = form
     const payload = name.trim() ? { name: name.trim(), ...rest } : rest
-    const res = await upsertCustomerProfile(orgSlug, leadId, payload)
+    const [profileRes, contactRes] = await Promise.all([
+      upsertCustomerProfile(orgSlug, leadId, payload),
+      updateContatoPrimaryContact(orgSlug, leadId, { email, phone }),
+    ])
     setSaving(false)
-    if (res.ok) {
-      toast.success('Dados do cliente salvos')
-      startTransition(() => router.refresh())
-    } else {
-      toast.error((res as any).error || 'Erro ao salvar')
-    }
+    if (!profileRes.ok) { toast.error((profileRes as any).error || 'Erro ao salvar'); return }
+    if (!contactRes.ok) { toast.error((contactRes as any).error || 'Erro ao salvar contato'); return }
+    toast.success('Cadastro salvo')
+    startTransition(() => router.refresh())
+  }
+
+  async function handleAddPoint() {
+    if (!newValue.trim()) { toast.error('Preencha o valor.'); return }
+    setAddingPoint(true)
+    const res = await addContatoContactPoint(orgSlug, leadId, newKind, newLabel, newValue)
+    setAddingPoint(false)
+    if (!res.ok) { toast.error((res as any).error || 'Erro ao adicionar'); return }
+    setPoints(prev => [...prev, (res as any).point])
+    setNewValue('')
+  }
+
+  async function handleRemovePoint(id: string) {
+    setPoints(prev => prev.filter(p => p.id !== id))
+    const res = await removeContatoContactPoint(orgSlug, id)
+    if (!res.ok) toast.error((res as any).error || 'Erro ao remover')
   }
 
   return (
@@ -134,46 +185,28 @@ export default function CustomerProfileForm({
         <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Documentos */}
+        {/* Dados do cliente */}
         <div className="rounded-lg border border-border/80 p-3.5">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Documentos
+            Dados do cliente
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="space-y-1.5 w-64">
-              <Label className="text-xs">Nome completo</Label>
+              <FieldLabel><Label className="text-xs">Nome completo</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="Nome do cliente"
               />
             </div>
             <div className="space-y-1.5 w-40">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-xs">CPF</Label>
-                <CopyButton value={form.cpf} label="CPF" />
-              </div>
-              <Input
-                value={form.cpf}
-                onChange={e => setForm({ ...form, cpf: maskCpf(e.target.value) })}
-                placeholder="000.000.000-00"
-                inputMode="numeric"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <Label className="text-xs">RG</Label>
-              <Input
-                value={form.rg}
-                onChange={e => setForm({ ...form, rg: e.target.value })}
-                placeholder="00.000.000-0"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <div className="flex items-center gap-1.5">
+              <FieldLabel>
                 <Label className="text-xs">Nascimento</Label>
                 <CopyButton value={form.date_of_birth} label="Data de nascimento" />
-              </div>
+              </FieldLabel>
               <Input
+                className={DARK_FIELD}
                 type="date"
                 value={form.date_of_birth}
                 onChange={e => setForm({ ...form, date_of_birth: e.target.value })}
@@ -182,31 +215,140 @@ export default function CustomerProfileForm({
           </div>
         </div>
 
-        {/* Passaporte e Visto */}
+        {/* Contato */}
         <div className="rounded-lg border border-border/80 p-3.5">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Passaporte e Visto
+            Contato
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-1.5 w-64">
+              <FieldLabel>
+                <Label className="text-xs">E-mail</Label>
+                <CopyButton value={form.email} label="E-mail" />
+              </FieldLabel>
+              <Input
+                className={DARK_FIELD}
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="space-y-1.5 w-40">
+              <FieldLabel>
+                <Label className="text-xs">Telefone</Label>
+                <CopyButton value={form.phone} label="Telefone" />
+              </FieldLabel>
+              <Input
+                className={DARK_FIELD}
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          </div>
+
+          {points.length > 0 && (
+            <div className="space-y-1.5 mt-3">
+              {points.map(p => (
+                <div key={p.id} className="flex items-center gap-2 text-sm rounded-md border px-2.5 py-1.5">
+                  {p.kind === 'email' ? <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                  {p.label && <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{p.label}</span>}
+                  <span className="flex-1 min-w-0 truncate">{p.value}</span>
+                  <CopyButton value={p.value} label={p.label || (p.kind === 'email' ? 'E-mail' : 'Telefone')} />
+                  <button type="button" onClick={() => handleRemovePoint(p.id)} className="shrink-0 text-muted-foreground/60 hover:text-destructive" aria-label="Remover">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-2 mt-3">
+            <div className="space-y-1.5 w-28">
+              <FieldLabel><Label className="text-xs">Tipo</Label></FieldLabel>
+              <Select value={newKind} onValueChange={v => setNewKind(v as 'email' | 'phone')}>
+                <SelectTrigger className={`h-9 ${DARK_FIELD}`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="phone">Telefone</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 w-32">
+              <FieldLabel><Label className="text-xs">Rótulo</Label></FieldLabel>
+              <Select value={newLabel} onValueChange={setNewLabel}>
+                <SelectTrigger className={`h-9 ${DARK_FIELD}`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CONTACT_LABEL_PRESETS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 w-56">
+              <FieldLabel><Label className="text-xs">Outro e-mail/telefone</Label></FieldLabel>
+              <Input
+                className={DARK_FIELD}
+                value={newValue}
+                onChange={e => setNewValue(e.target.value)}
+                placeholder={newKind === 'email' ? 'outro@email.com' : '(00) 00000-0000'}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddPoint() } }}
+              />
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={handleAddPoint} disabled={addingPoint}>
+              {addingPoint ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Documentos: CPF/RG/Passaporte/Visto + arquivos anexados */}
+        <div className="rounded-lg border border-border/80 p-3.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
+            Documentos
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="space-y-1.5 w-40">
-              <Label className="text-xs">Nº do passaporte</Label>
+              <FieldLabel>
+                <Label className="text-xs">CPF</Label>
+                <CopyButton value={form.cpf} label="CPF" />
+              </FieldLabel>
               <Input
+                className={DARK_FIELD}
+                value={form.cpf}
+                onChange={e => setForm({ ...form, cpf: maskCpf(e.target.value) })}
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+              />
+            </div>
+            <div className="space-y-1.5 w-40">
+              <FieldLabel><Label className="text-xs">RG</Label></FieldLabel>
+              <Input
+                className={DARK_FIELD}
+                value={form.rg}
+                onChange={e => setForm({ ...form, rg: e.target.value })}
+                placeholder="00.000.000-0"
+              />
+            </div>
+            <div className="space-y-1.5 w-40">
+              <FieldLabel><Label className="text-xs">Nº do passaporte</Label></FieldLabel>
+              <Input
+                className={DARK_FIELD}
                 value={form.passport_number}
                 onChange={e => setForm({ ...form, passport_number: e.target.value.toUpperCase() })}
                 placeholder="AB123456"
               />
             </div>
             <div className="space-y-1.5 w-40">
-              <Label className="text-xs">Validade</Label>
+              <FieldLabel><Label className="text-xs">Validade passaporte</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 type="date"
                 value={form.passport_expiry}
                 onChange={e => setForm({ ...form, passport_expiry: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Visto americano</Label>
-              <label className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background cursor-pointer">
+              <FieldLabel><Label className="text-xs">Visto americano</Label></FieldLabel>
+              <label className={`flex items-center gap-2 h-10 px-3 rounded-md border border-input cursor-pointer ${DARK_FIELD}`}>
                 <input
                   type="checkbox"
                   className="accent-primary w-4 h-4"
@@ -217,6 +359,15 @@ export default function CustomerProfileForm({
               </label>
             </div>
           </div>
+
+          <div className="mt-3 pt-3 border-t border-border/60">
+            <CustomerDocuments
+              orgSlug={orgSlug}
+              leadId={leadId}
+              profileId={leadId}
+              initialDocuments={initialDocuments}
+            />
+          </div>
         </div>
 
         {/* Endereço */}
@@ -226,9 +377,10 @@ export default function CustomerProfileForm({
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="space-y-1.5 w-36">
-              <Label className="text-xs">CEP</Label>
+              <FieldLabel><Label className="text-xs">CEP</Label></FieldLabel>
               <div className="flex gap-1">
                 <Input
+                  className={DARK_FIELD}
                   value={form.postal_code}
                   onChange={e => setForm({ ...form, postal_code: maskCep(e.target.value) })}
                   placeholder="00000-000"
@@ -243,57 +395,59 @@ export default function CustomerProfileForm({
                   title="Buscar endereço pelo CEP"
                   className="shrink-0 px-2"
                 >
-                  {cepLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Search className="w-3.5 h-3.5" />
-                  )}
+                  {cepLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 </Button>
               </div>
             </div>
             <div className="space-y-1.5 flex-1 min-w-[220px]">
-              <Label className="text-xs">Rua / Logradouro</Label>
+              <FieldLabel><Label className="text-xs">Rua / Logradouro</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.street}
                 onChange={e => setForm({ ...form, street: e.target.value })}
                 placeholder="Rua das Acácias"
               />
             </div>
             <div className="space-y-1.5 w-20">
-              <Label className="text-xs">Número</Label>
+              <FieldLabel><Label className="text-xs">Número</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.number}
                 onChange={e => setForm({ ...form, number: e.target.value })}
                 placeholder="123"
               />
             </div>
             <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <Label className="text-xs">Complemento</Label>
+              <FieldLabel><Label className="text-xs">Complemento</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.complement}
                 onChange={e => setForm({ ...form, complement: e.target.value })}
                 placeholder="Apto 502, Bloco B"
               />
             </div>
             <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <Label className="text-xs">Bairro</Label>
+              <FieldLabel><Label className="text-xs">Bairro</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.district}
                 onChange={e => setForm({ ...form, district: e.target.value })}
                 placeholder="Centro"
               />
             </div>
             <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <Label className="text-xs">Cidade</Label>
+              <FieldLabel><Label className="text-xs">Cidade</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.city}
                 onChange={e => setForm({ ...form, city: e.target.value })}
                 placeholder="Itajaí"
               />
             </div>
             <div className="space-y-1.5 w-16">
-              <Label className="text-xs">UF</Label>
+              <FieldLabel><Label className="text-xs">UF</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.state}
                 onChange={e => setForm({ ...form, state: e.target.value.toUpperCase().slice(0, 2) })}
                 placeholder="SC"
@@ -301,8 +455,9 @@ export default function CustomerProfileForm({
               />
             </div>
             <div className="space-y-1.5 w-20">
-              <Label className="text-xs">País</Label>
+              <FieldLabel><Label className="text-xs">País</Label></FieldLabel>
               <Input
+                className={DARK_FIELD}
                 value={form.country}
                 onChange={e => setForm({ ...form, country: e.target.value.toUpperCase().slice(0, 2) })}
                 placeholder="BR"
@@ -318,6 +473,7 @@ export default function CustomerProfileForm({
             Observações internas
           </div>
           <Textarea
+            className={DARK_FIELD}
             rows={3}
             value={form.address_notes}
             onChange={e => setForm({ ...form, address_notes: e.target.value })}
@@ -333,7 +489,7 @@ export default function CustomerProfileForm({
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-1.5" /> Salvar dados
+                <Save className="w-4 h-4 mr-1.5" /> Salvar alterações
               </>
             )}
           </Button>

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose,
 } from '@/components/ui/sheet'
@@ -22,9 +22,9 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Mail, Phone,
-  MapPin, FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
-  Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2,
+  Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Phone,
+  FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
+  Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2, Sparkles, History,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
@@ -37,8 +37,6 @@ import {
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import { createSavedFilter, deleteSavedFilter, type SavedFilter } from '@/actions/saved_filters'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
-import CustomerContactForm from '@/components/features/customers/CustomerContactForm'
-import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
@@ -605,6 +603,7 @@ function DetailPanel({
   const [deleting, startDelete] = useTransition()
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
+  const [timelineOpen, setTimelineOpen] = useState(false)
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -687,10 +686,7 @@ function DetailPanel({
         </button>
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
-            <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
-          </div>
+          <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
@@ -748,25 +744,12 @@ function DetailPanel({
         <Field icon={UserCircle2} label="Vendedor responsável">
           <span className="text-sm font-medium">{sellerName || '—'}</span>
         </Field>
-        <Field icon={Users} label="Nome completo">
-          <span className="flex items-center gap-1.5">
-            <span className="text-sm font-medium break-words">{c.name}</span>
-            <CopyButton value={c.name} label="Nome" />
-          </span>
-        </Field>
-        <Field icon={Mail} label="E-mail">
-          <span className="flex items-center gap-1.5">
-            <span className="text-sm font-medium break-all">{c.email || '—'}</span>
-            <CopyButton value={c.email} label="E-mail" />
-          </span>
-        </Field>
-        <Field icon={Phone} label="Telefone">
-          <span className="text-sm font-medium">{c.phone || '—'}</span>
-        </Field>
-        <Field icon={MapPin} label="Localização">
-          <span className="text-sm font-medium">
-            {c.city || c.state ? [c.city, c.state].filter(Boolean).join(' · ') : '—'}
-          </span>
+        <Field icon={Sparkles} label="Score IA">
+          {c.ai_score != null && c.ai_tier != null ? (
+            <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
+          ) : (
+            <span className="text-sm font-medium">—</span>
+          )}
         </Field>
         <Field icon={CalendarClock} label="Criado em">
           <span className="text-sm font-medium">{fmtDate(c.created_at)}</span>
@@ -824,17 +807,14 @@ function DetailPanel({
         </div>
       )}
 
-      {/* Contato: e-mail/telefone principal + adicionais */}
-      <CustomerContactForm
+      {/* Cadastro do Cliente: dados, contato, documentos, endereço, observações */}
+      <CustomerProfileForm
         orgSlug={orgSlug}
-        contatoId={c.id}
-        initialEmail={c.email}
-        initialPhone={c.phone}
-        initialPoints={selected.contactPoints}
+        leadId={c.id}
+        initial={c}
+        initialContactPoints={selected.contactPoints}
+        initialDocuments={selected.documents}
       />
-
-      {/* Cadastro: nome, documentos, endereço, passaporte */}
-      <CustomerProfileForm orgSlug={orgSlug} leadId={c.id} initial={c} />
 
       {/* Créditos de Cancelamento — detalhado (o saldo já aparece no card acima) */}
       {isTravel && credits.length > 0 && (
@@ -869,14 +849,6 @@ function DetailPanel({
           </div>
         </div>
       )}
-
-      {/* Documentos (fotos / arquivos) */}
-      <CustomerDocuments
-        orgSlug={orgSlug}
-        leadId={c.id}
-        profileId={c.id}
-        initialDocuments={selected.documents}
-      />
 
       {/* Parentesco */}
       <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
@@ -949,10 +921,19 @@ function DetailPanel({
         </CardContent>
       </Card>
 
-      {/* Timeline de Atividades */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Timeline de Atividades</CardTitle></CardHeader>
-        <CardContent>
+      {/* Timeline de Atividades — vira popup pra não ocupar espaço permanente na prévia */}
+      <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setTimelineOpen(true)}>
+        <History className="w-4 h-4 mr-2" /> Timeline de Atividades
+        {selected.activities.length > 0 && (
+          <Badge variant="secondary" className="ml-auto">{selected.activities.length}</Badge>
+        )}
+      </Button>
+
+      <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Timeline de Atividades</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
             {selected.activities.length > 0 ? selected.activities.map((act: any) => (
               <div key={act.id} className="flex gap-3 border-b pb-3 last:border-0 last:pb-0">
@@ -985,8 +966,8 @@ function DetailPanel({
               <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade registrada.</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {/* Histórico de E-mails */}
       <Card>

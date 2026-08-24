@@ -3,7 +3,6 @@
 import { useState, useRef, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Upload,
@@ -23,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-type Doc = {
+export type CustomerDoc = {
   id: string
   kind: string
   file_path: string
@@ -32,6 +31,7 @@ type Doc = {
   mime_type: string | null
   created_at: string
 }
+type Doc = CustomerDoc
 
 const KIND_LABEL: Record<string, string> = {
   cpf: 'CPF',
@@ -171,17 +171,16 @@ export default function CustomerDocuments({
   }, [profileId])
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          Documentos
-          <Lock className="w-3 h-3 text-muted-foreground" />
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Arquivos privados — só membros da sua org podem ver. Links de visualização expiram em 5 min.
-        </p>
-      </CardHeader>
-      <CardContent
+    <>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-medium text-foreground flex items-center gap-1">
+          Arquivos anexados <Lock className="w-3 h-3 text-muted-foreground" />
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          Privados — links de visualização expiram em 5 min.
+        </span>
+      </div>
+      <div
         className={`space-y-4 rounded-lg transition-colors ${dragging ? 'bg-primary/5 ring-2 ring-primary/40 ring-inset' : ''}`}
         onDragOver={e => { if (!profileMissing) { e.preventDefault(); setDragging(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false) }}
@@ -202,7 +201,7 @@ export default function CustomerDocuments({
             {/* Upload control */}
             <div className="flex items-center gap-2 flex-wrap">
               <select
-                className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm"
+                className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm dark:bg-black/40 dark:border-white/10"
                 value={kind}
                 onChange={e => setKind(e.target.value)}
                 disabled={uploading}
@@ -293,7 +292,7 @@ export default function CustomerDocuments({
             )}
           </>
         )}
-      </CardContent>
+      </div>
 
       <AlertDialog open={!!docToDelete} onOpenChange={o => !o && setDocToDelete(null)}>
         <AlertDialogContent>
@@ -338,6 +337,6 @@ export default function CustomerDocuments({
           </div>
         </div>
       )}
-    </Card>
+    </>
   )
 }
