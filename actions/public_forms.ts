@@ -14,6 +14,10 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   const cookieStore = cookies()
   const fbc = cookieStore.get('_fbc')?.value || null
   const fbp = cookieStore.get('_fbp')?.value || null
+  // Cookie do link de rastreamento próprio (app/r/[code]/route.ts) — se o
+  // visitante chegou por um link nosso, correlaciona a conversão com a(s)
+  // tracking_clicks daquele visitor_id (jornada completa, não só o último clique).
+  const visitorId = cookieStore.get('_ttrk')?.value || null
   // Anti-spam gauntlet (honeypot + min fill time + Turnstile + IP rate limit).
   // Generic error so we don't leak which defense caught the bot.
   const guard = await runAntispamGauntlet(
@@ -112,6 +116,30 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
       formId: form.id,
       slug,
     })
+  }
+
+  // Correlaciona a conversão com a jornada de cliques desse visitante (se
+  // veio por um link de rastreamento nosso) — best-effort, nunca bloqueia o
+  // envio do formulário.
+  if (leadId && visitorId) {
+    try {
+      const { data: clicks } = await supabaseAdmin
+        .from('tracking_clicks')
+        .select('id, link_id, created_at')
+        .eq('organization_id', form.organization_id)
+        .eq('visitor_id', visitorId)
+        .order('created_at', { ascending: false })
+      if (clicks && clicks.length > 0) {
+        const nowIso = new Date().toISOString()
+        await supabaseAdmin
+          .from('tracking_clicks')
+          .update({ converted_contato_id: leadId, converted_at: nowIso })
+          .in('id', clicks.map(c => c.id))
+        await supabaseAdmin.from('contatos').update({ tracking_link_id: clicks[0].link_id }).eq('id', leadId)
+      }
+    } catch (e: any) {
+      console.warn('[submitPublicForm] tracking correlation failed:', e?.message)
+    }
   }
 
   if (leadId) {

@@ -18,6 +18,8 @@ import type { Creative } from '@/actions/campaign-creatives'
 import type { TrafficActivity } from '@/actions/trafego-history'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import type { MetaAdAccountOption } from '@/lib/meta/ads-oauth'
+import type { TrackingLink } from '@/actions/tracking-links'
+import type { ClientTrackingFunnel, ConvertedLead } from '@/actions/trafego-tracking'
 
 type AdAccount = { id: string; provider: string; name: string; external_id: string | null; status: string }
 type CampaignRow = {
@@ -41,6 +43,7 @@ export default function ClientDetailShell({
   orgSlug, clientId, clientName, profile, accounts, campaigns, creatives, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
+  trackingFunnel, trackingJourneys, trackingLinks,
 }: {
   orgSlug: string
   clientId: string
@@ -59,6 +62,9 @@ export default function ClientDetailShell({
   orgMetaConnected: boolean
   assignableOptions: MetaAdAccountOption[]
   assignedElsewhere: string[]
+  trackingFunnel: ClientTrackingFunnel
+  trackingJourneys: ConvertedLead[]
+  trackingLinks: TrackingLink[]
 }) {
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -123,7 +129,13 @@ export default function ClientDetailShell({
         </TabsContent>
 
         <TabsContent value="tracking">
-          <ClientTrackingTab />
+          <ClientTrackingTab
+            orgSlug={orgSlug}
+            clientId={clientId}
+            funnel={trackingFunnel}
+            journeys={trackingJourneys}
+            initialLinks={trackingLinks}
+          />
         </TabsContent>
 
         <TabsContent value="inteligencia">
