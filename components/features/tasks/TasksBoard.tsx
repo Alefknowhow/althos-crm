@@ -558,9 +558,9 @@ export default function TasksBoard({
         </div>
       </div>
 
-      {/* Corpo: calendário 60% + lista 40% */}
+      {/* Corpo: lista 40% à esquerda + calendário 60% à direita */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="w-full lg:w-[60%] min-w-0">
+        <div className="w-full lg:w-[60%] min-w-0 lg:order-2">
           {calView === 'month' ? (
             <MonthGrid
               days={monthDays}
@@ -618,7 +618,7 @@ export default function TasksBoard({
         </div>
 
         {/* Lista — 40%, sempre escopada ao período visível no calendário */}
-        <div className="w-full lg:w-[40%] min-w-0 space-y-2">
+        <div className="w-full lg:w-[40%] min-w-0 space-y-2 lg:order-1">
           <div className="px-0.5">
             <span className="text-sm font-semibold">
               {todayOnly
@@ -696,17 +696,20 @@ export default function TasksBoard({
         onDelete={handleDelete}
       />
 
-      {quickAdd && (
-        <TaskDialog
-          orgSlug={orgSlug}
-          members={members}
-          defaultDate={quickAdd.date}
-          defaultTime={quickAdd.time}
-          open={!!quickAdd}
-          onOpenChange={o => !o && setQuickAdd(null)}
-          trigger={<span className="hidden" />}
-        />
-      )}
+      {/* Sempre montado (não `quickAdd && <TaskDialog>`) — desmontar o
+          componente no mesmo tick em que o Dialog do Radix ainda está
+          fechando/restaurando foco corrompia o DOM e derrubava a página
+          ("client-side exception") em cliques rápidos como duplo-clique.
+          Só o `open` alterna; o Radix cuida da própria transição de saída. */}
+      <TaskDialog
+        orgSlug={orgSlug}
+        members={members}
+        defaultDate={quickAdd?.date}
+        defaultTime={quickAdd?.time}
+        open={!!quickAdd}
+        onOpenChange={o => !o && setQuickAdd(null)}
+        trigger={<span className="hidden" />}
+      />
     </div>
   )
 }
