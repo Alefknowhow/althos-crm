@@ -607,6 +607,7 @@ function DetailPanel({
   const [timelineOpen, setTimelineOpen] = useState(false)
   const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [tasksOpen, setTasksOpen] = useState(false)
+  const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
@@ -931,7 +932,12 @@ function DetailPanel({
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>Tarefas</DialogTitle>
-            <TaskDialog orgSlug={orgSlug} defaultLead={{ id: c.id, name: c.name }} />
+            {/* O diálogo de criação abre como popup irmão (ver newTaskOpen abaixo),
+                não aninhado dentro deste — dois <Dialog> Radix um dentro do
+                outro quebrava com "client-side exception" ao abrir o de dentro. */}
+            <Button type="button" size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Nova tarefa
+            </Button>
           </DialogHeader>
           <div className="space-y-3">
             {selected.tasks.length > 0 ? selected.tasks.map(task => (
@@ -942,6 +948,14 @@ function DetailPanel({
           </div>
         </DialogContent>
       </Dialog>
+
+      <TaskDialog
+        orgSlug={orgSlug}
+        defaultLead={{ id: c.id, name: c.name }}
+        trigger={<button type="button" className="hidden" aria-hidden />}
+        open={newTaskOpen}
+        onOpenChange={setNewTaskOpen}
+      />
 
       <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
