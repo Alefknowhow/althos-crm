@@ -560,7 +560,7 @@ export default function TasksBoard({
 
       {/* Corpo: lista 40% à esquerda + calendário 60% à direita */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="w-full lg:w-[60%] min-w-0 lg:order-2">
+        <div className="hidden lg:block lg:w-[60%] min-w-0 lg:order-2">
           {calView === 'month' ? (
             <MonthGrid
               days={monthDays}
