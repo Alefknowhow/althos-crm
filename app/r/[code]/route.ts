@@ -39,6 +39,14 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const existingVisitorId = req.cookies.get(VISITOR_COOKIE)?.value
   const visitorId = existingVisitorId || crypto.randomUUID()
 
+  const fbclid = url.searchParams.get('fbclid')
+  // Formato documentado pela Meta pro cookie _fbc: fb.1.<timestamp_ms>.<fbclid>.
+  // Sintetizamos aqui porque o clique acontece no NOSSO domínio, antes do
+  // pixel do Facebook rodar em qualquer página — não tem cookie _fbc real
+  // ainda nesse momento. Serve de fallback pro CAPI quando o cookie do
+  // pixel não chegar até a conversão (bloqueio de cookie, pixel lento etc.).
+  const syntheticFbc = fbclid ? `fb.1.${Date.now()}.${fbclid}` : null
+
   await admin.from('tracking_clicks').insert({
     link_id: link.id,
     organization_id: link.organization_id,
@@ -52,7 +60,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     utm_content: url.searchParams.get('utm_content'),
     utm_term: url.searchParams.get('utm_term'),
     gclid: url.searchParams.get('gclid'),
-    fbclid: url.searchParams.get('fbclid'),
+    fbclid,
+    fbc: syntheticFbc,
   })
 
   await admin.rpc('increment_tracking_link_clicks', { p_link_id: link.id })

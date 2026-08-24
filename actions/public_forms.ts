@@ -12,7 +12,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   // chega sem contexto de atribuição e a Meta não consegue linkar de volta
   // ao anúncio/campanha pra otimizar a entrega.
   const cookieStore = cookies()
-  const fbc = cookieStore.get('_fbc')?.value || null
+  let fbc = cookieStore.get('_fbc')?.value || null
   const fbp = cookieStore.get('_fbp')?.value || null
   // Cookie do link de rastreamento próprio (app/r/[code]/route.ts) — se o
   // visitante chegou por um link nosso, correlaciona a conversão com a(s)
@@ -125,7 +125,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
     try {
       const { data: clicks } = await supabaseAdmin
         .from('tracking_clicks')
-        .select('id, link_id, created_at')
+        .select('id, link_id, created_at, fbc')
         .eq('organization_id', form.organization_id)
         .eq('visitor_id', visitorId)
         .order('created_at', { ascending: false })
@@ -136,6 +136,13 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
           .update({ converted_contato_id: leadId, converted_at: nowIso })
           .in('id', clicks.map(c => c.id))
         await supabaseAdmin.from('contatos').update({ tracking_link_id: clicks[0].link_id }).eq('id', leadId)
+        // Fallback pro CAPI abaixo: usa o _fbc sintetizado no clique quando o
+        // cookie do pixel não chegou até o formulário (mais confiável do que
+        // não mandar fbc nenhum pra Meta).
+        if (!fbc) {
+          const clickWithFbc = clicks.find(c => c.fbc)
+          if (clickWithFbc) fbc = clickWithFbc.fbc
+        }
       }
     } catch (e: any) {
       console.warn('[submitPublicForm] tracking correlation failed:', e?.message)
