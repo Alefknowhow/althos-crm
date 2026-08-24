@@ -9,6 +9,7 @@ import { listCreatives } from '@/actions/campaign-creatives'
 import { listClientActivity } from '@/actions/trafego-history'
 import { getClientPerformanceComparison, getClientDailySeries } from '@/actions/trafego-performance'
 import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads-oauth'
+import { listAssignableMetaAdAccounts } from '@/actions/marketing'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 
@@ -84,6 +85,21 @@ export default async function TrafficClientDetailPage({
     ? (lastSyncDaysAgo === 0 ? 'hoje' : lastSyncDaysAgo === 1 ? 'há 1 dia' : `há ${lastSyncDaysAgo} dias`)
     : null
 
+  // Só busca as contas Meta acessíveis pelo login já conectado da agência
+  // quando este cliente ainda não tem conta vinculada (ver ClientSyncPanel) —
+  // evita chamada à Graph API sem necessidade quando já está tudo linkado.
+  let orgMetaConnected = false
+  let assignableOptions: MetaAdAccountOption[] = []
+  let assignedElsewhere: string[] = []
+  if (accounts.length === 0) {
+    const res = await listAssignableMetaAdAccounts(params.orgSlug)
+    if (res.ok) {
+      orgMetaConnected = res.connected
+      assignableOptions = res.options
+      assignedElsewhere = res.assignedElsewhere
+    }
+  }
+
   return (
     <ClientDetailShell
       orgSlug={params.orgSlug}
@@ -100,6 +116,9 @@ export default async function TrafficClientDetailPage({
       performanceSeries={series}
       lastSyncLabel={lastSyncLabel}
       lastSyncDaysAgo={lastSyncDaysAgo}
+      orgMetaConnected={orgMetaConnected}
+      assignableOptions={assignableOptions}
+      assignedElsewhere={assignedElsewhere}
     />
   )
 }

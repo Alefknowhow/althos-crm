@@ -17,6 +17,7 @@ import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
 import type { TrafficActivity } from '@/actions/trafego-history'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
+import type { MetaAdAccountOption } from '@/lib/meta/ads-oauth'
 
 type AdAccount = { id: string; provider: string; name: string; external_id: string | null; status: string }
 type CampaignRow = {
@@ -39,6 +40,7 @@ type SaleRow = { id: string; sale_date: string | null; amount_cents: number | nu
 export default function ClientDetailShell({
   orgSlug, clientId, clientName, profile, accounts, campaigns, creatives, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
+  orgMetaConnected, assignableOptions, assignedElsewhere,
 }: {
   orgSlug: string
   clientId: string
@@ -54,6 +56,9 @@ export default function ClientDetailShell({
   performanceSeries: ClientDailyPoint[]
   lastSyncLabel: string | null
   lastSyncDaysAgo: number | null
+  orgMetaConnected: boolean
+  assignableOptions: MetaAdAccountOption[]
+  assignedElsewhere: string[]
 }) {
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -97,7 +102,15 @@ export default function ClientDetailShell({
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
-          <ClientSyncPanel orgSlug={orgSlug} clientId={clientId} accounts={accounts} performance={performanceCurrent} />
+          <ClientSyncPanel
+            orgSlug={orgSlug}
+            clientId={clientId}
+            accounts={accounts}
+            performance={performanceCurrent}
+            orgMetaConnected={orgMetaConnected}
+            assignableOptions={assignableOptions}
+            assignedElsewhere={assignedElsewhere}
+          />
           <TrafficClientCampaignsCard orgSlug={orgSlug} contatoId={clientId} accounts={accounts} campaigns={campaigns} />
         </TabsContent>
 

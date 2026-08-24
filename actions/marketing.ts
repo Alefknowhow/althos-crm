@@ -609,6 +609,71 @@ export async function connectMetaAdsAccountsForClient(orgSlug: string, clientId:
 }
 
 /**
+ * Confirmado com o usuário: o modelo real é 1 Business Manager da agência
+ * com acesso às contas de todos os clientes — não é 1 login por cliente.
+ * Então, se a org já tem um `meta_ads_access_token` válido, a aba
+ * Performance de qualquer cliente pode listar as contas acessíveis por
+ * ESSE token direto, sem pedir login de novo — só falta escolher/atribuir
+ * qual conta é desse cliente (assignMetaAdAccountToClient abaixo).
+ */
+export async function listAssignableMetaAdAccounts(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+  const { data: orgRow } = await supabase
+    .from('organizations').select('meta_ads_access_token').eq('id', org.id).maybeSingle()
+  if (!orgRow?.meta_ads_access_token) {
+    return { ok: true as const, connected: false as const, options: [], assignedElsewhere: [] as string[] }
+  }
+
+  const { listAdAccountsForToken } = await import('@/lib/meta/ads-oauth')
+  let options
+  try {
+    options = await listAdAccountsForToken(orgRow.meta_ads_access_token)
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao listar contas de anúncio' }
+  }
+
+  // Contas Meta já atribuídas a QUALQUER cliente na org — pra sinalizar na
+  // UI e evitar atribuir a mesma conta a dois clientes por engano.
+  const { data: existing } = await supabase
+    .from('ad_accounts')
+    .select('external_id')
+    .eq('organization_id', org.id)
+    .eq('provider', 'meta')
+    .not('contato_id', 'is', null)
+  const assignedElsewhere = (existing || []).map(r => r.external_id).filter(Boolean) as string[]
+
+  return { ok: true as const, connected: true as const, options, assignedElsewhere }
+}
+
+/** Atribui uma conta já acessível pelo token da org (ver acima) a um cliente específico — sem precisar refazer o OAuth. */
+export async function assignMetaAdAccountToClient(orgSlug: string, clientId: string, accountId: string, accountName: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'trafego')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+  const { data: client } = await supabase
+    .from('contatos').select('id').eq('id', clientId).eq('organization_id', org.id).maybeSingle()
+  if (!client) return { ok: false as const, error: 'Cliente não encontrado' }
+
+  const { error } = await supabase
+    .from('ad_accounts')
+    .upsert(
+      { organization_id: org.id, provider: 'meta', name: accountName, external_id: accountId, status: 'active', contato_id: clientId },
+      { onConflict: 'organization_id,provider,external_id' },
+    )
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${clientId}`)
+  return { ok: true as const }
+}
+
+/**
  * Bulk import of daily metrics rows. Used by CSV upload — the row format is
  * intentionally minimal (campaign_name OR campaign_id + date + spend + optional
  * counters), so we can ingest exports from Meta, Google Ads, etc. with the same

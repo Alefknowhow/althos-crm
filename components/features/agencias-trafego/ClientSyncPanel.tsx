@@ -10,6 +10,8 @@ import { RefreshCw, Loader2, Wifi, WifiOff, Link2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { syncAdAccountCampaigns } from '@/actions/marketing'
 import type { ClientPerformanceSummary } from '@/actions/trafego-performance'
+import type { MetaAdAccountOption } from '@/lib/meta/ads-oauth'
+import AssignMetaAdAccountPanel from './AssignMetaAdAccountPanel'
 
 type AdAccount = { id: string; provider: string; name: string; external_id: string | null; status: string; updated_at?: string; created_at?: string }
 
@@ -33,12 +35,15 @@ function syncLabel(a: AdAccount): string {
  * aba Campanhas (ClientCampaignsTable) — componente próprio, não reaproveitado.
  */
 export default function ClientSyncPanel({
-  orgSlug, clientId, accounts, performance,
+  orgSlug, clientId, accounts, performance, orgMetaConnected, assignableOptions, assignedElsewhere,
 }: {
   orgSlug: string
   clientId: string
   accounts: AdAccount[]
   performance: ClientPerformanceSummary
+  orgMetaConnected: boolean
+  assignableOptions: MetaAdAccountOption[]
+  assignedElsewhere: string[]
 }) {
   const router = useRouter()
   const [syncingId, setSyncingId] = useState<string | null>(null)
@@ -53,16 +58,37 @@ export default function ClientSyncPanel({
   }
 
   if (accounts.length === 0) {
+    // A agência conecta o Facebook uma vez só (Business Manager com acesso
+    // às contas de todos os clientes) — se já tem token, só falta escolher
+    // qual conta é deste cliente, sem pedir login de novo.
+    if (orgMetaConnected) {
+      return (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Conta de anúncios</CardTitle></CardHeader>
+          <CardContent>
+            <AssignMetaAdAccountPanel
+              orgSlug={orgSlug}
+              clientId={clientId}
+              options={assignableOptions}
+              assignedElsewhere={assignedElsewhere}
+            />
+          </CardContent>
+        </Card>
+      )
+    }
     return (
       <Card>
         <CardContent className="py-12 text-center space-y-3">
-          <p className="text-sm text-muted-foreground">Conta ainda não conectada.</p>
+          <p className="text-sm text-muted-foreground">A agência ainda não conectou uma conta do Facebook.</p>
           <Button asChild size="sm">
             <a href={`/api/meta-ads/connect?orgSlug=${orgSlug}&clientId=${clientId}`}>
               <Link2 className="w-4 h-4 mr-1.5" /> Conectar com Facebook
             </a>
           </Button>
-          <p className="text-xs text-muted-foreground">Ou cadastre uma conta manualmente logo abaixo (outras plataformas).</p>
+          <p className="text-xs text-muted-foreground">
+            Conecte uma vez com o Business Manager da agência — depois é só escolher a conta de cada cliente aqui, sem logar de novo.
+            Ou cadastre uma conta manualmente logo abaixo (outras plataformas).
+          </p>
         </CardContent>
       </Card>
     )
