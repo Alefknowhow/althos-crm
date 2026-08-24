@@ -25,6 +25,7 @@ import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Phone,
   FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
   Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2, Sparkles, History,
+  CheckSquare, Mail,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
@@ -604,6 +605,9 @@ function DetailPanel({
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
   const [timelineOpen, setTimelineOpen] = useState(false)
+  const [whatsappOpen, setWhatsappOpen] = useState(false)
+  const [tasksOpen, setTasksOpen] = useState(false)
+  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -881,10 +885,29 @@ function DetailPanel({
         </div>
       )}
 
-      {/* WhatsApp */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">WhatsApp</CardTitle></CardHeader>
-        <CardContent>
+      {/* WhatsApp, Tarefas, Timeline e Histórico de E-mails — botões pequenos que abrem popup, em vez de ocupar espaço fixo na prévia */}
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setWhatsappOpen(true)}>
+          <Phone className="w-3.5 h-3.5 mr-1.5" /> WhatsApp
+          {selected.whatsappConv && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">1</Badge>}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setTasksOpen(true)}>
+          <CheckSquare className="w-3.5 h-3.5 mr-1.5" /> Tarefas
+          {selected.tasks.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.tasks.length}</Badge>}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setTimelineOpen(true)}>
+          <History className="w-3.5 h-3.5 mr-1.5" /> Timeline
+          {selected.activities.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.activities.length}</Badge>}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setEmailHistoryOpen(true)}>
+          <Mail className="w-3.5 h-3.5 mr-1.5" /> E-mails
+          {selected.emailSends.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.emailSends.length}</Badge>}
+        </Button>
+      </div>
+
+      <Dialog open={whatsappOpen} onOpenChange={setWhatsappOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>WhatsApp</DialogTitle></DialogHeader>
           {selected.whatsappConv ? (
             <div className="space-y-3">
               <div className="text-sm border rounded-lg p-3 bg-muted/20 flex flex-col items-center justify-center text-center gap-1.5">
@@ -901,16 +924,15 @@ function DetailPanel({
           ) : (
             <p className="text-xs text-muted-foreground text-center py-4">Sem conversas registradas via WhatsApp Cloud API.</p>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
-      {/* Tarefas */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Tarefas</CardTitle>
-          <TaskDialog orgSlug={orgSlug} defaultLead={{ id: c.id, name: c.name }} />
-        </CardHeader>
-        <CardContent>
+      <Dialog open={tasksOpen} onOpenChange={setTasksOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>Tarefas</DialogTitle>
+            <TaskDialog orgSlug={orgSlug} defaultLead={{ id: c.id, name: c.name }} />
+          </DialogHeader>
           <div className="space-y-3">
             {selected.tasks.length > 0 ? selected.tasks.map(task => (
               <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
@@ -918,16 +940,8 @@ function DetailPanel({
               <p className="text-xs text-muted-foreground text-center py-4">Nenhuma tarefa vinculada.</p>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Timeline de Atividades — vira popup pra não ocupar espaço permanente na prévia */}
-      <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setTimelineOpen(true)}>
-        <History className="w-4 h-4 mr-2" /> Timeline de Atividades
-        {selected.activities.length > 0 && (
-          <Badge variant="secondary" className="ml-auto">{selected.activities.length}</Badge>
-        )}
-      </Button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -969,10 +983,9 @@ function DetailPanel({
         </DialogContent>
       </Dialog>
 
-      {/* Histórico de E-mails */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Histórico de E-mails</CardTitle></CardHeader>
-        <CardContent>
+      <Dialog open={emailHistoryOpen} onOpenChange={setEmailHistoryOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Histórico de E-mails</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {selected.emailSends.length > 0 ? selected.emailSends.map((es: any) => (
               <div key={es.id} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
@@ -986,8 +999,8 @@ function DetailPanel({
               <p className="text-xs text-muted-foreground text-center py-4">Nenhum e-mail enviado.</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
