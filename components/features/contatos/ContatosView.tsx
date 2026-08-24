@@ -932,10 +932,18 @@ function DetailPanel({
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>Tarefas</DialogTitle>
-            {/* O diálogo de criação abre como popup irmão (ver newTaskOpen abaixo),
-                não aninhado dentro deste — dois <Dialog> Radix um dentro do
-                outro quebrava com "client-side exception" ao abrir o de dentro. */}
-            <Button type="button" size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
+            {/* Fecha este popup antes de abrir o de criação — dois <Dialog>
+                Radix abertos ao mesmo tempo (mesmo como irmãos, não
+                aninhados) quebravam com "client-side exception" por causa
+                do aria-hidden que cada um aplica nos outros elementos do
+                body enquanto está aberto. Reabre a lista quando o de
+                criação fecha. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => { setTasksOpen(false); setNewTaskOpen(true) }}
+            >
               <Plus className="w-3.5 h-3.5 mr-1" /> Nova tarefa
             </Button>
           </DialogHeader>
@@ -954,7 +962,7 @@ function DetailPanel({
         defaultLead={{ id: c.id, name: c.name }}
         trigger={<button type="button" className="hidden" aria-hidden />}
         open={newTaskOpen}
-        onOpenChange={setNewTaskOpen}
+        onOpenChange={(v: boolean) => { setNewTaskOpen(v); if (!v) setTasksOpen(true) }}
       />
 
       <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
