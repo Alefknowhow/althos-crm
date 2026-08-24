@@ -862,16 +862,33 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     metricsByCampaign.set(m.campaign_id, cur)
   }
 
+  // 2b) Links de rastreamento próprios (Fase 1 do sistema de tracking) —
+  // quando um lead chega por um /r/{code} nosso, contatos.tracking_link_id
+  // aponta direto pro link, que por sua vez pode ter campaign_id vinculado.
+  // Isso é atribuição por FK de verdade, prioridade sobre o match por texto
+  // (utm_campaign) abaixo — só cai no texto pra tráfego que não passou por
+  // um link nosso (ex.: campanhas antigas, ou o gestor colou o link direto
+  // do anúncio sem usar /r/{code}).
+  const { data: trackingLinksRows } = await supabase
+    .from('tracking_links')
+    .select('id, campaign_id')
+    .eq('organization_id', org.id)
+    .not('campaign_id', 'is', null)
+  const linkIdToCampaignId = new Map<string, string>()
+  for (const l of trackingLinksRows || []) {
+    if (l.campaign_id) linkIdToCampaignId.set(l.id, l.campaign_id)
+  }
+
   // 3b) Negócios ganhos no período, atribuídos a uma campanha — alimenta
-  // CAC/ROAS. Dois caminhos: (a) meta_resolved_campaign_id, gravado no
-  // webhook do WhatsApp quando a conversa vem de um anúncio de
-  // Click-to-WhatsApp (ad_id → campaign_id já resolvido, ver
-  // resolveAdCampaignExternalId em lib/meta/ads.ts) — direto, sem match de
-  // texto; (b) utm_campaign do lead (formulários/tráfego), mesmo padrão
-  // de form_submissions.utm_campaign abaixo.
+  // CAC/ROAS. Prioridade: (a) tracking_link_id (FK direta, ver acima); (b)
+  // meta_resolved_campaign_id, gravado no webhook do WhatsApp quando a
+  // conversa vem de um anúncio de Click-to-WhatsApp (ad_id → campaign_id já
+  // resolvido, ver resolveAdCampaignExternalId em lib/meta/ads.ts) — direto,
+  // sem match de texto; (c) utm_campaign do lead (formulários/tráfego),
+  // mesmo padrão de form_submissions.utm_campaign abaixo.
   const { data: wonDeals } = await supabase
     .from('contatos')
-    .select('utm, value_cents, meta_resolved_campaign_id')
+    .select('utm, value_cents, meta_resolved_campaign_id, tracking_link_id')
     .eq('organization_id', org.id)
     .eq('deal_status', 'ganho')
     .gte('updated_at', startIso)
@@ -884,7 +901,8 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
   const wonByCampaignId = new Map<string, { count: number; revenue_cents: number }>()
   for (const d of wonDeals || []) {
-    const campaignId = d.meta_resolved_campaign_id
+    const campaignId = (d.tracking_link_id && linkIdToCampaignId.get(d.tracking_link_id))
+      || d.meta_resolved_campaign_id
       || utmToCampaignId.get(String((d.utm as any)?.utm_campaign || '').trim().toLowerCase())
     if (!campaignId) continue
     const cur = wonByCampaignId.get(campaignId) || { count: 0, revenue_cents: 0 }
@@ -895,10 +913,31 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
   // 4) Map utm_campaign → number of leads.
   const leadsByUtm = new Map<string, number>()
+  const matchedContatoIds = new Set<string>()
   for (const s of subs || []) {
     const key = String(s.utm_campaign || '').trim().toLowerCase()
-    if (!key) continue
+    if (!key || !utmToCampaignId.has(key)) continue
     leadsByUtm.set(key, (leadsByUtm.get(key) || 0) + 1)
+    if (s.contato_id) matchedContatoIds.add(s.contato_id)
+  }
+
+  // 4b) Leads atribuídos por link de rastreamento (FK direta) — só soma os
+  // que ainda não foram contados via utm_campaign acima, pra não contar o
+  // mesmo lead duas vezes quando o destino do link também carrega UTM na URL.
+  const leadsByTrackingCampaignId = new Map<string, number>()
+  if (linkIdToCampaignId.size > 0) {
+    const { data: trackingLeads } = await supabase
+      .from('contatos')
+      .select('id, tracking_link_id')
+      .eq('organization_id', org.id)
+      .not('tracking_link_id', 'is', null)
+      .gte('created_at', startIso)
+    for (const lead of trackingLeads || []) {
+      if (matchedContatoIds.has(lead.id)) continue
+      const campaignId = lead.tracking_link_id ? linkIdToCampaignId.get(lead.tracking_link_id) : null
+      if (!campaignId) continue
+      leadsByTrackingCampaignId.set(campaignId, (leadsByTrackingCampaignId.get(campaignId) || 0) + 1)
+    }
   }
 
   // 5) Build per-campaign rows.
@@ -907,7 +946,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       spend: 0, imp: 0, clicks: 0, metaLeads: 0, messagingStarted: 0, linkClicks: 0, landingPageViews: 0, purchases: 0, purchaseValueCents: 0,
     }
     const utm = (c.utm_campaign || '').trim().toLowerCase()
-    const leads = utm ? leadsByUtm.get(utm) || 0 : 0
+    const leads = (utm ? leadsByUtm.get(utm) || 0 : 0) + (leadsByTrackingCampaignId.get(c.id) || 0)
     const won = wonByCampaignId.get(c.id)
     const account = Array.isArray(c.ad_accounts) ? c.ad_accounts[0] : c.ad_accounts
     const objectiveGroup = classifyObjective(c.objective)
