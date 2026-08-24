@@ -23,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -186,13 +187,14 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                   )}
                 />
 
-                {/* Horário (opcional) */}
-                <FormItem>
-                  <FormLabel>Horário <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
-                  <FormControl>
-                    <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} />
-                  </FormControl>
-                </FormItem>
+                {/* Horário (opcional) — não é campo do react-hook-form (state
+                    local dueTime), por isso usa Label/Input soltos em vez de
+                    FormItem/FormLabel/FormControl (que exigem estar dentro de
+                    um <FormField>, senão o useFormField() interno quebra). */}
+                <div className="space-y-2">
+                  <Label>Horário <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
