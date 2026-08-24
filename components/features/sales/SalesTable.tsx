@@ -137,7 +137,7 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    {isTraffic && s.duration_months && (
+                    {isTraffic && (
                       <Button
                         size="icon"
                         variant="ghost"

@@ -1,14 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Search, Plus, TrendingUp, TrendingDown, Megaphone, ImagePlus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Search, Plus, TrendingUp, TrendingDown, Megaphone, ImagePlus, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn, formatCurrency } from '@/lib/utils'
 import { HEALTH_LABEL, HEALTH_DOT_CLASS, HEALTH_BADGE_CLASS } from '@/lib/trafego/health-status'
 import type { HealthStatus } from '@/lib/trafego/health-status'
+import { createCustomer } from '@/actions/contatos'
 
 export type ClientCardData = {
   id: string
@@ -45,8 +50,24 @@ function syncLabel(daysAgo: number | null): string {
 }
 
 export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: string; clients: ClientCardData[] }) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | HealthStatus>('all')
+  const [newClientOpen, setNewClientOpen] = useState(false)
+  const [newClientForm, setNewClientForm] = useState({ name: '', email: '', phone: '' })
+  const [creating, startCreating] = useTransition()
+
+  function handleCreateClient() {
+    if (!newClientForm.name.trim()) { toast.error('Informe o nome do cliente.'); return }
+    startCreating(async () => {
+      const res = await createCustomer(orgSlug, newClientForm)
+      if (!res.ok) { toast.error((res as any).error || 'Erro ao criar cliente'); return }
+      toast.success('Cliente criado — configure a estratégia dele agora.')
+      setNewClientOpen(false)
+      setNewClientForm({ name: '', email: '', phone: '' })
+      router.push(`/app/${orgSlug}/agencias-trafego/trafego/${res.id}`)
+    })
+  }
 
   const summary = useMemo(() => {
     const out: Record<HealthStatus, number> = { saudavel: 0, atencao: 0, critico: 0, sem_dados: 0 }
@@ -71,12 +92,50 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
           <h1 className="text-2xl font-bold tracking-tight">Tráfego</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Gestão e acompanhamento das campanhas dos seus clientes.</p>
         </div>
-        <Button asChild size="sm">
-          <Link href={`/app/${orgSlug}/contatos`}>
-            <Plus className="w-4 h-4 mr-1.5" /> Cliente
-          </Link>
+        <Button size="sm" onClick={() => setNewClientOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" /> Cliente
         </Button>
       </div>
+
+      <Dialog open={newClientOpen} onOpenChange={setNewClientOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo cliente de gestão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome</Label>
+              <Input
+                value={newClientForm.name}
+                onChange={e => setNewClientForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Nome do cliente"
+                onKeyDown={e => { if (e.key === 'Enter') handleCreateClient() }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">E-mail</Label>
+              <Input
+                type="email"
+                value={newClientForm.email}
+                onChange={e => setNewClientForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Telefone</Label>
+              <Input
+                value={newClientForm.phone}
+                onChange={e => setNewClientForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+            <Button className="w-full" onClick={handleCreateClient} disabled={creating}>
+              {creating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Plus className="w-4 h-4 mr-1.5" />}
+              Criar e configurar estratégia
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Resumo */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
