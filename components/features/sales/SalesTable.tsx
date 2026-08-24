@@ -200,7 +200,8 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
           orgSlug={orgSlug}
           saleId={contractSaleId}
           clientName={sales.find(s => s.id === contractSaleId)?.leads?.name || null}
-          clientEmail={null}
+          clientEmail={sales.find(s => s.id === contractSaleId)?.leads?.email || null}
+          clientPhone={sales.find(s => s.id === contractSaleId)?.leads?.phone || null}
           open={!!contractSaleId}
           onOpenChange={o => !o && setContractSaleId(null)}
         />

@@ -19,7 +19,7 @@ export async function listSales(orgSlug: string) {
 
   const { data, error } = await supabase
     .from('sales')
-    .select('*, leads:contatos(id, name, source), products(id, name, type)')
+    .select('*, leads:contatos(id, name, source, email, phone), products(id, name, type)')
     .eq('organization_id', org.id)
     .order('sale_date', { ascending: false })
     .order('created_at', { ascending: false })

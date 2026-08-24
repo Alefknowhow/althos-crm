@@ -26,14 +26,18 @@ import {
   getPlanContractFileUrl,
   sendPlanContractLinkByEmail,
   getPlanContractRenderData,
+  getPlanContractEditableBody,
+  savePlanContractBody,
 } from '@/actions/plan-contracts'
 import PlanContractPrintView from '@/components/features/agencias-trafego/PlanContractPrintView'
+import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
 
 type Props = {
   orgSlug: string
   saleId: string
   clientName: string | null
   clientEmail?: string | null
+  clientPhone?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -51,7 +55,7 @@ const STATUS_META: Record<string, { label: string; className: string; icon: any 
  * actions/plan-contracts.ts + tabela plan_contracts própria, não
  * compartilhada com sale_contracts (Reservas/Viagens).
  */
-export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, open, onOpenChange }: Props) {
+export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, clientPhone, open, onOpenChange }: Props) {
   const [contract, setContract] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -59,13 +63,21 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   const [refreshing, setRefreshing] = useState(false)
   const [signerName, setSignerName] = useState(clientName || '')
   const [signerEmail, setSignerEmail] = useState(clientEmail || '')
-  const [signerPhone, setSignerPhone] = useState('')
+  const [signerPhone, setSignerPhone] = useState(clientPhone || '')
   const [signer2Name, setSigner2Name] = useState('')
   const [signer2Email, setSigner2Email] = useState('')
   const [signer2Phone, setSigner2Phone] = useState('')
   const [emailTo, setEmailTo] = useState(clientEmail || '')
   const [renderData, setRenderData] = useState<any>(null)
   const captureRef = useRef<HTMLDivElement>(null)
+
+  // Conteúdo deste contrato específico (cláusulas podem mudar de cliente pra
+  // cliente) — carregado sob demanda quando o operador abre o editor, não no
+  // open do diálogo (evita custo se ninguém for editar).
+  const [editingBody, setEditingBody] = useState(false)
+  const [bodyLoading, setBodyLoading] = useState(false)
+  const [bodyHtml, setBodyHtml] = useState('')
+  const [savingBody, setSavingBody] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -85,6 +97,25 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   async function reload() {
     const c = await getPlanSaleContract(orgSlug, saleId)
     setContract(c)
+  }
+
+  async function openBodyEditor() {
+    setEditingBody(true)
+    setBodyLoading(true)
+    const res = await getPlanContractEditableBody(orgSlug, saleId)
+    setBodyLoading(false)
+    if (!res.ok) { toast.error((res as any).error || 'Erro ao carregar o conteúdo'); setEditingBody(false); return }
+    setBodyHtml(res.bodyHtml)
+  }
+
+  async function handleSaveBody() {
+    setSavingBody(true)
+    const res = await savePlanContractBody(orgSlug, saleId, bodyHtml)
+    setSavingBody(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Conteúdo do contrato salvo — a próxima geração de PDF já usa esse texto.')
+    setEditingBody(false)
+    await reload()
   }
 
   async function handleGenerate() {
@@ -278,6 +309,45 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
                     <Settings2 className="w-4 h-4 mr-1.5" /> Ver modelo
                   </Link>
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Conteúdo deste contrato
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Ajuste cláusulas específicas desta venda sem alterar o modelo padrão do Plano — vale só pra este contrato.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isSent || isSigned ? (
+                  <p className="text-xs text-muted-foreground">
+                    Este contrato já foi {isSigned ? 'assinado' : 'enviado pra assinatura'} — o conteúdo não pode mais ser editado.
+                  </p>
+                ) : !editingBody ? (
+                  <Button size="sm" variant="outline" onClick={openBodyEditor} disabled={bodyLoading}>
+                    {bodyLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Settings2 className="w-4 h-4 mr-1.5" />}
+                    Editar conteúdo deste contrato
+                  </Button>
+                ) : (
+                  <>
+                    <TiptapEmailEditor orgSlug={orgSlug} value={bodyHtml} onChange={setBodyHtml} placeholder="Texto do contrato…" />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleSaveBody} disabled={savingBody}>
+                        {savingBody ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : null}
+                        Salvar conteúdo
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingBody(false)} disabled={savingBody}>
+                        Cancelar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Salve aqui antes de gerar o PDF pra usar este texto em vez do modelo padrão.
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
