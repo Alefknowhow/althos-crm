@@ -1207,39 +1207,31 @@ function TaskListRow({
         </span>
       </button>
 
-      {task.leads && (
-        <Link
-          href={`/app/${orgSlug}/contatos/${task.leads.id}`}
-          onClick={e => e.stopPropagation()}
-          className="hidden xl:inline text-xs text-primary hover:underline truncate max-w-[120px] shrink-0"
-        >
-          {task.leads.name}
-        </Link>
-      )}
-
-      <div className="hidden sm:flex items-center gap-1.5 w-[140px] shrink-0">
+      <div className="hidden sm:flex items-center gap-1 shrink-0">
         {member && (
           <>
-            <UserAvatar name={member.name} email={member.email} size={22} />
-            <span className="text-xs text-muted-foreground truncate">{member.name}</span>
+            <UserAvatar name={member.name} email={member.email} size={16} />
+            <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{member.name}</span>
           </>
         )}
       </div>
 
-      <div className="w-[76px] shrink-0 flex items-center gap-1 text-xs">
+      <div className="w-[86px] shrink-0 flex items-center gap-1 text-xs">
         {date ? (
           <span className={cn('inline-flex items-center gap-1', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
             <Calendar className="w-3 h-3 shrink-0" />
-            {date}
+            {date}{time ? ` · ${time}` : ''}
           </span>
         ) : (
           <span className="text-muted-foreground/40">—</span>
         )}
       </div>
 
-      <div className="hidden sm:block w-[56px] shrink-0">
-        <Badge variant="outline" className={cn('text-[10px] px-1.5 h-4 rounded-full', pm.cls)}>{pm.label}</Badge>
-      </div>
+      <span
+        className={cn('shrink-0 w-2 h-2 rounded-full', pm.dot)}
+        title={`Prioridade: ${pm.label}`}
+        aria-label={`Prioridade: ${pm.label}`}
+      />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
