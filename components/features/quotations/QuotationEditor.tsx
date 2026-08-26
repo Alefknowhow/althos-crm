@@ -51,7 +51,7 @@ const PAYMENT_METHODS = [
   { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
 ] as const
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, createSaleFromQuotation, convertOfferToQuotation, convertQuotationToOffer, type QuotationFull } from '@/actions/quotations'
+import { saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
@@ -1041,32 +1041,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     } else toast.error(res.error)
   }
 
-  async function onSendToClient() {
-    // Garante que o link existe (gera na hora, sem rotacionar).
-    let token = publicToken
-    if (!token) {
-      const res = await generateQuotationLink(orgSlug, q0.id, false)
-      if (!res.ok) { toast.error(res.error); return }
-      token = res.token
-      setPublicToken(token)
-      setQ(s => ({ ...s, status: s.status === 'draft' ? 'sent' : s.status }))
-    }
-    const url = `${window.location.origin}/p/${token}`
-    const lead = leads.find(l => l.id === q.contato_id)
-    const digits = (lead?.phone || '').replace(/\D/g, '')
-    const firstName = (q.client_name || lead?.name || '').trim().split(/\s+/)[0]
-    const msg = `Oi${firstName ? ` ${firstName}` : ''}! Preparei sua proposta de viagem${q.title ? ` — ${q.title}` : ''}. Dá uma olhada com carinho: ${url}`
-    if (digits) {
-      const wa = digits.length <= 11 ? `55${digits}` : digits
-      window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
-    } else {
-      // Sem telefone no contato: abre o WhatsApp sem destinatário (escolhe na hora)
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
-      if (q.contato_id) toast.info('O contato vinculado não tem telefone — escolha o destinatário no WhatsApp.')
-      else toast.info('Nenhum contato vinculado — escolha o destinatário no WhatsApp.')
-    }
-  }
-
   async function onConvertToQuotation() {
     setSaleBusy(true)
     await saveQuotation(orgSlug, q0.id, payload)
@@ -1074,27 +1048,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     setSaleBusy(false)
     if (res.ok) { toast.success('Oferta copiada para uma nova cotação'); router.push(`/app/${orgSlug}/cotacoes/${res.id}`) }
     else toast.error(res.error)
-  }
-
-  async function onConvertToOffer() {
-    setSaleBusy(true)
-    await saveQuotation(orgSlug, q0.id, payload)
-    const res = await convertQuotationToOffer(orgSlug, q0.id)
-    setSaleBusy(false)
-    if (res.ok) { toast.success('Cotação copiada para uma nova oferta'); router.push(`/app/${orgSlug}/ofertas/${res.id}`) }
-    else toast.error(res.error)
-  }
-
-  async function onGenerateSale() {
-    // Grava o estado atual antes para a venda nascer com os dados mais recentes.
-    setSaleBusy(true)
-    await saveQuotation(orgSlug, q0.id, payload)
-    const res = await createSaleFromQuotation(orgSlug, q0.id)
-    setSaleBusy(false)
-    if (res.ok) {
-      toast.success(res.existed ? 'Esta cotação já tinha uma venda — abrindo…' : 'Venda criada com os dados da cotação')
-      router.push(`/app/${orgSlug}/reservas?sale=${res.saleId}`)
-    } else toast.error(res.error)
   }
 
   async function taLookup(l: Lodging) {
@@ -1950,11 +1903,6 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Abrir</span></a>
             </Button>
-            {!isOffer && (
-              <Button type="button" size="sm" className="bg-[#25D366] hover:bg-[#1eb959] text-[#0a3d22]" onClick={onSendToClient}>
-                <MessageCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Enviar ao cliente</span>
-              </Button>
-            )}
           </>
         )}
         {!publicToken && (
@@ -1962,22 +1910,15 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             <Link2 className="w-3.5 h-3.5 mr-1" /> Gerar link
           </Button>
         )}
-        {isOffer ? (
+        {isOffer && (
           <Button type="button" size="sm" variant="secondary" onClick={onConvertToQuotation} disabled={saleBusy}>
             {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <FileText className="w-3.5 h-3.5 sm:mr-1" />}
             <span className="hidden sm:inline">Converter em cotação</span>
           </Button>
-        ) : (
-          <>
-            <Button type="button" size="sm" variant="outline" onClick={onConvertToOffer} disabled={saleBusy}>
-              <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline">Transformar em oferta</span>
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={onGenerateSale} disabled={saleBusy}>
-              {saleBusy ? <Loader2 className="w-3.5 h-3.5 sm:mr-1 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1" />}
-              <span className="hidden sm:inline">Gerar venda</span>
-            </Button>
-          </>
         )}
+        {/* Enviar ao cliente / Adicionar a ofertas / Gerar reserva ficam na
+            prévia da lista (ProposalsList.tsx → ProposalDetail), ao lado de
+            "Duplicar" — menos botões aqui, o essencial pra quem tá editando. */}
       </div>
       <GroupNavMobile active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
       </div>

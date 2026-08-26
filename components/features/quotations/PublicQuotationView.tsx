@@ -1137,7 +1137,7 @@ const CSS = `
 /* valor em ink: máximo contraste contra a etiqueta rausch */
 .alq .fact .v{font-family:'Inter',sans-serif;font-size:18px;margin-top:4px;line-height:1.2;color:var(--navy);font-weight:600}
 .alq .fact .v small{display:block;font-family:'Inter';font-size:12.5px;color:var(--body);font-weight:400;margin-top:3px;letter-spacing:normal}
-@media(max-width:640px){.alq .facts{grid-template-columns:1fr;gap:10px;margin-top:-28px}}
+@media(max-width:640px){.alq .facts{gap:8px;margin-top:-28px}}
 
 /* INTRO */
 .alq .intro{background:var(--paper);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -1363,13 +1363,14 @@ const CSS = `
   .alq .hero h2{font-size:15px}
   .alq .hero .eyebrow{font-size:10.5px;letter-spacing:.14em;padding:5px 12px}
   .alq .hero-meta{margin-top:9px;font-size:12px}
-  /* cards compactos: ícone à esquerda, texto à direita */
-  .alq .facts{margin-top:-22px}
-  .alq .fact{padding:13px 14px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;border-top-width:2px}
-  .alq .fact .ic{width:20px;height:20px;margin-bottom:0;grid-row:span 2}
-  .alq .fact .k{font-size:10px;letter-spacing:.12em}
-  .alq .fact .v{font-size:16px;margin-top:1px}
-  .alq .fact .v small{font-size:11.5px;margin-top:1px}
+  /* cards compactos: os 3 lado a lado (ícone em cima, texto embaixo) —
+     fonte bem reduzida pra caber sem quebrar a linha. */
+  .alq .facts{margin-top:-22px;gap:6px}
+  .alq .fact{padding:10px 6px;border-top-width:2px;text-align:center}
+  .alq .fact .ic{width:16px;height:16px;margin:0 auto 6px}
+  .alq .fact .k{font-size:8.5px;letter-spacing:.08em}
+  .alq .fact .v{font-size:12.5px;margin-top:1px;line-height:1.25}
+  .alq .fact .v small{display:none}
   /* intro */
   .alq .intro{padding:20px 16px;margin-top:16px}
   .alq .intro p{font-size:14.5px;margin:0 0 10px}

@@ -15,6 +15,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
+import { generateQuotationLink, convertQuotationToOffer, createSaleFromQuotation } from '@/actions/quotations'
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover'
@@ -22,7 +23,7 @@ import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
   ArrowLeft, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
-  CopyPlus, Loader2, FileText,
+  CopyPlus, Loader2, FileText, MessageCircle, ShoppingBag, ShoppingCart,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -262,6 +263,7 @@ export default function ProposalsList({
           {selected
             ? <ProposalDetail
                 key={selected.id}
+                orgSlug={orgSlug}
                 p={selected}
                 sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
                 onBack={() => setSelectedId(null)}
@@ -496,15 +498,56 @@ function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; val
 }
 
 function ProposalDetail({
-  p, sellerName, onBack, onDuplicate,
+  orgSlug, p, sellerName, onBack, onDuplicate,
 }: {
+  orgSlug: string
   p: ProposalRow
   sellerName: string | null
   onBack: () => void
   onDuplicate: () => void
 }) {
+  const router = useRouter()
   const dest = destOf(p)
   const travelers = Array.isArray(p.travelers) ? p.travelers : []
+  const [sending, setSending] = useState(false)
+  const [convertingOffer, setConvertingOffer] = useState(false)
+  const [generatingSale, setGeneratingSale] = useState(false)
+
+  async function handleSendToClient() {
+    setSending(true)
+    let token = p.public_token
+    if (!token) {
+      const res = await generateQuotationLink(orgSlug, p.id, false)
+      if (!res.ok) { toast.error(res.error); setSending(false); return }
+      token = res.token
+    }
+    setSending(false)
+    const url = `${window.location.origin}/p/${token}`
+    const firstName = (p.client_name || '').trim().split(/\s+/)[0]
+    const msg = `Oi${firstName ? ` ${firstName}` : ''}! Preparei sua proposta de viagem${p.title ? ` — ${p.title}` : ''}. Dá uma olhada com carinho: ${url}`
+    // Sem telefone disponível nesta prévia (ProposalRow não traz o contato
+    // completo) — abre o WhatsApp sem destinatário, escolhido na hora.
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+    toast.info('Escolha o destinatário no WhatsApp.')
+  }
+
+  async function handleAddToOffers() {
+    setConvertingOffer(true)
+    const res = await convertQuotationToOffer(orgSlug, p.id)
+    setConvertingOffer(false)
+    if (res.ok) { toast.success('Cotação copiada para uma nova oferta'); router.push(`/app/${orgSlug}/ofertas/${res.id}`) }
+    else toast.error(res.error)
+  }
+
+  async function handleGenerateReserva() {
+    setGeneratingSale(true)
+    const res = await createSaleFromQuotation(orgSlug, p.id)
+    setGeneratingSale(false)
+    if (res.ok) {
+      toast.success(res.existed ? 'Esta cotação já tinha uma reserva — abrindo…' : 'Reserva criada com os dados da cotação')
+      router.push(`/app/${orgSlug}/reservas?sale=${res.saleId}`)
+    } else toast.error(res.error)
+  }
 
   return (
     <div className="flex flex-col w-full">
@@ -524,7 +567,31 @@ function ProposalDetail({
             title="Copiar proposta para outro lead/contato"
             aria-label="Copiar proposta para outro lead/contato"
           >
-            <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Copiar p/ lead</span>
+            <CopyPlus className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Duplicar</span>
+          </Button>
+          <Button
+            type="button" variant="outline" size="sm"
+            onClick={handleSendToClient} disabled={sending}
+            title="Enviar ao cliente" aria-label="Enviar ao cliente"
+          >
+            {sending ? <Loader2 className="w-3.5 h-3.5 sm:mr-1.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5 sm:mr-1.5" />}
+            <span className="hidden sm:inline">Enviar ao cliente</span>
+          </Button>
+          <Button
+            type="button" variant="outline" size="sm"
+            onClick={handleAddToOffers} disabled={convertingOffer}
+            title="Adicionar a ofertas" aria-label="Adicionar a ofertas"
+          >
+            {convertingOffer ? <Loader2 className="w-3.5 h-3.5 sm:mr-1.5 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5 sm:mr-1.5" />}
+            <span className="hidden sm:inline">Adicionar a ofertas</span>
+          </Button>
+          <Button
+            type="button" variant="outline" size="sm"
+            onClick={handleGenerateReserva} disabled={generatingSale}
+            title="Gerar reserva" aria-label="Gerar reserva"
+          >
+            {generatingSale ? <Loader2 className="w-3.5 h-3.5 sm:mr-1.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5 sm:mr-1.5" />}
+            <span className="hidden sm:inline">Gerar reserva</span>
           </Button>
         </div>
       </div>
