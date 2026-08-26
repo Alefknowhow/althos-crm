@@ -675,11 +675,6 @@ function DetailPanel({
     saveTags(tags.filter(x => x !== t))
   }
 
-  const openTasks = [...selected.tasks]
-    .filter((t: any) => t.status !== 'done')
-    .sort((a: any, b: any) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
-  const nextTask = openTasks[0]
-  const lastActivities = selected.activities.slice(0, 5)
 
   return (
     <div className="p-5 sm:p-6 space-y-5">
@@ -827,44 +822,6 @@ function DetailPanel({
           {/* Parentesco */}
           <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
 
-          {/* Próxima ação */}
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-              Próxima ação
-            </p>
-            {nextTask ? (
-              <TaskCard task={nextTask} orgSlug={orgSlug} />
-            ) : (
-              <div className="border rounded-lg px-3 py-4 text-center">
-                <p className="text-xs text-muted-foreground mb-2">Nenhuma atividade agendada.</p>
-                <Button size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Criar atividade
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Últimas interações */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                Últimas interações
-              </p>
-              {selected.activities.length > 5 && (
-                <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('atividades')}>
-                  ver tudo
-                </button>
-              )}
-            </div>
-            {lastActivities.length > 0 ? (
-              <div className="space-y-2 border rounded-lg p-3">
-                {lastActivities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-3 border rounded-lg">Nenhuma atividade registrada.</p>
-            )}
-          </div>
-
           {/* Negociações (resumo) */}
           {deals.length > 0 && (
             <div>
@@ -937,17 +894,6 @@ function DetailPanel({
         {/* ── Atividades ──────────────────────────────────────────── */}
         <TabsContent value="atividades" className="space-y-5 pt-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Timeline</p>
-            {selected.activities.length > 0 ? (
-              <div className="space-y-3">
-                {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
-            )}
-          </div>
-
-          <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tarefas</p>
               <Button type="button" size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
@@ -997,6 +943,17 @@ function DetailPanel({
               </div>
             </div>
           )}
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Timeline</p>
+            {selected.activities.length > 0 ? (
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
+            )}
+          </div>
         </TabsContent>
 
         {/* ── Negociações ─────────────────────────────────────────── */}
