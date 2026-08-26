@@ -582,6 +582,7 @@ function SaleEditor({
   const [contractOpen, setContractOpen] = useState(false)
   const [operatorOptions, setOperatorOptions] = useState<string[]>([])
   const [extractSource, setExtractSource] = useState<ExtractSource | null>(null)
+  const [extractLabel, setExtractLabel] = useState<string | null>(null)
   const [extractOpen, setExtractOpen] = useState(false)
   const [extractingUrl, setExtractingUrl] = useState<string | null>(null)
 
@@ -602,6 +603,7 @@ function SaleEditor({
         reader.readAsDataURL(blob)
       })
       setExtractSource({ base64, mediaType: blob.type || 'application/pdf' })
+      setExtractLabel(v.name || null)
       setExtractOpen(true)
     } catch (err: any) {
       toast.error(err?.message || 'Falha ao ler o voucher.')
@@ -609,6 +611,27 @@ function SaleEditor({
       setExtractingUrl(null)
     }
   }
+
+  // Política de cancelamento / informações importantes / informações de
+  // serviço são texto livre em nível de venda — quando a reserva tem vários
+  // vouchers (aéreo, hotel, passeio…), cada um pode trazer sua própria
+  // regra. Em vez de o próximo voucher lido sobrescrever o anterior, cada
+  // leitura é anexada como um bloco novo (identificado pelo nome do
+  // arquivo), preservando todas as regras já capturadas.
+  const APPEND_FIELDS = ['cancellation_policy', 'important_info', 'service_info'] as const
+  function mergeExtractedFields(prev: TravelSaleRow, fields: Record<string, any>, sourceLabel: string | null): TravelSaleRow {
+    const next: Record<string, any> = { ...fields }
+    for (const key of APPEND_FIELDS) {
+      if (!(key in fields) || !fields[key]) continue
+      const existing = (prev as any)[key] as string | null
+      const incoming = String(fields[key]).trim()
+      if (existing && existing.includes(incoming)) { next[key] = existing; continue } // já foi mesclado antes
+      const entry = sourceLabel ? `— ${sourceLabel} —\n${incoming}` : incoming
+      next[key] = existing ? `${existing}\n\n${entry}` : entry
+    }
+    return { ...prev, ...next }
+  }
+
   const router = useRouter()
 
   useEffect(() => {
@@ -979,7 +1002,7 @@ function SaleEditor({
             source={extractSource}
             open={extractOpen}
             onOpenChange={setExtractOpen}
-            onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
+            onScalarFieldsExtracted={fields => setS(prev => mergeExtractedFields(prev, fields, extractLabel))}
             onTravelersExtracted={others => {
               setS(prev => {
                 const existing: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(prev.travelers) ? prev.travelers : []
