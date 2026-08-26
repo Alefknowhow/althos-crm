@@ -131,14 +131,17 @@ function buildSections(data: ExtractedTravelDocument): Section[] {
 }
 
 export default function VoucherExtractDialog({
-  orgSlug, saleId, source, open, onOpenChange, onScalarFieldsExtracted, onProductCreated,
+  orgSlug, saleId, clientName, source, open, onOpenChange, onScalarFieldsExtracted, onTravelersExtracted, onProductCreated,
 }: {
   orgSlug: string
   saleId: string
+  /** Nome do cliente/titular da reserva — usado pra não listar o titular de novo como "outro viajante". */
+  clientName?: string | null
   source: ExtractSource | null
   open: boolean
   onOpenChange: (o: boolean) => void
   onScalarFieldsExtracted: (patch: Record<string, any>) => void
+  onTravelersExtracted?: (travelers: { name: string; birth_date: string; cpf: string }[]) => void
   onProductCreated: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -177,6 +180,16 @@ export default function VoucherExtractDialog({
     if (extracted.informacoes_importantes) patch.important_info = extracted.informacoes_importantes
     if (extracted.informacoes_servico) patch.service_info = extracted.informacoes_servico
     if (Object.keys(patch).length > 0) onScalarFieldsExtracted(patch)
+
+    // Outros viajantes indo junto — titular da reserva não entra aqui (já é
+    // o cliente da venda), só quem mais aparece no voucher.
+    if (onTravelersExtracted && Array.isArray(extracted.viajantes) && extracted.viajantes.length > 0) {
+      const titular = (clientName || extracted.cliente || '').trim().toLowerCase()
+      const others = extracted.viajantes
+        .filter(v => v.nome && v.nome.trim().toLowerCase() !== titular)
+        .map(v => ({ name: v.nome || '', birth_date: v.data_nascimento || '', cpf: v.cpf || '' }))
+      if (others.length > 0) onTravelersExtracted(others)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extracted])
 

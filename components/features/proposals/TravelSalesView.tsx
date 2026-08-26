@@ -917,10 +917,7 @@ function SaleEditor({
             <div className="lg:col-span-1">
               <VoucherUploadAndReview
                 orgSlug={orgSlug}
-                sale={s}
                 onVoucherAdded={v => set('vouchers', [...vouchers, v])}
-                onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
-                onProductsCreated={() => { setProductsRefreshKey(k => k + 1); onSave(patch(), false) }}
               />
             </div>
             <div className="lg:col-span-3">
@@ -970,10 +967,19 @@ function SaleEditor({
           <VoucherExtractDialog
             orgSlug={orgSlug}
             saleId={s.id}
+            clientName={s.client_name}
             source={extractSource}
             open={extractOpen}
             onOpenChange={setExtractOpen}
             onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
+            onTravelersExtracted={others => {
+              setS(prev => {
+                const existing: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(prev.travelers) ? prev.travelers : []
+                const existingNames = new Set(existing.map(t => (t.name || '').trim().toLowerCase()))
+                const toAdd = others.filter(o => !existingNames.has(o.name.trim().toLowerCase()))
+                return toAdd.length > 0 ? { ...prev, travelers: [...existing, ...toAdd] } : prev
+              })
+            }}
             onProductCreated={() => setProductsRefreshKey(k => k + 1)}
           />
         </TabsContent>
