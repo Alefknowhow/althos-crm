@@ -1744,6 +1744,10 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Retirada"><Input type="date" value={r.pickup_date || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, pickup_date: e.target.value } : x))} /></F>
               <F label="Devolução"><Input type="date" value={r.dropoff_date || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, dropoff_date: e.target.value } : x))} /></F>
             </div>
+            <F label="Descrição / condições da locação">
+              <Textarea rows={3} placeholder="Franquia de km, seguro, categoria de combustível, condutor adicional, condições de devolução…"
+                value={r.notes || ''} onChange={e => setRentals(rs => rs.map(x => x._key === r._key ? { ...x, notes: e.target.value } : x))} />
+            </F>
           </>
         )} />
       </EditBlock>

@@ -462,6 +462,9 @@ function RentalCard({ p }: { p: Product }) {
         <InfoField label="Data de retirada" value={fmtDate(p.date_start)} />
         <InfoField label="Data de devolução" value={fmtDate(p.date_end)} />
       </div>
+      {d.notes && (
+        <p className="text-[9pt] text-[#555] mt-[3mm] whitespace-pre-wrap leading-snug">{d.notes}</p>
+      )}
     </CardShell>
   )
 }

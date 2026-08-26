@@ -818,6 +818,7 @@ export default function PublicQuotationView({
                     {d_.pickup_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>RETIRADA</div>{d_.pickup_location}{fmtDayMonth(r.date_start) ? ` · ${fmtDayMonth(r.date_start)}` : ''}</div>}
                     {d_.dropoff_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DEVOLUÇÃO</div>{d_.dropoff_location}{fmtDayMonth(r.date_end) ? ` · ${fmtDayMonth(r.date_end)}` : ''}</div>}
                   </div>
+                  {d_.notes && <p style={{ fontSize: 12, opacity: 0.75, marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{d_.notes}</p>}
                 </div>
               )
             })}
