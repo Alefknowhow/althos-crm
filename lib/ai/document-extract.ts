@@ -37,6 +37,28 @@ export type ExtractedTravelDocument = {
     destino: string | null
     horario: string | null
     sentido: 'ida' | 'volta' | null
+    /** Código do web check-in / localizador deste trecho (pode variar por bilhete). */
+    localizador_checkin: string | null
+    /** Número do bilhete/ticket, quando informado. */
+    bilhete: string | null
+    /** Código IATA do aeroporto de origem, ex.: "FLN". */
+    origem_codigo: string | null
+    /** Código IATA do aeroporto de destino, ex.: "BSB". */
+    destino_codigo: string | null
+    /** Horário de embarque (partida), ex.: "11:40". */
+    hora_embarque: string | null
+    /** Data de chegada — pode diferir da data de embarque em voos noturnos. YYYY-MM-DD. */
+    data_chegada: string | null
+    /** Horário de chegada (desembarque), ex.: "13:55". */
+    hora_chegada: string | null
+    /** Duração do trecho, ex.: "2h 15". */
+    duracao: string | null
+    /** Franquia de bagagem deste trecho/bilhete, ex.: "1 bagagem de mão + 1 despachada 23kg". */
+    bagagem: string | null
+    /** Se este trecho vem depois de uma conexão, onde foi a espera. */
+    escala_local: string | null
+    /** Tempo de espera na conexão antes deste trecho, ex.: "1h 45". */
+    escala_duracao: string | null
   }[]
   hospedagens: {
     nome: string | null
@@ -129,13 +151,29 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
           properties: {
             companhia: { type: ['string', 'null'] },
             numero: { type: ['string', 'null'], description: 'Número do voo, ex.: "AD 4657" ou "4185/2932"' },
-            data: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
-            origem: { type: ['string', 'null'] },
-            destino: { type: ['string', 'null'] },
+            data: { type: ['string', 'null'], description: 'Data de embarque, YYYY-MM-DD' },
+            origem: { type: ['string', 'null'], description: 'Cidade/aeroporto de origem' },
+            destino: { type: ['string', 'null'], description: 'Cidade/aeroporto de destino' },
             horario: { type: ['string', 'null'], description: 'Horário de partida-chegada do trecho, ex.: "05:45 - 07:00"' },
             sentido: { type: ['string', 'null'], enum: ['ida', 'volta', null], description: 'Se o trecho é da ida ou da volta' },
+            localizador_checkin: { type: ['string', 'null'], description: 'Código do web check-in / localizador deste trecho ou bilhete' },
+            bilhete: { type: ['string', 'null'], description: 'Número do bilhete/ticket, se houver' },
+            origem_codigo: { type: ['string', 'null'], description: 'Código IATA do aeroporto de origem, ex.: "FLN"' },
+            destino_codigo: { type: ['string', 'null'], description: 'Código IATA do aeroporto de destino, ex.: "BSB"' },
+            hora_embarque: { type: ['string', 'null'], description: 'Horário de embarque, ex.: "11:40"' },
+            data_chegada: { type: ['string', 'null'], description: 'Data de chegada (pode diferir da data de embarque), YYYY-MM-DD' },
+            hora_chegada: { type: ['string', 'null'], description: 'Horário de chegada, ex.: "13:55"' },
+            duracao: { type: ['string', 'null'], description: 'Duração do trecho, ex.: "2h 15"' },
+            bagagem: { type: ['string', 'null'], description: 'Franquia de bagagem deste trecho/bilhete' },
+            escala_local: { type: ['string', 'null'], description: 'Local da conexão/escala antes deste trecho, se houver (ex.: "BSB - Brasília")' },
+            escala_duracao: { type: ['string', 'null'], description: 'Tempo de espera na conexão antes deste trecho, ex.: "1h 45"' },
           },
-          required: ['companhia', 'numero', 'data', 'origem', 'destino', 'horario', 'sentido'],
+          required: [
+            'companhia', 'numero', 'data', 'origem', 'destino', 'horario', 'sentido',
+            'localizador_checkin', 'bilhete', 'origem_codigo', 'destino_codigo',
+            'hora_embarque', 'data_chegada', 'hora_chegada', 'duracao', 'bagagem',
+            'escala_local', 'escala_duracao',
+          ],
         },
       },
       hospedagens: {
@@ -303,7 +341,7 @@ export async function extractTravelDocumentFromFile(
   return normalizeExtractedDocument(toolBlock.input)
 }
 
-const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável).'
+const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável). Para cada trecho aéreo (`voos`), NUNCA deixe a data de embarque (`data`) vazia se ela aparecer no documento em qualquer formato (ex.: "Dom. 06 de set. de 2026") — sempre converta pra YYYY-MM-DD. Cada trecho/conexão do voucher é um item separado em `voos`, marcado com o mesmo `sentido` (ida ou volta); quando houver conexão/escala entre dois trechos do mesmo sentido, preencha `escala_local` e `escala_duracao` no trecho que vem DEPOIS da escala. Sempre que o documento informar código de aeroporto (IATA), número de bilhete, código de web check-in, horário de chegada e franquia de bagagem, extraia esses campos também.'
 
 const arrayField = (props: Record<string, any>, required: string[]) => ({
   type: Type.ARRAY,
@@ -329,6 +367,17 @@ const GEMINI_RESPONSE_SCHEMA = {
       destino: { type: Type.STRING, nullable: true },
       horario: { type: Type.STRING, nullable: true },
       sentido: { type: Type.STRING, nullable: true, enum: ['ida', 'volta'] },
+      localizador_checkin: { type: Type.STRING, nullable: true },
+      bilhete: { type: Type.STRING, nullable: true },
+      origem_codigo: { type: Type.STRING, nullable: true },
+      destino_codigo: { type: Type.STRING, nullable: true },
+      hora_embarque: { type: Type.STRING, nullable: true },
+      data_chegada: { type: Type.STRING, nullable: true },
+      hora_chegada: { type: Type.STRING, nullable: true },
+      duracao: { type: Type.STRING, nullable: true },
+      bagagem: { type: Type.STRING, nullable: true },
+      escala_local: { type: Type.STRING, nullable: true },
+      escala_duracao: { type: Type.STRING, nullable: true },
     }, []),
     hospedagens: arrayField({
       nome: { type: Type.STRING, nullable: true },
@@ -486,6 +535,17 @@ function normalizeExtractedDocument(parsed: any): ExtractedTravelDocument {
           destino: str(v?.destino, 120),
           horario: str(v?.horario, 40),
           sentido: v?.sentido === 'ida' || v?.sentido === 'volta' ? v.sentido : null,
+          localizador_checkin: str(v?.localizador_checkin, 60),
+          bilhete: str(v?.bilhete, 60),
+          origem_codigo: str(v?.origem_codigo, 8),
+          destino_codigo: str(v?.destino_codigo, 8),
+          hora_embarque: str(v?.hora_embarque, 20),
+          data_chegada: date(v?.data_chegada),
+          hora_chegada: str(v?.hora_chegada, 20),
+          duracao: str(v?.duracao, 40),
+          bagagem: str(v?.bagagem, 200),
+          escala_local: str(v?.escala_local, 120),
+          escala_duracao: str(v?.escala_duracao, 40),
         }))
       : [],
     hospedagens,

@@ -90,7 +90,10 @@ export default function VoucherUploadAndReview({
       const voltaLegs = voos.filter(v => v.sentido === 'volta')
       for (const [sentido, legs] of [['ida', idaLegs], ['volta', voltaLegs]] as const) {
         if (legs.length === 0) continue
-        const stops = [legs[0].origem, ...legs.map(l => l.destino)].filter(Boolean)
+        const stops = [
+          legs[0].origem_codigo || legs[0].origem,
+          ...legs.map(l => l.destino_codigo || l.destino),
+        ].filter(Boolean)
         newItems.push({
           kind: 'aereo',
           label: `✈️ ${legs[0].companhia || 'Aéreo'} (${sentido})`,

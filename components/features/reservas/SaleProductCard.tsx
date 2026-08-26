@@ -76,6 +76,38 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
   }
 }
 
+function AereoLegs({ legs }: { legs: any[] }) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      {legs.map((l, i) => (
+        <div key={i}>
+          {l.escala_local && (
+            <div className="text-[10px] text-muted-foreground italic py-1">
+              Espera de {l.escala_duracao || '—'} em {l.escala_local}
+            </div>
+          )}
+          <div className="rounded-md border bg-muted/20 px-2.5 py-1.5 text-xs space-y-0.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{l.companhia}{l.numero ? ` · Voo ${l.numero}` : ''}</span>
+              {l.duracao && <span className="text-muted-foreground shrink-0">{l.duracao}</span>}
+            </div>
+            <div className="flex items-center justify-between gap-2 text-muted-foreground">
+              <span>{l.origem}{l.hora_embarque ? ` ${l.hora_embarque}` : ''} → {l.destino}{l.hora_chegada ? ` ${l.hora_chegada}` : ''}</span>
+            </div>
+            {(l.localizador_checkin || l.bilhete || l.bagagem) && (
+              <div className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground pt-0.5">
+                {l.localizador_checkin && <span>Check-in: {l.localizador_checkin}</span>}
+                {l.bilhete && <span>Bilhete: {l.bilhete}</span>}
+                {l.bagagem && <span>{l.bagagem}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SaleProductCard({
   product, onEdit, onDelete, onToggleStatus,
 }: {
@@ -86,8 +118,10 @@ export default function SaleProductCard({
 }) {
   const meta = KIND_META[product.kind] || KIND_META.outro
   const Icon = meta.icon
-  const { title, lines } = summaryLines(product.kind, product.data || {})
+  const data = product.data || {}
+  const { title, lines } = summaryLines(product.kind, data)
   const confirmed = product.status === 'confirmed'
+  const legs = product.kind === 'aereo' && Array.isArray(data.legs) ? data.legs : null
 
   return (
     <div className="rounded-lg border p-3 flex items-start gap-3">
@@ -102,6 +136,7 @@ export default function SaleProductCard({
         {lines.map((l, i) => (
           <div key={i} className="text-xs text-muted-foreground truncate">{l}</div>
         ))}
+        {legs && legs.length > 0 && <AereoLegs legs={legs} />}
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button
