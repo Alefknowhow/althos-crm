@@ -1,6 +1,10 @@
 /**
- * Resumo diário por e-mail — todo dia às 7h (horário de Brasília) pro
- * owner/admin de cada org que tiver org_settings.digest_enabled = true.
+ * Resumo diário por e-mail — todo dia às 7h (horário de Brasília) pra cada
+ * membro de uma org com org_settings.digest_enabled = true:
+ *  - owner/admin ("gestor principal") recebe o resumo da equipe inteira
+ *    (todas as tarefas e embarques da org, não só os dele).
+ *  - member recebe só o que é dele: tarefas com assigned_to = ele e
+ *    embarques das vendas que ele fechou (created_by = ele).
  * Mesmos dados/HTML de actions/digest.ts::previewDailyDigest, via
  * lib/digest/daily-digest.ts (fonte única, pra preview e envio nunca
  * divergirem).
@@ -11,12 +15,12 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { resend, EMAIL_FROM } from '@/lib/resend'
 import { buildDigestData, buildDigestHtml } from '@/lib/digest/daily-digest'
 
-interface OrgWithOwner {
+interface OrgWithMembers {
   id: string
   name: string
   slug: string
   niche: string | null
-  memberships: Array<{ role: string; profiles: { email: string } | null }>
+  memberships: Array<{ user_id: string; role: string; profiles: { email: string } | null }>
 }
 
 export const dailyOwnerDigestFn = inngest.createFunction(
@@ -29,43 +33,47 @@ export const dailyOwnerDigestFn = inngest.createFunction(
   async ({ step }: { step: any }) => {
     const admin = createAdminClient()
 
-    const orgs: OrgWithOwner[] = await step.run('fetch-digest-orgs', async () => {
+    const orgs: OrgWithMembers[] = await step.run('fetch-digest-orgs', async () => {
       const { data } = await admin
         .from('organizations')
-        .select('id, name, slug, niche, org_settings!inner(digest_enabled), memberships(role, profiles(email))')
+        .select('id, name, slug, niche, org_settings!inner(digest_enabled), memberships(user_id, role, profiles(email))')
         .eq('org_settings.digest_enabled', true)
         .limit(500)
-      return (data as unknown as OrgWithOwner[]) ?? []
+      return (data as unknown as OrgWithMembers[]) ?? []
     })
 
     let sent = 0
+    let checked = 0
 
     for (const org of orgs) {
-      const ownerMembership = org.memberships.find(m => m.role === 'owner') || org.memberships.find(m => m.role === 'admin')
-      const email = ownerMembership?.profiles?.email
-      if (!email) continue
+      for (const m of org.memberships) {
+        const email = m.profiles?.email
+        if (!email) continue
+        checked++
+        const isManager = m.role === 'owner' || m.role === 'admin'
 
-      await step.run(`send-digest-${org.id}`, async () => {
-        try {
-          const data = await buildDigestData(admin, org.id, org.niche)
-          const totalItems = data.overdueTasks.length + data.todayTasks.length + (data.todayTrips?.length ?? 0) + (data.weekTrips?.length ?? 0)
-          const subject = data.overdueTasks.length > 0
-            ? `⚠️ ${data.overdueTasks.length} tarefa(s) em atraso — resumo de hoje`
-            : `☀️ Seu resumo de hoje — ${totalItems} item(ns)`
+        await step.run(`send-digest-${org.id}-${m.user_id}`, async () => {
+          try {
+            const data = await buildDigestData(admin, org.id, org.niche, isManager ? null : m.user_id)
+            const totalItems = data.overdueTasks.length + data.todayTasks.length + (data.todayTrips?.length ?? 0) + (data.weekTrips?.length ?? 0)
+            const subject = data.overdueTasks.length > 0
+              ? `⚠️ ${data.overdueTasks.length} tarefa(s) em atraso — resumo de hoje`
+              : `☀️ Seu resumo de hoje — ${totalItems} item(ns)`
 
-          await resend.emails.send({
-            from: EMAIL_FROM,
-            to: email,
-            subject,
-            html: buildDigestHtml(org.name, org.slug, data),
-          })
-          sent++
-        } catch (err) {
-          console.error(`[daily-digest] failed for org ${org.id}:`, err)
-        }
-      })
+            await resend.emails.send({
+              from: EMAIL_FROM,
+              to: email,
+              subject,
+              html: buildDigestHtml(org.name, org.slug, data, isManager ? 'org' : 'me'),
+            })
+            sent++
+          } catch (err) {
+            console.error(`[daily-digest] failed for org ${org.id} / member ${m.user_id}:`, err)
+          }
+        })
+      }
     }
 
-    return { sent, checked: orgs.length }
+    return { sent, checked }
   }
 )

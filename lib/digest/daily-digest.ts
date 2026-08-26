@@ -51,34 +51,47 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export async function buildDigestData(supabase: SupabaseAny, orgId: string, niche?: string | null): Promise<DigestData> {
+/**
+ * `assignedTo` restringe o resumo a um único integrante da equipe: tarefas
+ * onde ele é o responsável (`assigned_to`) e embarques da venda que ele
+ * fechou (`created_by`, mesmo "vendedor responsável" usado no resto do
+ * CRM). Sem `assignedTo`, o resumo é da organização inteira — é o que o
+ * dono/admin da conta recebe; cada integrante recebe só o dele.
+ */
+export async function buildDigestData(
+  supabase: SupabaseAny, orgId: string, niche?: string | null, assignedTo?: string | null,
+): Promise<DigestData> {
   const today = todayInBrazil()
   const weekEnd = addDays(today, 6)
   const travel = isTravelNiche(niche)
 
+  let taskQuery = supabase
+    .from('tasks')
+    .select('id, title, due_date, priority, leads:contatos(id, name)')
+    .eq('organization_id', orgId)
+    .neq('status', 'done')
+    .not('due_date', 'is', null)
+    .lte('due_date', `${today}T23:59:59`)
+    .order('due_date', { ascending: true })
+    .limit(100)
+  if (assignedTo) taskQuery = taskQuery.eq('assigned_to', assignedTo)
+
+  let tripQuery = supabase
+    .from('travel_sales')
+    .select('id, sale_number, client_name, destination, departure_date, return_date')
+    .eq('organization_id', orgId)
+    .neq('status', 'cancelled')
+    .gte('departure_date', today)
+    .lte('departure_date', weekEnd)
+    .order('departure_date', { ascending: true })
+    .limit(200)
+  if (assignedTo) tripQuery = tripQuery.eq('created_by', assignedTo)
+
   const [tasksRes, tripsRes] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select('id, title, due_date, priority, leads:contatos(id, name)')
-      .eq('organization_id', orgId)
-      .neq('status', 'done')
-      .not('due_date', 'is', null)
-      .lte('due_date', `${today}T23:59:59`)
-      .order('due_date', { ascending: true })
-      .limit(100),
+    taskQuery,
     // Embarques são um conceito específico de agências de viagem
     // (travel_sales.departure_date) — não faz sentido em outros nichos.
-    travel
-      ? supabase
-          .from('travel_sales')
-          .select('id, sale_number, client_name, destination, departure_date, return_date')
-          .eq('organization_id', orgId)
-          .neq('status', 'cancelled')
-          .gte('departure_date', today)
-          .lte('departure_date', weekEnd)
-          .order('departure_date', { ascending: true })
-          .limit(200)
-      : Promise.resolve({ data: null }),
+    travel ? tripQuery : Promise.resolve({ data: null }),
   ])
 
   const allDueTasks: DigestTask[] = tasksRes.data ?? []
@@ -181,8 +194,11 @@ function section(title: string, emoji: string, count: number, rows: string, empt
     </td></tr>`
 }
 
-export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestData): string {
+export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestData, scope: 'org' | 'me' = 'org'): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://althoscrm.com.br'
+  const subtitle = scope === 'org'
+    ? 'Resumo da equipe inteira — o que precisa da sua atenção hoje.'
+    : 'Suas tarefas e compromissos de hoje.'
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -205,7 +221,7 @@ export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestDa
           <h1 style="margin:0;font-size:22px;font-weight:700;color:#1D1D1F;letter-spacing:-0.4px;text-transform:capitalize;">
             Bom dia! ☀️ Seu resumo de ${escapeHtml(data.todayLabel)}
           </h1>
-          <p style="margin:6px 0 0;font-size:14px;color:#6E6E73;">O que precisa da sua atenção hoje.</p>
+          <p style="margin:6px 0 0;font-size:14px;color:#6E6E73;">${subtitle}</p>
         </td></tr>
 
         ${section('Tarefas em atraso', '⚠️', data.overdueTasks.length, data.overdueTasks.map(t => taskRow(t, 'overdue')).join(''), 'Nenhuma tarefa atrasada — tudo em dia.')}
