@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import {
   Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft, MessageCircle, Mail,
   Users, CalendarDays, Info, AlertTriangle, Compass, Ticket, Sparkles, Hash, Phone, Globe,
-  Backpack, Briefcase, Luggage,
+  Backpack, Briefcase, Luggage, Ship,
 } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
@@ -55,6 +55,7 @@ type HospedagemProduct = {
     informacoes_adicionais?: string | null; politica_cancelamento?: string | null; condicoes?: string | null
   }
 }
+type GenericProduct = { id: string; kind: string; data: Record<string, any> }
 
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
@@ -120,17 +121,31 @@ function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode
   )
 }
 
-export default function VoucherPrintView({ sale, org, contato, voos = [], hospedagens = [] }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo; voos?: VooProduct[]; hospedagens?: HospedagemProduct[] }) {
+export default function VoucherPrintView({
+  sale, org, contato, voos = [], hospedagens = [], transfers = [], cruzeiros = [], ingressos = [], seguros = [],
+}: {
+  sale: TravelSaleRow
+  org: OrgBranding
+  contato?: ContatoInfo
+  voos?: VooProduct[]
+  hospedagens?: HospedagemProduct[]
+  transfers?: GenericProduct[]
+  cruzeiros?: GenericProduct[]
+  /** Produtos kind='ingresso' ou 'passeio' — mesma seção no voucher. */
+  ingressos?: GenericProduct[]
+  seguros?: GenericProduct[]
+}) {
   const accent = org.primary_color || '#0f62fe'
   const included: string[] = Array.isArray(sale.included_items) ? sale.included_items : []
   const services: string[] = Array.isArray(sale.services) ? sale.services : []
   const all = [...included, ...services]
   const hasVoos = voos.length > 0 || all.includes('voos') || !!sale.airline || !!sale.air_locator
   const hasHotel = hospedagens.length > 0 || all.includes('hospedagem') || !!sale.hotel_name
-  const hasTraslado = all.includes('transfer')
-  const hasPasseios = all.includes('passeios')
-  const hasServicos = all.includes('servicos') || all.includes('carros') || all.includes('ingressos') || all.includes('car_rental')
-  const hasSeguro = all.includes('seguro') || all.includes('insurance')
+  const hasTraslado = transfers.length > 0 || all.includes('transfer')
+  const hasCruzeiro = cruzeiros.length > 0 || all.includes('cruzeiros')
+  const hasPasseios = ingressos.length > 0 || all.includes('passeios') || all.includes('ingressos')
+  const hasServicos = all.includes('servicos') || all.includes('carros') || all.includes('car_rental')
+  const hasSeguro = seguros.length > 0 || all.includes('seguro') || all.includes('insurance')
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(sale.travelers) ? sale.travelers : []
   const n = nights(sale.departure_date, sale.return_date)
 
@@ -204,10 +219,7 @@ export default function VoucherPrintView({ sale, org, contato, voos = [], hosped
           </div>
           <div className="text-right rounded-md border p-3 min-w-[180px]">
             <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Voucher de viagem</p>
-            <p className="text-sm font-mono font-semibold" style={{ color: accent }}>#{sale.sale_number || sale.id.slice(0, 8).toUpperCase()}</p>
-            {sale.package_locator && (
-              <p className="text-[11px] text-gray-500 mt-1">Localizador: <span className="font-mono">{sale.package_locator}</span></p>
-            )}
+            <p className="text-sm font-mono font-semibold" style={{ color: accent }}>{sale.package_locator || '—'}</p>
             <p className="text-[10px] text-gray-400 mt-1">{new Date().toLocaleDateString('pt-BR')}</p>
           </div>
         </div>
@@ -366,18 +378,95 @@ export default function VoucherPrintView({ sale, org, contato, voos = [], hosped
           {hasTraslado && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Car} title="Traslados" accent={accent} />
-              <div className="p-3 text-sm text-gray-600">
-                Traslado incluso no pacote — chegada e saída conforme itinerário combinado.
+              {transfers.length > 0 ? (
+                <div className="divide-y">
+                  {transfers.map(t => (
+                    <div key={t.id} className="p-3 break-inside-avoid">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-sm font-semibold">{[t.data.origem, t.data.destino].filter(Boolean).join(' → ') || t.data.tipo_servico || 'Transfer'}</p>
+                        {t.data.codigo_reserva && <p className="text-[11px] font-mono text-gray-500">Código: {t.data.codigo_reserva}</p>}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <InfoRow label="Titular" value={t.data.titular || sale.client_name} />
+                        <InfoRow label="Data" value={t.data.data ? fmtDate(t.data.data) : '—'} />
+                        <InfoRow label="Horário" value={t.data.horario} />
+                        <InfoRow label="Tipo" value={t.data.tipo_servico} />
+                      </div>
+                      {(t.data.fornecedor || t.data.contato) && (
+                        <div className="grid grid-cols-2 gap-3 mt-1.5">
+                          <InfoRow label="Empresa/motorista" value={t.data.fornecedor} />
+                          <InfoRow label="Contato" value={t.data.contato} />
+                        </div>
+                      )}
+                      {t.data.observacoes && <p className="text-[9px] text-gray-500 leading-snug mt-2 pt-2 border-t">{t.data.observacoes}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 text-sm text-gray-600">Traslado incluso no pacote — chegada e saída conforme itinerário combinado.</div>
+              )}
+            </div>
+          )}
+
+          {hasCruzeiro && (
+            <div className="border rounded-md overflow-hidden break-inside-avoid">
+              <SectionBar icon={Ship} title="Cruzeiro" accent={accent} />
+              <div className="divide-y">
+                {cruzeiros.map(c => (
+                  <div key={c.id} className="p-3 break-inside-avoid">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-sm font-semibold">{c.data.navio || c.data.companhia || 'Cruzeiro'}</p>
+                      {c.data.localizador && <p className="text-[11px] font-mono text-gray-500">Localizador: {c.data.localizador}</p>}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <InfoRow label="Titular" value={c.data.titular || sale.client_name} />
+                      <InfoRow label="Roteiro" value={c.data.roteiro} />
+                      <InfoRow label="Embarque" value={c.data.embarque_data ? <>{fmtDate(c.data.embarque_data)}{c.data.embarque_porto ? ` · ${c.data.embarque_porto}` : ''}</> : '—'} />
+                      <InfoRow label="Desembarque" value={c.data.desembarque_data ? <>{fmtDate(c.data.desembarque_data)}{c.data.desembarque_porto ? ` · ${c.data.desembarque_porto}` : ''}</> : '—'} />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1.5">
+                      <InfoRow label="Cabine" value={c.data.cabine} />
+                      <InfoRow label="Categoria" value={c.data.categoria} />
+                      <InfoRow label="Deck" value={c.data.deck} />
+                      <InfoRow label="Vista" value={c.data.vista} />
+                    </div>
+                    {(c.data.localizacao || c.data.regime) && (
+                      <div className="grid grid-cols-2 gap-3 mt-1.5">
+                        <InfoRow label="Localização" value={c.data.localizacao} />
+                        <InfoRow label="Plano de alimentação" value={c.data.regime} />
+                      </div>
+                    )}
+                    {c.data.observacoes && <p className="text-[9px] text-gray-500 leading-snug mt-2 pt-2 border-t">{c.data.observacoes}</p>}
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {hasPasseios && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
-              <SectionBar icon={Compass} title="Passeios" accent={accent} />
-              <div className="p-3 text-sm text-gray-600">
-                Passeios inclusos no pacote — consulte roteiro e horários com o guia local.
-              </div>
+              <SectionBar icon={Compass} title="Passeios e ingressos" accent={accent} />
+              {ingressos.length > 0 ? (
+                <div className="divide-y">
+                  {ingressos.map(p => (
+                    <div key={p.id} className="p-3 break-inside-avoid">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-sm font-semibold">{p.data.atracao || p.data.nome || 'Passeio/Ingresso'}</p>
+                        {p.data.codigo_reserva && <p className="text-[11px] font-mono text-gray-500">Código: {p.data.codigo_reserva}</p>}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <InfoRow label="Titular" value={p.data.titular || sale.client_name} />
+                        <InfoRow label="Data" value={p.data.data ? fmtDate(p.data.data) : '—'} />
+                        <InfoRow label="Prestador de serviço" value={p.data.fornecedor} />
+                      </div>
+                      {p.data.contato && <div className="mt-1.5"><InfoRow label="Contato" value={p.data.contato} /></div>}
+                      {p.data.observacoes && <p className="text-[9px] text-gray-500 leading-snug mt-2 pt-2 border-t">{p.data.observacoes}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 text-sm text-gray-600">Passeios inclusos no pacote — consulte roteiro e horários com o guia local.</div>
+              )}
             </div>
           )}
 
@@ -386,7 +475,6 @@ export default function VoucherPrintView({ sale, org, contato, voos = [], hosped
               <SectionBar icon={Ticket} title="Serviços" accent={accent} />
               <div className="flex gap-1.5 flex-wrap p-3">
                 {(all.includes('carros') || all.includes('car_rental')) && <span className="text-xs px-2 py-1 rounded-full bg-gray-100">Locação de carro</span>}
-                {all.includes('ingressos') && <span className="text-xs px-2 py-1 rounded-full bg-gray-100">Ingressos</span>}
                 {all.includes('servicos') && <span className="text-xs px-2 py-1 rounded-full bg-gray-100">Serviços diversos</span>}
               </div>
             </div>
@@ -395,9 +483,23 @@ export default function VoucherPrintView({ sale, org, contato, voos = [], hosped
           {hasSeguro && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={ShieldCheck} title="Seguro viagem" accent={accent} />
-              <div className="p-3 text-sm text-gray-600">
-                Seguro viagem incluso — mantenha este voucher e o cartão do seguro em mãos durante a viagem.
-              </div>
+              {seguros.length > 0 ? (
+                <div className="divide-y">
+                  {seguros.map(s => (
+                    <div key={s.id} className="p-3 break-inside-avoid">
+                      <p className="text-sm font-semibold mb-1.5">{s.data.nome || 'Seguro viagem'}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <InfoRow label="Titular" value={s.data.titular || sale.client_name} />
+                        <InfoRow label="Vigência a partir de" value={s.data.data ? fmtDate(s.data.data) : '—'} />
+                        <InfoRow label="Apólice" value={s.data.localizador} />
+                      </div>
+                      {s.data.observacoes && <p className="text-[9px] text-gray-500 leading-snug mt-2 pt-2 border-t">{s.data.observacoes}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 text-sm text-gray-600">Seguro viagem incluso — mantenha este voucher e o cartão do seguro em mãos durante a viagem.</div>
+              )}
             </div>
           )}
         </div>

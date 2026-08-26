@@ -99,7 +99,7 @@ function buildSections(data: ExtractedTravelDocument): Section[] {
       key: `transfer-${i}`, icon: '🚐', label: 'Transfer', title: t.tipo || 'Transfer',
       sub: [t.origem, t.destino].filter(Boolean).join(' → '),
       kind: 'transfer',
-      data: { origem: t.origem || null, destino: t.destino || null, data: t.data || null, horario: t.horario || null, tipo_servico: t.tipo || null },
+      data: { origem: t.origem || null, destino: t.destino || null, data: t.data || null, horario: t.horario || null, tipo_servico: t.tipo || null, fornecedor: t.veiculo || null },
     })
   })
 
@@ -115,7 +115,7 @@ function buildSections(data: ExtractedTravelDocument): Section[] {
     sections.push({
       key: `passeio-${i}`, icon: '🎟️', label: 'Ingresso/Passeio', title: p.nome || 'Passeio', sub: p.data || '',
       kind: 'passeio',
-      data: { nome: p.nome || null, data: p.data || null, observacoes: p.descricao || null },
+      data: { atracao: p.nome || null, nome: p.nome || null, data: p.data || null, observacoes: p.descricao || null },
     })
   })
 

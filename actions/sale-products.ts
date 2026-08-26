@@ -202,14 +202,17 @@ export async function bulkCreateSaleProductsFromExtraction(
       organization_id: org.id, sale_id: saleId, kind: 'transfer', status: 'pending', sort_order: i++,
       data: {
         origem: t.origem || null, destino: t.destino || null, data: t.data || null,
-        horario: t.horario || null, tipo_servico: t.tipo || null,
+        horario: t.horario || null, tipo_servico: t.tipo || null, fornecedor: t.veiculo || null,
       },
     })
   }
   for (const s of extracted.seguros || []) {
     rows.push({
       organization_id: org.id, sale_id: saleId, kind: 'seguro', status: 'pending', sort_order: i++,
-      data: s as Record<string, any>,
+      data: {
+        nome: [s.seguradora, s.plano].filter(Boolean).join(' — ') || null,
+        fornecedor: s.seguradora || null, data: s.data_inicio || null, observacoes: s.cobertura || null,
+      },
     })
   }
 

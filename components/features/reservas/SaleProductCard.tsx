@@ -63,6 +63,8 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
         lines: [
           [data.origem, data.destino].filter(Boolean).join(' → '),
           data.data ? `${fmtDate(data.data)}${data.horario ? ` · ${data.horario}` : ''}` : null,
+          data.codigo_reserva ? `Código: ${data.codigo_reserva}` : null,
+          data.contato || null,
         ].filter(Boolean) as string[],
       }
     case 'cruzeiro':
@@ -70,8 +72,19 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
         title: data.navio || data.companhia || 'Cruzeiro',
         lines: [
           data.roteiro || null,
-          data.embarque_data ? `Embarque: ${fmtDate(data.embarque_data)}` : null,
-          data.cabine ? `Cabine: ${data.cabine}` : null,
+          data.embarque_data ? `Embarque: ${fmtDate(data.embarque_data)}${data.embarque_porto ? ` · ${data.embarque_porto}` : ''}` : null,
+          [data.cabine ? `Cabine ${data.cabine}` : null, data.categoria, data.regime].filter(Boolean).join(' · ') || null,
+          data.localizador ? `Localizador: ${data.localizador}` : null,
+        ].filter(Boolean) as string[],
+      }
+    case 'ingresso':
+      return {
+        title: data.atracao || data.nome || 'Ingresso',
+        lines: [
+          data.data ? fmtDate(data.data) : null,
+          data.codigo_reserva ? `Código: ${data.codigo_reserva}` : null,
+          data.fornecedor || null,
+          data.contato || null,
         ].filter(Boolean) as string[],
       }
     default:
