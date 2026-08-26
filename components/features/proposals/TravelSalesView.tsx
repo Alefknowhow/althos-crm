@@ -917,7 +917,15 @@ function SaleEditor({
             <div className="lg:col-span-1">
               <VoucherUploadAndReview
                 orgSlug={orgSlug}
-                onVoucherAdded={v => set('vouchers', [...vouchers, v])}
+                onVoucherAdded={v => {
+                  setS(prev => {
+                    const next = [...(Array.isArray(prev.vouchers) ? prev.vouchers : []), v]
+                    // Persiste na hora — não depende do botão "Salvar" pra o
+                    // voucher recém-enviado sobreviver a um refresh/troca de aba.
+                    updateTravelSale(orgSlug, prev.id, { vouchers: next })
+                    return { ...prev, vouchers: next }
+                  })
+                }}
               />
             </div>
             <div className="lg:col-span-3">
