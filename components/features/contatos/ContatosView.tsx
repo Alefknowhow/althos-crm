@@ -50,6 +50,8 @@ import SendEmailDialog from '@/components/features/SendEmailDialog'
 import TaskCard from '@/components/features/TaskCard'
 import TaskDialog from '@/components/features/TaskDialog'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { PhoneCall, MoreVertical, Pencil, ListChecks } from 'lucide-react'
 
 // ── Tipos vindos da página (server) ──────────────────────────────────
 type ListRow = {
@@ -598,10 +600,8 @@ function DetailPanel({
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
   const [newTaskOpen, setNewTaskOpen] = useState(false)
-  const [whatsappOpen, setWhatsappOpen] = useState(false)
-  const [tasksOpen, setTasksOpen] = useState(false)
-  const [timelineOpen, setTimelineOpen] = useState(false)
-  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('visao-geral')
+  const [dadosEditRequested, setDadosEditRequested] = useState(false)
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -675,8 +675,14 @@ function DetailPanel({
     saveTags(tags.filter(x => x !== t))
   }
 
+  const openTasks = [...selected.tasks]
+    .filter((t: any) => t.status !== 'done')
+    .sort((a: any, b: any) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+  const nextTask = openTasks[0]
+  const lastActivities = selected.activities.slice(0, 5)
+
   return (
-    <div className="p-5 sm:p-6 space-y-6">
+    <div className="p-5 sm:p-6 space-y-5">
       {/* Header */}
       <div className="flex items-start gap-3">
         <button onClick={onBack} className="md:hidden mt-1 text-muted-foreground hover:text-foreground" aria-label="Voltar">
@@ -686,6 +692,9 @@ function DetailPanel({
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
+            {c.phone && <span>{c.phone}</span>}
+            {c.email && <span>{c.phone ? ' · ' : ''}{c.email}</span>}
+            {(c.phone || c.email) && ' · '}
             Origem: {contatoSourceLabel(c.source)}
             {stageName ? ` · Funil: ${stageName}` : ''}
           </p>
@@ -704,8 +713,8 @@ function DetailPanel({
         </div>
       </div>
 
+      {/* Barra de ações principais */}
       <div className="flex flex-wrap gap-2">
-        <RequalifyButton orgSlug={orgSlug} leadId={c.id} />
         {c.phone && (
           <Button size="sm" variant="outline" asChild>
             <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
@@ -713,309 +722,389 @@ function DetailPanel({
             </a>
           </Button>
         )}
+        {c.phone && (
+          <Button size="sm" variant="outline" asChild>
+            <a href={`tel:${onlyDigits(c.phone)}`}>
+              <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
+            </a>
+          </Button>
+        )}
         {c.email && (
           <SendEmailDialog orgSlug={orgSlug} lead={c} templates={selected.templates} org={{ name: orgName }} />
         )}
+        <Button size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" /> Atividade
+        </Button>
         {c.status === 'cliente' && (
           <Button size="sm" variant="outline" onClick={handleReopen} disabled={reopening}>
             <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
           </Button>
         )}
-        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleting}>
-          <Trash2 className="w-4 h-4 mr-1.5" /> Excluir contato
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="px-2">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <div className="px-1 py-1">
+              <RequalifyButton orgSlug={orgSlug} leadId={c.id} />
+            </div>
+            <DropdownMenuItem onClick={() => { setActiveTab('dados'); setDadosEditRequested(true) }}>
+              <Pencil className="w-3.5 h-3.5 mr-2" /> Editar dados
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir contato
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Métricas + contato + localização — grid único, até 4 por linha */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Field icon={Wallet} label="Total comprado">
-          <span className="text-2xl font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
-        </Field>
-        <Field icon={CalendarClock} label="Última compra">
-          <span className="text-2xl font-bold">{fmtDate(lastPurchase)}</span>
-        </Field>
-        {isTravel && (
-          <Field icon={Wallet} label="Créditos de cancelamento">
-            <span className="text-2xl font-bold text-primary">{fmtCurrency(creditBalance)}</span>
-          </Field>
-        )}
-        <Field icon={UserCircle2} label="Vendedor responsável">
-          <span className="text-sm font-medium">{sellerName || '—'}</span>
-        </Field>
-        <Field icon={Sparkles} label="Score IA">
-          {c.ai_score != null && c.ai_tier != null ? (
-            <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
-          ) : (
-            <span className="text-sm font-medium">—</span>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
+          <TabsTrigger value="atividades">Atividades</TabsTrigger>
+          <TabsTrigger value="negociacoes">Negociações</TabsTrigger>
+          <TabsTrigger value="compras">Compras</TabsTrigger>
+          <TabsTrigger value="dados">Dados</TabsTrigger>
+        </TabsList>
+
+        {/* ── Visão geral ─────────────────────────────────────────── */}
+        <TabsContent value="visao-geral" className="space-y-5 pt-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Field icon={Wallet} label="Total comprado">
+              <span className="text-xl font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
+            </Field>
+            <Field icon={CalendarClock} label="Última compra">
+              <span className="text-xl font-bold">{fmtDate(lastPurchase)}</span>
+            </Field>
+            <Field icon={UserCircle2} label="Vendedor responsável">
+              <span className="text-sm font-medium">{sellerName || '—'}</span>
+            </Field>
+            <Field icon={Sparkles} label="Score IA">
+              {c.ai_score != null && c.ai_tier != null ? (
+                <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
+              ) : (
+                <span className="text-sm font-medium">—</span>
+              )}
+            </Field>
+          </div>
+
+          {/* Próxima ação */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+              Próxima ação
+            </p>
+            {nextTask ? (
+              <TaskCard task={nextTask} orgSlug={orgSlug} />
+            ) : (
+              <div className="border rounded-lg px-3 py-4 text-center">
+                <p className="text-xs text-muted-foreground mb-2">Nenhuma atividade agendada.</p>
+                <Button size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Criar atividade
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Últimas interações */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Últimas interações
+              </p>
+              {selected.activities.length > 5 && (
+                <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('atividades')}>
+                  ver tudo
+                </button>
+              )}
+            </div>
+            {lastActivities.length > 0 ? (
+              <div className="space-y-2 border rounded-lg p-3">
+                {lastActivities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-3 border rounded-lg">Nenhuma atividade registrada.</p>
+            )}
+          </div>
+
+          {/* Negociações (resumo) */}
+          {deals.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Negociações
+                </p>
+                {deals.length > 2 && (
+                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('negociacoes')}>
+                    ver todas
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {deals.slice(0, 2).map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />)}
+              </div>
+            </div>
           )}
-        </Field>
-        <Field icon={CalendarClock} label="Criado em">
-          <span className="text-sm font-medium">{fmtDate(c.created_at)}</span>
-        </Field>
-      </div>
 
-      {/* Tags — editável direto na prévia, sem precisar abrir a página completa */}
-      <Field icon={TagIcon} label="Tags">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {tags.map(t => (
-            <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
-              {t}
-              <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-          <Input
-            value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            onBlur={addTag}
-            placeholder="Adicionar tag…"
-            className="h-7 w-32 text-xs"
-          />
-        </div>
-      </Field>
+          {/* Tags */}
+          <Field icon={TagIcon} label="Tags">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tags.map(t => (
+                <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
+                  {t}
+                  <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+              <Input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+                onBlur={addTag}
+                placeholder="Adicionar tag…"
+                className="h-7 w-32 text-xs"
+              />
+            </div>
+          </Field>
 
-      {/* Histórico de negociações — cada passagem pelo funil, mesmo depois de virar cliente. */}
-      {deals.length > 0 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-            Histórico de negociações
-          </p>
-          <div className="space-y-1.5">
-            {deals.map(d => (
-              <div key={d.id} className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2">
-                <div className="min-w-0">
-                  <span className={cn(
-                    'font-medium',
-                    d.status === 'won' && 'text-emerald-600',
-                    d.status === 'lost' && 'text-muted-foreground',
-                  )}>
-                    {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}
-                  </span>
-                  {d.stage_name && <span className="text-muted-foreground"> · {d.stage_name}</span>}
-                  <div className="text-xs text-muted-foreground">
-                    {fmtDate(d.won_at || d.lost_at || d.created_at)}
-                  </div>
+          {/* Créditos de Cancelamento (Viagens) */}
+          {isTravel && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                Créditos de cancelamento
+                {creditBalance > 0 && <span className="ml-2 text-primary font-semibold normal-case tracking-normal">{fmtCurrency(creditBalance)}</span>}
+              </p>
+              {credits.length > 0 ? (
+                <div className="space-y-1.5">
+                  {credits.map(cr => {
+                    const saldo = cr.valor_cents - cr.valor_usado_cents
+                    const statusLabel = cr.status === 'used' ? 'Utilizado' : cr.status === 'cancelled' ? 'Cancelado' : cr.validade && new Date(cr.validade) < new Date() ? 'Expirado' : 'Disponível'
+                    return (
+                      <div key={cr.id} className="border rounded-lg px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{cr.operadora}</span>
+                          <span className="font-semibold tabular-nums">{fmtCurrency(saldo)}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>{fmtDate(cr.data_emissao)}</span>
+                          {cr.validade && <span>· Válido até {fmtDate(cr.validade)}</span>}
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">{statusLabel}</Badge>
+                          {cr.origem_sale_id && (
+                            <Link href={`/app/${orgSlug}/reservas?sale=${cr.origem_sale_id}`} className="text-primary hover:underline">
+                              Ver venda de origem
+                            </Link>
+                          )}
+                        </div>
+                        {cr.observacoes && <div className="text-xs text-muted-foreground mt-1">{cr.observacoes}</div>}
+                      </div>
+                    )
+                  })}
                 </div>
-                <span className="font-semibold tabular-nums shrink-0">{fmtCurrency(d.value_cents || 0)}</span>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum crédito registrado.</p>
+              )}
+            </div>
+          )}
+
+          {/* Parentesco */}
+          <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
+
+          {/* Imóveis de interesse / Visitas — só nicho imobiliário */}
+          {isRealEstate && (
+            <>
+              <PropertyInterestsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyInterests || []} properties={properties} />
+              <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyVisits || []} properties={properties} members={members.map(m => ({ user_id: m.id, name: m.name }))} />
+              <PropertyPreferencesCard orgSlug={orgSlug} contatoId={c.id} initial={selected.propertyPreferences || null} />
+              <PropertyMatchSuggestions orgSlug={orgSlug} contatoId={c.id} />
+            </>
+          )}
+        </TabsContent>
+
+        {/* ── Atividades ──────────────────────────────────────────── */}
+        <TabsContent value="atividades" className="space-y-5 pt-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Timeline</p>
+            {selected.activities.length > 0 ? (
+              <div className="space-y-3">
+                {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
               </div>
-            ))}
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Cadastro do Cliente: dados, contato, documentos, endereço, observações */}
-      <CustomerProfileForm
-        orgSlug={orgSlug}
-        leadId={c.id}
-        initial={c}
-        initialContactPoints={selected.contactPoints}
-        initialDocuments={selected.documents}
-      />
-
-      {/* Créditos de Cancelamento — detalhado (o saldo já aparece no card acima) */}
-      {isTravel && credits.length > 0 && (
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-            Créditos de cancelamento
-          </p>
-          <div className="space-y-1.5">
-            {credits.map(cr => {
-              const saldo = cr.valor_cents - cr.valor_usado_cents
-              const statusLabel = cr.status === 'used' ? 'Utilizado' : cr.status === 'cancelled' ? 'Cancelado' : cr.validade && new Date(cr.validade) < new Date() ? 'Expirado' : 'Disponível'
-              return (
-                <div key={cr.id} className="border rounded-lg px-3 py-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{cr.operadora}</span>
-                    <span className="font-semibold tabular-nums">{fmtCurrency(saldo)}</span>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                    <span>{fmtDate(cr.data_emissao)}</span>
-                    {cr.validade && <span>· Válido até {fmtDate(cr.validade)}</span>}
-                    <Badge variant="outline" className="text-[9px] px-1 py-0">{statusLabel}</Badge>
-                    {cr.origem_sale_id && (
-                      <Link href={`/app/${orgSlug}/reservas?sale=${cr.origem_sale_id}`} className="text-primary hover:underline">
-                        Ver venda de origem
-                      </Link>
-                    )}
-                  </div>
-                  {cr.observacoes && <div className="text-xs text-muted-foreground mt-1">{cr.observacoes}</div>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Parentesco */}
-      <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
-
-      {/* Imóveis de interesse / Visitas — só nicho imobiliário */}
-      {isRealEstate && (
-        <>
-          <PropertyInterestsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyInterests || []} properties={properties} />
-          <PropertyVisitsSection orgSlug={orgSlug} mode={{ type: 'contato', contatoId: c.id }} initial={selected.propertyVisits || []} properties={properties} members={members.map(m => ({ user_id: m.id, name: m.name }))} />
-          <PropertyPreferencesCard orgSlug={orgSlug} contatoId={c.id} initial={selected.propertyPreferences || null} />
-          <PropertyMatchSuggestions orgSlug={orgSlug} contatoId={c.id} />
-        </>
-      )}
-
-      {/* Histórico de compras */}
-      {selected.sales.length > 0 && (
-        <div className="rounded-none border">
-          <div className="border-b px-4 py-2.5 text-sm font-semibold">Compras</div>
-          <div className="divide-y">
-            {selected.sales.map(s => (
-              <div key={s.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{s.products?.name || 'Venda'}</div>
-                  <div className="text-xs text-muted-foreground">{fmtDate(s.sale_date)}</div>
-                </div>
-                <span className="font-semibold tabular-nums">{fmtCurrency(s.amount_cents)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* WhatsApp, Tarefas, Timeline e Histórico de E-mails — botões pequenos que abrem popup, em vez de ocupar espaço fixo na prévia */}
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => setWhatsappOpen(true)}>
-          <Phone className="w-3.5 h-3.5 mr-1.5" /> WhatsApp
-          {selected.whatsappConv && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">1</Badge>}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setTasksOpen(true)}>
-          <CheckSquare className="w-3.5 h-3.5 mr-1.5" /> Tarefas
-          {selected.tasks.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.tasks.length}</Badge>}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setTimelineOpen(true)}>
-          <History className="w-3.5 h-3.5 mr-1.5" /> Timeline
-          {selected.activities.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.activities.length}</Badge>}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setEmailHistoryOpen(true)}>
-          <Mail className="w-3.5 h-3.5 mr-1.5" /> E-mails
-          {selected.emailSends.length > 0 && <Badge variant="secondary" className="ml-1.5 h-4 px-1.5">{selected.emailSends.length}</Badge>}
-        </Button>
-      </div>
-
-      <Dialog open={whatsappOpen} onOpenChange={setWhatsappOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>WhatsApp</DialogTitle></DialogHeader>
-          {selected.whatsappConv ? (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tarefas</p>
+              <Button type="button" size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Nova tarefa
+              </Button>
+            </div>
             <div className="space-y-3">
+              {selected.tasks.length > 0 ? selected.tasks.map((task: any) => (
+                <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
+              )) : (
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma tarefa vinculada.</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">E-mails</p>
+            {selected.emailSends.length > 0 ? (
+              <div className="space-y-2 border rounded-lg divide-y">
+                {selected.emailSends.map((es: any) => (
+                  <div key={es.id} className="flex justify-between items-center px-3 py-2.5">
+                    <div>
+                      <div className="text-sm font-medium">{(Array.isArray(es.email_templates) ? es.email_templates[0]?.name : es.email_templates?.name) || 'Template removido'}</div>
+                      <div className="text-[11px] text-muted-foreground">{new Date(es.created_at).toLocaleString('pt-BR')}</div>
+                    </div>
+                    <Badge variant={es.status === 'sent' ? 'default' : es.status === 'opened' ? 'secondary' : es.status === 'failed' || es.status === 'bounced' ? 'destructive' : 'outline'}>{es.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhum e-mail enviado.</p>
+            )}
+          </div>
+
+          {selected.whatsappConv && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">WhatsApp</p>
               <div className="text-sm border rounded-lg p-3 bg-muted/20 flex flex-col items-center justify-center text-center gap-1.5">
                 <div className="font-semibold">{selected.whatsappConv.contact_name || selected.whatsappConv.contact_phone}</div>
                 <div className="text-muted-foreground text-xs">{selected.whatsappConv.contact_phone}</div>
                 <div className="text-[11px] mt-1 bg-primary/10 text-primary px-2 py-1 rounded-full">
                   Última interação: {fmtDate(selected.whatsappConv.last_message_at)}
                 </div>
+                <Link href={`/app/${orgSlug}/conversas?id=${selected.whatsappConv.id}`} className="flex w-full">
+                  <Button className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white">Abrir Conversa WhatsApp</Button>
+                </Link>
               </div>
-              <Link href={`/app/${orgSlug}/conversas?id=${selected.whatsappConv.id}`} className="flex w-full">
-                <Button className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white">Abrir Conversa WhatsApp</Button>
-              </Link>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Negociações ─────────────────────────────────────────── */}
+        <TabsContent value="negociacoes" className="pt-4">
+          {deals.length > 0 ? (
+            <div className="space-y-2">
+              {deals.map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />)}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground text-center py-4">Sem conversas registradas via WhatsApp Cloud API.</p>
+            <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma negociação registrada.</p>
           )}
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
 
-      <Dialog open={tasksOpen} onOpenChange={setTasksOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle>Tarefas</DialogTitle>
-            {/* Fecha este popup antes de abrir o de criação — dois <Dialog>
-                Radix abertos ao mesmo tempo (mesmo como irmãos, não
-                aninhados) quebravam com "client-side exception" por causa
-                do aria-hidden que cada um aplica nos outros elementos do
-                body enquanto está aberto. Reabre a lista quando o de
-                criação fecha. */}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => { setTasksOpen(false); setNewTaskOpen(true) }}
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Nova tarefa
-            </Button>
-          </DialogHeader>
-          <div className="space-y-3">
-            {selected.tasks.length > 0 ? selected.tasks.map(task => (
-              <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
-            )) : (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma tarefa vinculada.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        {/* ── Compras ─────────────────────────────────────────────── */}
+        <TabsContent value="compras" className="pt-4">
+          {selected.sales.length > 0 ? (
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2">Data</th>
+                    <th className="text-left font-medium px-3 py-2">Produto</th>
+                    <th className="text-right font-medium px-3 py-2">Valor</th>
+                    <th className="text-left font-medium px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {selected.sales.map(s => (
+                    <tr key={s.id}>
+                      <td className="px-3 py-2 text-muted-foreground">{fmtDate(s.sale_date)}</td>
+                      <td className="px-3 py-2 font-medium">{s.products?.name || 'Venda'}</td>
+                      <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtCurrency(s.amount_cents)}</td>
+                      <td className="px-3 py-2"><Badge variant="outline" className="text-[10px]">{s.status}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma compra registrada.</p>
+          )}
+        </TabsContent>
+
+        {/* ── Dados ───────────────────────────────────────────────── */}
+        <TabsContent value="dados" className="pt-4">
+          <CustomerProfileForm
+            orgSlug={orgSlug}
+            leadId={c.id}
+            initial={c}
+            initialContactPoints={selected.contactPoints}
+            initialDocuments={selected.documents}
+            initialEditMode={dadosEditRequested}
+          />
+        </TabsContent>
+      </Tabs>
 
       <TaskDialog
         orgSlug={orgSlug}
         defaultLead={{ id: c.id, name: c.name }}
         trigger={<button type="button" className="hidden" aria-hidden />}
         open={newTaskOpen}
-        onOpenChange={(v: boolean) => { setNewTaskOpen(v); if (!v) setTasksOpen(true) }}
+        onOpenChange={(v: boolean) => setNewTaskOpen(v)}
       />
+    </div>
+  )
+}
 
-      <Dialog open={timelineOpen} onOpenChange={setTimelineOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Timeline de Atividades</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {selected.activities.length > 0 ? selected.activities.map((act: any) => (
-              <div key={act.id} className="flex gap-3 border-b pb-3 last:border-0 last:pb-0">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs">
-                  {act.type === 'manual_created' ? '🚀' : act.type === 'note' ? '📝' : act.type === 'ai_qualified' ? '✨' : act.type.startsWith('email') ? '✉️' : act.type.startsWith('credit_') ? '🎫' : '⚙️'}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">
-                    {act.type === 'manual_created' ? 'Contato criado manualmente'
-                      : act.type === 'note' ? 'Nota adicionada'
-                      : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)`
-                      : act.type === 'email_sent' ? 'E-mail enviado'
-                      : act.type === 'email_opened' ? 'E-mail aberto'
-                      : act.type === 'credit_created' ? `Crédito de cancelamento gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})`
-                      : act.type === 'credit_used' ? `Crédito de cancelamento utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}`
-                      : act.type}
-                  </div>
-                  {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
-                  {act.type === 'ai_qualified' && (
-                    <div className="text-xs mt-1 text-muted-foreground italic">
-                      {act.payload?.reason}
-                      {act.payload?.concerns?.length > 0 && <div className="mt-1">⚠ {act.payload.concerns.join(' · ')}</div>}
-                    </div>
-                  )}
-                  {act.type === 'email_sent' && <div className="text-xs mt-1 text-muted-foreground">Assunto: {act.payload.subject} (Template: {act.payload.template_name})</div>}
-                  <div className="text-[11px] text-muted-foreground mt-1">{new Date(act.created_at).toLocaleString('pt-BR')}</div>
-                </div>
-              </div>
-            )) : (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade registrada.</p>
-            )}
+function ActivityRow({ act, fmtCurrency }: { act: any; fmtCurrency: (v: number) => string }) {
+  return (
+    <div className="flex gap-3">
+      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs">
+        {act.type === 'manual_created' ? '🚀' : act.type === 'note' ? '📝' : act.type === 'ai_qualified' ? '✨' : act.type.startsWith('email') ? '✉️' : act.type.startsWith('credit_') ? '🎫' : '⚙️'}
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-medium">
+          {act.type === 'manual_created' ? 'Contato criado manualmente'
+            : act.type === 'note' ? 'Nota adicionada'
+            : act.type === 'ai_qualified' ? `IA qualificou: ${act.payload?.tier?.toUpperCase()} (${act.payload?.score}/100)`
+            : act.type === 'email_sent' ? 'E-mail enviado'
+            : act.type === 'email_opened' ? 'E-mail aberto'
+            : act.type === 'credit_created' ? `Crédito de cancelamento gerado: ${fmtCurrency(act.payload?.valor_cents || 0)} (${act.payload?.operadora})`
+            : act.type === 'credit_used' ? `Crédito de cancelamento utilizado: ${fmtCurrency(act.payload?.valor_cents || 0)}`
+            : act.type}
+        </div>
+        {act.type === 'note' && <div className="text-sm mt-1 whitespace-pre-wrap">{act.payload.text}</div>}
+        {act.type === 'ai_qualified' && (
+          <div className="text-xs mt-1 text-muted-foreground italic">
+            {act.payload?.reason}
+            {act.payload?.concerns?.length > 0 && <div className="mt-1">⚠ {act.payload.concerns.join(' · ')}</div>}
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+        {act.type === 'email_sent' && <div className="text-xs mt-1 text-muted-foreground">Assunto: {act.payload.subject} (Template: {act.payload.template_name})</div>}
+        <div className="text-[11px] text-muted-foreground mt-1">{new Date(act.created_at).toLocaleString('pt-BR')}</div>
+      </div>
+    </div>
+  )
+}
 
-      <Dialog open={emailHistoryOpen} onOpenChange={setEmailHistoryOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Histórico de E-mails</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            {selected.emailSends.length > 0 ? selected.emailSends.map((es: any) => (
-              <div key={es.id} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
-                <div>
-                  <div className="text-sm font-medium">{(Array.isArray(es.email_templates) ? es.email_templates[0]?.name : es.email_templates?.name) || 'Template removido'}</div>
-                  <div className="text-[11px] text-muted-foreground">{new Date(es.created_at).toLocaleString('pt-BR')}</div>
-                </div>
-                <Badge variant={es.status === 'sent' ? 'default' : es.status === 'opened' ? 'secondary' : es.status === 'failed' || es.status === 'bounced' ? 'destructive' : 'outline'}>{es.status}</Badge>
-              </div>
-            )) : (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhum e-mail enviado.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+function DealCard({ d, fmtCurrency, fmtDate }: { d: ContatoDeal; fmtCurrency: (v: number) => string; fmtDate: (v: string | null) => string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2">
+      <div className="min-w-0">
+        <span className={cn(
+          'font-medium',
+          d.status === 'won' && 'text-emerald-600',
+          d.status === 'lost' && 'text-muted-foreground',
+        )}>
+          {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}
+        </span>
+        {d.stage_name && <span className="text-muted-foreground"> · {d.stage_name}</span>}
+        <div className="text-xs text-muted-foreground">
+          {fmtDate(d.won_at || d.lost_at || d.created_at)}
+        </div>
+      </div>
+      <span className="font-semibold tabular-nums shrink-0">{fmtCurrency(d.value_cents || 0)}</span>
     </div>
   )
 }

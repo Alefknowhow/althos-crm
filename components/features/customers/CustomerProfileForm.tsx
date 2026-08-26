@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Search, Save, Loader2, Plus, X, Mail, Phone } from 'lucide-react'
+import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil } from 'lucide-react'
 import {
   upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
   removeContatoContactPoint, type ContatoContactPoint,
@@ -73,17 +73,24 @@ export default function CustomerProfileForm({
   initial,
   initialContactPoints,
   initialDocuments,
+  initialEditMode,
 }: {
   orgSlug: string
   leadId: string
   initial: Profile
   initialContactPoints: ContatoContactPoint[]
   initialDocuments: CustomerDoc[]
+  initialEditMode?: boolean
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [saving, setSaving] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
+  const [editing, setEditing] = useState(!!initialEditMode)
+
+  useEffect(() => {
+    if (initialEditMode) setEditing(true)
+  }, [initialEditMode])
 
   const [form, setForm] = useState({
     name: initial?.name || '',
@@ -160,6 +167,7 @@ export default function CustomerProfileForm({
     if (!profileRes.ok) { toast.error((profileRes as any).error || 'Erro ao salvar'); return }
     if (!contactRes.ok) { toast.error((contactRes as any).error || 'Erro ao salvar contato'); return }
     toast.success('Cadastro salvo')
+    setEditing(false)
     startTransition(() => router.refresh())
   }
 
@@ -179,10 +187,71 @@ export default function CustomerProfileForm({
     if (!res.ok) toast.error((res as any).error || 'Erro ao remover')
   }
 
+  if (!editing) {
+    const rows: { label: string; value: string }[] = [
+      { label: 'Nome completo', value: form.name || '—' },
+      { label: 'Nascimento', value: form.date_of_birth || '—' },
+      { label: 'E-mail', value: form.email || '—' },
+      { label: 'Telefone', value: form.phone || '—' },
+      { label: 'CPF', value: form.cpf || '—' },
+      { label: 'RG', value: form.rg || '—' },
+      { label: 'Nº do passaporte', value: form.passport_number || '—' },
+      { label: 'Validade passaporte', value: form.passport_expiry || '—' },
+      { label: 'Visto americano', value: form.has_us_visa ? 'Possui' : 'Não possui' },
+      {
+        label: 'Endereço',
+        value: [form.street, form.number, form.complement, form.district, form.city, form.state, form.postal_code]
+          .filter(Boolean).join(', ') || '—',
+      },
+      { label: 'Observações internas', value: form.address_notes || '—' },
+    ]
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            {rows.map(r => (
+              <div key={r.label} className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{r.label}</div>
+                <div className="text-sm truncate">{r.value}</div>
+              </div>
+            ))}
+          </div>
+          {points.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Outros contatos</div>
+              {points.map(p => (
+                <div key={p.id} className="flex items-center gap-2 text-sm">
+                  {p.kind === 'email' ? <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                  {p.label && <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{p.label}</span>}
+                  <span className="truncate">{p.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="pt-2 border-t">
+            <CustomerDocuments
+              orgSlug={orgSlug}
+              leadId={leadId}
+              profileId={leadId}
+              initialDocuments={initialDocuments}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Dados do cliente */}
