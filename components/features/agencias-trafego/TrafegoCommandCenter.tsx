@@ -1,19 +1,21 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Search, Plus, TrendingUp, TrendingDown, Megaphone, ImagePlus, Loader2 } from 'lucide-react'
+import { Search, Plus, TrendingUp, TrendingDown, Megaphone, ImagePlus, Loader2, MoreVertical, Archive, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn, formatCurrency } from '@/lib/utils'
 import { HEALTH_LABEL, HEALTH_DOT_CLASS, HEALTH_BADGE_CLASS } from '@/lib/trafego/health-status'
 import type { HealthStatus } from '@/lib/trafego/health-status'
-import { createCustomer } from '@/actions/contatos'
+import { createCustomer, setContatoStatus, deleteLead } from '@/actions/contatos'
 
 export type ClientCardData = {
   id: string
@@ -56,6 +58,36 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
   const [newClientOpen, setNewClientOpen] = useState(false)
   const [newClientForm, setNewClientForm] = useState({ name: '', email: '', phone: '' })
   const [creating, startCreating] = useTransition()
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
+  const [, startMutating] = useTransition()
+
+  function handleInactivate(id: string, name: string) {
+    if (!confirm(`Inativar "${name}"? Ele sai da lista de clientes de tráfego, mas os dados continuam guardados — dá pra reativar em Contatos.`)) return
+    setHiddenIds(prev => new Set(prev).add(id))
+    startMutating(async () => {
+      const res = await setContatoStatus(orgSlug, id, 'inativo')
+      if (!(res as any).ok) {
+        toast.error((res as any).error || 'Erro ao inativar cliente')
+        setHiddenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+        return
+      }
+      toast.success('Cliente inativado')
+    })
+  }
+
+  function handleDelete(id: string, name: string) {
+    if (!confirm(`Excluir "${name}"? Essa ação não pode ser desfeita — o contato e todo o histórico dele (campanhas, criativos, links de rastreamento) serão perdidos.`)) return
+    setHiddenIds(prev => new Set(prev).add(id))
+    startMutating(async () => {
+      const res = await deleteLead(orgSlug, id)
+      if (!(res as any).ok) {
+        toast.error((res as any).error || 'Erro ao excluir cliente')
+        setHiddenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+        return
+      }
+      toast.success('Cliente excluído')
+    })
+  }
 
   function handleCreateClient() {
     if (!newClientForm.name.trim()) { toast.error('Informe o nome do cliente.'); return }
@@ -78,11 +110,12 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return clients.filter(c => {
+      if (hiddenIds.has(c.id)) return false
       if (filter !== 'all' && c.health !== filter) return false
       if (!q) return true
       return c.name.toLowerCase().includes(q) || (c.niche || '').toLowerCase().includes(q)
     })
-  }, [clients, query, filter])
+  }, [clients, query, filter, hiddenIds])
 
   return (
     <div className="space-y-4">
@@ -183,20 +216,46 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
           {filtered.map(c => {
             const trend = c.prevInvestmentCents > 0 ? ((c.investmentCents - c.prevInvestmentCents) / c.prevInvestmentCents) * 100 : null
             return (
-              <Link
+              <div
                 key={c.id}
-                href={`/app/${orgSlug}/agencias-trafego/trafego/${c.id}`}
-                className="block bg-card border rounded-lg p-4 hover:border-primary/50 transition-colors space-y-3"
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/app/${orgSlug}/agencias-trafego/trafego/${c.id}`)}
+                onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/agencias-trafego/trafego/${c.id}`) }}
+                className="block bg-card border rounded-lg p-4 hover:border-primary/50 transition-colors space-y-3 cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{c.name}</div>
                     {c.niche && <div className="text-xs text-muted-foreground truncate">{c.niche}</div>}
                   </div>
-                  <Badge variant="outline" className={cn('shrink-0 gap-1', HEALTH_BADGE_CLASS[c.health])}>
-                    <span className={cn('w-1.5 h-1.5 rounded-full', HEALTH_DOT_CLASS[c.health])} />
-                    {HEALTH_LABEL[c.health]}
-                  </Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant="outline" className={cn('gap-1', HEALTH_BADGE_CLASS[c.health])}>
+                      <span className={cn('w-1.5 h-1.5 rounded-full', HEALTH_DOT_CLASS[c.health])} />
+                      {HEALTH_LABEL[c.health]}
+                    </Badge>
+                    <div onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="h-6 w-6 grid place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            aria-label="Mais opções"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleInactivate(c.id, c.name)}>
+                            <Archive className="w-3.5 h-3.5 mr-2" /> Inativar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDelete(c.id, c.name)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
                 </div>
 
                 {c.platform && (
@@ -239,7 +298,7 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
                     </span>
                   )}
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
