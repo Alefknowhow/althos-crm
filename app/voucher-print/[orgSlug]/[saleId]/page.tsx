@@ -23,23 +23,17 @@ export default async function VoucherPrintPage({
   if (!sale) notFound()
 
   // Vendas criadas pelo novo fluxo (voucher → OCR → Produtos) podem não ter
-  // mais os campos flat legados (hotel_name/airline/flights) preenchidos —
-  // sintetiza a partir de sale_products só quando o campo flat está vazio,
-  // sem alterar o componente de impressão em si.
+  // mais os campos flat legados (hotel_name/airline) preenchidos — sintetiza
+  // a partir de sale_products só quando o campo flat está vazio. Os voos vão
+  // direto (com trechos/conexões/check-in/bilhete/bagagem) pro VoucherPrintView,
+  // que já sabe renderizar o detalhe completo por trecho.
   const { listSaleProducts } = await import('@/actions/sale-products')
   const products = await listSaleProducts(params.orgSlug, params.saleId)
+  const aereos = products.filter(p => p.kind === 'aereo')
   if (products.length > 0) {
-    if ((!sale.flights || sale.flights.length === 0)) {
-      const aereos = products.filter(p => p.kind === 'aereo')
-      if (aereos.length > 0) {
-        sale.flights = aereos.map(p => ({
-          companhia: p.data?.companhia ?? null, numero: p.data?.numero_voo ?? null, data: p.data?.data ?? null,
-          origem: p.data?.origem ?? null, destino: p.data?.destino ?? null, horario: p.data?.horario ?? null,
-          sentido: p.data?.sentido ?? null,
-        })) as any
-        if (!sale.airline) sale.airline = aereos[0].data?.companhia ?? null
-        if (!sale.air_locator) sale.air_locator = aereos[0].data?.localizador ?? null
-      }
+    if (aereos.length > 0) {
+      if (!sale.airline) sale.airline = aereos[0].data?.companhia ?? null
+      if (!sale.air_locator) sale.air_locator = aereos[0].data?.localizador ?? null
     }
     if (!sale.hotel_name) {
       const hospedagem = products.find(p => p.kind === 'hospedagem')
@@ -66,6 +60,7 @@ export default async function VoucherPrintPage({
     <VoucherPrintView
       sale={sale}
       contato={contato}
+      voos={aereos as any}
       org={{
         name: org.name,
         logo_url: (org as any).logo_url ?? null,

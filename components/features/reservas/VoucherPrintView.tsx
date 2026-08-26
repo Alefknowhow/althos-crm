@@ -25,6 +25,24 @@ type OrgBranding = {
 
 type ContatoInfo = { phone: string | null; email: string | null } | null
 
+type VooLeg = {
+  companhia?: string | null; numero?: string | null; data?: string | null
+  origem?: string | null; destino?: string | null; horario?: string | null
+  localizador_checkin?: string | null; bilhete?: string | null
+  hora_embarque?: string | null; data_chegada?: string | null; hora_chegada?: string | null
+  duracao?: string | null; bagagem?: string | null
+  escala_local?: string | null; escala_duracao?: string | null
+}
+type VooProduct = {
+  id: string
+  data: {
+    companhia?: string | null; sentido?: string | null; localizador?: string | null
+    bilhete?: string | null; hora_embarque?: string | null; hora_chegada?: string | null
+    bagagem?: string | null; origem?: string | null; destino?: string | null
+    legs?: VooLeg[]
+  }
+}
+
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
 }
@@ -56,19 +74,18 @@ function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode
   )
 }
 
-export default function VoucherPrintView({ sale, org, contato }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo }) {
+export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo; voos?: VooProduct[] }) {
   const accent = org.primary_color || '#0f62fe'
   const included: string[] = Array.isArray(sale.included_items) ? sale.included_items : []
   const services: string[] = Array.isArray(sale.services) ? sale.services : []
   const all = [...included, ...services]
-  const hasVoos = all.includes('voos') || !!sale.airline || !!sale.air_locator
+  const hasVoos = voos.length > 0 || all.includes('voos') || !!sale.airline || !!sale.air_locator
   const hasHotel = all.includes('hospedagem') || !!sale.hotel_name
   const hasTraslado = all.includes('transfer')
   const hasPasseios = all.includes('passeios')
   const hasServicos = all.includes('servicos') || all.includes('carros') || all.includes('ingressos') || all.includes('car_rental')
   const hasSeguro = all.includes('seguro') || all.includes('insurance')
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(sale.travelers) ? sale.travelers : []
-  const flights = Array.isArray(sale.flights) ? sale.flights : []
   const n = nights(sale.departure_date, sale.return_date)
 
   const qrData = sale.airline_checkin_url
@@ -180,44 +197,48 @@ export default function VoucherPrintView({ sale, org, contato }: { sale: TravelS
           {hasVoos && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Plane} title="Voos" accent={accent} />
-              {sale.air_locator && (
+              {sale.air_locator && voos.length === 0 && (
                 <div className="px-3 pt-3">
                   <InfoRow label="Localizador (PNR)" value={sale.air_locator} mono />
                 </div>
               )}
-              {flights.length > 0 ? (
+              {voos.length > 0 ? (
                 <div className="divide-y">
-                  {(['ida', 'volta'] as const).map(dir => {
-                    const legs = flights.filter(f => f.sentido === dir)
-                    if (legs.length === 0) return null
+                  {voos.map(v => {
+                    const legs = v.data.legs && v.data.legs.length > 0 ? v.data.legs : [v.data as VooLeg]
                     return (
-                      <div key={dir} className="p-3 break-inside-avoid">
-                        <p className="text-[10px] uppercase tracking-wide font-bold mb-1.5" style={{ color: accent }}>{dir}</p>
-                        <div className="space-y-2">
-                          {legs.map((f, i) => (
-                            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3 break-inside-avoid">
-                              <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
-                              <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
-                              <InfoRow label="Data" value={fmtDate(f.data)} />
-                              <InfoRow label="Horário" value={f.horario} />
+                      <div key={v.id} className="p-3 break-inside-avoid">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] uppercase tracking-wide font-bold" style={{ color: accent }}>{v.data.sentido || '—'}</p>
+                          {v.data.localizador && <p className="text-[11px] font-mono text-gray-500">Check-in: {v.data.localizador}</p>}
+                        </div>
+                        <div className="space-y-2.5">
+                          {legs.map((leg, i) => (
+                            <div key={i} className="break-inside-avoid">
+                              {leg.escala_local && (
+                                <p className="text-[10px] text-gray-400 italic mb-1.5">
+                                  Conexão em {leg.escala_local}{leg.escala_duracao ? ` · espera de ${leg.escala_duracao}` : ''}
+                                </p>
+                              )}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <InfoRow label="Companhia / voo" value={[leg.companhia, leg.numero].filter(Boolean).join(' · ') || '—'} />
+                                <InfoRow label="Origem" value={leg.origem && (leg.hora_embarque || leg.data) ? <>{leg.origem} <span className="text-gray-400">· {fmtDate(leg.data)}{leg.hora_embarque ? ` ${leg.hora_embarque}` : ''}</span></> : leg.origem} />
+                                <InfoRow label="Destino" value={leg.destino && (leg.hora_chegada || leg.data_chegada) ? <>{leg.destino} <span className="text-gray-400">· {leg.data_chegada ? `${fmtDate(leg.data_chegada)} ` : ''}{leg.hora_chegada || ''}</span></> : leg.destino} />
+                                <InfoRow label="Duração" value={leg.duracao} />
+                              </div>
+                              {(leg.localizador_checkin || leg.bilhete || leg.bagagem) && (
+                                <div className="grid grid-cols-3 gap-3 mt-1.5">
+                                  <InfoRow label="Web check-in" value={leg.localizador_checkin} mono />
+                                  <InfoRow label="Bilhete" value={leg.bilhete} mono />
+                                  <InfoRow label="Bagagem" value={leg.bagagem} />
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )
                   })}
-                  {flights.some(f => !f.sentido) && (
-                    <div className="p-3 break-inside-avoid">
-                      {flights.filter(f => !f.sentido).map((f, i) => (
-                        <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3 break-inside-avoid">
-                          <InfoRow label="Trecho" value={f.origem && f.destino ? `${f.origem} → ${f.destino}` : (f.origem || f.destino)} />
-                          <InfoRow label="Companhia / voo" value={[f.companhia, f.numero].filter(Boolean).join(' · ') || '—'} />
-                          <InfoRow label="Data" value={fmtDate(f.data)} />
-                          <InfoRow label="Horário" value={f.horario} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 p-3">
