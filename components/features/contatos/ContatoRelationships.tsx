@@ -109,15 +109,16 @@ export default function ContatoRelationships({ orgSlug, contatoId, initial }: Pr
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={'Ex.: João da Silva, CPF 000.000.000-00, nascido em 20/06/2015...'}
-              className="flex h-9 flex-1 min-w-0 rounded-md border border-input bg-input/25 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              placeholder={'Ex.: João da Silva, CPF 000.000.000-00...'}
+              className="flex h-9 w-[36%] min-w-0 rounded-md border border-input bg-input/25 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
-            <Button size="sm" variant="ghost" className="shrink-0" onClick={resetForm}>
-              Cancelar
-            </Button>
             <Button size="sm" className="shrink-0" onClick={handleAdd} disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               Salvar
+            </Button>
+            <div className="flex-1" />
+            <Button size="sm" variant="ghost" className="shrink-0" onClick={resetForm}>
+              Cancelar
             </Button>
           </div>
         )}

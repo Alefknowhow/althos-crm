@@ -25,7 +25,7 @@ import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Phone,
   FileCheck2, Users, Wallet, CalendarClock, Camera, Trash2,
   Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2, Sparkles, History,
-  CheckSquare, Mail,
+  CheckSquare, Mail, Tag as TagIcon,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
@@ -711,26 +711,47 @@ function DetailPanel({
             </Select>
           </div>
         </div>
+      </div>
 
-        {/* Tags — visão rápida no cabeçalho, sem precisar rolar até a aba Visão geral */}
-        <div className="hidden sm:flex flex-wrap items-center justify-end gap-1.5 max-w-[45%] shrink-0">
-          {tags.map(t => (
-            <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
-              {t}
-              <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-          <Input
-            value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            onBlur={addTag}
-            placeholder="+ tag"
-            className="h-6 w-16 text-[11px] px-2"
-          />
-        </div>
+      {/* Tags — bloco de linha única destacado, sempre visível no topo */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-primary/[0.04] border-primary/20 px-3 py-2">
+        <TagIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+        {tags.map(t => (
+          <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
+            {t}
+            <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
+              <X className="w-3 h-3" />
+            </button>
+          </Badge>
+        ))}
+        <Input
+          value={tagInput}
+          onChange={e => setTagInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+          onBlur={addTag}
+          placeholder="+ tag"
+          className="h-6 w-20 text-[11px] px-2 bg-background"
+        />
+      </div>
+
+      {/* Cards de resumo — compactos, logo abaixo das tags */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <Field icon={Wallet} label="Total comprado" dense>
+          <span className="text-base font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
+        </Field>
+        <Field icon={CalendarClock} label="Última compra" dense>
+          <span className="text-base font-bold">{fmtDate(lastPurchase)}</span>
+        </Field>
+        <Field icon={UserCircle2} label="Vendedor responsável" dense>
+          <span className="text-xs font-medium">{sellerName || '—'}</span>
+        </Field>
+        <Field icon={Sparkles} label="Score IA" dense>
+          {c.ai_score != null && c.ai_tier != null ? (
+            <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
+          ) : (
+            <span className="text-xs font-medium">—</span>
+          )}
+        </Field>
       </div>
 
       {/* Barra de ações principais */}
@@ -783,16 +804,6 @@ function DetailPanel({
         </DropdownMenu>
       </div>
 
-      {/* Cadastro do Cliente — sempre visível no topo, não depende de aba */}
-      <CustomerProfileForm
-        orgSlug={orgSlug}
-        leadId={c.id}
-        initial={c}
-        initialContactPoints={selected.contactPoints}
-        initialDocuments={selected.documents}
-        initialEditMode={dadosEditRequested}
-      />
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
@@ -803,24 +814,18 @@ function DetailPanel({
 
         {/* ── Visão geral ─────────────────────────────────────────── */}
         <TabsContent value="visao-geral" className="space-y-5 pt-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Field icon={Wallet} label="Total comprado">
-              <span className="text-xl font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
-            </Field>
-            <Field icon={CalendarClock} label="Última compra">
-              <span className="text-xl font-bold">{fmtDate(lastPurchase)}</span>
-            </Field>
-            <Field icon={UserCircle2} label="Vendedor responsável">
-              <span className="text-sm font-medium">{sellerName || '—'}</span>
-            </Field>
-            <Field icon={Sparkles} label="Score IA">
-              {c.ai_score != null && c.ai_tier != null ? (
-                <AIScoreBadge score={c.ai_score} tier={c.ai_tier} summary={c.ai_summary} size="sm" />
-              ) : (
-                <span className="text-sm font-medium">—</span>
-              )}
-            </Field>
-          </div>
+          {/* Cadastro do Cliente — incorporado à Visão geral, no topo da aba */}
+          <CustomerProfileForm
+            orgSlug={orgSlug}
+            leadId={c.id}
+            initial={c}
+            initialContactPoints={selected.contactPoints}
+            initialDocuments={selected.documents}
+            initialEditMode={dadosEditRequested}
+          />
+
+          {/* Parentesco */}
+          <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
 
           {/* Próxima ação */}
           <div>
@@ -917,9 +922,6 @@ function DetailPanel({
               )}
             </div>
           )}
-
-          {/* Parentesco */}
-          <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
 
           {/* Imóveis de interesse / Visitas — só nicho imobiliário */}
           {isRealEstate && (
@@ -1103,12 +1105,12 @@ function DealCard({ d, fmtCurrency, fmtDate }: { d: ContatoDeal; fmtCurrency: (v
   )
 }
 
-function Field({ icon: Icon, label, children }: { icon: any; label: string; children: React.ReactNode }) {
+function Field({ icon: Icon, label, children, dense }: { icon: any; label: string; children: React.ReactNode; dense?: boolean }) {
   return (
-    <div className="rounded-lg border bg-background p-3 space-y-1">
+    <div className={cn('rounded-lg border bg-background space-y-1', dense ? 'p-2' : 'p-3')}>
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Icon className="w-3.5 h-3.5" />
-        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+        <Icon className={dense ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+        <span className={cn('font-bold uppercase tracking-wider', dense ? 'text-[9px]' : 'text-[10px]')}>{label}</span>
       </div>
       {children}
     </div>
