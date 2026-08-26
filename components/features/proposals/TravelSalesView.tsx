@@ -647,13 +647,6 @@ function SaleEditor({
           <Button size="sm" disabled={saving} onClick={handleSaveClick}>
             <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
           </Button>
-          <Button
-            variant="outline" size="sm" disabled={saving}
-            onClick={() => onSave(patch(), true)}
-            title="Salvar e gerar tarefas operacionais"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
-          </Button>
           {s.contato_id && (
             <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de cancelamento">
               <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
@@ -692,7 +685,6 @@ function SaleEditor({
           <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
           <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
           <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
-          <TabsTrigger value="contratos"><FileSignature className="w-3.5 h-3.5 mr-1.5" /> Contratos</TabsTrigger>
         </TabsList>
 
         {/* ── Dados da Reserva ────────────────────────────────── */}
@@ -942,17 +934,6 @@ function SaleEditor({
           </div>
         </TabsContent>
 
-        {/* ── Contratos ───────────────────────────────────────── */}
-        <TabsContent value="contratos" className="pt-4">
-          <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <FileSignature className="w-4 h-4 text-muted-foreground" />
-              <span>Contrato</span>
-              {s.contrato_gerado_at && <Badge variant="secondary" className="text-[10px]">Gerado</Badge>}
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setContractOpen(true)}>Gerenciar</Button>
-          </div>
-        </TabsContent>
       </Tabs>
 
       <CancelTravelSaleDialog
