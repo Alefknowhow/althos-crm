@@ -94,6 +94,24 @@ function pick(input: Record<string, any>): Record<string, any> {
   return out
 }
 
+/** Nomes de operadora cadastrados em Financeiro (Configurações > Operadoras)
+ *  pro <Select> de Operadora na venda — gated por 'reservas' (não 'financial')
+ *  pra não bloquear agentes que não têm acesso ao módulo financeiro. */
+export async function listSaleOperatorOptions(orgSlug: string): Promise<string[]> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('financial_settings')
+    .select('name')
+    .eq('organization_id', org.id)
+    .eq('type', 'operadora')
+    .order('name', { ascending: true })
+  return (data ?? []).map((r: any) => r.name as string)
+}
+
 export async function listTravelSales(orgSlug: string): Promise<TravelSaleRow[]> {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

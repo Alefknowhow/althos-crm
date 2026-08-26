@@ -4,7 +4,9 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Loader2, Sparkles, FileIcon, ImageIcon, X, CheckCircle2, AlertTriangle } from 'lucide-react'
+import {
+  Upload, Loader2, Sparkles, FileIcon, ImageIcon, X, CheckCircle2, AlertTriangle,
+} from 'lucide-react'
 import { uploadSaleVoucher } from '@/actions/upload'
 import { extractTravelDocument } from '@/actions/document-extract'
 import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
@@ -27,13 +29,15 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 type ProductItem = { kind: string; label: string; sub: string; checked: boolean; ref: any }
+type PendingFile = { file: File; name: string }
 
 /**
- * Upload de voucher + OCR/IA + tela de revisão. O voucher continua sendo
- * anexado normalmente (vouchers[] da venda) — esta tela só cuida de ler os
- * dados e transformar em produtos estruturados (sale_products), sem duplicar
- * digitação. Os 3 campos financeiros continuam manuais em outro lugar da
- * tela — a extração nunca tenta inferi-los.
+ * Upload de voucher (aceita mais de um) + botão explícito "Ler dados com IA"
+ * por arquivo + tela de revisão. O voucher continua sendo anexado
+ * normalmente (vouchers[] da venda) — esta tela só cuida de ler os dados e
+ * transformar em produtos estruturados (sale_products), sem duplicar
+ * digitação. Os 3 campos financeiros continuam manuais — a extração nunca
+ * tenta inferi-los.
  */
 export default function VoucherUploadAndReview({
   orgSlug, sale, onVoucherAdded, onScalarFieldsExtracted, onProductsCreated,
@@ -46,7 +50,8 @@ export default function VoucherUploadAndReview({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-  const [extracting, setExtracting] = useState(false)
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
+  const [extractingFor, setExtractingFor] = useState<string | null>(null)
   const [extracted, setExtracted] = useState<ExtractedTravelDocument | null>(null)
   const [items, setItems] = useState<ProductItem[]>([])
   const [confirming, setConfirming] = useState(false)
@@ -54,37 +59,37 @@ export default function VoucherUploadAndReview({
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploading(true)
-    let lastFile: File | null = null
+    const newlyUploaded: PendingFile[] = []
     for (const file of Array.from(files)) {
       const fd = new FormData()
       fd.append('file', file)
       const res = await uploadSaleVoucher(orgSlug, fd)
-      if (res.ok) { onVoucherAdded({ url: res.url, name: res.name }); lastFile = file }
+      if (res.ok) { onVoucherAdded({ url: res.url, name: res.name }); newlyUploaded.push({ file, name: res.name }) }
       else toast.error(`${file.name}: ${res.error}`)
     }
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
-    if (lastFile) runExtraction(lastFile)
+    setPendingFiles(prev => [...prev, ...newlyUploaded])
   }
 
-  async function runExtraction(file: File) {
-    setExtracting(true)
+  async function runExtraction(pf: PendingFile) {
+    setExtractingFor(pf.name)
     setExtracted(null)
     try {
-      const base64 = await fileToBase64(file)
-      const res = await extractTravelDocument(orgSlug, { base64, mediaType: file.type })
+      const base64 = await fileToBase64(pf.file)
+      const res = await extractTravelDocument(orgSlug, { base64, mediaType: pf.file.type })
       if (!res.ok) { toast.error(res.error); return }
       const data: ExtractedTravelDocument = res.data
       setExtracted(data)
       const newItems: ProductItem[] = []
-      for (const v of data.voos || []) newItems.push({ kind: 'aereo', label: `✈️ ${v.companhia || 'Aéreo'}`, sub: [v.origem, v.destino].filter(Boolean).join(' → '), checked: true, ref: v })
+      for (const v of data.voos || []) newItems.push({ kind: 'aereo', label: `✈️ ${v.companhia || 'Aéreo'} (${v.sentido === 'volta' ? 'volta' : 'ida'})`, sub: [v.origem, v.destino].filter(Boolean).join(' → ') + (v.data ? ` · ${v.data}${v.horario ? ` ${v.horario}` : ''}` : ''), checked: true, ref: v })
       for (const h of data.hospedagens || []) newItems.push({ kind: 'hospedagem', label: `🏨 ${h.nome || 'Hospedagem'}`, sub: h.check_in && h.check_out ? `${h.check_in} → ${h.check_out}` : '', checked: true, ref: h })
       for (const c of data.cruzeiros || []) newItems.push({ kind: 'cruzeiro', label: `🚢 ${c.navio || c.companhia || 'Cruzeiro'}`, sub: c.roteiro || '', checked: true, ref: c })
       for (const t of data.transfers || []) newItems.push({ kind: 'transfer', label: `🚐 Transfer`, sub: [t.origem, t.destino].filter(Boolean).join(' → '), checked: true, ref: t })
       for (const s of data.seguros || []) newItems.push({ kind: 'seguro', label: `🛡️ ${s.seguradora || 'Seguro'}`, sub: s.plano || '', checked: true, ref: s })
       setItems(newItems)
     } finally {
-      setExtracting(false)
+      setExtractingFor(null)
     }
   }
 
@@ -145,26 +150,34 @@ export default function VoucherUploadAndReview({
         onChange={e => handleFiles(e.target.files)}
       />
 
-      {!extracted && !extracting && (
-        <div className="rounded-lg border-2 border-dashed p-6 text-center space-y-2">
-          <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
-          <p className="text-sm font-medium">Adicionar voucher</p>
-          <p className="text-xs text-muted-foreground">PDF, JPG ou PNG — a IA lê o documento e sugere os produtos automaticamente.</p>
-          <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
-            {uploading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</> : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Selecionar arquivo</>}
-          </Button>
+      <div className="rounded-lg border-2 border-dashed p-4 text-center space-y-2">
+        <Upload className="w-5 h-5 mx-auto text-muted-foreground" />
+        <p className="text-sm font-medium">Adicionar voucher</p>
+        <p className="text-xs text-muted-foreground">PDF, JPG ou PNG — aceita mais de um arquivo por reserva.</p>
+        <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando…</> : <><Upload className="w-3.5 h-3.5 mr-1.5" /> Selecionar arquivo</>}
+        </Button>
+      </div>
+
+      {pendingFiles.length > 0 && (
+        <div className="space-y-1.5">
+          {pendingFiles.map((pf, i) => {
+            const isPdf = /\.pdf$/i.test(pf.name)
+            const busy = extractingFor === pf.name
+            return (
+              <div key={`${pf.name}-${i}`} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
+                {isPdf ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
+                <span className="flex-1 min-w-0 truncate text-sm">{pf.name}</span>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0" disabled={busy} onClick={() => runExtraction(pf)}>
+                  {busy ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Lendo…</> : <><Sparkles className="w-3.5 h-3.5 mr-1" /> Ler dados</>}
+                </Button>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      {extracting && (
-        <div className="rounded-lg border p-6 text-center space-y-2">
-          <Loader2 className="w-5 h-5 mx-auto animate-spin text-primary" />
-          <p className="text-sm font-medium">Processando documento…</p>
-          <p className="text-xs text-muted-foreground">Lendo voucher, extraindo dados, identificando produtos.</p>
-        </div>
-      )}
-
-      {extracted && !extracting && (
+      {extracted && (
         <div className="rounded-lg border p-3 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium flex items-center gap-1.5">
@@ -185,7 +198,7 @@ export default function VoucherUploadAndReview({
             )}
           </div>
 
-          <Badge variant="outline" className="gap-1 text-[11px]">Manual: valor total, comissão e retido (preencha no card Resumo)</Badge>
+          <Badge variant="outline" className="gap-1 text-[11px]">Manual: valor total, comissão e retido</Badge>
 
           {items.length > 0 && (
             <div className="space-y-1.5 pt-2 border-t">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -28,8 +28,9 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
-  getContatoTravelerInfo, type TravelSaleRow, type FlightSegment,
+  getContatoTravelerInfo, listSaleOperatorOptions, type TravelSaleRow, type FlightSegment,
 } from '@/actions/travel-sales'
+import { listSaleProducts, createSaleProduct, deleteSaleProduct, type SaleProduct } from '@/actions/sale-products'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ContratoManagerDialog from '@/components/features/reservas/ContratoManagerDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
@@ -37,15 +38,12 @@ import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import VoucherUploadAndReview from '@/components/features/reservas/VoucherUploadAndReview'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import {
   MapPin, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane, MoreVertical, ChevronDown,
-  Package, ListTodo, FolderOpen,
+  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
+  Package, ListTodo, FolderOpen, Hotel,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -576,12 +574,19 @@ function SaleEditor({
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
   const flights: FlightSegment[] = Array.isArray(s.flights) ? s.flights : []
 
-  const [activeTab, setActiveTab] = useState('visao-geral')
+  const [activeTab, setActiveTab] = useState('produtos')
   const [productsRefreshKey, setProductsRefreshKey] = useState(0)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
   const [contractOpen, setContractOpen] = useState(false)
+  const [operatorOptions, setOperatorOptions] = useState<string[]>([])
   const router = useRouter()
+
+  useEffect(() => {
+    let cancelled = false
+    listSaleOperatorOptions(orgSlug).then(opts => { if (!cancelled) setOperatorOptions(opts) })
+    return () => { cancelled = true }
+  }, [orgSlug])
 
   function toggleIncluded(key: string) {
     set('included_items', included.includes(key)
@@ -637,58 +642,31 @@ function SaleEditor({
           </div>
         </div>
 
-        {/* Ações principais — só as mais importantes ficam expostas. */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Ações principais — visíveis, sem esconder atrás de menus. */}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           <Button size="sm" disabled={saving} onClick={handleSaveClick}>
             <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
           </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline">
-                <FolderOpen className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Documentos</span> <ChevronDown className="w-3 h-3 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
-                  <FileBadge className="w-3.5 h-3.5 mr-2" /> Gerar/ver voucher
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setContractOpen(true)}>
-                <FileSignature className="w-3.5 h-3.5 mr-2" /> Contrato
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab('documentos')}>
-                <FolderOpen className="w-3.5 h-3.5 mr-2" /> Ver todos os documentos
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="px-2">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {s.contato_id && (
-                <DropdownMenuItem onClick={() => setCreditOpen(true)}>
-                  <Wallet className="w-3.5 h-3.5 mr-2" /> Usar crédito
-                </DropdownMenuItem>
-              )}
-              {s.status === 'cliente' || s.status !== 'cancelled' ? null : null}
-              <DropdownMenuSeparator />
-              {s.status !== 'cancelled' && (
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setCancelOpen(true)}>
-                  <Ban className="w-3.5 h-3.5 mr-2" /> Cancelar reserva
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
-                <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir reserva
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
+          <Button
+            variant="outline" size="sm" disabled={saving}
+            onClick={() => onSave(patch(), true)}
+            title="Salvar e gerar tarefas operacionais"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Gerar tarefas</span>
+          </Button>
+          {s.contato_id && (
+            <Button variant="outline" size="sm" onClick={() => setCreditOpen(true)} title="Usar crédito de cancelamento">
+              <Wallet className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Usar crédito</span>
+            </Button>
+          )}
+          <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" title="Gerar voucher">
+              <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Voucher</span>
+            </Button>
+          </a>
+          <Button variant="outline" size="sm" title="Contrato" onClick={() => setContractOpen(true)}>
+            <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Contrato</span>
+          </Button>
           <ContratoManagerDialog
             orgSlug={orgSlug}
             saleId={s.id}
@@ -696,140 +674,133 @@ function SaleEditor({
             open={contractOpen}
             onOpenChange={setContractOpen}
           />
+          {s.status !== 'cancelled' && (
+            <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setCancelOpen(true)} title="Cancelar reserva">
+              <Ban className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Cancelar</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir" title="Excluir venda">
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Resumo — compacto, escaneável, sem virar formulário. */}
-      <div className="p-4 pb-0">
-        <div className="rounded-lg border p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="p-4 space-y-4">
+        {/* Voucher — primeiro item da tela: é com ele que a reserva começa. */}
+        <VoucherUploadAndReview
+          orgSlug={orgSlug}
+          sale={s}
+          onVoucherAdded={v => set('vouchers', [...vouchers, v])}
+          onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
+          onProductsCreated={() => { setProductsRefreshKey(k => k + 1); onSave(patch(), false) }}
+        />
+
+        {/* Dados da venda */}
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Cliente">
             {s.contato_id ? (
-              <Link href={`/app/${orgSlug}/contatos/${s.contato_id}`} className="text-sm font-medium text-primary hover:underline truncate block">
-                {s.client_name || 'Cliente'}
-              </Link>
-            ) : (
-              <Input className="h-8 text-sm" value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} />
-            )}
-          </Field>
-          <Field label="Destino"><Input className="h-8 text-sm" value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
-          <Field label="Data de ida"><Input className="h-8 text-sm" type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
-          <Field label="Data de volta"><Input className="h-8 text-sm" type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
-          <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
-          <Field label="Comissão">
-            <MoneyInput
-              value={s.commission_cents || 0}
-              onChange={c => {
-                set('commission_cents', c)
-                if (s.retained_commission_cents != null && s.retained_commission_cents > c) {
-                  set('retained_commission_cents', c > 0 ? c : null)
-                }
-              }}
-            />
-          </Field>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
-          <TabsTrigger value="documentos"><FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Documentos</TabsTrigger>
-        </TabsList>
-
-        {/* ── Visão geral ─────────────────────────────────────── */}
-        <TabsContent value="visao-geral" className="space-y-4 pt-4">
-          <RetainedCommissionField
-            commissionCents={s.commission_cents || 0}
-            retainedCents={s.retained_commission_cents}
-            onChange={v => set('retained_commission_cents', v)}
-          />
-
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5" /> Produtos
-              </p>
-              <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('produtos')}>ver todos</button>
-            </div>
-            <SaleProductsTab orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} />
-          </div>
-
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <ListTodo className="w-3.5 h-3.5" /> Tarefas
-              </p>
-              <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('tarefas')}>ver todas</button>
-            </div>
-            <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} compact limit={2} />
-          </div>
-
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <FolderOpen className="w-3.5 h-3.5" /> Documentos
-              </p>
-              <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('documentos')}>ver documentos</button>
-            </div>
-            {vouchers.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum documento adicionado.</p>
-            ) : (
-              <ul className="space-y-1">
-                {vouchers.slice(0, 3).map((v, i) => (
-                  <li key={`${v.url}-${i}`} className="flex items-center gap-1.5 text-xs">
-                    <CheckCircle2 className="w-3 h-3 text-success shrink-0" /> <span className="truncate">{v.name || `Documento ${i + 1}`}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Viajantes */}
-          <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5">
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-primary" />
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
-            </div>
-            <div className="space-y-2">
-              {travelers.map((t, i) => (
-                <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
-                  <div className="flex-1 min-w-[180px] space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Nome completo</Label>
-                    <Input placeholder="Nome completo" value={t.name || ''}
-                      onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
-                  </div>
-                  <div className="w-full sm:w-36 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Data de nascimento</Label>
-                    <Input type="date" value={t.birth_date || ''}
-                      onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
-                  </div>
-                  <div className="w-full sm:w-40 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">CPF</Label>
-                    <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
-                      onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
-                  </div>
-                  <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                    onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
-                </Button>
-                <TravelerFromContactPicker
-                  orgSlug={orgSlug}
-                  leads={leads}
-                  onPick={t => set('travelers', [...travelers, t])}
-                />
+              <div className="h-9 flex items-center px-3 rounded-md border bg-muted/40 text-sm justify-between gap-2">
+                <span className="truncate">{s.client_name || 'Cliente'}</span>
+                <Link href={`/app/${orgSlug}/contatos/${s.contato_id}`} className="shrink-0 text-primary hover:underline text-xs inline-flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" /> Abrir
+                </Link>
               </div>
+            ) : (
+              <Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} />
+            )}
+          </Field>
+          <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
+          <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
+          <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
+        </div>
+
+        {/* Viajantes */}
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-primary" />
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
+          </div>
+          <div className="space-y-2">
+            {travelers.map((t, i) => (
+              <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
+                <div className="flex-1 min-w-[180px] space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Nome completo</Label>
+                  <Input placeholder="Nome completo" value={t.name || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
+                </div>
+                <div className="w-full sm:w-36 space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Data de nascimento</Label>
+                  <Input type="date" value={t.birth_date || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
+                </div>
+                <div className="w-full sm:w-40 space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">CPF</Label>
+                  <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
+                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                  onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
+              </Button>
+              <TravelerFromContactPicker
+                orgSlug={orgSlug}
+                leads={leads}
+                onPick={t => set('travelers', [...travelers, t])}
+              />
             </div>
           </div>
+        </div>
 
+        {/* Itens inclusos na negociação — seleção aqui é o que aparece pra detalhar na aba Produtos */}
+        <Field label="Itens inclusos na negociação">
+          <div className="flex flex-wrap gap-1.5">
+            {INCLUDED_ITEMS.map(item => {
+              const active = included.includes(item.key)
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => toggleIncluded(item.key)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                    FOCUS_RING,
+                    active
+                      ? 'bg-success/15 text-success border-success/30'
+                      : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                  )}
+                >
+                  {active && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+
+        {included.includes('hospedagem') && (
+          <QuickHospedagensField orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} onChanged={() => setProductsRefreshKey(k => k + 1)} />
+        )}
+
+        {services.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
+          </div>
+        )}
+
+        {/* Operadora + localizador + forma de pagamento */}
+        <div className="grid gap-2.5 sm:grid-cols-3">
+          <Field label="Operadora">
+            <OperatorInput value={s.operator || ''} onChange={v => set('operator', v)} options={operatorOptions} />
+          </Field>
+          <Field label="Localizador da reserva"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
           <Field label="Forma de pagamento">
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 pt-1.5">
               {PAYMENT_METHODS.map(m => {
                 const selectedMethods = (s.payment_method || '').split(',').map((x: string) => x.trim()).filter(Boolean)
                 const active = selectedMethods.includes(m)
@@ -842,7 +813,7 @@ function SaleEditor({
                       set('payment_method', next.length ? next.join(', ') : null)
                     }}
                     className={cn(
-                      'px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                      'px-2.5 h-8 rounded-lg border text-xs font-medium transition-colors',
                       FOCUS_RING,
                       active
                         ? 'bg-primary text-primary-foreground border-primary'
@@ -855,53 +826,60 @@ function SaleEditor({
               })}
             </div>
           </Field>
+        </div>
 
-          <Field label="Itens inclusos na negociação">
-            <div className="flex flex-wrap gap-1.5">
-              {INCLUDED_ITEMS.map(item => {
-                const active = included.includes(item.key)
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => toggleIncluded(item.key)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
-                      FOCUS_RING,
-                      active
-                        ? 'bg-success/15 text-success border-success/30'
-                        : 'bg-background hover:bg-muted text-muted-foreground border-border',
-                    )}
-                  >
-                    {active && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {item.label}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
+        {/* Valores — total, comissão e retida juntos */}
+        <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+          <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">Valores</p>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
+            <Field label="Comissão">
+              <MoneyInput
+                value={s.commission_cents || 0}
+                onChange={c => {
+                  set('commission_cents', c)
+                  if (s.retained_commission_cents != null && s.retained_commission_cents > c) {
+                    set('retained_commission_cents', c > 0 ? c : null)
+                  }
+                }}
+              />
+            </Field>
+            <RetainedCommissionField
+              commissionCents={s.commission_cents || 0}
+              retainedCents={s.retained_commission_cents}
+              onChange={v => set('retained_commission_cents', v)}
+            />
+          </div>
+        </div>
 
-          {services.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
-            </div>
-          )}
+        <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
+        <Field label="Política de cancelamento">
+          <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
+            placeholder="Aparece no voucher/contrato só se preenchido." />
+        </Field>
+        <Field label="Informações importantes">
+          <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
+            placeholder="Contatos de emergência, como buscar atendimento etc." />
+        </Field>
+        <Field label="Informações de serviço">
+          <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
+            placeholder="O que está incluso, horários, condições de uso etc." />
+        </Field>
 
-          <Field label="Localizador do pacote"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
-          <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
-          <Field label="Política de cancelamento">
-            <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
-              placeholder="Aparece no voucher/contrato só se preenchido." />
-          </Field>
-          <Field label="Informações importantes">
-            <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
-              placeholder="Contatos de emergência, como buscar atendimento etc." />
-          </Field>
-          <Field label="Informações de serviço">
-            <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
-              placeholder="O que está incluso, horários, condições de uso etc." />
-          </Field>
-        </TabsContent>
+        {s.tasks_generated_at && (
+          <p className="text-xs text-success flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
+          </p>
+        )}
+      </div>
+
+      {/* Produtos / Tarefas / Documentos — geridos de forma isolada da tela principal. */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 pt-0">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
+          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
+          <TabsTrigger value="documentos"><FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Documentos</TabsTrigger>
+        </TabsList>
 
         {/* ── Produtos ────────────────────────────────────────── */}
         <TabsContent value="produtos" className="pt-4">
@@ -910,25 +888,12 @@ function SaleEditor({
 
         {/* ── Tarefas ─────────────────────────────────────────── */}
         <TabsContent value="tarefas" className="pt-4">
-          {s.tasks_generated_at && (
-            <p className="text-xs text-success flex items-center gap-1.5 mb-3">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
-            </p>
-          )}
           <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
         </TabsContent>
 
         {/* ── Documentos ──────────────────────────────────────── */}
         <TabsContent value="documentos" className="pt-4 space-y-4">
-          <VoucherUploadAndReview
-            orgSlug={orgSlug}
-            sale={s}
-            onVoucherAdded={v => set('vouchers', [...vouchers, v])}
-            onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
-            onProductsCreated={() => { setProductsRefreshKey(k => k + 1); onSave(patch(), false) }}
-          />
-
-          {vouchers.length > 0 && (
+          {vouchers.length > 0 ? (
             <div>
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Vouchers / comprovantes</p>
               <ul className="space-y-1.5">
@@ -957,6 +922,8 @@ function SaleEditor({
                 })}
               </ul>
             </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Nenhum documento adicionado — envie o voucher no topo da tela.</p>
           )}
 
           <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between">
@@ -971,7 +938,7 @@ function SaleEditor({
           <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <FileBadge className="w-4 h-4 text-muted-foreground" />
-              <span>Voucher</span>
+              <span>Voucher gerado</span>
             </div>
             <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
               <Button type="button" size="sm" variant="outline">Abrir</Button>
@@ -1000,6 +967,99 @@ function SaleEditor({
         />
       )}
     </div>
+  )
+}
+
+/** Operadora — Select com as operadoras cadastradas em Financeiro (Configurações
+ *  > Operadoras); "Outra…" abre um campo de texto livre pra quem ainda não
+ *  cadastrou lá, sem bloquear o preenchimento da venda. */
+function OperatorInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+  const [freeText, setFreeText] = useState(!!value && !options.includes(value))
+
+  if (freeText || options.length === 0) {
+    return (
+      <div className="flex gap-1.5">
+        <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" />
+        {options.length > 0 && (
+          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setFreeText(false)}>Lista</Button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Select value={value || undefined} onValueChange={v => v === '__other__' ? setFreeText(true) : onChange(v)}>
+      <SelectTrigger><SelectValue placeholder="Selecione a operadora" /></SelectTrigger>
+      <SelectContent>
+        {options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        <SelectItem value="__other__">Outra (digitar)…</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+}
+
+/** Lista rápida de hospedagens (só o nome) sincronizada direto com
+ *  sale_products (kind='hospedagem') — detalhes completos (check-in/regime/
+ *  etc.) ficam na aba Produtos; aqui é só o atalho pra não obrigar o agente
+ *  a trocar de aba pra registrar o nome do hotel. */
+function QuickHospedagensField({
+  orgSlug, saleId, refreshKey, onChanged,
+}: {
+  orgSlug: string
+  saleId: string
+  refreshKey: number
+  onChanged: () => void
+}) {
+  const [hospedagens, setHospedagens] = useState<SaleProduct[] | null>(null)
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  useEffect(() => {
+    listSaleProducts(orgSlug, saleId).then(all => setHospedagens(all.filter(p => p.kind === 'hospedagem')))
+  }, [orgSlug, saleId, refreshKey])
+
+  async function handleAdd() {
+    if (!newName.trim()) return
+    setAdding(true)
+    const res = await createSaleProduct(orgSlug, saleId, { kind: 'hospedagem', data: { hotel: newName.trim() } })
+    setAdding(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setNewName('')
+    onChanged()
+  }
+
+  async function handleRemove(id: string) {
+    setHospedagens(prev => prev?.filter(h => h.id !== id) ?? null)
+    const res = await deleteSaleProduct(orgSlug, id)
+    if (!res.ok) { toast.error(res.error); onChanged() }
+  }
+
+  return (
+    <Field label="Hospedagens">
+      <div className="space-y-1.5">
+        {(hospedagens || []).map(h => (
+          <div key={h.id} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
+            <Hotel className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span className="flex-1 min-w-0 truncate text-sm">{h.data?.hotel || '—'}</span>
+            <button type="button" onClick={() => handleRemove(h.id)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remover hospedagem">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        <div className="flex gap-1.5">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+            placeholder="Nome do hotel…"
+          />
+          <Button type="button" variant="outline" size="sm" className="shrink-0" disabled={adding} onClick={handleAdd}>
+            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Detalhes completos (check-in, regime, localizador…) na aba Produtos.</p>
+      </div>
+    </Field>
   )
 }
 
