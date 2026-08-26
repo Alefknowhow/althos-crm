@@ -245,6 +245,37 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </SidebarNavLink>
         )}
 
+        {can('ofertas') && isModuleEnabled(org.niche, 'ofertas') && (
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/ofertas`}>
+              <span className="flex items-center gap-2.5">
+                <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Ofertas</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+        )}
+
+        {can('bloqueios') && isModuleEnabled(org.niche, 'bloqueios') && (
+          <SidebarNavLink href={`${base}/bloqueios`}>
+            <span className="flex items-center gap-2.5">
+              <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Bloqueios</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('documentos') && isModuleEnabled(org.niche, 'documentos_viagem') && (
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/documentos`}>
+              <span className="flex items-center gap-2.5">
+                <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Documentos</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+        )}
+
         {can('cotacoes') && isModuleEnabled(org.niche, 'cotacoes') && (
           <SidebarNavLink href={`${base}/cotacoes`}>
             <span className="flex items-center gap-2.5">
@@ -267,15 +298,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           </div>
         )}
 
-        {can('ofertas') && isModuleEnabled(org.niche, 'ofertas') && (
-          <div className="hidden md:block">
-            <SidebarNavLink href={`${base}/ofertas`}>
-              <span className="flex items-center gap-2.5">
-                <Store className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Ofertas</span>
-              </span>
-            </SidebarNavLink>
-          </div>
+        {can('reservas') && isModuleEnabled(org.niche, 'reservas') && (
+          <SidebarNavLink href={`${base}/reservas`}>
+            <span className="flex items-center gap-2.5">
+              <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Reservas</span>
+            </span>
+          </SidebarNavLink>
         )}
 
         {can('embarques') && isModuleEnabled(org.niche, 'embarques') && (
@@ -283,15 +312,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Embarques</span>
-            </span>
-          </SidebarNavLink>
-        )}
-
-        {can('bloqueios') && isModuleEnabled(org.niche, 'bloqueios') && (
-          <SidebarNavLink href={`${base}/bloqueios`}>
-            <span className="flex items-center gap-2.5">
-              <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Bloqueios</span>
             </span>
           </SidebarNavLink>
         )}
@@ -314,26 +334,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
               <span>Vendas</span>
             </span>
           </SidebarNavLink>
-        )}
-
-        {can('reservas') && isModuleEnabled(org.niche, 'reservas') && (
-          <SidebarNavLink href={`${base}/reservas`}>
-            <span className="flex items-center gap-2.5">
-              <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Reservas</span>
-            </span>
-          </SidebarNavLink>
-        )}
-
-        {can('documentos') && isModuleEnabled(org.niche, 'documentos_viagem') && (
-          <div className="hidden md:block">
-            <SidebarNavLink href={`${base}/documentos`}>
-              <span className="flex items-center gap-2.5">
-                <FileStack className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Documentos</span>
-              </span>
-            </SidebarNavLink>
-          </div>
         )}
 
         {can('calendar') && isModuleEnabled(org.niche, 'agendamentos') && (
