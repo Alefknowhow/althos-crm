@@ -9,10 +9,16 @@ export type TaskTemplateSuggestion = {
   kind: string
 }
 
+// Tarefas geradas a partir de uma reserva são sempre "dia inteiro" — sem
+// horário —, então o due_date fica ancorado em T00:00:00.000Z (mesma
+// convenção usada quando o usuário cria uma tarefa manual sem escolher
+// horário, ver combineDueDate em TasksBoard.tsx). Um horário de meio-dia
+// aqui faria a lista de tarefas mostrar "12:00" como se fosse um horário
+// real definido pelo usuário.
 function shiftDate(dateStr: string, deltaDays: number): string {
   const d = new Date(dateStr + 'T12:00:00')
   d.setDate(d.getDate() + deltaDays)
-  return d.toISOString()
+  return `${d.toISOString().slice(0, 10)}T00:00:00.000Z`
 }
 
 /**

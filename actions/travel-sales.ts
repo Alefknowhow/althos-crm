@@ -465,10 +465,14 @@ export async function createTravelSale(orgSlug: string, proposalId: string | nul
   return { ok: true as const, data: data as TravelSaleRow }
 }
 
+// Tarefas geradas automaticamente (checklist flat legado) são de dia
+// inteiro — sem horário — igual ao gerador por produto em
+// lib/reservas/task-templates.ts. Ver o comentário lá pro porquê do
+// T00:00:00.000Z em vez de T12:00:00.
 function shiftDate(dateStr: string, deltaDays: number): string {
   const d = new Date(dateStr + 'T12:00:00')
   d.setDate(d.getDate() + deltaDays)
-  return d.toISOString()
+  return `${d.toISOString().slice(0, 10)}T00:00:00.000Z`
 }
 
 /**
