@@ -574,7 +574,7 @@ function SaleEditor({
   const travelers: { name?: string; birth_date?: string; cpf?: string }[] = Array.isArray(s.travelers) ? s.travelers : []
   const flights: FlightSegment[] = Array.isArray(s.flights) ? s.flights : []
 
-  const [activeTab, setActiveTab] = useState('produtos')
+  const [activeTab, setActiveTab] = useState('dados')
   const [productsRefreshKey, setProductsRefreshKey] = useState(0)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
@@ -685,16 +685,18 @@ function SaleEditor({
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Voucher — primeiro item da tela: é com ele que a reserva começa. */}
-        <VoucherUploadAndReview
-          orgSlug={orgSlug}
-          sale={s}
-          onVoucherAdded={v => set('vouchers', [...vouchers, v])}
-          onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
-          onProductsCreated={() => { setProductsRefreshKey(k => k + 1); onSave(patch(), false) }}
-        />
+      {/* Dados da Reserva / Produtos / Tarefas / Vouchers / Contratos — abas no topo, cada uma gerida de forma isolada. */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="dados">Dados da Reserva</TabsTrigger>
+          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
+          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
+          <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
+          <TabsTrigger value="contratos"><FileSignature className="w-3.5 h-3.5 mr-1.5" /> Contratos</TabsTrigger>
+        </TabsList>
 
+        {/* ── Dados da Reserva ────────────────────────────────── */}
+        <TabsContent value="dados" className="space-y-4 pt-4">
         {/* Dados da venda */}
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Cliente">
@@ -871,15 +873,7 @@ function SaleEditor({
             <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
           </p>
         )}
-      </div>
-
-      {/* Produtos / Tarefas / Documentos — geridos de forma isolada da tela principal. */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 pt-0">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
-          <TabsTrigger value="documentos"><FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Documentos</TabsTrigger>
-        </TabsList>
+        </TabsContent>
 
         {/* ── Produtos ────────────────────────────────────────── */}
         <TabsContent value="produtos" className="pt-4">
@@ -891,41 +885,65 @@ function SaleEditor({
           <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
         </TabsContent>
 
-        {/* ── Documentos ──────────────────────────────────────── */}
-        <TabsContent value="documentos" className="pt-4 space-y-4">
-          {vouchers.length > 0 ? (
-            <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Vouchers / comprovantes</p>
-              <ul className="space-y-1.5">
-                {vouchers.map((v, i) => {
-                  const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
-                  return (
-                    <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
-                      {isPdf
-                        ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
-                        : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
-                      <a href={v.url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
-                        {v.name || `Voucher ${i + 1}`}
-                      </a>
-                      <span className="text-[10px] text-muted-foreground shrink-0">Importado pelo agente</span>
-                      <button
-                        type="button"
-                        onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        aria-label="Remover voucher"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+        {/* ── Vouchers ────────────────────────────────────────── */}
+        <TabsContent value="vouchers" className="pt-4">
+          <div className="grid gap-4 lg:grid-cols-4">
+            <div className="lg:col-span-1">
+              <VoucherUploadAndReview
+                orgSlug={orgSlug}
+                sale={s}
+                onVoucherAdded={v => set('vouchers', [...vouchers, v])}
+                onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
+                onProductsCreated={() => { setProductsRefreshKey(k => k + 1); onSave(patch(), false) }}
+              />
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Nenhum documento adicionado — envie o voucher no topo da tela.</p>
-          )}
+            <div className="lg:col-span-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Vouchers / comprovantes</p>
+              {vouchers.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {vouchers.map((v, i) => {
+                    const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
+                    return (
+                      <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                        {isPdf
+                          ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
+                          : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
+                        <a href={v.url} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
+                          {v.name || `Voucher ${i + 1}`}
+                        </a>
+                        <span className="text-[10px] text-muted-foreground shrink-0">Importado pelo agente</span>
+                        <button
+                          type="button"
+                          onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          aria-label="Remover voucher"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground border rounded-lg p-4 text-center">Nenhum voucher enviado ainda.</p>
+              )}
 
+              <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between mt-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileBadge className="w-4 h-4 text-muted-foreground" />
+                  <span>Voucher gerado (branding da agência)</span>
+                </div>
+                <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
+                  <Button type="button" size="sm" variant="outline">Abrir</Button>
+                </a>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Contratos ───────────────────────────────────────── */}
+        <TabsContent value="contratos" className="pt-4">
           <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <FileSignature className="w-4 h-4 text-muted-foreground" />
@@ -933,16 +951,6 @@ function SaleEditor({
               {s.contrato_gerado_at && <Badge variant="secondary" className="text-[10px]">Gerado</Badge>}
             </div>
             <Button type="button" size="sm" variant="outline" onClick={() => setContractOpen(true)}>Gerenciar</Button>
-          </div>
-
-          <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <FileBadge className="w-4 h-4 text-muted-foreground" />
-              <span>Voucher gerado</span>
-            </div>
-            <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
-              <Button type="button" size="sm" variant="outline">Abrir</Button>
-            </a>
           </div>
         </TabsContent>
       </Tabs>
