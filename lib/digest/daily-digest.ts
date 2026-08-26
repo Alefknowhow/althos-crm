@@ -10,6 +10,8 @@
  * vendo aí.
  */
 
+import { isTravelNiche } from '@/lib/niche'
+
 type SupabaseAny = { from: (table: string) => any }
 
 export type DigestTask = {
@@ -33,8 +35,9 @@ export type DigestData = {
   todayLabel: string
   overdueTasks: DigestTask[]
   todayTasks: DigestTask[]
-  todayTrips: DigestTrip[]
-  weekTrips: DigestTrip[]
+  /** null quando o nicho da org não é viagens — bloco de embarques nem entra no e-mail. */
+  todayTrips: DigestTrip[] | null
+  weekTrips: DigestTrip[] | null
 }
 
 /** YYYY-MM-DD no fuso de Brasília, sem depender do fuso do processo Node. */
@@ -48,9 +51,10 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export async function buildDigestData(supabase: SupabaseAny, orgId: string): Promise<DigestData> {
+export async function buildDigestData(supabase: SupabaseAny, orgId: string, niche?: string | null): Promise<DigestData> {
   const today = todayInBrazil()
   const weekEnd = addDays(today, 6)
+  const travel = isTravelNiche(niche)
 
   const [tasksRes, tripsRes] = await Promise.all([
     supabase
@@ -62,24 +66,28 @@ export async function buildDigestData(supabase: SupabaseAny, orgId: string): Pro
       .lte('due_date', `${today}T23:59:59`)
       .order('due_date', { ascending: true })
       .limit(100),
-    supabase
-      .from('travel_sales')
-      .select('id, sale_number, client_name, destination, departure_date, return_date')
-      .eq('organization_id', orgId)
-      .neq('status', 'cancelled')
-      .gte('departure_date', today)
-      .lte('departure_date', weekEnd)
-      .order('departure_date', { ascending: true })
-      .limit(200),
+    // Embarques são um conceito específico de agências de viagem
+    // (travel_sales.departure_date) — não faz sentido em outros nichos.
+    travel
+      ? supabase
+          .from('travel_sales')
+          .select('id, sale_number, client_name, destination, departure_date, return_date')
+          .eq('organization_id', orgId)
+          .neq('status', 'cancelled')
+          .gte('departure_date', today)
+          .lte('departure_date', weekEnd)
+          .order('departure_date', { ascending: true })
+          .limit(200)
+      : Promise.resolve({ data: null }),
   ])
 
   const allDueTasks: DigestTask[] = tasksRes.data ?? []
   const overdueTasks = allDueTasks.filter(t => (t.due_date || '').slice(0, 10) < today)
   const todayTasks = allDueTasks.filter(t => (t.due_date || '').slice(0, 10) === today)
 
-  const allTrips: DigestTrip[] = tripsRes.data ?? []
-  const todayTrips = allTrips.filter(t => t.departure_date === today)
-  const weekTrips = allTrips.filter(t => t.departure_date !== today)
+  const allTrips: DigestTrip[] | null = travel ? (tripsRes.data ?? []) : null
+  const todayTrips = allTrips ? allTrips.filter(t => t.departure_date === today) : null
+  const weekTrips = allTrips ? allTrips.filter(t => t.departure_date !== today) : null
 
   return {
     todayLabel: new Date(`${today}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }),
@@ -202,8 +210,8 @@ export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestDa
 
         ${section('Tarefas em atraso', '⚠️', data.overdueTasks.length, data.overdueTasks.map(t => taskRow(t, 'overdue')).join(''), 'Nenhuma tarefa atrasada — tudo em dia.')}
         ${section('Tarefas de hoje', '✅', data.todayTasks.length, data.todayTasks.map(t => taskRow(t, 'today')).join(''), 'Nenhuma tarefa prevista pra hoje.')}
-        ${section('Embarques de hoje', '✈️', data.todayTrips.length, data.todayTrips.map(tripRow).join(''), 'Nenhum embarque hoje.')}
-        ${section('Embarques da semana', '🗓️', data.weekTrips.length, data.weekTrips.map(tripRow).join(''), 'Nenhum outro embarque nos próximos 7 dias.')}
+        ${data.todayTrips ? section('Embarques de hoje', '✈️', data.todayTrips.length, data.todayTrips.map(tripRow).join(''), 'Nenhum embarque hoje.') : ''}
+        ${data.weekTrips ? section('Embarques da semana', '🗓️', data.weekTrips.length, data.weekTrips.map(tripRow).join(''), 'Nenhum outro embarque nos próximos 7 dias.') : ''}
 
         <!-- CTA -->
         <tr><td style="padding:32px;">

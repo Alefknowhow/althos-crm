@@ -15,6 +15,7 @@ interface OrgWithOwner {
   id: string
   name: string
   slug: string
+  niche: string | null
   memberships: Array<{ role: string; profiles: { email: string } | null }>
 }
 
@@ -31,7 +32,7 @@ export const dailyOwnerDigestFn = inngest.createFunction(
     const orgs: OrgWithOwner[] = await step.run('fetch-digest-orgs', async () => {
       const { data } = await admin
         .from('organizations')
-        .select('id, name, slug, org_settings!inner(digest_enabled), memberships(role, profiles(email))')
+        .select('id, name, slug, niche, org_settings!inner(digest_enabled), memberships(role, profiles(email))')
         .eq('org_settings.digest_enabled', true)
         .limit(500)
       return (data as unknown as OrgWithOwner[]) ?? []
@@ -46,8 +47,8 @@ export const dailyOwnerDigestFn = inngest.createFunction(
 
       await step.run(`send-digest-${org.id}`, async () => {
         try {
-          const data = await buildDigestData(admin, org.id)
-          const totalItems = data.overdueTasks.length + data.todayTasks.length + data.todayTrips.length + data.weekTrips.length
+          const data = await buildDigestData(admin, org.id, org.niche)
+          const totalItems = data.overdueTasks.length + data.todayTasks.length + (data.todayTrips?.length ?? 0) + (data.weekTrips?.length ?? 0)
           const subject = data.overdueTasks.length > 0
             ? `⚠️ ${data.overdueTasks.length} tarefa(s) em atraso — resumo de hoje`
             : `☀️ Seu resumo de hoje — ${totalItems} item(ns)`

@@ -42,7 +42,7 @@ export async function previewDailyDigest(orgSlug: string) {
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
-  const data = await buildDigestData(supabase, org.id)
+  const data = await buildDigestData(supabase, org.id, (org as any).niche)
   const html = buildDigestHtml(org.name, orgSlug, data)
   return { ok: true as const, html }
 }
