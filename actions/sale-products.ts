@@ -140,13 +140,25 @@ export async function bulkCreateSaleProductsFromExtraction(
   const rows: { organization_id: string; sale_id: string; kind: SaleProductKind; status: 'pending'; sort_order: number; data: Record<string, any> }[] = []
   let i = 0
 
-  for (const v of extracted.voos || []) {
+  // Agrupa os trechos por sentido — cada conexão não vira um "voo"
+  // separado, vira um trecho dentro do voo de ida ou do voo de volta.
+  const voos = extracted.voos || []
+  const idaLegs = voos.filter(v => v.sentido !== 'volta')
+  const voltaLegs = voos.filter(v => v.sentido === 'volta')
+  for (const [sentido, legs] of [['ida', idaLegs], ['volta', voltaLegs]] as const) {
+    if (legs.length === 0) continue
+    const first = legs[0]
+    const last = legs[legs.length - 1]
     rows.push({
       organization_id: org.id, sale_id: saleId, kind: 'aereo', status: 'pending', sort_order: i++,
       data: {
-        companhia: v.companhia || null, numero_voo: v.numero || null, data: v.data || null,
-        origem: v.origem || null, destino: v.destino || null, horario: v.horario || null,
-        sentido: v.sentido || null, localizador: extracted.localizador_aereo || null,
+        companhia: first.companhia || null, numero_voo: first.numero || null, data: first.data || null,
+        origem: first.origem || null, destino: last.destino || null, horario: first.horario || null,
+        sentido, localizador: extracted.localizador_aereo || null,
+        legs: legs.map(l => ({
+          companhia: l.companhia || null, numero: l.numero || null, data: l.data || null,
+          origem: l.origem || null, destino: l.destino || null, horario: l.horario || null,
+        })),
       },
     })
   }

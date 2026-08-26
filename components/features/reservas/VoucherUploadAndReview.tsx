@@ -82,12 +82,34 @@ export default function VoucherUploadAndReview({
       const data: ExtractedTravelDocument = res.data
       setExtracted(data)
       const newItems: ProductItem[] = []
-      for (const v of data.voos || []) newItems.push({ kind: 'aereo', label: `✈️ ${v.companhia || 'Aéreo'} (${v.sentido === 'volta' ? 'volta' : 'ida'})`, sub: [v.origem, v.destino].filter(Boolean).join(' → ') + (v.data ? ` · ${v.data}${v.horario ? ` ${v.horario}` : ''}` : ''), checked: true, ref: v })
+
+      // Agrupa os trechos por sentido (ida/volta) — cada conexão do voucher
+      // não vira um voo à parte, vira um trecho dentro do voo de ida/volta.
+      const voos = data.voos || []
+      const idaLegs = voos.filter(v => v.sentido !== 'volta')
+      const voltaLegs = voos.filter(v => v.sentido === 'volta')
+      for (const [sentido, legs] of [['ida', idaLegs], ['volta', voltaLegs]] as const) {
+        if (legs.length === 0) continue
+        const stops = [legs[0].origem, ...legs.map(l => l.destino)].filter(Boolean)
+        newItems.push({
+          kind: 'aereo',
+          label: `✈️ ${legs[0].companhia || 'Aéreo'} (${sentido})`,
+          sub: `${stops.join(' → ')}${legs.length > 1 ? ` · ${legs.length - 1} conexão${legs.length > 2 ? 'ões' : ''}` : ''}${legs[0].data ? ` · ${legs[0].data}` : ''}`,
+          checked: true,
+          ref: legs,
+        })
+      }
+
       for (const h of data.hospedagens || []) newItems.push({ kind: 'hospedagem', label: `🏨 ${h.nome || 'Hospedagem'}`, sub: h.check_in && h.check_out ? `${h.check_in} → ${h.check_out}` : '', checked: true, ref: h })
       for (const c of data.cruzeiros || []) newItems.push({ kind: 'cruzeiro', label: `🚢 ${c.navio || c.companhia || 'Cruzeiro'}`, sub: c.roteiro || '', checked: true, ref: c })
       for (const t of data.transfers || []) newItems.push({ kind: 'transfer', label: `🚐 Transfer`, sub: [t.origem, t.destino].filter(Boolean).join(' → '), checked: true, ref: t })
       for (const s of data.seguros || []) newItems.push({ kind: 'seguro', label: `🛡️ ${s.seguradora || 'Seguro'}`, sub: s.plano || '', checked: true, ref: s })
       setItems(newItems)
+      if (newItems.length === 0 && !data.cliente && !data.destino) {
+        toast.warning('A IA não conseguiu identificar dados neste documento — confira se o PDF tem texto/imagem legível, ou preencha manualmente.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao ler o documento. Tente novamente ou preencha manualmente.')
     } finally {
       setExtractingFor(null)
     }
@@ -118,7 +140,10 @@ export default function VoucherUploadAndReview({
     // chamar a action em lote (que consome o shape inteiro).
     const filtered: ExtractedTravelDocument = {
       ...extracted,
-      voos: items.filter(i => i.kind === 'aereo' && i.checked).map(i => i.ref),
+      // Cada item de aéreo marcado guarda o grupo inteiro de trechos
+      // (ida OU volta) — achata de volta pra lista de trechos que
+      // bulkCreateSaleProductsFromExtraction reagrupa por sentido.
+      voos: items.filter(i => i.kind === 'aereo' && i.checked).flatMap(i => i.ref),
       hospedagens: items.filter(i => i.kind === 'hospedagem' && i.checked).map(i => i.ref),
       cruzeiros: items.filter(i => i.kind === 'cruzeiro' && i.checked).map(i => i.ref),
       transfers: items.filter(i => i.kind === 'transfer' && i.checked).map(i => i.ref),

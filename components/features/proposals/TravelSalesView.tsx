@@ -682,9 +682,9 @@ function SaleEditor({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="dados">Dados da Reserva</TabsTrigger>
-          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
           <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
+          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
+          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
         </TabsList>
 
         {/* ── Dados da Reserva ────────────────────────────────── */}

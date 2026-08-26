@@ -27,12 +27,19 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
   switch (kind) {
     case 'aereo':
       return {
-        title: data.companhia || 'Companhia não informada',
-        lines: [
-          [data.origem, data.destino].filter(Boolean).join(' → '),
-          fmtDate(data.data),
-          data.localizador ? `Localizador: ${data.localizador}` : null,
-        ].filter(Boolean) as string[],
+        title: `${data.companhia || 'Companhia não informada'}${data.sentido ? ` (${data.sentido})` : ''}`,
+        lines: Array.isArray(data.legs) && data.legs.length > 1
+          ? [
+              [data.legs[0]?.origem, ...data.legs.map((l: any) => l.destino)].filter(Boolean).join(' → '),
+              `${data.legs.length - 1} conexão${data.legs.length > 2 ? 'ões' : ''}`,
+              fmtDate(data.data),
+              data.localizador ? `Localizador: ${data.localizador}` : null,
+            ].filter(Boolean) as string[]
+          : [
+              [data.origem, data.destino].filter(Boolean).join(' → '),
+              fmtDate(data.data),
+              data.localizador ? `Localizador: ${data.localizador}` : null,
+            ].filter(Boolean) as string[],
       }
     case 'hospedagem':
       return {
