@@ -41,16 +41,22 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
               data.localizador ? `Localizador: ${data.localizador}` : null,
             ].filter(Boolean) as string[],
       }
-    case 'hospedagem':
+    case 'hospedagem': {
+      const nights = data.check_in && data.check_out
+        ? Math.round((new Date(`${data.check_out}T12:00:00`).getTime() - new Date(`${data.check_in}T12:00:00`).getTime()) / 86400000)
+        : null
       return {
         title: data.hotel || 'Hotel não informado',
         lines: [
-          data.check_in && data.check_out ? `${fmtDate(data.check_in)} → ${fmtDate(data.check_out)}` : null,
-          data.tipo_quarto || null,
-          data.regime || null,
+          data.check_in && data.check_out
+            ? `${fmtDate(data.check_in)}${data.hora_checkin ? ` ${data.hora_checkin}` : ''} → ${fmtDate(data.check_out)}${data.hora_checkout ? ` ${data.hora_checkout}` : ''}${nights && nights > 0 ? ` · ${nights} diária${nights > 1 ? 's' : ''}` : ''}`
+            : null,
+          [data.tipo_quarto, data.regime].filter(Boolean).join(' · ') || null,
           data.localizador ? `Localizador: ${data.localizador}` : null,
+          data.telefone || data.endereco ? [data.telefone, data.endereco].filter(Boolean).join(' · ') : null,
         ].filter(Boolean) as string[],
       }
+    }
     case 'transfer':
       return {
         title: data.fornecedor || 'Transfer',

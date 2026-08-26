@@ -30,17 +30,15 @@ export default async function VoucherPrintPage({
   const { listSaleProducts } = await import('@/actions/sale-products')
   const products = await listSaleProducts(params.orgSlug, params.saleId)
   const aereos = products.filter(p => p.kind === 'aereo')
+  const hospedagens = products.filter(p => p.kind === 'hospedagem')
   if (products.length > 0) {
     if (aereos.length > 0) {
       if (!sale.airline) sale.airline = aereos[0].data?.companhia ?? null
       if (!sale.air_locator) sale.air_locator = aereos[0].data?.localizador ?? null
     }
-    if (!sale.hotel_name) {
-      const hospedagem = products.find(p => p.kind === 'hospedagem')
-      if (hospedagem) {
-        sale.hotel_name = hospedagem.data?.hotel ?? null
-        if (!sale.hotel_locator) sale.hotel_locator = hospedagem.data?.localizador ?? null
-      }
+    if (!sale.hotel_name && hospedagens[0]) {
+      sale.hotel_name = hospedagens[0].data?.hotel ?? null
+      if (!sale.hotel_locator) sale.hotel_locator = hospedagens[0].data?.localizador ?? null
     }
   }
 
@@ -61,6 +59,7 @@ export default async function VoucherPrintPage({
       sale={sale}
       contato={contato}
       voos={aereos as any}
+      hospedagens={hospedagens as any}
       org={{
         name: org.name,
         logo_url: (org as any).logo_url ?? null,

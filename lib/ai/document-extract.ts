@@ -66,6 +66,19 @@ export type ExtractedTravelDocument = {
     check_out: string | null
     categoria_quarto: string | null
     regime: string | null
+    /** Código localizador da reserva do hotel, ex.: "RES12345". */
+    localizador: string | null
+    hora_checkin: string | null
+    hora_checkout: string | null
+    endereco: string | null
+    email: string | null
+    telefone: string | null
+    /** Nome do titular da reserva, quando informado (senão assume o cliente). */
+    titular: string | null
+    informacoes_adicionais: string | null
+    /** Política de cancelamento específica desta hospedagem (distinta da política geral do documento). */
+    politica_cancelamento: string | null
+    condicoes: string | null
   }[]
   cruzeiros: {
     companhia: string | null
@@ -187,8 +200,22 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
             check_out: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
             categoria_quarto: { type: ['string', 'null'], description: 'Ex.: "Standard", "Suíte vista mar"' },
             regime: { type: ['string', 'null'], description: 'Ex.: "Café da manhã", "All inclusive"' },
+            localizador: { type: ['string', 'null'], description: 'Código localizador da reserva do hotel, ex.: "RES12345"' },
+            hora_checkin: { type: ['string', 'null'], description: 'Horário de check-in, ex.: "14:00"' },
+            hora_checkout: { type: ['string', 'null'], description: 'Horário de check-out, ex.: "12:00"' },
+            endereco: { type: ['string', 'null'], description: 'Endereço completo do hotel' },
+            email: { type: ['string', 'null'], description: 'E-mail de contato do hotel' },
+            telefone: { type: ['string', 'null'], description: 'Telefone de contato do hotel' },
+            titular: { type: ['string', 'null'], description: 'Nome do titular/hóspede principal da reserva, se informado' },
+            informacoes_adicionais: { type: ['string', 'null'] },
+            politica_cancelamento: { type: ['string', 'null'], description: 'Política de cancelamento específica desta hospedagem' },
+            condicoes: { type: ['string', 'null'], description: 'Condições da reserva (ex.: pagamento no local, garantia de cartão, etc.)' },
           },
-          required: ['nome', 'check_in', 'check_out', 'categoria_quarto', 'regime'],
+          required: [
+            'nome', 'check_in', 'check_out', 'categoria_quarto', 'regime', 'localizador',
+            'hora_checkin', 'hora_checkout', 'endereco', 'email', 'telefone', 'titular',
+            'informacoes_adicionais', 'politica_cancelamento', 'condicoes',
+          ],
         },
       },
       cruzeiros: {
@@ -385,6 +412,16 @@ const GEMINI_RESPONSE_SCHEMA = {
       check_out: { type: Type.STRING, nullable: true },
       categoria_quarto: { type: Type.STRING, nullable: true },
       regime: { type: Type.STRING, nullable: true },
+      localizador: { type: Type.STRING, nullable: true },
+      hora_checkin: { type: Type.STRING, nullable: true },
+      hora_checkout: { type: Type.STRING, nullable: true },
+      endereco: { type: Type.STRING, nullable: true },
+      email: { type: Type.STRING, nullable: true },
+      telefone: { type: Type.STRING, nullable: true },
+      titular: { type: Type.STRING, nullable: true },
+      informacoes_adicionais: { type: Type.STRING, nullable: true },
+      politica_cancelamento: { type: Type.STRING, nullable: true },
+      condicoes: { type: Type.STRING, nullable: true },
     }, []),
     cruzeiros: arrayField({
       companhia: { type: Type.STRING, nullable: true },
@@ -495,6 +532,16 @@ function normalizeExtractedDocument(parsed: any): ExtractedTravelDocument {
         check_out: date(h?.check_out),
         categoria_quarto: str(h?.categoria_quarto, 120),
         regime: str(h?.regime, 80),
+        localizador: str(h?.localizador, 60),
+        hora_checkin: str(h?.hora_checkin, 20),
+        hora_checkout: str(h?.hora_checkout, 20),
+        endereco: str(h?.endereco, 300),
+        email: str(h?.email, 120),
+        telefone: str(h?.telefone, 60),
+        titular: str(h?.titular, 200),
+        informacoes_adicionais: str(h?.informacoes_adicionais, 800),
+        politica_cancelamento: str(h?.politica_cancelamento, 800),
+        condicoes: str(h?.condicoes, 800),
       })).filter((h: any) => h.nome)
     : []
   const transfers = Array.isArray(parsed.transfers)

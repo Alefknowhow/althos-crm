@@ -70,7 +70,14 @@ function buildSections(data: ExtractedTravelDocument): Section[] {
       key: `hospedagem-${i}`, icon: '🏨', label: 'Hospedagem', title: h.nome || 'Hospedagem',
       sub: h.check_in && h.check_out ? `${h.check_in} → ${h.check_out}` : '',
       kind: 'hospedagem',
-      data: { hotel: h.nome || null, check_in: h.check_in || null, check_out: h.check_out || null, tipo_quarto: h.categoria_quarto || null, regime: h.regime || null },
+      data: {
+        hotel: h.nome || null, check_in: h.check_in || null, check_out: h.check_out || null,
+        tipo_quarto: h.categoria_quarto || null, regime: h.regime || null,
+        localizador: h.localizador || null, hora_checkin: h.hora_checkin || null, hora_checkout: h.hora_checkout || null,
+        endereco: h.endereco || null, email: h.email || null, telefone: h.telefone || null,
+        titular: h.titular || null, informacoes_adicionais: h.informacoes_adicionais || null,
+        politica_cancelamento: h.politica_cancelamento || null, condicoes: h.condicoes || null,
+      },
     })
   })
 

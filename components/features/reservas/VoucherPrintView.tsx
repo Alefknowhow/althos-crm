@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import {
   Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft, MessageCircle, Mail,
   Users, CalendarDays, Info, AlertTriangle, Compass, Ticket, Sparkles, Hash, Phone, Globe,
+  Backpack, Briefcase, Luggage,
 } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
@@ -42,6 +43,18 @@ type VooProduct = {
     legs?: VooLeg[]
   }
 }
+type HospedagemProduct = {
+  id: string
+  data: {
+    hotel?: string | null; localizador?: string | null
+    check_in?: string | null; check_out?: string | null
+    hora_checkin?: string | null; hora_checkout?: string | null
+    tipo_quarto?: string | null; regime?: string | null
+    endereco?: string | null; email?: string | null; telefone?: string | null
+    titular?: string | null
+    informacoes_adicionais?: string | null; politica_cancelamento?: string | null; condicoes?: string | null
+  }
+}
 
 function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
@@ -65,6 +78,39 @@ function SectionBar({ icon: Icon, title, accent }: { icon: React.ElementType; ti
   )
 }
 
+/** Interpreta o texto de franquia de bagagem ("Inclui mochila ou bolsa,
+ *  Inclui bagagem de mão, Não inclui bagagem para despachar") em 3 flags —
+ *  item não mencionado no texto também conta como não incluído (cinza). */
+function parseBaggage(text: string): { mochila: boolean; mao: boolean; despachada: boolean } {
+  const clauses = text.toLowerCase().split(/[,;]/).map(c => c.trim())
+  const flags = { mochila: false, mao: false, despachada: false }
+  for (const c of clauses) {
+    const negated = /(não|nao)\s+inclui/.test(c)
+    if (/mochila|bolsa/.test(c)) flags.mochila = !negated
+    if (/m[aã]o/.test(c)) flags.mao = !negated
+    if (/despach/.test(c)) flags.despachada = !negated
+  }
+  return flags
+}
+
+function BaggageRow({ text }: { text: string }) {
+  const flags = parseBaggage(text)
+  const items: { icon: React.ElementType; label: string; included: boolean }[] = [
+    { icon: Backpack, label: 'Mochila/bolsa', included: flags.mochila },
+    { icon: Briefcase, label: 'Bagagem de mão', included: flags.mao },
+    { icon: Luggage, label: 'Bagagem despachada', included: flags.despachada },
+  ]
+  return (
+    <div className="flex items-center gap-4 mt-2 pt-2 border-t flex-wrap">
+      {items.map(item => (
+        <span key={item.label} className={`flex items-center gap-1 text-[11px] ${item.included ? 'text-emerald-600' : 'text-gray-300'}`}>
+          <item.icon className="w-3.5 h-3.5" /> {item.label} — {item.included ? 'incluída' : 'não incluída'}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div>
@@ -74,13 +120,13 @@ function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode
   )
 }
 
-export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo; voos?: VooProduct[] }) {
+export default function VoucherPrintView({ sale, org, contato, voos = [], hospedagens = [] }: { sale: TravelSaleRow; org: OrgBranding; contato?: ContatoInfo; voos?: VooProduct[]; hospedagens?: HospedagemProduct[] }) {
   const accent = org.primary_color || '#0f62fe'
   const included: string[] = Array.isArray(sale.included_items) ? sale.included_items : []
   const services: string[] = Array.isArray(sale.services) ? sale.services : []
   const all = [...included, ...services]
   const hasVoos = voos.length > 0 || all.includes('voos') || !!sale.airline || !!sale.air_locator
-  const hasHotel = all.includes('hospedagem') || !!sale.hotel_name
+  const hasHotel = hospedagens.length > 0 || all.includes('hospedagem') || !!sale.hotel_name
   const hasTraslado = all.includes('transfer')
   const hasPasseios = all.includes('passeios')
   const hasServicos = all.includes('servicos') || all.includes('carros') || all.includes('ingressos') || all.includes('car_rental')
@@ -206,11 +252,20 @@ export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sa
                 <div className="divide-y">
                   {voos.map(v => {
                     const legs = v.data.legs && v.data.legs.length > 0 ? v.data.legs : [v.data as VooLeg]
+                    // Check-in/bilhete/bagagem valem pro bilhete inteiro (mesmo
+                    // valor repetido em cada trecho pelo OCR) — mostra uma vez
+                    // só, no cabeçalho do grupo (ida/volta) e no rodapé.
+                    const checkin = legs.find(l => l.localizador_checkin)?.localizador_checkin || v.data.localizador
+                    const bilhete = legs.find(l => l.bilhete)?.bilhete
+                    const bagagem = legs.find(l => l.bagagem)?.bagagem
                     return (
                       <div key={v.id} className="p-3 break-inside-avoid">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-x-4 gap-y-1">
                           <p className="text-[10px] uppercase tracking-wide font-bold" style={{ color: accent }}>{v.data.sentido || '—'}</p>
-                          {v.data.localizador && <p className="text-[11px] font-mono text-gray-500">Check-in: {v.data.localizador}</p>}
+                          <div className="flex items-center gap-4">
+                            {checkin && <p className="text-[11px] font-mono text-gray-500">Check-in: {checkin}</p>}
+                            {bilhete && <p className="text-[11px] font-mono text-gray-500">Bilhete: {bilhete}</p>}
+                          </div>
                         </div>
                         <div className="space-y-2.5">
                           {legs.map((leg, i) => (
@@ -226,16 +281,10 @@ export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sa
                                 <InfoRow label="Destino" value={leg.destino && (leg.hora_chegada || leg.data_chegada) ? <>{leg.destino} <span className="text-gray-400">· {leg.data_chegada ? `${fmtDate(leg.data_chegada)} ` : ''}{leg.hora_chegada || ''}</span></> : leg.destino} />
                                 <InfoRow label="Duração" value={leg.duracao} />
                               </div>
-                              {(leg.localizador_checkin || leg.bilhete || leg.bagagem) && (
-                                <div className="grid grid-cols-3 gap-3 mt-1.5">
-                                  <InfoRow label="Web check-in" value={leg.localizador_checkin} mono />
-                                  <InfoRow label="Bilhete" value={leg.bilhete} mono />
-                                  <InfoRow label="Bagagem" value={leg.bagagem} />
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>
+                        {bagagem && <BaggageRow text={bagagem} />}
                       </div>
                     )
                   })}
@@ -253,17 +302,64 @@ export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sa
           {hasHotel && (
             <div className="border rounded-md overflow-hidden break-inside-avoid">
               <SectionBar icon={Hotel} title="Hospedagem" accent={accent} />
-              {sale.hotel_locator && (
-                <div className="px-3 pt-3">
-                  <InfoRow label="Localizador" value={sale.hotel_locator} mono />
+              {hospedagens.length > 0 ? (
+                <div className="divide-y">
+                  {hospedagens.map(h => {
+                    const d = h.data
+                    const diarias = d.check_in && d.check_out
+                      ? Math.round((new Date(`${d.check_out}T12:00:00`).getTime() - new Date(`${d.check_in}T12:00:00`).getTime()) / 86400000)
+                      : null
+                    return (
+                      <div key={h.id} className="p-3 break-inside-avoid">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-semibold">{d.hotel || '—'}</p>
+                          {d.localizador && <p className="text-[11px] font-mono text-gray-500">Localizador: {d.localizador}</p>}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <InfoRow label="Check-in" value={d.check_in ? <>{fmtDate(d.check_in)}{d.hora_checkin ? ` · ${d.hora_checkin}` : ''}</> : '—'} />
+                          <InfoRow label="Check-out" value={d.check_out ? <>{fmtDate(d.check_out)}{d.hora_checkout ? ` · ${d.hora_checkout}` : ''}</> : '—'} />
+                          <InfoRow label="Diárias" value={diarias && diarias > 0 ? `${diarias} diária${diarias > 1 ? 's' : ''}` : '—'} />
+                          <InfoRow label="Titular" value={d.titular || sale.client_name} />
+                        </div>
+                        {(d.tipo_quarto || d.regime) && (
+                          <div className="grid grid-cols-2 gap-3 mt-1.5">
+                            <InfoRow label="Tipo de quarto" value={d.tipo_quarto} />
+                            <InfoRow label="Regime" value={d.regime} />
+                          </div>
+                        )}
+                        {(d.endereco || d.email || d.telefone) && (
+                          <div className="grid grid-cols-3 gap-3 mt-1.5">
+                            <InfoRow label="Endereço" value={d.endereco} />
+                            <InfoRow label="E-mail" value={d.email} />
+                            <InfoRow label="Telefone" value={d.telefone} />
+                          </div>
+                        )}
+                        {(d.informacoes_adicionais || d.politica_cancelamento || d.condicoes) && (
+                          <div className="mt-2 pt-2 border-t space-y-1">
+                            {d.informacoes_adicionais && <p className="text-[9px] text-gray-500 leading-snug"><span className="font-semibold">Informações adicionais:</span> {d.informacoes_adicionais}</p>}
+                            {d.politica_cancelamento && <p className="text-[9px] text-gray-500 leading-snug"><span className="font-semibold">Política de cancelamento:</span> {d.politica_cancelamento}</p>}
+                            {d.condicoes && <p className="text-[9px] text-gray-500 leading-snug"><span className="font-semibold">Condições da reserva:</span> {d.condicoes}</p>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
+              ) : (
+                <>
+                  {sale.hotel_locator && (
+                    <div className="px-3 pt-3">
+                      <InfoRow label="Localizador" value={sale.hotel_locator} mono />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 p-3">
+                    <InfoRow label="Hotel" value={sale.hotel_name} />
+                    <InfoRow label="Localização" value={sale.destination} />
+                    <InfoRow label="Check-in" value={fmtDate(sale.departure_date)} />
+                    <InfoRow label="Check-out" value={fmtDate(sale.return_date)} />
+                  </div>
+                </>
               )}
-              <div className="grid grid-cols-2 gap-4 p-3">
-                <InfoRow label="Hotel" value={sale.hotel_name} />
-                <InfoRow label="Localização" value={sale.destination} />
-                <InfoRow label="Check-in" value={fmtDate(sale.departure_date)} />
-                <InfoRow label="Check-out" value={fmtDate(sale.return_date)} />
-              </div>
             </div>
           )}
 
@@ -306,11 +402,12 @@ export default function VoucherPrintView({ sale, org, contato, voos = [] }: { sa
           )}
         </div>
 
-        {/* Operadora / pagamento */}
-        <div className="grid grid-cols-2 gap-4 mb-6 rounded-md border p-4 break-inside-avoid">
-          <InfoRow label="Operadora" value={sale.operator} />
-          <InfoRow label="Forma de pagamento" value={sale.payment_method} />
-        </div>
+        {/* Operadora — sem informação de pagamento no voucher */}
+        {sale.operator && (
+          <div className="mb-6 rounded-md border p-4 break-inside-avoid">
+            <InfoRow label="Operadora" value={sale.operator} />
+          </div>
+        )}
 
         {/* Política de cancelamento — bloco em destaque, igual ao modelo de referência */}
         {sale.cancellation_policy && (

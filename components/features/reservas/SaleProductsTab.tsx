@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -34,7 +36,7 @@ const KIND_OPTIONS: { value: SaleProductKind; label: string }[] = [
   { value: 'outro', label: 'Outro' },
 ]
 
-type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' }
+type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea' }
 
 const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
   aereo: [
@@ -55,13 +57,20 @@ const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
   ],
   hospedagem: [
     { key: 'hotel', label: 'Hotel' },
-    { key: 'localizador', label: 'Localizador' },
+    { key: 'localizador', label: 'Localizador (RES...)' },
+    { key: 'titular', label: 'Titular da reserva' },
     { key: 'check_in', label: 'Check-in', type: 'date' },
+    { key: 'hora_checkin', label: 'Horário do check-in' },
     { key: 'check_out', label: 'Check-out', type: 'date' },
-    { key: 'diarias', label: 'Nº de diárias' },
+    { key: 'hora_checkout', label: 'Horário do check-out' },
     { key: 'tipo_quarto', label: 'Tipo de quarto' },
     { key: 'regime', label: 'Regime' },
-    { key: 'hospedes', label: 'Hóspedes' },
+    { key: 'endereco', label: 'Endereço do hotel' },
+    { key: 'email', label: 'E-mail do hotel' },
+    { key: 'telefone', label: 'Telefone do hotel' },
+    { key: 'informacoes_adicionais', label: 'Informações adicionais', type: 'textarea' },
+    { key: 'politica_cancelamento', label: 'Política de cancelamento', type: 'textarea' },
+    { key: 'condicoes', label: 'Condições da reserva', type: 'textarea' },
   ],
   transfer: [
     { key: 'origem', label: 'Origem' },
@@ -269,13 +278,22 @@ function ProductFormDialog({
           )}
           <div className="grid grid-cols-2 gap-2.5">
             {fields.map(f => (
-              <div key={f.key} className="space-y-1.5">
+              <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
                 <Label className="text-xs">{f.label}</Label>
-                <Input
-                  type={f.type === 'date' ? 'date' : 'text'}
-                  value={data[f.key] || ''}
-                  onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                />
+                {f.type === 'textarea' ? (
+                  <Textarea
+                    rows={2}
+                    className="text-xs"
+                    value={data[f.key] || ''}
+                    onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  />
+                ) : (
+                  <Input
+                    type={f.type === 'date' ? 'date' : 'text'}
+                    value={data[f.key] || ''}
+                    onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  />
+                )}
               </div>
             ))}
           </div>
