@@ -1,5 +1,4 @@
 import { listProducts, getCategories } from '@/actions/products'
-import { listDocumentTemplates } from '@/actions/document-templates'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { isTrafficNiche } from '@/lib/niche'
 import CatalogFilters from '@/components/features/catalog/CatalogFilters'
@@ -29,7 +28,7 @@ export default async function CatalogPage({
   const org = await getCurrentOrganization(orgSlug)
   const traffic = isTrafficNiche(org.niche)
 
-  const [result, categoriesResult, documentTemplates] = await Promise.all([
+  const [result, categoriesResult] = await Promise.all([
     listProducts(orgSlug, {
       search,
       type: type === 'all' ? undefined : type,
@@ -38,7 +37,6 @@ export default async function CatalogPage({
       page,
     }),
     getCategories(orgSlug),
-    traffic ? listDocumentTemplates(orgSlug) : Promise.resolve([]),
   ])
 
   const products = result.ok ? result.data : []
@@ -58,7 +56,7 @@ export default async function CatalogPage({
       <PageHeader
         title={traffic ? 'Planos' : 'Catálogo de Produtos e Serviços'}
         hint={traffic ? 'Os planos que sua agência oferece aos clientes de tráfego.' : 'Gerencie o que você oferece aos seus clientes.'}
-        actions={<ProductDialog orgSlug={orgSlug} categories={categories} isTraffic={traffic} documentTemplates={documentTemplates} />}
+        actions={<ProductDialog orgSlug={orgSlug} categories={categories} isTraffic={traffic} />}
       />
 
       <div className="space-y-4">
@@ -80,7 +78,7 @@ export default async function CatalogPage({
         
         {products && products.length > 0 ? (
           <div className="space-y-4">
-            <CatalogSplit products={products} orgSlug={orgSlug} categories={categories} isTraffic={traffic} documentTemplates={documentTemplates} />
+            <CatalogSplit products={products} orgSlug={orgSlug} categories={categories} isTraffic={traffic} />
 
             {/* Simple Pagination */}
             {result.count && result.count > 25 && (

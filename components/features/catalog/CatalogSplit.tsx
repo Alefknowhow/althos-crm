@@ -24,10 +24,9 @@ interface CatalogSplitProps {
   orgSlug: string
   categories?: string[]
   isTraffic?: boolean
-  documentTemplates?: import('@/actions/document-templates').DocumentTemplateRow[]
 }
 
-export default function CatalogSplit({ products, orgSlug, categories, isTraffic, documentTemplates }: CatalogSplitProps) {
+export default function CatalogSplit({ products, orgSlug, categories, isTraffic }: CatalogSplitProps) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<string | null>(products[0]?.id ?? null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -129,7 +128,6 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic,
             orgSlug={orgSlug}
             categories={categories}
             isTraffic={isTraffic}
-            documentTemplates={documentTemplates}
             onBack={() => setMobileDetail(false)}
             onDuplicate={() => handleDuplicate(selected)}
             onDelete={() => setDeleteId(selected.id)}
@@ -166,13 +164,12 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic,
 }
 
 function ProductDetail({
-  product, orgSlug, categories, isTraffic, documentTemplates, onBack, onDuplicate, onDelete,
+  product, orgSlug, categories, isTraffic, onBack, onDuplicate, onDelete,
 }: {
   product: any
   orgSlug: string
   categories?: string[]
   isTraffic?: boolean
-  documentTemplates?: import('@/actions/document-templates').DocumentTemplateRow[]
   onBack: () => void
   onDuplicate: () => void
   onDelete: () => void
@@ -209,7 +206,6 @@ function ProductDetail({
           product={product}
           categories={categories}
           isTraffic={isTraffic}
-          documentTemplates={documentTemplates}
           trigger={<Button size="sm" variant="outline"><Edit className="w-4 h-4 mr-1.5" /> Editar</Button>}
         />
         <Button size="sm" variant="outline" onClick={onDuplicate}><Copy className="w-4 h-4 mr-1.5" /> Duplicar</Button>

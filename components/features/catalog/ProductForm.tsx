@@ -11,13 +11,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createProduct, updateProduct } from '@/actions/products'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { z } from 'zod'
-import type { DocumentTemplateRow } from '@/actions/document-templates'
 
 type ProductFormValues = z.infer<typeof productInputSchema>
 
@@ -26,14 +24,13 @@ interface ProductFormProps {
   initialData?: any
   onSuccess?: (data: any) => void
   categories?: string[]
-  /** Agências de Tráfego — revela campos de plano recorrente (duração +
-   *  contrato padrão do plano). Genérico o bastante pra outras verticais
-   *  usarem também, mas só exibido quando pedido explicitamente. */
+  /** Agências de Tráfego — revela o campo de plano recorrente (duração).
+   *  Genérico o bastante pra outras verticais usarem também, mas só
+   *  exibido quando pedido explicitamente. */
   isTraffic?: boolean
-  documentTemplates?: DocumentTemplateRow[]
 }
 
-export default function ProductForm({ orgSlug, initialData, onSuccess, categories = [], isTraffic, documentTemplates = [] }: ProductFormProps) {
+export default function ProductForm({ orgSlug, initialData, onSuccess, categories = [], isTraffic }: ProductFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -303,6 +300,9 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
 
             {isRecurring && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* O contrato de cada venda deste plano tem conteúdo próprio,
+                    editável direto no popup "Gerenciar contrato" — não tem
+                    mais vínculo com um modelo/template escolhido aqui. */}
                 <FormField
                   control={form.control}
                   name="duration_months"
@@ -319,41 +319,6 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
                         />
                       </FormControl>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="contract_template_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Contrato deste plano</FormLabel>
-                        <a
-                          href={`/app/${orgSlug}/documentos`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Criar/editar contratos
-                        </a>
-                      </div>
-                      <Select value={field.value || ''} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Nenhum template selecionado" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {documentTemplates.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Abre em outra aba — depois de criar/editar, volte aqui e selecione na lista.
-                      </FormDescription>
                     </FormItem>
                   )}
                 />

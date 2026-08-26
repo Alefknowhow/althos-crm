@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import ProductForm from './ProductForm'
 import { Plus } from 'lucide-react'
-import type { DocumentTemplateRow } from '@/actions/document-templates'
 
 interface ProductDialogProps {
   orgSlug: string
@@ -13,10 +12,9 @@ interface ProductDialogProps {
   trigger?: React.ReactNode
   categories?: string[]
   isTraffic?: boolean
-  documentTemplates?: DocumentTemplateRow[]
 }
 
-export default function ProductDialog({ orgSlug, product, trigger, categories, isTraffic, documentTemplates }: ProductDialogProps) {
+export default function ProductDialog({ orgSlug, product, trigger, categories, isTraffic }: ProductDialogProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -38,7 +36,6 @@ export default function ProductDialog({ orgSlug, product, trigger, categories, i
           initialData={product}
           categories={categories}
           isTraffic={isTraffic}
-          documentTemplates={documentTemplates}
           onSuccess={() => setOpen(false)}
         />
       </DialogContent>

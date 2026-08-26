@@ -263,13 +263,6 @@ export default function ContatosView({
           onClear={() => router.push(pathname)}
         />
 
-        <SavedFilterMenu
-          orgSlug={orgSlug}
-          savedFilters={savedFilters}
-          filters={filters}
-          onApply={config => router.push(buildUrl({ ...config, page: null, sel: null }))}
-        />
-
         <NewContatoDialog
           orgSlug={orgSlug}
           onCreated={id => selectRow(id)}
@@ -604,10 +597,10 @@ function DetailPanel({
   const [deleting, startDelete] = useTransition()
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
-  const [timelineOpen, setTimelineOpen] = useState(false)
+  const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [tasksOpen, setTasksOpen] = useState(false)
-  const [newTaskOpen, setNewTaskOpen] = useState(false)
+  const [timelineOpen, setTimelineOpen] = useState(false)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
