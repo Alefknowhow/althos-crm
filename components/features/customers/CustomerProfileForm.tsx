@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil, Upload, FileText, FileImage } from 'lucide-react'
 import {
   upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
-  removeContatoContactPoint, type ContatoContactPoint,
+  removeContatoContactPoint, getDocumentSignedUrl, type ContatoContactPoint,
 } from '@/actions/contatos'
 import CopyButton from '@/components/ui/copy-button'
 import CustomerDocuments, { type CustomerDoc } from '@/components/features/customers/CustomerDocuments'
@@ -33,9 +33,20 @@ const DOC_KIND_LABEL: Record<string, string> = {
   other: 'Outro',
 }
 
-/** Tira horizontal, compacta, só pra visualizar o que já foi anexado — a
- *  gestão (enviar/excluir) mora no popup "Upload de documentos". */
-function DocumentsStrip({ documents, onManage }: { documents: CustomerDoc[]; onManage: () => void }) {
+/** Tira horizontal, compacta, só pra visualizar o que já foi anexado —
+ *  clicar num arquivo abre ele direto (nova aba); a gestão (enviar/
+ *  excluir/trocar tipo) mora no popup "Gestão de documentos". */
+function DocumentsStrip({ orgSlug, documents, onManage }: { orgSlug: string; documents: CustomerDoc[]; onManage: () => void }) {
+  const [openingId, setOpeningId] = useState<string | null>(null)
+
+  async function openDoc(doc: CustomerDoc) {
+    setOpeningId(doc.id)
+    const res = await getDocumentSignedUrl(orgSlug, doc.id)
+    setOpeningId(null)
+    if (!res.ok) { toast.error((res as any).error || 'Não foi possível abrir'); return }
+    window.open(res.url, '_blank')
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {documents.length === 0 ? (
@@ -48,11 +59,18 @@ function DocumentsStrip({ documents, onManage }: { documents: CustomerDoc[]; onM
               <button
                 key={doc.id}
                 type="button"
-                onClick={onManage}
-                title={DOC_KIND_LABEL[doc.kind] || doc.kind}
-                className="shrink-0 w-14 h-14 rounded-md border bg-muted flex flex-col items-center justify-center gap-0.5 hover:border-primary/50 hover:bg-muted/70 transition-colors"
+                onClick={() => openDoc(doc)}
+                disabled={openingId === doc.id}
+                title={`Abrir ${DOC_KIND_LABEL[doc.kind] || doc.kind}`}
+                className="shrink-0 w-14 h-14 rounded-md border bg-muted flex flex-col items-center justify-center gap-0.5 hover:border-primary/50 hover:bg-muted/70 transition-colors disabled:opacity-50"
               >
-                {isImage ? <FileImage className="w-5 h-5 text-muted-foreground/60" /> : <FileText className="w-5 h-5 text-muted-foreground/60" />}
+                {openingId === doc.id ? (
+                  <Loader2 className="w-5 h-5 text-muted-foreground/60 animate-spin" />
+                ) : isImage ? (
+                  <FileImage className="w-5 h-5 text-muted-foreground/60" />
+                ) : (
+                  <FileText className="w-5 h-5 text-muted-foreground/60" />
+                )}
                 <span className="text-[8px] font-medium text-muted-foreground/80 truncate max-w-[52px]">
                   {DOC_KIND_LABEL[doc.kind] || doc.kind}
                 </span>
@@ -62,7 +80,7 @@ function DocumentsStrip({ documents, onManage }: { documents: CustomerDoc[]; onM
         </div>
       )}
       <Button type="button" size="sm" variant="outline" onClick={onManage}>
-        <Upload className="w-3.5 h-3.5 mr-1.5" /> Upload de documentos
+        <Upload className="w-3.5 h-3.5 mr-1.5" /> Gestão de documentos
       </Button>
     </div>
   )
@@ -242,7 +260,7 @@ export default function CustomerProfileForm({
   const docsDialog = (
     <Dialog open={docsDialogOpen} onOpenChange={setDocsDialogOpen}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Upload de documentos</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Gestão de documentos</DialogTitle></DialogHeader>
         <CustomerDocuments
           orgSlug={orgSlug}
           leadId={leadId}
@@ -303,7 +321,7 @@ export default function CustomerProfileForm({
           )}
           <div className="pt-2 border-t space-y-1.5">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Documentos</div>
-            <DocumentsStrip documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
+            <DocumentsStrip orgSlug={orgSlug} documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
           </div>
         </CardContent>
       </Card>
@@ -496,7 +514,7 @@ export default function CustomerProfileForm({
           </div>
 
           <div className="mt-3 pt-3 border-t border-border/60">
-            <DocumentsStrip documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
+            <DocumentsStrip orgSlug={orgSlug} documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
           </div>
         </div>
 

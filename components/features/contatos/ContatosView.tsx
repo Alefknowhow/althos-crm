@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Phone,
-  FileCheck2, Users, Wallet, CalendarClock, Tag as TagIcon, Camera, Trash2,
+  FileCheck2, Users, Wallet, CalendarClock, Camera, Trash2,
   Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2, Sparkles, History,
   CheckSquare, Mail,
 } from 'lucide-react'
@@ -711,6 +711,26 @@ function DetailPanel({
             </Select>
           </div>
         </div>
+
+        {/* Tags — visão rápida no cabeçalho, sem precisar rolar até a aba Visão geral */}
+        <div className="hidden sm:flex flex-wrap items-center justify-end gap-1.5 max-w-[45%] shrink-0">
+          {tags.map(t => (
+            <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
+              {t}
+              <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+          <Input
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+            onBlur={addTag}
+            placeholder="+ tag"
+            className="h-6 w-16 text-[11px] px-2"
+          />
+        </div>
       </div>
 
       {/* Barra de ações principais */}
@@ -858,28 +878,6 @@ function DetailPanel({
               </div>
             </div>
           )}
-
-          {/* Tags */}
-          <Field icon={TagIcon} label="Tags">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {tags.map(t => (
-                <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
-                  {t}
-                  <button type="button" onClick={() => removeTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              ))}
-              <Input
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-                onBlur={addTag}
-                placeholder="Adicionar tag…"
-                className="h-7 w-32 text-xs"
-              />
-            </div>
-          </Field>
 
           {/* Créditos de Cancelamento (Viagens) */}
           {isTravel && (
