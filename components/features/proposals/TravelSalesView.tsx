@@ -689,176 +689,181 @@ function SaleEditor({
 
         {/* ── Dados da Reserva ────────────────────────────────── */}
         <TabsContent value="dados" className="space-y-4 pt-4">
-        {/* Dados da venda */}
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Cliente">
-            {s.contato_id ? (
-              <div className="h-9 flex items-center px-3 rounded-md border bg-muted/40 text-sm justify-between gap-2">
-                <span className="truncate">{s.client_name || 'Cliente'}</span>
-                <Link href={`/app/${orgSlug}/contatos/${s.contato_id}`} className="shrink-0 text-primary hover:underline text-xs inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" /> Abrir
-                </Link>
-              </div>
-            ) : (
-              <Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} />
-            )}
-          </Field>
-          <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
-          <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
-          <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
-        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Lado esquerdo */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field label="Cliente">
+                {s.contato_id ? (
+                  <div className="h-9 flex items-center px-3 rounded-md border bg-muted/40 text-sm justify-between gap-2">
+                    <span className="truncate">{s.client_name || 'Cliente'}</span>
+                    <Link href={`/app/${orgSlug}/contatos/${s.contato_id}`} className="shrink-0 text-primary hover:underline text-xs inline-flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" /> Abrir
+                    </Link>
+                  </div>
+                ) : (
+                  <Input value={s.client_name || ''} onChange={e => set('client_name', e.target.value)} />
+                )}
+              </Field>
+              <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
+            </div>
 
-        {/* Viajantes */}
-        <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5">
-          <div className="flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-primary" />
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
-          </div>
-          <div className="space-y-2">
-            {travelers.map((t, i) => (
-              <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
-                <div className="flex-1 min-w-[180px] space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Nome completo</Label>
-                  <Input placeholder="Nome completo" value={t.name || ''}
-                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], name: e.target.value }; set('travelers', n) }} />
-                </div>
-                <div className="w-full sm:w-36 space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Data de nascimento</Label>
-                  <Input type="date" value={t.birth_date || ''}
-                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
-                </div>
-                <div className="w-full sm:w-40 space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">CPF</Label>
-                  <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
-                    onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
+              <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
+            </div>
+
+            <QuickHospedagensField orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} onChanged={() => setProductsRefreshKey(k => k + 1)} />
+
+            <Field label="Itens inclusos na negociação">
+              <div className="flex flex-wrap gap-1.5">
+                {INCLUDED_ITEMS.map(item => {
+                  const active = included.includes(item.key)
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => toggleIncluded(item.key)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+                        FOCUS_RING,
+                        active
+                          ? 'bg-success/15 text-success border-success/30'
+                          : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                      )}
+                    >
+                      {active && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      {item.label}
+                    </button>
+                  )
+                })}
               </div>
-            ))}
-            <div className="flex flex-wrap items-center gap-1.5">
+            </Field>
+
+            {services.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2.5">
+              <Field label="Operadora">
+                <OperatorInput value={s.operator || ''} onChange={v => set('operator', v)} options={operatorOptions} />
+              </Field>
+              <Field label="Localizador"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
+              <Field label="Forma de pagamento">
+                <div className="flex flex-wrap gap-1.5 pt-1.5">
+                  {PAYMENT_METHODS.map(m => {
+                    const selectedMethods = (s.payment_method || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                    const active = selectedMethods.includes(m)
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          const next = active ? selectedMethods.filter((x: string) => x !== m) : [...selectedMethods, m]
+                          set('payment_method', next.length ? next.join(', ') : null)
+                        }}
+                        className={cn(
+                          'px-2 h-8 rounded-lg border text-[11px] font-medium transition-colors',
+                          FOCUS_RING,
+                          active
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background hover:bg-muted text-muted-foreground border-border',
+                        )}
+                      >
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+            </div>
+
+            <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+              <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">Valores</p>
+              <div className="grid grid-cols-3 gap-2.5">
+                <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
+                <Field label="Comissão">
+                  <MoneyInput
+                    value={s.commission_cents || 0}
+                    onChange={c => {
+                      set('commission_cents', c)
+                      if (s.retained_commission_cents != null && s.retained_commission_cents > c) {
+                        set('retained_commission_cents', c > 0 ? c : null)
+                      }
+                    }}
+                  />
+                </Field>
+                <RetainedCommissionField
+                  commissionCents={s.commission_cents || 0}
+                  retainedCents={s.retained_commission_cents}
+                  onChange={v => set('retained_commission_cents', v)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Lado direito */}
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5 lg:min-h-[280px]">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-primary" />
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Outros viajantes indo junto</p>
+            </div>
+            <div className="space-y-2">
+              {travelers.map((t, i) => (
+                <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border bg-background/40 p-2">
+                  <div className="flex-1 min-w-[180px] space-y-1 relative">
+                    <Label className="text-[11px] text-muted-foreground">Nome completo</Label>
+                    <TravelerNameAutocomplete
+                      leads={leads}
+                      value={t.name || ''}
+                      onChangeText={v => { const n = [...travelers]; n[i] = { ...n[i], name: v }; set('travelers', n) }}
+                      onPickLead={async (leadId) => {
+                        const res = await getContatoTravelerInfo(orgSlug, leadId)
+                        if (!res.ok) { toast.error(res.error); return }
+                        const n = [...travelers]; n[i] = res.data; set('travelers', n)
+                      }}
+                    />
+                  </div>
+                  <div className="w-28 space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Nascimento</Label>
+                    <Input type="date" value={t.birth_date || ''}
+                      onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
+                  </div>
+                  <div className="w-32 space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">CPF</Label>
+                    <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
+                      onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
+                    onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
               <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
               </Button>
-              <TravelerFromContactPicker
-                orgSlug={orgSlug}
-                leads={leads}
-                onPick={t => set('travelers', [...travelers, t])}
-              />
             </div>
           </div>
         </div>
 
-        {/* Itens inclusos na negociação — seleção aqui é o que aparece pra detalhar na aba Produtos */}
-        <Field label="Itens inclusos na negociação">
-          <div className="flex flex-wrap gap-1.5">
-            {INCLUDED_ITEMS.map(item => {
-              const active = included.includes(item.key)
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => toggleIncluded(item.key)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
-                    FOCUS_RING,
-                    active
-                      ? 'bg-success/15 text-success border-success/30'
-                      : 'bg-background hover:bg-muted text-muted-foreground border-border',
-                  )}
-                >
-                  {active && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
-        </Field>
-
-        {included.includes('hospedagem') && (
-          <QuickHospedagensField orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} onChanged={() => setProductsRefreshKey(k => k + 1)} />
-        )}
-
-        {services.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {services.map(k => <Badge key={k} variant="secondary">{SERVICE_LABELS[k] || k}</Badge>)}
-          </div>
-        )}
-
-        {/* Operadora + localizador + forma de pagamento */}
-        <div className="grid gap-2.5 sm:grid-cols-3">
-          <Field label="Operadora">
-            <OperatorInput value={s.operator || ''} onChange={v => set('operator', v)} options={operatorOptions} />
+        <div className="grid gap-2.5 lg:grid-cols-2">
+          <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
+          <Field label="Informações importantes">
+            <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
+              placeholder="Contatos de emergência, como buscar atendimento etc." />
           </Field>
-          <Field label="Localizador da reserva"><Input value={s.package_locator || ''} onChange={e => set('package_locator', e.target.value)} placeholder="Ex.: PKG-12345" /></Field>
-          <Field label="Forma de pagamento">
-            <div className="flex flex-wrap gap-1.5 pt-1.5">
-              {PAYMENT_METHODS.map(m => {
-                const selectedMethods = (s.payment_method || '').split(',').map((x: string) => x.trim()).filter(Boolean)
-                const active = selectedMethods.includes(m)
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => {
-                      const next = active ? selectedMethods.filter((x: string) => x !== m) : [...selectedMethods, m]
-                      set('payment_method', next.length ? next.join(', ') : null)
-                    }}
-                    className={cn(
-                      'px-2.5 h-8 rounded-lg border text-xs font-medium transition-colors',
-                      FOCUS_RING,
-                      active
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-muted text-muted-foreground border-border',
-                    )}
-                  >
-                    {m}
-                  </button>
-                )
-              })}
-            </div>
+          <Field label="Política de cancelamento">
+            <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
+              placeholder="Aparece no voucher/contrato só se preenchido." />
+          </Field>
+          <Field label="Informações de serviço">
+            <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
+              placeholder="O que está incluso, horários, condições de uso etc." />
           </Field>
         </div>
-
-        {/* Valores — total, comissão e retida juntos */}
-        <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
-          <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">Valores</p>
-          <div className="grid gap-2.5 sm:grid-cols-3">
-            <Field label="Valor total"><MoneyInput value={s.total_cents || 0} onChange={c => set('total_cents', c)} /></Field>
-            <Field label="Comissão">
-              <MoneyInput
-                value={s.commission_cents || 0}
-                onChange={c => {
-                  set('commission_cents', c)
-                  if (s.retained_commission_cents != null && s.retained_commission_cents > c) {
-                    set('retained_commission_cents', c > 0 ? c : null)
-                  }
-                }}
-              />
-            </Field>
-            <RetainedCommissionField
-              commissionCents={s.commission_cents || 0}
-              retainedCents={s.retained_commission_cents}
-              onChange={v => set('retained_commission_cents', v)}
-            />
-          </div>
-        </div>
-
-        <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
-        <Field label="Política de cancelamento">
-          <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
-            placeholder="Aparece no voucher/contrato só se preenchido." />
-        </Field>
-        <Field label="Informações importantes">
-          <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
-            placeholder="Contatos de emergência, como buscar atendimento etc." />
-        </Field>
-        <Field label="Informações de serviço">
-          <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
-            placeholder="O que está incluso, horários, condições de uso etc." />
-        </Field>
 
         {s.tasks_generated_at && (
           <p className="text-xs text-success flex items-center gap-1.5">
@@ -920,16 +925,6 @@ function SaleEditor({
               ) : (
                 <p className="text-xs text-muted-foreground border rounded-lg p-4 text-center">Nenhum voucher enviado ainda.</p>
               )}
-
-              <div className="rounded-lg border px-3 py-2.5 flex items-center justify-between mt-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <FileBadge className="w-4 h-4 text-muted-foreground" />
-                  <span>Voucher gerado (branding da agência)</span>
-                </div>
-                <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
-                  <Button type="button" size="sm" variant="outline">Abrir</Button>
-                </a>
-              </div>
             </div>
           </div>
         </TabsContent>
@@ -1024,7 +1019,7 @@ function QuickHospedagensField({
   }
 
   return (
-    <Field label="Hospedagens">
+    <Field label="Hotel">
       <div className="space-y-1.5">
         {(hospedagens || []).map(h => (
           <div key={h.id} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
@@ -1052,54 +1047,47 @@ function QuickHospedagensField({
   )
 }
 
-/** Popover de busca em Contatos pra adicionar como viajante — puxa nome, nascimento e CPF do cadastro. */
-function TravelerFromContactPicker({
-  orgSlug, leads, onPick,
+/** Campo de nome do viajante com sugestões de Contatos conforme digita —
+ *  clicar numa sugestão auto-preenche nascimento/CPF do cadastro (substitui
+ *  o antigo botão separado "Puxar de contatos"). */
+function TravelerNameAutocomplete({
+  leads, value, onChangeText, onPickLead,
 }: {
-  orgSlug: string
   leads: LeadOption[]
-  onPick: (t: { name: string; birth_date: string; cpf: string }) => void
+  value: string
+  onChangeText: (v: string) => void
+  onPickLead: (leadId: string) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
-
-  async function handleSelect(contatoId: string) {
-    setLoadingId(contatoId)
-    const res = await getContatoTravelerInfo(orgSlug, contatoId)
-    setLoadingId(null)
-    if (!res.ok) { toast.error(res.error); return }
-    onPick(res.data)
-    setOpen(false)
-    if (!res.data.birth_date || !res.data.cpf) {
-      toast.info('Contato adicionado — complete data de nascimento/CPF se necessário.')
-    }
-  }
+  const [focused, setFocused] = useState(false)
+  const q = value.trim().toLowerCase()
+  const matches = q.length >= 2 ? leads.filter(l => l.name.toLowerCase().includes(q)).slice(0, 6) : []
+  const showSuggestions = focused && matches.length > 0
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Puxar de contatos
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Buscar contato…" />
-          <CommandList>
-            <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
-            <CommandGroup>
-              {leads.map(l => (
-                <CommandItem key={l.id} value={l.name} onSelect={() => handleSelect(l.id)} disabled={loadingId !== null}>
-                  {loadingId === l.id
-                    ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin shrink-0" />
-                    : <UserCircle2 className="w-3.5 h-3.5 mr-2 shrink-0 text-muted-foreground" />}
-                  <span className="truncate">{l.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <div className="relative">
+      <Input
+        placeholder="Nome completo"
+        value={value}
+        onChange={e => onChangeText(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+      />
+      {showSuggestions && (
+        <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-md overflow-hidden">
+          {matches.map(l => (
+            <button
+              key={l.id}
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onPickLead(l.id); setFocused(false) }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-left hover:bg-muted/60"
+            >
+              <UserCircle2 className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{l.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
