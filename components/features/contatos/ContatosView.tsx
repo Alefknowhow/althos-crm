@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
-import { cn } from '@/lib/utils'
+import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -308,7 +308,7 @@ export default function ContatosView({
                       </div>
                       <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                         <Phone className="w-3 h-3 shrink-0" />
-                        {c.phone || 'Sem telefone'}
+                        {c.phone ? formatPhoneDisplay(c.phone) : 'Sem telefone'}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -692,7 +692,7 @@ function DetailPanel({
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {c.phone && <span>{c.phone}</span>}
+            {c.phone && <span>{formatPhoneDisplay(c.phone)}</span>}
             {c.email && <span>{c.phone ? ' · ' : ''}{c.email}</span>}
             {(c.phone || c.email) && ' · '}
             Origem: {contatoSourceLabel(c.source)}
@@ -747,10 +747,8 @@ function DetailPanel({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <div className="px-1 py-1">
-              <RequalifyButton orgSlug={orgSlug} leadId={c.id} />
-            </div>
-            <DropdownMenuItem onClick={() => { setActiveTab('dados'); setDadosEditRequested(true) }}>
+            <RequalifyButton orgSlug={orgSlug} leadId={c.id} asMenuItem />
+            <DropdownMenuItem onClick={() => setDadosEditRequested(true)}>
               <Pencil className="w-3.5 h-3.5 mr-2" /> Editar dados
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -765,13 +763,22 @@ function DetailPanel({
         </DropdownMenu>
       </div>
 
+      {/* Cadastro do Cliente — sempre visível no topo, não depende de aba */}
+      <CustomerProfileForm
+        orgSlug={orgSlug}
+        leadId={c.id}
+        initial={c}
+        initialContactPoints={selected.contactPoints}
+        initialDocuments={selected.documents}
+        initialEditMode={dadosEditRequested}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
           <TabsTrigger value="atividades">Atividades</TabsTrigger>
           <TabsTrigger value="negociacoes">Negociações</TabsTrigger>
           <TabsTrigger value="compras">Compras</TabsTrigger>
-          <TabsTrigger value="dados">Dados</TabsTrigger>
         </TabsList>
 
         {/* ── Visão geral ─────────────────────────────────────────── */}
@@ -1033,17 +1040,6 @@ function DetailPanel({
           )}
         </TabsContent>
 
-        {/* ── Dados ───────────────────────────────────────────────── */}
-        <TabsContent value="dados" className="pt-4">
-          <CustomerProfileForm
-            orgSlug={orgSlug}
-            leadId={c.id}
-            initial={c}
-            initialContactPoints={selected.contactPoints}
-            initialDocuments={selected.documents}
-            initialEditMode={dadosEditRequested}
-          />
-        </TabsContent>
       </Tabs>
 
       <TaskDialog

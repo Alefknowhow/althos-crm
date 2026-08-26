@@ -11,13 +11,62 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil, Upload, FileText, FileImage } from 'lucide-react'
 import {
   upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
   removeContatoContactPoint, type ContatoContactPoint,
 } from '@/actions/contatos'
 import CopyButton from '@/components/ui/copy-button'
 import CustomerDocuments, { type CustomerDoc } from '@/components/features/customers/CustomerDocuments'
+import { formatPhoneDisplay } from '@/lib/utils'
+
+const DOC_KIND_LABEL: Record<string, string> = {
+  cpf: 'CPF',
+  rg_front: 'RG (frente)',
+  rg_back: 'RG (verso)',
+  cnh: 'CNH',
+  passport: 'Passaporte',
+  visa: 'Visto',
+  address_proof: 'Comprovante de endereço',
+  contract: 'Contrato',
+  other: 'Outro',
+}
+
+/** Tira horizontal, compacta, só pra visualizar o que já foi anexado — a
+ *  gestão (enviar/excluir) mora no popup "Upload de documentos". */
+function DocumentsStrip({ documents, onManage }: { documents: CustomerDoc[]; onManage: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {documents.length === 0 ? (
+        <span className="text-xs text-muted-foreground">Nenhum documento anexado.</span>
+      ) : (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {documents.map(doc => {
+            const isImage = (doc.mime_type || '').startsWith('image/')
+            return (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={onManage}
+                title={DOC_KIND_LABEL[doc.kind] || doc.kind}
+                className="shrink-0 w-14 h-14 rounded-md border bg-muted flex flex-col items-center justify-center gap-0.5 hover:border-primary/50 hover:bg-muted/70 transition-colors"
+              >
+                {isImage ? <FileImage className="w-5 h-5 text-muted-foreground/60" /> : <FileText className="w-5 h-5 text-muted-foreground/60" />}
+                <span className="text-[8px] font-medium text-muted-foreground/80 truncate max-w-[52px]">
+                  {DOC_KIND_LABEL[doc.kind] || doc.kind}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <Button type="button" size="sm" variant="outline" onClick={onManage}>
+        <Upload className="w-3.5 h-3.5 mr-1.5" /> Upload de documentos
+      </Button>
+    </div>
+  )
+}
 
 // Campos de digitação desta tela ganham um fundo mais escuro no dark mode
 // pra destacar visualmente a área preenchível dentro dos blocos com borda.
@@ -87,6 +136,7 @@ export default function CustomerProfileForm({
   const [saving, setSaving] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
   const [editing, setEditing] = useState(!!initialEditMode)
+  const [docsDialogOpen, setDocsDialogOpen] = useState(false)
 
   useEffect(() => {
     if (initialEditMode) setEditing(true)
@@ -187,12 +237,28 @@ export default function CustomerProfileForm({
     if (!res.ok) toast.error((res as any).error || 'Erro ao remover')
   }
 
+  // Popup de gestão de documentos — compartilhado entre a visão de leitura e
+  // a de edição (mesmo conteúdo, evita duplicar o Dialog nas duas).
+  const docsDialog = (
+    <Dialog open={docsDialogOpen} onOpenChange={setDocsDialogOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Upload de documentos</DialogTitle></DialogHeader>
+        <CustomerDocuments
+          orgSlug={orgSlug}
+          leadId={leadId}
+          profileId={leadId}
+          initialDocuments={initialDocuments}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+
   if (!editing) {
     const rows: { label: string; value: string }[] = [
       { label: 'Nome completo', value: form.name || '—' },
       { label: 'Nascimento', value: form.date_of_birth || '—' },
       { label: 'E-mail', value: form.email || '—' },
-      { label: 'Telefone', value: form.phone || '—' },
+      { label: 'Telefone', value: form.phone ? formatPhoneDisplay(form.phone) : '—' },
       { label: 'CPF', value: form.cpf || '—' },
       { label: 'RG', value: form.rg || '—' },
       { label: 'Nº do passaporte', value: form.passport_number || '—' },
@@ -206,6 +272,7 @@ export default function CustomerProfileForm({
       { label: 'Observações internas', value: form.address_notes || '—' },
     ]
     return (
+      <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
@@ -229,25 +296,24 @@ export default function CustomerProfileForm({
                 <div key={p.id} className="flex items-center gap-2 text-sm">
                   {p.kind === 'email' ? <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                   {p.label && <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{p.label}</span>}
-                  <span className="truncate">{p.value}</span>
+                  <span className="truncate">{p.kind === 'phone' ? formatPhoneDisplay(p.value) : p.value}</span>
                 </div>
               ))}
             </div>
           )}
-          <div className="pt-2 border-t">
-            <CustomerDocuments
-              orgSlug={orgSlug}
-              leadId={leadId}
-              profileId={leadId}
-              initialDocuments={initialDocuments}
-            />
+          <div className="pt-2 border-t space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Documentos</div>
+            <DocumentsStrip documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
           </div>
         </CardContent>
       </Card>
+      {docsDialog}
+      </>
     )
   }
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
@@ -430,12 +496,7 @@ export default function CustomerProfileForm({
           </div>
 
           <div className="mt-3 pt-3 border-t border-border/60">
-            <CustomerDocuments
-              orgSlug={orgSlug}
-              leadId={leadId}
-              profileId={leadId}
-              initialDocuments={initialDocuments}
-            />
+            <DocumentsStrip documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
           </div>
         </div>
 
@@ -565,5 +626,7 @@ export default function CustomerProfileForm({
         </div>
       </CardContent>
     </Card>
+    {docsDialog}
+    </>
   )
 }

@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Sparkles, Loader2 } from 'lucide-react'
 import { requestLeadQualification } from '@/actions/contatos'
 
-export default function RequalifyButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
+export default function RequalifyButton({ orgSlug, leadId, asMenuItem }: { orgSlug: string; leadId: string; asMenuItem?: boolean }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -26,6 +27,18 @@ export default function RequalifyButton({ orgSlug, leadId }: { orgSlug: string; 
     } finally {
       setLoading(false)
     }
+  }
+
+  if (asMenuItem) {
+    return (
+      <DropdownMenuItem onSelect={e => { e.preventDefault(); handle() }} disabled={loading}>
+        {loading
+          ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+          : <Sparkles className="w-3.5 h-3.5 mr-2" />
+        }
+        {loading ? 'Analisando...' : 'Score IA'}
+      </DropdownMenuItem>
+    )
   }
 
   return (
