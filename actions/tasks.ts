@@ -74,6 +74,7 @@ export type SaleTaskRow = {
   status: string
   priority: string
   due_date: string | null
+  source_product_id: string | null
 }
 
 /** Tarefas vinculadas a uma reserva específica (check-in, contatar hotel etc.). */
@@ -82,7 +83,7 @@ export async function listTasksForSale(orgSlug: string, saleId: string): Promise
   const supabase = createClient()
   const { data } = await supabase
     .from('tasks')
-    .select('id, title, status, priority, due_date')
+    .select('id, title, status, priority, due_date, source_product_id')
     .eq('organization_id', org.id)
     .eq('sale_id', saleId)
     .order('due_date', { ascending: true })

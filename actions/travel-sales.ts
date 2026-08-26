@@ -493,6 +493,19 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
     return { ok: true as const, data: s, tasksCreated: 0, alreadyGenerated: true }
   }
 
+  // Vendas com produtos estruturados geram tarefas pela tela de "Tarefas
+  // sugeridas" (por produto, ver lib/reservas/task-templates.ts) em vez do
+  // checklist flat abaixo — que fica só como fallback pra vendas legadas
+  // sem nenhum sale_product.
+  const { count: productCount } = await supabase
+    .from('sale_products')
+    .select('id', { count: 'exact', head: true })
+    .eq('sale_id', id)
+  if ((productCount || 0) > 0) {
+    revalidatePath(`/app/${orgSlug}/reservas`)
+    return { ok: true as const, data: s, tasksCreated: 0, alreadyGenerated: false, hasProducts: true }
+  }
+
   const client = s.client_name || 'cliente'
   const tasks: { title: string; description: string; due_date: string; priority: string }[] = []
 
@@ -621,4 +634,82 @@ export async function maybeCreateTravelSaleOnWon(
   } catch (err: any) {
     console.error('[maybeCreateTravelSaleOnWon] error:', err?.message)
   }
+}
+
+/**
+ * Monta as tarefas sugeridas (por produto, ver lib/reservas/task-templates.ts)
+ * pra tela de revisão — não grava nada ainda, só sugere.
+ */
+export async function getSuggestedTasksForSale(orgSlug: string, saleId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const { listSaleProducts } = await import('@/actions/sale-products')
+  const { suggestTasksForProducts } = await import('@/lib/reservas/task-templates')
+
+  const supabase = createClient()
+  const { data: sale } = await supabase
+    .from('travel_sales')
+    .select('client_name')
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+
+  const products = await listSaleProducts(orgSlug, saleId)
+  const suggestions = suggestTasksForProducts(products, (sale as any).client_name || 'cliente')
+  return { ok: true as const, suggestions }
+}
+
+/**
+ * Grava as tarefas selecionadas pelo agente na tela de "Tarefas sugeridas".
+ * Idempotência via travel_sales.tasks_generated_at, igual ao fluxo antigo.
+ */
+export async function generateTasksFromSuggestions(
+  orgSlug: string, saleId: string,
+  selected: { title: string; description: string; due_date: string; priority: string; source_product_id: string }[],
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  if (selected.length === 0) return { ok: true as const, tasksCreated: 0 }
+
+  const supabase = createClient()
+  const { data: sale } = await supabase
+    .from('travel_sales')
+    .select('contato_id')
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+
+  const { error } = await supabase.from('tasks').insert(
+    selected.map(t => ({
+      organization_id: org.id,
+      contato_id: (sale as any).contato_id,
+      sale_id: saleId,
+      source_product_id: t.source_product_id,
+      title: t.title,
+      description: t.description,
+      due_date: t.due_date,
+      priority: t.priority,
+      status: 'open',
+      created_by: user.id,
+      assigned_to: user.id,
+    }))
+  )
+  if (error) return { ok: false as const, error: error.message }
+
+  await supabase
+    .from('travel_sales')
+    .update({ tasks_generated_at: new Date().toISOString() })
+    .eq('id', saleId)
+    .eq('organization_id', org.id)
+
+  revalidatePath(`/app/${orgSlug}/reservas`)
+  revalidatePath(`/app/${orgSlug}/tarefas`)
+  return { ok: true as const, tasksCreated: selected.length }
 }

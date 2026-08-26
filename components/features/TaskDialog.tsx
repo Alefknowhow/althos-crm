@@ -66,9 +66,11 @@ interface Props {
    *  diálogo programaticamente (sem trigger próprio visível). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Vincula a tarefa criada a uma reserva (Reservas → aba Tarefas → "+ Nova tarefa"). */
+  saleId?: string
 }
 
-export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange }: Props) {
+export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange, saleId }: Props) {
   const router = useRouter()
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
@@ -106,7 +108,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
 
   async function onSubmit(values: FormValues) {
     startTrans(async () => {
-      const payload = { ...values, due_date: combineDueDate(values.due_date || '', dueTime) }
+      const payload = { ...values, due_date: combineDueDate(values.due_date || '', dueTime), ...(saleId ? { sale_id: saleId } : {}) }
       const res = await createTask(orgSlug, payload as TaskInput)
       if (!res.ok) {
         toast.error(traduzirErro(res.error, 'Erro ao criar tarefa'))

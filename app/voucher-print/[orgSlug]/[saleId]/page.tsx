@@ -22,6 +22,34 @@ export default async function VoucherPrintPage({
   const sale = await getTravelSale(params.orgSlug, params.saleId)
   if (!sale) notFound()
 
+  // Vendas criadas pelo novo fluxo (voucher → OCR → Produtos) podem não ter
+  // mais os campos flat legados (hotel_name/airline/flights) preenchidos —
+  // sintetiza a partir de sale_products só quando o campo flat está vazio,
+  // sem alterar o componente de impressão em si.
+  const { listSaleProducts } = await import('@/actions/sale-products')
+  const products = await listSaleProducts(params.orgSlug, params.saleId)
+  if (products.length > 0) {
+    if ((!sale.flights || sale.flights.length === 0)) {
+      const aereos = products.filter(p => p.kind === 'aereo')
+      if (aereos.length > 0) {
+        sale.flights = aereos.map(p => ({
+          companhia: p.data?.companhia ?? null, numero: p.data?.numero_voo ?? null, data: p.data?.data ?? null,
+          origem: p.data?.origem ?? null, destino: p.data?.destino ?? null, horario: p.data?.horario ?? null,
+          sentido: p.data?.sentido ?? null,
+        })) as any
+        if (!sale.airline) sale.airline = aereos[0].data?.companhia ?? null
+        if (!sale.air_locator) sale.air_locator = aereos[0].data?.localizador ?? null
+      }
+    }
+    if (!sale.hotel_name) {
+      const hospedagem = products.find(p => p.kind === 'hospedagem')
+      if (hospedagem) {
+        sale.hotel_name = hospedagem.data?.hotel ?? null
+        if (!sale.hotel_locator) sale.hotel_locator = hospedagem.data?.localizador ?? null
+      }
+    }
+  }
+
   let contato: { phone: string | null; email: string | null } | null = null
   if (sale.contato_id) {
     const supabase = createClient()
