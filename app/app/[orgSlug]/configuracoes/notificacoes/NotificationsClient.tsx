@@ -2,12 +2,14 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Bell, Mail, Send, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Bell, Mail, Send, CheckCircle2, XCircle, Sunrise, Eye } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import { updateNotificationPrefs } from '@/actions/notifications'
+import { updateDigestSettings, previewDailyDigest } from '@/actions/digest'
 import { sendTestEmail, sendTestPush, type EmailDiag, type PushDiag } from '@/actions/diagnostics'
 import {
   NOTIFICATION_GROUPS,
@@ -18,11 +20,38 @@ interface Props {
   orgSlug: string
   initialPrefs: NotificationPrefs
   isTravel: boolean
+  initialDigestEnabled: boolean
 }
 
-export default function NotificationsClient({ orgSlug, initialPrefs }: Props) {
+export default function NotificationsClient({ orgSlug, initialPrefs, initialDigestEnabled }: Props) {
   const [prefs, setPrefs] = useState<NotificationPrefs>(initialPrefs)
   const [pending, start] = useTransition()
+
+  // ── Resumo diário por e-mail ─────────────────────────────────────────────
+  const [digestEnabled, setDigestEnabled] = useState(initialDigestEnabled)
+  const [savingDigest, setSavingDigest] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+
+  async function toggleDigest(value: boolean) {
+    setDigestEnabled(value)
+    setSavingDigest(true)
+    const res = await updateDigestSettings(orgSlug, value)
+    setSavingDigest(false)
+    if (!res.ok) { setDigestEnabled(!value); toast.error(res.error || 'Não foi possível salvar.'); return }
+    toast.success(value ? 'Resumo diário ativado.' : 'Resumo diário desativado.')
+  }
+
+  async function openPreview() {
+    setPreviewOpen(true)
+    setLoadingPreview(true)
+    setPreviewHtml(null)
+    const res = await previewDailyDigest(orgSlug)
+    setLoadingPreview(false)
+    if (!res.ok) { toast.error(res.error || 'Não foi possível gerar o preview.'); return }
+    setPreviewHtml(res.html)
+  }
 
   // ── Diagnostics ──────────────────────────────────────────────────────────
   const [emailDiag, setEmailDiag] = useState<EmailDiag | null>(null)
@@ -163,6 +192,44 @@ export default function NotificationsClient({ orgSlug, initialPrefs }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Resumo diário por e-mail */}
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-4 pb-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <Sunrise className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <CardTitle className="text-base">Resumo diário por e-mail</CardTitle>
+            <CardDescription>
+              Todo dia às 7h, um e-mail pro dono da conta com tarefas em atraso, tarefas do dia e embarques de hoje e da semana.
+            </CardDescription>
+          </div>
+          <Switch checked={digestEnabled} onCheckedChange={toggleDigest} disabled={savingDigest} aria-label="Resumo diário por e-mail" />
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" onClick={openPreview}>
+            <Eye className="w-4 h-4 mr-2" /> Pré-visualizar
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>Pré-visualização do resumo diário</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 pt-2 h-[75vh]">
+            {loadingPreview ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Gerando preview com seus dados reais…
+              </div>
+            ) : previewHtml ? (
+              <iframe title="Preview do resumo diário" srcDoc={previewHtml} className="w-full h-full rounded-lg border" />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Category toggles */}
       {NOTIFICATION_GROUPS.map(group => (
