@@ -3,17 +3,13 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Upload, Loader2, Sparkles, FileIcon, ImageIcon, X, CheckCircle2, AlertTriangle,
-} from 'lucide-react'
+import { Upload, Loader2, Sparkles, FileIcon, ImageIcon } from 'lucide-react'
 import { uploadSaleVoucher } from '@/actions/upload'
-import { extractTravelDocument } from '@/actions/document-extract'
-import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
-import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
+import VoucherExtractDialog, { type ExtractSource } from '@/components/features/reservas/VoucherExtractDialog'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
 type Voucher = { url: string; name: string }
+type PendingFile = { file: File; name: string }
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -28,16 +24,11 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-type ProductItem = { kind: string; label: string; sub: string; checked: boolean; ref: any }
-type PendingFile = { file: File; name: string }
-
 /**
- * Upload de voucher (aceita mais de um) + botão explícito "Ler dados com IA"
- * por arquivo + tela de revisão. O voucher continua sendo anexado
- * normalmente (vouchers[] da venda) — esta tela só cuida de ler os dados e
- * transformar em produtos estruturados (sale_products), sem duplicar
- * digitação. Os 3 campos financeiros continuam manuais — a extração nunca
- * tenta inferi-los.
+ * Upload de voucher (aceita mais de um) — cada arquivo enviado ganha um
+ * botão "Ler dados" que abre o popup de revisão (VoucherExtractDialog),
+ * onde cada produto identificado (voo/hospedagem/cruzeiro/etc.) é
+ * adicionado individualmente aos Produtos da reserva.
  */
 export default function VoucherUploadAndReview({
   orgSlug, sale, onVoucherAdded, onScalarFieldsExtracted, onProductsCreated,
@@ -51,10 +42,9 @@ export default function VoucherUploadAndReview({
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
-  const [extractingFor, setExtractingFor] = useState<string | null>(null)
-  const [extracted, setExtracted] = useState<ExtractedTravelDocument | null>(null)
-  const [items, setItems] = useState<ProductItem[]>([])
-  const [confirming, setConfirming] = useState(false)
+  const [readingFor, setReadingFor] = useState<string | null>(null)
+  const [dialogSource, setDialogSource] = useState<ExtractSource | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
@@ -72,100 +62,18 @@ export default function VoucherUploadAndReview({
     setPendingFiles(prev => [...prev, ...newlyUploaded])
   }
 
-  async function runExtraction(pf: PendingFile) {
-    setExtractingFor(pf.name)
-    setExtracted(null)
+  async function handleReadData(pf: PendingFile) {
+    setReadingFor(pf.name)
     try {
       const base64 = await fileToBase64(pf.file)
-      const res = await extractTravelDocument(orgSlug, { base64, mediaType: pf.file.type })
-      if (!res.ok) { toast.error(res.error); return }
-      const data: ExtractedTravelDocument = res.data
-      setExtracted(data)
-      const newItems: ProductItem[] = []
-
-      // Agrupa os trechos por sentido (ida/volta) — cada conexão do voucher
-      // não vira um voo à parte, vira um trecho dentro do voo de ida/volta.
-      const voos = data.voos || []
-      const idaLegs = voos.filter(v => v.sentido !== 'volta')
-      const voltaLegs = voos.filter(v => v.sentido === 'volta')
-      for (const [sentido, legs] of [['ida', idaLegs], ['volta', voltaLegs]] as const) {
-        if (legs.length === 0) continue
-        const stops = [
-          legs[0].origem_codigo || legs[0].origem,
-          ...legs.map(l => l.destino_codigo || l.destino),
-        ].filter(Boolean)
-        newItems.push({
-          kind: 'aereo',
-          label: `✈️ ${legs[0].companhia || 'Aéreo'} (${sentido})`,
-          sub: `${stops.join(' → ')}${legs.length > 1 ? ` · ${legs.length - 1} conexão${legs.length > 2 ? 'ões' : ''}` : ''}${legs[0].data ? ` · ${legs[0].data}` : ''}`,
-          checked: true,
-          ref: legs,
-        })
-      }
-
-      for (const h of data.hospedagens || []) newItems.push({ kind: 'hospedagem', label: `🏨 ${h.nome || 'Hospedagem'}`, sub: h.check_in && h.check_out ? `${h.check_in} → ${h.check_out}` : '', checked: true, ref: h })
-      for (const c of data.cruzeiros || []) newItems.push({ kind: 'cruzeiro', label: `🚢 ${c.navio || c.companhia || 'Cruzeiro'}`, sub: c.roteiro || '', checked: true, ref: c })
-      for (const t of data.transfers || []) newItems.push({ kind: 'transfer', label: `🚐 Transfer`, sub: [t.origem, t.destino].filter(Boolean).join(' → '), checked: true, ref: t })
-      for (const s of data.seguros || []) newItems.push({ kind: 'seguro', label: `🛡️ ${s.seguradora || 'Seguro'}`, sub: s.plano || '', checked: true, ref: s })
-      setItems(newItems)
-      if (newItems.length === 0 && !data.cliente && !data.destino) {
-        toast.warning('A IA não conseguiu identificar dados neste documento — confira se o PDF tem texto/imagem legível, ou preencha manualmente.')
-      }
+      setDialogSource({ base64, mediaType: pf.file.type })
+      setDialogOpen(true)
     } catch (err: any) {
-      toast.error(err?.message || 'Falha ao ler o documento. Tente novamente ou preencha manualmente.')
+      toast.error(err?.message || 'Falha ao ler o arquivo.')
     } finally {
-      setExtractingFor(null)
+      setReadingFor(null)
     }
   }
-
-  function toggleItem(i: number) {
-    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, checked: !it.checked } : it))
-  }
-
-  async function handleConfirm() {
-    if (!extracted) return
-    setConfirming(true)
-
-    const scalarPatch: Record<string, any> = {}
-    if (extracted.cliente) scalarPatch.client_name = sale.client_name || extracted.cliente
-    if (extracted.destino) scalarPatch.destination = extracted.destino
-    if (extracted.operadora) scalarPatch.operator = extracted.operadora
-    if (extracted.localizador_pacote) scalarPatch.package_locator = extracted.localizador_pacote
-    if (extracted.localizador_aereo) scalarPatch.air_locator = extracted.localizador_aereo
-    if (extracted.data_ida) scalarPatch.departure_date = extracted.data_ida
-    if (extracted.data_volta) scalarPatch.return_date = extracted.data_volta
-    if (extracted.politica_cancelamento) scalarPatch.cancellation_policy = extracted.politica_cancelamento
-    if (extracted.informacoes_importantes) scalarPatch.important_info = extracted.informacoes_importantes
-    if (extracted.informacoes_servico) scalarPatch.service_info = extracted.informacoes_servico
-    onScalarFieldsExtracted(scalarPatch)
-
-    // Só cria produtos dos itens marcados — filtra o documento antes de
-    // chamar a action em lote (que consome o shape inteiro).
-    const filtered: ExtractedTravelDocument = {
-      ...extracted,
-      // Cada item de aéreo marcado guarda o grupo inteiro de trechos
-      // (ida OU volta) — achata de volta pra lista de trechos que
-      // bulkCreateSaleProductsFromExtraction reagrupa por sentido.
-      voos: items.filter(i => i.kind === 'aereo' && i.checked).flatMap(i => i.ref),
-      hospedagens: items.filter(i => i.kind === 'hospedagem' && i.checked).map(i => i.ref),
-      cruzeiros: items.filter(i => i.kind === 'cruzeiro' && i.checked).map(i => i.ref),
-      transfers: items.filter(i => i.kind === 'transfer' && i.checked).map(i => i.ref),
-      seguros: items.filter(i => i.kind === 'seguro' && i.checked).map(i => i.ref),
-    }
-
-    const res = await bulkCreateSaleProductsFromExtraction(orgSlug, sale.id, filtered)
-    setConfirming(false)
-    if (!res.ok) { toast.error(res.error); return }
-    toast.success(`${res.created} produto(s) criado(s) a partir do voucher.`)
-    setExtracted(null)
-    setItems([])
-    onProductsCreated()
-  }
-
-  const identifiedCount = extracted ? [
-    extracted.cliente, extracted.destino, extracted.operadora, extracted.localizador_pacote,
-    extracted.localizador_aereo, extracted.data_ida, extracted.data_volta,
-  ].filter(Boolean).length + items.length : 0
 
   return (
     <div className="space-y-3">
@@ -191,12 +99,12 @@ export default function VoucherUploadAndReview({
         <div className="space-y-1.5">
           {pendingFiles.map((pf, i) => {
             const isPdf = /\.pdf$/i.test(pf.name)
-            const busy = extractingFor === pf.name
+            const busy = readingFor === pf.name
             return (
               <div key={`${pf.name}-${i}`} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
                 {isPdf ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
                 <span className="flex-1 min-w-0 truncate text-sm">{pf.name}</span>
-                <Button type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0" disabled={busy} onClick={() => runExtraction(pf)}>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0" disabled={busy} onClick={() => handleReadData(pf)}>
                   {busy ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Lendo…</> : <><Sparkles className="w-3.5 h-3.5 mr-1" /> Ler dados</>}
                 </Button>
               </div>
@@ -205,49 +113,15 @@ export default function VoucherUploadAndReview({
         </div>
       )}
 
-      {extracted && (
-        <div className="rounded-lg border p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-primary" /> Dados identificados
-            </p>
-            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setExtracted(null); setItems([]) }}>
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">{identifiedCount} dado(s) identificado(s) — revise antes de confirmar.</p>
-
-          <div className="flex flex-wrap gap-1.5">
-            {extracted.cliente && <Badge variant="secondary" className="gap-1 text-[11px]"><CheckCircle2 className="w-3 h-3" /> Cliente: {extracted.cliente}</Badge>}
-            {extracted.destino && <Badge variant="secondary" className="gap-1 text-[11px]"><CheckCircle2 className="w-3 h-3" /> Destino: {extracted.destino}</Badge>}
-            {extracted.operadora && <Badge variant="secondary" className="gap-1 text-[11px]"><CheckCircle2 className="w-3 h-3" /> Operadora: {extracted.operadora}</Badge>}
-            {!extracted.data_ida && !extracted.data_volta && (
-              <Badge variant="outline" className="gap-1 text-[11px] text-amber-600 border-amber-300"><AlertTriangle className="w-3 h-3" /> Datas: revisar</Badge>
-            )}
-          </div>
-
-          <Badge variant="outline" className="gap-1 text-[11px]">Manual: valor total, comissão e retido</Badge>
-
-          {items.length > 0 && (
-            <div className="space-y-1.5 pt-2 border-t">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Produtos identificados</p>
-              {items.map((it, i) => (
-                <label key={i} className="flex items-center gap-2.5 rounded-md border px-2.5 py-1.5 cursor-pointer hover:bg-muted/40">
-                  <input type="checkbox" className="accent-primary w-4 h-4" checked={it.checked} onChange={() => toggleItem(i)} />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm truncate">{it.label}</div>
-                    {it.sub && <div className="text-[11px] text-muted-foreground truncate">{it.sub}</div>}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <Button type="button" className="w-full" disabled={confirming} onClick={handleConfirm}>
-            {confirming ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Confirmando…</> : 'Confirmar e criar produtos'}
-          </Button>
-        </div>
-      )}
+      <VoucherExtractDialog
+        orgSlug={orgSlug}
+        saleId={sale.id}
+        source={dialogSource}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onScalarFieldsExtracted={onScalarFieldsExtracted}
+        onProductCreated={onProductsCreated}
+      />
     </div>
   )
 }

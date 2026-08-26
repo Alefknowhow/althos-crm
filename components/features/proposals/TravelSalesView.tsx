@@ -37,6 +37,7 @@ import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import VoucherUploadAndReview from '@/components/features/reservas/VoucherUploadAndReview'
+import VoucherExtractDialog, { type ExtractSource } from '@/components/features/reservas/VoucherExtractDialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
@@ -580,6 +581,34 @@ function SaleEditor({
   const [creditOpen, setCreditOpen] = useState(false)
   const [contractOpen, setContractOpen] = useState(false)
   const [operatorOptions, setOperatorOptions] = useState<string[]>([])
+  const [extractSource, setExtractSource] = useState<ExtractSource | null>(null)
+  const [extractOpen, setExtractOpen] = useState(false)
+  const [extractingUrl, setExtractingUrl] = useState<string | null>(null)
+
+  async function handleExtractFromUrl(v: Voucher) {
+    setExtractingUrl(v.url)
+    try {
+      const resp = await fetch(v.url)
+      if (!resp.ok) throw new Error('Não foi possível baixar o arquivo.')
+      const blob = await resp.blob()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = String(reader.result || '')
+          const comma = result.indexOf(',')
+          resolve(comma >= 0 ? result.slice(comma + 1) : result)
+        }
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      })
+      setExtractSource({ base64, mediaType: blob.type || 'application/pdf' })
+      setExtractOpen(true)
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao ler o voucher.')
+    } finally {
+      setExtractingUrl(null)
+    }
+  }
   const router = useRouter()
 
   useEffect(() => {
@@ -909,7 +938,17 @@ function SaleEditor({
                           className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
                           {v.name || `Voucher ${i + 1}`}
                         </a>
-                        <span className="text-[10px] text-muted-foreground shrink-0">Importado pelo agente</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">Importado pelo agente</span>
+                        <Button
+                          type="button" size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                          disabled={extractingUrl === v.url}
+                          onClick={() => handleExtractFromUrl(v)}
+                        >
+                          {extractingUrl === v.url
+                            ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                            : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                          Extrair dados
+                        </Button>
                         <button
                           type="button"
                           onClick={() => set('vouchers', vouchers.filter((_, idx) => idx !== i))}
@@ -927,6 +966,16 @@ function SaleEditor({
               )}
             </div>
           </div>
+
+          <VoucherExtractDialog
+            orgSlug={orgSlug}
+            saleId={s.id}
+            source={extractSource}
+            open={extractOpen}
+            onOpenChange={setExtractOpen}
+            onScalarFieldsExtracted={fields => setS(prev => ({ ...prev, ...fields }))}
+            onProductCreated={() => setProductsRefreshKey(k => k + 1)}
+          />
         </TabsContent>
 
       </Tabs>
