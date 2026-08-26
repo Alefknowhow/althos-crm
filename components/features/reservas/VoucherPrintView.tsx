@@ -187,7 +187,7 @@ export default function VoucherPrintView({
         </div>
       </div>
 
-      <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-8 min-h-[297mm]">
+      <div className="max-w-[210mm] mx-auto bg-white text-black shadow-sm print:shadow-none p-10 print:p-0 min-h-[297mm]">
         {/* Cabeçalho da agência + caixa de referência */}
         <div className="flex items-start justify-between gap-4 border-b-2 pb-6 mb-6 break-inside-avoid" style={{ borderColor: accent }}>
           <div className="flex items-center gap-3">
@@ -547,7 +547,7 @@ export default function VoucherPrintView({
         )}
 
         {qrData && (
-          <div className="flex flex-col items-center gap-2 mt-auto pt-6">
+          <div className="flex flex-col items-center gap-2 mt-auto pt-6 break-inside-avoid">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qrData} alt="QR code de check-in" className="w-32 h-32" />
             <p className="text-[11px] text-gray-500">Aponte a câmera para acessar o check-in online</p>
@@ -569,10 +569,16 @@ export default function VoucherPrintView({
 
       <style>{`
         @media print {
-          /* Margem de segurança no fim de cada página impressa, pra
-             nenhum bloco encostar no corte físico do papel. */
-          @page { size: A4; margin: 0 0 14mm 0; }
+          /* Margens reais em todos os lados — antes só a base tinha
+             margem, topo/laterais ficavam a 0 e o conteúdo colava na
+             borda física do papel. */
+          @page { size: A4; margin: 15mm 14mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* break-inside:avoid não encolhe o bloco — só impede que ele seja
+             cortado ao meio: se não couber no espaço restante da página,
+             o navegador empurra o bloco inteiro pra próxima. Aplicado em
+             cada seção (voo/hospedagem/produto) e em cada item dentro dela,
+             pra nunca partir um card de produto ao meio. */
           .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
