@@ -1892,9 +1892,9 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
             </a>
           </Button>
         )}
-        <span className={`text-[11px] ${saveState === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-          {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? '✓ Salvo' : saveState === 'error' ? 'Erro ao salvar' : ''}
-        </span>
+        {saveState === 'error' && (
+          <span className="text-[11px] text-destructive">Erro ao salvar</span>
+        )}
         {publicUrl && (
           <>
             <Button type="button" variant="outline" size="sm" onClick={async () => {
