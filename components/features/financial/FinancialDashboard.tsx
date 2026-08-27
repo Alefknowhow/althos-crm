@@ -362,7 +362,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas segmentadas — por subcategoria</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -375,9 +375,6 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
                 <BreakdownDonut items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas por categoria (período selecionado)</CardTitle></CardHeader>
               <CardContent>
@@ -388,7 +385,6 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
                 ) : <ExpensesByCategoryChart data={data.expensesByCategory} />}
               </CardContent>
             </Card>
-
           </div>
 
           {data.alerts.length > 0 && (

@@ -2,7 +2,7 @@
 
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccess, getAccountIdForOrgSlug, getAiCreditsStatus } from '@/lib/plans/server'
-import { listInsightsSessions, createInsightsSession, listInsightsMessages } from '@/actions/ai_insights'
+import { listInsightsSessions, createInsightsSession, deleteInsightsSession, listInsightsMessages } from '@/actions/ai_insights'
 
 export type CopilotInit = {
   enabled: boolean
@@ -38,4 +38,12 @@ export async function getCopilotInit(orgSlug: string): Promise<CopilotInit> {
     messages,
     creditsRemaining: credits ? credits.available : null,
   }
+}
+
+/** Apaga a sessão atual do copiloto e abre uma nova, vazia — "Limpar conversa". */
+export async function clearCopilotConversation(orgSlug: string, sessionId: string | null) {
+  if (sessionId) await deleteInsightsSession(orgSlug, sessionId)
+  const created = await createInsightsSession(orgSlug)
+  if (!created.ok) return { ok: false as const, error: created.error }
+  return { ok: true as const, sessionId: created.sessionId }
 }

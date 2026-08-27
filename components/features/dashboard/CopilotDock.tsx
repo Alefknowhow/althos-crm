@@ -6,8 +6,8 @@ import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sparkles, Send, X, User as UserIcon, Loader2, Pin } from 'lucide-react'
-import { getCopilotInit } from '@/actions/copilot'
+import { Sparkles, Send, X, User as UserIcon, Loader2, Pin, Trash2 } from 'lucide-react'
+import { getCopilotInit, clearCopilotConversation } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
 
 const AnalyticsViewCard = dynamic(() => import('@/components/features/ai/AnalyticsViewCard'), {
@@ -138,16 +138,29 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     send(input)
   }
 
+  async function handleClearConversation() {
+    if (streaming) return
+    const res = await clearCopilotConversation(orgSlug, sessionId)
+    if (!res.ok) { toast.error('Não foi possível limpar a conversa', { description: res.error }); return }
+    setSessionId(res.sessionId)
+    setMessages([])
+    toast.success('Conversa limpa')
+  }
+
   return (
     <>
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground   flex items-center justify-center hover:opacity-90 transition-opacity"
+          title="Abrir chat IA"
+          className="group fixed bottom-6 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity"
           aria-label="Abrir copiloto IA"
         >
           <Sparkles className="w-6 h-6" />
+          <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-popover border px-2.5 py-1.5 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+            Abrir chat IA
+          </span>
         </button>
       )}
 
@@ -165,9 +178,16 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
-              <X className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Button variant="ghost" size="icon" onClick={handleClearConversation} title="Limpar conversa" aria-label="Limpar conversa">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
