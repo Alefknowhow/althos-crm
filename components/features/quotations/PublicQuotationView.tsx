@@ -49,6 +49,9 @@ export type QuotationLodging = {
   name?: string | null
   check_in?: string | null
   check_out?: string | null
+  check_in_time?: string | null
+  check_out_time?: string | null
+  star_rating?: number | null
   room_category?: string | null
   board?: string | null
   description_html?: string | null
@@ -252,6 +255,35 @@ function Rich({ html, className, onImageClick }: { html?: string | null; classNa
       } : undefined}
       style={onImageClick ? { cursor: 'default' } : undefined}
     />
+  )
+}
+
+/** Descrição de hospedagem no modal — fonte menor, corta em 4 linhas com
+ *  "ver mais" quando o texto excede isso; "ver menos" recolhe de volta. */
+function ClampedDescription({ html }: { html?: string | null }) {
+  const [expanded, setExpanded] = useState(false)
+  const [overflowing, setOverflowing] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || expanded) return
+    setOverflowing(el.scrollHeight > el.clientHeight + 2)
+  }, [html, expanded])
+
+  if (!hasHtml(html)) return null
+
+  return (
+    <div className="lodge-desc">
+      <div ref={ref} className={expanded ? 'lodge-desc-body' : 'lodge-desc-body clamped'}>
+        <Rich html={html} />
+      </div>
+      {(overflowing || expanded) && (
+        <button type="button" className="lodge-desc-toggle" onClick={() => setExpanded(v => !v)}>
+          {expanded ? 'Ver menos' : 'Ver mais'}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -478,7 +510,7 @@ export default function PublicQuotationView({
     setTimeout(async () => {
       if (mapObj.current || !mapRef.current) return
       ensureMapsOptions()
-      const [{ Map, InfoWindow }, { Marker }, { LatLngBounds, Size, Point }] = await Promise.all([
+      const [{ Map, InfoWindow }, { Marker }, { LatLngBounds, Size, Point, event }] = await Promise.all([
         importLibrary('maps') as Promise<google.maps.MapsLibrary>,
         importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
         importLibrary('core') as Promise<google.maps.CoreLibrary>,
@@ -504,8 +536,18 @@ export default function PublicQuotationView({
         }
         bounds.extend(position)
       })
-      if (pins.length > 1) map.fitBounds(bounds, 40)
-      else { map.setCenter(bounds.getCenter()); map.setZoom(12) }
+      const recenter = () => {
+        if (pins.length > 1) map.fitBounds(bounds, 40)
+        else { map.setCenter(bounds.getCenter()); map.setZoom(12) }
+      }
+      recenter()
+      // O bloco "Mapa da viagem" está dentro de um accordion retrátil — na
+      // primeira expansão, o container ainda pode estar em transição de
+      // altura quando o mapa é construído, fazendo o Google Maps calcular a
+      // viewport errada e o marcador ficar deslocado do centro real.
+      // Disparar 'resize' + recentralizar depois que a transição termina
+      // corrige isso (equivalente ao invalidateSize() do Leaflet).
+      setTimeout(() => { event.trigger(map, 'resize'); recenter() }, 300)
     }, 260)
   }, [pins])
 
@@ -534,9 +576,10 @@ export default function PublicQuotationView({
     let cancelled = false
     const timer = setTimeout(async () => {
       ensureMapsOptions()
-      const [{ Map }, { Marker }] = await Promise.all([
+      const [{ Map }, { Marker }, { event }] = await Promise.all([
         importLibrary('maps') as Promise<google.maps.MapsLibrary>,
         importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
+        importLibrary('core') as Promise<google.maps.CoreLibrary>,
       ])
       if (cancelled || !miniMapRef.current || miniMapRef.current.dataset.ready) return
       miniMapRef.current.dataset.ready = '1'
@@ -544,6 +587,10 @@ export default function PublicQuotationView({
         center: { lat, lng }, zoom: 14, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
       })
       new Marker({ position: { lat, lng }, map })
+      // O modal entra com transição de abertura — o mapa pode nascer com o
+      // container ainda no tamanho errado, deslocando o marcador do centro
+      // real. Redispara resize + recentraliza depois da transição terminar.
+      setTimeout(() => { if (!cancelled) { event.trigger(map, 'resize'); map.setCenter({ lat, lng }) } }, 300)
     }, 200)
     return () => { cancelled = true; clearTimeout(timer); if (miniMapRef.current) delete miniMapRef.current.dataset.ready }
   }, [modalLodge])
@@ -647,8 +694,20 @@ export default function PublicQuotationView({
                   )}
                   <div className="meta">
                     {l.is_alternative_option && <span className="pill gold">Opção {altLodgings.indexOf(l) + 1}</span>}
+                    {!!l.star_rating && (
+                      <span className="pill stars-pill" title={`${l.star_rating} estrela${l.star_rating > 1 ? 's' : ''}`}>
+                        {'★'.repeat(l.star_rating)}{'☆'.repeat(Math.max(0, 5 - l.star_rating))}
+                      </span>
+                    )}
                     {(l.check_in || l.check_out) && (
                       <span className="pill">{fmtDayMonth(l.check_in)} → {fmtDayMonth(l.check_out)}{ln ? ` · ${ln} noites` : ''}</span>
+                    )}
+                    {(l.check_in_time || l.check_out_time) && (
+                      <span className="pill">
+                        {l.check_in_time && `Check-in ${l.check_in_time}`}
+                        {l.check_in_time && l.check_out_time && ' · '}
+                        {l.check_out_time && `Check-out ${l.check_out_time}`}
+                      </span>
                     )}
                     {l.room_category && <span className="pill gold">{l.room_category}</span>}
                     {l.board && <span className="pill">{l.board}</span>}
@@ -1064,18 +1123,15 @@ export default function PublicQuotationView({
                   {rating > 0 && <span className="stars">{'●'.repeat(filled)}{'○'.repeat(Math.max(0, 5 - filled))}</span>}
                   {ta.reviews_count ? <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{ta.reviews_count.toLocaleString('pt-BR')} avaliações</span> : null}
                 </div>
-                {hasHtml(modalLodge.description_html) && (
-                  <div style={{ margin: '14px 0' }}><Rich html={modalLodge.description_html} /></div>
-                )}
                 {(ta.photos || []).length > 1 && (
                   <div className="mini-gal">
                     {(ta.photos || []).slice(1, 5).map((src, i) => <div key={i}><LazyImg src={src} alt="" /></div>)}
                   </div>
                 )}
+                <ClampedDescription html={modalLodge.description_html} />
                 <div ref={miniMapRef} className="mini-map" />
                 <div className="ta-src">
                   Fotos, nota e informações extraídas do TripAdvisor
-                  {ta.url && <> · <a href={ta.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>ver perfil completo →</a></>}
                 </div>
               </div>
             </div>
@@ -1205,6 +1261,7 @@ const CSS = `
 .alq .pill{font-size:12.5px;padding:5px 12px;border-radius:999px;background:var(--surface-strong,#f2f2f2);color:var(--body);
   border:1px solid var(--line);font-weight:500}
 .alq .pill.gold{background:rgba(15,98,254,.1);color:#0f62fe;border-color:rgba(15,98,254,.3)}
+.alq .pill.stars-pill{color:#f1c21b;letter-spacing:1px;font-size:13px;padding:5px 10px}
 .alq .lodge p{margin:0 0 14px;color:var(--body);font-size:15px}
 .alq .gallery{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:repeat(2,90px);gap:8px}
 .alq .gallery .g{border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);position:relative;padding:0;border:0;cursor:zoom-in;display:block}
@@ -1379,6 +1436,12 @@ const CSS = `
 .alq .mini-gal div{aspect-ratio:1;border-radius:8px;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);overflow:hidden}
 .alq .mini-gal img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s}
 .alq .mini-gal img.loaded{opacity:1}
+.alq .lodge-desc{margin:16px 0}
+.alq .lodge-desc-body{font-size:13px;line-height:1.6;color:var(--body)}
+.alq .lodge-desc-body p{margin:0 0 8px}
+.alq .lodge-desc-body.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.alq .lodge-desc-toggle{margin-top:6px;background:none;border:0;padding:0;font-size:12.5px;font-weight:600;color:var(--gold);cursor:pointer}
+.alq .lodge-desc-toggle:hover{text-decoration:underline}
 .alq .mini-map{height:170px;border-radius:12px;overflow:hidden;margin-top:14px;border:1px solid var(--line);background:#eef0ec}
 
 /* ─────── Mobile: letras menores, espaços mais justos ─────── */
