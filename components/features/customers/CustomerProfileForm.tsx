@@ -34,18 +34,21 @@ const DOC_KIND_LABEL: Record<string, string> = {
 }
 
 /** Tira horizontal, compacta, só pra visualizar o que já foi anexado —
- *  clicar num arquivo abre ele direto (nova aba); a gestão (enviar/
- *  excluir/trocar tipo) mora no popup "Gestão de documentos". */
+ *  clicar num arquivo abre ele num popup; a gestão (enviar/excluir/trocar
+ *  tipo) mora no popup "Gestão de documentos". */
 function DocumentsStrip({ orgSlug, documents, onManage }: { orgSlug: string; documents: CustomerDoc[]; onManage: () => void }) {
   const [openingId, setOpeningId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ doc: CustomerDoc; url: string } | null>(null)
 
   async function openDoc(doc: CustomerDoc) {
     setOpeningId(doc.id)
     const res = await getDocumentSignedUrl(orgSlug, doc.id)
     setOpeningId(null)
     if (!res.ok) { toast.error((res as any).error || 'Não foi possível abrir'); return }
-    window.open(res.url, '_blank')
+    setPreview({ doc, url: res.url })
   }
+
+  const isImagePreview = preview ? (preview.doc.mime_type || '').startsWith('image/') : false
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -82,6 +85,23 @@ function DocumentsStrip({ orgSlug, documents, onManage }: { orgSlug: string; doc
       <Button type="button" size="sm" variant="outline" onClick={onManage}>
         <Upload className="w-3.5 h-3.5 mr-1.5" /> Gestão de documentos
       </Button>
+
+      <Dialog open={!!preview} onOpenChange={op => { if (!op) setPreview(null) }}>
+        <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{preview ? DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind : ''}</DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <div className="flex-1 min-h-0 overflow-hidden rounded-md border bg-muted/20">
+              {isImagePreview ? (
+                <img src={preview.url} alt={DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind} className="h-full w-full object-contain" />
+              ) : (
+                <iframe src={preview.url} title={DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind} className="h-full w-full" />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
