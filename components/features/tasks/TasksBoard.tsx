@@ -1179,9 +1179,15 @@ function TaskListRow({
 
   return (
     <div className={cn(
-      'group flex items-center gap-3 px-3.5 h-[50px] hover:bg-muted/30 transition-colors duration-150',
+      'group relative flex items-center gap-3 pl-4 pr-3.5 h-[50px] hover:bg-muted/30 transition-colors duration-150',
       highlighted && 'bg-primary/5 ring-1 ring-inset ring-primary/40',
     )}>
+      <span
+        className={cn('absolute left-0 top-1 bottom-1 w-1.5 rounded-r-sm', pm.dot)}
+        title={`Prioridade: ${pm.label}`}
+        aria-label={`Prioridade: ${pm.label}`}
+      />
+
       <button
         type="button"
         onClick={onToggleDone}
@@ -1225,12 +1231,6 @@ function TaskListRow({
           <span className="text-muted-foreground/40">—</span>
         )}
       </div>
-
-      <span
-        className={cn('shrink-0 w-2 h-2 rounded-full', pm.dot)}
-        title={`Prioridade: ${pm.label}`}
-        aria-label={`Prioridade: ${pm.label}`}
-      />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
