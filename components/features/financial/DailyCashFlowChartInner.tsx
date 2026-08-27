@@ -1,6 +1,6 @@
 'use client'
 
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CARBON_CHART_AXIS, carbonColor } from '@/lib/charts/carbon-theme'
 
 export interface DailyCashFlowChartProps {
@@ -29,7 +29,7 @@ export default function DailyCashFlowChartInner({ data }: DailyCashFlowChartProp
   return (
     <div className="h-[280px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CARBON_CHART_AXIS.gridStroke} strokeOpacity={0.6} />
           <XAxis dataKey="label" fontSize={CARBON_CHART_AXIS.fontSize} tickLine={false} axisLine={false}
             tick={{ fill: CARBON_CHART_AXIS.stroke }} dy={6} minTickGap={24} />
@@ -47,10 +47,10 @@ export default function DailyCashFlowChartInner({ data }: DailyCashFlowChartProp
             formatter={v => NAME_LABELS[v as string] || v}
             wrapperStyle={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}
           />
-          <Line type="monotone" dataKey="receitas_cents" stroke={carbonColor(2)} strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="despesas_cents" stroke={carbonColor(7)} strokeWidth={2} dot={false} />
+          <Bar dataKey="receitas_cents" fill={carbonColor(2)} radius={[2, 2, 0, 0]} maxBarSize={22} />
+          <Bar dataKey="despesas_cents" fill={carbonColor(7)} radius={[2, 2, 0, 0]} maxBarSize={22} />
           <Line type="monotone" dataKey="saldo_cents" stroke={carbonColor(0)} strokeWidth={2} dot={false} />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

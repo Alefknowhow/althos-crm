@@ -13,6 +13,7 @@ import { getFinancialDashboardData, updateFinancialEntry, type AccountsBucketEnt
 import { PERIOD_OPTIONS, periodToRange, type PeriodId } from '@/lib/utils/period-range'
 import { Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { carbonColor } from '@/lib/charts/carbon-theme'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -32,35 +33,42 @@ function fmtPctPoints(curr: number | null, prev: number | null): string | undefi
   return `${sign}${diff.toFixed(1)}p.p. vs. período anterior`
 }
 
-function BreakdownList({ title, items, total, tone = 'success' }: {
+// Linhas fixas por bloco (5) — a altura do card nunca muda com a
+// quantidade de dados, só o scroll interno aparece quando passa disso.
+// Isso é o que garante "estrutura fixa e sólida" mesmo período a período.
+const BREAKDOWN_ROWS = 5
+const BREAKDOWN_ROW_HEIGHT = 34 // px, por linha (label+valor + barra + gap)
+
+function BreakdownList({ title, items, total }: {
   title: string
   items: { label: string; valor_cents: number }[]
   total: number
-  tone?: 'success' | 'destructive'
 }) {
-  const top = items.slice(0, 5)
-  if (top.length === 0) {
-    return (
-      <div>
-        <p className="text-xs font-medium text-muted-foreground mb-1.5">{title}</p>
-        <p className="text-xs text-muted-foreground">Sem dados no período.</p>
-      </div>
-    )
-  }
+  const top = items.slice(0, BREAKDOWN_ROWS)
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground mb-1.5">{title}</p>
-      <ul className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
-        {top.map(item => {
+    <div className="rounded-md border bg-muted/20 p-2.5">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-foreground mb-2 pb-1.5 border-b">{title}</p>
+      <ul
+        className="space-y-2 overflow-y-auto pr-1"
+        style={{ height: BREAKDOWN_ROWS * BREAKDOWN_ROW_HEIGHT }}
+      >
+        {top.length === 0 && (
+          <li className="h-full flex items-center justify-center text-xs text-muted-foreground">Sem dados no período.</li>
+        )}
+        {top.map((item, i) => {
           const pct = total > 0 ? (item.valor_cents / total) * 100 : 0
+          const color = carbonColor(i)
           return (
             <li key={item.label}>
               <div className="flex items-center justify-between gap-2 text-xs mb-0.5">
-                <span className="truncate">{item.label}</span>
+                <span className="truncate flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  {item.label}
+                </span>
                 <span className="tabular-nums font-medium shrink-0">{fmtCurrency(item.valor_cents)}</span>
               </div>
-              <div className="h-1.5 w-full bg-muted overflow-hidden">
-                <div className={`h-full ${tone === 'success' ? 'bg-success' : 'bg-destructive'}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+              <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
+                <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color }} />
               </div>
             </li>
           )
@@ -265,27 +273,38 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Receitas segmentadas (período selecionado)</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader><CardTitle className="text-base">Receitas segmentadas — por categoria e cliente</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <KpiCard label="Ticket médio" value={fmtCurrency(data.revenueBreakdown.ticketMedioCents)} help="Receita total dividida pelo número de lançamentos de receita no período." />
                   <KpiCard label="Receita recorrente" value={fmtCurrency(data.revenueBreakdown.receitaRecorrenteCents)} help="Soma dos lançamentos de receita marcados como recorrentes." />
                 </div>
                 <BreakdownList title="Por categoria" items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} />
                 <BreakdownList title="Por cliente" items={data.revenueBreakdown.porCliente} total={data.revenueBreakdown.receitaTotalCents} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Receitas segmentadas — por pagamento e operadora</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
                 <BreakdownList title="Por forma de pagamento" items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} />
                 <BreakdownList title="Por operadora" items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} />
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Despesas segmentadas (período selecionado)</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <KpiCard label="Despesas fixas" value={fmtCurrency(data.expenseBreakdown.fixasCents)} help="Soma dos lançamentos de despesa recorrentes." />
-                  <KpiCard label="Despesas variáveis" value={fmtCurrency(data.expenseBreakdown.variaveisCents)} help="Soma dos lançamentos de despesa não recorrentes." />
-                </div>
-                <BreakdownList title="Por subcategoria" items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} tone="destructive" />
-                <BreakdownList title="Por centro de custo" items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} tone="destructive" />
+              <CardHeader><CardTitle className="text-base">Despesas segmentadas — por subcategoria</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <KpiCard label="Despesas fixas" value={fmtCurrency(data.expenseBreakdown.fixasCents)} help="Soma dos lançamentos de despesa recorrentes." />
+                <BreakdownList title="Por subcategoria" items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Despesas segmentadas — por centro de custo</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <KpiCard label="Despesas variáveis" value={fmtCurrency(data.expenseBreakdown.variaveisCents)} help="Soma dos lançamentos de despesa não recorrentes." />
+                <BreakdownList title="Por centro de custo" items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
           </div>
