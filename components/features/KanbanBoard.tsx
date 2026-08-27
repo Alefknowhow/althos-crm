@@ -14,8 +14,8 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import KanbanColumn from './KanbanColumn'
 import LeadCard, { type CardMember } from './LeadCard'
-import PipelineKpiBar from './pipeline/PipelineKpiBar'
 import MobilePipelineList from './pipeline/MobilePipelineList'
+import PipelineListView from './pipeline/PipelineListView'
 import CurrencyInput from './pipeline/CurrencyInput'
 import { moveLeadToStage } from '@/actions/contatos'
 import LeadDetailDrawer from './LeadDetailDrawer'
@@ -35,8 +35,8 @@ import {
 import { createLead } from '@/actions/contatos'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
-import { Search, AlarmClock, X, BarChart3, LayoutGrid, List } from 'lucide-react'
-import { cn, formatCurrency } from '@/lib/utils'
+import { Search, AlarmClock, X, LayoutGrid, List } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Member = { id: string; name: string; email: string }
 type SortKey = 'recent' | 'value_desc' | 'name'
@@ -82,9 +82,8 @@ export default function KanbanBoard({
   const [stalledOnly, setStalledOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('recent')
 
-  // View mode + dashboard modal
+  // View mode
   const [view, setView] = useState<'board' | 'list'>('board')
-  const [dashOpen, setDashOpen] = useState(false)
 
   useEffect(() => {
     setStages(initialStages)
@@ -242,17 +241,6 @@ export default function KanbanBoard({
       <div className="flex flex-wrap items-center gap-2">
         {toolbarStart}
 
-        {/* Dashboard (KPIs) trigger — opens the metrics in a modal to free up
-            vertical space for the board itself. */}
-        <button
-          type="button"
-          onClick={() => setDashOpen(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary"
-        >
-          <BarChart3 className="h-4 w-4" />
-          <span className="hidden sm:inline">Dashboard</span>
-        </button>
-
         {/* Board / list view toggle — desktop only (mobile uses the stage accordion) */}
         <div className="hidden md:inline-flex h-9 items-center rounded-md border border-border p-0.5">
           <button
@@ -397,70 +385,19 @@ export default function KanbanBoard({
           </DragOverlay>
         </DndContext>
       ) : (
-        /* List view — each row tinted with its pipeline stage colour */
-        <div className="flex-1 overflow-y-auto rounded-none border border-border bg-card hide-scrollbar">
-          {visibleLeads.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              Nenhum negócio encontrado.
-            </div>
-          ) : (
-            <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground  ">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Negócio</th>
-                  <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Estágio</th>
-                  <th className="hidden px-3 py-2 text-left font-medium md:table-cell">Responsável</th>
-                  <th className="px-3 py-2 text-right font-medium">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleLeads.map(lead => {
-                  const stage = stagesById[lead.stage_id]
-                  const color = stage?.color || '#94a3b8'
-                  const owner = lead.assigned_to ? membersById[lead.assigned_to] : null
-                  return (
-                    <tr
-                      key={lead.id}
-                      onClick={() => setSelectedLeadId(lead.id)}
-                      className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/40"
-                      style={{ backgroundColor: `${color}14`, boxShadow: `inset 4px 0 0 0 ${color}` }}
-                    >
-                      <td className="px-3 py-2.5">
-                        <div className="font-medium text-foreground">{lead.name || 'Sem nome'}</div>
-                        <div className="truncate text-xs text-muted-foreground">{lead.email || lead.phone || ''}</div>
-                      </td>
-                      <td className="hidden px-3 py-2.5 sm:table-cell">
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{ backgroundColor: `${color}22`, color }}
-                        >
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                          {stage?.name || '—'}
-                        </span>
-                      </td>
-                      <td className="hidden px-3 py-2.5 text-muted-foreground md:table-cell">
-                        {owner?.name || owner?.email || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-medium">
-                        {formatCurrency(lead.value_cents || 0)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        /* List view — estágios resumidos numa linha expansível */
+        <PipelineListView
+          stages={stages}
+          leads={visibleLeads}
+          orgSlug={orgSlug}
+          members={members}
+          onLeadClick={id => setSelectedLeadId(id)}
+          onAddLead={id => setCreateStageId(id)}
+          onStageChange={handleStageChange}
+          staleDays={staleDays}
+        />
       )}
       </div>
-
-      {/* Dashboard (KPIs) modal */}
-      <Dialog open={dashOpen} onOpenChange={setDashOpen}>
-        <DialogContent className="max-w-5xl w-[95vw]">
-          <DialogHeader><DialogTitle>Dashboard do Pipeline</DialogTitle></DialogHeader>
-          <PipelineKpiBar leads={visibleLeads} />
-        </DialogContent>
-      </Dialog>
 
       <LostMoveDialog
         open={!!lostMovePrompt}

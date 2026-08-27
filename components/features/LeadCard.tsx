@@ -18,7 +18,7 @@ import LeadProposalsButton from './LeadProposalsButton'
 // mas com a cor controlada via `fill` pra distinguir os dois botões:
 // "Iniciar Waba" (chat dentro do CRM, na API oficial) fica azul; "WhatsApp"
 // (abre o app normal, fora do CRM) fica verde, a cor de sempre do WhatsApp.
-function WhatsAppGlyph({ color }: { color: string }) {
+export function WhatsAppGlyph({ color }: { color: string }) {
   return (
     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill={color}>
       <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.92 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 1.67c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.42 5.82c0 4.55-3.7 8.25-8.25 8.25a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.4c0-4.55 3.7-8.24 8.25-8.24Zm-4.53 4.6c-.17 0-.44.06-.67.32-.23.25-.87.85-.87 2.08 0 1.22.89 2.4 1.01 2.57.13.17 1.75 2.67 4.25 3.74.59.26 1.06.41 1.42.52.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.28-.25-.13-1.47-.73-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.64.81-.79.98-.14.17-.29.19-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.44.12-.14.16-.25.24-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.37-.78-1.87-.2-.49-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01Z" />
@@ -29,7 +29,7 @@ function WhatsAppGlyph({ color }: { color: string }) {
 // Botão "Iniciar Waba" — abre a conversa desse lead dentro do CRM (API
 // oficial); se ainda não existe uma, cria na hora (sem mandar mensagem) e
 // já leva pro chat pronto pra digitar.
-function OpenWabaButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
+export function OpenWabaButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -61,7 +61,7 @@ function OpenWabaButton({ orgSlug, leadId }: { orgSlug: string; leadId: string }
 export type CardMember = { id: string; name: string; email: string }
 
 // ── Inline value editor ────────────────────────────────────────────────────────
-function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
+export function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(lead.value_cents ? String(lead.value_cents / 100) : '')
   const [localCents, setLocalCents] = useState<number | null>(lead.value_cents ?? null)
@@ -126,14 +126,14 @@ function ValueEditor({ lead, orgSlug }: { lead: any; orgSlug: string }) {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
-function initials(name: string, email: string): string {
+export function initials(name: string, email: string): string {
   const base = name?.trim() || email?.split('@')[0] || '?'
   const parts = base.split(/\s+/).filter(Boolean)
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
   return base.slice(0, 2).toUpperCase()
 }
 
-const TIER = {
+export const TIER = {
   hot:    { label: 'Quente', cls: 'bg-rose-100 text-rose-700' },
   quente: { label: 'Quente', cls: 'bg-rose-100 text-rose-700' },
   warm:   { label: 'Morno',  cls: 'bg-amber-100 text-amber-700' },
@@ -142,14 +142,14 @@ const TIER = {
   frio:   { label: 'Frio',   cls: 'bg-sky-100 text-sky-700' },
 } as const
 
-function onlyDigits(s?: string | null) {
+export function onlyDigits(s?: string | null) {
   return (s || '').replace(/\D/g, '')
 }
 
 // ── Seller / responsável picker ─────────────────────────────────────────────────
 // Small avatar button on the card; clicking opens a dropdown to pick one of the
 // org members (admin or guests). Stops dnd propagation so it doesn't start a drag.
-function SellerPicker({
+export function SellerPicker({
   lead,
   orgSlug,
   members,
@@ -244,7 +244,7 @@ function SellerPicker({
 // ── Tag editor ───────────────────────────────────────────────────────────────────
 // Small "+ tag" button on the card; opens a popover to add/remove tags. Stops dnd
 // propagation so it doesn't start a drag. Optimistically updates local state.
-function TagEditor({
+export function TagEditor({
   lead,
   orgSlug,
   tags,
@@ -361,7 +361,7 @@ function TagEditor({
 // ── Stage picker ───────────────────────────────────────────────────────────────
 // Small pill on the card showing the current pipeline stage; clicking opens a
 // dropdown to move the lead to another stage directly. Stops dnd propagation.
-function StagePicker({
+export function StagePicker({
   lead,
   stages,
   onPick,
