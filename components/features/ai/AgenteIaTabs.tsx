@@ -549,9 +549,8 @@ export default function AgenteIaTabs({
         </TabsContent>
       </Tabs>
 
-      {/* Barra de salvar fixa no rodapé — não é mais um cartão flutuante:
-          fica colada na base da página assim que o usuário rola até lá. */}
-      <div className="flex items-center justify-end sticky bottom-0 z-10 bg-background border-t px-4 py-3">
+      {/* Botão de salvar no fim natural do conteúdo — sem barra flutuante/sticky. */}
+      <div className="flex items-center justify-end border-t px-4 py-3">
         <Button onClick={save} disabled={saving}>
           {saving ? 'Salvando...' : 'Salvar configuração'}
         </Button>
