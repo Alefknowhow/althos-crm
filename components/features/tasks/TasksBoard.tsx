@@ -122,6 +122,26 @@ function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDat
 function addWeeks(d: Date, n: number) { return addDays(d, n * 7) }
 function ymd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
+// 8 cores determinísticas por responsável, indexadas por hash do user_id —
+// o mesmo responsável sempre pega a mesma cor em toda a lista de tarefas.
+const MEMBER_LABEL_COLORS = [
+  'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+  'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300',
+  'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+  'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+]
+
+function memberLabelColor(userId: string | null | undefined): string {
+  if (!userId) return 'bg-muted text-muted-foreground'
+  let h = 0
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0
+  return MEMBER_LABEL_COLORS[h % MEMBER_LABEL_COLORS.length]
+}
+
 const PRIORITY_META: Record<Task['priority'], { label: string; cls: string; dot: string }> = {
   low:    { label: 'Baixa', cls: 'bg-success/15 text-success border-success/20',           dot: 'bg-success' },
   normal: { label: 'Média', cls: 'bg-warning/15 text-warning border-warning/20',           dot: 'bg-warning' },
@@ -1216,7 +1236,7 @@ function TaskListRow({
 
       <div className="hidden sm:flex items-center gap-1 shrink-0">
         {member && (
-          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[80px]">
+          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium truncate max-w-[80px]', memberLabelColor(member.user_id))}>
             {(member.name || member.email || '').trim().split(/\s+/)[0]}
           </span>
         )}
