@@ -273,10 +273,9 @@ export async function listLeadsForPicker(orgSlug: string): Promise<{ id: string;
 }
 
 /**
- * Geocodifica um local para o mapa da proposta (Nominatim/OSM).
- * Server-side: contorna o CSP do browser e envia o User-Agent identificado
- * exigido pela política de uso do Nominatim. Requer sessão de membro da org
- * para não virar proxy aberto de geocodificação.
+ * Geocodifica um local para o mapa da proposta (Google Geocoding API).
+ * Server-side: mantém a API key fora do bundle do cliente. Requer sessão de
+ * membro da org para não virar proxy aberto de geocodificação.
  */
 export async function geocodePlace(
   orgSlug: string,
@@ -288,42 +287,23 @@ export async function geocodePlace(
   const q = (query || '').trim()
   if (!q) return { ok: false, error: 'Digite o local antes de buscar' }
 
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY
+  if (!apiKey) return { ok: false, error: 'Geocodificação não configurada (GOOGLE_MAPS_API_KEY ausente).' }
+
   try {
-    // 1º Nominatim (match exato, bom para cidades/endereços)
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
-      {
-        headers: {
-          'User-Agent': 'AlthosCRM/1.0 (https://althoscrm.com.br)',
-          Accept: 'application/json',
-        },
-        cache: 'no-store',
-      },
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&key=${apiKey}&language=pt-BR`,
+      { cache: 'no-store' },
     )
-    if (res.ok) {
-      const data = await res.json()
-      if (Array.isArray(data) && data[0]?.lat) {
-        return { ok: true, lat: Number(data[0].lat), lng: Number(data[0].lon), display_name: String(data[0].display_name || q) }
-      }
+    if (!res.ok) return { ok: false, error: 'Erro ao buscar o local. Tente novamente.' }
+    const data = await res.json()
+    const result = data?.results?.[0]
+    if (data.status === 'OK' && result?.geometry?.location) {
+      const { lat, lng } = result.geometry.location
+      return { ok: true, lat: Number(lat), lng: Number(lng), display_name: String(result.formatted_address || q) }
     }
-
-    // 2º Photon (fuzzy, encontra hotéis/POIs que o Nominatim não acha)
-    const ph = await fetch(
-      `https://photon.komoot.io/api/?limit=1&q=${encodeURIComponent(q)}`,
-      { headers: { Accept: 'application/json' }, cache: 'no-store' },
-    )
-    if (ph.ok) {
-      const data = await ph.json()
-      const f = data?.features?.[0]
-      if (f?.geometry?.coordinates?.length === 2) {
-        const [lng, lat] = f.geometry.coordinates
-        const p = f.properties || {}
-        const label = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ') || q
-        return { ok: true, lat: Number(lat), lng: Number(lng), display_name: label }
-      }
-    }
-
-    return { ok: false, error: 'Local não encontrado — tente incluir cidade/país' }
+    if (data.status === 'ZERO_RESULTS') return { ok: false, error: 'Local não encontrado — tente incluir cidade/país' }
+    return { ok: false, error: `Erro ao buscar o local (${data.status || 'falha desconhecida'}).` }
   } catch {
     return { ok: false, error: 'Erro ao buscar o local. Tente novamente.' }
   }

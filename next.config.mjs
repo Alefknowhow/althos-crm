@@ -57,7 +57,7 @@ const ContentSecurityPolicy = [
   // de um Worker, e sem essa permissão o navegador bloqueia silenciosamente
   // (aparecia como "não foi possível acessar o microfone" mesmo com a
   // permissão concedida — o erro real nunca chegava a ser sobre permissão).
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net https://maps.googleapis.com`,
 
   // Styles: same-origin + inline (Tailwind / shadcn inject style tags).
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
@@ -67,12 +67,12 @@ const ContentSecurityPolicy = [
   `font-src 'self' https://fonts.gstatic.com`,
 
   // Images: same-origin + data URIs (for SVG/base64) + Supabase Storage
-  // (user-uploaded avatars/documents served from the bucket) + OpenStreetMap
-  // tiles (mapa interativo da proposta pública) + TripAdvisor photo CDN
+  // (user-uploaded avatars/documents served from the bucket) + Google Maps
+  // tiles/icons (mapa interativo da proposta pública) + TripAdvisor photo CDN
   // (fotos de hospedagem puxadas via Terra API em Cotações) + Unsplash
   // photo CDN (busca de foto de capa em Cotações) + Instagram CDN (foto de
   // perfil do contato no inbox de DM).
-  `img-src 'self' data: blob: https://${supabaseHostname} https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com${r2Hostname ? ` https://${r2Hostname}` : ''}`,
+  `img-src 'self' data: blob: https://${supabaseHostname} https://*.googleapis.com https://*.gstatic.com https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com${r2Hostname ? ` https://${r2Hostname}` : ''}`,
 
   // Áudio/vídeo (elementos <audio>/<video>) — mídia recebida via WhatsApp,
   // baixada e salva no Storage (bucket whatsapp-media, mesmo host acima —
@@ -92,6 +92,10 @@ const ContentSecurityPolicy = [
     `https://api.resend.com`,
     `https://viacep.com.br`,
     `https://challenges.cloudflare.com`,
+    // Google Maps JavaScript API — mapa interativo da proposta pública
+    // (Cotações), carrega bibliotecas/tiles via XHR depois do script inicial.
+    `https://maps.googleapis.com`,
+    `https://*.gstatic.com`,
     // O fluxo de WhatsApp Embedded Signup navega internamente por vários
     // subdomínios (graph., www., business.facebook.com confirmado — é o
     // domínio do link de teste que funcionou — possivelmente outros). Sem

@@ -3,7 +3,7 @@
 /**
  * Proposta pública de viagem — réplica do design handoff
  * `proposta-viagem-althos.html` (concierge editorial: Lora + Inter,
- * navy/gold/ivory, blocos retráteis, countdown, mapa Leaflet, modal do
+ * navy/gold/ivory, blocos retráteis, countdown, mapa Google Maps, modal do
  * hotel com dados cacheados do TripAdvisor).
  *
  * Também é usada como preview ao vivo dentro do editor (prop `preview`):
@@ -12,7 +12,22 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import 'leaflet/dist/leaflet.css'
+import { importLibrary, setOptions } from '@googlemaps/js-api-loader'
+
+let mapsOptionsSet = false
+function ensureMapsOptions() {
+  if (mapsOptionsSet) return
+  setOptions({ key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '', language: 'pt-BR' })
+  mapsOptionsSet = true
+}
+
+/** Pin em formato de gota (mesmo visual do marcador antigo), colorido por tipo. */
+function pinIconUrl(color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="27" height="36" viewBox="0 0 27 36">`
+    + `<path d="M13.5 0C6.04 0 0 6.04 0 13.5c0 10.1 13.5 22.5 13.5 22.5s13.5-12.4 13.5-22.5C27 6.04 20.96 0 13.5 0z" fill="${color}" stroke="#fff" stroke-width="2"/>`
+    + `<circle cx="13.5" cy="13.5" r="5" fill="#fff"/></svg>`
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
 
 /* ─────────────────────── tipos (contrato da RPC) ─────────────────────── */
 export type QuotationOrg = {
@@ -462,29 +477,39 @@ export default function PublicQuotationView({
     if (mapObj.current || pins.length === 0) return
     setTimeout(async () => {
       if (mapObj.current || !mapRef.current) return
-      const L = (await import('leaflet')).default
+      ensureMapsOptions()
+      const [{ Map, InfoWindow }, { Marker }, { LatLngBounds, Size, Point }] = await Promise.all([
+        importLibrary('maps') as Promise<google.maps.MapsLibrary>,
+        importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
+        importLibrary('core') as Promise<google.maps.CoreLibrary>,
+      ])
       if (mapObj.current || !mapRef.current) return
-      const map = L.map(mapRef.current, { scrollWheelZoom: false })
+      const map = new Map(mapRef.current, {
+        scrollwheel: false, mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+      })
       mapObj.current = map
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map)
-      const mk = (color: string) => L.divIcon({
-        className: '',
-        html: `<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>`,
-        iconSize: [18, 18], iconAnchor: [9, 18],
-      })
-      const g: [number, number][] = []
+      const bounds = new LatLngBounds()
       pins.forEach(p => {
-        L.marker([p.lat, p.lng], { icon: mk(PIN_COLORS[p.type || 'attraction'] || '#0e5d63') })
-          .addTo(map).bindPopup(`<b>${(p.label || '').replace(/</g, '&lt;')}</b>`)
-        g.push([p.lat, p.lng])
+        const position = { lat: p.lat, lng: p.lng }
+        const marker = new Marker({
+          position, map,
+          icon: {
+            url: pinIconUrl(PIN_COLORS[p.type || 'attraction'] || '#0e5d63'),
+            scaledSize: new Size(27, 36), anchor: new Point(13.5, 36),
+          },
+        })
+        if (p.label) {
+          const info = new InfoWindow({ content: `<b>${p.label.replace(/</g, '&lt;')}</b>` })
+          marker.addListener('click', () => info.open({ map, anchor: marker }))
+        }
+        bounds.extend(position)
       })
-      if (g.length > 1) map.fitBounds(g, { padding: [40, 40] })
-      else if (g.length === 1) map.setView(g[0], 12)
-      setTimeout(() => map.invalidateSize(), 80)
+      if (pins.length > 1) map.fitBounds(bounds, 40)
+      else { map.setCenter(bounds.getCenter()); map.setZoom(12) }
     }, 260)
   }, [pins])
 
-  useEffect(() => () => { mapObj.current?.remove(); mapObj.current = null }, [])
+  useEffect(() => () => { mapObj.current = null }, [])
 
   /* modal do hotel */
   const openHotel = useCallback((l: QuotationLodging) => {
@@ -506,17 +531,21 @@ export default function PublicQuotationView({
     const lat = modalLodge.tripadvisor_data?.lat ?? modalLodge.lat
     const lng = modalLodge.tripadvisor_data?.lng ?? modalLodge.lng
     if (lat == null || lng == null) return
-    let mm: any
+    let cancelled = false
     const timer = setTimeout(async () => {
-      const L = (await import('leaflet')).default
-      if (!miniMapRef.current || miniMapRef.current.dataset.ready) return
+      ensureMapsOptions()
+      const [{ Map }, { Marker }] = await Promise.all([
+        importLibrary('maps') as Promise<google.maps.MapsLibrary>,
+        importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
+      ])
+      if (cancelled || !miniMapRef.current || miniMapRef.current.dataset.ready) return
       miniMapRef.current.dataset.ready = '1'
-      mm = L.map(miniMapRef.current, { zoomControl: false, scrollWheelZoom: false, dragging: false }).setView([lat, lng], 14)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mm)
-      L.marker([lat, lng]).addTo(mm)
-      setTimeout(() => mm.invalidateSize(), 80)
+      const map = new Map(miniMapRef.current, {
+        center: { lat, lng }, zoom: 14, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false,
+      })
+      new Marker({ position: { lat, lng }, map })
     }, 200)
-    return () => { clearTimeout(timer); mm?.remove(); if (miniMapRef.current) delete miniMapRef.current.dataset.ready }
+    return () => { cancelled = true; clearTimeout(timer); if (miniMapRef.current) delete miniMapRef.current.dataset.ready }
   }, [modalLodge])
 
   /* WhatsApp */
@@ -1223,7 +1252,7 @@ const CSS = `
 .alq .fl-stop{font-size:12px;color:var(--muted);width:100%}
 
 /* Mapa */
-.alq .alq-map{height:360px;border-radius:12px;z-index:0;border:1px solid var(--line);background:#eef0ec}
+.alq .alq-map{height:360px;border-radius:12px;overflow:hidden;z-index:0;border:1px solid var(--line);background:#eef0ec}
 .alq .map-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12.5px;color:var(--muted)}
 .alq .map-legend span{display:inline-flex;align-items:center;gap:6px}
 .alq .dot{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
@@ -1350,7 +1379,7 @@ const CSS = `
 .alq .mini-gal div{aspect-ratio:1;border-radius:8px;background:linear-gradient(135deg,#dfe6e3,#cdd8d6);overflow:hidden}
 .alq .mini-gal img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s}
 .alq .mini-gal img.loaded{opacity:1}
-.alq .mini-map{height:170px;border-radius:12px;margin-top:14px;border:1px solid var(--line);background:#eef0ec}
+.alq .mini-map{height:170px;border-radius:12px;overflow:hidden;margin-top:14px;border:1px solid var(--line);background:#eef0ec}
 
 /* ─────── Mobile: letras menores, espaços mais justos ─────── */
 @media(max-width:560px){

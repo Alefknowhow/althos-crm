@@ -114,6 +114,14 @@ Se quiser proteção anti-bot nos formulários públicos:
 
 > Pode deixar em branco inicialmente — o honeypot e rate limit já protegem.
 
+### Google Maps (mapa da proposta pública em Cotações)
+| Variável | Onde obter |
+|---|---|
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | console.cloud.google.com → APIs & Services → Credentials → habilite "Maps JavaScript API" e restrinja por HTTP referrer (domínio do app) |
+| `GOOGLE_MAPS_API_KEY` | Mesmo projeto → habilite "Geocoding API" nessa key (pode ser a mesma chave, sem restrição de referrer já que é usada server-side) |
+
+> Sem essas variáveis, o bloco "Mapa da viagem" e a busca de local no editor de cotações não funcionam — o resto da proposta continua normal.
+
 ---
 
 ### Depois de preencher todas as variáveis
