@@ -809,7 +809,7 @@ export async function getFinancialKpis(orgSlug: string, range: { from: string; t
 export async function getCashFlowSeries(
   orgSlug: string,
   months = 6,
-): Promise<{ month: string; receitas_cents: number; despesas_cents: number }[]> {
+): Promise<{ month: string; receitas_cents: number; despesas_cents: number; saldo_cents: number }[]> {
   const { org } = await requireFinancialAccess(orgSlug)
   const supabase = createClient()
 
@@ -839,7 +839,13 @@ export async function getCashFlowSeries(
     else bucket.despesas_cents += row.valor_cents
   }
 
-  return Array.from(buckets.entries()).map(([month, v]) => ({ month, ...v }))
+  // Saldo acumulado mês a mês (receita - despesa, corrido dentro da janela
+  // exibida) — mesma lógica de linha corrida usada no fluxo de caixa diário.
+  let running = 0
+  return Array.from(buckets.entries()).map(([month, v]) => {
+    running += v.receitas_cents - v.despesas_cents
+    return { month, ...v, saldo_cents: running }
+  })
 }
 
 export async function getExpensesByCategory(

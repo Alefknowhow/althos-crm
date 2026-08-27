@@ -40,14 +40,14 @@ const BREAKDOWN_ROWS = 5
 const BREAKDOWN_ROW_HEIGHT = 34 // px, por linha (label+valor + barra + gap)
 
 function BreakdownList({ title, items, total }: {
-  title: string
+  title?: string
   items: { label: string; valor_cents: number }[]
   total: number
 }) {
   const top = items.slice(0, BREAKDOWN_ROWS)
   return (
-    <div className="rounded-md border bg-muted/20 p-2.5">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-foreground mb-2 pb-1.5 border-b">{title}</p>
+    <div className={title ? 'rounded-md border bg-muted/20 p-2.5' : ''}>
+      {title && <p className="text-[11px] font-bold uppercase tracking-wide text-foreground mb-2 pb-1.5 border-b">{title}</p>}
       <ul
         className="space-y-2 overflow-y-auto pr-1"
         style={{ height: BREAKDOWN_ROWS * BREAKDOWN_ROW_HEIGHT }}
@@ -65,7 +65,9 @@ function BreakdownList({ title, items, total }: {
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                   {item.label}
                 </span>
-                <span className="tabular-nums font-medium shrink-0">{fmtCurrency(item.valor_cents)}</span>
+                <span className="tabular-nums font-medium shrink-0">
+                  {fmtCurrency(item.valor_cents)} <span className="text-muted-foreground font-normal">({pct.toFixed(1)}%)</span>
+                </span>
               </div>
               <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
                 <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color }} />
@@ -271,24 +273,31 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard compact label="Ticket médio" value={fmtCurrency(data.revenueBreakdown.ticketMedioCents)} help="Receita total dividida pelo número de lançamentos de receita no período." />
+            <KpiCard compact label="Receita recorrente" value={fmtCurrency(data.revenueBreakdown.receitaRecorrenteCents)} help="Soma dos lançamentos de receita marcados como recorrentes." />
+            <KpiCard compact label="Despesas fixas" value={fmtCurrency(data.expenseBreakdown.fixasCents)} help="Soma dos lançamentos de despesa recorrentes." />
+            <KpiCard compact label="Despesas variáveis" value={fmtCurrency(data.expenseBreakdown.variaveisCents)} help="Soma dos lançamentos de despesa não recorrentes." />
+          </div>
+
+          {/* Receitas segmentadas — 4 blocos estreitos (~20% cada), 2 à
+              esquerda + 2 à direita, em vez de 2 cards largos empilhados. */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card>
-              <CardHeader><CardTitle className="text-base">Receitas segmentadas — por categoria e cliente</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <KpiCard label="Ticket médio" value={fmtCurrency(data.revenueBreakdown.ticketMedioCents)} help="Receita total dividida pelo número de lançamentos de receita no período." />
-                  <KpiCard label="Receita recorrente" value={fmtCurrency(data.revenueBreakdown.receitaRecorrenteCents)} help="Soma dos lançamentos de receita marcados como recorrentes." />
-                </div>
-                <BreakdownList title="Por categoria" items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} />
-                <BreakdownList title="Por cliente" items={data.revenueBreakdown.porCliente} total={data.revenueBreakdown.receitaTotalCents} />
-              </CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Por categoria</CardTitle></CardHeader>
+              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">Receitas segmentadas — por pagamento e operadora</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <BreakdownList title="Por forma de pagamento" items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} />
-                <BreakdownList title="Por operadora" items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} />
-              </CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Por cliente</CardTitle></CardHeader>
+              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porCliente} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Por forma de pagamento</CardTitle></CardHeader>
+              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Por operadora</CardTitle></CardHeader>
+              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
             </Card>
           </div>
 
@@ -296,14 +305,12 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas segmentadas — por subcategoria</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <KpiCard label="Despesas fixas" value={fmtCurrency(data.expenseBreakdown.fixasCents)} help="Soma dos lançamentos de despesa recorrentes." />
                 <BreakdownList title="Por subcategoria" items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas segmentadas — por centro de custo</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <KpiCard label="Despesas variáveis" value={fmtCurrency(data.expenseBreakdown.variaveisCents)} help="Soma dos lançamentos de despesa não recorrentes." />
                 <BreakdownList title="Por centro de custo" items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
@@ -344,36 +351,42 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
           <Card>
             <CardHeader><CardTitle className="text-base">Indicadores estratégicos</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                 <KpiCard
+                  compact
                   label="Burn rate"
                   value={fmtCurrency(data.strategicIndicators.burnRateCents)}
                   help="Média de despesas mensais nos últimos 3 meses."
                 />
                 <KpiCard
+                  compact
                   label="Runway"
                   value={data.strategicIndicators.runwayMonths === null ? '—' : `${data.strategicIndicators.runwayMonths.toFixed(1)} meses`}
                   help="Saldo em caixa dividido pelo burn rate — quanto tempo o caixa dura no ritmo de gasto atual."
                   trend={data.strategicIndicators.runwayMonths !== null && data.strategicIndicators.runwayMonths < 3 ? 'down' : 'neutral'}
                 />
                 <KpiCard
+                  compact
                   label="EBITDA (aprox.)"
                   value={fmtCurrency(data.strategicIndicators.ebitdaCents)}
                   help="Aproximação pelo resultado do período — ainda não separa depreciação, juros e impostos."
                   mock
                 />
                 <KpiCard
+                  compact
                   label="Ponto de equilíbrio"
                   value={data.strategicIndicators.pontoEquilibrioCents === null ? '—' : fmtCurrency(data.strategicIndicators.pontoEquilibrioCents)}
                   help="Receita necessária no período pra cobrir custos fixos, dado o custo variável atual."
                 />
                 <KpiCard
+                  compact
                   label="Inadimplência"
                   value={data.strategicIndicators.inadimplenciaPct === null ? '—' : `${data.strategicIndicators.inadimplenciaPct.toFixed(1)}%`}
                   help="Percentual das contas a receber em aberto que já estão vencidas."
                   trend={data.strategicIndicators.inadimplenciaPct !== null && data.strategicIndicators.inadimplenciaPct > 15 ? 'down' : 'neutral'}
                 />
                 <KpiCard
+                  compact
                   label="Receita prevista (CRM)"
                   value={fmtCurrency(data.strategicIndicators.receitaPrevistaCrmCents)}
                   help="Soma do valor dos negócios em aberto no funil de vendas — estimativa, não confirmada."
