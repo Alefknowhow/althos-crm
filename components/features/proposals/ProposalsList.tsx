@@ -15,7 +15,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
-import { generateQuotationLink, convertQuotationToOffer, createSaleFromQuotation } from '@/actions/quotations'
+import { generateQuotationLink, convertQuotationToOffer, createSaleFromQuotation, getQuotationProductsSummary } from '@/actions/quotations'
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover'
@@ -24,6 +24,7 @@ import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,
   ArrowLeft, Copy, ExternalLink, CheckCircle2, Clock, Wallet, Search, UserCircle2,
   CopyPlus, Loader2, FileText, MessageCircle, ShoppingBag, ShoppingCart,
+  Plane, Building2, Ship, Car, Shield, Compass, Bus,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -58,6 +59,17 @@ const SELLER_LABEL_COLORS = [
   'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
   'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
 ]
+
+const PRODUCT_TYPE_META: Record<string, { label: string; icon: any }> = {
+  aereo: { label: 'Aéreo', icon: Plane },
+  hospedagem: { label: 'Hospedagem', icon: Building2 },
+  cruzeiro: { label: 'Cruzeiro', icon: Ship },
+  transfer: { label: 'Traslado', icon: Bus },
+  passeio: { label: 'Passeio', icon: Compass },
+  seguro: { label: 'Seguro viagem', icon: Shield },
+  locacao: { label: 'Locação de carro', icon: Car },
+}
+const PRODUCT_TYPE_ORDER = ['aereo', 'hospedagem', 'cruzeiro', 'transfer', 'passeio', 'seguro', 'locacao']
 
 function sellerLabelColor(userId: string | null | undefined): string {
   if (!userId) return 'bg-muted text-muted-foreground'
@@ -532,6 +544,23 @@ function ProposalDetail({
   const [sending, setSending] = useState(false)
   const [convertingOffer, setConvertingOffer] = useState(false)
   const [generatingSale, setGeneratingSale] = useState(false)
+  const [products, setProducts] = useState<{ product_type: string; name: string | null }[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    getQuotationProductsSummary(orgSlug, p.id).then(rows => { if (!cancelled) setProducts(rows) })
+    return () => { cancelled = true }
+  }, [orgSlug, p.id])
+
+  const productsByType = useMemo(() => {
+    const map = new Map<string, { product_type: string; name: string | null }[]>()
+    for (const prod of products) {
+      const list = map.get(prod.product_type) || []
+      list.push(prod)
+      map.set(prod.product_type, list)
+    }
+    return map
+  }, [products])
 
   async function handleSendToClient() {
     setSending(true)
@@ -640,6 +669,30 @@ function ProposalDetail({
         <p className="text-xs text-muted-foreground rounded-lg border bg-muted/30 px-3 py-2">
           Cotação realizada em {fmtTimestamp(p.created_at)}. Preços e tarifas estão sujeitos a alterações sem aviso prévio.
         </p>
+
+        {productsByType.size > 0 && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Produtos inclusos</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRODUCT_TYPE_ORDER.filter(t => productsByType.has(t)).map(type => {
+                const rows = productsByType.get(type)!
+                const meta = PRODUCT_TYPE_META[type]
+                const Icon = meta.icon
+                const names = rows.map(r => r.name).filter(Boolean).join(', ')
+                return (
+                  <span
+                    key={type}
+                    title={names || undefined}
+                    className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={1.75} />
+                    {meta.label}{rows.length > 1 ? ` (${rows.length})` : ''}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {travelers.length > 0 && (
           <div>

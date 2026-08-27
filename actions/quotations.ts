@@ -129,6 +129,26 @@ export async function getQuotationFull(orgSlug: string, id: string): Promise<Quo
   }
 }
 
+/* ─────────── resumo de produtos (preview da lista) ─────────── */
+export type QuotationProductSummaryRow = { product_type: string; name: string | null }
+
+/** Lista enxuta (tipo + nome) dos produtos de uma cotação — usada no resumo
+ *  "Hospedagem, Aéreo, ..." do painel de preview, sem carregar o editor todo. */
+export async function getQuotationProductsSummary(orgSlug: string, id: string): Promise<QuotationProductSummaryRow[]> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'cotacoes')
+  if (!perm.allowed) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('quotation_products')
+    .select('product_type, name')
+    .eq('quotation_id', id)
+    .eq('organization_id', org.id)
+    .order('sort_order')
+  return (data as QuotationProductSummaryRow[]) ?? []
+}
+
 /* ─────────── gravação (autosave) ─────────── */
 export async function saveQuotation(orgSlug: string, id: string, input: unknown) {
   const user = await requireAuth()
