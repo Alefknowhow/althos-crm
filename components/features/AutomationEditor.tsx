@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AutomationFlow from '@/components/features/automations/AutomationFlow'
 import AutomationRunsPanel from '@/components/features/automations/AutomationRunsPanel'
 
-export default function AutomationEditor({ orgSlug, automation, forms, stages, runs, stepStats, whatsappTemplates }: any) {
+export default function AutomationEditor({ orgSlug, automation, forms, stages, runs, stepStats, whatsappTemplates, niche }: any) {
   const router = useRouter()
   const [auto, setAuto] = useState(automation)
   const [saving, setSaving] = useState(false)
@@ -84,7 +84,7 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
 
       <div className="flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 205px)' }}>
         {activeTab === 'editor' && (
-          <AutomationFlow auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} />
+          <AutomationFlow auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} niche={niche} />
         )}
 
         {activeTab === 'runs' && (

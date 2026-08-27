@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, PauseCircle, Activity, Zap, Plus, Power, Trash2, History, ArrowLeft, FileText } from 'lucide-react'
+import { Activity, Zap, Plus, Power, Trash2, History, ArrowLeft, FileText, MessageCircle } from 'lucide-react'
 import { createAutomation, toggleAutomation, deleteAutomation } from '@/actions/automations'
 import { toast } from 'sonner'
 import {
@@ -115,6 +115,12 @@ export default function AutomationsShell({
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
+            <Link href={`/app/${orgSlug}/whatsapp-templates`}>
+              <MessageCircle className="w-4 h-4 mr-1.5" />
+              Templates WhatsApp
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link href={`/app/${orgSlug}/automacoes/logs`}>
               <History className="w-4 h-4 mr-1.5" />
               Histórico
@@ -161,10 +167,16 @@ export default function AutomationsShell({
                     >
                       {/* Name row */}
                       <div className="flex items-center gap-1.5 min-w-0">
-                        {auto.is_active
-                          ? <PlayCircle className="w-4 h-4 shrink-0 text-emerald-500" />
-                          : <PauseCircle className="w-4 h-4 shrink-0 text-muted-foreground/40" />
-                        }
+                        {/* Status: quadrado sólido em vez de ícone de play/pause — mais presença visual na lista. */}
+                        <span
+                          title={auto.is_active ? 'Ativa' : 'Pausada'}
+                          className={cn(
+                            'w-5 h-5 rounded-md flex items-center justify-center shrink-0',
+                            auto.is_active ? 'bg-emerald-500 text-white' : 'bg-muted-foreground/15 text-muted-foreground',
+                          )}
+                        >
+                          <Zap className="w-3 h-3" fill="currentColor" strokeWidth={0} />
+                        </span>
                         <span className={cn(
                           'text-sm font-semibold truncate leading-tight flex-1',
                           isActive ? 'text-foreground' : 'text-foreground/80',

@@ -46,32 +46,10 @@ import {
   XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { nicheKeyFor } from '@/lib/niche'
+import { triggerMeta as sharedTriggerMeta, visibleTriggerTypes } from '@/lib/automations/trigger-meta'
 
 // ── Metadata ────────────────────────────────────────────────────────────────
-
-const TRIGGER_TYPES = [
-  { id: 'form.submitted',      label: 'Formulário Submetido',     desc: 'Dispara quando um formulário é preenchido' },
-  { id: 'lead.stage_changed',  label: 'Estágio Alterado',         desc: 'Dispara quando um lead muda de estágio' },
-  { id: 'lead.tag_added',      label: 'Tag Adicionada',           desc: 'Dispara quando uma tag é adicionada ao lead' },
-  { id: 'task.overdue',        label: 'Tarefa Vencida',           desc: 'Dispara diariamente para tarefas em atraso' },
-  { id: 'lead.stale',          label: 'Lead sem Contato',         desc: 'Dispara após N dias sem atividade' },
-  { id: 'appointment.booked',  label: 'Agendamento Realizado',    desc: 'Dispara quando um agendamento é criado' },
-  { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)' },
-  // Vertical Clínicas — sem configuração extra (igual appointment.booked).
-  { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento' },
-  { id: 'clinic.quote.approved',        label: 'Orçamento Aprovado (Clínica)',     desc: 'Dispara quando um orçamento é marcado como aprovado' },
-  { id: 'clinic.attendance.completed',  label: 'Atendimento Realizado (Clínica)', desc: 'Dispara quando um atendimento é registrado como realizado' },
-  // Vertical Imobiliárias — sem configuração extra (igual appointment.booked).
-  { id: 'imoveis.visit.scheduled', label: 'Visita Agendada (Imóveis)',   desc: 'Dispara quando uma visita a um imóvel é agendada' },
-  { id: 'imoveis.visit.confirmed', label: 'Visita Confirmada (Imóveis)', desc: 'Dispara quando o lead confirma a visita' },
-  { id: 'imoveis.visit.canceled',  label: 'Visita Cancelada (Imóveis)',  desc: 'Dispara quando a visita é cancelada' },
-  { id: 'imoveis.visit.completed', label: 'Visita Realizada (Imóveis)',  desc: 'Dispara quando a visita é marcada como realizada' },
-  { id: 'imoveis.proposal.sent',   label: 'Proposta Enviada (Imóveis)',  desc: 'Dispara quando uma proposta de imóvel é marcada como enviada' },
-  { id: 'imoveis.deal.closed',     label: 'Negócio Fechado (Imóveis)',   desc: 'Dispara quando uma venda ou locação é registrada' },
-  { id: 'seguros.policy.issued',   label: 'Apólice Emitida (Seguros)',   desc: 'Dispara quando uma apólice é emitida' },
-  { id: 'seguros.policy.renewal_due', label: 'Renovação Próxima (Seguros)', desc: 'Dispara quando uma apólice se aproxima do vencimento' },
-  { id: 'seguros.claim.opened',    label: 'Sinistro Aberto (Seguros)',   desc: 'Dispara quando um sinistro é registrado' },
-] as const
 
 const STEP_TYPES = [
   { id: 'send_email',    label: 'Enviar E-mail',    icon: Mail,           color: '#ef4444', desc: 'Envia um template de e-mail para o lead' },
@@ -109,6 +87,8 @@ type Props = {
   stages: Array<{ id: string; name: string }>
   stepStats?: Record<number, StepStat>
   whatsappTemplates?: WaTemplate[]
+  /** Nicho da org — filtra os gatilhos de vertical (Clínicas/Imóveis/Seguros) visíveis no seletor. */
+  niche?: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,9 +97,7 @@ function stepMeta(type: string) {
   return STEP_TYPES.find(s => s.id === type) ?? STEP_TYPES[STEP_TYPES.length - 1]
 }
 
-function triggerMeta(type: string) {
-  return TRIGGER_TYPES.find(t => t.id === type) ?? TRIGGER_TYPES[0]
-}
+const triggerMeta = sharedTriggerMeta
 
 function describeTrigger(type: string, config: any, forms: Props['forms'], stages: Props['stages']): string {
   if (type === 'form.submitted')     return forms.find(f => f.id === config?.formId)?.name ?? 'Qualquer formulário'
@@ -289,7 +267,14 @@ function Connector({ onInsert }: { onInsert: (type: string) => void }) {
 
 // ── Config panel ───────────────────────────────────────────────────────────────
 
-function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (n: any) => void; forms: Props['forms']; stages: Props['stages'] }) {
+function TriggerConfig({ auto, setAuto, forms, stages, niche }: { auto: any; setAuto: (n: any) => void; forms: Props['forms']; stages: Props['stages']; niche?: string | null }) {
+  // O gatilho atual pode ser de uma vertical diferente do nicho corrente
+  // (automação antiga, ou nicho trocado depois) — garante que ele continue
+  // listado mesmo fora do filtro, senão o select "perde" o valor selecionado.
+  const options = visibleTriggerTypes(nicheKeyFor(niche))
+  const current = triggerMeta(auto.trigger_type)
+  const selectable = options.some(t => t.id === current.id) ? options : [current, ...options]
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -299,11 +284,11 @@ function TriggerConfig({ auto, setAuto, forms, stages }: { auto: any; setAuto: (
           value={auto.trigger_type}
           onChange={e => setAuto({ ...auto, trigger_type: e.target.value, trigger_config: {} })}
         >
-          {TRIGGER_TYPES.map(t => (
+          {selectable.map(t => (
             <option key={t.id} value={t.id}>{t.label}</option>
           ))}
         </select>
-        <p className="text-xs text-muted-foreground">{triggerMeta(auto.trigger_type).desc}</p>
+        <p className="text-xs text-muted-foreground">{current.desc}</p>
       </div>
 
       {auto.trigger_type === 'form.submitted' && (
@@ -619,7 +604,7 @@ function StepConfig({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats, whatsappTemplates }: Props) {
+export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats, whatsappTemplates, niche }: Props) {
   const steps: Step[] = auto.steps || []
 
   function setSteps(next: Step[]) { setAuto({ ...auto, steps: next }) }
@@ -640,17 +625,20 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
 
   return (
     <div className="h-full overflow-auto bg-muted/20 py-8 px-4">
-      <div className="flex flex-row items-start gap-0 min-w-max mx-auto w-fit">
-        {/* Trigger */}
-        <FlowNode
-          icon={Zap}
-          color={TRIGGER_COLOR}
-          typeLabel="Gatilho"
-          nodeName={triggerMeta(auto.trigger_type).label}
-          detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
-          badge="Início"
-          config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} />}
-        />
+      <div className="flex flex-row items-start gap-0 min-w-max">
+        {/* Trigger — fixado na borda esquerda: continua visível mesmo
+            rolando o fluxo horizontalmente pra ver passos mais à direita. */}
+        <div className="sticky left-0 z-10 bg-muted/20 pr-1">
+          <FlowNode
+            icon={Zap}
+            color={TRIGGER_COLOR}
+            typeLabel="Gatilho"
+            nodeName={triggerMeta(auto.trigger_type).label}
+            detail={describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages)}
+            badge="Início"
+            config={<TriggerConfig auto={auto} setAuto={setAuto} forms={forms} stages={stages} niche={niche} />}
+          />
+        </div>
 
         <Connector onInsert={type => insertStep(0, type)} />
 
