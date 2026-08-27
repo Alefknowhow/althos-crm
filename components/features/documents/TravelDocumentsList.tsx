@@ -92,19 +92,21 @@ export default function TravelDocumentsList({ orgSlug, initial }: { orgSlug: str
     <div className="space-y-4">
       {/* Upload — rótulo + arquivo PDF */}
       <div className="rounded-lg border bg-muted/20 p-3 flex flex-wrap items-end gap-2">
-        <div className="flex-1 min-w-[200px] space-y-1.5">
+        <div className="w-full sm:w-[36%] min-w-[160px] space-y-1.5">
           <Label className="text-xs">Rótulo</Label>
           <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="Ex.: Termo de responsabilidade" />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Arquivo (PDF)</Label>
-          <input ref={fileRef} type="file" accept="application/pdf"
-            className="block text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border file:bg-background file:text-xs file:font-medium file:cursor-pointer" />
+        <div className="flex flex-1 flex-wrap items-end justify-center gap-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Arquivo (PDF)</Label>
+            <input ref={fileRef} type="file" accept="application/pdf"
+              className="block text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border file:bg-background file:text-xs file:font-medium file:cursor-pointer" />
+          </div>
+          <Button type="button" onClick={handleUpload} disabled={uploading}>
+            {uploading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Upload className="w-4 h-4 mr-1.5" />}
+            Adicionar
+          </Button>
         </div>
-        <Button type="button" onClick={handleUpload} disabled={uploading}>
-          {uploading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Upload className="w-4 h-4 mr-1.5" />}
-          Adicionar
-        </Button>
       </div>
 
       {/* Lista */}
