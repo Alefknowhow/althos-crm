@@ -33,14 +33,51 @@ export type TopProductRow = {
   total_cents: number
 }
 
+const TRAVEL_SERVICE_LABELS: Record<string, string> = {
+  transfer: 'Traslado', insurance: 'Seguro viagem', car_rental: 'Locação de carro',
+}
+
 /**
- * Ranks products by units sold in the window. Only meaningful for orgs on the
- * generic `sales`/`products` schema — travel-niche orgs record deals in
- * `travel_sales` (no product catalog), so they get an empty list here.
+ * Travel-niche orgs têm produtos embutidos nos campos da reserva
+ * (`hotel_name`, `airline`, `services[]`) em vez de um catálogo separado —
+ * agrega esses campos como se fossem produtos, pra dar o mesmo rank.
+ */
+async function getTopProductsTravel(supabase: ReturnType<typeof createClient>, orgId: string, since: Date, limit: number): Promise<TopProductRow[]> {
+  const { data } = await supabase
+    .from('travel_sales')
+    .select('hotel_name, airline, services')
+    .eq('organization_id', orgId)
+    .neq('status', 'cancelado')
+    .gte('created_at', since.toISOString())
+
+  const byProduct = new Map<string, TopProductRow>()
+  const bump = (key: string, name: string, type: string) => {
+    const cur = byProduct.get(key) || { product_id: key, name, type, quantity: 0, total_cents: 0 }
+    cur.quantity += 1
+    byProduct.set(key, cur)
+  }
+  for (const r of (data || []) as any[]) {
+    if (r.hotel_name) bump(`hotel:${r.hotel_name}`, r.hotel_name, 'Hospedagem')
+    if (r.airline) bump(`airline:${r.airline}`, r.airline, 'Aéreo')
+    for (const svc of (Array.isArray(r.services) ? r.services : [])) {
+      const label = TRAVEL_SERVICE_LABELS[svc] || svc
+      bump(`svc:${svc}`, label, 'Serviço')
+    }
+  }
+
+  return Array.from(byProduct.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, limit)
+}
+
+/**
+ * Ranks products by units sold in the window. Travel-niche orgs record deals
+ * in `travel_sales` (no product catalog) — reads the same info from the
+ * reservation's fields (hotel/aéreo/serviços) instead.
  */
 export async function getTopProducts(orgId: string, since: Date, limit = 6): Promise<TopProductRow[]> {
   const supabase = createClient()
-  if (await isOrgTravelNiche(supabase, orgId)) return []
+  if (await isOrgTravelNiche(supabase, orgId)) return getTopProductsTravel(supabase, orgId, since, limit)
 
   const { data } = await supabase
     .from('sales')

@@ -98,63 +98,7 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-4">
-          <Suspense fallback={<div className="h-[320px] w-full rounded-md bg-muted/30 animate-pulse" />}>
-            <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
-          </Suspense>
-        </div>
-        <div className="md:col-span-4">
-          <BarListCard
-            title="Conversão por vendedor"
-            help="Percentual de leads atribuídos a cada vendedor (últimos 30 dias) que chegaram a um estágio de fechamento."
-            icon={UserCheck}
-            rows={conversionRates.map(c => ({
-              label: nameById.get(c.seller_id) || 'Usuário removido',
-              value: c.conversion_pct,
-              valueLabel: `${c.conversion_pct.toFixed(0)}%`,
-            }))}
-            color="#24a148"
-            emptyText="Nenhum lead atribuído nos últimos 30 dias."
-          />
-        </div>
-        <div className="md:col-span-4">
-          <BarListCard
-            title="Negociações abertas por vendedor"
-            help="Quantidade de negócios em aberto atribuídos a cada vendedor no momento."
-            icon={ListChecks}
-            rows={openDeals.map(o => ({
-              label: nameById.get(o.seller_id) || 'Usuário removido',
-              value: o.open_deals,
-              valueLabel: String(o.open_deals),
-            }))}
-            color="#8a3ffc"
-            emptyText="Nenhuma negociação aberta atribuída."
-          />
-        </div>
-      </div>
-
-      <BarListCard
-        title="Score de performance"
-        help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
-        icon={Award}
-        rows={scores.map(s => ({
-          label: nameById.get(s.seller_id) || 'Usuário removido',
-          value: s.score,
-          valueLabel: `${s.score}`,
-        }))}
-        color="#0f62fe"
-        emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
-      />
-
-      <EquipeTeamSection
-        monthlyRows={monthlySales}
-        comparisonRows={sellerComparison}
-        sellers={members.map((m: any) => ({ id: m.id, name: m.name }))}
-        hasCommission={hasCommission}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         <RankTable
           title="Rank de clientes"
           help="Clientes com maior valor total comprado (histórico completo)."
@@ -163,20 +107,19 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
           color="#f1c21b"
           emptyText="Sem vendas com cliente associado ainda."
         />
-        {topDestinations.length > 0 && (
-          <RankTable
-            title="Rank de destinos"
-            help="Destinos mais vendidos no período, por faturamento."
-            icon={MapPin}
-            rows={topDestinations.map(d => ({
-              label: d.destination,
-              subLabel: `${d.sales_count} venda${d.sales_count === 1 ? '' : 's'}`,
-              value: d.total_cents,
-              valueLabel: fmtCurrency(d.total_cents),
-            }))}
-            color="#1192e8"
-          />
-        )}
+        <RankTable
+          title="Rank de destinos"
+          help="Destinos mais vendidos no período, por faturamento."
+          icon={MapPin}
+          rows={topDestinations.map(d => ({
+            label: d.destination,
+            subLabel: `${d.sales_count} venda${d.sales_count === 1 ? '' : 's'}`,
+            value: d.total_cents,
+            valueLabel: fmtCurrency(d.total_cents),
+          }))}
+          color="#1192e8"
+          emptyText="Sem vendas com destino registrado no período."
+        />
         <RankTable
           title="Rank de produtos"
           help="Produtos/serviços mais vendidos no período, por quantidade."
@@ -188,9 +131,58 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
             valueLabel: `${p.quantity}`,
           }))}
           color="#24a148"
-          emptyText="Sem vendas de produtos do catálogo no período."
+          emptyText="Sem vendas de produtos no período."
+        />
+        <Suspense fallback={<div className="h-[320px] w-full rounded-md bg-muted/30 animate-pulse" />}>
+          <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
+        </Suspense>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <BarListCard
+          title="Conversão por vendedor"
+          help="Percentual de leads atribuídos a cada vendedor (últimos 30 dias) que chegaram a um estágio de fechamento."
+          icon={UserCheck}
+          rows={conversionRates.map(c => ({
+            label: nameById.get(c.seller_id) || 'Usuário removido',
+            value: c.conversion_pct,
+            valueLabel: `${c.conversion_pct.toFixed(0)}%`,
+          }))}
+          color="#24a148"
+          emptyText="Nenhum lead atribuído nos últimos 30 dias."
+        />
+        <BarListCard
+          title="Negociações abertas por vendedor"
+          help="Quantidade de negócios em aberto atribuídos a cada vendedor no momento."
+          icon={ListChecks}
+          rows={openDeals.map(o => ({
+            label: nameById.get(o.seller_id) || 'Usuário removido',
+            value: o.open_deals,
+            valueLabel: String(o.open_deals),
+          }))}
+          color="#8a3ffc"
+          emptyText="Nenhuma negociação aberta atribuída."
+        />
+        <BarListCard
+          title="Score de performance"
+          help="Média entre a posição relativa em valor vendido e em taxa de conversão, ambas normalizadas pelo melhor vendedor do período (30 dias)."
+          icon={Award}
+          rows={scores.map(s => ({
+            label: nameById.get(s.seller_id) || 'Usuário removido',
+            value: s.score,
+            valueLabel: `${s.score}`,
+          }))}
+          color="#0f62fe"
+          emptyText="Sem vendas ou leads atribuídos nos últimos 30 dias."
         />
       </div>
+
+      <EquipeTeamSection
+        monthlyRows={monthlySales}
+        comparisonRows={sellerComparison}
+        sellers={members.map((m: any) => ({ id: m.id, name: m.name }))}
+        hasCommission={hasCommission}
+      />
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="equipe" />

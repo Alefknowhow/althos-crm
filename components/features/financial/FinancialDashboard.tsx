@@ -13,6 +13,7 @@ import { getFinancialDashboardData, updateFinancialEntry, type AccountsBucketEnt
 import { PERIOD_OPTIONS, periodToRange, type PeriodId } from '@/lib/utils/period-range'
 import { Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { carbonColor } from '@/lib/charts/carbon-theme'
 
 function fmtCurrency(cents: number): string {
@@ -72,6 +73,66 @@ function BreakdownList({ title, items, total }: {
               <div className="h-1.5 w-full bg-muted overflow-hidden rounded-full">
                 <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color }} />
               </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+// Máximo de fatias fixo (top 4 + "Outros" agrupando o resto) — mesma regra
+// de estrutura fixa/sólida do BreakdownList, aplicada ao donut.
+const DONUT_SLICES = 5
+const DONUT_LEGEND_ROW_HEIGHT = 20 // px
+
+function BreakdownDonut({ items, total }: {
+  items: { label: string; valor_cents: number }[]
+  total: number
+}) {
+  const sorted = [...items].sort((a, b) => b.valor_cents - a.valor_cents)
+  const top = sorted.slice(0, DONUT_SLICES - 1)
+  const restSum = sorted.slice(DONUT_SLICES - 1).reduce((a, i) => a + i.valor_cents, 0)
+  const slices = restSum > 0 ? [...top, { label: 'Outros', valor_cents: restSum }] : top
+  const chartData = slices.map((s, i) => ({ name: s.label, value: s.valor_cents, color: carbonColor(i) }))
+
+  return (
+    <div>
+      {slices.length === 0 ? (
+        <div className="h-[160px] flex items-center justify-center text-xs text-muted-foreground">Sem dados no período.</div>
+      ) : (
+        <div className="h-[160px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={chartData} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="85%" paddingAngle={2} stroke="none">
+                {chartData.map((s, i) => <Cell key={i} fill={s.color} />)}
+              </Pie>
+              <Tooltip
+                formatter={(v) => fmtCurrency(Number(v) || 0)}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))', borderRadius: '0px', border: '1px solid hsl(var(--border))',
+                  fontSize: '12px', padding: '8px 10px', color: 'hsl(var(--foreground))',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <ul
+        className="mt-1 space-y-1 overflow-y-auto pr-1"
+        style={{ height: DONUT_SLICES * DONUT_LEGEND_ROW_HEIGHT }}
+      >
+        {slices.map((s, i) => {
+          const pct = total > 0 ? (s.valor_cents / total) * 100 : 0
+          return (
+            <li key={s.label} className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="truncate flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: carbonColor(i) }} />
+                {s.label}
+              </span>
+              <span className="tabular-nums shrink-0">
+                {fmtCurrency(s.valor_cents)} <span className="text-muted-foreground">({pct.toFixed(1)}%)</span>
+              </span>
             </li>
           )
         })}
@@ -285,7 +346,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Por categoria</CardTitle></CardHeader>
-              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
+              <CardContent><BreakdownDonut items={data.revenueBreakdown.porCategoria} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Por cliente</CardTitle></CardHeader>
@@ -293,11 +354,11 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Por forma de pagamento</CardTitle></CardHeader>
-              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
+              <CardContent><BreakdownDonut items={data.revenueBreakdown.porFormaPagamento} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Por operadora</CardTitle></CardHeader>
-              <CardContent><BreakdownList title="Receita" items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
+              <CardContent><BreakdownDonut items={data.revenueBreakdown.porOperadora} total={data.revenueBreakdown.receitaTotalCents} /></CardContent>
             </Card>
           </div>
 
@@ -305,13 +366,13 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas segmentadas — por subcategoria</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <BreakdownList title="Por subcategoria" items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} />
+                <BreakdownDonut items={data.expenseBreakdown.porSubcategoria} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">Despesas segmentadas — por centro de custo</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <BreakdownList title="Por centro de custo" items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} />
+                <BreakdownDonut items={data.expenseBreakdown.porCentroCusto} total={data.expenseBreakdown.despesaTotalCents} />
               </CardContent>
             </Card>
           </div>
