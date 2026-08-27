@@ -777,6 +777,7 @@ function MonthGrid({
                 i >= 35 && 'border-b-0',
                 !inMonth && 'bg-muted/20',
                 isWeekend && inMonth && 'bg-muted/10',
+                isToday && 'bg-sky-50 dark:bg-sky-950/25',
                 isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/50',
                 !isDragOver && 'hover:bg-muted/30',
               )}
@@ -855,7 +856,7 @@ function CalendarTaskChip({
             highlighted && 'ring-1 ring-primary/50 bg-primary/5',
           )}
         >
-          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', stateDotClass(task))} />
+          <span className={cn('w-2 h-2 rounded-[3px] shrink-0', stateDotClass(task))} />
           <span className={cn('min-w-0 flex-1 truncate [overflow-wrap:anywhere]', done && 'line-through text-muted-foreground')}>
             {time && <span className="text-muted-foreground/70 mr-1 tabular-nums">{time}</span>}
             {task.title}
@@ -913,7 +914,7 @@ function DayOverflowPopover({
                       highlightId === t.id && 'ring-1 ring-primary/50',
                     )}
                   >
-                    <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', stateDotClass(t))} />
+                    <span className={cn('w-2 h-2 rounded-[3px] shrink-0', stateDotClass(t))} />
                     {time && <span className="text-muted-foreground tabular-nums">{time}</span>}
                     <span className="truncate">{t.title}</span>
                   </button>
