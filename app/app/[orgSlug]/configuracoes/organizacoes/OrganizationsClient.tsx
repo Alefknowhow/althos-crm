@@ -14,13 +14,15 @@ import {
 } from '@/actions/organization'
 import { setOrgVisibility, type TeamMember } from '@/actions/team'
 import type { OrgCompanyData } from '@/actions/organization'
+import { nicheKeyFor, type NicheKey } from '@/lib/niche'
 import {
   Building2, ChevronDown, Loader2, Eye, EyeOff, Users, Crown,
 } from 'lucide-react'
 
-const COMPANY_FIELDS: { key: keyof OrgCompanyData; label: string; placeholder?: string; type?: string }[] = [
+type CompanyField = { key: keyof OrgCompanyData; label: string; placeholder?: string; type?: string }
+
+const BASE_COMPANY_FIELDS: CompanyField[] = [
   { key: 'cnpj',           label: 'CNPJ',             placeholder: '00.000.000/0000-00' },
-  { key: 'cadastur',       label: 'CADASTUR',         placeholder: 'Nº do CADASTUR' },
   { key: 'contact_phone',  label: 'Telefone',         placeholder: '(11) 99999-9999' },
   { key: 'contact_email',  label: 'E-mail comercial', placeholder: 'contato@empresa.com', type: 'email' },
   { key: 'instagram',      label: 'Instagram',        placeholder: '@suaempresa' },
@@ -30,6 +32,24 @@ const COMPANY_FIELDS: { key: keyof OrgCompanyData; label: string; placeholder?: 
   { key: 'address_state',  label: 'Estado (UF)',      placeholder: 'SP' },
   { key: 'address_zip',    label: 'CEP',              placeholder: '00000-000' },
 ]
+
+// O campo "cadastur" (mesma coluna no banco pra todo nicho) muda de nome e
+// placeholder conforme o órgão regulamentador de cada vertical — só a
+// Agência de Viagens usa CADASTUR de fato; nichos sem órgão claro (Tráfego,
+// Outros) simplesmente não mostram o campo.
+const REGISTRATION_BY_NICHE: Partial<Record<NicheKey, { label: string; placeholder: string }>> = {
+  viagens:   { label: 'CADASTUR',       placeholder: 'Nº do CADASTUR' },
+  imoveis:   { label: 'CRECI',          placeholder: 'Nº do CRECI' },
+  clinicas:  { label: 'CRM/CRO',        placeholder: 'Nº do registro no conselho (CRM, CRO, etc.)' },
+  advocacia: { label: 'OAB',            placeholder: 'Nº de inscrição na OAB' },
+  seguros:   { label: 'Registro SUSEP', placeholder: 'Nº de registro na SUSEP' },
+}
+
+function companyFieldsFor(niche: string | null): CompanyField[] {
+  const reg = REGISTRATION_BY_NICHE[nicheKeyFor(niche) as NicheKey]
+  if (!reg) return BASE_COMPANY_FIELDS
+  return [{ key: 'cadastur', label: reg.label, placeholder: reg.placeholder }, ...BASE_COMPANY_FIELDS]
+}
 
 function initials(name: string, email: string) {
   if (name?.trim()) {
@@ -142,9 +162,10 @@ function OrgCard({
   const [company, setCompany] = useState<OrgCompanyData>(org.company)
   const [savingName, startName] = useTransition()
   const [savingCompany, startCompany] = useTransition()
+  const companyFields = companyFieldsFor(org.niche)
 
   const nameDirty = name.trim() !== org.name && name.trim().length >= 2
-  const companyDirty = COMPANY_FIELDS.some(f => (company[f.key] ?? '') !== (org.company[f.key] ?? ''))
+  const companyDirty = companyFields.some(f => (company[f.key] ?? '') !== (org.company[f.key] ?? ''))
 
   function saveName() {
     startName(async () => {
@@ -210,8 +231,8 @@ function OrgCard({
                 Aparecem no cabeçalho e rodapé das propostas geradas por esta organização.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {COMPANY_FIELDS.map(f => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {companyFields.map(f => (
                 <div key={f.key} className="space-y-2">
                   <Label>{f.label}</Label>
                   <Input

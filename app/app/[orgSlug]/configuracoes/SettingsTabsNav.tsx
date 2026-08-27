@@ -20,7 +20,7 @@ const TABS = [
   { key: 'aparencia',    label: 'Aparência',    icon: Palette,     seg: 'aparencia' },
   { key: 'seguranca',    label: 'Segurança',    icon: ShieldCheck, seg: 'seguranca' },
   { key: 'integracoes',  label: 'Integrações',  icon: Share2,      seg: 'integracoes' },
-  { key: 'agentes',      label: 'Agentes de IA', icon: KeyRound,   seg: 'agentes' },
+  { key: 'agentes',      label: 'Conector MCP', icon: KeyRound,   seg: 'agentes' },
 ] as const
 
 export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
@@ -33,7 +33,7 @@ export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="border-b border-border">
-      <nav className="-mb-px flex gap-1 overflow-x-auto">
+      <nav className="-mb-px flex flex-wrap gap-1">
         {TABS.map(t => {
           const href = t.seg ? `${base}/${t.seg}` : base
           const active = activeSeg === t.seg

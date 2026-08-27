@@ -203,19 +203,24 @@ export default function AgenteIaTabs({
   return (
     <div className="space-y-4">
       <Tabs defaultValue={defaultTab}>
-        {/* Sticky logo abaixo do cabeçalho de Configurações — fundo sólido,
-            sem fade, acompanha a altura real dele (headerOffset). */}
-        <div className="sticky z-10 py-2 bg-background" style={{ top: headerOffset }}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="personalidade">Personalidade</TabsTrigger>
-            <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
-            <TabsTrigger value="conhecimento">Conhecimento</TabsTrigger>
-            <TabsTrigger value="fluxos">Fluxos</TabsTrigger>
-            <TabsTrigger value="horarios">Horários</TabsTrigger>
-            <TabsTrigger value="transferencia">Transferência Humana</TabsTrigger>
-            <TabsTrigger value="ferramentas">Ferramentas</TabsTrigger>
-            <TabsTrigger value="memoria">Memória</TabsTrigger>
-            <TabsTrigger value="testar">Testar Agente</TabsTrigger>
+        {/* Sticky logo abaixo do cabeçalho de Configurações, colada nele
+            (-mt-6 cancela o pt-6 do layout pai) — acompanha a altura real
+            dele (headerOffset). Mesmo visual (fundo + pill) das abas de
+            Financeiro/Dashboard (DashboardTabsShell). */}
+        <div
+          className="sticky z-10 -mt-6 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 pb-2 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70"
+          style={{ top: headerOffset }}
+        >
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="personalidade" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Personalidade</TabsTrigger>
+            <TabsTrigger value="qualificacao" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Qualificação</TabsTrigger>
+            <TabsTrigger value="conhecimento" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Conhecimento</TabsTrigger>
+            <TabsTrigger value="fluxos" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Fluxos</TabsTrigger>
+            <TabsTrigger value="horarios" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Horários</TabsTrigger>
+            <TabsTrigger value="transferencia" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Transferência Humana</TabsTrigger>
+            <TabsTrigger value="ferramentas" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Ferramentas</TabsTrigger>
+            <TabsTrigger value="memoria" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Memória</TabsTrigger>
+            <TabsTrigger value="testar" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Testar Agente</TabsTrigger>
           </TabsList>
         </div>
 

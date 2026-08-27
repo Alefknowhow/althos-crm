@@ -56,7 +56,7 @@ export default function AgentTokensView({ orgSlug, tokens }: { orgSlug: string; 
     <div className="space-y-4 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2"><KeyRound className="w-5 h-5" /> Agentes de IA</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2"><KeyRound className="w-5 h-5" /> Conector MCP</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Tokens usados por Claude Code, Codex e outros agentes MCP pra acessar o Althos em seu nome.
           </p>

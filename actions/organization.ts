@@ -537,6 +537,7 @@ export type ManagedOrganization = {
   id:      string
   name:    string
   slug:    string
+  niche:   string | null
   company: OrgCompanyData
 }
 
@@ -551,7 +552,7 @@ export async function getAccountOrganizations(orgSlug: string): Promise<ManagedO
   const accountId = ((org as any).account_id as string | null) ?? null
 
   // Resolve the target org set (account orgs, or just this one for legacy orgs).
-  const fields = ['id', 'name', 'slug', ...COMPANY_FIELDS].join(', ')
+  const fields = ['id', 'name', 'slug', 'niche', ...COMPANY_FIELDS].join(', ')
   let rows: any[] = []
   if (accountId) {
     if (!(await isAccountManager(admin, accountId, user.id))) return []
@@ -572,7 +573,7 @@ export async function getAccountOrganizations(orgSlug: string): Promise<ManagedO
   return rows.map(r => {
     const company = {} as OrgCompanyData
     for (const f of COMPANY_FIELDS) company[f] = (r[f] as string) ?? ''
-    return { id: r.id as string, name: (r.name as string) ?? '', slug: (r.slug as string) ?? '', company }
+    return { id: r.id as string, name: (r.name as string) ?? '', slug: (r.slug as string) ?? '', niche: (r.niche as string | null) ?? null, company }
   })
 }
 

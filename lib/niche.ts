@@ -33,8 +33,13 @@ export function isTrafficNiche(niche?: string | null): boolean {
   return n.includes('tráfego') || n.includes('trafego')
 }
 
+export function isLawNiche(niche?: string | null): boolean {
+  const n = (niche || '').toLowerCase()
+  return n.includes('advoc')
+}
+
 /** Chave canônica de nicho (usada pra filtrar conteúdo por vertical — ver lib/help/content.ts). Null = sem nicho/CRM genérico. */
-export type NicheKey = 'viagens' | 'trafego' | 'clinicas' | 'imoveis' | 'seguros'
+export type NicheKey = 'viagens' | 'trafego' | 'clinicas' | 'imoveis' | 'seguros' | 'advocacia'
 
 export function nicheKeyFor(niche?: string | null): NicheKey | null {
   if (isTravelNiche(niche)) return 'viagens'
@@ -42,6 +47,7 @@ export function nicheKeyFor(niche?: string | null): NicheKey | null {
   if (isClinicNiche(niche)) return 'clinicas'
   if (isRealEstateNiche(niche)) return 'imoveis'
   if (isInsuranceNiche(niche)) return 'seguros'
+  if (isLawNiche(niche)) return 'advocacia'
   return null
 }
 

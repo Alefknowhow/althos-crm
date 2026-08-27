@@ -4,10 +4,10 @@ import { useState, useTransition } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
-import { NICHE_OPTIONS, isTravelNiche } from '@/lib/niche'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { NICHE_OPTIONS } from '@/lib/niche'
 import { updateOrgNiche } from '@/actions/organization'
-import { Check, Loader2, PlaneTakeoff } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 interface Props {
   orgSlug:      string
@@ -53,29 +53,16 @@ export default function GeneralTab({ orgSlug, initialNiche }: Props) {
       </CardHeader>
       <CardContent className="space-y-3">
         <Label className="sr-only">Nicho</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {NICHE_OPTIONS.map(opt => {
-            const active = niche === opt.value
-            const travel = isTravelNiche(opt.value)
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setNiche(opt.value)}
-                className={cn(
-                  'relative h-16 rounded-none border-2 text-sm font-medium transition-all duration-150 px-3 flex items-center justify-center gap-2 text-center',
-                  active
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border hover:border-primary/40 hover:bg-muted/40 text-foreground',
-                )}
-              >
-                {travel && <PlaneTakeoff className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
-                <span>{opt.label}</span>
-                {active && <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5" />}
-              </button>
-            )
-          })}
-        </div>
+        <Select value={niche} onValueChange={setNiche}>
+          <SelectTrigger className="w-full sm:w-72">
+            <SelectValue placeholder="Selecione o nicho" />
+          </SelectTrigger>
+          <SelectContent>
+            {NICHE_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
         {saved && !error && (
