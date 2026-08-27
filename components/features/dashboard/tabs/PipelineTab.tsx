@@ -7,7 +7,6 @@ import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
-import PipelineAtRiskWidget from '../PipelineAtRiskWidget'
 import SourcePerformanceWidget from '../SourcePerformanceWidget'
 import TimeInStageWidget from '../TimeInStageWidget'
 import BarListCard from '../BarListCard'
@@ -124,14 +123,6 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
             color="#da1e28"
             emptyText="Nenhum motivo de perda registrado ainda."
           />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <div className="md:col-span-8">
-          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
-            <PipelineAtRiskWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
-          </Suspense>
         </div>
       </div>
 
