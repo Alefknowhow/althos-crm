@@ -485,7 +485,7 @@ export default function PublicQuotationView({
       ])
       if (mapObj.current || !mapRef.current) return
       const map = new Map(mapRef.current, {
-        scrollwheel: false, mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+        scrollwheel: false, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: false,
       })
       mapObj.current = map
       const bounds = new LatLngBounds()
@@ -541,7 +541,7 @@ export default function PublicQuotationView({
       if (cancelled || !miniMapRef.current || miniMapRef.current.dataset.ready) return
       miniMapRef.current.dataset.ready = '1'
       const map = new Map(miniMapRef.current, {
-        center: { lat, lng }, zoom: 14, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false,
+        center: { lat, lng }, zoom: 14, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
       })
       new Marker({ position: { lat, lng }, map })
     }, 200)
