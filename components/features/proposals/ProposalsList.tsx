@@ -46,6 +46,26 @@ function destOf(p: ProposalRow) {
   return (p.destinations || []).map((d: any) => d?.name).filter(Boolean).join(', ')
 }
 
+// 8 cores determinísticas por vendedor, indexadas por hash do user_id — o
+// mesmo vendedor sempre pega a mesma cor em toda a lista.
+const SELLER_LABEL_COLORS = [
+  'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+  'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300',
+  'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+  'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+]
+
+function sellerLabelColor(userId: string | null | undefined): string {
+  if (!userId) return 'bg-muted text-muted-foreground'
+  let h = 0
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0
+  return SELLER_LABEL_COLORS[h % SELLER_LABEL_COLORS.length]
+}
+
 export default function ProposalsList({
   orgSlug,
   proposals,
@@ -235,9 +255,9 @@ export default function ProposalsList({
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {seller ? (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal gap-1">
-                            <UserCircle2 className="w-3 h-3" /> {seller}
-                          </Badge>
+                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
+                            {seller}
+                          </span>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell onClick={ev => ev.stopPropagation()}>
