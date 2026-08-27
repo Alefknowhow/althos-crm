@@ -1209,10 +1209,9 @@ function TaskListRow({
 
       <div className="hidden sm:flex items-center gap-1 shrink-0">
         {member && (
-          <>
-            <UserAvatar name={member.name} email={member.email} size={16} />
-            <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{member.name}</span>
-          </>
+          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[80px]">
+            {(member.name || member.email || '').trim().split(/\s+/)[0]}
+          </span>
         )}
       </div>
 
