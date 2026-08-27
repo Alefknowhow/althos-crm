@@ -1385,15 +1385,18 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 </Select>
               </F>
               <F label="Categoria do hotel">
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-amber-500 shrink-0" />
-                  <Select value={l.star_rating ? String(l.star_rating) : 'none'} onValueChange={v => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, star_rating: v === 'none' ? null : parseInt(v) } : x))}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Não exibir</SelectItem>
-                      {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n} estrela{n > 1 ? 's' : ''}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-0.5 h-9">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      title={`${n} estrela${n > 1 ? 's' : ''}`}
+                      onClick={() => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, star_rating: x.star_rating === n ? null : n } : x))}
+                      className="p-0.5 hover:scale-110 transition-transform"
+                    >
+                      <Star className={cn('w-5 h-5', (l.star_rating || 0) >= n ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30')} />
+                    </button>
+                  ))}
                 </div>
               </F>
             </div>
