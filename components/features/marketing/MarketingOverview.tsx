@@ -635,11 +635,11 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               <CardHeader>
                 <CardTitle className="text-base">Conversão por anúncio</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Cada campanha pode ter um objetivo diferente — escolha a métrica.
+                  Ranking dos anúncios individuais — cada um pode ter um objetivo diferente, escolha a métrica.
                 </p>
               </CardHeader>
               <CardContent>
-                <ConversionByAdChart campaigns={filteredCampaigns} />
+                <ConversionByAdChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
               </CardContent>
             </Card>
           </div>

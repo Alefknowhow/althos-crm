@@ -1390,3 +1390,74 @@ export async function getAdSetAds(orgSlug: string, adSetExternalId: string, peri
     return { ok: false as const, error: classifyMetaError(e) }
   }
 }
+
+export type AdConversionRow = {
+  id: string
+  name: string
+  campaign_name: string
+  meta_leads: number
+  meta_messaging_started: number
+  meta_purchases: number
+  meta_purchase_value_cents: number
+}
+
+/**
+ * Métricas por anúncio individual (não por campanha) pro card "Conversão
+ * por anúncio" do painel — uma chamada por conta de anúncios (nível de
+ * conta, `level=ad`), sem precisar percorrer campanha → CJ → anúncio.
+ * `adAccountId` null = todas as contas conectadas da org.
+ */
+export async function getAdConversionRows(
+  orgSlug: string,
+  adAccountId: string | null,
+  period: MarketingPeriod = '30d',
+): Promise<{ ok: true; rows: AdConversionRow[] } | { ok: false; error: DrillDownError }> {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: 'unknown' as DrillDownError }
+  const supabase = createClient()
+
+  let accountQuery = supabase
+    .from('ad_accounts')
+    .select('id, external_id')
+    .eq('organization_id', org.id)
+    .eq('provider', 'meta')
+    .not('external_id', 'is', null)
+  if (adAccountId) accountQuery = accountQuery.eq('id', adAccountId)
+  const { data: accounts } = await accountQuery
+  if (!accounts || accounts.length === 0) return { ok: true as const, rows: [] }
+
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('meta_ads_access_token')
+    .eq('id', org.id)
+    .maybeSingle()
+  if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
+
+  const { fetchMetaAdAccountAdInsights } = await import('@/lib/meta/ads')
+  const until = new Date().toISOString().slice(0, 10)
+  const since = periodStart(period)
+
+  try {
+    const rows: AdConversionRow[] = []
+    for (const acc of accounts) {
+      if (!acc.external_id) continue
+      const insights = await fetchMetaAdAccountAdInsights(acc.external_id, orgRow.meta_ads_access_token, since, until)
+      for (const i of insights) {
+        rows.push({
+          id: i.ad_id,
+          name: i.ad_name,
+          campaign_name: i.campaign_name,
+          meta_leads: i.meta_leads,
+          meta_messaging_started: i.meta_messaging_started,
+          meta_purchases: i.meta_purchases,
+          meta_purchase_value_cents: i.meta_purchase_value_cents,
+        })
+      }
+    }
+    return { ok: true as const, rows }
+  } catch (e: any) {
+    return { ok: false as const, error: classifyMetaError(e) }
+  }
+}

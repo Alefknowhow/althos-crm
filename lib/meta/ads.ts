@@ -175,3 +175,48 @@ export async function fetchMetaAds(adSetExternalId: string, token: string): Prom
   }, token)
   return (json.data || []) as MetaAd[]
 }
+
+export type MetaAdInsight = {
+  ad_id: string
+  ad_name: string
+  campaign_name: string
+  impressions: number
+  clicks: number
+  spend_cents: number
+  meta_leads: number
+  meta_messaging_started: number
+  meta_link_clicks: number
+  meta_landing_page_views: number
+  meta_purchases: number
+  meta_purchase_value_cents: number
+}
+
+/**
+ * Métricas agregadas do período (sem quebra por dia) de TODOS os anúncios
+ * de uma conta, numa única chamada (`level=ad` na Insights API) — evita
+ * percorrer campanha → conjunto de anúncios → anúncio (o que exigiria uma
+ * chamada por campanha e outra por CJ) só pra montar um ranking de anúncios.
+ */
+export async function fetchMetaAdAccountAdInsights(
+  adAccountExternalId: string,
+  token: string,
+  since: string,
+  until: string,
+): Promise<MetaAdInsight[]> {
+  const accountId = adAccountExternalId.startsWith('act_') ? adAccountExternalId : `act_${adAccountExternalId}`
+  const json = await metaGet(`/${accountId}/insights`, {
+    level: 'ad',
+    fields: 'ad_id,ad_name,campaign_name,impressions,clicks,spend,actions,action_values',
+    time_range: JSON.stringify({ since, until }),
+    limit: '500',
+  }, token)
+  return ((json.data || []) as any[]).map(row => ({
+    ad_id: row.ad_id as string,
+    ad_name: (row.ad_name as string) || 'Sem nome',
+    campaign_name: (row.campaign_name as string) || '—',
+    impressions: Math.round(Number(row.impressions || 0)),
+    clicks: Math.round(Number(row.clicks || 0)),
+    spend_cents: Math.round(Number(row.spend || 0) * 100),
+    ...parseMetaActions(row.actions, row.action_values),
+  }))
+}
