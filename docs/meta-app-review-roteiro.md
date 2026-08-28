@@ -160,7 +160,13 @@ mensagens/comentários.
 ## 2. `instagram_business_manage_messages`
 
 **O que é:** ler e enviar DMs (Direct) da conta profissional conectada —
-usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
+usado pelo inbox manual de atendimento no CRM.
+
+> O CRM também tem automações/funis de resposta em cima dessa permissão, mas
+> por decisão deliberada **o caso de uso e o vídeo cobrem só o fluxo manual**
+> (receber + responder pelo CRM) — mais simples de gravar e sem risco de algo
+> falhar ao vivo na automação. Nada impede de declarar o recurso de automação
+> depois, numa atualização futura do app, se um dia for necessário.
 
 ### Caso de uso (PT)
 
@@ -169,13 +175,11 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 > contato com o cliente (WhatsApp, e-mail). A permissão
 > `instagram_business_manage_messages` é usada para: (1) receber, em tempo
 > real via webhook, as mensagens diretas enviadas por clientes à conta
-> conectada, exibindo-as no inbox do CRM; (2) permitir que o atendente
+> conectada, exibindo-as no inbox do CRM; e (2) permitir que o atendente
 > responda manualmente pelo próprio CRM, sem precisar abrir o aplicativo do
-> Instagram; e (3) permitir automações configuráveis pelo dono do negócio
-> (ex.: resposta automática a uma pergunta frequente, ou um funil de
-> qualificação por DM) — sempre respeitando a janela de mensagens de 24h da
-> Meta. Nenhuma mensagem é enviada sem que o fluxo tenha sido configurado ou
-> disparado por uma interação real do cliente.
+> Instagram — sempre respeitando a janela de mensagens de 24h da Meta.
+> Nenhuma mensagem é enviada sem ter sido digitada por um atendente humano
+> em resposta a uma mensagem real de um cliente.
 
 ### Caso de uso (EN)
 
@@ -183,14 +187,11 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 > inside the CRM itself, alongside other customer contact channels (WhatsApp,
 > email). The `instagram_business_manage_messages` permission is used to:
 > (1) receive, in real time via webhook, direct messages sent by customers to
-> the connected account, displaying them in the CRM's inbox; (2) let a human
-> agent reply manually from within the CRM, without needing to open the
-> Instagram app; and (3) allow configurable automations set up by the
-> business owner (e.g., an automatic reply to a frequently asked question, or
-> a DM qualification flow) — always respecting Meta's 24-hour messaging
-> window. No message is ever sent without either being manually typed by an
-> agent or triggered by a real customer interaction within an automation the
-> business owner explicitly configured.
+> the connected account, displaying them in the CRM's inbox; and (2) let a
+> human agent reply manually from within the CRM, without needing to open
+> the Instagram app — always respecting Meta's 24-hour messaging window. No
+> message is ever sent unless typed by a human agent in response to a real
+> customer message.
 
 > ⚠️ **Foi rejeitado exatamente por isso da 1ª vez** — o analista escreveu
 > literalmente: "Exemplos estáticos eram mostrados em vez de uma interação ao
@@ -223,16 +224,8 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 6. Mostre o atendente **respondendo manualmente** pelo campo de texto do
    CRM — e, sem cortar, mostre a resposta **chegando na tela do Instagram**
    que enviou a DM. Essa ida-e-volta visível nas duas telas é o que prova
-   que não é uma captura estática.
-7. Em seguida, mostre a tela **Instagram → Automações**: abra uma automação
-   já configurada (ex.: gatilho por palavra-chave) e explique brevemente que
-   ela responde sozinha quando a mensagem bate no gatilho — dispare, ao vivo
-   e visível nas duas telas, uma segunda DM nova de teste (de outra conta ou
-   depois de limpar a conversa) pra mostrar a automação respondendo
-   automaticamente.
-8. Feche mostrando o toggle de **pausar automação** quando um humano assume a
-   conversa (evidencia controle do dono do negócio sobre quando é bot ou
-   humano).
+   que não é uma captura estática. Fim do vídeo — não precisa mostrar
+   automação.
 
 ### Instruções de teste para o revisor
 
@@ -244,9 +237,6 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 >    lista de conversas.
 > 5. Responda pelo campo de texto do CRM e confirme o recebimento na segunda
 >    conta.
-> 6. Opcional: configure uma automação simples em Instagram → Automações
->    (gatilho por palavra-chave) e envie uma nova DM contendo a palavra para
->    ver a resposta automática.
 
 ---
 
