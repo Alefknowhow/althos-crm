@@ -34,12 +34,34 @@ export const dailyOwnerDigestFn = inngest.createFunction(
     const admin = createAdminClient()
 
     const orgs: OrgWithMembers[] = await step.run('fetch-digest-orgs', async () => {
-      const { data } = await admin
+      // memberships.user_id não tem FK declarada pra profiles (nem pra
+      // auth.users) — um embed `memberships(profiles(email))` não resolve
+      // (PostgREST não sabe fazer esse join sozinho) e retorna erro. Busca
+      // os e-mails à parte e junta em JS.
+      const { data: orgRows, error: orgErr } = await admin
         .from('organizations')
-        .select('id, name, slug, niche, org_settings!inner(digest_enabled), memberships(user_id, role, profiles(email))')
+        .select('id, name, slug, niche, org_settings!inner(digest_enabled), memberships(user_id, role)')
         .eq('org_settings.digest_enabled', true)
         .limit(500)
-      return (data as unknown as OrgWithMembers[]) ?? []
+      if (orgErr) {
+        console.error('[daily-digest] fetch-digest-orgs failed:', orgErr)
+        return []
+      }
+      const rows = (orgRows ?? []) as unknown as Array<{ id: string; name: string; slug: string; niche: string | null; memberships: Array<{ user_id: string; role: string }> }>
+      if (rows.length === 0) return []
+
+      const userIds = Array.from(new Set(rows.flatMap(o => o.memberships.map(m => m.user_id))))
+      const { data: profileRows, error: profErr } = await admin
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds)
+      if (profErr) console.error('[daily-digest] fetch profiles failed:', profErr)
+      const emailById = new Map((profileRows ?? []).map((p: any) => [p.id as string, p.email as string]))
+
+      return rows.map(o => ({
+        ...o,
+        memberships: o.memberships.map(m => ({ ...m, profiles: emailById.has(m.user_id) ? { email: emailById.get(m.user_id)! } : null })),
+      }))
     })
 
     let sent = 0
