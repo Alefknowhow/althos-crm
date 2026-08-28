@@ -19,16 +19,29 @@ export type DigestTask = {
   title: string
   due_date: string | null
   priority: string
+  assigned_to: string | null
+  assigneeName?: string | null
   leads: { id: string; name: string } | { id: string; name: string }[] | null
 }
 
 export type DigestTrip = {
   id: string
-  sale_number: string | null
   client_name: string | null
   destination: string | null
   departure_date: string | null
   return_date: string | null
+  package_locator: string | null
+  operator: string | null
+  created_by: string | null
+  agentName?: string | null
+}
+
+export type DigestStaleLead = {
+  id: string
+  name: string
+  value_cents: number
+  last_activity_at: string | null
+  stage: { name: string } | { name: string }[] | null
 }
 
 export type DigestData = {
@@ -38,6 +51,7 @@ export type DigestData = {
   /** null quando o nicho da org não é viagens — bloco de embarques nem entra no e-mail. */
   todayTrips: DigestTrip[] | null
   weekTrips: DigestTrip[] | null
+  staleLeads: DigestStaleLead[]
 }
 
 /** YYYY-MM-DD no fuso de Brasília, sem depender do fuso do processo Node. */
@@ -67,7 +81,7 @@ export async function buildDigestData(
 
   let taskQuery = supabase
     .from('tasks')
-    .select('id, title, due_date, priority, leads:contatos(id, name)')
+    .select('id, title, due_date, priority, assigned_to, leads:contatos(id, name)')
     .eq('organization_id', orgId)
     .neq('status', 'done')
     .not('due_date', 'is', null)
@@ -78,7 +92,7 @@ export async function buildDigestData(
 
   let tripQuery = supabase
     .from('travel_sales')
-    .select('id, sale_number, client_name, destination, departure_date, return_date')
+    .select('id, client_name, destination, departure_date, return_date, package_locator, operator, created_by')
     .eq('organization_id', orgId)
     .neq('status', 'cancelled')
     .gte('departure_date', today)
@@ -87,11 +101,35 @@ export async function buildDigestData(
     .limit(200)
   if (assignedTo) tripQuery = tripQuery.eq('created_by', assignedTo)
 
-  const [tasksRes, tripsRes] = await Promise.all([
+  // Leads parados: sem atividade há mais de org_settings.stale_lead_days
+  // (default 7) e ainda em aberto — mesma definição usada no badge "parado"
+  // do Pipeline (KanbanBoard.tsx) e na automação lead.stale.
+  const { data: settingsRow } = await supabase
+    .from('org_settings')
+    .select('stale_lead_days')
+    .eq('org_id', orgId)
+    .maybeSingle()
+  const staleDays = settingsRow?.stale_lead_days ?? 7
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - staleDays)
+  const cutoffISO = cutoff.toISOString()
+
+  let staleQuery = supabase
+    .from('contatos')
+    .select('id, name, value_cents, last_activity_at, stage:pipeline_stages(name)')
+    .eq('organization_id', orgId)
+    .eq('status', 'lead')
+    .or(`last_activity_at.is.null,last_activity_at.lt.${cutoffISO}`)
+    .order('last_activity_at', { ascending: true, nullsFirst: true })
+    .limit(10)
+  if (assignedTo) staleQuery = staleQuery.eq('assigned_to', assignedTo)
+
+  const [tasksRes, tripsRes, staleRes] = await Promise.all([
     taskQuery,
     // Embarques são um conceito específico de agências de viagem
     // (travel_sales.departure_date) — não faz sentido em outros nichos.
     travel ? tripQuery : Promise.resolve({ data: null }),
+    staleQuery,
   ])
 
   const allDueTasks: DigestTask[] = tasksRes.data ?? []
@@ -102,12 +140,29 @@ export async function buildDigestData(
   const todayTrips = allTrips ? allTrips.filter(t => t.departure_date === today) : null
   const weekTrips = allTrips ? allTrips.filter(t => t.departure_date !== today) : null
 
+  const staleLeads: DigestStaleLead[] = staleRes.data ?? []
+
+  // Nome do responsável/agente — tasks.assigned_to e travel_sales.created_by
+  // não têm FK declarada pra profiles, então não dá pra usar embed
+  // automático (ver fix em lib/inngest/daily-digest-cron.ts); busca à parte.
+  const userIds = Array.from(new Set([
+    ...allDueTasks.map(t => t.assigned_to).filter(Boolean),
+    ...(allTrips || []).map(t => t.created_by).filter(Boolean),
+  ])) as string[]
+  if (userIds.length > 0) {
+    const { data: profileRows } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds)
+    const nameById = new Map<string, string>((profileRows ?? []).map((p: any) => [p.id as string, (p.full_name || p.email) as string]))
+    for (const t of allDueTasks) t.assigneeName = t.assigned_to ? nameById.get(t.assigned_to) ?? null : null
+    if (allTrips) for (const t of allTrips) t.agentName = t.created_by ? nameById.get(t.created_by) ?? null : null
+  }
+
   return {
     todayLabel: new Date(`${today}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }),
     overdueTasks,
     todayTasks,
     todayTrips,
     weekTrips,
+    staleLeads,
   }
 }
 
@@ -137,15 +192,14 @@ function taskRow(t: DigestTask, tone: 'overdue' | 'today'): string {
   const bg = tone === 'overdue' ? '#FEF2F2' : '#F5F5F7'
   const name = leadName(t.leads)
   const time = fmtTaskDue(t.due_date)
+  const meta = [name, t.assigneeName, time].filter(Boolean).join(' · ')
   return `
     <tr>
       <td style="padding:10px 14px;background:${bg};border-radius:10px;">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
           <td>
             <p style="margin:0;font-size:14px;font-weight:600;color:${color};">${escapeHtml(t.title)}</p>
-            <p style="margin:2px 0 0;font-size:12px;color:#6E6E73;">
-              ${name ? `${escapeHtml(name)}${time ? ' · ' : ''}` : ''}${time ? `${time}` : ''}
-            </p>
+            <p style="margin:2px 0 0;font-size:12px;color:#6E6E73;">${escapeHtml(meta)}</p>
           </td>
           <td align="right" style="white-space:nowrap;">
             <span style="display:inline-block;background:${PRIORITY_COLOR[t.priority] || '#6E6E73'};color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;padding:3px 8px;border-radius:100px;">
@@ -159,17 +213,43 @@ function taskRow(t: DigestTask, tone: 'overdue' | 'today'): string {
 }
 
 function tripRow(t: DigestTrip): string {
+  const meta2 = [
+    t.package_locator ? `Localizador: ${escapeHtml(t.package_locator)}` : null,
+    t.operator ? `Operadora: ${escapeHtml(t.operator)}` : null,
+    t.agentName ? `Agente: ${escapeHtml(t.agentName)}` : null,
+  ].filter(Boolean).join(' · ')
   return `
     <tr>
       <td style="padding:10px 14px;background:#F5F5F7;border-radius:10px;">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
           <td>
             <p style="margin:0;font-size:14px;font-weight:600;color:#1D1D1F;">${escapeHtml(t.client_name || 'Cliente')}</p>
-            <p style="margin:2px 0 0;font-size:12px;color:#6E6E73;">${escapeHtml(t.destination || '—')}${t.sale_number ? ` · #${escapeHtml(t.sale_number)}` : ''}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#6E6E73;">${escapeHtml(t.destination || '—')}</p>
+            ${meta2 ? `<p style="margin:2px 0 0;font-size:11px;color:#9CA3AF;">${meta2}</p>` : ''}
           </td>
-          <td align="right" style="white-space:nowrap;">
+          <td align="right" style="white-space:nowrap;vertical-align:top;">
             <span style="font-size:13px;font-weight:600;color:#1D63FF;">${fmtDate(t.departure_date)}</span>
             ${t.return_date ? `<span style="display:block;font-size:11px;color:#6E6E73;">volta ${fmtDate(t.return_date)}</span>` : ''}
+          </td>
+        </tr></table>
+      </td>
+    </tr>
+    <tr><td style="height:8px;"></td></tr>`
+}
+
+function staleLeadRow(l: DigestStaleLead): string {
+  const stage = Array.isArray(l.stage) ? l.stage[0] : l.stage
+  const days = l.last_activity_at ? Math.floor((Date.now() - new Date(l.last_activity_at).getTime()) / 86400000) : null
+  return `
+    <tr>
+      <td style="padding:10px 14px;background:#F5F5F7;border-radius:10px;">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td>
+            <p style="margin:0;font-size:14px;font-weight:600;color:#1D1D1F;">${escapeHtml(l.name || 'Sem nome')}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#6E6E73;">${stage?.name ? escapeHtml(stage.name) : '—'}</p>
+          </td>
+          <td align="right" style="white-space:nowrap;">
+            <span style="font-size:13px;font-weight:600;color:#D97706;">${days != null ? `${days}d parado` : 'sem atividade'}</span>
           </td>
         </tr></table>
       </td>
@@ -228,6 +308,7 @@ export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestDa
         ${section('Tarefas de hoje', '✅', data.todayTasks.length, data.todayTasks.map(t => taskRow(t, 'today')).join(''), 'Nenhuma tarefa prevista pra hoje.')}
         ${data.todayTrips ? section('Embarques de hoje', '✈️', data.todayTrips.length, data.todayTrips.map(tripRow).join(''), 'Nenhum embarque hoje.') : ''}
         ${data.weekTrips ? section('Embarques da semana', '🗓️', data.weekTrips.length, data.weekTrips.map(tripRow).join(''), 'Nenhum outro embarque nos próximos 7 dias.') : ''}
+        ${section('Leads parados na pipeline', '🐌', data.staleLeads.length, data.staleLeads.map(staleLeadRow).join(''), 'Nenhum lead parado — pipeline saudável.')}
 
         <!-- CTA -->
         <tr><td style="padding:32px;">

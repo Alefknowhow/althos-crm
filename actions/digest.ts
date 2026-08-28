@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
@@ -41,8 +41,12 @@ export async function previewDailyDigest(orgSlug: string) {
   const perm = await checkMemberPermission(org.id, user.id, 'settings')
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
-  const supabase = createClient()
-  const data = await buildDigestData(supabase, org.id, (org as any).niche)
+  // Admin client: buildDigestData busca nome de responsável/agente em
+  // `profiles` de outros membros, e RLS ali só libera o próprio perfil —
+  // sem isso o preview mostraria nomes em branco pra qualquer tarefa/venda
+  // que não seja do próprio usuário. Acesso já é gated pelo checkMemberPermission acima.
+  const admin = createAdminClient()
+  const data = await buildDigestData(admin, org.id, (org as any).niche)
   const html = buildDigestHtml(org.name, orgSlug, data)
   return { ok: true as const, html }
 }
