@@ -1165,9 +1165,13 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     a.date.localeCompare(b.date),
   )
 
-  // 8) Sources by leads (top-level utm_campaign distribution).
-  const sourcesByLeads = Array.from(leadsByUtm.entries())
-    .map(([name, value]) => ({ name, value }))
+  // 8) Sources by leads (distribuição por campanha) — usa o mesmo `leads`
+  // já calculado em campaignRows (UTM de formulário + link de rastreamento),
+  // pra bater exatamente com o total mostrado na tabela de campanhas logo
+  // abaixo (antes essa rosca só contava a atribuição por UTM).
+  const sourcesByLeads = campaignRows
+    .filter(c => c.leads > 0)
+    .map(c => ({ name: c.name, value: c.leads }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
