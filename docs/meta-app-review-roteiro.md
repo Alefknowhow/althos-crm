@@ -48,6 +48,16 @@ citadas literalmente na resposta deles:
       gravação** — nada de reaproveitar conversa antiga. Mande a DM/comente
       no post na hora, com a tela do CRM já aberta esperando, e mostre a
       resposta chegando em tempo real.
+- [ ] **Pra DM e comentário, as DUAS telas precisam aparecer na mesma
+      gravação, sem cortar entre elas** — o Instagram (celular espelhado, ou
+      Instagram Web numa janela) E o CRM. É isso que prova "ao vivo": o
+      revisor vê a mensagem/comentário nascer do lado do Instagram e chegar
+      do lado do CRM, na mesma gravação contínua. Duas formas de fazer:
+      (a) split screen/lado a lado, os dois visíveis ao mesmo tempo (melhor
+      opção); ou (b) uma única gravação contínua alternando de janela
+      (Alt+Tab) entre Instagram e CRM, **sem parar/cortar a gravação** entre
+      um e outro. Gravar dois clipes separados e colar/cortar no vídeo final
+      é exatamente o que pareceu "estático" da vez passada — evite.
 - [ ] **Interface em inglês, ou legendas/tooltips em inglês.** O Althos CRM
       não tem tradução pra inglês ainda, então a alternativa viável é: grave
       normal em português e depois adicione **legendas em inglês** (qualquer
@@ -187,32 +197,40 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 > vivo." Ou seja, a DM mostrada já existia na conversa antes de gravar. Dessa
 > vez, use uma conta Instagram de teste **que nunca mandou mensagem pra essa
 > conexão antes** (ou apague a conversa antiga em Instagram → Direct Inbox
-> antes de gravar), pra a conversa nascer do zero, na tela, ao vivo.
+> antes de gravar), pra a conversa nascer do zero, na tela, ao vivo — **e as
+> duas telas (Instagram + CRM) precisam estar na mesma gravação contínua**,
+> lado a lado (split screen) ou alternando de janela sem cortar. Só o CRM
+> sozinho não basta, mesmo que a mensagem seja nova.
 
 ### Roteiro do vídeo
 
 1. Continue do vídeo anterior, com a conta já conectada (ou reconecte, se
    estiver gravando esse vídeo separado — precisa mostrar o estado
    conectado antes da mensagem chegar).
-2. Confirme que a lista de conversas do Direct Inbox está **vazia ou sem
+2. Monte a gravação com **as duas telas visíveis**: de um lado o Instagram
+   (celular espelhado na tela, ou Instagram Web numa janela/aba), do outro
+   o CRM aberto em Direct Inbox. Se não der pra deixar lado a lado, grave
+   contínuo e alterne de janela (Alt+Tab) — nunca corte o vídeo entre uma
+   tela e outra.
+3. Confirme que a lista de conversas do Direct Inbox está **vazia ou sem
    essa conversa específica** — grave esse estado "antes" primeiro.
-3. De um segundo dispositivo/conta de teste, **envie uma DM real, nova, ao
-   vivo** para a conta Instagram conectada (ex.: "Oi, vocês têm horário
-   disponível amanhã?"). Grave o clique de "enviar" nesse segundo
-   dispositivo.
-4. No CRM, mostre a mensagem **aparecendo na tela sem reload manual
-   escondido** — se não atualizar sozinho, dê um refresh visível na própria
-   gravação, mostrando a conversa nova surgindo na lista.
-5. Mostre o atendente **respondendo manualmente** pelo campo de texto do
-   CRM — e a resposta chegando de volta na conta de teste que enviou a DM
-   (grave a tela do celular/segunda conta recebendo — isso é o que prova
-   que não é uma captura estática).
-6. Em seguida, mostre a tela **Instagram → Automações**: abra uma automação
+4. No Instagram (visível na gravação), **envie uma DM real, nova, ao vivo**
+   para a conta conectada (ex.: "Oi, vocês têm horário disponível amanhã?").
+   Grave o clique de "enviar" acontecendo.
+5. Sem cortar, mostre no CRM a mensagem **aparecendo na tela** — se não
+   atualizar sozinho, dê um refresh visível na própria gravação, mostrando a
+   conversa nova surgindo na lista.
+6. Mostre o atendente **respondendo manualmente** pelo campo de texto do
+   CRM — e, sem cortar, mostre a resposta **chegando na tela do Instagram**
+   que enviou a DM. Essa ida-e-volta visível nas duas telas é o que prova
+   que não é uma captura estática.
+7. Em seguida, mostre a tela **Instagram → Automações**: abra uma automação
    já configurada (ex.: gatilho por palavra-chave) e explique brevemente que
-   ela responde sozinha quando a mensagem bate no gatilho — dispare uma
-   segunda DM nova de teste (de outra conta ou depois de limpar a conversa)
-   pra mostrar a automação respondendo automaticamente, ao vivo.
-7. Feche mostrando o toggle de **pausar automação** quando um humano assume a
+   ela responde sozinha quando a mensagem bate no gatilho — dispare, ao vivo
+   e visível nas duas telas, uma segunda DM nova de teste (de outra conta ou
+   depois de limpar a conversa) pra mostrar a automação respondendo
+   automaticamente.
+8. Feche mostrando o toggle de **pausar automação** quando um humano assume a
    conversa (evidencia controle do dono do negócio sobre quando é bot ou
    humano).
 
@@ -284,28 +302,34 @@ privada" e pela fila de resposta manual em Instagram → Comentários.
 > estava lá de uma gravação anterior. Ative o toggle "Também responder
 > publicamente no comentário" na automação antes de gravar (ver
 > [Ajustes de automação de comentário](#3-instagram_business_manage_comments)) —
-> sem ele, só sai DM privada, não resposta pública.
+> sem ele, só sai DM privada, não resposta pública. **E, igual à seção 2,
+> monte a gravação com o post real do Instagram e a tela do CRM visíveis
+> juntos** (split screen ou alternando janela sem cortar) — não vale
+> comentar por fora e só mostrar o resultado no CRM depois.
 
 ### Roteiro do vídeo
 
-1. Mostre, no CRM, uma automação configurada em
+1. Monte a gravação com **o post do Instagram (app/site real) e o CRM
+   visíveis na mesma tela** — split screen, ou uma gravação contínua
+   alternando janela sem cortar.
+2. Mostre, no CRM, uma automação configurada em
    **Instagram → Automações** com gatilho **"Comentário"**, uma
    palavra-chave (ex.: "preço") e o toggle **"Também responder publicamente
    no comentário"** ativado.
-2. De uma segunda conta, **comente numa publicação real** da conta
+3. De uma segunda conta, **comente numa publicação real** da conta
    conectada, usando a palavra-chave configurada — comentário novo, feito
-   na hora da gravação.
-3. Mostre a **resposta pública automática** aparecendo no post (do lado do
-   Instagram real, não só do CRM).
-4. Se a automação também disparar DM privada, mostre a **resposta privada**
+   na hora da gravação, com o post do Instagram visível na tela.
+4. Sem cortar, mostre a **resposta pública automática** aparecendo no post
+   (do lado do Instagram real, não só do CRM).
+5. Se a automação também disparar DM privada, mostre a **resposta privada**
    chegando na conta que comentou.
-5. **Fluxo manual:** de uma segunda conta, comente no post de novo com uma
+6. **Fluxo manual:** de uma segunda conta, comente no post de novo com uma
    frase que NÃO bate em nenhuma automação (ex.: "adorei o post!").
-6. No CRM, abra a aba **Instagram → Comentários** e mostre esse comentário
+7. No CRM, abra a aba **Instagram → Comentários** e mostre esse comentário
    aparecendo como **pendente**.
-7. Digite uma resposta na caixa de texto, marque (ou não) "Também enviar
-   como DM privada", e clique em **Responder** — mostre a resposta
-   aparecendo no post real do Instagram e o card sumindo da fila de
+8. Digite uma resposta na caixa de texto, marque (ou não) "Também enviar
+   como DM privada", e clique em **Responder** — sem cortar, mostre a
+   resposta aparecendo no post real do Instagram e o card sumindo da fila de
    pendentes no CRM.
 
 ### Instruções de teste para o revisor
