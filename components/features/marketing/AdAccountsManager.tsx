@@ -41,12 +41,16 @@ export default function AdAccountsManager({
   orgSlug,
   initial,
   metaLoginConnected,
+  metaLoginUserName,
 }: {
   orgSlug: string
   initial: Account[]
   /** Se a org tem um login do Facebook (Meta Ads) ativo — controla o botão
    *  de desconectar login, separado de excluir uma conta específica. */
   metaLoginConnected: boolean
+  /** Nome do usuário Facebook logado (via /me), pra mostrar "conectado como
+   *  X" — null se o token expirou/foi revogado do lado da Meta. */
+  metaLoginUserName?: string | null
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -108,7 +112,11 @@ export default function AdAccountsManager({
           <CardContent className="py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Login do Facebook conectado (Meta Ads)</span>
+              <span>
+                {metaLoginUserName
+                  ? <>Conectado como <span className="font-medium">{metaLoginUserName}</span> (Meta Ads)</>
+                  : 'Login do Facebook conectado (Meta Ads)'}
+              </span>
             </div>
             <Button
               size="sm"

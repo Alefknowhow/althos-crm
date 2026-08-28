@@ -67,7 +67,12 @@ export default async function MarketingAccountsPage({
         </p>
       )}
 
-      <AdAccountsManager orgSlug={params.orgSlug} initial={accounts as any[]} metaLoginConnected={loginStatus.connected} />
+      <AdAccountsManager
+        orgSlug={params.orgSlug}
+        initial={accounts as any[]}
+        metaLoginConnected={loginStatus.connected}
+        metaLoginUserName={loginStatus.userName}
+      />
     </div>
   )
 }

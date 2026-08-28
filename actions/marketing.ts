@@ -206,7 +206,9 @@ export async function deleteAdAccount(orgSlug: string, id: string, force = false
 }
 
 /** Se a org tem um login do Facebook (Meta Ads) ativo — token guardado em
- *  organizations.meta_ads_access_token, obtido via OAuth em connectMetaAdsAccounts. */
+ *  organizations.meta_ads_access_token, obtido via OAuth em connectMetaAdsAccounts.
+ *  Busca também o nome do usuário Facebook logado (pra exibir "conectado como
+ *  X" na tela, em vez de só um badge genérico). */
 export async function getMetaAdsLoginStatus(orgSlug: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -215,10 +217,22 @@ export async function getMetaAdsLoginStatus(orgSlug: string) {
     .select('meta_ads_access_token, meta_ads_token_expires_at')
     .eq('id', org.id)
     .maybeSingle()
-  return {
-    connected: !!data?.meta_ads_access_token,
-    expiresAt: data?.meta_ads_token_expires_at ?? null,
+
+  if (!data?.meta_ads_access_token) {
+    return { connected: false as const, expiresAt: null, userName: null }
   }
+
+  const { getMetaUserProfile } = await import('@/lib/meta/ads-oauth')
+  let userName: string | null = null
+  try {
+    const profile = await getMetaUserProfile(data.meta_ads_access_token)
+    userName = profile.name
+  } catch {
+    // Token pode ter expirado/sido revogado do lado da Meta — segue mostrando
+    // "conectado" (o token ainda está salvo), só sem o nome.
+  }
+
+  return { connected: true as const, expiresAt: data.meta_ads_token_expires_at ?? null, userName }
 }
 
 /** Desconecta o login do Facebook da org (limpa o token guardado). As
