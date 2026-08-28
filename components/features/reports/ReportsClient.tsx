@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { getReport, type ReportType, type ReportData } from '@/actions/reports'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getReport, type ReportType, type ReportData, type CommissionGroupBy } from '@/actions/reports'
 import { toCsv, downloadCsv } from '@/lib/reports/csv'
 
 type Props = { orgSlug: string; isTravel?: boolean; isImobiliaria?: boolean }
@@ -60,6 +61,7 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
   const [type, setType] = useState<ReportType>('leads')
   const [from, setFrom] = useState(init.from)
   const [to, setTo] = useState(init.to)
+  const [groupBy, setGroupBy] = useState<CommissionGroupBy>('seller')
   const [data, setData] = useState<ReportData | null>(null)
   const [pending, startTransition] = useTransition()
   const [expandedSeller, setExpandedSeller] = useState<string | null>(null)
@@ -72,7 +74,7 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
   function generate(): Promise<ReportData | null> {
     return new Promise(resolve => {
       startTransition(async () => {
-        const res = await getReport(orgSlug, type, from, to)
+        const res = await getReport(orgSlug, type, from, to, groupBy)
         if (res.ok) {
           setData(res.data)
           resolve(res.data)
@@ -103,7 +105,8 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
   }
 
   function handlePdf() {
-    const url = `/relatorios-print/${orgSlug}?type=${type}&from=${from}&to=${to}`
+    const groupByParam = type === 'commission' ? `&groupBy=${groupBy}` : ''
+    const url = `/relatorios-print/${orgSlug}?type=${type}&from=${from}&to=${to}${groupByParam}`
     window.open(url, '_blank', 'noopener')
   }
 
@@ -133,15 +136,28 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
 
         {/* Filters */}
         <div className="rounded-none border bg-card p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+          <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs">De</Label>
-              <Input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
+              <Input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} className="w-[150px] shrink-0" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Até</Label>
-              <Input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} />
+              <Input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="w-[150px] shrink-0" />
             </div>
+            {type === 'commission' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Organizar por</Label>
+                <Select value={groupBy} onValueChange={v => setGroupBy(v as CommissionGroupBy)}>
+                  <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seller">Vendedor</SelectItem>
+                    <SelectItem value="operator">Operadora</SelectItem>
+                    <SelectItem value="client">Cliente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button onClick={() => generate()} disabled={pending} variant="secondary">
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Pré-visualizar'}
             </Button>

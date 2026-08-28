@@ -25,7 +25,7 @@ import {
   Search, SlidersHorizontal, Plus, Loader2, ChevronLeft, ExternalLink, Phone,
   FileCheck2, Users, Wallet, CalendarClock, Camera, Trash2,
   Bookmark, X, MessageCircle, FileSignature, Plane, RefreshCw, UserCircle2, Sparkles, History,
-  CheckSquare, Mail, Tag as TagIcon,
+  CheckSquare, Mail, Tag as TagIcon, Coins,
 } from 'lucide-react'
 import {
   CONTATO_STATUSES, CONTATO_STATUS_META, contatoSourceLabel, type ContatoStatus,
@@ -730,7 +730,7 @@ function DetailPanel({
       </div>
 
       {/* Cards de resumo — compactos, logo abaixo das tags */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className={cn('grid grid-cols-2 gap-2', isTravel ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
         <Field icon={Wallet} label="Total comprado" dense>
           <span className="text-base font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
         </Field>
@@ -747,6 +747,11 @@ function DetailPanel({
             <span className="text-xs font-medium">—</span>
           )}
         </Field>
+        {isTravel && (
+          <Field icon={Coins} label="Créditos de cancelamento" dense>
+            <span className="text-base font-bold text-primary">{creditBalance > 0 ? fmtCurrency(creditBalance) : '—'}</span>
+          </Field>
+        )}
       </div>
 
       {/* Barra de ações principais */}
@@ -841,16 +846,15 @@ function DetailPanel({
             </div>
           )}
 
-          {/* Créditos de Cancelamento (Viagens) */}
-          {isTravel && (
+          {/* Créditos de Cancelamento (Viagens) — resumo já vira card na linha
+              de topo; aqui só o detalhamento por crédito, quando existir. */}
+          {isTravel && credits.length > 0 && (
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-                Créditos de cancelamento
-                {creditBalance > 0 && <span className="ml-2 text-primary font-semibold normal-case tracking-normal">{fmtCurrency(creditBalance)}</span>}
+                Detalhamento dos créditos
               </p>
-              {credits.length > 0 ? (
-                <div className="space-y-1.5">
-                  {credits.map(cr => {
+              <div className="space-y-1.5">
+                {credits.map(cr => {
                     const saldo = cr.valor_cents - cr.valor_usado_cents
                     const statusLabel = cr.status === 'used' ? 'Utilizado' : cr.status === 'cancelled' ? 'Cancelado' : cr.validade && new Date(cr.validade) < new Date() ? 'Expirado' : 'Disponível'
                     return (
@@ -874,9 +878,6 @@ function DetailPanel({
                     )
                   })}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Nenhum crédito registrado.</p>
-              )}
             </div>
           )}
 

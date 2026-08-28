@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/supabase/types'
-import { getReport, type ReportType } from '@/actions/reports'
+import { getReport, type ReportType, type CommissionGroupBy } from '@/actions/reports'
 import AutoPrint from '@/components/features/reports/AutoPrint'
 
 export const dynamic = 'force-dynamic'
@@ -17,7 +17,7 @@ export default async function RelatorioPrintPage({
   searchParams,
 }: {
   params: { orgSlug: string }
-  searchParams: { type?: string; from?: string; to?: string }
+  searchParams: { type?: string; from?: string; to?: string; groupBy?: string }
 }) {
   await requireAuth()
 
@@ -26,7 +26,11 @@ export default async function RelatorioPrintPage({
   const to = searchParams.to ?? ''
   if (!VALID.includes(type) || !from || !to) notFound()
 
-  const res = await getReport(params.orgSlug, type, from, to)
+  const groupBy = (['seller', 'operator', 'client'].includes(searchParams.groupBy ?? '')
+    ? searchParams.groupBy
+    : 'seller') as CommissionGroupBy
+
+  const res = await getReport(params.orgSlug, type, from, to, groupBy)
   if (!res.ok) {
     if (res.error === 'forbidden') notFound()
     return <div style={{ padding: 40, fontFamily: 'system-ui, sans-serif' }}>Não foi possível gerar o relatório.</div>

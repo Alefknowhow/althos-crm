@@ -19,6 +19,9 @@ import { isTravelNiche } from '@/lib/niche'
 
 export type ReportType = 'leads' | 'sales' | 'appointments' | 'commission' | 'imoveis'
 
+/** Só usado pelo relatório de Comissões — dimensão de agrupamento das linhas. */
+export type CommissionGroupBy = 'seller' | 'operator' | 'client'
+
 export interface ReportColumn {
   key: string
   label: string
@@ -99,6 +102,7 @@ export async function getReport(
   type: ReportType,
   from: string,
   to: string,
+  groupBy: CommissionGroupBy = 'seller',
 ): Promise<ReportResult> {
   await requireAuth()
 
@@ -282,26 +286,50 @@ export async function getReport(
       (data || []).map(s => s.created_by as string | null),
     )
 
-    // Aggregate per seller. `operators` junta as operadoras distintas usadas
-    // pelo vendedor no período — localizador não entra aqui, é por reserva
+    // Dimensão de agrupamento escolhida no "Organizar por" — vendedor
+    // (padrão), operadora ou cliente. `groupKey`/`groupLabel` definem a
+    // linha; `secondaryOf`/`secondaryLabel` definem a coluna de apoio
+    // (o outro dado relevante dentro de cada grupo).
+    const groupKey = (s: any): string => {
+      if (groupBy === 'operator') return (s.operator as string) || '__none__'
+      if (groupBy === 'client') return (s.contato_id as string) || (s.client_name ? `n:${s.client_name}` : '__none__')
+      return (s.created_by as string | null) ?? '__none__'
+    }
+    const groupLabel = (key: string, s: any): string => {
+      if (groupBy === 'operator') return key === '__none__' ? 'Sem operadora' : key
+      if (groupBy === 'client') return relName(s.contato) || (s.client_name as string) || 'Sem cliente'
+      return key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor')
+    }
+    const secondaryOf = (s: any): string | null => {
+      if (groupBy === 'seller') return (s.operator as string) || null
+      if (groupBy === 'operator') return (s.created_by && sellerNames.get(s.created_by as string)) || null
+      return (s.operator as string) || null // client
+    }
+    const secondaryColumnLabel = groupBy === 'operator' ? 'Vendedor' : 'Operadora'
+    const primaryColumnLabel = groupBy === 'operator' ? 'Operadora' : groupBy === 'client' ? 'Cliente' : 'Vendedor'
+    const primaryTotalsUnit = groupBy === 'operator' ? 'operadora(s)' : groupBy === 'client' ? 'cliente(s)' : 'vendedor(es)'
+
+    // Aggregate por grupo. `secondary` junta os valores distintos da outra
+    // dimensão dentro do grupo — localizador não entra aqui, é por reserva
     // (fica na lista expandida abaixo).
-    type Agg = { count: number; gross: number; commission: number; operators: Set<string> }
-    const bySeller = new Map<string, Agg>()
+    type Agg = { label: string; count: number; gross: number; commission: number; secondary: Set<string> }
+    const byGroup = new Map<string, Agg>()
     for (const s of data || []) {
-      const key = (s.created_by as string | null) ?? '__none__'
-      const agg = bySeller.get(key) || { count: 0, gross: 0, commission: 0, operators: new Set<string>() }
-      if (s.operator) agg.operators.add(s.operator as string)
+      const key = groupKey(s)
+      const agg = byGroup.get(key) || { label: groupLabel(key, s), count: 0, gross: 0, commission: 0, secondary: new Set<string>() }
+      const sec = secondaryOf(s)
+      if (sec) agg.secondary.add(sec)
       agg.count += 1
       agg.gross += (s.total_cents as number) || 0
       agg.commission += (s.commission_cents as number) || 0
-      bySeller.set(key, agg)
+      byGroup.set(key, agg)
     }
 
-    const rows = Array.from(bySeller.entries())
-      .map(([key, agg]) => ({
-        seller: key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor'),
+    const rows = Array.from(byGroup.values())
+      .map(agg => ({
+        seller: agg.label,
         count: agg.count,
-        operators: agg.operators.size > 0 ? Array.from(agg.operators).join(', ') : '—',
+        operators: agg.secondary.size > 0 ? Array.from(agg.secondary).join(', ') : '—',
         gross: brl(agg.gross),
         commission: brl(agg.commission),
         pct: agg.gross > 0 ? `${((agg.commission / agg.gross) * 100).toFixed(1)}%` : '—',
@@ -313,16 +341,16 @@ export async function getReport(
     const totalGross = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
     const totalCommission = (data || []).reduce((a, s) => a + ((s.commission_cents as number) || 0), 0)
 
-    // Vendas individuais por vendedor, pra UI expandir cada linha agrupada.
-    const salesBySeller = new Map<string, typeof data>()
+    // Vendas individuais por grupo, pra UI expandir cada linha agrupada.
+    const salesByGroup = new Map<string, typeof data>()
     for (const s of data || []) {
-      const key = (s.created_by as string | null) ?? '__none__'
-      const arr = salesBySeller.get(key) || []
+      const key = groupKey(s)
+      const arr = salesByGroup.get(key) || []
       arr.push(s)
-      salesBySeller.set(key, arr)
+      salesByGroup.set(key, arr)
     }
-    const saleDetails = Array.from(salesBySeller.entries()).map(([key, sales]) => ({
-      seller: key === '__none__' ? 'Sem vendedor' : (sellerNames.get(key) || 'Sem vendedor'),
+    const saleDetails = Array.from(salesByGroup.entries()).map(([key, sales]) => ({
+      seller: groupLabel(key, (sales || [])[0]),
       sales: (sales || []).map(s => ({
         orgSlug,
         saleId: s.id as string,
@@ -340,16 +368,16 @@ export async function getReport(
       data: {
         ...base,
         columns: [
-          { key: 'seller', label: 'Vendedor' },
+          { key: 'seller', label: primaryColumnLabel },
           { key: 'count', label: 'Vendas', align: 'right' },
-          { key: 'operators', label: 'Operadora' },
+          { key: 'operators', label: secondaryColumnLabel },
           { key: 'gross', label: 'Valor vendido', align: 'right' },
           { key: 'commission', label: 'Comissão', align: 'right' },
           { key: 'pct', label: '% Comissão', align: 'right' },
         ],
         rows,
         totals: {
-          seller: `${rows.length} vendedor(es)`,
+          seller: `${rows.length} ${primaryTotalsUnit}`,
           gross: brl(totalGross),
           commission: brl(totalCommission),
           pct: totalGross > 0 ? `${((totalCommission / totalGross) * 100).toFixed(1)}%` : '—',
