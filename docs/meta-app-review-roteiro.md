@@ -353,13 +353,20 @@ cliente.
 > compare campaigns and identify which ones perform best — always over the
 > user's own ad account, never a third party's.
 
-> ⚠️ Rejeitado por não mostrar o fluxo completo. Antes de gravar, **desconecte
-> qualquer conta de anúncios já vinculada** em Marketing → Contas, pra a
-> gravação começar do estado "nenhuma conta conectada". E na hora de reenviar,
-> inclua nas observações: *"This integration uses standard Facebook Login
-> OAuth with a user access token — it is NOT a server-to-server integration
-> and does NOT use a System User token."* (é a informação que o item 5 da
-> rejeição pediu).
+> ⚠️ Rejeitado pelo motivo genérico (sem nota específica de analista) — quase
+> certo que o vídeo pulou direto pro "já conectado" em vez de mostrar o login
+> do zero. Antes de gravar, **desconecte qualquer conta de anúncios já
+> vinculada** em Marketing → Contas, pra a gravação começar do estado
+> "nenhuma conta conectada". E na hora de reenviar, inclua nas observações:
+> *"This integration uses standard Facebook Login OAuth with a user access
+> token — it is NOT a server-to-server integration and does NOT use a System
+> User token."* (é a informação que o item 5 da rejeição pediu).
+
+> **Versão simplificada ao máximo** — essa permissão não precisa de segunda
+> conta/tela nem interação ao vivo como DM/comentário, é tudo numa tela só.
+> O vídeo abaixo já está reduzido ao mínimo que prova o uso completo: login
+> do zero + dado real carregando. Sem gráfico, sem filtro, sem drill-down —
+> não são exigidos, só alongavam a gravação.
 
 ### Roteiro do vídeo
 
@@ -373,14 +380,9 @@ cliente.
 3. De volta ao CRM, mostre a **lista de contas de anúncio carregada
    automaticamente** (nada digitado manualmente — é a API que devolve as
    contas que o usuário tem acesso) e selecione uma pra conectar.
-4. Abra o painel **Marketing → Anúncios**.
-5. Mostre a **tabela de campanhas** carregando com nome, status, objetivo e
-   métricas reais (gasto, impressões, cliques).
-6. Mostre o **gráfico de desempenho** ao longo do tempo, e o filtro/checkbox
-   de seleção de campanhas específicas.
-7. Abra o **drill-down** de uma campanha (clique numa linha) pra mostrar
-   detalhamento por conjunto de anúncios/anúncio — reforça que é leitura
-   detalhada, não edição (não há nenhum botão de "editar campanha" na tela).
+4. Abra o painel **Marketing → Anúncios** e mostre a **tabela de campanhas**
+   carregando com nome, status, objetivo e métricas reais (gasto,
+   impressões, cliques) — pronto, fim do vídeo.
 
 ### Instruções de teste para o revisor
 
@@ -392,9 +394,9 @@ cliente.
 >    (Meta Ads)", autorizando o login e selecionando a conta na lista
 >    carregada automaticamente pela API (nenhum ID é digitado manualmente).
 > 4. Acesse Marketing → Anúncios e confirme que campanhas e métricas da
->    conta conectada aparecem corretamente na tabela e no gráfico.
-> 5. Confirme que não há nenhuma ação de escrita disponível na tela (criar,
->    editar, pausar campanha) — o painel é somente leitura.
+>    conta conectada aparecem corretamente na tabela. Confirme que não há
+>    nenhuma ação de escrita disponível na tela (criar, editar, pausar
+>    campanha) — o painel é somente leitura.
 
 ---
 
