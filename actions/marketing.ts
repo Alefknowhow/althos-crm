@@ -868,7 +868,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'marketing')
   if (!perm.allowed) {
-    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], topByConversations: [], byObjective: [] }
+    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], byObjective: [], previousTotals: null }
   }
   const supabase = createClient()
   const start = periodStart(period)
@@ -889,8 +889,8 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       campaigns: [],
       timeSeries: [],
       sourcesByLeads: [],
-      topByConversations: [],
       byObjective: [],
+      previousTotals: null,
     }
   }
 
@@ -1177,15 +1177,39 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
-  // 9) Top campanhas por conversas iniciadas no WhatsApp (meta_messaging_started)
-  // — mesma ideia de "sourcesByLeads", mas pra objetivo de mensagens.
-  const topByConversations = campaignRows
-    .filter(c => c.meta_messaging_started > 0)
-    .map(c => ({ name: c.name, value: c.meta_messaging_started }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6)
+  // 9) Totais do período anterior de mesmo tamanho (ex.: período = últimos 7
+  // dias → compara com os 7 dias antes disso), pra mostrar tendência
+  // ("vs período anterior"). Só spend/impressions/clicks — leads exigiria
+  // duplicar toda a atribuição por UTM/tracking-link pra uma segunda janela,
+  // fora de escopo por ora.
+  const startDate = new Date(`${start}T00:00:00`)
+  const lengthMs = Date.now() - startDate.getTime()
+  const prevEndDate = new Date(startDate.getTime() - 86400000)
+  const prevStartDate = new Date(prevEndDate.getTime() - lengthMs)
+  const prevStart = prevStartDate.toISOString().slice(0, 10)
+  const prevEnd = prevEndDate.toISOString().slice(0, 10)
 
-  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, topByConversations, byObjective }
+  const { data: prevMetrics } = await supabase
+    .from('campaign_metrics_daily')
+    .select('spend_cents, impressions, clicks')
+    .in('campaign_id', campaignIds)
+    .eq('organization_id', org.id)
+    .gte('date', prevStart)
+    .lte('date', prevEnd)
+
+  const previousTotals = (prevMetrics && prevMetrics.length > 0)
+    ? prevMetrics.reduce(
+        (acc, m) => {
+          acc.spend_cents += m.spend_cents || 0
+          acc.impressions += m.impressions || 0
+          acc.clicks += m.clicks || 0
+          return acc
+        },
+        { spend_cents: 0, impressions: 0, clicks: 0 },
+      )
+    : null
+
+  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective, previousTotals }
 }
 
 /* -------- Preferências do painel (quais cards/métricas ficam visíveis) -------- */

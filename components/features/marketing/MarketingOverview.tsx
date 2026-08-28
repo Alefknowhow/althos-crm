@@ -7,6 +7,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,6 +30,7 @@ import {
   MousePointerClick,
   Eye,
   MessageCircle,
+  TrendingDown,
   Link2,
   FileText,
   ShoppingCart,
@@ -46,7 +48,7 @@ import RecordSpendDialog from './RecordSpendDialog'
 import CampaignsTable from './CampaignsTable'
 import MetricsChart from './MetricsChart'
 import ImpressionsCpmChart from './ImpressionsCpmChart'
-import TopConversationsChart from './TopConversationsChart'
+import ConversionByAdChart from './ConversionByAdChart'
 import MetricPicker from './MetricPicker'
 import AccountFilter from './AccountFilter'
 import type { ObjectiveGroup } from '@/lib/marketing/objective'
@@ -90,8 +92,8 @@ type Overview = {
   campaigns: CampaignRow[]
   timeSeries: TimeSeriesPoint[]
   sourcesByLeads: Array<{ name: string; value: number }>
-  topByConversations: Array<{ name: string; value: number }>
   byObjective: Array<{ group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>
+  previousTotals: { spend_cents: number; impressions: number; clicks: number } | null
 }
 
 const OBJECTIVE_FILTERS: Array<{ value: ObjectiveGroup | 'all'; label: string }> = [
@@ -133,6 +135,35 @@ function fmtCurrency(cents: number): string {
 
 function fmtNumber(n: number): string {
   return new Intl.NumberFormat('pt-BR').format(n)
+}
+
+/** Um número atual x anterior, com % de variação — sem julgar se subir é bom
+ *  ou ruim (depende da métrica: investimento subir não é "ruim"), só mostra
+ *  a direção e o tamanho da mudança. */
+function ComparisonStat({
+  label, current, previous, format,
+}: {
+  label: string
+  current: number
+  previous: number
+  format: (v: number) => string
+}) {
+  const delta = previous > 0 ? ((current - previous) / previous) * 100 : null
+  return (
+    <div className="rounded-lg border p-3 space-y-1">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-base font-bold tabular-nums">{format(current)}</p>
+      {delta != null ? (
+        <p className={cn('text-xs tabular-nums flex items-center gap-1', delta >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+          {delta >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
+          <span className="text-muted-foreground">vs {format(previous)}</span>
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">Sem dado anterior</p>
+      )}
+    </div>
+  )
 }
 
 /** 'menu' = linha dentro de um DropdownMenu — precisa parecer um item de
@@ -346,6 +377,21 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
   }, [overview.timeSeries, accountFilter, chartCampaignFilter])
+
+  // Investimento por objetivo (Leads/Mensagens/Tráfego/Vendas/Reconhecimento)
+  // — calculado a partir das campanhas já filtradas por conta/objetivo,
+  // pra bater com o resto do painel (não usa overview.byObjective, que é
+  // agregado sem filtro de conta).
+  const byObjectiveData = useMemo(() => {
+    const byGroup = new Map<string, number>()
+    for (const c of filteredCampaigns) {
+      byGroup.set(c.objective_group, (byGroup.get(c.objective_group) || 0) + c.spend_cents)
+    }
+    return Array.from(byGroup.entries())
+      .map(([group, cents]) => ({ name: OBJECTIVE_GROUP_LABELS[group as ObjectiveGroup] || group, value: cents }))
+      .filter(x => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+  }, [filteredCampaigns])
 
   const hasData =
     overview.campaigns.length > 0 || overview.timeSeries.length > 0 || overview.totals.spend_cents > 0
@@ -571,7 +617,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
             </Card>
           </div>
 
-          {/* Charts row 2 — impressões/CPM e conversas iniciadas por campanha */}
+          {/* Charts row 2 — impressões/CPM e conversão por anúncio */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
               <CardHeader>
@@ -587,13 +633,106 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Conversas por anúncio</CardTitle>
+                <CardTitle className="text-base">Conversão por anúncio</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  De onde vieram as conversas iniciadas no WhatsApp, por campanha.
+                  Cada campanha pode ter um objetivo diferente — escolha a métrica.
                 </p>
               </CardHeader>
               <CardContent>
-                <TopConversationsChart data={overview.topByConversations} />
+                <ConversionByAdChart campaigns={filteredCampaigns} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts row 3 — investimento por objetivo e comparação com período anterior */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Investimento por objetivo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {byObjectiveData.length === 0 ? (
+                  <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
+                    Sem investimento registrado no período.
+                  </div>
+                ) : (
+                  <>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={byObjectiveData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={45}
+                          outerRadius={70}
+                          paddingAngle={2}
+                        >
+                          {byObjectiveData.map((_, i) => (
+                            <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RTooltip formatter={(v: any) => [fmtCurrency(Number(v) || 0), 'Investimento']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-1 mt-2">
+                      {byObjectiveData.map((s, i) => (
+                        <div key={s.name} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                            />
+                            <span className="truncate">{s.name}</span>
+                          </div>
+                          <span className="tabular-nums text-muted-foreground">{fmtCurrency(s.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Comparação com o período anterior</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Mesma duração do período selecionado, imediatamente anterior a ele.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {!overview.previousTotals ? (
+                  <div className="h-[100px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
+                    Sem dados suficientes no período anterior pra comparar.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <ComparisonStat
+                      label="Investimento"
+                      current={overview.totals.spend_cents}
+                      previous={overview.previousTotals.spend_cents}
+                      format={fmtCurrency}
+                    />
+                    <ComparisonStat
+                      label="Impressões"
+                      current={overview.totals.impressions}
+                      previous={overview.previousTotals.impressions}
+                      format={fmtNumber}
+                    />
+                    <ComparisonStat
+                      label="Cliques"
+                      current={overview.totals.clicks}
+                      previous={overview.previousTotals.clicks}
+                      format={fmtNumber}
+                    />
+                    <ComparisonStat
+                      label="CPC médio"
+                      current={overview.totals.clicks > 0 ? Math.round(overview.totals.spend_cents / overview.totals.clicks) : 0}
+                      previous={overview.previousTotals.clicks > 0 ? Math.round(overview.previousTotals.spend_cents / overview.previousTotals.clicks) : 0}
+                      format={fmtCurrency}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
