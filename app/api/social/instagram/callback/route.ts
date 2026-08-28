@@ -81,7 +81,9 @@ export async function GET(req: Request) {
     // 5) Subscribe the Instagram account to the webhook fields (best-effort).
     await subscribeInstagramWebhooks(igToken)
 
-    return back(orgSlug, 'connected=1')
+    // Sucesso vai direto pro Direct Inbox — é ali que o dono do negócio
+    // realmente usa a conexão, não faz sentido parar na tela de configurações.
+    return NextResponse.redirect(`${BASE}/app/${orgSlug}/social/inbox?connected=1`)
   } catch (e: any) {
     console.error('[instagram callback]', e?.message)
     return back(orgSlug, `error=exchange&msg=${encodeURIComponent(e?.message || 'erro')}`)

@@ -150,9 +150,10 @@ type Props = {
   conversations: SocialConversationRow[]
   selectedConversation: SocialConversationRow | null
   initialMessages: SocialMessageRow[]
+  justConnected?: boolean
 }
 
-export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages }: Props) {
+export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, justConnected }: Props) {
   // Lista ao vivo — semeada pelo server, atualizada em tempo real abaixo.
   const [conversations, setConversations] = useState(conversationsProp)
   useEffect(() => { setConversations(conversationsProp) }, [conversationsProp])
@@ -201,6 +202,14 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
       })
       .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
   }, [conversations, query, selectedConversation])
+
+  useEffect(() => {
+    if (justConnected) {
+      toast.success('Instagram conectado com sucesso!')
+      router.replace(`/app/${orgSlug}/social/inbox`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justConnected])
 
   useEffect(() => {
     setMessages(initialMessages)

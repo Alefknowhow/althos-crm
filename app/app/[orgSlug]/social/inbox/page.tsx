@@ -9,7 +9,7 @@ export default async function SocialInboxPage({
   searchParams,
 }: {
   params: { orgSlug: string }
-  searchParams: { id?: string }
+  searchParams: { id?: string; connected?: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
   const conversations = await listConversations(params.orgSlug)
@@ -28,6 +28,7 @@ export default async function SocialInboxPage({
         conversations={conversations}
         selectedConversation={selectedConversation}
         initialMessages={messages}
+        justConnected={searchParams.connected === '1'}
       />
     </div>
   )
