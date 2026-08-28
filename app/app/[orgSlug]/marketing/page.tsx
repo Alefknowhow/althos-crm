@@ -3,6 +3,7 @@ import {
   getMarketingOverview,
   listAdAccounts,
   listCampaigns,
+  getMetaAdsLoginStatus,
   type MarketingPeriod,
 } from '@/actions/marketing'
 import MarketingOverview from '@/components/features/marketing/MarketingOverview'
@@ -20,10 +21,11 @@ export default async function MarketingPage({
   await getCurrentOrganization(params.orgSlug)
   const period = (searchParams.period as MarketingPeriod) || '30d'
 
-  const [overview, accounts, campaigns] = await Promise.all([
+  const [overview, accounts, campaigns, loginStatus] = await Promise.all([
     getMarketingOverview(params.orgSlug, period),
     listAdAccounts(params.orgSlug),
     listCampaigns(params.orgSlug),
+    getMetaAdsLoginStatus(params.orgSlug),
   ])
 
   return (
@@ -33,6 +35,7 @@ export default async function MarketingPage({
       overview={overview}
       accounts={accounts as any[]}
       campaigns={campaigns as any[]}
+      metaLoginUserName={loginStatus.userName}
     />
   )
 }

@@ -2,52 +2,58 @@
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Building2 } from 'lucide-react'
+import { Building2, Check } from 'lucide-react'
 
 type Account = { id: string; name: string }
 
+/**
+ * Seleção de UMA conta por vez pros gráficos/tabela — misturar métricas de
+ * contas diferentes na mesma série/tabela confundia mais do que ajudava.
+ * Dobra como badge "Exibindo: X" sempre visível (só vira dropdown clicável
+ * quando há mais de uma conta pra escolher).
+ */
 export default function AccountFilter({
   accounts,
   selected,
   onChange,
 }: {
   accounts: Account[]
-  selected: Set<string> | 'all'
-  onChange: (next: Set<string> | 'all') => void
+  selected: string | null
+  onChange: (id: string) => void
 }) {
-  if (accounts.length <= 1) return null // nada pra filtrar com 0-1 conta
+  if (accounts.length === 0) return null
 
-  const isAll = selected === 'all'
-  const count = isAll ? accounts.length : selected.size
+  const current = accounts.find(a => a.id === selected) ?? accounts[0]
 
-  function toggle(id: string) {
-    const current = isAll ? new Set(accounts.map(a => a.id)) : new Set(selected)
-    if (current.has(id)) current.delete(id)
-    else current.add(id)
-    onChange(current.size === accounts.length ? 'all' : current)
+  if (accounts.length === 1) {
+    return (
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs text-muted-foreground">
+        <Building2 className="w-3.5 h-3.5 shrink-0" />
+        Exibindo: <span className="font-medium text-foreground">{current.name}</span>
+      </span>
+    )
   }
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Building2 className="w-3.5 h-3.5 mr-1.5" />
-          {isAll ? 'Todas as contas' : `${count} conta${count === 1 ? '' : 's'}`}
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-normal">
+          <Building2 className="w-3.5 h-3.5" />
+          Exibindo: <span className="font-medium">{current.name}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64">
-        <div className="space-y-1.5">
-          {accounts.map(a => (
-            <label key={a.id} className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox
-                checked={isAll || selected.has(a.id)}
-                onCheckedChange={() => toggle(a.id)}
-              />
-              <span className="truncate">{a.name}</span>
-            </label>
-          ))}
-        </div>
+      <PopoverContent align="start" className="w-64 p-1">
+        {accounts.map(a => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onChange(a.id)}
+            className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            <span className="truncate">{a.name}</span>
+            {a.id === current.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+          </button>
+        ))}
       </PopoverContent>
     </Popover>
   )

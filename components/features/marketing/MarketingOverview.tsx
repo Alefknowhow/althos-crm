@@ -107,6 +107,9 @@ type Props = {
   overview: Overview
   accounts: Account[]
   campaigns: Campaign[]
+  /** Nome do usuário Facebook logado (via login OAuth do Meta Ads) — null se
+   *  nunca conectou ou o token expirou/foi revogado do lado da Meta. */
+  metaLoginUserName?: string | null
 }
 
 const PERIODS = [
@@ -122,6 +125,19 @@ function fmtCurrency(cents: number): string {
 
 function fmtNumber(n: number): string {
   return new Intl.NumberFormat('pt-BR').format(n)
+}
+
+/** 'menu' = linha dentro de um DropdownMenu — precisa parecer um item de
+ *  menu (mesmo hover/alinhamento dos DropdownMenuItem simples ao lado),
+ *  não um botão avulso. Sem isso os itens do menu "Gerenciar contas"
+ *  ficavam com estilos inconsistentes entre si. */
+type TriggerVariant = 'default' | 'outline' | 'menu'
+
+function triggerButtonProps(variant: TriggerVariant) {
+  if (variant === 'menu') {
+    return { variant: 'ghost' as const, className: 'w-full h-auto justify-start px-2 py-1.5 font-normal' }
+  }
+  return { variant, size: variant === 'outline' ? ('sm' as const) : undefined }
 }
 
 const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -224,11 +240,14 @@ function KPICard({
   )
 }
 
-export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period }: Props) {
+export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period, metaLoginUserName }: Props) {
   const [, startTransition] = useTransition()
   const router = useRouter()
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
-  const [accountFilter, setAccountFilter] = useState<Set<string> | 'all'>('all')
+  // Só 1 conta por vez nos gráficos/tabela — misturar métricas de contas
+  // diferentes na mesma série confundia mais do que ajudava. Começa com a
+  // primeira conta da lista.
+  const [accountFilter, setAccountFilter] = useState<string | null>(accounts[0]?.id ?? null)
   // Quais campanhas entram no gráfico — checkbox por linha na tabela.
   // 'all' = todas (default); um Set explícito = só as marcadas.
   const [chartCampaignFilter, setChartCampaignFilter] = useState<Set<string> | 'all'>('all')
@@ -237,7 +256,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
   const filteredCampaigns = overview.campaigns
     .filter(c => objectiveFilter === 'all' || c.objective_group === objectiveFilter)
-    .filter(c => accountFilter === 'all' || accountFilter.has(c.ad_account_id))
+    .filter(c => !accountFilter || c.ad_account_id === accountFilter)
 
   const filteredTotals: MetricContext = filteredCampaigns.reduce(
     (acc, c) => {
@@ -264,7 +283,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   const filteredTimeSeries = useMemo(() => {
     const byDate = new Map<string, MetricContext & { date: string }>()
     for (const p of overview.timeSeries) {
-      if (accountFilter !== 'all' && !accountFilter.has(p.ad_account_id)) continue
+      if (accountFilter && p.ad_account_id !== accountFilter) continue
       if (chartCampaignFilter !== 'all' && !chartCampaignFilter.has(p.campaign_id)) continue
       const cur = byDate.get(p.date) || {
         date: p.date, spend_cents: 0, impressions: 0, clicks: 0, leads: 0,
@@ -298,32 +317,27 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
   const cardMetricKeys = (Object.keys(METRIC_REGISTRY) as MetricKey[]).filter(k => visibleCardMetrics.has(k))
 
-  // Nomes das contas conectadas, pra badge fixa no topo — "qual conta é essa"
-  // sempre visível, sem precisar ir em Contas pra descobrir.
-  const connectedAccountsLabel = accounts.length === 0
-    ? null
-    : accounts.length === 1
-    ? accounts[0].name
-    : `${accounts[0].name} +${accounts.length - 1}`
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <PeriodTabs />
-          {connectedAccountsLabel && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-normal"
-              title="Ver/gerenciar contas conectadas"
+          {/* Badge 1: identidade do login do Facebook — "com qual conta da
+              Meta o CRM está conectado", separado de qual conta de anúncio
+              está sendo exibida agora (badge 2, o AccountFilter abaixo). */}
+          {metaLoginUserName && (
+            <button
+              type="button"
+              title="Ver/gerenciar login e contas conectadas"
               onClick={() => router.push(`/app/${orgSlug}/marketing/contas`)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              Conectado: <span className="font-medium">{connectedAccountsLabel}</span>
-            </Button>
+              Conectado como <span className="font-medium text-foreground">{metaLoginUserName}</span>
+            </button>
           )}
+          {/* Badge 2: qual conta de anúncio está em exibição agora (só 1 por vez). */}
           <AccountFilter
             accounts={accounts}
             selected={accountFilter}
@@ -337,31 +351,32 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           />
         </div>
 
-        {noAccountsYet ? (
-          // Sem conta nenhuma, o único passo que faz sentido é conectar — o
-          // botão fica exposto direto aqui, não escondido num dropdown.
-          <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} variant="default" label="Conectar conta do Facebook" />
-        ) : (
+        {/* Sem conta nenhuma, o banner abaixo já cobre o CTA de conectar —
+            não duplica o botão aqui. Com conta conectada, vira "Gerenciar
+            contas" (é mais que só "novo": inclui conectar mais contas,
+            importar CSV etc.). */}
+        {!noAccountsYet && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
-                <Plus className="w-4 h-4 mr-1.5" /> Novo
+                <Settings className="w-4 h-4 mr-1.5" /> Gerenciar contas
                 <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-70" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild>
-                <NewCampaignTrigger orgSlug={orgSlug} accounts={accounts} onDone={refresh} />
+                <NewCampaignTrigger orgSlug={orgSlug} accounts={accounts} onDone={refresh} variant="menu" />
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <RecordSpendTrigger
                   orgSlug={orgSlug}
                   campaigns={campaigns}
                   onDone={refresh}
+                  variant="menu"
                 />
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} />
+                <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} variant="menu" />
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/app/${orgSlug}/marketing/importar`)}>
                 <Upload className="w-4 h-4 mr-2" /> Importar CSV
@@ -369,7 +384,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               <DropdownMenuItem
                 onClick={() => router.push(`/app/${orgSlug}/marketing/contas`)}
               >
-                <Settings className="w-4 h-4 mr-2" /> Gerenciar contas
+                <Settings className="w-4 h-4 mr-2" /> Ver todas as contas
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -555,7 +570,7 @@ function NewAccountTrigger({
 }: {
   orgSlug: string
   onDone: () => void
-  variant?: 'default' | 'outline'
+  variant?: TriggerVariant
   label?: string
 }) {
   return (
@@ -563,7 +578,7 @@ function NewAccountTrigger({
       orgSlug={orgSlug}
       onDone={onDone}
       trigger={
-        <Button variant={variant} size={variant === 'outline' ? 'sm' : undefined}>
+        <Button {...triggerButtonProps(variant)}>
           <Settings className="w-4 h-4 mr-2" /> {label}
         </Button>
       }
@@ -580,7 +595,7 @@ function NewCampaignTrigger({
   orgSlug: string
   accounts: Account[]
   onDone: () => void
-  variant?: 'default' | 'outline'
+  variant?: TriggerVariant
 }) {
   return (
     <NewCampaignDialog
@@ -588,7 +603,7 @@ function NewCampaignTrigger({
       accounts={accounts}
       onDone={onDone}
       trigger={
-        <Button variant={variant} size={variant === 'outline' ? 'sm' : undefined}>
+        <Button {...triggerButtonProps(variant)}>
           <Megaphone className="w-4 h-4 mr-2" /> Nova campanha
         </Button>
       }
@@ -600,10 +615,12 @@ function RecordSpendTrigger({
   orgSlug,
   campaigns,
   onDone,
+  variant = 'outline',
 }: {
   orgSlug: string
   campaigns: Campaign[]
   onDone: () => void
+  variant?: TriggerVariant
 }) {
   return (
     <RecordSpendDialog
@@ -611,7 +628,7 @@ function RecordSpendTrigger({
       campaigns={campaigns}
       onDone={onDone}
       trigger={
-        <Button variant="outline" size="sm">
+        <Button {...triggerButtonProps(variant)}>
           <Receipt className="w-4 h-4 mr-2" /> Lançar gasto diário
         </Button>
       }
