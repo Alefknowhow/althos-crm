@@ -9,14 +9,17 @@ import type { createAdminClient } from '@/lib/supabase/server'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export type ConversationRef = { id: string; automationPaused: boolean }
+export type ConversationRef = { id: string; automationPaused: boolean; needsProfileEnrichment: boolean }
 
 /** Busca (ou cria) a conversa do remetente nesta conexão, sem tocar em
  *  automation_paused/unread_count/last_message_* de uma conversa existente.
  *
- *  Se a conversa ainda não tem nome/foto de perfil salvos, chama
- *  `fetchProfile` (uma consulta à API do Instagram) pra preenchê-los —
- *  evita sobrescrever com null um nome já conhecido em mensagens seguintes. */
+ *  NÃO busca perfil na API aqui de propósito — isso é uma chamada de rede à
+ *  parte (ver `enrichConversationProfile`), e o objetivo deste passo é
+ *  gravar a conversa o mais rápido possível pra a mensagem aparecer no
+ *  inbox quase instantaneamente. `needsProfileEnrichment` avisa o chamador
+ *  se vale a pena buscar nome/foto depois (só quando a conversa ainda não
+ *  tinha nome salvo). */
 export async function getOrCreateConversation(
   admin: Admin,
   params: {
@@ -25,7 +28,6 @@ export async function getOrCreateConversation(
     senderId: string
     senderUsername?: string | null
     senderName?: string | null
-    fetchProfile?: () => Promise<{ name: string | null; username: string | null; avatarUrl: string | null } | null>
   },
 ): Promise<ConversationRef> {
   const { data: existing } = await admin
@@ -35,18 +37,8 @@ export async function getOrCreateConversation(
     .eq('sender_external_id', params.senderId)
     .maybeSingle()
 
-  let senderUsername = params.senderUsername ?? existing?.sender_username ?? null
-  let senderName = params.senderName ?? existing?.sender_name ?? null
-  let senderAvatarUrl = existing?.sender_avatar_url ?? null
-
-  if (!existing?.sender_name && params.fetchProfile) {
-    const profile = await params.fetchProfile()
-    if (profile) {
-      senderName = profile.name ?? senderName
-      senderUsername = profile.username ?? senderUsername
-      senderAvatarUrl = profile.avatarUrl ?? senderAvatarUrl
-    }
-  }
+  const senderUsername = params.senderUsername ?? existing?.sender_username ?? null
+  const senderName = params.senderName ?? existing?.sender_name ?? null
 
   const { data, error } = await admin
     .from('social_conversations')
@@ -57,14 +49,37 @@ export async function getOrCreateConversation(
         sender_external_id: params.senderId,
         sender_username: senderUsername,
         sender_name: senderName,
-        sender_avatar_url: senderAvatarUrl,
       },
       { onConflict: 'social_connection_id,sender_external_id' },
     )
     .select('id, automation_paused')
     .single()
   if (error || !data) throw new Error(error?.message || 'failed to upsert social_conversations')
-  return { id: data.id, automationPaused: !!data.automation_paused }
+  return { id: data.id, automationPaused: !!data.automation_paused, needsProfileEnrichment: !existing?.sender_name }
+}
+
+/** Segundo passo, separado de propósito: busca nome/username/foto na API do
+ *  Instagram e atualiza a conversa. Roda DEPOIS da mensagem já ter sido
+ *  gravada (ver processInboundInteraction) — assim a latência de rede dessa
+ *  chamada não atrasa a mensagem aparecendo no inbox; só o nome/foto chegam
+ *  um instante depois, via realtime UPDATE. Best-effort. */
+export async function enrichConversationProfile(
+  admin: Admin,
+  conversationId: string,
+  fetchProfile: () => Promise<{ name: string | null; username: string | null; avatarUrl: string | null } | null>,
+): Promise<void> {
+  try {
+    const profile = await fetchProfile()
+    if (!profile) return
+    const patch: Record<string, string> = {}
+    if (profile.name) patch.sender_name = profile.name
+    if (profile.username) patch.sender_username = profile.username
+    if (profile.avatarUrl) patch.sender_avatar_url = profile.avatarUrl
+    if (Object.keys(patch).length === 0) return
+    await admin.from('social_conversations').update(patch).eq('id', conversationId)
+  } catch (e: any) {
+    console.error('[social] enrichConversationProfile failed:', e?.message)
+  }
 }
 
 async function touchConversation(

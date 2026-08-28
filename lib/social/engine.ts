@@ -15,7 +15,7 @@ import {
 } from '@/lib/social/instagram'
 import { generateAiReply, type InboundKind } from '@/lib/social/ai'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
-import { getOrCreateConversation, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
+import { getOrCreateConversation, enrichConversationProfile, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 import { inngest } from '@/lib/inngest/client'
 import { uploadSystemFile } from '@/lib/storage/system'
 
@@ -230,14 +230,55 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     if (dup) return
   }
 
+  // 2.4) Inbox manual: registra a mensagem inbound no histórico da conversa
+  //      (independente de automação) — feito ANTES de qualquer chamada de
+  //      rede evitável (perfil, notificação), de propósito: é o passo que
+  //      faz a mensagem aparecer no inbox em tempo real (via Supabase
+  //      Realtime), então quanto antes ele rodar, mais rápido o revisor/
+  //      cliente vê a mensagem chegando. Se um atendente já assumiu a
+  //      conversa (automation_paused), a automação/funil não responde — só
+  //      o histórico é atualizado, o atendente responde pelo inbox.
+  let conversationId: string | undefined
+  let automationPaused = false
+  let mediaOnly = false
+  if (inbound.kind === 'dm') {
+    try {
+      const conversation = await getOrCreateConversation(supabase, {
+        organizationId: orgId,
+        connectionId: connection.id,
+        senderId: inbound.senderId,
+        senderUsername: inbound.senderUsername,
+      })
+      const rehostedUrl = inbound.attachmentUrl && inbound.attachmentType
+        ? await rehostInboundAttachment(orgId, conversation.id, inbound.attachmentUrl, inbound.attachmentType)
+        : inbound.attachmentUrl
+      await logInboundMessage(supabase, conversation.id, orgId, inbound.text, rehostedUrl, inbound.attachmentType)
+      conversationId = conversation.id
+      automationPaused = conversation.automationPaused
+      mediaOnly = !inbound.text && !!inbound.attachmentUrl
+
+      // Nome/foto do remetente (perfil completo) só chegam agora, depois da
+      // mensagem já estar visível — evita que essa chamada de rede atrase o
+      // que aparece no inbox. Atualiza via realtime UPDATE um instante depois.
+      if (conversation.needsProfileEnrichment) {
+        await enrichConversationProfile(supabase, conversation.id, async () => {
+          const profile = await getInstagramUserProfile(inbound.senderId, connection.access_token)
+          if (!profile) return null
+          return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
+        })
+      }
+    } catch (e: any) {
+      console.error('[social engine] conversation log failed:', e?.message)
+    }
+  }
+
   // 2.3) Avisa a equipe (push + sino de notificações) que chegou uma
-  //      interação nova — dispara aqui, antes de qualquer automação/funil
+  //      interação nova — dispara sempre, antes de qualquer automação/funil
   //      decidir o que fazer com ela, pra não depender de nenhum caminho
   //      específico (mesmo se cair num funil ou a automação_paused pular o
-  //      resto, o time ainda fica sabendo que a mensagem chegou).
-  //      Busca o nome de exibição do perfil (não só o @usuário) — o
-  //      webhook raramente traz isso de graça, então vale 1 chamada extra
-  //      à Graph API pra a notificação ficar legível.
+  //      resto, o time ainda fica sabendo que a mensagem chegou). Já roda
+  //      depois do passo 2.4 acima, então não atrasa a mensagem aparecendo
+  //      no inbox — só a notificação em si é que sai um instante depois.
   try {
     let senderName = inbound.senderUsername ? `@${inbound.senderUsername}` : 'alguém'
     try {
@@ -258,37 +299,12 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     console.error('[social engine] notify event failed:', e?.message)
   }
 
-  // 2.4) Inbox manual: registra a mensagem inbound no histórico da conversa
-  //      (independente de automação). Se um atendente já assumiu a conversa
-  //      (automation_paused), a automação/funil não responde — só o histórico
-  //      é atualizado, o atendente responde pelo inbox.
-  let conversationId: string | undefined
-  if (inbound.kind === 'dm') {
-    try {
-      const conversation = await getOrCreateConversation(supabase, {
-        organizationId: orgId,
-        connectionId: connection.id,
-        senderId: inbound.senderId,
-        senderUsername: inbound.senderUsername,
-        fetchProfile: async () => {
-          const profile = await getInstagramUserProfile(inbound.senderId, connection.access_token)
-          if (!profile) return null
-          return { name: profile.name, username: profile.username, avatarUrl: profile.profilePic }
-        },
-      })
-      const rehostedUrl = inbound.attachmentUrl && inbound.attachmentType
-        ? await rehostInboundAttachment(orgId, conversation.id, inbound.attachmentUrl, inbound.attachmentType)
-        : inbound.attachmentUrl
-      await logInboundMessage(supabase, conversation.id, orgId, inbound.text, rehostedUrl, inbound.attachmentType)
-      conversationId = conversation.id
-      if (conversation.automationPaused) return
-      // Mensagem só com mídia (sem texto/legenda) — registra no histórico e
-      // avisa a equipe, mas não aciona automação/IA (não tem o que
-      // interpretar como gatilho).
-      if (!inbound.text && inbound.attachmentUrl) return
-    } catch (e: any) {
-      console.error('[social engine] conversation log failed:', e?.message)
-    }
+  if (inbound.kind === 'dm' && conversationId) {
+    if (automationPaused) return
+    // Mensagem só com mídia (sem texto/legenda) — registra no histórico e
+    // avisa a equipe, mas não aciona automação/IA (não tem o que
+    // interpretar como gatilho).
+    if (mediaOnly) return
   }
 
   // 2.5) Funil de conversa (só DMs): se a pessoa já está num funil ou um funil

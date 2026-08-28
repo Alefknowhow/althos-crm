@@ -253,8 +253,10 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
 
   // Lista de conversas ao vivo — mesmo padrão do WhatsappChat: qualquer
   // mensagem toca social_conversations no servidor, então escutando essa
-  // tabela a lista reordena e mostra não-lido sem F5. Conversa nova (sem
-  // join de perfil disponível no payload) só dispara um refresh silencioso.
+  // tabela a lista reordena e mostra não-lido sem F5. Conversa nova entra
+  // direto no estado a partir do próprio payload (a linha já vem completa,
+  // sem join pendente) — nada de router.refresh() aqui, que é uma
+  // ida-e-volta ao servidor e quebra a expectativa de "tempo real".
   useEffect(() => {
     if (!orgId) return
     const channel = supabase.channel(`social_conv_list_${orgId}`)
@@ -268,12 +270,17 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
           return next
         })
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'social_conversations', filter: `organization_id=eq.${orgId}` }, () => {
-        router.refresh()
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'social_conversations', filter: `organization_id=eq.${orgId}` }, (payload) => {
+        setConversations(prev => {
+          if (prev.some(c => c.id === (payload.new as any).id)) return prev
+          const next = [payload.new as SocialConversationRow, ...prev]
+          next.sort((a, b) => new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime())
+          return next
+        })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [orgId, supabase, router])
+  }, [orgId, supabase])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
