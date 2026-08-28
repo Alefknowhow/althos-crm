@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { listAdAccounts } from '@/actions/marketing'
+import { listAdAccounts, getMetaAdsLoginStatus } from '@/actions/marketing'
 import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads-oauth'
 import AdAccountsManager from '@/components/features/marketing/AdAccountsManager'
 import SelectMetaAdAccounts from '@/components/features/marketing/SelectMetaAdAccounts'
@@ -44,7 +44,10 @@ export default async function MarketingAccountsPage({
     }
   }
 
-  const accounts = await listAdAccounts(params.orgSlug)
+  const [accounts, loginStatus] = await Promise.all([
+    listAdAccounts(params.orgSlug),
+    getMetaAdsLoginStatus(params.orgSlug),
+  ])
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -64,7 +67,7 @@ export default async function MarketingAccountsPage({
         </p>
       )}
 
-      <AdAccountsManager orgSlug={params.orgSlug} initial={accounts as any[]} />
+      <AdAccountsManager orgSlug={params.orgSlug} initial={accounts as any[]} metaLoginConnected={loginStatus.connected} />
     </div>
   )
 }

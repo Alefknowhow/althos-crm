@@ -6,8 +6,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, RefreshCw } from 'lucide-react'
-import { deleteAdAccount, syncAdAccountCampaigns } from '@/actions/marketing'
+import { Trash2, RefreshCw, LogOut, CheckCircle2 } from 'lucide-react'
+import { deleteAdAccount, disconnectMetaAdsLogin, syncAdAccountCampaigns } from '@/actions/marketing'
 import NewAdAccountDialog from './NewAdAccountDialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -40,26 +40,51 @@ const PROVIDER_COLOR: Record<string, string> = {
 export default function AdAccountsManager({
   orgSlug,
   initial,
+  metaLoginConnected,
 }: {
   orgSlug: string
   initial: Account[]
+  /** Se a org tem um login do Facebook (Meta Ads) ativo — controla o botão
+   *  de desconectar login, separado de excluir uma conta específica. */
+  metaLoginConnected: boolean
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [busy, setBusy] = useState<string | null>(null)
   const [syncing, setSyncing] = useState<string | null>(null)
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null)
+  const [campaignWarning, setCampaignWarning] = useState<{ account: Account; count: number } | null>(null)
+  const [disconnectingLogin, setDisconnectingLogin] = useState(false)
+  const [confirmDisconnectLogin, setConfirmDisconnectLogin] = useState(false)
 
   function refresh() {
     startTransition(() => router.refresh())
   }
 
-  async function remove(a: Account) {
+  async function remove(a: Account, force = false) {
     setBusy(a.id)
-    const res = await deleteAdAccount(orgSlug, a.id)
+    const res = await deleteAdAccount(orgSlug, a.id, force)
     setBusy(null)
     if (res.ok) {
       toast.success('Conta removida')
+      refresh()
+      return
+    }
+    if (!force && 'campaignCount' in res && res.campaignCount) {
+      // Não é erro de verdade — pede confirmação extra pra apagar campanha junto.
+      setCampaignWarning({ account: a, count: res.campaignCount })
+      return
+    }
+    toast.error(res.error)
+  }
+
+  async function disconnectLogin() {
+    setDisconnectingLogin(true)
+    const res = await disconnectMetaAdsLogin(orgSlug)
+    setDisconnectingLogin(false)
+    setConfirmDisconnectLogin(false)
+    if (res.ok) {
+      toast.success('Login do Facebook desconectado')
       refresh()
     } else {
       toast.error(res.error)
@@ -78,6 +103,26 @@ export default function AdAccountsManager({
 
   return (
     <div className="space-y-4">
+      {metaLoginConnected && (
+        <Card>
+          <CardContent className="py-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Login do Facebook conectado (Meta Ads)</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => setConfirmDisconnectLogin(true)}
+            >
+              <LogOut className="w-4 h-4 mr-1.5" />
+              Desconectar login
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-end">
         <NewAdAccountDialog
           orgSlug={orgSlug}
@@ -153,6 +198,52 @@ export default function AdAccountsManager({
               onClick={() => { remove(accountToDelete!); setAccountToDelete(null) }}
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!campaignWarning} onOpenChange={o => !o && setCampaignWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir campanhas sincronizadas junto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {campaignWarning
+                ? `"${campaignWarning.account.name}" tem ${campaignWarning.count} campanha(s) sincronizada(s) no CRM. `
+                : ''}
+              Excluir a conta também apaga essas campanhas (e as métricas ligadas a elas) — isso não afeta nada na
+              Meta, só o que foi trazido pro CRM. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { remove(campaignWarning!.account, true); setCampaignWarning(null) }}
+            >
+              Excluir tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDisconnectLogin} onOpenChange={setConfirmDisconnectLogin}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desconectar login do Facebook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O CRM para de conseguir sincronizar campanhas até um novo login. As contas de anúncio já cadastradas
+              continuam na lista (não são apagadas) — pra reconectar, use "+ Nova conta" e faça login de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={disconnectingLogin}
+              onClick={disconnectLogin}
+            >
+              Desconectar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

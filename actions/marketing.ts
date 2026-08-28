@@ -166,7 +166,7 @@ export async function updateAdAccount(orgSlug: string, id: string, raw: unknown)
   return { ok: true as const }
 }
 
-export async function deleteAdAccount(orgSlug: string, id: string) {
+export async function deleteAdAccount(orgSlug: string, id: string, force = false) {
   if (isImpersonating()) {
     return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
   }
@@ -182,10 +182,15 @@ export async function deleteAdAccount(orgSlug: string, id: string) {
     .eq('ad_account_id', id)
     .eq('organization_id', org.id)
 
-  if (count && count > 0) {
+  // Sem `force`, avisa e para — evita apagar dado sincronizado sem querer.
+  // Com `force` (usuário já confirmou o aviso), segue: campaigns tem
+  // ON DELETE CASCADE em ad_account_id (e campaign_metrics_daily em
+  // campaign_id), então apagar a conta já limpa tudo em cascata no banco.
+  if (count && count > 0 && !force) {
     return {
       ok: false as const,
-      error: `Conta possui ${count} campanha(s). Remova-as primeiro.`,
+      error: `Conta possui ${count} campanha(s) sincronizada(s).`,
+      campaignCount: count,
     }
   }
 
@@ -197,6 +202,47 @@ export async function deleteAdAccount(orgSlug: string, id: string) {
 
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/marketing`)
+  return { ok: true as const }
+}
+
+/** Se a org tem um login do Facebook (Meta Ads) ativo — token guardado em
+ *  organizations.meta_ads_access_token, obtido via OAuth em connectMetaAdsAccounts. */
+export async function getMetaAdsLoginStatus(orgSlug: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('organizations')
+    .select('meta_ads_access_token, meta_ads_token_expires_at')
+    .eq('id', org.id)
+    .maybeSingle()
+  return {
+    connected: !!data?.meta_ads_access_token,
+    expiresAt: data?.meta_ads_token_expires_at ?? null,
+  }
+}
+
+/** Desconecta o login do Facebook da org (limpa o token guardado). As
+ *  contas de anúncio já trazidas (ad_accounts) continuam cadastradas — só
+ *  param de sincronizar até um novo login. Pra reconectar do zero (ex.:
+ *  regravar o fluxo de OAuth pro App Review), use isso e depois "+ Nova
+ *  conta" de novo. */
+export async function disconnectMetaAdsLogin(orgSlug: string) {
+  if (isImpersonating()) {
+    return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
+  }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('organizations')
+    .update({ meta_ads_access_token: null, meta_ads_token_expires_at: null })
+    .eq('id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/marketing/contas`)
   return { ok: true as const }
 }
 
