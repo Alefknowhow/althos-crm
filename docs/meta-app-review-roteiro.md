@@ -11,9 +11,64 @@ cada uma das 6 permissões solicitadas. Ordem de gravação sugerida: **Instagra
 
 > **Regra geral de gravação:** tela cheia, sem dados fictícios óbvios demais
 > (use uma conta/org de teste real, com nome de negócio plausível), sem
-> cortes bruscos, narração ou legendas explicando cada clique. Grave em 1080p,
-> MP4, até ~3-5 min por vídeo. Comece sempre mostrando o app já logado —
-> não precisa gravar o cadastro/login no CRM, só a permissão em uso.
+> cortes bruscos. Grave em 1080p, MP4, até ~3-5 min por vídeo. Comece sempre
+> mostrando o app já logado no CRM — não precisa gravar o cadastro/login no
+> CRM em si, só a permissão em uso. **Mas o login/autorização da META
+> (Instagram, Facebook) precisa aparecer do zero, sempre** — ver seção abaixo.
+
+## ⚠️ 1ª rejeição (12/08) — o que corrigir antes de regravar
+
+`ads_read`, `instagram_business_basic`, `instagram_business_manage_messages`
+e `instagram_business_manage_comments` foram **rejeitados** — não por causa
+do texto do caso de uso (a Meta confirmou que ele é "permitido"), mas porque
+**o vídeo não mostrou a experiência completa**. Duas causas específicas,
+citadas literalmente na resposta deles:
+
+1. **Faltou o fluxo de login/autorização da Meta do zero.** Eles exigem ver:
+   (a) clicar em conectar já **desconectado** (sem nenhuma conta vinculada
+   ainda), (b) o popup oficial de login da Meta abrindo, (c) a tela de
+   consentimento onde o usuário aceita as permissões, (d) o retorno ao app já
+   conectado. **Se a gravação pular pra "já conectado", é rejeição
+   automática** — precisa desconectar a conta de teste antes de gravar cada
+   vídeo (ou usar uma conta nova) e mostrar a conexão acontecendo na tela.
+2. **(Nota específica do analista em `instagram_business_manage_messages`)
+   "Exemplos estáticos eram mostrados em vez de uma interação ao vivo."** —
+   ou seja, a DM mostrada já existia na conversa antes da gravação começar.
+   **Toda ação tem que ser feita ao vivo, na hora da gravação**: mandar uma
+   mensagem nova de verdade e mostrar ela chegando em tempo real, comentar de
+   verdade num post e mostrar a automação respondendo, etc. Nada de abrir uma
+   tela que já tinha histórico.
+
+**Ajustes obrigatórios pra essa regravação:**
+
+- [ ] **Desconecte a conta Instagram de teste antes de gravar** (Configurações
+      → Social → lixeira) e reconecte do zero, na tela, dentro do próprio
+      vídeo — não pule direto pro "já conectado".
+- [ ] **Toda mensagem/comentário mostrado precisa ser criado ao vivo durante a
+      gravação** — nada de reaproveitar conversa antiga. Mande a DM/comente
+      no post na hora, com a tela do CRM já aberta esperando, e mostre a
+      resposta chegando em tempo real.
+- [ ] **Interface em inglês, ou legendas/tooltips em inglês.** O Althos CRM
+      não tem tradução pra inglês ainda, então a alternativa viável é: grave
+      normal em português e depois adicione **legendas em inglês** (qualquer
+      editor de vídeo simples, ou até o Loom/CapCut) explicando o que cada
+      tela/botão faz — ex.: "Clicking 'Conectar Instagram' (Connect
+      Instagram)", "This screen shows the received DM in real time". A Meta
+      aceita isso desde que o significado de cada elemento fique claro pra
+      quem não lê português.
+- [ ] **`ads_read` especificamente — declarar no formulário de reenvio** (num
+      campo de observação/nota pro revisor, se houver, ou nas instruções de
+      teste) algo como: *"This integration uses standard Facebook Login OAuth
+      with a user access token — it is NOT a server-to-server integration and
+      does NOT use a System User token. The full login flow is shown in the
+      screencast."* Isso evita que o revisor suspeite que o login de
+      front-end está escondido.
+- [ ] Siga o [Guia de gravação de tela](https://developers.facebook.com/docs/app-review/submission-guide/screen-recordings)
+      da Meta à risca.
+
+Os roteiros abaixo já foram atualizados considerando isso — a diferença
+principal é: **comece desconectado, não conectado**, e **toda interação
+mostrada tem que acontecer ao vivo na gravação**.
 
 ## Credenciais de teste (login no CRM)
 
@@ -62,15 +117,19 @@ mensagens/comentários.
 
 ### Roteiro do vídeo
 
+0. **Antes de gravar:** em Configurações → Social, desconecte qualquer conta
+   Instagram já vinculada (lixeira). A gravação PRECISA começar com
+   "Nenhuma conta conectada" visível na tela — é isso que a Meta cobrou.
 1. Abra o CRM já logado, clique em **"Instagram"** na sidebar (abre a aba
-   Direct Inbox).
+   Direct Inbox) — mostre o estado desconectado.
 2. No canto superior direito, clique em **"Conectar Instagram"** — mostre o
    popup de login/autorização real da Meta abrindo (não corte essa parte, é
    o que o revisor mais quer ver: o consentimento explícito do usuário).
 3. Autorize com a conta Instagram profissional de teste.
 4. De volta ao CRM, mostre o botão virando **"Instagram conectado"**, com o
    **username e a foto de perfil reais** vindos da API (prova visual de que
-   `instagram_business_basic` está sendo usado).
+   `instagram_business_basic` está sendo usado) — isso só aparece de verdade
+   se a conexão acabou de acontecer nessa mesma gravação.
 5. Na mesma tela (Direct Inbox), mostre a lista de conversas — aponte que
    nome/username/foto de cada remetente vêm da mesma permissão.
 
@@ -123,23 +182,37 @@ usado pelo inbox manual de atendimento e pelas automações/funis de resposta.
 > agent or triggered by a real customer interaction within an automation the
 > business owner explicitly configured.
 
+> ⚠️ **Foi rejeitado exatamente por isso da 1ª vez** — o analista escreveu
+> literalmente: "Exemplos estáticos eram mostrados em vez de uma interação ao
+> vivo." Ou seja, a DM mostrada já existia na conversa antes de gravar. Dessa
+> vez, use uma conta Instagram de teste **que nunca mandou mensagem pra essa
+> conexão antes** (ou apague a conversa antiga em Instagram → Direct Inbox
+> antes de gravar), pra a conversa nascer do zero, na tela, ao vivo.
+
 ### Roteiro do vídeo
 
-1. (Pode continuar do vídeo anterior, com a conta já conectada.)
-2. De um segundo dispositivo/conta de teste, **envie uma DM real** para a
-   conta Instagram conectada (ex.: "Oi, vocês têm horário disponível
-   amanhã?").
-3. No CRM, mostre a mensagem **chegando em tempo real** na aba
-   **Instagram → Direct Inbox** (pode dar um refresh se não for via
-   websocket).
-4. Mostre o atendente **respondendo manualmente** pelo campo de texto do
+1. Continue do vídeo anterior, com a conta já conectada (ou reconecte, se
+   estiver gravando esse vídeo separado — precisa mostrar o estado
+   conectado antes da mensagem chegar).
+2. Confirme que a lista de conversas do Direct Inbox está **vazia ou sem
+   essa conversa específica** — grave esse estado "antes" primeiro.
+3. De um segundo dispositivo/conta de teste, **envie uma DM real, nova, ao
+   vivo** para a conta Instagram conectada (ex.: "Oi, vocês têm horário
+   disponível amanhã?"). Grave o clique de "enviar" nesse segundo
+   dispositivo.
+4. No CRM, mostre a mensagem **aparecendo na tela sem reload manual
+   escondido** — se não atualizar sozinho, dê um refresh visível na própria
+   gravação, mostrando a conversa nova surgindo na lista.
+5. Mostre o atendente **respondendo manualmente** pelo campo de texto do
    CRM — e a resposta chegando de volta na conta de teste que enviou a DM
-   (grave a tela do celular/segunda conta recebendo, se der).
-5. Em seguida, mostre a tela **Instagram → Automações**: abra uma automação
+   (grave a tela do celular/segunda conta recebendo — isso é o que prova
+   que não é uma captura estática).
+6. Em seguida, mostre a tela **Instagram → Automações**: abra uma automação
    já configurada (ex.: gatilho por palavra-chave) e explique brevemente que
-   ela responde sozinha quando a mensagem bate no gatilho — pode disparar
-   uma segunda DM de teste pra mostrar a automação respondendo automaticamente.
-6. Feche mostrando o toggle de **pausar automação** quando um humano assume a
+   ela responde sozinha quando a mensagem bate no gatilho — dispare uma
+   segunda DM nova de teste (de outra conta ou depois de limpar a conversa)
+   pra mostrar a automação respondendo automaticamente, ao vivo.
+7. Feche mostrando o toggle de **pausar automação** quando um humano assume a
    conversa (evidencia controle do dono do negócio sobre quando é bot ou
    humano).
 
@@ -206,13 +279,22 @@ privada" e pela fila de resposta manual em Instagram → Comentários.
 > with story-reply triggers) as a legitimate way to start a support
 > interaction — automated or human.
 
+> Esse fluxo já é inerentemente "ao vivo" (comenta agora, vê a resposta
+> chegar agora) — só cuide pra não reaproveitar um comentário/resposta que já
+> estava lá de uma gravação anterior. Ative o toggle "Também responder
+> publicamente no comentário" na automação antes de gravar (ver
+> [Ajustes de automação de comentário](#3-instagram_business_manage_comments)) —
+> sem ele, só sai DM privada, não resposta pública.
+
 ### Roteiro do vídeo
 
 1. Mostre, no CRM, uma automação configurada em
-   **Instagram → Automações** com gatilho **"Comentário"** e uma
-   palavra-chave (ex.: "preço").
+   **Instagram → Automações** com gatilho **"Comentário"**, uma
+   palavra-chave (ex.: "preço") e o toggle **"Também responder publicamente
+   no comentário"** ativado.
 2. De uma segunda conta, **comente numa publicação real** da conta
-   conectada, usando a palavra-chave configurada.
+   conectada, usando a palavra-chave configurada — comentário novo, feito
+   na hora da gravação.
 3. Mostre a **resposta pública automática** aparecendo no post (do lado do
    Instagram real, não só do CRM).
 4. Se a automação também disparar DM privada, mostre a **resposta privada**
@@ -282,8 +364,19 @@ cliente.
 > compare campaigns and identify which ones perform best — always over the
 > user's own ad account, never a third party's.
 
+> ⚠️ Rejeitado por não mostrar o fluxo completo. Antes de gravar, **desconecte
+> qualquer conta de anúncios já vinculada** em Marketing → Contas, pra a
+> gravação começar do estado "nenhuma conta conectada". E na hora de reenviar,
+> inclua nas observações: *"This integration uses standard Facebook Login
+> OAuth with a user access token — it is NOT a server-to-server integration
+> and does NOT use a System User token."* (é a informação que o item 5 da
+> rejeição pediu).
+
 ### Roteiro do vídeo
 
+0. **Antes de gravar:** desconecte qualquer conta de anúncios já vinculada em
+   Marketing → Contas. A gravação precisa começar sem nenhuma conta
+   conectada.
 1. No CRM, vá em **Marketing → Contas** e clique em **"Conectar com Facebook
    (Meta Ads)"**.
 2. Mostre o **popup oficial de login do Facebook** abrindo, o login com a
