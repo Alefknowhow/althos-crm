@@ -36,8 +36,15 @@ export default function SelectMetaAdAccounts({
     const res = await connectMetaAdsAccounts(orgSlug, Array.from(selected))
     setSaving(false)
     if (res.ok) {
-      toast.success(`${res.accountsConnected} conta(s) conectada(s)`)
-      router.replace(`/app/${orgSlug}/marketing/contas`)
+      toast.success(
+        res.campaignsSynced > 0
+          ? `${res.accountsConnected} conta(s) conectada(s) e ${res.campaignsSynced} campanha(s) sincronizada(s)`
+          : `${res.accountsConnected} conta(s) conectada(s)`,
+      )
+      // Vai direto pro painel principal, já com o dado sincronizado — fluxo
+      // fluido: conectar → selecionar → sincronizar → ver dado, sem passo
+      // manual extra em Contas.
+      router.replace(`/app/${orgSlug}/marketing`)
       router.refresh()
     } else {
       toast.error(res.error)
@@ -79,7 +86,7 @@ export default function SelectMetaAdAccounts({
         ))}
       </div>
       <Button onClick={confirm} disabled={saving || selected.size === 0}>
-        {saving ? 'Conectando...' : `Conectar ${selected.size || ''} conta(s)`}
+        {saving ? 'Conectando e sincronizando...' : `Conectar ${selected.size || ''} conta(s)`}
       </Button>
     </div>
   )

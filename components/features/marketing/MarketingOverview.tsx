@@ -298,12 +298,32 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
   const cardMetricKeys = (Object.keys(METRIC_REGISTRY) as MetricKey[]).filter(k => visibleCardMetrics.has(k))
 
+  // Nomes das contas conectadas, pra badge fixa no topo — "qual conta é essa"
+  // sempre visível, sem precisar ir em Contas pra descobrir.
+  const connectedAccountsLabel = accounts.length === 0
+    ? null
+    : accounts.length === 1
+    ? accounts[0].name
+    : `${accounts[0].name} +${accounts.length - 1}`
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <PeriodTabs />
+          {connectedAccountsLabel && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-normal"
+              title="Ver/gerenciar contas conectadas"
+              onClick={() => router.push(`/app/${orgSlug}/marketing/contas`)}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              Conectado: <span className="font-medium">{connectedAccountsLabel}</span>
+            </Button>
+          )}
           <AccountFilter
             accounts={accounts}
             selected={accountFilter}
@@ -317,37 +337,43 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           />
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-1.5" /> Novo
-              <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem asChild>
-              <NewCampaignTrigger orgSlug={orgSlug} accounts={accounts} onDone={refresh} />
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <RecordSpendTrigger
-                orgSlug={orgSlug}
-                campaigns={campaigns}
-                onDone={refresh}
-              />
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} />
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/app/${orgSlug}/marketing/importar`)}>
-              <Upload className="w-4 h-4 mr-2" /> Importar CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push(`/app/${orgSlug}/marketing/contas`)}
-            >
-              <Settings className="w-4 h-4 mr-2" /> Gerenciar contas
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {noAccountsYet ? (
+          // Sem conta nenhuma, o único passo que faz sentido é conectar — o
+          // botão fica exposto direto aqui, não escondido num dropdown.
+          <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} variant="default" label="Conectar conta do Facebook" />
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-1.5" /> Novo
+                <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <NewCampaignTrigger orgSlug={orgSlug} accounts={accounts} onDone={refresh} />
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <RecordSpendTrigger
+                  orgSlug={orgSlug}
+                  campaigns={campaigns}
+                  onDone={refresh}
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <NewAccountTrigger orgSlug={orgSlug} onDone={refresh} />
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/app/${orgSlug}/marketing/importar`)}>
+                <Upload className="w-4 h-4 mr-2" /> Importar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push(`/app/${orgSlug}/marketing/contas`)}
+              >
+                <Settings className="w-4 h-4 mr-2" /> Gerenciar contas
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Setup banner if no accounts/campaigns yet */}
@@ -361,7 +387,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               <p className="font-semibold mb-1">Comece em 2 passos</p>
               <p className="text-sm text-muted-foreground mb-3">
                 {noAccountsYet
-                  ? '1. Crie uma conta de anúncio (Meta, Google). 2. Cadastre suas campanhas e lance gastos diários ou importe um CSV.'
+                  ? '1. Conecte sua conta de anúncio (Meta, Google). 2. Escolha quais contas sincronizar — os dados aparecem aqui automaticamente, sem passo manual extra.'
                   : '1. Cadastre uma campanha vinculada à conta. 2. Lance gastos diários ou importe um CSV exportado do Meta/Google.'}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -375,138 +401,145 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
         </Card>
       )}
 
-      {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo de campanha */}
-      <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
-        <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
-          {OBJECTIVE_FILTERS.map(f => (
-            <TabsTrigger
-              key={f.value}
-              value={f.value}
-              className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
-            >
-              {f.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* KPIs/gráficos/tabela só fazem sentido com conta conectada e
+          campanha cadastrada — antes disso é só ruído visual (tudo "—" e
+          gráfico vazio), então nem renderiza. */}
+      {!noAccountsYet && !noCampaignsYet && (
+        <>
+          {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo de campanha */}
+          <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
+            <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
+              {OBJECTIVE_FILTERS.map(f => (
+                <TabsTrigger
+                  key={f.value}
+                  value={f.value}
+                  className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
+                >
+                  {f.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-      {/* KPI cards — dinâmicos, controlados pelo MetricPicker. Número exato
-          de colunas (não auto-fit) pra nunca quebrar linha, mesmo com o
-          cap de 8 métricas simultâneas. */}
-      <div
-        className="grid gap-2 overflow-x-auto"
-        style={{ gridTemplateColumns: `repeat(${cardMetricKeys.length}, minmax(120px, 1fr))` }}
-      >
-        {cardMetricKeys.map(k => {
-          const def = METRIC_REGISTRY[k]
-          const raw = def.extract(filteredTotals)
-          const value = raw > 0 ? def.format(raw) : '—'
-          const sublabel =
-            k === 'clicks' ? `CTR: ${METRIC_REGISTRY.ctr.extract(filteredTotals).toFixed(2)}%`
-            : k === 'cac' ? `${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`
-            : undefined
-          return (
-            <KPICard
-              key={k}
-              label={def.label}
-              value={value}
-              sublabel={sublabel}
-              icon={METRIC_ICONS[k]}
-              iconBg={METRIC_ICON_BG[k]}
-            />
-          )
-        })}
-      </div>
+          {/* KPI cards — dinâmicos, controlados pelo MetricPicker. Número exato
+              de colunas (não auto-fit) pra nunca quebrar linha, mesmo com o
+              cap de 8 métricas simultâneas. */}
+          <div
+            className="grid gap-2 overflow-x-auto"
+            style={{ gridTemplateColumns: `repeat(${cardMetricKeys.length}, minmax(120px, 1fr))` }}
+          >
+            {cardMetricKeys.map(k => {
+              const def = METRIC_REGISTRY[k]
+              const raw = def.extract(filteredTotals)
+              const value = raw > 0 ? def.format(raw) : '—'
+              const sublabel =
+                k === 'clicks' ? `CTR: ${METRIC_REGISTRY.ctr.extract(filteredTotals).toFixed(2)}%`
+                : k === 'cac' ? `${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`
+                : undefined
+              return (
+                <KPICard
+                  key={k}
+                  label={def.label}
+                  value={value}
+                  sublabel={sublabel}
+                  icon={METRIC_ICONS[k]}
+                  iconBg={METRIC_ICON_BG[k]}
+                />
+              )
+            })}
+          </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Multi-metric chart — visibilidade controlada pelo MetricPicker */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Evolução das métricas</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Use &quot;Personalizar&quot; acima pra escolher quais métricas aparecem aqui.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <MetricsChart data={filteredTimeSeries} visible={visibleChartMetrics} />
-          </CardContent>
-        </Card>
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Multi-metric chart — visibilidade controlada pelo MetricPicker */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Evolução das métricas</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Use &quot;Personalizar&quot; acima pra escolher quais métricas aparecem aqui.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <MetricsChart data={filteredTimeSeries} visible={visibleChartMetrics} />
+              </CardContent>
+            </Card>
 
-        {/* Sources by leads */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Leads por campanha</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overview.sourcesByLeads.length === 0 ? (
-              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
-                Atribuição ainda sem dados. Configure o <strong>utm_campaign</strong> nas suas
-                campanhas para conectar.
-              </div>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={overview.sourcesByLeads}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={2}
-                    >
-                      {overview.sourcesByLeads.map((_, i) => (
-                        <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+            {/* Sources by leads */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Leads por campanha</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {overview.sourcesByLeads.length === 0 ? (
+                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
+                    Atribuição ainda sem dados. Configure o <strong>utm_campaign</strong> nas suas
+                    campanhas para conectar.
+                  </div>
+                ) : (
+                  <>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={overview.sourcesByLeads}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={45}
+                          outerRadius={70}
+                          paddingAngle={2}
+                        >
+                          {overview.sourcesByLeads.map((_, i) => (
+                            <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-1 mt-2">
+                      {overview.sourcesByLeads.map((s, i) => (
+                        <div key={s.name} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                            />
+                            <span className="truncate">{s.name}</span>
+                          </div>
+                          <span className="tabular-nums text-muted-foreground">{s.value}</span>
+                        </div>
                       ))}
-                    </Pie>
-                    <RTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1 mt-2">
-                  {overview.sourcesByLeads.map((s, i) => (
-                    <div key={s.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-                        />
-                        <span className="truncate">{s.name}</span>
-                      </div>
-                      <span className="tabular-nums text-muted-foreground">{s.value}</span>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Campaigns table */}
-      <CampaignsTable
-        orgSlug={orgSlug}
-        rows={filteredCampaigns}
-        period={period}
-        onRefresh={refresh}
-        chartSelection={chartCampaignFilter}
-        onToggleChartSelection={id => {
-          setChartCampaignFilter(prev => {
-            const base = prev === 'all' ? new Set(overview.campaigns.map(c => c.id)) : new Set(prev)
-            if (base.has(id)) base.delete(id)
-            else base.add(id)
-            return base.size === overview.campaigns.length ? 'all' : base
-          })
-        }}
-      />
+          {/* Campaigns table */}
+          <CampaignsTable
+            orgSlug={orgSlug}
+            rows={filteredCampaigns}
+            period={period}
+            onRefresh={refresh}
+            chartSelection={chartCampaignFilter}
+            onToggleChartSelection={id => {
+              setChartCampaignFilter(prev => {
+                const base = prev === 'all' ? new Set(overview.campaigns.map(c => c.id)) : new Set(prev)
+                if (base.has(id)) base.delete(id)
+                else base.add(id)
+                return base.size === overview.campaigns.length ? 'all' : base
+              })
+            }}
+          />
 
-      {!hasData && !noAccountsYet && !noCampaignsYet && (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Cadastre métricas de gasto diário (manual ou via CSV) para ver os KPIs e gráficos
-            populados.
-          </CardContent>
-        </Card>
+          {!hasData && (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                Cadastre métricas de gasto diário (manual ou via CSV) para ver os KPIs e gráficos
+                populados.
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   )
@@ -518,10 +551,12 @@ function NewAccountTrigger({
   orgSlug,
   onDone,
   variant = 'outline',
+  label = 'Nova conta de anúncio',
 }: {
   orgSlug: string
   onDone: () => void
   variant?: 'default' | 'outline'
+  label?: string
 }) {
   return (
     <NewAdAccountDialog
@@ -529,7 +564,7 @@ function NewAccountTrigger({
       onDone={onDone}
       trigger={
         <Button variant={variant} size={variant === 'outline' ? 'sm' : undefined}>
-          <Settings className="w-4 h-4 mr-2" /> Nova conta de anúncio
+          <Settings className="w-4 h-4 mr-2" /> {label}
         </Button>
       }
     />

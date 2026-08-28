@@ -585,22 +585,36 @@ export async function connectMetaAdsAccounts(orgSlug: string, selectedAccountIds
     .eq('id', org.id)
 
   let accountsConnected = 0
+  let campaignsSynced = 0
   for (const accountId of validSelected) {
     const meta = available.find(a => a.id === accountId)
     if (!meta) continue
-    const { error } = await supabase
+    const { data: row, error } = await supabase
       .from('ad_accounts')
       .upsert(
         { organization_id: org.id, provider: 'meta', name: meta.name, external_id: meta.id, status: 'active' },
         { onConflict: 'organization_id,provider,external_id' },
       )
-    if (!error) accountsConnected++
+      .select('id')
+      .single()
+    if (error || !row) continue
+    accountsConnected++
+
+    // Sincroniza na hora — pra quem acabou de conectar já cair direto no
+    // painel com dado de verdade, sem precisar de um segundo passo manual
+    // ("Sincronizar" em Contas). Falha aqui não desfaz a conexão, só deixa
+    // pra sincronizar depois (o botão manual continua disponível).
+    try {
+      const syncResult = await syncAdAccountCampaigns(orgSlug, row.id)
+      if (syncResult.ok) campaignsSynced += syncResult.campaignsSynced
+    } catch { /* best-effort */ }
   }
 
   cookieStore.delete('meta_ads_pending_token')
   cookieStore.delete('meta_ads_pending_org')
   revalidatePath(`/app/${orgSlug}/marketing/contas`)
-  return { ok: true as const, accountsConnected }
+  revalidatePath(`/app/${orgSlug}/marketing`)
+  return { ok: true as const, accountsConnected, campaignsSynced }
 }
 
 /**
