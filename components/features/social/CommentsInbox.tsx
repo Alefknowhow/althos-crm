@@ -1,27 +1,60 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { MessageSquareText } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { replyToCommentManually, type PendingComment } from '@/actions/social-comments'
 
 /**
  * Fila de resposta manual a comentários do Instagram que não bateram em
  * nenhuma automação (ver lib/social/engine.ts:logPendingComment). É o
  * complemento manual da automação de comentários já existente — mesma ideia
- * do Direct Inbox pra DMs.
+ * do Direct Inbox pra DMs, incluindo tempo real (comentário novo entra na
+ * fila sem precisar recarregar a página).
  */
-export default function CommentsInbox({ orgSlug, initialComments }: { orgSlug: string; initialComments: PendingComment[] }) {
-  const router = useRouter()
+export default function CommentsInbox({ orgSlug, orgId, initialComments }: { orgSlug: string; orgId?: string; initialComments: PendingComment[] }) {
   const [comments, setComments] = useState(initialComments)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [alsoDm, setAlsoDm] = useState<Record<string, boolean>>({})
   const [pending, startTransition] = useTransition()
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => { setComments(initialComments) }, [initialComments])
+
+  useEffect(() => {
+    if (!orgId) return
+    const channel = supabase
+      .channel(`social_comments_pending_${orgId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'social_interactions', filter: `organization_id=eq.${orgId}` },
+        payload => {
+          const row = payload.new as any
+          if (row.platform !== 'instagram' || row.interaction_type !== 'comment' || row.response_type) return
+          const commentId = row.raw_payload?.commentId as string | undefined
+          if (!commentId) return
+          setComments(prev => prev.some(c => c.id === row.id) ? prev : [
+            {
+              id: row.id,
+              sender_username: row.sender_username,
+              sender_name: row.sender_name,
+              inbound_text: row.inbound_text,
+              post_id: row.post_id,
+              created_at: row.created_at,
+              comment_id: commentId,
+            },
+            ...prev,
+          ])
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [orgId, supabase])
 
   function handleReply(id: string) {
     const text = (drafts[id] || '').trim()
@@ -33,7 +66,6 @@ export default function CommentsInbox({ orgSlug, initialComments }: { orgSlug: s
       if (!res.ok) { toast.error(res.error); return }
       toast.success('Resposta publicada')
       setComments(prev => prev.filter(c => c.id !== id))
-      router.refresh()
     })
   }
 
