@@ -7,7 +7,7 @@
  */
 
 export type MetricKey =
-  | 'spend' | 'impressions' | 'clicks' | 'leads' | 'cpl' | 'ctr' | 'cpc'
+  | 'spend' | 'impressions' | 'clicks' | 'leads' | 'cpl' | 'ctr' | 'cpc' | 'cpm'
   | 'meta_leads' | 'meta_messaging_started' | 'meta_link_clicks' | 'meta_landing_page_views' | 'meta_purchases'
   | 'cac' | 'roas'
 
@@ -70,6 +70,10 @@ export const METRIC_REGISTRY: Record<MetricKey, MetricDef> = {
   cpc: {
     label: 'CPC médio', color: '#0ea5e9', format: currency, chartable: true, axis: 'left', type: 'line',
     extract: c => (c.clicks > 0 ? c.spend_cents / 100 / c.clicks : 0),
+  },
+  cpm: {
+    label: 'CPM (custo por mil impressões)', color: '#eab308', format: currency, chartable: true, axis: 'left', type: 'line',
+    extract: c => (c.impressions > 0 ? (c.spend_cents / 100 / c.impressions) * 1000 : 0),
   },
   meta_leads: {
     label: 'Leads (Meta)', color: '#22c55e', format: number, chartable: true, axis: 'right', type: 'line',

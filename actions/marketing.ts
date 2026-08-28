@@ -868,7 +868,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'marketing')
   if (!perm.allowed) {
-    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], byObjective: [] }
+    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], topByConversations: [], byObjective: [] }
   }
   const supabase = createClient()
   const start = periodStart(period)
@@ -889,6 +889,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       campaigns: [],
       timeSeries: [],
       sourcesByLeads: [],
+      topByConversations: [],
       byObjective: [],
     }
   }
@@ -1048,6 +1049,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       clicks: m.clicks,
       leads,
       cpl_cents: leads > 0 ? Math.round(m.spend / leads) : null,
+      cpm_cents: m.imp > 0 ? Math.round((m.spend / m.imp) * 1000) : null,
       ctr: m.imp > 0 ? (m.clicks / m.imp) * 100 : 0,
       meta_leads: m.metaLeads,
       meta_messaging_started: m.messagingStarted,
@@ -1175,7 +1177,46 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
-  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective }
+  // 9) Top campanhas por conversas iniciadas no WhatsApp (meta_messaging_started)
+  // — mesma ideia de "sourcesByLeads", mas pra objetivo de mensagens.
+  const topByConversations = campaignRows
+    .filter(c => c.meta_messaging_started > 0)
+    .map(c => ({ name: c.name, value: c.meta_messaging_started }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6)
+
+  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, topByConversations, byObjective }
+}
+
+/* -------- Preferências do painel (quais cards/métricas ficam visíveis) -------- */
+
+export type MarketingMetricsPrefs = { cardMetrics: string[]; chartMetrics: string[] }
+
+/** Preferências de exibição do painel salvas por org — sobrevivem entre
+ *  sessões e valem pra todo mundo que abre Anúncios nessa organização. */
+export async function getMarketingMetricsPrefs(orgSlug: string): Promise<MarketingMetricsPrefs | null> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('org_settings')
+    .select('marketing_metrics_prefs')
+    .eq('org_id', org.id)
+    .maybeSingle()
+  return (data?.marketing_metrics_prefs as MarketingMetricsPrefs | null) ?? null
+}
+
+export async function updateMarketingMetricsPrefs(orgSlug: string, prefs: MarketingMetricsPrefs) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'marketing')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('org_settings')
+    .upsert({ org_id: org.id, marketing_metrics_prefs: prefs }, { onConflict: 'org_id' })
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
 }
 
 /* -------- Drill-down: Conjuntos de Anúncios (CJ) e Anúncios, ao vivo -------- */

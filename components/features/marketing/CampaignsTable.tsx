@@ -37,6 +37,7 @@ type CampaignRow = {
   clicks: number
   leads: number
   cpl_cents: number | null
+  cpm_cents: number | null
   ctr: number
   meta_messaging_started: number
   cost_per_conversation_cents: number | null
@@ -86,7 +87,7 @@ function ConversionCell({ row }: { row: CampaignRow }) {
   )
 }
 
-const TOTAL_COLUMNS = 12
+const TOTAL_COLUMNS = 13
 
 function DrillDownStatusBadge({ status }: { status: string }) {
   const active = status === 'active'
@@ -144,6 +145,9 @@ function DrillDownRowView({
       <TableCell />
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{fmtCurrency(row.spend_cents)}</TableCell>
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{fmtNumber(row.impressions)}</TableCell>
+      <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+        {row.impressions > 0 ? fmtCurrency(Math.round((row.spend_cents / row.impressions) * 1000)) : '—'}
+      </TableCell>
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{fmtNumber(row.clicks)}</TableCell>
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{row.ctr.toFixed(2)}%</TableCell>
       <TableCell>
@@ -313,6 +317,7 @@ export default function CampaignsTable({
                   <TableHead>Objetivo</TableHead>
                   <TableHead className="text-right">Investimento</TableHead>
                   <TableHead className="text-right">Impressões</TableHead>
+                  <TableHead className="text-right">CPM</TableHead>
                   <TableHead className="text-right">Cliques</TableHead>
                   <TableHead className="text-right">CTR</TableHead>
                   <TableHead className="text-right">Conversão</TableHead>
@@ -367,6 +372,9 @@ export default function CampaignsTable({
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {fmtNumber(r.impressions)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {r.cpm_cents != null ? fmtCurrency(r.cpm_cents) : '—'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {fmtNumber(r.clicks)}

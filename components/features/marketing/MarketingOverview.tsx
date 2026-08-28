@@ -45,11 +45,14 @@ import NewCampaignDialog from './NewCampaignDialog'
 import RecordSpendDialog from './RecordSpendDialog'
 import CampaignsTable from './CampaignsTable'
 import MetricsChart from './MetricsChart'
+import ImpressionsCpmChart from './ImpressionsCpmChart'
+import TopConversationsChart from './TopConversationsChart'
 import MetricPicker from './MetricPicker'
 import AccountFilter from './AccountFilter'
 import type { ObjectiveGroup } from '@/lib/marketing/objective'
 import { OBJECTIVE_GROUP_LABELS } from '@/lib/marketing/objective'
 import { METRIC_REGISTRY, DEFAULT_CARD_METRICS, DEFAULT_CHART_METRICS, type MetricKey, type MetricContext } from './metricRegistry'
+import { updateMarketingMetricsPrefs } from '@/actions/marketing'
 
 type CampaignRow = {
   id: string
@@ -65,6 +68,7 @@ type CampaignRow = {
   clicks: number
   leads: number
   cpl_cents: number | null
+  cpm_cents: number | null
   ctr: number
   meta_leads: number
   meta_messaging_started: number
@@ -86,6 +90,7 @@ type Overview = {
   campaigns: CampaignRow[]
   timeSeries: TimeSeriesPoint[]
   sourcesByLeads: Array<{ name: string; value: number }>
+  topByConversations: Array<{ name: string; value: number }>
   byObjective: Array<{ group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>
 }
 
@@ -110,6 +115,9 @@ type Props = {
   /** Nome do usuário Facebook logado (via login OAuth do Meta Ads) — null se
    *  nunca conectou ou o token expirou/foi revogado do lado da Meta. */
   metaLoginUserName?: string | null
+  /** Preferências de cards/gráfico salvas anteriormente (org_settings) — null
+   *  na primeira vez, cai nos defaults (DEFAULT_CARD_METRICS/DEFAULT_CHART_METRICS). */
+  initialMetricsPrefs?: { cardMetrics: string[]; chartMetrics: string[] } | null
 }
 
 const PERIODS = [
@@ -150,6 +158,7 @@ const METRIC_ICONS: Record<MetricKey, any> = {
   cpl: DollarSign,
   ctr: Target,
   cpc: DollarSign,
+  cpm: Eye,
   meta_leads: Users,
   meta_messaging_started: MessageCircle,
   meta_link_clicks: Link2,
@@ -167,6 +176,7 @@ const METRIC_ICON_BG: Record<MetricKey, string> = {
   cpl: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
   ctr: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
   cpc: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
+  cpm: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
   meta_leads: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
   meta_messaging_started: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
   meta_link_clicks: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
@@ -240,7 +250,15 @@ function KPICard({
   )
 }
 
-export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period, metaLoginUserName }: Props) {
+/** Filtra pra só as chaves que ainda existem no registro atual — evita
+ *  quebrar se uma preferência salva referenciar uma métrica removida. */
+function sanitizeMetricKeys(keys: string[] | undefined, fallback: MetricKey[]): Set<MetricKey> {
+  if (!keys || keys.length === 0) return new Set(fallback)
+  const valid = keys.filter((k): k is MetricKey => k in METRIC_REGISTRY)
+  return valid.length > 0 ? new Set(valid) : new Set(fallback)
+}
+
+export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period, metaLoginUserName, initialMetricsPrefs }: Props) {
   const [, startTransition] = useTransition()
   const router = useRouter()
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
@@ -251,8 +269,32 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   // Quais campanhas entram no gráfico — checkbox por linha na tabela.
   // 'all' = todas (default); um Set explícito = só as marcadas.
   const [chartCampaignFilter, setChartCampaignFilter] = useState<Set<string> | 'all'>('all')
-  const [visibleCardMetrics, setVisibleCardMetrics] = useState<Set<MetricKey>>(new Set(DEFAULT_CARD_METRICS))
-  const [visibleChartMetrics, setVisibleChartMetrics] = useState<Set<MetricKey>>(new Set(DEFAULT_CHART_METRICS))
+  // Cards/gráfico visíveis — carrega da preferência salva em org_settings
+  // (getMarketingMetricsPrefs, buscada no page.tsx); sem isso, cai nos
+  // defaults. Toda mudança aqui persiste de volta (ver handleChange* abaixo).
+  const [visibleCardMetrics, setVisibleCardMetricsState] = useState<Set<MetricKey>>(
+    () => sanitizeMetricKeys(initialMetricsPrefs?.cardMetrics, DEFAULT_CARD_METRICS),
+  )
+  const [visibleChartMetrics, setVisibleChartMetricsState] = useState<Set<MetricKey>>(
+    () => sanitizeMetricKeys(initialMetricsPrefs?.chartMetrics, DEFAULT_CHART_METRICS),
+  )
+
+  function persistMetricsPrefs(cardMetrics: Set<MetricKey>, chartMetrics: Set<MetricKey>) {
+    updateMarketingMetricsPrefs(orgSlug, {
+      cardMetrics: Array.from(cardMetrics),
+      chartMetrics: Array.from(chartMetrics),
+    }).catch(() => {})
+  }
+
+  function setVisibleCardMetrics(next: Set<MetricKey>) {
+    setVisibleCardMetricsState(next)
+    persistMetricsPrefs(next, visibleChartMetrics)
+  }
+
+  function setVisibleChartMetrics(next: Set<MetricKey>) {
+    setVisibleChartMetricsState(next)
+    persistMetricsPrefs(visibleCardMetrics, next)
+  }
 
   const filteredCampaigns = overview.campaigns
     .filter(c => objectiveFilter === 'all' || c.objective_group === objectiveFilter)
@@ -525,6 +567,33 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts row 2 — impressões/CPM e conversas iniciadas por campanha */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Impressões e CPM</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Volume de impressões (barras) x custo por mil impressões (linha), dia a dia.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ImpressionsCpmChart data={filteredTimeSeries} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Conversas por anúncio</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  De onde vieram as conversas iniciadas no WhatsApp, por campanha.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <TopConversationsChart data={overview.topByConversations} />
               </CardContent>
             </Card>
           </div>
