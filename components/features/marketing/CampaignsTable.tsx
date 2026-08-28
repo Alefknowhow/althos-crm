@@ -40,6 +40,8 @@ type CampaignRow = {
   cpm_cents: number | null
   ctr: number
   meta_messaging_started: number
+  meta_purchases: number
+  meta_purchase_value_cents: number
   cost_per_conversation_cents: number | null
   won_deals: number
   cac_cents: number | null
@@ -63,9 +65,10 @@ function fmtNumber(n: number): string {
   return new Intl.NumberFormat('pt-BR').format(n)
 }
 
-/** Métrica de conversão "certa" pra cada objetivo — WhatsApp mostra custo
- * por conversa iniciada, os demais mostram leads/CPL (já cobertos pela
- * atribuição via utm_campaign). */
+/** Métrica de conversão "certa" pra cada objetivo — segue o objetivo real
+ * da campanha (mesmo conjunto de anúncios): Mensagens mostra conversas
+ * iniciadas, Vendas mostra compras, os demais mostram leads/CPL (atribuição
+ * via utm_campaign). */
 function ConversionCell({ row }: { row: CampaignRow }) {
   if (row.objective_group === 'messaging') {
     return (
@@ -73,6 +76,17 @@ function ConversionCell({ row }: { row: CampaignRow }) {
         <div className="tabular-nums font-medium">{fmtNumber(row.meta_messaging_started)} conversas</div>
         <div className="text-xs text-muted-foreground tabular-nums">
           {row.cost_per_conversation_cents != null ? `${fmtCurrency(row.cost_per_conversation_cents)}/conversa` : '—'}
+        </div>
+      </div>
+    )
+  }
+  if (row.objective_group === 'sales') {
+    const costPerPurchase = row.meta_purchases > 0 ? Math.round(row.spend_cents / row.meta_purchases) : null
+    return (
+      <div className="text-right">
+        <div className="tabular-nums font-medium">{fmtNumber(row.meta_purchases)} vendas</div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {costPerPurchase != null ? `${fmtCurrency(costPerPurchase)}/venda` : '—'}
         </div>
       </div>
     )
@@ -108,19 +122,23 @@ function DrillDownStatusBadge({ status }: { status: string }) {
 }
 
 /** Uma linha de CJ ou de Anúncio — mesmo layout de colunas da campanha,
- * mas sem objetivo/CAC/ROAS (atribuição só existe em nível de campanha). */
+ * mas sem CAC/ROAS (atribuição só existe em nível de campanha). O objetivo
+ * é herdado da campanha (Meta não tem objetivo por CJ/anúncio), então a
+ * métrica de conversão segue o mesmo objectiveGroup do ConversionCell. */
 function DrillDownRowView({
   row,
   depth,
   expandable,
   expanded,
   onToggle,
+  objectiveGroup,
 }: {
   row: DrillDownRow
   depth: number
   expandable: boolean
   expanded?: boolean
   onToggle?: () => void
+  objectiveGroup: ObjectiveGroup
 }) {
   return (
     <TableRow className="bg-muted/30 hover:bg-muted/50">
@@ -151,16 +169,28 @@ function DrillDownRowView({
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{fmtNumber(row.clicks)}</TableCell>
       <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{row.ctr.toFixed(2)}%</TableCell>
       <TableCell>
-        <div className="text-right">
-          <div className="tabular-nums text-sm text-muted-foreground">
-            {row.meta_messaging_started > 0 ? `${fmtNumber(row.meta_messaging_started)} conversas` : `${fmtNumber(row.meta_leads)} leads`}
+        {objectiveGroup === 'messaging' ? (
+          <div className="text-right">
+            <div className="tabular-nums text-sm text-muted-foreground">{fmtNumber(row.meta_messaging_started)} conversas</div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {row.cost_per_conversation_cents != null ? `${fmtCurrency(row.cost_per_conversation_cents)}/conversa` : '—'}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground tabular-nums">
-            {row.meta_messaging_started > 0
-              ? (row.cost_per_conversation_cents != null ? `${fmtCurrency(row.cost_per_conversation_cents)}/conversa` : '—')
-              : (row.meta_cpl_cents != null ? `${fmtCurrency(row.meta_cpl_cents)}/lead` : '—')}
+        ) : objectiveGroup === 'sales' ? (
+          <div className="text-right">
+            <div className="tabular-nums text-sm text-muted-foreground">{fmtNumber(row.meta_purchases)} vendas</div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {row.meta_purchases > 0 ? `${fmtCurrency(Math.round(row.spend_cents / row.meta_purchases))}/venda` : '—'}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-right">
+            <div className="tabular-nums text-sm text-muted-foreground">{fmtNumber(row.meta_leads)} leads</div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {row.meta_cpl_cents != null ? `${fmtCurrency(row.meta_cpl_cents)}/lead` : '—'}
+            </div>
+          </div>
+        )}
       </TableCell>
       <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
       <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
@@ -453,6 +483,7 @@ export default function CampaignsTable({
                           expandable
                           expanded={adSetExpanded}
                           onToggle={() => toggleAdSet(as.id)}
+                          objectiveGroup={r.objective_group}
                         />
                         {adSetExpanded && adsState?.status === 'loading' && <DrillDownLoadingRow depth={2} />}
                         {adSetExpanded && adsState?.status === 'error' && (
@@ -466,7 +497,7 @@ export default function CampaignsTable({
                           </TableRow>
                         )}
                         {adSetExpanded && adsState?.status === 'loaded' && adsState.rows.map(ad => (
-                          <DrillDownRowView key={ad.id} row={ad} depth={2} expandable={false} />
+                          <DrillDownRowView key={ad.id} row={ad} depth={2} expandable={false} objectiveGroup={r.objective_group} />
                         ))}
                       </Fragment>
                     )
