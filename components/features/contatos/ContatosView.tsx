@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
+import { WhatsAppGlyph } from '@/components/features/LeadCard'
 import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -602,6 +603,16 @@ function DetailPanel({
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('visao-geral')
   const [dadosEditRequested, setDadosEditRequested] = useState(false)
+  const [openingConversation, setOpeningConversation] = useState(false)
+
+  async function handleOpenConversation(contatoId: string) {
+    if (openingConversation) return
+    setOpeningConversation(true)
+    const res = await getOrCreateConversationForLead(orgSlug, contatoId)
+    setOpeningConversation(false)
+    if (!res.ok) { toast.error(res.error); return }
+    router.push(`/app/${orgSlug}/conversas?id=${res.conversationId}`)
+  }
 
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -759,8 +770,18 @@ function DetailPanel({
         {c.phone && (
           <Button size="sm" variant="outline" asChild>
             <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
-              <Phone className="w-4 h-4 mr-1.5" /> WhatsApp
+              <WhatsAppGlyph color="#25D366" /> <span className="ml-1.5">WhatsApp</span>
             </a>
+          </Button>
+        )}
+        {c.phone && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={openingConversation}
+            onClick={() => handleOpenConversation(c.id)}
+          >
+            <WhatsAppGlyph color="#0a84ff" /> <span className="ml-1.5">Iniciar Waba</span>
           </Button>
         )}
         {c.phone && (
