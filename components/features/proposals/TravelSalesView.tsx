@@ -425,11 +425,11 @@ export default function TravelSalesView({
                 )}
                 {(s.operator || s.package_locator || seller) && (
                   <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
-                    {s.operator && <span className="truncate"><span className="opacity-70">Operadora:</span> {s.operator}</span>}
+                    {s.operator && <span className="truncate"><span className="opacity-70">Oper:</span> {s.operator}</span>}
                     {s.operator && s.package_locator && <span className="opacity-50">|</span>}
-                    {s.package_locator && <span className="font-mono truncate"><span className="opacity-70 font-sans">Reserva:</span> {s.package_locator}</span>}
+                    {s.package_locator && <span className="font-mono truncate"><span className="opacity-70 font-sans">Loc:</span> {s.package_locator}</span>}
                     {(s.operator || s.package_locator) && seller && <span className="opacity-50">|</span>}
-                    {seller && <span className="truncate"><span className="opacity-70">Vendedor:</span> {seller}</span>}
+                    {seller && <span className="truncate"><span className="opacity-70">Res:</span> {seller}</span>}
                   </div>
                 )}
               </button>
