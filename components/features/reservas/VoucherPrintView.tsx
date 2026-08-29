@@ -250,7 +250,7 @@ export default function VoucherPrintView({
             das demais), não um campo separado. */}
         <div className="mb-6 border rounded-md overflow-hidden break-inside-avoid">
           <div className="px-3 py-2 space-y-1">
-            <div className="flex items-baseline justify-end">
+            <div>
               <CompactField label="Destino" value={sale.destination} />
             </div>
             <div>
@@ -263,7 +263,7 @@ export default function VoucherPrintView({
           {/* Nomes e datas em colunas de verdade (grid único cobrindo todas
               as linhas) — cabeçalho "Nome / Nascimento", titular destacado
               só por um badge, sem repetir rótulo em cada linha. */}
-          <div className="grid grid-cols-[1fr_100px] border-t">
+          <div className="grid grid-cols-[40ch_100px] border-t">
             <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nome</div>
             <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nascimento</div>
 
