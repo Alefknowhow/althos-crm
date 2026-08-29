@@ -430,7 +430,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
   async function resyncAccount() {
     if (!accountFilter) return
     setSyncing(true)
-    const res = await syncAdAccountCampaigns(orgSlug, accountFilter)
+    const res = await syncAdAccountCampaigns(orgSlug, accountFilter, period as any)
     setSyncing(false)
     if (!res.ok) { toast.error(res.error); return }
     if (res.error) toast.warning(`Sincronizado com avisos: ${res.error}`)

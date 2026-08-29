@@ -429,7 +429,7 @@ export async function recordCampaignMetric(orgSlug: string, raw: unknown) {
  * em campaigns/campaign_metrics_daily (source='api'). Campanhas já
  * existentes (por external_id) são atualizadas, não duplicadas.
  */
-export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: string) {
+export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: string, period: MarketingPeriod = '30d') {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'marketing')
@@ -465,7 +465,7 @@ export async function syncAdAccountCampaigns(orgSlug: string, adAccountId: strin
   }
 
   const until = new Date().toISOString().slice(0, 10)
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+  const since = periodStart(period)
 
   // A Meta usa ACTIVE/PAUSED/DELETED/ARCHIVED/PENDING_REVIEW/etc — o CRM só
   // aceita active/paused/archived (campaigns_status_check); tudo que não é
