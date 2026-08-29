@@ -50,7 +50,7 @@ export default function CityRevenueChartInner({ rows, hasCommission }: CityReven
   return (
     <div className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
           <XAxis
             xAxisId="revenue"
@@ -87,7 +87,13 @@ export default function CityRevenueChartInner({ rows, hasCommission }: CityReven
               return [fmtCurrency(Number(v) || 0), LABELS[name as string] || (name as string)] as [string, string]
             }}
           />
-          <Legend formatter={name => LABELS[name as string] || name} wrapperStyle={{ fontSize: 12 }} />
+          <Legend
+            verticalAlign="bottom"
+            align="center"
+            height={32}
+            formatter={name => LABELS[name as string] || name}
+            wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+          />
           {hasCommission && (
             <Bar xAxisId="revenue" dataKey="commission_cents" stackId="revenue" fill="#24a148" />
           )}
