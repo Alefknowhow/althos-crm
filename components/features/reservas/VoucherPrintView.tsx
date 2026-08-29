@@ -121,6 +121,18 @@ function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode
   )
 }
 
+/** Rótulo + valor num único texto compacto (sem quebra de linha em 2
+ *  "andares" como InfoRow) — usado no bloco de resumo/viajantes, que pede
+ *  fonte pequena e pouco espaçamento entre os campos. */
+function CompactField({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
+  return (
+    <span className={`text-[11px] whitespace-nowrap ${className || ''}`}>
+      {label && <span className="text-gray-400 uppercase tracking-wide text-[9px] font-semibold mr-1">{label}</span>}
+      <span className="font-medium">{value ?? '—'}</span>
+    </span>
+  )
+}
+
 export default function VoucherPrintView({
   sale, org, contato, voos = [], hospedagens = [], transfers = [], cruzeiros = [], ingressos = [], seguros = [],
 }: {
@@ -224,33 +236,33 @@ export default function VoucherPrintView({
           </div>
         </div>
 
-        {/* Cliente + resumo rápido + viajantes — um bloco só, sem caixa
-            separada pra viajantes (era uma seção isolada com sua própria
-            barra colorida; agora é só uma continuação da mesma caixa). */}
+        {/* Resumo (destino/período) + viajantes — bloco único e compacto.
+            Titular é a primeira linha da lista de viajantes (mesmo padrão
+            das demais), não um campo separado. */}
         <div className="mb-6 border rounded-md overflow-hidden break-inside-avoid">
-          <div className="grid grid-cols-3 gap-4 p-3">
-            <InfoRow label="Titular" value={<span className="font-semibold">{sale.client_name || '—'}</span>} />
-            <InfoRow label="Destino" value={sale.destination} />
-            <InfoRow
-              label="Período"
-              value={sale.departure_date || sale.return_date ? <>{fmtDate(sale.departure_date)} → {fmtDate(sale.return_date)}{n ? ` (${n} noite${n > 1 ? 's' : ''})` : ''}</> : '—'}
-            />
+          <div className="px-3 py-2 space-y-1">
+            <div className="flex items-baseline justify-end">
+              <CompactField label="Destino" value={sale.destination} />
+            </div>
+            <div>
+              <CompactField
+                label="Período"
+                value={sale.departure_date || sale.return_date ? <>{fmtDate(sale.departure_date)} → {fmtDate(sale.return_date)}{n ? ` (${n} noite${n > 1 ? 's' : ''})` : ''}</> : '—'}
+              />
+            </div>
           </div>
-          {contato?.date_of_birth && (
-            <div className="grid grid-cols-3 gap-4 px-3 pb-3 pt-3 border-t">
-              <InfoRow label="Data de nascimento" value={fmtDate(contato.date_of_birth)} />
+          <div className="divide-y border-t">
+            <div className="flex items-baseline gap-5 px-3 py-1.5">
+              <CompactField label="Titular" value={sale.client_name} className="font-semibold" />
+              <CompactField label="Nascimento" value={contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'} />
             </div>
-          )}
-          {travelers.length > 0 && (
-            <div className="divide-y border-t">
-              {travelers.map((t, i) => (
-                <div key={i} className="grid grid-cols-3 gap-4 px-3 py-2 break-inside-avoid">
-                  <InfoRow label={i === 0 ? 'Viajantes' : ''} value={t.name} />
-                  <InfoRow label={i === 0 ? 'Data de nascimento' : ''} value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
-                </div>
-              ))}
-            </div>
-          )}
+            {travelers.map((t, i) => (
+              <div key={i} className="flex items-baseline gap-5 px-3 py-1.5 break-inside-avoid">
+                <CompactField label={i === 0 ? 'Viajantes' : ''} value={t.name} />
+                <CompactField label="" value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Seções de serviços — cada bloco só aparece se contratado */}
@@ -286,7 +298,7 @@ export default function VoucherPrintView({
                           {legs.map((leg, i) => (
                             <div key={i} className="break-inside-avoid">
                               {leg.escala_local && (
-                                <p className="text-[10px] text-gray-400 italic mb-1.5">
+                                <p className="text-[10px] text-gray-400 italic mb-1.5 text-center">
                                   Conexão em {leg.escala_local}{leg.escala_duracao ? ` · espera de ${leg.escala_duracao}` : ''}
                                 </p>
                               )}
