@@ -41,7 +41,7 @@ import VoucherExtractDialog, { type ExtractSource } from '@/components/features/
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
-  MapPin, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
+  MapPin, Calendar, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
   Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
   Package, ListTodo, FolderOpen, Hotel,
@@ -79,7 +79,6 @@ function reaisToCents(s: string) {
   const n = parseFloat((s || '').replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) ? Math.round(n * 100) : 0
 }
-function fmtTimestamp(d?: string | null) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—' }
 
 function MoneyInput({ value, onChange }: { value: number; onChange: (c: number) => void }) {
   const [text, setText] = useState(centsToReais(value))
@@ -404,29 +403,33 @@ export default function TravelSalesView({
                   active ? 'bg-primary/5' : 'hover:bg-muted/50',
                 )}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-sm leading-tight truncate">
-                    {s.client_name || 'Cliente'}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground shrink-0">{fmtTimestamp(s.created_at)}</span>
-                </div>
-                {s.destination && (
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span>
+                <span className="font-medium text-[15px] leading-tight truncate block">
+                  {s.client_name || 'Cliente'}
+                </span>
+                {(s.destination || s.departure_date || s.return_date) && (
+                  <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                    {s.destination && (
+                      <span className="flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span>
+                      </span>
+                    )}
+                    {(s.departure_date || s.return_date) && (
+                      <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
+                        <Calendar className="w-3 h-3 shrink-0" />
+                        {s.departure_date ? new Date(s.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) : '—'}
+                        {' a '}
+                        {s.return_date ? new Date(s.return_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' }) : '—'}
+                      </span>
+                    )}
                   </div>
                 )}
-                {(s.package_locator || s.operator) && (
-                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    {s.package_locator && <span className="font-mono truncate">{s.package_locator}</span>}
-                    {s.package_locator && s.operator && <span className="opacity-50">·</span>}
-                    {s.operator && <span className="truncate">{s.operator}</span>}
-                  </div>
-                )}
-                {seller && (
-                  <div className="mt-1.5 flex">
-                    <Badge variant="secondary" className="max-w-full text-[10px] px-1.5 py-0 font-normal gap-1">
-                      <UserCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{seller}</span>
-                    </Badge>
+                {(s.operator || s.package_locator || seller) && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
+                    {s.operator && <span className="truncate"><span className="opacity-70">Operadora:</span> {s.operator}</span>}
+                    {s.operator && s.package_locator && <span className="opacity-50">|</span>}
+                    {s.package_locator && <span className="font-mono truncate"><span className="opacity-70 font-sans">Reserva:</span> {s.package_locator}</span>}
+                    {(s.operator || s.package_locator) && seller && <span className="opacity-50">|</span>}
+                    {seller && <span className="truncate"><span className="opacity-70">Vendedor:</span> {seller}</span>}
                   </div>
                 )}
               </button>
