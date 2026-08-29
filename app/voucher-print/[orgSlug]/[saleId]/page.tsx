@@ -46,12 +46,12 @@ export default async function VoucherPrintPage({
     }
   }
 
-  let contato: { phone: string | null; email: string | null } | null = null
+  let contato: { phone: string | null; email: string | null; date_of_birth: string | null; cpf: string | null } | null = null
   if (sale.contato_id) {
     const supabase = createClient()
     const { data } = await supabase
       .from('contatos')
-      .select('phone, email')
+      .select('phone, email, date_of_birth, cpf')
       .eq('id', sale.contato_id)
       .eq('organization_id', org.id)
       .maybeSingle()

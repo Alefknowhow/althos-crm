@@ -24,7 +24,7 @@ type OrgBranding = {
   address_zip: string | null
 }
 
-type ContatoInfo = { phone: string | null; email: string | null } | null
+type ContatoInfo = { phone: string | null; email: string | null; date_of_birth: string | null; cpf: string | null } | null
 
 type VooLeg = {
   companhia?: string | null; numero?: string | null; data?: string | null
@@ -224,31 +224,37 @@ export default function VoucherPrintView({
           </div>
         </div>
 
-        {/* Cliente + resumo rápido */}
-        <div className="grid grid-cols-3 gap-4 mb-6 break-inside-avoid">
-          <InfoRow label="Cliente" value={<span className="font-semibold">{sale.client_name || '—'}</span>} />
-          <InfoRow label="Destino" value={sale.destination} />
-          <InfoRow
-            label="Período"
-            value={sale.departure_date || sale.return_date ? <>{fmtDate(sale.departure_date)} → {fmtDate(sale.return_date)}{n ? ` (${n} noite${n > 1 ? 's' : ''})` : ''}</> : '—'}
-          />
-        </div>
-
-        {/* Viajantes */}
-        {travelers.length > 0 && (
-          <div className="mb-6 border rounded-md overflow-hidden break-inside-avoid">
-            <SectionBar icon={Users} title="Viajantes" accent={accent} />
-            <div className="divide-y">
+        {/* Cliente + resumo rápido + viajantes — um bloco só, sem caixa
+            separada pra viajantes (era uma seção isolada com sua própria
+            barra colorida; agora é só uma continuação da mesma caixa). */}
+        <div className="mb-6 border rounded-md overflow-hidden break-inside-avoid">
+          <div className="grid grid-cols-3 gap-4 p-3">
+            <InfoRow label="Titular" value={<span className="font-semibold">{sale.client_name || '—'}</span>} />
+            <InfoRow label="Destino" value={sale.destination} />
+            <InfoRow
+              label="Período"
+              value={sale.departure_date || sale.return_date ? <>{fmtDate(sale.departure_date)} → {fmtDate(sale.return_date)}{n ? ` (${n} noite${n > 1 ? 's' : ''})` : ''}</> : '—'}
+            />
+          </div>
+          {(contato?.date_of_birth || contato?.cpf) && (
+            <div className="grid grid-cols-3 gap-4 px-3 pb-3 pt-3 border-t">
+              <InfoRow label="Data de nascimento" value={contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'} />
+              <InfoRow label="CPF" value={contato?.cpf || '—'} mono />
+              <div />
+            </div>
+          )}
+          {travelers.length > 0 && (
+            <div className="divide-y border-t">
               {travelers.map((t, i) => (
                 <div key={i} className="grid grid-cols-3 gap-4 px-3 py-2 break-inside-avoid">
-                  <InfoRow label="Nome" value={t.name} />
-                  <InfoRow label="Data de nascimento" value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
-                  <InfoRow label="CPF" value={t.cpf} mono />
+                  <InfoRow label={i === 0 ? 'Viajantes' : ''} value={t.name} />
+                  <InfoRow label={i === 0 ? 'Data de nascimento' : ''} value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
+                  <InfoRow label={i === 0 ? 'CPF' : ''} value={t.cpf} mono />
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Seções de serviços — cada bloco só aparece se contratado */}
         <div className="space-y-4 mb-6">
