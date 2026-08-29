@@ -65,7 +65,7 @@ export const NICHE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: NICHE_TRAVEL,   label: 'Agência de Viagens' },
   { value: 'Clínicas',     label: 'Clínicas' },
   { value: 'Imobiliária',  label: 'Imobiliárias' },
-  { value: 'advocacia',    label: 'Advocacia' },
+  { value: 'advocacia',    label: 'Jurídico' },
   { value: 'seguros',      label: 'Corretora de Seguros' },
   { value: NICHE_TRAFFIC,  label: 'Agência de Tráfego' },
   { value: 'Outros',       label: 'Outros' },

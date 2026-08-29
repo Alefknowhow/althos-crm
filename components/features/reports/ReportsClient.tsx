@@ -13,11 +13,11 @@ import { toCsv, downloadCsv } from '@/lib/reports/csv'
 
 type Props = { orgSlug: string; isTravel?: boolean; isImobiliaria?: boolean }
 
-const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean; imobiliariaOnly?: boolean }[] = [
+const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean; imobiliariaOnly?: boolean; hideForTravel?: boolean }[] = [
   { type: 'leads', label: 'Leads', icon: <FileBarChart className="h-4 w-4" /> },
-  { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" /> },
-  { type: 'appointments', label: 'Agendamentos', icon: <CalendarDays className="h-4 w-4" /> },
-  { type: 'commission', label: 'Comissões', icon: <Coins className="h-4 w-4" />, travelOnly: true },
+  { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" />, hideForTravel: true },
+  { type: 'appointments', label: 'Agendamentos', icon: <CalendarDays className="h-4 w-4" />, hideForTravel: true },
+  { type: 'commission', label: 'Reservas', icon: <Coins className="h-4 w-4" />, travelOnly: true },
   { type: 'imoveis', label: 'Imóveis', icon: <Home className="h-4 w-4" />, imobiliariaOnly: true },
 ]
 
@@ -56,7 +56,9 @@ const ERROR_MSG: Record<string, string> = {
 }
 
 export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria = false }: Props) {
-  const reports = REPORTS.filter(r => (!r.travelOnly || isTravel) && (!r.imobiliariaOnly || isImobiliaria))
+  const reports = REPORTS.filter(r =>
+    (!r.travelOnly || isTravel) && (!r.imobiliariaOnly || isImobiliaria) && (!r.hideForTravel || !isTravel),
+  )
   const init = presetRange(30)
   const [type, setType] = useState<ReportType>('leads')
   const [from, setFrom] = useState(init.from)

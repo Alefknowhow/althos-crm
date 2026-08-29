@@ -57,7 +57,7 @@ const TITLES: Record<ReportType, string> = {
   leads: 'Relatório de Leads',
   sales: 'Relatório de Vendas',
   appointments: 'Relatório de Agendamentos',
-  commission: 'Relatório de Comissões',
+  commission: 'Relatório de Reservas',
   imoveis: 'Relatório de Imóveis',
 }
 
