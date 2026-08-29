@@ -10,7 +10,7 @@ import KpiCard from '../KpiCard'
 import BarListCard from '../BarListCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CityRevenueChart from '../CityRevenueChart'
-import { CHART_CARD_H } from '../dashboardSizes'
+import { COMPACT_CARD_H } from '../dashboardSizes'
 import { Crown, MapPin, AlertTriangle, Layers } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
@@ -91,27 +91,6 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
-        <CardHeader className="pb-2 shrink-0">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-600" />
-            Clientes por cidade
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            {cities.some(c => c.commission_cents > 0)
-              ? 'Barra = receita total (verde = comissão). Linha = nº de clientes.'
-              : 'Barra = receita total. Linha = nº de clientes.'}
-          </p>
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0">
-          {cities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum cliente com cidade cadastrada.</p>
-          ) : (
-            <CityRevenueChart rows={cities} hasCommission={cities.some(c => c.commission_cents > 0)} />
-          )}
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <BarListCard
           title="Segmentação de clientes"
@@ -137,6 +116,26 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
           color="#da1e28"
           emptyText="Nenhum cliente parado há mais de 90 dias."
         />
+        <Card className={`${COMPACT_CARD_H} flex flex-col overflow-hidden`}>
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              Clientes por cidade
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              {cities.some(c => c.commission_cents > 0)
+                ? 'Barra = receita total (verde = comissão). Linha = nº de clientes.'
+                : 'Barra = receita total. Linha = nº de clientes.'}
+            </p>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0">
+            {cities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum cliente com cidade cadastrada.</p>
+            ) : (
+              <CityRevenueChart rows={cities} hasCommission={cities.some(c => c.commission_cents > 0)} />
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>

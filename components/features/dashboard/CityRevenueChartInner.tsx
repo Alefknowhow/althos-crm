@@ -38,7 +38,7 @@ const LABELS: Record<string, string> = {
 
 export default function CityRevenueChartInner({ rows, hasCommission }: CityRevenueChartProps) {
   // Barra empilhada: comissão embaixo + o restante da receita em cima —
-  // a altura total da barra sempre representa a receita total da cidade.
+  // a extensão total da barra sempre representa a receita total da cidade.
   const data = rows.map(r => ({
     city: r.city,
     commission_cents: r.commission_cents,
@@ -50,35 +50,26 @@ export default function CityRevenueChartInner({ rows, hasCommission }: CityReven
   return (
     <div className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
+        <ComposedChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
           <XAxis
+            xAxisId="revenue"
+            type="number"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            tickFormatter={fmtAxis}
+          />
+          <XAxis xAxisId="customers" type="number" hide />
+          <YAxis
+            type="category"
             dataKey="city"
             fontSize={11}
             tickLine={false}
             axisLine={false}
             tick={{ fill: 'hsl(var(--muted-foreground))' }}
-            dy={6}
-            interval={0}
-          />
-          <YAxis
-            yAxisId="revenue"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-            width={48}
-            tickFormatter={fmtAxis}
-          />
-          <YAxis
-            yAxisId="customers"
-            orientation="right"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-            width={32}
-            allowDecimals={false}
+            width={90}
           />
           <Tooltip
             cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
@@ -98,17 +89,17 @@ export default function CityRevenueChartInner({ rows, hasCommission }: CityReven
           />
           <Legend formatter={name => LABELS[name as string] || name} wrapperStyle={{ fontSize: 12 }} />
           {hasCommission && (
-            <Bar yAxisId="revenue" dataKey="commission_cents" stackId="revenue" fill="#24a148" radius={[0, 0, 0, 0]} />
+            <Bar xAxisId="revenue" dataKey="commission_cents" stackId="revenue" fill="#24a148" />
           )}
           <Bar
-            yAxisId="revenue"
+            xAxisId="revenue"
             dataKey={hasCommission ? 'revenue_rest_cents' : 'revenue_cents'}
             stackId="revenue"
             fill="#0f62fe"
-            radius={hasCommission ? [4, 4, 0, 0] : [4, 4, 0, 0]}
+            radius={hasCommission ? [0, 4, 4, 0] : [4, 4, 4, 4]}
           />
           <Line
-            yAxisId="customers"
+            xAxisId="customers"
             type="monotone"
             dataKey="customers"
             stroke="#8a3ffc"
