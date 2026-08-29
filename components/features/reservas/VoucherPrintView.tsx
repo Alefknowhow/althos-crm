@@ -263,9 +263,10 @@ export default function VoucherPrintView({
           {/* Nomes e datas em colunas de verdade (grid único cobrindo todas
               as linhas) — cabeçalho "Nome / Nascimento", titular destacado
               só por um badge, sem repetir rótulo em cada linha. */}
-          <div className="grid grid-cols-[40ch_100px] border-t">
+          <div className="grid grid-cols-[40ch_100px_1fr] border-t">
             <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nome</div>
             <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nascimento</div>
+            <div className="bg-gray-50 border-b" />
 
             <div className={`px-3 py-1.5 text-[11px] font-semibold flex items-center gap-1.5 ${travelers.length > 0 ? 'border-b' : ''}`}>
               {sale.client_name || '—'}
@@ -279,11 +280,13 @@ export default function VoucherPrintView({
             <div className={`px-3 py-1.5 text-[11px] tabular-nums ${travelers.length > 0 ? 'border-b' : ''}`}>
               {contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'}
             </div>
+            <div className={travelers.length > 0 ? 'border-b' : ''} />
 
             {travelers.map((t, i) => (
               <Fragment key={i}>
                 <div className={`px-3 py-1.5 text-[11px] break-inside-avoid ${i < travelers.length - 1 ? 'border-b' : ''}`}>{t.name}</div>
                 <div className={`px-3 py-1.5 text-[11px] tabular-nums ${i < travelers.length - 1 ? 'border-b' : ''}`}>{t.birth_date ? fmtDate(t.birth_date) : '—'}</div>
+                <div className={i < travelers.length - 1 ? 'border-b' : ''} />
               </Fragment>
             ))}
           </div>
