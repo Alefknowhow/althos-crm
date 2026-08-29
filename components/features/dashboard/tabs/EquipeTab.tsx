@@ -4,8 +4,7 @@ import { getAiCreditsStatus, getAccountIdForOrgSlug } from '@/lib/plans/server'
 import {
   getSellerConversionRates, getSellerOpenDeals, getSellerPerformanceScore,
   getResponseMetrics, getEffectiveSellerGoals, getAiAnsweredCount,
-  getMonthlySalesBySeller, getSellerComparison, getTopDestinations,
-  getVipCustomers, getTopProducts,
+  getMonthlySalesBySeller, getSellerComparison,
 } from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { listOrgMembers } from '@/actions/sales'
@@ -13,9 +12,8 @@ import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
 import BarListCard from '../BarListCard'
-import RankTable from '../RankTable'
 import EquipeTeamSection from '../EquipeTeamSection'
-import { UserCheck, ListChecks, Award, Star, MapPin, Package } from 'lucide-react'
+import { UserCheck, ListChecks, Award } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -36,7 +34,7 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
   const since = sinceFromPeriod(ctx.period)
   const [
     credits, conversionRates, openDeals, scores, monthlyGoalCents, members, response, aiAnswered,
-    monthlySales, sellerComparison, topDestinations, vipCustomers, topProducts,
+    monthlySales, sellerComparison,
   ] = await Promise.all([
     accountId ? getAiCreditsStatus(accountId) : Promise.resolve(null),
     getSellerConversionRates(ctx.orgId),
@@ -48,9 +46,6 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
     getAiAnsweredCount(ctx.orgId, since),
     getMonthlySalesBySeller(ctx.orgId, 6),
     getSellerComparison(ctx.orgId, since),
-    getTopDestinations(ctx.orgId, since),
-    getVipCustomers(ctx.orgId),
-    getTopProducts(ctx.orgId, since),
   ])
   const hasCommission = sellerComparison.some(r => r.commission_cents != null)
   const nameById = new Map(members.map((m: any) => [m.id, m.name]))
@@ -99,46 +94,9 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <RankTable
-          title="Rank de clientes"
-          help="Clientes com maior valor total comprado (histórico completo)."
-          icon={Star}
-          rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
-          color="#f1c21b"
-          emptyText="Sem vendas com cliente associado ainda."
-        />
-        <RankTable
-          title="Rank de destinos"
-          help="Destinos mais vendidos no período, por faturamento."
-          icon={MapPin}
-          rows={topDestinations.map(d => ({
-            label: d.destination,
-            subLabel: `${d.sales_count} venda${d.sales_count === 1 ? '' : 's'}`,
-            value: d.total_cents,
-            valueLabel: fmtCurrency(d.total_cents),
-          }))}
-          color="#1192e8"
-          emptyText="Sem vendas com destino registrado no período."
-        />
-        <RankTable
-          title="Rank de produtos"
-          help="Produtos/serviços mais vendidos no período, por quantidade."
-          icon={Package}
-          rows={topProducts.map(p => ({
-            label: p.name,
-            subLabel: p.type || undefined,
-            value: p.quantity,
-            valueLabel: `${p.quantity}`,
-          }))}
-          color="#24a148"
-          emptyText="Sem vendas de produtos no período."
-        />
         <Suspense fallback={<div className="h-[320px] w-full rounded-md bg-muted/30 animate-pulse" />}>
           <SellersRankingWidget orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
         </Suspense>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <BarListCard
           title="Conversão por vendedor"
           help="Percentual de leads atribuídos a cada vendedor (últimos 30 dias) que chegaram a um estágio de fechamento."

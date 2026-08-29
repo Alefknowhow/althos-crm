@@ -12,6 +12,7 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
   // Barra ranqueia por comissão (dado principal); nichos sem comissão (fora
   // de viagens, sempre 0) caem pra receita total como critério.
   const hasCommission = rows.some(r => r.commission_cents > 0)
+  const isDestination = rows.some(r => r.type === 'Destino')
   const barValue = (r: (typeof rows)[number]) => hasCommission ? r.commission_cents : r.total_cents
   const maxValue = Math.max(1, ...rows.map(barValue))
 
@@ -20,18 +21,18 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
       <CardHeader className="pb-2 shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Package className="w-4 h-4 text-violet-600" />
-          Mais vendidos
+          {isDestination ? 'Destinos mais vendidos' : 'Mais vendidos'}
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">
-          {hasCommission
-            ? 'Produtos/serviços com mais comissão gerada no período.'
-            : 'Produtos/serviços com mais receita no período.'}
+          {isDestination
+            ? (hasCommission ? 'Destinos com mais comissão gerada no período.' : 'Destinos com mais receita no período.')
+            : (hasCommission ? 'Produtos/serviços com mais comissão gerada no período.' : 'Produtos/serviços com mais receita no período.')}
         </p>
       </CardHeader>
       <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         {rows.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma venda com produto associado no período.
+            {isDestination ? 'Nenhuma venda com destino preenchido no período.' : 'Nenhuma venda com produto associado no período.'}
           </div>
         ) : (
           <div className="space-y-3">

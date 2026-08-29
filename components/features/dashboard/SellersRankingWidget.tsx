@@ -30,6 +30,7 @@ export default async function SellersRankingWidget({
   ])
 
   const memberById = new Map(members.map((m: any) => [m.id, m]))
+  const hasCommission = rows.some(r => r.commission_cents > 0)
 
   return (
     <Card className={`${COMPACT_CARD_H} flex flex-col`}>
@@ -39,7 +40,9 @@ export default async function SellersRankingWidget({
           Ranking de Vendedores
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">
-          Últimos 30 dias. Vendas concluídas, por valor.
+          {hasCommission
+            ? 'Últimos 30 dias. Vendas concluídas, por comissão total.'
+            : 'Últimos 30 dias. Vendas concluídas, por valor.'}
         </p>
       </CardHeader>
       <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
@@ -77,8 +80,15 @@ export default async function SellersRankingWidget({
                       {row.total_sales} venda{row.total_sales !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div className="text-sm font-bold tabular-nums">
-                    {fmtCurrency(row.total_value_cents)}
+                  <div className="text-right">
+                    <div className="text-sm font-bold tabular-nums">
+                      {fmtCurrency(hasCommission ? row.commission_cents : row.total_value_cents)}
+                    </div>
+                    {hasCommission && (
+                      <div className="text-[10px] text-muted-foreground tabular-nums">
+                        {fmtCurrency(row.total_value_cents)} receita
+                      </div>
+                    )}
                   </div>
                 </div>
               )

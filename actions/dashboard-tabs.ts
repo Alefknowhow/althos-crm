@@ -36,46 +36,32 @@ export type TopProductRow = {
   commission_cents: number
 }
 
-const TRAVEL_SERVICE_LABELS: Record<string, string> = {
-  transfer: 'Traslado', insurance: 'Seguro viagem', car_rental: 'Locação de carro',
-}
-
 /**
- * Travel-niche orgs têm produtos embutidos nos campos da reserva
- * (`hotel_name`, `airline`, `services[]`) em vez de um catálogo separado —
- * agrega esses campos como se fossem produtos, pra dar o mesmo rank.
+ * Agências de viagem não vendem "produtos" no sentido genérico — o que
+ * importa ranquear é o destino mais vendido, não hotel/aéreo/serviço
+ * avulso (que já é um detalhe da venda, não o produto em si).
  */
 async function getTopProductsTravel(supabase: ReturnType<typeof createClient>, orgId: string, since: Date, limit: number): Promise<TopProductRow[]> {
   const { data } = await supabase
     .from('travel_sales')
-    .select('hotel_name, airline, services, total_cents, commission_cents')
+    .select('destination, total_cents, commission_cents')
     .eq('organization_id', orgId)
     .neq('status', 'cancelado')
     .gte('created_at', since.toISOString())
 
-  const byProduct = new Map<string, TopProductRow>()
-  // A comissão/valor são da venda inteira, não por produto — atribui o total
-  // da venda a cada produto que ela toca (mesma aproximação que já existia
-  // pra quantity: uma venda com hotel+aéreo conta 1 em cada).
-  const bump = (key: string, name: string, type: string, totalCents: number, commissionCents: number) => {
-    const cur = byProduct.get(key) || { product_id: key, name, type, quantity: 0, total_cents: 0, commission_cents: 0 }
-    cur.quantity += 1
-    cur.total_cents += totalCents
-    cur.commission_cents += commissionCents
-    byProduct.set(key, cur)
-  }
+  const byDestination = new Map<string, TopProductRow>()
   for (const r of (data || []) as any[]) {
-    const totalCents = r.total_cents || 0
-    const commissionCents = r.commission_cents || 0
-    if (r.hotel_name) bump(`hotel:${r.hotel_name}`, r.hotel_name, 'Hospedagem', totalCents, commissionCents)
-    if (r.airline) bump(`airline:${r.airline}`, r.airline, 'Aéreo', totalCents, commissionCents)
-    for (const svc of (Array.isArray(r.services) ? r.services : [])) {
-      const label = TRAVEL_SERVICE_LABELS[svc] || svc
-      bump(`svc:${svc}`, label, 'Serviço', totalCents, commissionCents)
-    }
+    const destination = (r.destination || '').trim()
+    if (!destination) continue
+    const key = destination.toLowerCase()
+    const cur = byDestination.get(key) || { product_id: key, name: destination, type: 'Destino', quantity: 0, total_cents: 0, commission_cents: 0 }
+    cur.quantity += 1
+    cur.total_cents += r.total_cents || 0
+    cur.commission_cents += r.commission_cents || 0
+    byDestination.set(key, cur)
   }
 
-  return Array.from(byProduct.values())
+  return Array.from(byDestination.values())
     .sort((a, b) => b.commission_cents - a.commission_cents)
     .slice(0, limit)
 }
@@ -120,26 +106,96 @@ export async function getTopProducts(orgId: string, since: Date, limit = 6): Pro
     .slice(0, limit)
 }
 
+/* -------- Retorno por origem do lead (nicho viagens) -------- */
+
+/**
+ * Agrupa o `contatos.source` (texto livre, gravado pelos vários fluxos de
+ * entrada — webhook do WhatsApp, formulário público, DM do Instagram,
+ * criação manual, importação) num pequeno conjunto de rótulos legíveis.
+ * Prefixos conhecidos viram um rótulo fixo; qualquer coisa fora desses
+ * prefixos aparece com o próprio texto capitalizado, em vez de cair tudo
+ * genericamente em "Outro" — assim uma origem nova (ex.: um webhook futuro)
+ * já aparece com nome legível sem precisar editar este mapa.
+ */
+function classifyLeadSource(raw: string | null): string {
+  const s = (raw || '').trim().toLowerCase()
+  if (!s) return 'Manual'
+  if (s.startsWith('whatsapp')) return 'WhatsApp'
+  if (s.startsWith('instagram')) return 'Instagram'
+  if (s.startsWith('form')) return 'Formulário'
+  if (s.startsWith('manual')) return 'Manual'
+  if (s.startsWith('api') || s.startsWith('csv')) return 'Importação'
+  if (s.includes('google')) return 'Google'
+  if (s.includes('meta') || s.includes('facebook') || s.includes('instagram_ad')) return 'Anúncio Meta'
+  return (raw || '').trim().replace(/^./, c => c.toUpperCase())
+}
+
+export type LeadSourceReturnRow = { source: string; count: number; revenue_cents: number; commission_cents: number }
+
+/**
+ * Receita e comissão total das vendas concluídas, agrupadas pela origem do
+ * lead que virou aquela venda (travel_sales.contato_id → contatos.source).
+ * Só faz sentido pro nicho viagens (onde existe comissão por venda) — pros
+ * demais nichos ainda não há um critério de retorno definido, então retorna
+ * `null` (diferente de "viagens sem dado ainda", que retorna lista vazia) —
+ * o caller decide o que mostrar no lugar.
+ */
+export async function getLeadSourceReturns(orgId: string, since: Date, limit = 8): Promise<LeadSourceReturnRow[] | null> {
+  const supabase = createClient()
+  if (!(await isOrgTravelNiche(supabase, orgId))) return null
+
+  const { data } = await supabase
+    .from('travel_sales')
+    .select('contato_id, total_cents, commission_cents, created_at, status')
+    .eq('organization_id', orgId)
+    .neq('status', 'cancelado')
+    .gte('created_at', since.toISOString())
+
+  const rows = (data || []) as any[]
+  const contatoIds = Array.from(new Set(rows.map(r => r.contato_id).filter(Boolean)))
+  if (contatoIds.length === 0) return []
+
+  const { data: contatos } = await supabase
+    .from('contatos')
+    .select('id, source')
+    .in('id', contatoIds)
+  const sourceByContato = new Map((contatos || []).map(c => [c.id, c.source as string | null]))
+
+  const bySource = new Map<string, LeadSourceReturnRow>()
+  for (const r of rows) {
+    const label = classifyLeadSource(r.contato_id ? sourceByContato.get(r.contato_id) ?? null : null)
+    const cur = bySource.get(label) || { source: label, count: 0, revenue_cents: 0, commission_cents: 0 }
+    cur.count += 1
+    cur.revenue_cents += r.total_cents || 0
+    cur.commission_cents += r.commission_cents || 0
+    bySource.set(label, cur)
+  }
+
+  return Array.from(bySource.values())
+    .sort((a, b) => b.commission_cents - a.commission_cents)
+    .slice(0, limit)
+}
+
 /* -------- Carteira de clientes (LTV, cidade, VIP, em risco) -------- */
 
-type SaleWithContact = { contato_id: string | null; amount_cents: number; sale_date: string }
+type SaleWithContact = { contato_id: string | null; amount_cents: number; commission_cents: number; sale_date: string }
 
 async function fetchCompletedSalesWithContact(orgId: string): Promise<SaleWithContact[]> {
   const supabase = createClient()
   if (await isOrgTravelNiche(supabase, orgId)) {
     const { data } = await supabase
       .from('travel_sales')
-      .select('contato_id, total_cents, created_at, status')
+      .select('contato_id, total_cents, commission_cents, created_at, status')
       .eq('organization_id', orgId)
       .neq('status', 'cancelado')
-    return ((data || []) as any[]).map(r => ({ contato_id: r.contato_id, amount_cents: r.total_cents || 0, sale_date: r.created_at }))
+    return ((data || []) as any[]).map(r => ({ contato_id: r.contato_id, amount_cents: r.total_cents || 0, commission_cents: r.commission_cents || 0, sale_date: r.created_at }))
   }
   const { data } = await supabase
     .from('sales')
     .select('contato_id, amount_cents, sale_date, status')
     .eq('organization_id', orgId)
     .neq('status', 'cancelled')
-  return ((data || []) as any[]).map(r => ({ contato_id: r.contato_id, amount_cents: r.amount_cents || 0, sale_date: r.sale_date }))
+  return ((data || []) as any[]).map(r => ({ contato_id: r.contato_id, amount_cents: r.amount_cents || 0, commission_cents: 0, sale_date: r.sale_date }))
 }
 
 export type CustomerLTV = { avgLtvCents: number; customersWithSales: number }
@@ -157,26 +213,44 @@ export async function getCustomerLTV(orgId: string): Promise<CustomerLTV> {
   return { avgLtvCents, customersWithSales: totals.length }
 }
 
-export type CityRow = { city: string; customers: number }
+export type CityRow = { city: string; customers: number; revenue_cents: number; commission_cents: number }
 
-/** Clientes ativos agrupados por cidade — usa contatos.city, já existente e nunca agregado até então. */
+/** Clientes ativos agrupados por cidade — usa contatos.city, com receita e
+ *  comissão total das vendas concluídas de cada cliente somadas por cidade
+ *  (comissão só existe no nicho viagens, fica 0 nos demais). */
 export async function getCustomersByCity(orgId: string, limit = 8): Promise<CityRow[]> {
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')
-    .select('city')
+    .select('id, city')
     .eq('organization_id', orgId)
     .eq('status', 'cliente')
     .not('city', 'is', null)
 
-  const byCity = new Map<string, number>()
+  const cityByContato = new Map<string, string>()
+  const byCity = new Map<string, CityRow>()
   for (const r of data || []) {
     const city = (r.city || '').trim()
     if (!city) continue
-    byCity.set(city, (byCity.get(city) || 0) + 1)
+    cityByContato.set(r.id, city)
+    const cur = byCity.get(city) || { city, customers: 0, revenue_cents: 0, commission_cents: 0 }
+    cur.customers += 1
+    byCity.set(city, cur)
   }
-  return Array.from(byCity.entries())
-    .map(([city, customers]) => ({ city, customers }))
+  if (byCity.size === 0) return []
+
+  const sales = await fetchCompletedSalesWithContact(orgId)
+  for (const s of sales) {
+    if (!s.contato_id) continue
+    const city = cityByContato.get(s.contato_id)
+    if (!city) continue
+    const row = byCity.get(city)
+    if (!row) continue
+    row.revenue_cents += s.amount_cents
+    row.commission_cents += s.commission_cents
+  }
+
+  return Array.from(byCity.values())
     .sort((a, b) => b.customers - a.customers)
     .slice(0, limit)
 }

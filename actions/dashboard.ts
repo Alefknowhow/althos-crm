@@ -1111,11 +1111,15 @@ export type SellerRow = {
   seller_id: string
   total_sales: number
   total_value_cents: number
+  /** Só > 0 no nicho viagens — genérico não tem comissão por venda. */
+  commission_cents: number
 }
 
 /**
  * Ranks sellers by completed-sales count + sum value in the given window.
- * Returns just IDs — the UI joins with the org members list to get names.
+ * No nicho viagens ranqueia por comissão total (dado principal); nos demais
+ * (sem conceito de comissão), continua por receita total. Retorna só IDs —
+ * a UI junta com a lista de membros da org pra exibir nome.
  */
 export async function getSellersRanking(
   orgId: string,
@@ -1131,22 +1135,26 @@ export async function getSellersRanking(
 
   if (withSeller.length === 0) return []
 
-  const bySeller = new Map<string, { count: number; value: number }>()
+  const bySeller = new Map<string, { count: number; value: number; commission: number }>()
   for (const s of withSeller) {
     const k = s.seller_id as string
-    const cur = bySeller.get(k) || { count: 0, value: 0 }
+    const cur = bySeller.get(k) || { count: 0, value: 0, commission: 0 }
     cur.count += 1
     cur.value += s.amount_cents || 0
+    cur.commission += s.commission_cents || 0
     bySeller.set(k, cur)
   }
+
+  const hasCommission = Array.from(bySeller.values()).some(m => m.commission > 0)
 
   return Array.from(bySeller.entries())
     .map(([seller_id, m]) => ({
       seller_id,
       total_sales: m.count,
       total_value_cents: m.value,
+      commission_cents: m.commission,
     }))
-    .sort((a, b) => b.total_value_cents - a.total_value_cents)
+    .sort((a, b) => hasCommission ? b.commission_cents - a.commission_cents : b.total_value_cents - a.total_value_cents)
     .slice(0, 10)
 }
 

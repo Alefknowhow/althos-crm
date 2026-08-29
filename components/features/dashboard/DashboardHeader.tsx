@@ -1,10 +1,13 @@
 interface DashboardHeaderProps {
   userName: string
+  /** Botão "Gerar Insights" (+ chips de insight, se houver) — renderizado ao
+   *  lado da data em vez de numa linha própria, pra deixar o painel mais fino. */
+  insightsSlot?: React.ReactNode
 }
 
 const BRASILIA_TZ = 'America/Sao_Paulo'
 
-export default function DashboardHeader({ userName }: DashboardHeaderProps) {
+export default function DashboardHeader({ userName, insightsSlot }: DashboardHeaderProps) {
   const now = new Date()
   // Servidor roda em UTC (Vercel) — saudação e data precisam do horário de
   // Brasília, não do horário/data local do servidor.
@@ -24,9 +27,12 @@ export default function DashboardHeader({ userName }: DashboardHeaderProps) {
       <h1 className="text-lg sm:text-3xl md:text-4xl font-semibold tracking-apple-tight text-foreground truncate">
         {greeting}, <span className="text-muted-foreground font-semibold">{userName}</span>
       </h1>
-      <p className="hidden sm:block text-base text-muted-foreground capitalize tracking-apple-snug">
-        {dateStr}
-      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="hidden sm:block text-base text-muted-foreground capitalize tracking-apple-snug shrink-0">
+          {dateStr}
+        </p>
+        {insightsSlot}
+      </div>
     </div>
   )
 }

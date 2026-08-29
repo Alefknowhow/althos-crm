@@ -8,9 +8,7 @@ import KpiCard from '../KpiCard'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import RevenueForecastWidget from '../RevenueForecastWidget'
 import TopProductsWidget from '../TopProductsWidget'
-import MockBarListCard from '../mocks/MockBarListCard'
-import { MOCK_CAMPAIGN_ROAS } from '../mocks/mockData'
-import { Target } from 'lucide-react'
+import LeadSourceReturnsWidget from '../LeadSourceReturnsWidget'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -80,13 +78,9 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
           </Suspense>
         </div>
         <div className="md:col-span-6">
-          <MockBarListCard
-            title="Ranking de campanhas (ROAS)"
-            help="Retorno sobre investimento por campanha Meta Ads — depende de vincular venda a campanha."
-            icon={Target}
-            rows={MOCK_CAMPAIGN_ROAS}
-            color="#0f62fe"
-          />
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
+            <LeadSourceReturnsWidget orgId={ctx.orgId} since={sinceFromPeriod(ctx.period)} />
+          </Suspense>
         </div>
       </div>
 

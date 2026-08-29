@@ -41,7 +41,7 @@ export default function DashboardTabsShell({
   const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
   return (
     <Tabs defaultValue={initialTab} className="space-y-4">
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 space-y-2 bg-secondary">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-3 pb-2 space-y-2 bg-secondary">
         {stickyHeader}
         {/* Mobile: grid de N colunas iguais numa linha só (célula do grid dá
             a mesma largura pra todas, independente do tamanho do texto) —
