@@ -9,7 +9,11 @@ function fmtCurrency(cents: number): string {
 
 export default async function TopProductsWidget({ orgId, since }: { orgId: string; since: Date }) {
   const rows = await getTopProducts(orgId, since)
-  const maxQty = Math.max(1, ...rows.map(r => r.quantity))
+  // Barra ranqueia por comissão (dado principal); nichos sem comissão (fora
+  // de viagens, sempre 0) caem pra receita total como critério.
+  const hasCommission = rows.some(r => r.commission_cents > 0)
+  const barValue = (r: (typeof rows)[number]) => hasCommission ? r.commission_cents : r.total_cents
+  const maxValue = Math.max(1, ...rows.map(barValue))
 
   return (
     <Card className={`${COMPACT_CARD_H} flex flex-col`}>
@@ -18,7 +22,11 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
           <Package className="w-4 h-4 text-violet-600" />
           Mais vendidos
         </CardTitle>
-        <p className="text-xs text-muted-foreground mt-1">Produtos/serviços com mais unidades vendidas no período.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {hasCommission
+            ? 'Produtos/serviços com mais comissão gerada no período.'
+            : 'Produtos/serviços com mais receita no período.'}
+        </p>
       </CardHeader>
       <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
         {rows.length === 0 ? (
@@ -32,13 +40,15 @@ export default async function TopProductsWidget({ orgId, since }: { orgId: strin
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-medium truncate">{r.name}</span>
                   <span className="text-muted-foreground shrink-0 ml-2 tabular-nums">
-                    {r.quantity}x · {fmtCurrency(r.total_cents)}
+                    {hasCommission
+                      ? <>{fmtCurrency(r.commission_cents)} <span className="opacity-70">· {fmtCurrency(r.total_cents)}</span></>
+                      : fmtCurrency(r.total_cents)}
                   </span>
                 </div>
                 <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full bg-violet-500/70"
-                    style={{ width: `${(r.quantity / maxQty) * 100}%` }}
+                    style={{ width: `${(barValue(r) / maxValue) * 100}%` }}
                   />
                 </div>
               </div>

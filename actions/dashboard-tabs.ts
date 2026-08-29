@@ -31,6 +31,9 @@ export type TopProductRow = {
   type: string | null
   quantity: number
   total_cents: number
+  /** Só > 0 no nicho viagens (travel_sales.commission_cents) — genérico não
+   *  tem conceito de comissão por venda. */
+  commission_cents: number
 }
 
 const TRAVEL_SERVICE_LABELS: Record<string, string> = {
@@ -45,28 +48,35 @@ const TRAVEL_SERVICE_LABELS: Record<string, string> = {
 async function getTopProductsTravel(supabase: ReturnType<typeof createClient>, orgId: string, since: Date, limit: number): Promise<TopProductRow[]> {
   const { data } = await supabase
     .from('travel_sales')
-    .select('hotel_name, airline, services')
+    .select('hotel_name, airline, services, total_cents, commission_cents')
     .eq('organization_id', orgId)
     .neq('status', 'cancelado')
     .gte('created_at', since.toISOString())
 
   const byProduct = new Map<string, TopProductRow>()
-  const bump = (key: string, name: string, type: string) => {
-    const cur = byProduct.get(key) || { product_id: key, name, type, quantity: 0, total_cents: 0 }
+  // A comissão/valor são da venda inteira, não por produto — atribui o total
+  // da venda a cada produto que ela toca (mesma aproximação que já existia
+  // pra quantity: uma venda com hotel+aéreo conta 1 em cada).
+  const bump = (key: string, name: string, type: string, totalCents: number, commissionCents: number) => {
+    const cur = byProduct.get(key) || { product_id: key, name, type, quantity: 0, total_cents: 0, commission_cents: 0 }
     cur.quantity += 1
+    cur.total_cents += totalCents
+    cur.commission_cents += commissionCents
     byProduct.set(key, cur)
   }
   for (const r of (data || []) as any[]) {
-    if (r.hotel_name) bump(`hotel:${r.hotel_name}`, r.hotel_name, 'Hospedagem')
-    if (r.airline) bump(`airline:${r.airline}`, r.airline, 'Aéreo')
+    const totalCents = r.total_cents || 0
+    const commissionCents = r.commission_cents || 0
+    if (r.hotel_name) bump(`hotel:${r.hotel_name}`, r.hotel_name, 'Hospedagem', totalCents, commissionCents)
+    if (r.airline) bump(`airline:${r.airline}`, r.airline, 'Aéreo', totalCents, commissionCents)
     for (const svc of (Array.isArray(r.services) ? r.services : [])) {
       const label = TRAVEL_SERVICE_LABELS[svc] || svc
-      bump(`svc:${svc}`, label, 'Serviço')
+      bump(`svc:${svc}`, label, 'Serviço', totalCents, commissionCents)
     }
   }
 
   return Array.from(byProduct.values())
-    .sort((a, b) => b.quantity - a.quantity)
+    .sort((a, b) => b.commission_cents - a.commission_cents)
     .slice(0, limit)
 }
 
@@ -97,14 +107,16 @@ export async function getTopProducts(orgId: string, since: Date, limit = 6): Pro
       type: product.type ?? null,
       quantity: 0,
       total_cents: 0,
+      commission_cents: 0,
     }
     cur.quantity += r.quantity || 1
     cur.total_cents += r.amount_cents || 0
     byProduct.set(product.id, cur)
   }
 
+  // Nicho genérico não tem comissão por venda — ranqueia por receita total.
   return Array.from(byProduct.values())
-    .sort((a, b) => b.quantity - a.quantity)
+    .sort((a, b) => b.total_cents - a.total_cents)
     .slice(0, limit)
 }
 

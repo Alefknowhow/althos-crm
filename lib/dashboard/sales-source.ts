@@ -18,6 +18,9 @@ import { isTravelNiche } from '@/lib/niche'
 
 export type NormalizedSale = {
   amount_cents: number
+  /** Só preenchido pro nicho viagens (travel_sales.commission_cents) — o
+   *  `sales` genérico não tem conceito de comissão, sempre 0 nesse caso. */
+  commission_cents: number
   /** ISO timestamp (travel) or YYYY-MM-DD (generic). Safe for day-bucketing. */
   date: string
   seller_id: string | null
@@ -62,13 +65,14 @@ export async function fetchNormalizedSales(
   if (await isOrgTravelNiche(supabase, orgId)) {
     const { data } = await supabase
       .from('travel_sales')
-      .select('total_cents, created_at, created_by, status')
+      .select('total_cents, commission_cents, created_at, created_by, status')
       .eq('organization_id', orgId)
       .gte('created_at', since.toISOString())
     return (data || [])
       .filter((r: any) => r.status !== 'canceled')
       .map((r: any) => ({
         amount_cents: r.total_cents || 0,
+        commission_cents: r.commission_cents || 0,
         date: r.created_at,
         seller_id: r.created_by ?? null,
       }))
@@ -84,6 +88,7 @@ export async function fetchNormalizedSales(
   const { data } = await q
   return (data || []).map((r: any) => ({
     amount_cents: r.amount_cents || 0,
+    commission_cents: 0,
     date: r.sale_date,
     seller_id: r.seller_id ?? null,
   }))

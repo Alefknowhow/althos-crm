@@ -1,19 +1,20 @@
 'use client'
 
 import {
-  AreaChart,
-  Area,
-  ReferenceLine,
+  ComposedChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts'
+import type { RevenueCommissionPoint } from '@/actions/dashboard'
 
 export interface RevenueVsGoalChartProps {
-  points: { date: string; value: number }[]
-  goalCents: number | null
+  points: RevenueCommissionPoint[]
+  hasCommission: boolean
 }
 
 function fmtCurrency(cents: number): string {
@@ -26,21 +27,16 @@ function fmtAxis(cents: number): string {
   )
 }
 
-export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVsGoalChartProps) {
-  // Points already come in reais (from getMetricTimeSeries) — convert to
-  // cents so the goal line (stored in cents) shares the same axis.
-  const data = points.map(p => ({ date: p.date, value_cents: Math.round(p.value * 100) }))
+const LABELS: Record<string, string> = {
+  revenue_cents: 'Receita acumulada',
+  commission_cents: 'Comissão acumulada',
+}
 
+export default function RevenueVsGoalChartInner({ points, hasCommission }: RevenueVsGoalChartProps) {
   return (
     <div className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
-          <defs>
-            <linearGradient id="revenue-goal-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#0f62fe" stopOpacity={0.28} />
-              <stop offset="95%" stopColor="#0f62fe" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
+        <ComposedChart data={points} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
           <XAxis
             dataKey="date"
@@ -70,27 +66,31 @@ export default function RevenueVsGoalChartInner({ points, goalCents }: RevenueVs
               color: 'hsl(var(--foreground))',
             }}
             labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: 4 }}
-            formatter={(v) => [fmtCurrency(Number(v) || 0), 'Receita'] as [string, string]}
+            formatter={(v, name) => [fmtCurrency(Number(v) || 0), LABELS[name as string] || (name as string)] as [string, string]}
           />
-          <Area
+          <Legend
+            formatter={(name) => LABELS[name as string] || name}
+            wrapperStyle={{ fontSize: 12 }}
+          />
+          <Line
             type="monotone"
-            dataKey="value_cents"
+            dataKey="revenue_cents"
             stroke="#0f62fe"
             strokeWidth={2.25}
-            fill="url(#revenue-goal-grad)"
             dot={false}
             activeDot={{ r: 5, strokeWidth: 0 }}
           />
-          {goalCents != null && goalCents > 0 && (
-            <ReferenceLine
-              y={goalCents}
-              stroke="#8a3ffc"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              label={{ value: `Meta: ${fmtCurrency(goalCents)}`, position: 'insideTopRight', fontSize: 11, fill: '#8a3ffc' }}
+          {hasCommission && (
+            <Line
+              type="monotone"
+              dataKey="commission_cents"
+              stroke="#24a148"
+              strokeWidth={2.25}
+              dot={false}
+              activeDot={{ r: 5, strokeWidth: 0 }}
             />
           )}
-        </AreaChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

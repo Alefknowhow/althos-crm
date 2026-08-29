@@ -11,3 +11,4 @@ const RevenueVsGoalChartInner = dynamic(() => import('./RevenueVsGoalChartInner'
 export default function RevenueVsGoalChart(props: RevenueVsGoalChartProps) {
   return <RevenueVsGoalChartInner {...props} />
 }
+

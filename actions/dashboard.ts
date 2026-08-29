@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchNormalizedSales, isOrgTravelNiche } from '@/lib/dashboard/sales-source'
 
-export type Period = 'today' | '7d' | '30d' | '90d'
+export type Period = 'today' | '7d' | '30d' | '90d' | 'mtd' | 'max'
+
+// Data-teto pra "Máximo" — bem antes de qualquer conta real, funciona como
+// "desde sempre" sem precisar de uma query separada sem filtro de data.
+const MAX_PERIOD_START = new Date('2015-01-01T00:00:00Z')
 
 function getDates(period: Period) {
   const now = new Date()
@@ -32,6 +36,17 @@ function getDates(period: Period) {
       previousStart.setDate(start.getDate() - 90)
       previousEnd.setDate(now.getDate() - 91)
       break
+    case 'mtd': {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      return { start: monthStart, now, previousStart: prevMonthStart, previousEnd: prevMonthEnd }
+    }
+    case 'max':
+      // Sem "período anterior" que faça sentido pra uma janela sem tamanho
+      // fixo — previousStart/previousEnd ficam vazios (mesmo instante),
+      // as queries de comparação naturalmente não retornam nada.
+      return { start: MAX_PERIOD_START, now, previousStart: MAX_PERIOD_START, previousEnd: MAX_PERIOD_START }
   }
 
   return { start, now, previousStart, previousEnd }
@@ -1234,4 +1249,51 @@ export async function getMetricTimeSeries(
     total,
     points,
   }
+}
+
+export type RevenueCommissionPoint = { date: string; revenue_cents: number; commission_cents: number }
+
+/**
+ * Receita e comissão ACUMULADAS dia a dia no período — alimenta o gráfico
+ * "Receita x Comissão" da Inicial. Comissão só existe pro nicho viagens
+ * (fetchNormalizedSales já retorna 0 pros demais nichos), então o valor
+ * fica achatado em zero fora desse nicho — o front decide se esconde a
+ * linha.
+ */
+export async function getRevenueCommissionSeries(
+  orgId: string,
+  period: Period = '30d',
+  sellerId?: string | null,
+): Promise<{ points: RevenueCommissionPoint[]; hasCommission: boolean }> {
+  const supabase = createClient()
+  const { start, now } = getDates(period)
+
+  const buckets: Record<string, { revenue_cents: number; commission_cents: number }> = {}
+  const order: string[] = []
+  const startUTC = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()))
+  const endUTC   = new Date(Date.UTC(now.getUTCFullYear(),   now.getUTCMonth(),   now.getUTCDate()))
+  for (let d = new Date(startUTC); d <= endUTC; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = dayKeyUTC(new Date(d))
+    if (!(key in buckets)) { buckets[key] = { revenue_cents: 0, commission_cents: 0 }; order.push(key) }
+  }
+
+  const rows = await fetchNormalizedSales(supabase, orgId, { since: start })
+  let hasCommission = false
+  for (const r of rows.filter(r => !sellerId || r.seller_id === sellerId)) {
+    const key = dayKeyUTC(r.date)
+    if (!(key in buckets)) continue
+    buckets[key].revenue_cents += r.amount_cents
+    buckets[key].commission_cents += r.commission_cents
+    if (r.commission_cents > 0) hasCommission = true
+  }
+
+  let revAcc = 0
+  let commAcc = 0
+  const points = order.map(date => {
+    revAcc += buckets[date].revenue_cents
+    commAcc += buckets[date].commission_cents
+    return { date, revenue_cents: revAcc, commission_cents: commAcc }
+  })
+
+  return { points, hasCommission }
 }

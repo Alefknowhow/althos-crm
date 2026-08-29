@@ -1,17 +1,23 @@
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-
 interface DashboardHeaderProps {
   userName: string
 }
 
+const BRASILIA_TZ = 'America/Sao_Paulo'
+
 export default function DashboardHeader({ userName }: DashboardHeaderProps) {
-  const hour = new Date().getHours()
+  const now = new Date()
+  // Servidor roda em UTC (Vercel) — saudação e data precisam do horário de
+  // Brasília, não do horário/data local do servidor.
+  const hour = Number(
+    new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hour12: false, timeZone: BRASILIA_TZ }).format(now),
+  )
   let greeting = 'Bom dia'
   if (hour >= 12 && hour < 18) greeting = 'Boa tarde'
   if (hour >= 18 || hour < 5) greeting = 'Boa noite'
 
-  const dateStr = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })
+  const dateStr = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long', timeZone: BRASILIA_TZ,
+  }).format(now)
 
   return (
     <div className="flex flex-col gap-0.5 sm:gap-1.5 reveal">

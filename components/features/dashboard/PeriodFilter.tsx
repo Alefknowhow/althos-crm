@@ -10,6 +10,8 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: '7d', label: '7 dias' },
   { value: '30d', label: '30 dias' },
   { value: '90d', label: '90 dias' },
+  { value: 'mtd', label: 'Este mês' },
+  { value: 'max', label: 'Máximo' },
 ]
 
 export default function PeriodFilter({ orgSlug }: { orgSlug?: string }) {
