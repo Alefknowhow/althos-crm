@@ -42,11 +42,15 @@ export interface ReportData {
   /** Optional summary line (e.g. totals) rendered below the table. */
   totals?: Record<string, string | number>
   /**
-   * Só no relatório de Comissões: cada linha agrupada (rows[i]) tem as
-   * vendas individuais que a compõem, pra UI expandir inline. CSV/PDF
-   * continuam usando só `columns`/`rows` (agrupado), sem essa camada extra.
+   * Só no relatório de Reservas (Comissões): cada linha agrupada (rows[i])
+   * tem as vendas individuais que a compõem, pra UI expandir inline. Cada
+   * venda usa as MESMAS chaves de `rows` (mesmas `columns`), só que
+   * preenchidas do lado do detalhe (Localizador/Cliente/Data) em vez do
+   * lado agrupado (Vendas/Valor total/Comissão total/%) — `_saleId`/
+   * `_orgSlug` são só pro link "Abrir reserva", não entram em `columns`.
+   * CSV/PDF continuam usando só `columns`/`rows` (agrupado).
    */
-  saleDetails?: { seller: string; sales: { orgSlug: string; saleId: string; locator: string; client: string; operator: string; amount: string; commission: string; date: string }[] }[]
+  saleDetails?: { seller: string; sales: (Record<string, string | number> & { _saleId: string; _orgSlug: string })[] }[]
 }
 
 export type ReportResult =
@@ -325,11 +329,19 @@ export async function getReport(
       byGroup.set(key, agg)
     }
 
+    // Linha agrupada e linha de detalhe (venda individual) usam o MESMO
+    // conjunto de colunas — só que cada uma preenche as que fazem sentido
+    // pro seu nível: a agrupada soma/agrega (Vendas, Valor, Comissão, %),
+    // a de detalhe mostra o que é único por venda e não agrega (Localizador,
+    // Cliente, Data). Campo que não se aplica àquele nível fica em branco.
     const rows = Array.from(byGroup.values())
       .map(agg => ({
         seller: agg.label,
-        count: agg.count,
+        locator: '',
+        client: '',
         operators: agg.secondary.size > 0 ? Array.from(agg.secondary).join(', ') : '—',
+        sale_date: '',
+        count: agg.count,
         gross: brl(agg.gross),
         commission: brl(agg.commission),
         pct: agg.gross > 0 ? `${((agg.commission / agg.gross) * 100).toFixed(1)}%` : '—',
@@ -341,7 +353,9 @@ export async function getReport(
     const totalGross = (data || []).reduce((a, s) => a + ((s.total_cents as number) || 0), 0)
     const totalCommission = (data || []).reduce((a, s) => a + ((s.commission_cents as number) || 0), 0)
 
-    // Vendas individuais por grupo, pra UI expandir cada linha agrupada.
+    // Vendas individuais por grupo, pra UI expandir cada linha agrupada —
+    // mesmas chaves de `rows`, então a UI renderiza as duas com o mesmo
+    // loop de colunas. `_saleId`/`_orgSlug` são só pro link "Abrir reserva".
     const salesByGroup = new Map<string, typeof data>()
     for (const s of data || []) {
       const key = groupKey(s)
@@ -352,14 +366,17 @@ export async function getReport(
     const saleDetails = Array.from(salesByGroup.entries()).map(([key, sales]) => ({
       seller: groupLabel(key, (sales || [])[0]),
       sales: (sales || []).map(s => ({
-        orgSlug,
-        saleId: s.id as string,
+        seller: '',
         locator: (s.package_locator as string) || '—',
         client: relName((s as any).contato) || (s.client_name as string) || '—',
-        operator: (s.operator as string) || '—',
-        amount: brl(s.total_cents as number),
+        operators: secondaryOf(s) || '—',
+        sale_date: dateOnly(s.created_at as string),
+        count: '',
+        gross: brl(s.total_cents as number),
         commission: brl(s.commission_cents as number),
-        date: dateOnly(s.created_at as string),
+        pct: '',
+        _saleId: s.id as string,
+        _orgSlug: orgSlug,
       })),
     }))
 
@@ -369,8 +386,11 @@ export async function getReport(
         ...base,
         columns: [
           { key: 'seller', label: primaryColumnLabel },
-          { key: 'count', label: 'Vendas', align: 'right' },
+          { key: 'locator', label: 'Localizador' },
+          { key: 'client', label: 'Cliente' },
           { key: 'operators', label: secondaryColumnLabel },
+          { key: 'sale_date', label: 'Data' },
+          { key: 'count', label: 'Vendas', align: 'right' },
           { key: 'gross', label: 'Valor vendido', align: 'right' },
           { key: 'commission', label: 'Comissão', align: 'right' },
           { key: 'pct', label: '% Comissão', align: 'right' },
@@ -378,6 +398,7 @@ export async function getReport(
         rows,
         totals: {
           seller: `${rows.length} ${primaryTotalsUnit}`,
+          count: String((data || []).length),
           gross: brl(totalGross),
           commission: brl(totalCommission),
           pct: totalGross > 0 ? `${((totalCommission / totalGross) * 100).toFixed(1)}%` : '—',

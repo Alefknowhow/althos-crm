@@ -222,6 +222,7 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
                         {c.label}
                       </th>
                     ))}
+                    {showingForType.type === 'commission' && <th className="w-8" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -255,52 +256,55 @@ export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria
                               {row[c.key]}
                             </td>
                           ))}
+                          {showingForType.type === 'commission' && <td />}
                         </tr>
-                        {isExpanded && detail && (
-                          <tr className="border-b last:border-0 bg-muted/10">
-                            <td colSpan={showingForType.columns.length + 1} className="px-3 py-2">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="text-muted-foreground">
-                                    <th className="px-2 py-1 text-left font-medium">Localizador</th>
-                                    <th className="px-2 py-1 text-left font-medium">Cliente</th>
-                                    <th className="px-2 py-1 text-left font-medium">Operadora</th>
-                                    <th className="px-2 py-1 text-right font-medium">Valor da venda</th>
-                                    <th className="px-2 py-1 text-right font-medium">Comissão</th>
-                                    <th className="px-2 py-1 text-left font-medium">Data</th>
-                                    <th className="px-2 py-1 text-right font-medium" />
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {detail.sales.map(s => (
-                                    <tr key={s.saleId} className="border-t">
-                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.locator}</td>
-                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.client}</td>
-                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.operator}</td>
-                                      <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{s.amount}</td>
-                                      <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{s.commission}</td>
-                                      <td className="px-2 py-1.5 whitespace-nowrap">{s.date}</td>
-                                      <td className="px-2 py-1.5 text-right whitespace-nowrap">
-                                        <Link
-                                          href={`/app/${s.orgSlug}/reservas?sale=${s.saleId}`}
-                                          target="_blank"
-                                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                                          onClick={e => e.stopPropagation()}
-                                        >
-                                          Abrir reserva <ExternalLink className="h-3 w-3" />
-                                        </Link>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                        {/* Vendas individuais do grupo — MESMAS colunas da linha
+                            agrupada acima (columns), só que preenchidas do lado
+                            do detalhe (Localizador/Cliente/Data), com o link de
+                            abrir a reserva na coluna extra do fim. */}
+                        {isExpanded && detail?.sales.map(s => (
+                          <tr key={s._saleId as string} className="border-b last:border-0 bg-muted/10 text-xs text-muted-foreground">
+                            <td />
+                            {showingForType.columns.map(c => (
+                              <td
+                                key={c.key}
+                                className={`px-3 py-1.5 whitespace-nowrap ${c.align === 'right' ? 'text-right tabular-nums' : 'text-left'}`}
+                              >
+                                {s[c.key]}
+                              </td>
+                            ))}
+                            <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                              <Link
+                                href={`/app/${s._orgSlug}/reservas?sale=${s._saleId}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                Abrir reserva <ExternalLink className="h-3 w-3" />
+                              </Link>
                             </td>
                           </tr>
-                        )}
+                        ))}
                       </Fragment>
                     )
                   })}
                 </tbody>
+                {showingForType.totals && (
+                  <tfoot>
+                    <tr className="border-t-2 font-semibold bg-muted/20">
+                      {showingForType.type === 'commission' && <td />}
+                      {showingForType.columns.map(c => (
+                        <td
+                          key={c.key}
+                          className={`px-3 py-2 whitespace-nowrap ${c.align === 'right' ? 'text-right tabular-nums' : 'text-left'}`}
+                        >
+                          {showingForType.totals?.[c.key] ?? ''}
+                        </td>
+                      ))}
+                      {showingForType.type === 'commission' && <td />}
+                    </tr>
+                  </tfoot>
+                )}
               </table>
               {showingForType.rows.length > 50 && (
                 <p className="px-5 py-2 text-xs text-muted-foreground border-t">
