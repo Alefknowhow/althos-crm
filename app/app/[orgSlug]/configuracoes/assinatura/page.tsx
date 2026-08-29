@@ -72,7 +72,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
     isManaged
 
   return (
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6 max-w-3xl mx-auto">
       {/* ── Plan + Status card ─────────────────────────────────────────────── */}
       <div className="rounded-none border bg-card p-6 space-y-5">
         <div className="flex items-start justify-between gap-3">

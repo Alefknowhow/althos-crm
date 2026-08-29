@@ -53,7 +53,7 @@ export default function AgentTokensView({ orgSlug, tokens }: { orgSlug: string; 
   }
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2"><KeyRound className="w-5 h-5" /> Conector MCP</h2>
