@@ -10,6 +10,7 @@ import KpiCard from '../KpiCard'
 import BarListCard from '../BarListCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CityRevenueChart from '../CityRevenueChart'
+import RecompraTable from '../RecompraTable'
 import { COMPACT_CARD_H } from '../dashboardSizes'
 import { Crown, MapPin, AlertTriangle, Layers } from 'lucide-react'
 import InsightCard from '../InsightCard'
@@ -137,6 +138,10 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
           </CardContent>
         </Card>
       </div>
+
+      <Suspense fallback={<Skeleton className="h-[640px] w-full" />}>
+        <RecompraTable orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
+      </Suspense>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="clientes" />

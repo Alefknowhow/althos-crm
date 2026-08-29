@@ -316,6 +316,84 @@ export async function getAtRiskCustomers(orgId: string, thresholdDays = 90, limi
   return atRisk.sort((a, b) => b.days_since_last_sale - a.days_since_last_sale).slice(0, limit)
 }
 
+/* -------- Ranking de recompra (nicho viagens) -------- */
+
+export type RecompraRow = {
+  contato_id: string
+  name: string
+  destination: string | null
+  /** Mês/ano da última viagem (departure_date da última venda), já formatado. */
+  travel_month: string | null
+  total_cents: number
+  commission_cents: number
+  last_sale_date: string
+  days_since_last_sale: number
+}
+
+/**
+ * Rank de clientes por tempo sem comprar de novo — o primeiro colocado é
+ * quem está há mais dias sem fechar uma nova venda. Cada linha traz o
+ * detalhe da ÚLTIMA compra (destino/mês/valor/comissão), pra dar contexto
+ * imediato pra uma ligação de reativação ("call para a base"). Só existe
+ * pro nicho viagens (é o único com o conceito de comissão + destino por
+ * venda que esse indicador usa) — retorna `null` fora dele.
+ */
+export async function getRecompraRanking(orgId: string, limit = 200): Promise<RecompraRow[] | null> {
+  const supabase = createClient()
+  if (!(await isOrgTravelNiche(supabase, orgId))) return null
+
+  const { data } = await supabase
+    .from('travel_sales')
+    .select('contato_id, destination, departure_date, total_cents, commission_cents, created_at, status')
+    .eq('organization_id', orgId)
+    .neq('status', 'cancelado')
+    .not('contato_id', 'is', null)
+
+  type LastSale = { destination: string | null; departure_date: string | null; total_cents: number; commission_cents: number; created_at: string }
+  const lastSaleByContato = new Map<string, LastSale>()
+  for (const r of (data || []) as any[]) {
+    const prev = lastSaleByContato.get(r.contato_id)
+    if (!prev || r.created_at > prev.created_at) {
+      lastSaleByContato.set(r.contato_id, {
+        destination: r.destination || null,
+        departure_date: r.departure_date || null,
+        total_cents: r.total_cents || 0,
+        commission_cents: r.commission_cents || 0,
+        created_at: r.created_at,
+      })
+    }
+  }
+  if (lastSaleByContato.size === 0) return []
+
+  const { data: contatos } = await supabase
+    .from('contatos')
+    .select('id, name')
+    .eq('organization_id', orgId)
+    .eq('status', 'cliente')
+    .in('id', Array.from(lastSaleByContato.keys()))
+
+  const now = Date.now()
+  const rows: RecompraRow[] = []
+  for (const c of contatos || []) {
+    const last = lastSaleByContato.get(c.id)
+    if (!last) continue
+    const days = Math.floor((now - new Date(last.created_at).getTime()) / 86_400_000)
+    rows.push({
+      contato_id: c.id,
+      name: c.name,
+      destination: last.destination,
+      travel_month: last.departure_date
+        ? new Date(`${last.departure_date}T00:00:00`).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+        : null,
+      total_cents: last.total_cents,
+      commission_cents: last.commission_cents,
+      last_sale_date: last.created_at,
+      days_since_last_sale: days,
+    })
+  }
+  return rows.sort((a, b) => b.days_since_last_sale - a.days_since_last_sale).slice(0, limit)
+}
+
 export type SellerGoalRow = { seller_id: string; goal_cents: number | null; is_individual: boolean }
 
 /**
