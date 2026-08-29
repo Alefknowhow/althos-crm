@@ -845,10 +845,15 @@ export async function listCampaignMetrics(orgSlug: string, campaignId: string, f
 
 /* -------- Marketing dashboard aggregation -------- */
 
-export type MarketingPeriod = '7d' | '30d' | '90d' | 'mtd'
+export type MarketingPeriod = '7d' | '30d' | '90d' | 'mtd' | 'max'
+
+// Data-teto pra "Máximo" — bem antes de qualquer conta de anúncio real, só
+// pra servir de `since` sem período final (busca tudo que existir).
+const MAX_PERIOD_START = '2015-01-01'
 
 function periodStart(period: MarketingPeriod): string {
   const now = new Date()
+  if (period === 'max') return MAX_PERIOD_START
   if (period === 'mtd') {
     return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   }
@@ -1185,36 +1190,42 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   // nada visível). Só spend/impressions/clicks — leads exigiria duplicar
   // toda a atribuição por UTM/tracking-link pra uma segunda janela, fora de
   // escopo por ora.
-  const startDate = new Date(`${start}T00:00:00`)
-  const lengthMs = Date.now() - startDate.getTime()
-  const prevEndDate = new Date(startDate.getTime() - 86400000)
-  const prevStartDate = new Date(prevEndDate.getTime() - lengthMs)
-  const prevStart = prevStartDate.toISOString().slice(0, 10)
-  const prevEnd = prevEndDate.toISOString().slice(0, 10)
+  // "Máximo" não tem janela anterior de mesmo tamanho pra comparar (o
+  // período já busca tudo que existir) — pula o cálculo, o card de
+  // comparação simplesmente não aparece nesse caso.
+  let previousCampaigns: { campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number }[] = []
+  if (period !== 'max') {
+    const startDate = new Date(`${start}T00:00:00`)
+    const lengthMs = Date.now() - startDate.getTime()
+    const prevEndDate = new Date(startDate.getTime() - 86400000)
+    const prevStartDate = new Date(prevEndDate.getTime() - lengthMs)
+    const prevStart = prevStartDate.toISOString().slice(0, 10)
+    const prevEnd = prevEndDate.toISOString().slice(0, 10)
 
-  const { data: prevMetrics } = await supabase
-    .from('campaign_metrics_daily')
-    .select('campaign_id, spend_cents, impressions, clicks')
-    .in('campaign_id', campaignIds)
-    .eq('organization_id', org.id)
-    .gte('date', prevStart)
-    .lte('date', prevEnd)
+    const { data: prevMetrics } = await supabase
+      .from('campaign_metrics_daily')
+      .select('campaign_id, spend_cents, impressions, clicks')
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', org.id)
+      .gte('date', prevStart)
+      .lte('date', prevEnd)
 
-  const campaignMetaById = new Map((campaigns || []).map(c => [c.id, { ad_account_id: c.ad_account_id, objective_group: classifyObjective(c.objective) }]))
-  const prevByCampaign = new Map<string, { spend_cents: number; impressions: number; clicks: number }>()
-  for (const m of prevMetrics || []) {
-    const cur = prevByCampaign.get(m.campaign_id) || { spend_cents: 0, impressions: 0, clicks: 0 }
-    cur.spend_cents += m.spend_cents || 0
-    cur.impressions += m.impressions || 0
-    cur.clicks += m.clicks || 0
-    prevByCampaign.set(m.campaign_id, cur)
+    const campaignMetaById = new Map((campaigns || []).map(c => [c.id, { ad_account_id: c.ad_account_id, objective_group: classifyObjective(c.objective) }]))
+    const prevByCampaign = new Map<string, { spend_cents: number; impressions: number; clicks: number }>()
+    for (const m of prevMetrics || []) {
+      const cur = prevByCampaign.get(m.campaign_id) || { spend_cents: 0, impressions: 0, clicks: 0 }
+      cur.spend_cents += m.spend_cents || 0
+      cur.impressions += m.impressions || 0
+      cur.clicks += m.clicks || 0
+      prevByCampaign.set(m.campaign_id, cur)
+    }
+    previousCampaigns = Array.from(prevByCampaign.entries()).map(([campaignId, v]) => ({
+      campaign_id: campaignId,
+      ad_account_id: campaignMetaById.get(campaignId)?.ad_account_id ?? null,
+      objective_group: campaignMetaById.get(campaignId)?.objective_group ?? 'other',
+      ...v,
+    }))
   }
-  const previousCampaigns = Array.from(prevByCampaign.entries()).map(([campaignId, v]) => ({
-    campaign_id: campaignId,
-    ad_account_id: campaignMetaById.get(campaignId)?.ad_account_id ?? null,
-    objective_group: campaignMetaById.get(campaignId)?.objective_group ?? 'other',
-    ...v,
-  }))
 
   return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective, previousCampaigns }
 }
