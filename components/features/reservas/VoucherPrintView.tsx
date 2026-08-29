@@ -24,7 +24,7 @@ type OrgBranding = {
   address_zip: string | null
 }
 
-type ContatoInfo = { phone: string | null; email: string | null; date_of_birth: string | null; cpf: string | null } | null
+type ContatoInfo = { phone: string | null; email: string | null; date_of_birth: string | null } | null
 
 type VooLeg = {
   companhia?: string | null; numero?: string | null; data?: string | null
@@ -236,11 +236,9 @@ export default function VoucherPrintView({
               value={sale.departure_date || sale.return_date ? <>{fmtDate(sale.departure_date)} → {fmtDate(sale.return_date)}{n ? ` (${n} noite${n > 1 ? 's' : ''})` : ''}</> : '—'}
             />
           </div>
-          {(contato?.date_of_birth || contato?.cpf) && (
+          {contato?.date_of_birth && (
             <div className="grid grid-cols-3 gap-4 px-3 pb-3 pt-3 border-t">
-              <InfoRow label="Data de nascimento" value={contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'} />
-              <InfoRow label="CPF" value={contato?.cpf || '—'} mono />
-              <div />
+              <InfoRow label="Data de nascimento" value={fmtDate(contato.date_of_birth)} />
             </div>
           )}
           {travelers.length > 0 && (
@@ -249,7 +247,6 @@ export default function VoucherPrintView({
                 <div key={i} className="grid grid-cols-3 gap-4 px-3 py-2 break-inside-avoid">
                   <InfoRow label={i === 0 ? 'Viajantes' : ''} value={t.name} />
                   <InfoRow label={i === 0 ? 'Data de nascimento' : ''} value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
-                  <InfoRow label={i === 0 ? 'CPF' : ''} value={t.cpf} mono />
                 </div>
               ))}
             </div>
