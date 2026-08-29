@@ -200,6 +200,7 @@ const METRIC_ICONS: Record<MetricKey, any> = {
   meta_purchases: ShoppingCart,
   cac: Target,
   roas: TrendingUp,
+  cost_per_conversion: MessageCircle,
 }
 
 const METRIC_ICON_BG: Record<MetricKey, string> = {
@@ -218,6 +219,7 @@ const METRIC_ICON_BG: Record<MetricKey, string> = {
   meta_purchases: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
   cac: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
   roas: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+  cost_per_conversion: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400',
 }
 
 function PeriodTabs() {

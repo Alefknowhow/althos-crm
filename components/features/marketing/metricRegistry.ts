@@ -9,7 +9,7 @@
 export type MetricKey =
   | 'spend' | 'impressions' | 'clicks' | 'leads' | 'cpl' | 'ctr' | 'cpc' | 'cpm'
   | 'meta_leads' | 'meta_messaging_started' | 'meta_link_clicks' | 'meta_landing_page_views' | 'meta_purchases'
-  | 'cac' | 'roas'
+  | 'cac' | 'roas' | 'cost_per_conversion'
 
 export type MetricContext = {
   spend_cents: number
@@ -94,6 +94,16 @@ export const METRIC_REGISTRY: Record<MetricKey, MetricDef> = {
   meta_purchases: {
     label: 'Compras', color: '#f97316', format: number, chartable: true, axis: 'right', type: 'line',
     extract: c => c.meta_purchases,
+  },
+  // "Conversão" aqui é qualquer resultado do anúncio — conversa iniciada
+  // conta junto com lead/compra, já que campanhas de objetivo "Mensagens"
+  // não geram lead nem venda diretamente, só a conversa.
+  cost_per_conversion: {
+    label: 'Custo por conversão (conversa/lead/venda)', color: '#d946ef', format: currency, chartable: true, axis: 'left', type: 'line',
+    extract: c => {
+      const conversions = c.meta_leads + c.meta_messaging_started + c.meta_purchases
+      return conversions > 0 ? c.spend_cents / 100 / conversions : 0
+    },
   },
   cac: {
     label: 'CAC', color: '#ef4444', format: currency, chartable: false, axis: 'left', type: 'line',
