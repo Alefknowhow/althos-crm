@@ -107,7 +107,14 @@ self.addEventListener('push', event => {
     // Android não renderiza SVG de forma confiável em notificações push
     // (ficava um quadrado em branco) — precisa ser um raster (PNG).
     icon:            data.icon    || '/logo-mark.png',
-    badge:           '/logo-mark.png',
+    // O badge (ícone pequeno na barra de status) o Android SEMPRE re-tinge
+    // a partir só do canal alfa — a cor original dos pixels é ignorada.
+    // Usar logo-mark.png (fundo preto opaco) aqui fazia o fundo virar
+    // branco também (opaco = "faz parte do desenho"), sumindo com o "A"
+    // branco por cima. logo-badge.png é a mesma letra, mas com fundo
+    // TRANSPARENTE — só o "A" fica opaco, então só ele vira o silhueta
+    // branco, com a barra de status/moldura escura aparecendo ao redor.
+    badge:           '/logo-badge.png',
     tag:             data.tag     || 'althos-default',
     // Replace earlier notification with the same tag instead of stacking.
     renotify:        !!data.tag,
