@@ -81,7 +81,7 @@ export const pushOverdueTasksFn = inngest.createFunction(
           body,
           url,
           tag:  'overdue-tasks',
-          icon: '/logo-mark.png',
+          icon: '/notif-task.png',
           category: 'task_due',
         })
         await createNotification({
@@ -168,7 +168,7 @@ export const pushWhatsappMessageFn = inngest.createFunction(
         body,
         url,
         tag:   `whatsapp-${orgId}`,
-        icon:  '/logo-mark.png',
+        icon:  '/notif-whatsapp.png',
         category: 'whatsapp_message',
       })
       await createNotification({
@@ -226,7 +226,7 @@ export const pushInstagramMessageFn = inngest.createFunction(
         body,
         url,
         tag:   `instagram-${orgId}`,
-        icon:  '/logo-mark.png',
+        icon:  '/notif-instagram.png',
         category: 'instagram_message',
       })
       await createNotification({
@@ -284,7 +284,7 @@ export const pushInstagramCommentFn = inngest.createFunction(
         body,
         url,
         tag:   `instagram-comment-${orgId}`,
-        icon:  '/logo-mark.png',
+        icon:  '/notif-instagram.png',
         category: 'instagram_comment',
       })
       await createNotification({

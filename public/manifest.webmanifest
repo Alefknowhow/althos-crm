@@ -1,6 +1,6 @@
 {
   "name": "Althos CRM",
-  "short_name": "Althos",
+  "short_name": "AlthosCRM",
   "description": "CRM multi-tenant da Althos Performance",
   "start_url": "/onboarding",
   "scope": "/",
