@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   Tabs,
   TabsList,
@@ -34,6 +35,7 @@ import {
   Link2,
   FileText,
   ShoppingCart,
+  RefreshCw,
 } from 'lucide-react'
 import {
   PieChart,
@@ -54,7 +56,7 @@ import AccountFilter from './AccountFilter'
 import type { ObjectiveGroup } from '@/lib/marketing/objective'
 import { OBJECTIVE_GROUP_LABELS } from '@/lib/marketing/objective'
 import { METRIC_REGISTRY, DEFAULT_CARD_METRICS, DEFAULT_CHART_METRICS, type MetricKey, type MetricContext } from './metricRegistry'
-import { updateMarketingMetricsPrefs } from '@/actions/marketing'
+import { updateMarketingMetricsPrefs, syncAdAccountCampaigns } from '@/actions/marketing'
 
 type CampaignRow = {
   id: string
@@ -422,6 +424,19 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
     startTransition(() => router.refresh())
   }
 
+  const [syncing, setSyncing] = useState(false)
+
+  async function resyncAccount() {
+    if (!accountFilter) return
+    setSyncing(true)
+    const res = await syncAdAccountCampaigns(orgSlug, accountFilter)
+    setSyncing(false)
+    if (!res.ok) { toast.error(res.error); return }
+    if (res.error) toast.warning(`Sincronizado com avisos: ${res.error}`)
+    else toast.success(`${res.campaignsSynced} campanha(s), ${res.metricsSynced} métrica(s) atualizadas`)
+    refresh()
+  }
+
   const cardMetricKeys = (Object.keys(METRIC_REGISTRY) as MetricKey[]).filter(k => visibleCardMetrics.has(k))
 
   return (
@@ -456,6 +471,17 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
             visibleChartMetrics={visibleChartMetrics}
             onChangeChartMetrics={setVisibleChartMetrics}
           />
+          {accountFilter && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              disabled={syncing}
+              onClick={resyncAccount}
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', syncing && 'animate-spin')} /> Resincronizar
+            </Button>
+          )}
         </div>
 
         {/* Sem conta nenhuma, o banner abaixo já cobre o CTA de conectar —
