@@ -18,7 +18,6 @@ import { PageHintProvider } from '@/components/features/PageHintContext'
 import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 import { HeaderModuleTitle } from '@/components/features/HeaderModuleTitle'
 import { GlobalBackButton } from '@/components/features/GlobalBackButton'
-import HealthLinkConditional from '@/components/features/HealthLinkConditional'
 import QueryProvider from '@/components/providers/QueryProvider'
 import CommandPalette, { CommandPaletteTrigger } from '@/components/features/CommandPalette'
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
@@ -143,7 +142,6 @@ export default async function OrgLayout({
                 <CommandPaletteTrigger orgSlug={params.orgSlug} />
               </div>
               <HeaderSearchBar />
-              <HealthLinkConditional orgSlug={params.orgSlug} />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
