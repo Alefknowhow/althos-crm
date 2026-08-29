@@ -169,7 +169,7 @@ export default function ProposalsList({
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
           Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0 md:px-[1%]', selected && 'hidden md:flex')}>
+      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0', selected && 'hidden md:flex')}>
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -214,7 +214,7 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="md:px-[1%] grid md:grid-cols-[50fr_48fr] gap-4 flex-1 min-h-0">
+      <div className="grid md:grid-cols-[50fr_48fr] gap-4 flex-1 min-h-0">
         {/* ── List (tabela) ────────────────────────────────────── */}
         <div className={cn(
           'rounded-none border bg-card overflow-auto h-full',
