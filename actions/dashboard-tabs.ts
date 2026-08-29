@@ -328,6 +328,8 @@ export type RecompraRow = {
   commission_cents: number
   last_sale_date: string
   days_since_last_sale: number
+  /** payment_method da última venda (ex.: "Pix", "Cartão de crédito, Pix" quando dividido) — texto livre, direto do editor de Reservas. */
+  payment_method: string | null
 }
 
 /**
@@ -344,12 +346,12 @@ export async function getRecompraRanking(orgId: string, limit = 200): Promise<Re
 
   const { data } = await supabase
     .from('travel_sales')
-    .select('contato_id, destination, departure_date, total_cents, commission_cents, created_at, status')
+    .select('contato_id, destination, departure_date, total_cents, commission_cents, payment_method, created_at, status')
     .eq('organization_id', orgId)
     .neq('status', 'cancelado')
     .not('contato_id', 'is', null)
 
-  type LastSale = { destination: string | null; departure_date: string | null; total_cents: number; commission_cents: number; created_at: string }
+  type LastSale = { destination: string | null; departure_date: string | null; total_cents: number; commission_cents: number; payment_method: string | null; created_at: string }
   const lastSaleByContato = new Map<string, LastSale>()
   for (const r of (data || []) as any[]) {
     const prev = lastSaleByContato.get(r.contato_id)
@@ -359,6 +361,7 @@ export async function getRecompraRanking(orgId: string, limit = 200): Promise<Re
         departure_date: r.departure_date || null,
         total_cents: r.total_cents || 0,
         commission_cents: r.commission_cents || 0,
+        payment_method: r.payment_method || null,
         created_at: r.created_at,
       })
     }
@@ -387,6 +390,7 @@ export async function getRecompraRanking(orgId: string, limit = 200): Promise<Re
         : null,
       total_cents: last.total_cents,
       commission_cents: last.commission_cents,
+      payment_method: last.payment_method,
       last_sale_date: last.created_at,
       days_since_last_sale: days,
     })

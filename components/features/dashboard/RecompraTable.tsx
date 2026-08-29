@@ -41,38 +41,42 @@ export default async function RecompraTable({ orgSlug, orgId }: { orgSlug: strin
             Nenhum cliente com compra concluída ainda.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card z-10 border-b">
-              <tr className="text-xs text-muted-foreground">
-                <th className="text-left font-medium px-4 py-2">Nome</th>
-                <th className="text-left font-medium px-3 py-2">Destino</th>
-                <th className="text-left font-medium px-3 py-2">Mês da viagem</th>
-                <th className="text-right font-medium px-3 py-2">Valor</th>
-                <th className="text-right font-medium px-3 py-2">Comissão</th>
-                <th className="text-left font-medium px-3 py-2">Última compra</th>
-                <th className="text-right font-medium px-3 py-2">Dias sem comprar</th>
-                <th className="px-3 py-2 w-8" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map(r => (
-                <tr key={r.contato_id} className="hover:bg-muted/30">
-                  <td className="px-4 py-2 font-medium truncate max-w-[180px]">{r.name}</td>
-                  <td className="px-3 py-2 text-muted-foreground truncate max-w-[140px]">{r.destination || '—'}</td>
-                  <td className="px-3 py-2 text-muted-foreground capitalize whitespace-nowrap">{r.travel_month || '—'}</td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmtCurrency(r.total_cents)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap text-emerald-700 dark:text-emerald-400">{fmtCurrency(r.commission_cents)}</td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{fmtDate(r.last_sale_date)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap">
-                    {r.days_since_last_sale}d
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <OpenWabaButton orgSlug={orgSlug} leadId={r.contato_id} />
-                  </td>
+          <div className="flex justify-center">
+            <table className="w-auto text-sm border border-border">
+              <thead className="sticky top-0 bg-card z-10">
+                <tr className="text-xs text-muted-foreground divide-x divide-border border-b border-border">
+                  <th className="font-medium px-3 py-2 text-center">Nome</th>
+                  <th className="font-medium px-3 py-2 text-center">Destino</th>
+                  <th className="font-medium px-3 py-2 text-center">Mês da viagem</th>
+                  <th className="font-medium px-3 py-2 text-center">Valor</th>
+                  <th className="font-medium px-3 py-2 text-center">Comissão</th>
+                  <th className="font-medium px-3 py-2 text-center">Pagamento</th>
+                  <th className="font-medium px-3 py-2 text-center">Última compra</th>
+                  <th className="font-medium px-3 py-2 text-center">Dias sem comprar</th>
+                  <th className="font-medium px-2 py-2 text-center w-8" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map(r => (
+                  <tr key={r.contato_id} className="hover:bg-muted/30 divide-x divide-border">
+                    <td className="px-3 py-2 text-center font-medium truncate max-w-[160px]">{r.name}</td>
+                    <td className="px-3 py-2 text-center text-muted-foreground truncate max-w-[120px]">{r.destination || '—'}</td>
+                    <td className="px-3 py-2 text-center text-muted-foreground capitalize whitespace-nowrap">{r.travel_month || '—'}</td>
+                    <td className="px-3 py-2 text-center tabular-nums whitespace-nowrap">{fmtCurrency(r.total_cents)}</td>
+                    <td className="px-3 py-2 text-center tabular-nums whitespace-nowrap text-emerald-700 dark:text-emerald-400">{fmtCurrency(r.commission_cents)}</td>
+                    <td className="px-3 py-2 text-center text-muted-foreground truncate max-w-[140px]">{r.payment_method || '—'}</td>
+                    <td className="px-3 py-2 text-center text-muted-foreground whitespace-nowrap">{fmtDate(r.last_sale_date)}</td>
+                    <td className="px-3 py-2 text-center tabular-nums font-semibold whitespace-nowrap">
+                      {r.days_since_last_sale}d
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <OpenWabaButton orgSlug={orgSlug} leadId={r.contato_id} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </CardContent>
     </Card>

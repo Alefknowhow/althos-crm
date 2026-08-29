@@ -47,7 +47,7 @@ export default function DashboardTabsShell({
           grudado (rolando a página) ele volta a respeitar esse padding.
           -top-3 desloca o ponto de grude pra dentro do padding do <main>,
           cancelando o respiro nos dois estados (colado ou não). */}
-      <div className="sticky -top-3 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-0 -mt-3 pb-2 space-y-2 bg-secondary">
+      <div className="sticky -top-3 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-0 -mt-3 pb-2 space-y-2 bg-background">
         {stickyHeader}
         {/* Mobile: grid de N colunas iguais numa linha só (célula do grid dá
             a mesma largura pra todas, independente do tamanho do texto) —
