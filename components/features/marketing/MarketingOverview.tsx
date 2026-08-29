@@ -93,7 +93,7 @@ type Overview = {
   timeSeries: TimeSeriesPoint[]
   sourcesByLeads: Array<{ name: string; value: number }>
   byObjective: Array<{ group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>
-  previousTotals: { spend_cents: number; impressions: number; clicks: number } | null
+  previousCampaigns: Array<{ campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number }>
 }
 
 const OBJECTIVE_FILTERS: Array<{ value: ObjectiveGroup | 'all'; label: string }> = [
@@ -392,6 +392,25 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       .filter(x => x.value > 0)
       .sort((a, b) => b.value - a.value)
   }, [filteredCampaigns])
+
+  // Totais do período anterior, filtrados pela MESMA conta/objetivo que
+  // filteredTotals — sem isso a comparação misturava contas/objetivos que
+  // nem estão selecionados na tela, e o número não batia com nada visível.
+  const { previousFilteredTotals, hasPreviousData } = useMemo(() => {
+    const matching = overview.previousCampaigns
+      .filter(c => objectiveFilter === 'all' || c.objective_group === objectiveFilter)
+      .filter(c => !accountFilter || c.ad_account_id === accountFilter)
+    const totals = matching.reduce(
+      (acc, c) => {
+        acc.spend_cents += c.spend_cents
+        acc.impressions += c.impressions
+        acc.clicks += c.clicks
+        return acc
+      },
+      { spend_cents: 0, impressions: 0, clicks: 0 },
+    )
+    return { previousFilteredTotals: totals, hasPreviousData: matching.length > 0 }
+  }, [overview.previousCampaigns, objectiveFilter, accountFilter])
 
   const hasData =
     overview.campaigns.length > 0 || overview.timeSeries.length > 0 || overview.totals.spend_cents > 0
@@ -701,34 +720,34 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
                 </p>
               </CardHeader>
               <CardContent>
-                {!overview.previousTotals ? (
+                {!hasPreviousData ? (
                   <div className="h-[100px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
-                    Sem dados suficientes no período anterior pra comparar.
+                    Sem dados suficientes no período anterior pra comparar (considerando a conta/objetivo selecionados).
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <ComparisonStat
                       label="Investimento"
-                      current={overview.totals.spend_cents}
-                      previous={overview.previousTotals.spend_cents}
+                      current={filteredTotals.spend_cents}
+                      previous={previousFilteredTotals.spend_cents}
                       format={fmtCurrency}
                     />
                     <ComparisonStat
                       label="Impressões"
-                      current={overview.totals.impressions}
-                      previous={overview.previousTotals.impressions}
+                      current={filteredTotals.impressions}
+                      previous={previousFilteredTotals.impressions}
                       format={fmtNumber}
                     />
                     <ComparisonStat
                       label="Cliques"
-                      current={overview.totals.clicks}
-                      previous={overview.previousTotals.clicks}
+                      current={filteredTotals.clicks}
+                      previous={previousFilteredTotals.clicks}
                       format={fmtNumber}
                     />
                     <ComparisonStat
                       label="CPC médio"
-                      current={overview.totals.clicks > 0 ? Math.round(overview.totals.spend_cents / overview.totals.clicks) : 0}
-                      previous={overview.previousTotals.clicks > 0 ? Math.round(overview.previousTotals.spend_cents / overview.previousTotals.clicks) : 0}
+                      current={filteredTotals.clicks > 0 ? Math.round(filteredTotals.spend_cents / filteredTotals.clicks) : 0}
+                      previous={previousFilteredTotals.clicks > 0 ? Math.round(previousFilteredTotals.spend_cents / previousFilteredTotals.clicks) : 0}
                       format={fmtCurrency}
                     />
                   </div>

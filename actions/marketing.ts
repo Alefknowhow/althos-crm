@@ -868,7 +868,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'marketing')
   if (!perm.allowed) {
-    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], byObjective: [], previousTotals: null }
+    return { totals: { spend_cents: 0, impressions: 0, clicks: 0, leads: 0, won_deals: 0, revenue_cents: 0 }, campaigns: [], timeSeries: [], sourcesByLeads: [], byObjective: [], previousCampaigns: [] }
   }
   const supabase = createClient()
   const start = periodStart(period)
@@ -890,7 +890,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       timeSeries: [],
       sourcesByLeads: [],
       byObjective: [],
-      previousTotals: null,
+      previousCampaigns: [],
     }
   }
 
@@ -1177,11 +1177,14 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
-  // 9) Totais do período anterior de mesmo tamanho (ex.: período = últimos 7
-  // dias → compara com os 7 dias antes disso), pra mostrar tendência
-  // ("vs período anterior"). Só spend/impressions/clicks — leads exigiria
-  // duplicar toda a atribuição por UTM/tracking-link pra uma segunda janela,
-  // fora de escopo por ora.
+  // 9) Métricas do período anterior de mesmo tamanho (ex.: período = últimos
+  // 7 dias → compara com os 7 dias antes disso), quebradas por campanha —
+  // não um totão só — pra o cliente poder filtrar por conta/objetivo
+  // exatamente como faz com `campaigns` (senão a comparação mistura contas
+  // que nem estão selecionadas na tela, produzindo número que não bate com
+  // nada visível). Só spend/impressions/clicks — leads exigiria duplicar
+  // toda a atribuição por UTM/tracking-link pra uma segunda janela, fora de
+  // escopo por ora.
   const startDate = new Date(`${start}T00:00:00`)
   const lengthMs = Date.now() - startDate.getTime()
   const prevEndDate = new Date(startDate.getTime() - 86400000)
@@ -1191,25 +1194,29 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
   const { data: prevMetrics } = await supabase
     .from('campaign_metrics_daily')
-    .select('spend_cents, impressions, clicks')
+    .select('campaign_id, spend_cents, impressions, clicks')
     .in('campaign_id', campaignIds)
     .eq('organization_id', org.id)
     .gte('date', prevStart)
     .lte('date', prevEnd)
 
-  const previousTotals = (prevMetrics && prevMetrics.length > 0)
-    ? prevMetrics.reduce(
-        (acc, m) => {
-          acc.spend_cents += m.spend_cents || 0
-          acc.impressions += m.impressions || 0
-          acc.clicks += m.clicks || 0
-          return acc
-        },
-        { spend_cents: 0, impressions: 0, clicks: 0 },
-      )
-    : null
+  const campaignMetaById = new Map((campaigns || []).map(c => [c.id, { ad_account_id: c.ad_account_id, objective_group: classifyObjective(c.objective) }]))
+  const prevByCampaign = new Map<string, { spend_cents: number; impressions: number; clicks: number }>()
+  for (const m of prevMetrics || []) {
+    const cur = prevByCampaign.get(m.campaign_id) || { spend_cents: 0, impressions: 0, clicks: 0 }
+    cur.spend_cents += m.spend_cents || 0
+    cur.impressions += m.impressions || 0
+    cur.clicks += m.clicks || 0
+    prevByCampaign.set(m.campaign_id, cur)
+  }
+  const previousCampaigns = Array.from(prevByCampaign.entries()).map(([campaignId, v]) => ({
+    campaign_id: campaignId,
+    ad_account_id: campaignMetaById.get(campaignId)?.ad_account_id ?? null,
+    objective_group: campaignMetaById.get(campaignId)?.objective_group ?? 'other',
+    ...v,
+  }))
 
-  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective, previousTotals }
+  return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective, previousCampaigns }
 }
 
 /* -------- Preferências do painel (quais cards/métricas ficam visíveis) -------- */
