@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
@@ -259,16 +260,31 @@ export default function VoucherPrintView({
               />
             </div>
           </div>
-          <div className="divide-y border-t">
-            <div className="flex items-baseline gap-5 px-3 py-1.5">
-              <CompactField label="Titular" value={sale.client_name} className="font-semibold" />
-              <CompactField label="Nascimento" value={contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'} />
+          {/* Nomes e datas em colunas de verdade (grid único cobrindo todas
+              as linhas) — cabeçalho "Nome / Nascimento", titular destacado
+              só por um badge, sem repetir rótulo em cada linha. */}
+          <div className="grid grid-cols-[1fr_100px] border-t">
+            <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nome</div>
+            <div className="px-3 py-1 bg-gray-50 border-b text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Nascimento</div>
+
+            <div className={`px-3 py-1.5 text-[11px] font-semibold flex items-center gap-1.5 ${travelers.length > 0 ? 'border-b' : ''}`}>
+              {sale.client_name || '—'}
+              <span
+                className="text-[8px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: `${accent}20`, color: accent }}
+              >
+                Titular
+              </span>
             </div>
+            <div className={`px-3 py-1.5 text-[11px] tabular-nums ${travelers.length > 0 ? 'border-b' : ''}`}>
+              {contato?.date_of_birth ? fmtDate(contato.date_of_birth) : '—'}
+            </div>
+
             {travelers.map((t, i) => (
-              <div key={i} className="flex items-baseline gap-5 px-3 py-1.5 break-inside-avoid">
-                <CompactField label={i === 0 ? 'Viajantes' : ''} value={t.name} />
-                <CompactField label="" value={t.birth_date ? fmtDate(t.birth_date) : '—'} />
-              </div>
+              <Fragment key={i}>
+                <div className={`px-3 py-1.5 text-[11px] break-inside-avoid ${i < travelers.length - 1 ? 'border-b' : ''}`}>{t.name}</div>
+                <div className={`px-3 py-1.5 text-[11px] tabular-nums ${i < travelers.length - 1 ? 'border-b' : ''}`}>{t.birth_date ? fmtDate(t.birth_date) : '—'}</div>
+              </Fragment>
             ))}
           </div>
         </div>
