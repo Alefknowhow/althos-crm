@@ -401,13 +401,15 @@ function TransferCard({ p }: { p: Product }) {
   const d = p.data
   return (
     <CardShell>
-      <CardHeader icon={Car} title="Transfer" />
+      <CardHeader icon={Car} title={d.round_trip ? 'Transfer (ida e volta)' : 'Transfer'} />
       {p.name && <p className="text-[11pt] font-bold text-[#111] mb-[2.5mm]">{p.name}</p>}
       <div className="grid grid-cols-2 gap-x-[3mm] gap-y-[2mm]">
         <InfoField label="Origem" value={d.origin} />
         <InfoField label="Destino" value={d.destination} />
         <InfoField label="Data" value={fmtDate(p.date_start)} />
         <InfoField label="Horário" value={d.time} />
+        {d.round_trip && <InfoField label="Data da volta" value={fmtDate(d.return_date)} />}
+        {d.round_trip && <InfoField label="Horário da volta" value={d.return_time} />}
         <InfoField label="Veículo" value={d.vehicle} />
         <InfoField label="Passageiros" value={d.pax} />
         <InfoField label="Tipo" value={d.transfer_type} />

@@ -610,6 +610,7 @@ type Transfer = {
   date?: string | null; time?: string | null
   vehicle?: string | null; pax?: string | null; transfer_type?: string | null
   round_trip?: boolean
+  return_date?: string | null; return_time?: string | null
   notes?: string | null
 }
 type Insurance = {
@@ -1618,6 +1619,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
               <F label="Veículo"><Input placeholder="Sedan executivo" value={t.vehicle || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, vehicle: e.target.value } : x))} /></F>
               <F label="Passageiros"><Input placeholder="3 pessoas" value={t.pax || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, pax: e.target.value } : x))} /></F>
             </div>
+            {t.round_trip && (
+              <div className="grid grid-cols-2 gap-2">
+                <F label="Data da volta"><Input type="date" value={t.return_date || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, return_date: e.target.value } : x))} /></F>
+                <F label="Horário da volta"><Input type="time" value={t.return_time || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, return_time: e.target.value } : x))} /></F>
+              </div>
+            )}
             <F label="Tipo"><Input placeholder="Privativo / Compartilhado" value={t.transfer_type || ''} onChange={e => setTransfers(ts => ts.map(x => x._key === t._key ? { ...x, transfer_type: e.target.value } : x))} /></F>
           </>
         )} />

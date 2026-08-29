@@ -843,6 +843,7 @@ export default function PublicQuotationView({
                     {d_.origin && <div><div style={{ opacity: 0.6, fontSize: 11 }}>ORIGEM</div>{d_.origin}</div>}
                     {d_.destination && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DESTINO</div>{d_.destination}</div>}
                     {fmtDayMonth(t.date_start) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DATA</div>{fmtDayMonth(t.date_start)}{d_.time ? ` · ${d_.time}` : ''}</div>}
+                    {d_.round_trip && fmtDayMonth(d_.return_date) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VOLTA</div>{fmtDayMonth(d_.return_date)}{d_.return_time ? ` · ${d_.return_time}` : ''}</div>}
                     {d_.vehicle && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VEÍCULO</div>{d_.vehicle}</div>}
                     {d_.pax && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PASSAGEIROS</div>{d_.pax}</div>}
                     {d_.transfer_type && <div><div style={{ opacity: 0.6, fontSize: 11 }}>TIPO</div>{d_.transfer_type}</div>}
