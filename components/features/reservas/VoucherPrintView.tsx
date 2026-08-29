@@ -61,6 +61,14 @@ function fmtDate(d?: string | null) {
   return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '—'
 }
 
+/** Só a primeira palavra do nome da companhia ("LATAM Airlines Group" →
+ *  "LATAM") — junto com o número do voo (que já inclui as letras do
+ *  código, ex.: "LA3737"), evita que "Companhia / voo" quebre linha na
+ *  grade de 4 colunas. */
+function firstWord(name?: string | null): string | null {
+  return name?.trim().split(/\s+/)[0] || null
+}
+
 function nights(a?: string | null, b?: string | null) {
   if (!a || !b) return null
   const ms = new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()
@@ -303,7 +311,7 @@ export default function VoucherPrintView({
                                 </p>
                               )}
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                <InfoRow label="Companhia / voo" value={[leg.companhia, leg.numero].filter(Boolean).join(' · ') || '—'} />
+                                <InfoRow label="Companhia / voo" value={[firstWord(leg.companhia), leg.numero].filter(Boolean).join(' · ') || '—'} />
                                 <InfoRow label="Origem" value={leg.origem && (leg.hora_embarque || leg.data) ? <>{leg.origem} <span className="text-gray-400">· {fmtDate(leg.data)}{leg.hora_embarque ? ` ${leg.hora_embarque}` : ''}</span></> : leg.origem} />
                                 <InfoRow label="Destino" value={leg.destino && (leg.hora_chegada || leg.data_chegada) ? <>{leg.destino} <span className="text-gray-400">· {leg.data_chegada ? `${fmtDate(leg.data_chegada)} ` : ''}{leg.hora_chegada || ''}</span></> : leg.destino} />
                                 <InfoRow label="Duração" value={leg.duracao} />
@@ -532,7 +540,7 @@ export default function VoucherPrintView({
             <p className="text-xs uppercase tracking-wide font-bold mb-1.5 flex items-center gap-1.5" style={{ color: '#b45309' }}>
               <AlertTriangle className="w-3.5 h-3.5" /> Política de cancelamento
             </p>
-            <p className="text-sm whitespace-pre-wrap text-gray-700">{sale.cancellation_policy}</p>
+            <p className="text-xs whitespace-pre-wrap text-gray-700">{sale.cancellation_policy}</p>
           </div>
         )}
 
@@ -541,7 +549,7 @@ export default function VoucherPrintView({
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1 flex items-center gap-1.5">
               <Info className="w-3.5 h-3.5" /> Informações importantes
             </p>
-            <p className="text-sm whitespace-pre-wrap">{sale.important_info}</p>
+            <p className="text-xs whitespace-pre-wrap">{sale.important_info}</p>
           </div>
         )}
 
@@ -550,14 +558,14 @@ export default function VoucherPrintView({
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Informações de serviço
             </p>
-            <p className="text-sm whitespace-pre-wrap">{sale.service_info}</p>
+            <p className="text-xs whitespace-pre-wrap">{sale.service_info}</p>
           </div>
         )}
 
         {sale.notes && (
           <div className="mb-6 break-inside-avoid">
             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Observações</p>
-            <p className="text-sm whitespace-pre-wrap">{sale.notes}</p>
+            <p className="text-xs whitespace-pre-wrap">{sale.notes}</p>
           </div>
         )}
 
