@@ -16,6 +16,7 @@ import {
   Gift,
   Settings,
   DatabaseBackup,
+  ServerCog,
 } from 'lucide-react'
 
 const NAV = [
@@ -23,6 +24,7 @@ const NAV = [
   { href: '/super-admin/users',      label: 'Usuários',       icon: Users },
   { href: '/super-admin/plans',      label: 'Planos & Cupons',icon: Package },
   { href: '/super-admin/ai-credits', label: 'Créditos IA',    icon: Sparkles },
+  { href: '/super-admin/plataforma', label: 'Infra & Assinaturas', icon: ServerCog },
   { href: '/super-admin/referrals',  label: 'Indicações',     icon: Gift },
   { href: '/super-admin/alertas',    label: 'Alertas',        icon: Bell, badge: true },
   { href: '/super-admin/backups',    label: 'Backups',        icon: DatabaseBackup },
