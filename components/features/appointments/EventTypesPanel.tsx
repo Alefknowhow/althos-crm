@@ -88,6 +88,12 @@ export default function EventTypesPanel({
   const [saving, setSaving] = useState(false)
   const [etToDelete, setEtToDelete] = useState<EventType | null>(null)
 
+  // Clínicas usa "Procedimento" no lugar do genérico "Tipo de evento" — o
+  // conceito é o mesmo (event_types), só o rótulo muda pra ficar coerente
+  // com o vocabulário da vertical.
+  const label = isClinic ? 'Procedimento' : 'Tipo de evento'
+  const labelLower = label.toLowerCase()
+
   function refresh() {
     startTransition(() => router.refresh())
   }
@@ -144,7 +150,7 @@ export default function EventTypesPanel({
     }
     setSaving(false)
     if (res.ok) {
-      toast.success(editingId ? 'Atualizado' : 'Tipo de evento criado')
+      toast.success(editingId ? 'Atualizado' : `${label} criado`)
       setDialogOpen(false)
       refresh()
     } else {
@@ -191,7 +197,7 @@ export default function EventTypesPanel({
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">
           {eventTypes.length === 0
-            ? 'Nenhum tipo de evento criado ainda'
+            ? `Nenhum ${labelLower} criado ainda`
             : `${eventTypes.length} tipo(s) de evento`}
         </p>
 
@@ -204,12 +210,12 @@ export default function EventTypesPanel({
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew}>
-              <Plus className="w-4 h-4 mr-1" /> Novo tipo de evento
+              <Plus className="w-4 h-4 mr-1" /> Novo {label}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>{editingId ? 'Editar tipo de evento' : 'Novo tipo de evento'}</DialogTitle>
+              <DialogTitle>{editingId ? `Editar ${labelLower}` : `Novo ${labelLower}`}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -389,8 +395,8 @@ export default function EventTypesPanel({
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             <Calendar className="w-10 h-10 mx-auto opacity-40 mb-3" />
-            <p className="mb-1 font-medium">Nenhum tipo de evento</p>
-            <p>Crie um tipo de evento para começar a receber agendamentos.</p>
+            <p className="mb-1 font-medium">Nenhum {labelLower}</p>
+            <p>Crie um {labelLower} para começar a receber agendamentos.</p>
           </CardContent>
         </Card>
       ) : (
@@ -466,7 +472,7 @@ export default function EventTypesPanel({
       <AlertDialog open={!!etToDelete} onOpenChange={o => !o && setEtToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir tipo de evento?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir {labelLower}?</AlertDialogTitle>
             <AlertDialogDescription>
               {etToDelete ? `Excluir "${etToDelete.name}"? ` : ''}Essa ação não pode ser desfeita.
             </AlertDialogDescription>

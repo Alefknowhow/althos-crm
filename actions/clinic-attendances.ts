@@ -37,6 +37,10 @@ export type ClinicAttendanceRow = {
   notes: string | null
   recommendations: string | null
   next_return_date: string | null
+  total_cents: number | null
+  discount_cents: number
+  payment_method: string | null
+  financial_entry_id: string | null
 }
 
 export async function listClinicAttendances(orgSlug: string): Promise<ClinicAttendanceRow[]> {
@@ -44,7 +48,7 @@ export async function listClinicAttendances(orgSlug: string): Promise<ClinicAtte
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_attendances')
-    .select('id, appointment_id, patient_contato_id, professional_id, event_type_id, attended_at, notes, recommendations, next_return_date, contatos(name), clinic_professionals(name), event_types(name)')
+    .select('id, appointment_id, patient_contato_id, professional_id, event_type_id, attended_at, notes, recommendations, next_return_date, total_cents, discount_cents, payment_method, financial_entry_id, contatos(name), clinic_professionals(name), event_types(name)')
     .eq('organization_id', org.id)
     .order('attended_at', { ascending: false })
     .limit(200)
@@ -62,6 +66,10 @@ export async function listClinicAttendances(orgSlug: string): Promise<ClinicAtte
     notes: r.notes,
     recommendations: r.recommendations,
     next_return_date: r.next_return_date,
+    total_cents: r.total_cents,
+    discount_cents: r.discount_cents || 0,
+    payment_method: r.payment_method,
+    financial_entry_id: r.financial_entry_id,
   }))
 }
 
@@ -73,6 +81,9 @@ export type ClinicAttendanceInput = {
   notes: string | null
   recommendations: string | null
   next_return_date: string | null
+  total_cents?: number | null
+  discount_cents?: number
+  payment_method?: string | null
 }
 
 export async function createClinicAttendance(orgSlug: string, input: ClinicAttendanceInput) {
@@ -88,6 +99,9 @@ export async function createClinicAttendance(orgSlug: string, input: ClinicAtten
     notes: input.notes || null,
     recommendations: input.recommendations || null,
     next_return_date: input.next_return_date || null,
+    total_cents: input.total_cents ?? null,
+    discount_cents: input.discount_cents ?? 0,
+    payment_method: input.payment_method || null,
     created_by: user.id,
   })
   if (error) return { ok: false as const, error: error.message }
@@ -95,6 +109,13 @@ export async function createClinicAttendance(orgSlug: string, input: ClinicAtten
   return { ok: true as const }
 }
 
+/**
+ * Edita um atendimento. Quando total_cents/discount_cents mudam e o
+ * atendimento já tem um lançamento em Financeiro (financial_entry_id —
+ * criado automaticamente na conclusão do agendamento), o valor do
+ * lançamento é atualizado junto — a receita sempre reflete o que a tela de
+ * Atendimentos mostra, sem precisar editar os dois lugares.
+ */
 export async function updateClinicAttendance(orgSlug: string, id: string, input: Partial<ClinicAttendanceInput>) {
   const { org } = await requireAtendimentosAccess(orgSlug)
   const supabase = createClient()
@@ -105,8 +126,28 @@ export async function updateClinicAttendance(orgSlug: string, id: string, input:
   if (input.notes !== undefined) patch.notes = input.notes || null
   if (input.recommendations !== undefined) patch.recommendations = input.recommendations || null
   if (input.next_return_date !== undefined) patch.next_return_date = input.next_return_date || null
-  const { error } = await supabase.from('clinic_attendances').update(patch).eq('id', id).eq('organization_id', org.id)
+  if (input.total_cents !== undefined) patch.total_cents = input.total_cents
+  if (input.discount_cents !== undefined) patch.discount_cents = input.discount_cents
+  if (input.payment_method !== undefined) patch.payment_method = input.payment_method || null
+
+  const { data: updated, error } = await supabase
+    .from('clinic_attendances')
+    .update(patch)
+    .eq('id', id)
+    .eq('organization_id', org.id)
+    .select('financial_entry_id, total_cents, discount_cents')
+    .maybeSingle()
   if (error) return { ok: false as const, error: error.message }
+
+  if (updated?.financial_entry_id && (input.total_cents !== undefined || input.discount_cents !== undefined)) {
+    const netCents = Math.max(0, (updated.total_cents || 0) - (updated.discount_cents || 0))
+    await supabase
+      .from('financial_entries')
+      .update({ valor_cents: netCents })
+      .eq('id', updated.financial_entry_id)
+      .eq('organization_id', org.id)
+  }
+
   revalidatePath(`/app/${orgSlug}/atendimentos`)
   return { ok: true as const }
 }

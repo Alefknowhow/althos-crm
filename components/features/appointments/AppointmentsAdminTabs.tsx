@@ -59,7 +59,7 @@ export default function AppointmentsAdminTabs(props: Props) {
         <div className="h-14 flex items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="event-types" className="gap-2">
-              <Calendar className="w-4 h-4" /> Tipos de evento
+              <Calendar className="w-4 h-4" /> {props.isClinic ? 'Procedimentos' : 'Tipos de evento'}
             </TabsTrigger>
             <TabsTrigger value="availability" className="gap-2">
               <Clock className="w-4 h-4" /> Horários disponíveis

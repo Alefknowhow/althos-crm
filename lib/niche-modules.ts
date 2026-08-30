@@ -40,6 +40,12 @@ const GENERIC_ONLY: ModuleKey[] = ['catalogo', 'vendas', 'agendamentos']
 // (property_visits, Fase 2), e catálogo não tem equivalente na vertical —
 // o CRM de imóveis não vende produtos de catálogo genérico.
 const NOT_REAL_ESTATE: ModuleKey[] = ['vendas', 'agendamentos', 'catalogo']
+// Clínicas mantém Agendamentos (é a agenda real do negócio), mas Vendas e
+// Catálogo ficam ocultos: o procedimento com preço já vive em Tipos de
+// Evento/clinic_service_context, e a "venda" é o próprio agendamento
+// concluído (vira Atendimento + lançamento em Financeiro automaticamente) —
+// manter os dois genéricos em paralelo só duplicava dado desconectado.
+const NOT_CLINIC: ModuleKey[] = ['vendas', 'catalogo']
 
 /** Todo módulo não listado em TRAVEL_ONLY/CLINIC_ONLY/REAL_ESTATE_ONLY/
  *  INSURANCE_ONLY/GENERIC_ONLY é Core puro/extensível — sempre visível,
@@ -59,6 +65,10 @@ export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate
   if (INSURANCE_ONLY.includes(key)) return insurance
   if (TRAFFIC_ONLY.includes(key)) return traffic
-  if (GENERIC_ONLY.includes(key)) return !travel && !(realEstate && NOT_REAL_ESTATE.includes(key))
+  if (GENERIC_ONLY.includes(key)) {
+    return !travel
+      && !(realEstate && NOT_REAL_ESTATE.includes(key))
+      && !(clinic && NOT_CLINIC.includes(key))
+  }
   return true
 }
