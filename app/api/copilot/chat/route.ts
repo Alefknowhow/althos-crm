@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_qualifier_model')
+    .select('name, ai_qualifier_model, niche')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -108,12 +108,16 @@ export async function POST(req: NextRequest) {
     { role: 'user' as const, content: userMessage },
   ]
 
-  const [{ respondAsAttendantStream }, { ANALYTICS_TOOLS, executeAnalyticsTool }, { ANALYST_SYSTEM_PROMPT }] =
+  const [{ respondAsAttendantStream }, { getAnalyticsToolsForNiche, executeAnalyticsTool, copilotNicheFor }, { buildAnalystSystemPrompt }] =
     await Promise.all([
       import('@/lib/ai/attendant-engine'),
       import('@/lib/ai/insights-tools'),
       import('@/lib/ai/insights-prompt'),
     ])
+
+  const niche = copilotNicheFor((orgData as any)?.niche)
+  const tools = getAnalyticsToolsForNiche(niche)
+  const systemPrompt = buildAnalystSystemPrompt(niche)
 
   const model = orgData?.ai_qualifier_model || 'claude-sonnet-4-6'
   const richToolCalls: Array<{ name: string; input: Record<string, any>; result: any }> = []
@@ -126,14 +130,14 @@ export async function POST(req: NextRequest) {
       try {
         for await (const event of respondAsAttendantStream(
           {
-            personaPrompt: ANALYST_SYSTEM_PROMPT,
+            personaPrompt: systemPrompt,
             businessContext: panelContext || '',
             knowledgeBase: [],
             handoffPhrases: [],
             leadProfile: null,
             orgName: orgData?.name || undefined,
             messages: history,
-            tools: ANALYTICS_TOOLS,
+            tools,
             executeTool: async (name, input) => {
               const r = await executeAnalyticsTool(name, input, { orgId: org.id, supabase: supabase as any })
               richToolCalls.push({ name, input, result: r })

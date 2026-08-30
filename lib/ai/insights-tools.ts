@@ -15,6 +15,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchNormalizedSales, isOrgTravelNiche } from '@/lib/dashboard/sales-source'
+import { isTravelNiche, isClinicNiche, isRealEstateNiche } from '@/lib/niche'
 
 export type AnalyticsContext = {
   orgId: string
@@ -173,6 +174,12 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'consultar_bloqueios',
+    description:
+      'Resumo dos bloqueios de assentos/vagas de viagem: quantidade, ocupação (vendidos vs. disponíveis) e prazos próximos de vencer. Use para "bloqueios", "vagas bloqueadas", "quanto ainda tenho de bloqueio", "ocupação dos bloqueios".',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'consultar_ofertas',
     description:
       'Resumo das ofertas/pacotes da vitrine de viagens: total cadastrado, publicados vs. rascunho e distribuição por categoria. Use para "ofertas", "pacotes", "vitrine", "quantos pacotes publicados".',
@@ -208,7 +215,61 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
       properties: { periodo: PERIOD_PARAM },
     },
   },
+  {
+    name: 'consultar_procedimentos',
+    description:
+      'Vertical Clínicas: catálogo de procedimentos cadastrados (Agendamentos > Procedimentos) — quantos ativos, preço médio, distribuição por status. Use para "procedimentos", "catálogo de serviços", "quais procedimentos oferecemos", "preço dos procedimentos". NUNCA acessa prontuário/dado clínico — só o cadastro comercial do serviço.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'consultar_tratamentos',
+    description:
+      'Vertical Clínicas: pacotes/tratamentos de sessões vendidos (Tratamentos) — quantos ativos, sessões usadas vs. contratadas, valor total, próximos a vencer. Use para "tratamentos", "pacotes de sessão", "quantos pacotes em andamento", "pacotes vencendo".',
+    input_schema: { type: 'object', properties: { periodo: PERIOD_PARAM } },
+  },
+  {
+    name: 'consultar_imoveis',
+    description:
+      'Vertical Imobiliárias: portfólio de imóveis — quantos disponíveis/reservados/vendidos/alugados, valor médio, distribuição por tipo/finalidade. Use para "imóveis", "portfólio", "quantos imóveis disponíveis", "estoque de imóveis".',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'consultar_visitas',
+    description:
+      'Vertical Imobiliárias: visitas agendadas no período — quantidade, status (realizada/cancelada/agendada), corretor com mais visitas. Use para "visitas", "quantas visitas", "agenda de visitas", "visitas por corretor".',
+    input_schema: { type: 'object', properties: { periodo: PERIOD_PARAM } },
+  },
+  {
+    name: 'consultar_negociacoes',
+    description:
+      'Vertical Imobiliárias: propostas e negociações fechadas (vendas/locações) no período — quantidade, valor total, comissão, taxa de fechamento. Use para "negociações", "propostas", "negócios fechados", "vendas de imóveis", "comissão de corretores".',
+    input_schema: { type: 'object', properties: { periodo: PERIOD_PARAM } },
+  },
 ]
+
+/* ------- Filtragem por nicho — cada org só vê as tools relevantes pro seu
+ * negócio, tanto na lista enviada ao modelo (menos ruído, roteamento mais
+ * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
+
+const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios'])
+const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos'])
+const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
+const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
+
+export type CopilotNiche = 'travel' | 'clinic' | 'real_estate' | 'generic'
+
+export function copilotNicheFor(niche: string | null | undefined): CopilotNiche {
+  if (isTravelNiche(niche)) return 'travel'
+  if (isClinicNiche(niche)) return 'clinic'
+  if (isRealEstateNiche(niche)) return 'real_estate'
+  return 'generic'
+}
+
+/** Tools genéricas (todo nicho) + só o conjunto específico do nicho da org. */
+export function getAnalyticsToolsForNiche(niche: CopilotNiche): Anthropic.Messages.Tool[] {
+  const nicheSet = niche === 'travel' ? TRAVEL_TOOL_NAMES : niche === 'clinic' ? CLINIC_TOOL_NAMES : niche === 'real_estate' ? REAL_ESTATE_TOOL_NAMES : null
+  return ANALYTICS_TOOLS.filter(t => !ALL_NICHE_TOOL_NAMES.has(t.name) || (nicheSet && nicheSet.has(t.name)))
+}
 
 /* ------- Executor dispatcher ------- */
 
@@ -239,6 +300,8 @@ export async function executeAnalyticsTool(
         return await queryReservations(input, ctx)
       case 'consultar_embarques':
         return await queryDepartures(input, ctx)
+      case 'consultar_bloqueios':
+        return await queryBlocks(input, ctx)
       case 'consultar_ofertas':
         return await queryOffers(input, ctx)
       case 'consultar_tarefas':
@@ -247,6 +310,16 @@ export async function executeAnalyticsTool(
         return await queryClinicAttendances(input, ctx)
       case 'consultar_comissoes_clinicas':
         return await queryClinicCommissions(input, ctx)
+      case 'consultar_procedimentos':
+        return await queryProcedures(input, ctx)
+      case 'consultar_tratamentos':
+        return await queryTreatments(input, ctx)
+      case 'consultar_imoveis':
+        return await queryProperties(input, ctx)
+      case 'consultar_visitas':
+        return await queryVisits(input, ctx)
+      case 'consultar_negociacoes':
+        return await queryDeals(input, ctx)
       default:
         return {
           summary: `Tool desconhecida: ${name}`,
@@ -891,6 +964,34 @@ async function queryDepartures(
   }
 }
 
+async function queryBlocks(_input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { data } = await ctx.supabase
+    .from('travel_blocks')
+    .select('origem, destino, assentos_total, assentos_disponiveis, prazo')
+    .eq('organization_id', ctx.orgId)
+    .order('prazo', { ascending: true })
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhum bloqueio cadastrado.', view: { type: 'none' } }
+  }
+
+  const totalSeats = rows.reduce((a, r) => a + (r.assentos_total || 0), 0)
+  const availableSeats = rows.reduce((a, r) => a + (r.assentos_disponiveis || 0), 0)
+  const soldSeats = totalSeats - availableSeats
+  const today = new Date()
+  const expiringSoon = rows.filter(r => r.prazo && new Date(r.prazo) >= today && (new Date(r.prazo).getTime() - today.getTime()) / 86_400_000 <= 15).length
+
+  return {
+    summary: `${rows.length} bloqueios ativos, ${soldSeats} de ${totalSeats} vagas vendidas (${availableSeats} disponíveis). ${expiringSoon} bloqueios com prazo vencendo em 15 dias.`,
+    view: {
+      type: 'table',
+      columns: ['Origem', 'Destino', 'Total', 'Disponíveis'],
+      rows: rows.map(r => [r.origem || '—', r.destino || '—', String(r.assentos_total || 0), String(r.assentos_disponiveis || 0)]),
+    },
+  }
+}
+
 async function queryOffers(
   _input: Record<string, any>,
   ctx: AnalyticsContext,
@@ -1046,5 +1147,157 @@ async function queryClinicCommissions(
   return {
     summary: `Comissões no período (${label}): ${fmtCurrency(pendingCents)} pendentes e ${fmtCurrency(paidCents)} pagas. Por profissional: ${barData.map(b => `${b.name} (${fmtCurrency(b.value * 100)})`).join(', ')}.`,
     view: { type: 'bar', data: barData, color: '#10b981' },
+  }
+}
+
+async function queryProcedures(_input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { data: eventTypes } = await ctx.supabase
+    .from('event_types')
+    .select('id, name, is_active')
+    .eq('organization_id', ctx.orgId)
+
+  const rows = (eventTypes as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhum procedimento cadastrado.', view: { type: 'none' } }
+  }
+
+  const { data: ctxRows } = await ctx.supabase
+    .from('clinic_service_context')
+    .select('event_type_id, price_cents')
+    .eq('organization_id', ctx.orgId)
+
+  const priceByEventType = new Map<string, number>()
+  for (const c of (ctxRows as any[]) || []) priceByEventType.set(c.event_type_id, c.price_cents || 0)
+
+  const active = rows.filter(r => r.is_active).length
+  const priced = rows.map(r => priceByEventType.get(r.id) || 0).filter(p => p > 0)
+  const avgPrice = priced.length > 0 ? priced.reduce((a, p) => a + p, 0) / priced.length : 0
+
+  return {
+    summary: `${rows.length} procedimentos cadastrados, ${active} ativos. Preço médio: ${fmtCurrency(avgPrice)}.`,
+    view: {
+      type: 'table',
+      columns: ['Procedimento', 'Status', 'Preço'],
+      rows: rows.map(r => [r.name, r.is_active ? 'Ativo' : 'Pausado', priceByEventType.get(r.id) ? fmtCurrency(priceByEventType.get(r.id)!) : '—']),
+    },
+  }
+}
+
+async function queryTreatments(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  const { data } = await ctx.supabase
+    .from('clinic_packages')
+    .select('name, total_sessions, sessions_used, value_cents, status, valid_until')
+    .eq('organization_id', ctx.orgId)
+    .gte('created_at', start.toISOString())
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhum tratamento/pacote vendido no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const active = rows.filter(r => r.status === 'ativo' || r.status === 'active').length
+  const totalValue = rows.reduce((a, r) => a + (r.value_cents || 0), 0)
+  const soon = new Date()
+  soon.setDate(soon.getDate() + 15)
+  const expiringSoon = rows.filter(r => r.valid_until && new Date(r.valid_until) <= soon && new Date(r.valid_until) >= new Date()).length
+
+  const items = [
+    { label: 'Pacotes vendidos', value: String(rows.length) },
+    { label: 'Ativos', value: String(active) },
+    { label: 'Valor total', value: fmtCurrency(totalValue) },
+    { label: 'Vencendo em 15 dias', value: String(expiringSoon) },
+  ]
+
+  return {
+    summary: `${rows.length} tratamentos/pacotes no período (${label}), ${active} ativos, valor total ${fmtCurrency(totalValue)}. ${expiringSoon} vencendo nos próximos 15 dias.`,
+    view: { type: 'kpis', items },
+  }
+}
+
+/* ------- Vertical Imobiliárias ------- */
+
+async function queryProperties(_input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { data } = await ctx.supabase
+    .from('properties')
+    .select('status, purpose, price_cents')
+    .eq('organization_id', ctx.orgId)
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhum imóvel cadastrado.', view: { type: 'none' } }
+  }
+
+  const byStatus = new Map<string, number>()
+  for (const r of rows) byStatus.set(r.status || 'sem status', (byStatus.get(r.status || 'sem status') || 0) + 1)
+  const pieData = Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }))
+
+  const priced = rows.map(r => r.price_cents || 0).filter(p => p > 0)
+  const avgPrice = priced.length > 0 ? priced.reduce((a, p) => a + p, 0) / priced.length : 0
+
+  return {
+    summary: `${rows.length} imóveis no portfólio. Distribuição por status: ${Array.from(byStatus.entries()).map(([k, v]) => `${k}: ${v}`).join(', ')}. Preço médio: ${fmtCurrency(avgPrice)}.`,
+    view: { type: 'pie', data: pieData },
+  }
+}
+
+async function queryVisits(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  const { data } = await ctx.supabase
+    .from('property_visits')
+    .select('status, broker_user_id')
+    .eq('organization_id', ctx.orgId)
+    .gte('scheduled_at', start.toISOString())
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhuma visita agendada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const byBroker = new Map<string, number>()
+  for (const r of rows) {
+    const k = r.broker_user_id || 'Sem corretor'
+    byBroker.set(k, (byBroker.get(k) || 0) + 1)
+  }
+  const barData = Array.from(byBroker.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+
+  const done = rows.filter(r => r.status === 'realizada' || r.status === 'done').length
+  const canceled = rows.filter(r => r.status === 'cancelada' || r.status === 'canceled').length
+
+  return {
+    summary: `${rows.length} visitas no período (${label}): ${done} realizadas, ${canceled} canceladas.`,
+    view: { type: 'bar', data: barData, color: '#0ea5e9' },
+  }
+}
+
+async function queryDeals(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+  const { data } = await ctx.supabase
+    .from('property_deals')
+    .select('deal_type, final_price_cents, commission_cents, monthly_rent_cents, status, closed_at')
+    .eq('organization_id', ctx.orgId)
+    .gte('closed_at', start.toISOString())
+
+  const rows = ((data as any[]) || []).filter(r => r.status !== 'cancelado')
+  if (rows.length === 0) {
+    return { summary: `Nenhuma negociação fechada no período (${label}).`, view: { type: 'none' } }
+  }
+
+  const totalValue = rows.reduce((a, r) => a + (r.final_price_cents || r.monthly_rent_cents || 0), 0)
+  const totalCommission = rows.reduce((a, r) => a + (r.commission_cents || 0), 0)
+  const sales = rows.filter(r => r.deal_type === 'venda').length
+  const rentals = rows.filter(r => r.deal_type === 'locacao').length
+
+  const items = [
+    { label: 'Negociações fechadas', value: String(rows.length) },
+    { label: 'Vendas', value: String(sales) },
+    { label: 'Locações', value: String(rentals) },
+    { label: 'Valor total', value: fmtCurrency(totalValue) },
+    { label: 'Comissão total', value: fmtCurrency(totalCommission) },
+  ]
+
+  return {
+    summary: `${rows.length} negociações fechadas no período (${label}): ${sales} vendas, ${rentals} locações, valor total ${fmtCurrency(totalValue)}, comissão ${fmtCurrency(totalCommission)}.`,
+    view: { type: 'kpis', items },
   }
 }

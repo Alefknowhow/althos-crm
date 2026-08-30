@@ -23,6 +23,8 @@ import CommandPalette, { CommandPaletteTrigger } from '@/components/features/Com
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
+import CopilotDock from '@/components/features/dashboard/CopilotDock'
+import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 
 export default async function OrgLayout({
   children,
@@ -67,6 +69,19 @@ export default async function OrgLayout({
       if (!o) return []
       return Array.isArray(o) ? o : [o]
     }) || []
+
+  // Copiloto IA — botão flutuante presente em toda tela do app (não só no
+  // dashboard). Gate pela permissão 'insights'; o plano/créditos é checado
+  // por dentro do próprio copiloto (getCopilotInit / rota de chat).
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role, permissions')
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const canUseCopilot = membership
+    ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'insights')
+    : false
 
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
@@ -176,6 +191,7 @@ export default async function OrgLayout({
 
       <div className="print:hidden">
         <SupportWidget orgSlug={params.orgSlug} />
+        {canUseCopilot && <CopilotDock orgSlug={params.orgSlug} />}
       </div>
     </div>
     </QueryProvider>

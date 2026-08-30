@@ -39,6 +39,20 @@ export async function createInsightsSession(orgSlug: string, title?: string) {
   return { ok: true as const, sessionId: data.id }
 }
 
+export async function renameInsightsSession(orgSlug: string, sessionId: string, title: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const trimmed = title.trim()
+  if (!trimmed) return { ok: false as const, error: 'Informe um título.' }
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('ai_insights_sessions')
+    .update({ title: trimmed })
+    .eq('id', sessionId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
+}
+
 export async function deleteInsightsSession(orgSlug: string, sessionId: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
@@ -91,7 +105,7 @@ export async function sendInsightMessage(
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_qualifier_model')
+    .select('name, ai_qualifier_model, niche')
     .eq('id', org.id)
     .maybeSingle()
   // AI runs on the platform's centralized token (env), metered per account by
@@ -149,12 +163,13 @@ export async function sendInsightMessage(
   ]
 
   // Dynamic imports keep SDK + tools out of the client bundle.
-  const [{ respondAsAttendant }, { ANALYTICS_TOOLS, executeAnalyticsTool }, { ANALYST_SYSTEM_PROMPT }] =
+  const [{ respondAsAttendant }, { getAnalyticsToolsForNiche, executeAnalyticsTool, copilotNicheFor }, { buildAnalystSystemPrompt }] =
     await Promise.all([
       import('@/lib/ai/attendant-engine'),
       import('@/lib/ai/insights-tools'),
       import('@/lib/ai/insights-prompt'),
     ])
+  const niche = copilotNicheFor((orgData as any)?.niche)
 
   // Sonnet 4.6 is a sensible default for analysis (better reasoning). User
   // can override per-org via the qualifier model setting — same pool of
@@ -169,14 +184,14 @@ export async function sendInsightMessage(
   try {
     result = await respondAsAttendant(
       {
-        personaPrompt: ANALYST_SYSTEM_PROMPT,
+        personaPrompt: buildAnalystSystemPrompt(niche),
         businessContext: '',
         knowledgeBase: [],
         handoffPhrases: [],
         leadProfile: null,
         orgName: orgData?.name || undefined,
         messages: history,
-        tools: ANALYTICS_TOOLS,
+        tools: getAnalyticsToolsForNiche(niche),
         executeTool: async (name, input) => {
           const r = await executeAnalyticsTool(name, input, {
             orgId: org.id,

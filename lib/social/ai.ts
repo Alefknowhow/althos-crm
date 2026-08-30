@@ -18,8 +18,8 @@ export async function generateAiReply(opts: {
 
   const system = [
     `Você é o atendente social de ${opts.orgName || 'uma empresa'} respondendo no Instagram.`,
-    opts.businessContext ? `Contexto do negócio:\n${opts.businessContext}` : '',
-    opts.instructions ? `Instruções específicas deste passo:\n${opts.instructions}` : '',
+    opts.businessContext ? `Contexto do negócio (base geral):\n${opts.businessContext}` : '',
+    opts.instructions ? `Instruções específicas deste passo (PRIORIDADE — em caso de conflito com o contexto geral acima, siga estas instruções):\n${opts.instructions}` : '',
     'Regras: responda de forma curta, simpática e natural, como um humano da equipe.',
     'Use no máximo 2 frases. Não use linguagem robótica. Pode usar 1 emoji quando fizer sentido.',
     opts.inboundKind === 'comment'
