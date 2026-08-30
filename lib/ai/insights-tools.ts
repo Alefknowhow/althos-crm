@@ -889,9 +889,10 @@ async function queryQuotes(
   const { start, label } = periodWindow(input.periodo)
   const { data } = await ctx.supabase
     .from('travel_proposals')
-    .select('status, total_cents, created_at')
+    .select('client_name, status, total_cents, created_at')
     .eq('organization_id', ctx.orgId)
     .gte('created_at', start.toISOString())
+    .order('created_at', { ascending: false })
 
   const rows = (data as any[]) || []
   if (rows.length === 0) {
@@ -911,8 +912,13 @@ async function queryQuotes(
 
   const pieData = Array.from(byStatus.entries()).map(([name, value]) => ({ name, value }))
 
+  // Lista de nomes vai só no texto (o view continua sendo o gráfico de
+  // distribuição por status) — sem isso a IA nunca consegue responder "quem
+  // pediu a cotação mais recente" ou listar clientes específicos.
+  const recentList = rows.slice(0, 10).map(r => `${r.client_name || 'Sem nome'} (${labelStatus(QUOTE_STATUS_LABEL, r.status)}, ${fmtCurrency(r.total_cents || 0)}, ${new Date(r.created_at).toLocaleDateString('pt-BR')})`).join('; ')
+
   return {
-    summary: `${rows.length} cotações no período (${label}), somando ${fmtCurrency(totalCents)}. ${approved} aprovadas (taxa de aprovação ${approvalRate.toFixed(1)}%). Distribuição por status: ${Array.from(byStatus.entries()).map(([k, v]) => `${k}: ${v}`).join(', ')}.`,
+    summary: `${rows.length} cotações no período (${label}), somando ${fmtCurrency(totalCents)}. ${approved} aprovadas (taxa de aprovação ${approvalRate.toFixed(1)}%). Distribuição por status: ${Array.from(byStatus.entries()).map(([k, v]) => `${k}: ${v}`).join(', ')}. Mais recentes: ${recentList}.`,
     view: { type: 'pie', data: pieData },
   }
 }
@@ -924,29 +930,46 @@ async function queryReservations(
   const { start, label } = periodWindow(input.periodo)
   const { data } = await ctx.supabase
     .from('travel_sales')
-    .select('status, total_cents, commission_cents, created_at')
+    .select('contato_id, destination, status, total_cents, commission_cents, created_at')
     .eq('organization_id', ctx.orgId)
     .gte('created_at', start.toISOString())
+    .order('created_at', { ascending: false })
 
   const rows = ((data as any[]) || []).filter(r => (r.status || '').toLowerCase() !== 'canceled')
   if (rows.length === 0) {
     return { summary: `Nenhuma reserva fechada no período (${label}).`, view: { type: 'none' } }
   }
 
+  // Nome do cliente — sem isso a IA só consegue dar números agregados, nunca
+  // responder "quem foi o último cliente" (motivo real de ter uma IA
+  // integrada em vez de mandar o usuário olhar direto no CRM).
+  const contatoIds = Array.from(new Set(rows.map(r => r.contato_id).filter(Boolean)))
+  const { data: contatos } = contatoIds.length > 0
+    ? await ctx.supabase.from('contatos').select('id, name').in('id', contatoIds)
+    : { data: [] }
+  const nameById = new Map<string, string>((contatos || []).map((c: any) => [c.id, c.name]))
+
   const revenue = rows.reduce((a, r) => a + (r.total_cents || 0), 0)
   const commission = rows.reduce((a, r) => a + (r.commission_cents || 0), 0)
   const ticket = rows.length > 0 ? revenue / rows.length : 0
+  const mostRecent = rows[0]
+  const mostRecentName = mostRecent.contato_id ? nameById.get(mostRecent.contato_id) || 'Cliente removido' : 'Sem cliente vinculado'
 
-  const items = [
-    { label: 'Reservas', value: String(rows.length) },
-    { label: 'Faturamento', value: fmtCurrency(revenue) },
-    { label: 'Comissão', value: fmtCurrency(commission) },
-    { label: 'Ticket médio', value: fmtCurrency(ticket) },
-  ]
+  const top = rows.slice(0, 30)
 
   return {
-    summary: `${rows.length} reservas no período (${label}): faturamento ${fmtCurrency(revenue)}, comissão ${fmtCurrency(commission)}, ticket médio ${fmtCurrency(ticket)}.`,
-    view: { type: 'kpis', items },
+    summary: `${rows.length} reservas no período (${label}): faturamento ${fmtCurrency(revenue)}, comissão ${fmtCurrency(commission)}, ticket médio ${fmtCurrency(ticket)}. Reserva mais recente: ${mostRecentName}${mostRecent.destination ? ` (${mostRecent.destination})` : ''}, ${fmtCurrency(mostRecent.total_cents || 0)} em ${new Date(mostRecent.created_at).toLocaleDateString('pt-BR')}.`,
+    view: {
+      type: 'table',
+      columns: ['Cliente', 'Destino', 'Valor', 'Comissão', 'Data'],
+      rows: top.map(r => [
+        r.contato_id ? (nameById.get(r.contato_id) || 'Cliente removido') : 'Sem cliente vinculado',
+        r.destination || '—',
+        fmtCurrency(r.total_cents || 0),
+        fmtCurrency(r.commission_cents || 0),
+        new Date(r.created_at).toLocaleDateString('pt-BR'),
+      ]),
+    },
   }
 }
 
@@ -1241,9 +1264,10 @@ async function queryClinicAttendances(
   const [{ data: attendances }, { data: statusRows }] = await Promise.all([
     ctx.supabase
       .from('clinic_attendances')
-      .select('professional_id, clinic_professionals(name)')
+      .select('professional_id, attended_at, total_cents, clinic_professionals(name), contatos(name)')
       .eq('organization_id', ctx.orgId)
-      .gte('attended_at', start.toISOString()),
+      .gte('attended_at', start.toISOString())
+      .order('attended_at', { ascending: false }),
     ctx.supabase
       .from('clinic_appointment_context')
       .select('clinic_status')
@@ -1270,8 +1294,14 @@ async function queryClinicAttendances(
   const noShow = (statusRows || []).filter((r: any) => r.clinic_status === 'no_show').length
   const noShowRate = total > 0 ? (noShow / total) * 100 : null
 
+  // Lista de pacientes atendidos vai só no texto (nome é dado operacional
+  // permitido pela regra do prompt — só o conteúdo clínico de texto livre é
+  // vedado). Sem isso a IA não consegue responder "quem foi o último
+  // paciente atendido".
+  const recentList = rows.slice(0, 10).map((a: any) => `${a.contatos?.name || 'Paciente removido'} (${a.clinic_professionals?.name || 'sem profissional'}, ${new Date(a.attended_at).toLocaleDateString('pt-BR')})`).join('; ')
+
   return {
-    summary: `${rows.length} atendimentos no período (${label}).${noShowRate !== null ? ` Taxa de no-show: ${noShowRate.toFixed(1)}%.` : ''} Por profissional: ${barData.map(b => `${b.name} (${b.value})`).join(', ')}.`,
+    summary: `${rows.length} atendimentos no período (${label}).${noShowRate !== null ? ` Taxa de no-show: ${noShowRate.toFixed(1)}%.` : ''} Por profissional: ${barData.map(b => `${b.name} (${b.value})`).join(', ')}. Mais recentes: ${recentList}.`,
     view: { type: 'bar', data: barData, color: '#0ea5e9' },
   }
 }
@@ -1483,9 +1513,10 @@ async function queryDeals(input: Record<string, any>, ctx: AnalyticsContext): Pr
   const { start, label } = periodWindow(input.periodo)
   const { data } = await ctx.supabase
     .from('property_deals')
-    .select('deal_type, final_price_cents, commission_cents, monthly_rent_cents, status, closed_at')
+    .select('deal_type, final_price_cents, commission_cents, monthly_rent_cents, status, closed_at, contatos(name), properties(title)')
     .eq('organization_id', ctx.orgId)
     .gte('closed_at', start.toISOString())
+    .order('closed_at', { ascending: false })
 
   const rows = ((data as any[]) || []).filter(r => r.status !== 'cancelado')
   if (rows.length === 0) {
@@ -1497,6 +1528,10 @@ async function queryDeals(input: Record<string, any>, ctx: AnalyticsContext): Pr
   const sales = rows.filter(r => r.deal_type === 'venda').length
   const rentals = rows.filter(r => r.deal_type === 'locacao').length
 
+  // Lista de clientes/imóveis vai só no texto — sem isso a IA não consegue
+  // responder "quem foi o cliente da negociação mais recente".
+  const recentList = rows.slice(0, 10).map((r: any) => `${r.contatos?.name || 'Cliente removido'} — ${r.properties?.title || 'imóvel removido'} (${fmtCurrency(r.final_price_cents || r.monthly_rent_cents || 0)}, ${new Date(r.closed_at).toLocaleDateString('pt-BR')})`).join('; ')
+
   const items = [
     { label: 'Negociações fechadas', value: String(rows.length) },
     { label: 'Vendas', value: String(sales) },
@@ -1506,7 +1541,7 @@ async function queryDeals(input: Record<string, any>, ctx: AnalyticsContext): Pr
   ]
 
   return {
-    summary: `${rows.length} negociações fechadas no período (${label}): ${sales} vendas, ${rentals} locações, valor total ${fmtCurrency(totalValue)}, comissão ${fmtCurrency(totalCommission)}.`,
+    summary: `${rows.length} negociações fechadas no período (${label}): ${sales} vendas, ${rentals} locações, valor total ${fmtCurrency(totalValue)}, comissão ${fmtCurrency(totalCommission)}. Mais recentes: ${recentList}.`,
     view: { type: 'kpis', items },
   }
 }
