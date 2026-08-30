@@ -61,6 +61,7 @@ export async function listClinicMedicalRecords(orgSlug: string, patientContatoId
     .select('id, patient_contato_id, professional_id, attendance_id, entry_date, subjective, objective, assessment, plan, created_at, clinic_professionals(name)')
     .eq('organization_id', org.id)
     .eq('patient_contato_id', patientContatoId)
+    .is('deleted_at', null)
     .order('entry_date', { ascending: false })
 
   await logAccess(supabase, { organizationId: org.id, userId: user.id, action: 'view', patientContatoId })
@@ -145,18 +146,85 @@ export async function updateClinicMedicalRecord(orgSlug: string, id: string, inp
   return { ok: true as const }
 }
 
+/**
+ * "Excluir" um registro de prontuário nunca é exclusão física — a
+ * Resolução CFM nº 1.821/2007 exige guarda mínima de 20 anos do
+ * prontuário. Isso soft-deleta (marca deleted_at/deleted_by, some da
+ * timeline) em vez de apagar a linha; um expurgo de verdade depois do
+ * prazo legal é um processo administrativo separado, fora do escopo desta
+ * action do dia a dia.
+ */
+/* -------- Consentimento (item 4 da auditoria LGPD) -------- */
+
+export type ClinicPatientConsent = {
+  id: string
+  method: 'verbal' | 'termo_assinado' | 'digital'
+  given_at: string
+  notes: string | null
+}
+
+/** Consentimento ATIVO do paciente (o mais recente sem revogação) — null se nunca deu ou se o único registro foi revogado. */
+export async function getActiveClinicConsent(orgSlug: string, patientContatoId: string): Promise<ClinicPatientConsent | null> {
+  const { org } = await requireProntuarioAccess(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('clinic_patient_consents')
+    .select('id, method, given_at, notes')
+    .eq('organization_id', org.id)
+    .eq('patient_contato_id', patientContatoId)
+    .eq('consent_type', 'dados_saude')
+    .is('revoked_at', null)
+    .order('given_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data
+}
+
+export async function recordClinicConsent(
+  orgSlug: string,
+  patientContatoId: string,
+  method: 'verbal' | 'termo_assinado' | 'digital',
+  notes?: string | null,
+) {
+  const { org, user } = await requireProntuarioAccess(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase.from('clinic_patient_consents').insert({
+    organization_id: org.id,
+    patient_contato_id: patientContatoId,
+    consent_type: 'dados_saude',
+    method,
+    given_by: user.id,
+    notes: notes || null,
+  })
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/prontuario`)
+  return { ok: true as const }
+}
+
+export async function revokeClinicConsent(orgSlug: string, consentId: string) {
+  const { org, user } = await requireProntuarioAccess(orgSlug)
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('clinic_patient_consents')
+    .update({ revoked_at: new Date().toISOString(), revoked_by: user.id })
+    .eq('id', consentId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/prontuario`)
+  return { ok: true as const }
+}
+
 export async function deleteClinicMedicalRecord(orgSlug: string, id: string) {
   const { org, user } = await requireProntuarioAccess(orgSlug)
   const supabase = createClient()
 
-  const { data: existing } = await supabase
+  const { data: existing, error } = await supabase
     .from('clinic_medical_records')
-    .select('patient_contato_id')
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
     .eq('id', id)
     .eq('organization_id', org.id)
+    .select('patient_contato_id')
     .maybeSingle()
-
-  const { error } = await supabase.from('clinic_medical_records').delete().eq('id', id).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
   await logAccess(supabase, { organizationId: org.id, userId: user.id, action: 'delete', patientContatoId: existing?.patient_contato_id ?? null, recordId: id })

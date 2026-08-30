@@ -130,3 +130,54 @@ prescrição/CID ser adicionado**:
 Este documento é um snapshot — revalidar contra o código antes de agir
 sobre ele, especialmente a lista de campos do §1, que muda a cada nova
 fase da vertical.
+
+## 6. Atualização — 2026-08-29: itens 1-4 resolvidos, módulo Prontuário criado oculto
+
+Depois desta auditoria original, o módulo **Prontuário**
+(`clinic_medical_records`) foi criado — timeline de evoluções em formato
+SOAP por paciente, primeiro campo estruturado de dado de saúde da
+vertical. Ele fica **oculto por padrão**
+(`PRONTUARIO_ENABLED = false` em `lib/niche-modules.ts`) até os itens
+abaixo serem considerados suficientes; habilitar é trocar uma linha.
+
+Status dos itens da recomendação (§5):
+
+1. **Log de auditoria de acesso — feito.** `clinic_data_access_log`
+   grava toda visualização/criação/edição/exclusão de evolução (quem,
+   quando, de qual paciente) — `actions/clinic-medical-records.ts`.
+2. **Aviso de conteúdo nos campos de texto livre — feito.**
+   `AtendimentosClient.tsx` (notes/recommendations) e
+   `ListaEsperaClient.tsx` (notes) ganharam um banner visível (não só
+   placeholder, que some ao digitar) reforçando "não é prontuário
+   médico, não digite dado de saúde sensível aqui".
+3. **Retenção específica — feito, com uma ressalva.** Registros de
+   Prontuário usam soft-delete (`deleted_at`/`deleted_by`) em vez de
+   exclusão física — a Resolução CFM nº 1.821/2007 exige guarda mínima
+   de 20 anos. **Ressalva real**: `clinic_medical_records.patient_contato_id`
+   ainda é `ON DELETE CASCADE` a partir de `contatos` (mesmo padrão de
+   `clinic_attendances`/`clinic_treatments`/etc. desde a Fase 1) — ou
+   seja, o fluxo de exclusão de dado (`/exclusao-de-dados`, direito ao
+   esquecimento) hoje apaga o prontuário junto do contato, o que colide
+   com a obrigação de retenção de 20 anos (LGPD art. 16 reconhece
+   cumprimento de obrigação legal como base pra reter mesmo após pedido
+   de exclusão). **Não alterado nesta rodada** — mudar o FK de CASCADE
+   pra algo que preserve o prontuário (ex.: anonimizar o paciente em vez
+   de apagar o registro clínico) é uma mudança na exclusão de dado do
+   Core inteiro, usada por todos os nichos, e merece ser feita como
+   tarefa própria, com teste, não como efeito colateral desta rodada.
+4. **Consentimento — feito.** `clinic_patient_consents` registra
+   consentimento específico (LGPD art. 11) por paciente, com método
+   (verbal/termo assinado/digital), histórico completo e revogação. A
+   tela de Prontuário mostra um aviso + botão pra registrar quando não
+   há consentimento ativo — não bloqueia a criação de evolução (uma
+   trava dura poderia atrapalhar um atendimento urgente), só sinaliza.
+5. **Revisão jurídica dos termos — não resolvido, não é tarefa de
+   código.** Item aberto: revisar Termos de Uso/Política de Privacidade
+   do Althos pra confirmar que cobrem explicitamente tratamento de dado
+   de saúde pela vertical Clínicas, antes de habilitar o módulo pra
+   qualquer cliente de verdade. Precisa de advogado, não de
+   desenvolvimento.
+
+**Pendência real antes de habilitar `PRONTUARIO_ENABLED`**: resolver o
+item 5 (jurídico) e decidir sobre a ressalva do item 3 (CASCADE vs.
+retenção legal no fluxo de exclusão de dado).

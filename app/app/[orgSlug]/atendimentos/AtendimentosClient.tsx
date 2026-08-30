@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, ClipboardList } from 'lucide-react'
+import { Plus, Pencil, Trash2, ClipboardList, ShieldAlert } from 'lucide-react'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import {
   type ClinicAttendanceRow, type ClinicAttendanceInput,
@@ -230,14 +230,19 @@ export default function AtendimentosClient({
                 </p>
               )}
 
+              <p className="flex items-start gap-1.5 rounded-md border border-amber-300/60 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-800 dark:text-amber-300">
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                Não digite diagnóstico, prescrição ou outro dado de saúde sensível aqui — este registro não é prontuário médico.
+              </p>
+
               <div className="space-y-2">
                 <Label>Observações operacionais</Label>
-                <Textarea rows={2} value={draft.notes || ''} onChange={e => setDraft({ ...draft, notes: e.target.value || null })} placeholder="Sem dado clínico sensível — só observações comerciais/operacionais." />
+                <Textarea rows={2} value={draft.notes || ''} onChange={e => setDraft({ ...draft, notes: e.target.value || null })} placeholder="Ex.: paciente chegou atrasado, pediu para remarcar..." />
               </div>
 
               <div className="space-y-2">
                 <Label>Recomendações</Label>
-                <Textarea rows={2} value={draft.recommendations || ''} onChange={e => setDraft({ ...draft, recommendations: e.target.value || null })} />
+                <Textarea rows={2} value={draft.recommendations || ''} onChange={e => setDraft({ ...draft, recommendations: e.target.value || null })} placeholder="Ex.: trazer exame na próxima visita, confirmar por WhatsApp..." />
               </div>
 
               <DialogFooter>

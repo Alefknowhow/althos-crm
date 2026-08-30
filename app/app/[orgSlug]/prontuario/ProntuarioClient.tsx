@@ -14,11 +14,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, FileText, ShieldAlert } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileText, ShieldAlert, ShieldCheck } from 'lucide-react'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import {
-  type ClinicMedicalRecordRow, type ClinicMedicalRecordInput,
+  type ClinicMedicalRecordRow, type ClinicMedicalRecordInput, type ClinicPatientConsent,
   listClinicMedicalRecords, createClinicMedicalRecord, updateClinicMedicalRecord, deleteClinicMedicalRecord,
+  getActiveClinicConsent, recordClinicConsent,
 } from '@/actions/clinic-medical-records'
 
 type Professional = { id: string; name: string }
@@ -48,17 +49,42 @@ export default function ProntuarioClient({ orgSlug, professionals }: { orgSlug: 
   const [saving, setSaving] = useState(false)
   const [toDelete, setToDelete] = useState<ClinicMedicalRecordRow | null>(null)
 
+  const [consent, setConsent] = useState<ClinicPatientConsent | null>(null)
+  const [consentChecked, setConsentChecked] = useState(false)
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false)
+  const [consentMethod, setConsentMethod] = useState<'verbal' | 'termo_assinado' | 'digital'>('verbal')
+  const [savingConsent, setSavingConsent] = useState(false)
+
   async function loadRecords(patientId: string) {
     setLoading(true)
-    const rows = await listClinicMedicalRecords(orgSlug, patientId)
+    setConsentChecked(false)
+    const [rows, activeConsent] = await Promise.all([
+      listClinicMedicalRecords(orgSlug, patientId),
+      getActiveClinicConsent(orgSlug, patientId),
+    ])
     setLoading(false)
     setRecords(rows)
+    setConsent(activeConsent)
+    setConsentChecked(true)
   }
 
   function handlePatientChange(lead: { id: string; name: string } | null) {
     setPatient(lead)
     setRecords([])
+    setConsent(null)
+    setConsentChecked(false)
     if (lead) startTransition(() => loadRecords(lead.id))
+  }
+
+  async function handleRecordConsent() {
+    if (!patient) return
+    setSavingConsent(true)
+    const res = await recordClinicConsent(orgSlug, patient.id, consentMethod)
+    setSavingConsent(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Consentimento registrado')
+    setConsentDialogOpen(false)
+    loadRecords(patient.id)
   }
 
   function openNew() {
@@ -120,6 +146,45 @@ export default function ProntuarioClient({ orgSlug, professionals }: { orgSlug: 
             onChange={handlePatientChange}
           />
         </div>
+        {patient && consentChecked && !consent && (
+          <Dialog open={consentDialogOpen} onOpenChange={setConsentDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-500/10">
+                <ShieldAlert className="w-4 h-4 mr-1" /> Registrar consentimento
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Registrar consentimento de {patient.name}</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Tratamento de dado de saúde exige consentimento específico do paciente (LGPD art. 11), separado do consentimento genérico de uso da plataforma.
+                </p>
+                <div className="space-y-2">
+                  <Label>Como o consentimento foi obtido?</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                    value={consentMethod}
+                    onChange={e => setConsentMethod(e.target.value as typeof consentMethod)}
+                  >
+                    <option value="verbal">Verbal, no atendimento</option>
+                    <option value="termo_assinado">Termo assinado (papel)</option>
+                    <option value="digital">Digital (assinatura eletrônica)</option>
+                  </select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleRecordConsent} disabled={savingConsent}>
+                  {savingConsent ? 'Salvando...' : 'Registrar'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        {patient && consent && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <ShieldCheck className="w-3.5 h-3.5" /> Consentimento registrado ({new Date(consent.given_at).toLocaleDateString('pt-BR')})
+          </span>
+        )}
         {patient && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
