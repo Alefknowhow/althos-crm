@@ -17,6 +17,7 @@ import type { createAdminClient } from '@/lib/supabase/server'
 import { sendInstagramDM, privateReplyToComment, replyToComment, type MessageButton } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
+import { consumeAiCredits } from '@/lib/plans/server'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -52,8 +53,19 @@ async function renderStep(
   if (!apiKey) return ''
   const { data: org } = await admin
     .from('organizations')
-    .select('name, ai_business_context, ai_qualifier_model')
+    .select('name, ai_business_context, ai_qualifier_model, account_id')
     .eq('id', orgId).maybeSingle()
+
+  if (org?.account_id) {
+    const credit = await consumeAiCredits({
+      accountId: org.account_id,
+      action: 'instagram_ai_reply',
+      model: org.ai_qualifier_model,
+      metadata: { feature: 'instagram_funnel', orgId },
+    })
+    if (!credit.success) return ''
+  }
+
   try {
     return await generateAiReply({
       apiKey,

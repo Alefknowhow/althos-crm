@@ -1,5 +1,8 @@
 import { getAiCreditsOverview } from '@/actions/super-admin'
+import { listActionCostCatalog, getPricingSettings, getPlanCreditProposal } from '@/actions/ai-credit-pricing'
 import ExportCsvButton from './ExportCsvButton'
+import AiCreditsTabs from './AiCreditsTabs'
+import PricingTab from './PricingTab'
 import { Sparkles, Wallet, TrendingDown, Coins } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +25,12 @@ export default async function AiCreditsPage({
 }: {
   searchParams: { period?: string }
 }) {
-  const data = await getAiCreditsOverview(searchParams.period)
+  const [data, catalog, settings, planProposalData] = await Promise.all([
+    getAiCreditsOverview(searchParams.period),
+    listActionCostCatalog(),
+    getPricingSettings(),
+    getPlanCreditProposal(),
+  ])
   const maxAction = Math.max(1, ...data.byAction.map(a => a.used))
 
   const cards = [
@@ -32,12 +40,11 @@ export default async function AiCreditsPage({
     { label: 'Contas com consumo', value: data.accounts.filter(a => a.used > 0).length, icon: Sparkles, color: 'text-violet-400', bg: 'bg-violet-950/60', border: 'border-violet-800/40' },
   ]
 
-  return (
+  const consumptionSection = (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Créditos de IA</h1>
-          <p className="text-sm text-slate-500 mt-1 capitalize">Consumo em {monthLabel(data.period)}.</p>
+          <p className="text-sm text-slate-500 capitalize">Consumo em {monthLabel(data.period)}.</p>
         </div>
         <ExportCsvButton rows={data.accounts} period={data.period} />
       </div>
@@ -113,6 +120,19 @@ export default async function AiCreditsPage({
           </div>
         )}
       </div>
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Créditos de IA</h1>
+        <p className="text-sm text-slate-500 mt-1">Consumo por conta e precificação (custo real, margem, créditos por plano).</p>
+      </div>
+      <AiCreditsTabs
+        consumption={consumptionSection}
+        pricing={<PricingTab catalog={catalog} settings={settings} planProposal={planProposalData.plans} />}
+      />
     </div>
   )
 }

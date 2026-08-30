@@ -10,6 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { qualifyLead } from './qualifier'
 import { getPlatformAiKey, getGeminiKey, hasGeminiKey } from './api-key'
+import { consumeAiCredits } from '@/lib/plans/server'
 
 export type RunQualificationResult =
   | { ok: true; score: number; tier: string }
@@ -37,10 +38,21 @@ export async function runLeadQualification(
   if (provider === 'gemini' && !hasGeminiKey()) return { ok: false, reason: 'IA (Gemini) não configurada.' }
   if (!apiKey) return { ok: false, reason: 'IA temporariamente indisponível. Tente novamente em instantes.' }
 
+  // Modelo resolvido ANTES da cobrança de crédito — precisa disso pra aplicar
+  // o multiplicador certo (Gemini Flash vs Claude têm custo real diferente).
+  const model = provider === 'gemini'
+    ? (orgConfig.ai_qualifier_model_gemini || 'gemini-3.6-flash')
+    : (orgConfig.ai_qualifier_model || 'claude-haiku-4-5')
+
   // 1b) Plan gate (per account). This runs in a service-role/background context
-  //     (Inngest, webhooks) with no user JWT, so we call the gating RPCs through
-  //     the admin client directly. Lead scoring is included from the Pro plan.
-  //     Fail CLOSED on feature, but never block on a credit infra error.
+  //     (Inngest, webhooks) with no user JWT, so we call the gating RPC through
+  //     the admin client directly. Credit consumption reuses the same wrapper
+  //     used everywhere else (consumeAiCredits already works fine outside a
+  //     request context — same pattern as lib/inngest/whatsapp-inbound.ts),
+  //     so the live catálogo de custo + multiplicador de modelo são aplicados
+  //     aqui também (antes isso ia direto por RPC com 1 crédito fixo,
+  //     ignorando o multiplicador do Gemini). Fail CLOSED on feature, but
+  //     never block on a credit infra error.
   const accountId = (orgConfig as any).account_id as string | null
   if (accountId) {
     const { data: allowed, error: featErr } = await supabase.rpc('account_has_feature', {
@@ -53,17 +65,14 @@ export async function runLeadQualification(
       return { ok: false, reason: 'Lead scoring com IA não está disponível no plano desta conta.' }
     }
 
-    // Debit 1 credit for the scoring action.
-    const { data: credit, error: creditErr } = await supabase.rpc('consume_ai_credits', {
-      p_account_id: accountId,
-      p_action: 'lead_scoring',
-      p_credits: 1,
-      p_contato_id: leadId,
-      p_metadata: { feature: 'lead_scoring', orgId },
+    const credit = await consumeAiCredits({
+      accountId,
+      action: 'lead_scoring',
+      model,
+      leadId,
+      metadata: { feature: 'lead_scoring', orgId, provider },
     })
-    if (creditErr) {
-      console.error('[runLeadQualification] consume_ai_credits error:', creditErr.message)
-    } else if (credit && (credit as any).success === false) {
+    if (!credit.success) {
       return { ok: false, reason: 'Créditos de IA esgotados para esta conta neste mês.' }
     }
   }
@@ -122,9 +131,7 @@ export async function runLeadQualification(
       },
       {
         apiKey,
-        model: provider === 'gemini'
-          ? (orgConfig.ai_qualifier_model_gemini || 'gemini-3.6-flash')
-          : (orgConfig.ai_qualifier_model || 'claude-haiku-4-5'),
+        model,
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,
         provider,

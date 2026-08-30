@@ -18,6 +18,7 @@ import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-eng
 import { getOrCreateConversation, enrichConversationProfile, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 import { inngest } from '@/lib/inngest/client'
 import { uploadSystemFile } from '@/lib/storage/system'
+import { consumeAiCredits } from '@/lib/plans/server'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -379,7 +380,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
   } else {
     const { data: org } = await supabase
       .from('organizations')
-      .select('name, ai_business_context, ai_qualifier_model')
+      .select('name, ai_business_context, ai_qualifier_model, account_id')
       .eq('id', orgId)
       .maybeSingle()
     // Centralized platform token (env) — same key for every account.
@@ -388,6 +389,22 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       console.warn('[social engine] ANTHROPIC_API_KEY not configured')
       return
     }
+
+    // Créditos de IA por conta — mesmo medidor do WhatsApp (antes só o
+    // WhatsApp era cobrado; Instagram gerava resposta de IA de graça).
+    if (org?.account_id) {
+      const credit = await consumeAiCredits({
+        accountId: org.account_id,
+        action: 'instagram_ai_reply',
+        model: org.ai_qualifier_model,
+        metadata: { feature: 'instagram_automation', orgId, context: inbound.kind },
+      })
+      if (!credit.success) {
+        console.warn('[social engine] insufficient AI credits, skipping AI reply')
+        return
+      }
+    }
+
     try {
       responseText = await generateAiReply({
         apiKey,

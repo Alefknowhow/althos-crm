@@ -283,6 +283,7 @@ export const CREDIT_PACKS: { credits: number; priceCents: number }[] = [
 export const AI_CREDIT_COST = {
   qualify_lead: 1,
   ai_attendant_reply: 1,
+  instagram_ai_reply: 1,
   ai_insights_query: 2,
   lead_scoring: 1, // doc spec was 0.5 — rounded up to 1 because credits are integer
   generate_proposal: 3,

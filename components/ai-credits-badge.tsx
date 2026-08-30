@@ -4,9 +4,9 @@
  * Compact badge showing the account's remaining AI credits for the current
  * month. Intended for headers/toolbars near AI-powered features.
  *
- * Reads from useSubscription (per-account, RLS-scoped). Clicking opens the same
- * checkout popup used by geral/assinatura ("Assinar plano") so the upgrade flow
- * is identical everywhere — no more divergent /upgrade screen.
+ * Reads from useSubscription (per-account, RLS-scoped). Clicking opens the
+ * credits panel (foco em comprar créditos avulsos) — o upgrade de plano
+ * continua acessível de lá como ação secundária, não é mais o destino direto.
  */
 
 import { useState } from 'react'
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import dynamic from 'next/dynamic'
 
 const CheckoutModal = dynamic(() => import('@/components/features/billing/CheckoutModal'), { ssr: false })
+const AiCreditsPanel = dynamic(() => import('@/components/features/billing/AiCreditsPanel'), { ssr: false })
 
 interface AiCreditsBadgeProps {
   className?: string
@@ -36,7 +37,8 @@ export function AiCreditsBadge({ className, hideWhenZeroIncluded = false }: AiCr
   const pathname = usePathname() || ''
   const match = pathname.match(/^\/app\/([^/]+)/)
   const orgSlug = match?.[1] ?? ''
-  const [open, setOpen] = useState(false)
+  const [creditsOpen, setCreditsOpen] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   if (loading) return null
   if (hideWhenZeroIncluded && credits.included === 0 && credits.purchased === 0) return null
@@ -49,7 +51,7 @@ export function AiCreditsBadge({ className, hideWhenZeroIncluded = false }: AiCr
     <>
       <button
         type="button"
-        onClick={() => orgSlug && setOpen(true)}
+        onClick={() => orgSlug && setCreditsOpen(true)}
         title={`${credits.available} de ${total} créditos de IA restantes neste mês`}
         className={cn(
           'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
@@ -69,11 +71,21 @@ export function AiCreditsBadge({ className, hideWhenZeroIncluded = false }: AiCr
         {planId === 'free' && <span className="opacity-60">· Free</span>}
       </button>
 
-      {orgSlug && open && (
+      {orgSlug && creditsOpen && (
+        <AiCreditsPanel
+          open={creditsOpen}
+          onClose={() => setCreditsOpen(false)}
+          available={credits.available}
+          total={total}
+          onUpgradeClick={() => { setCreditsOpen(false); setUpgradeOpen(true) }}
+        />
+      )}
+
+      {orgSlug && upgradeOpen && (
         <CheckoutModal
           orgSlug={orgSlug}
-          open={open}
-          onClose={() => setOpen(false)}
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
           initialPlan={nextPlan(planId)}
         />
       )}

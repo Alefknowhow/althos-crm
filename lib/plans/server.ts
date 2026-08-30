@@ -12,7 +12,8 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { AI_CREDIT_COST, getPlanMeta, modelCreditMultiplier, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
+import { getPlanMeta, modelCreditMultiplier, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
+import { resolveActionCreditCost } from '@/lib/plans/pricing'
 
 export interface AccountSubscription {
   accountId: string
@@ -110,8 +111,10 @@ export type ConsumeResult =
  * Debit AI credits for an action against an account's current-period balance.
  * Calls the race-safe SQL function `consume_ai_credits` (SELECT ... FOR UPDATE).
  *
- * `action` resolves its cost from AI_CREDIT_COST unless an explicit `credits`
- * override is given. The base cost is multiplied by the AI model's multiplier
+ * `action` resolves its cost from the live ai_action_cost_catalog table
+ * (lib/plans/pricing.ts, editable in /super-admin/ai-credits without a
+ * deploy) unless an explicit `credits` override is given. The base cost is
+ * multiplied by the AI model's multiplier
  * (Haiku 1× · Sonnet/GPT-4o 3× · Opus 5×), since Althos pays the token bill —
  * pricier models burn credits faster. Fractional costs round UP (DB integers).
  */
@@ -124,8 +127,7 @@ export async function consumeAiCredits(opts: {
   metadata?: Record<string, unknown>
 }): Promise<ConsumeResult> {
   const { accountId, action, model = null, leadId = null, metadata = {} } = opts
-  const baseCost =
-    opts.credits ?? AI_CREDIT_COST[action as AiAction] ?? 1
+  const baseCost = opts.credits ?? (await resolveActionCreditCost(action))
   const multiplier = modelCreditMultiplier(model)
   const cost = Math.max(1, Math.ceil(baseCost * multiplier))
 
