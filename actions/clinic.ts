@@ -182,14 +182,21 @@ export async function deleteClinicRoom(orgSlug: string, id: string) {
 
 // ── Contexto clínico do serviço (event_types) ───────────────────────────────
 
-export type ClinicServiceContext = { specialty_id: string | null; price_cents: number | null; room_id: string | null }
+export type ClinicServiceContext = {
+  specialty_id: string | null
+  price_cents: number | null
+  room_id: string | null
+  /** Desconto padrão pré-aplicado quando o atendimento desse procedimento é
+   *  concluído — editável depois por atendimento individual. */
+  default_discount_cents?: number
+}
 
 export async function getClinicServiceContext(orgSlug: string, eventTypeId: string): Promise<ClinicServiceContext | null> {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_service_context')
-    .select('specialty_id, price_cents, room_id')
+    .select('specialty_id, price_cents, room_id, default_discount_cents')
     .eq('event_type_id', eventTypeId)
     .eq('organization_id', org.id)
     .maybeSingle()
@@ -206,6 +213,7 @@ export async function upsertClinicServiceContext(orgSlug: string, eventTypeId: s
     specialty_id: ctx.specialty_id || null,
     price_cents: ctx.price_cents ?? null,
     room_id: ctx.room_id || null,
+    default_discount_cents: ctx.default_discount_cents ?? 0,
   })
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/agendamentos`)
@@ -326,33 +334,36 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
         .eq('appointment_id', appointmentId)
         .maybeSingle()
       if (!existing) {
-        // Preço default = clinic_service_context.price_cents do tipo de
+        // Preço + desconto default = clinic_service_context do tipo de
         // evento, se cadastrado — o valor real cobrado (com desconto/forma
         // de pagamento) fica editável depois na tela de Atendimentos.
         let priceCents: number | null = null
+        let discountCents = 0
         if (appt.event_type_id) {
           const { data: svcCtx } = await supabase
             .from('clinic_service_context')
-            .select('price_cents')
+            .select('price_cents, default_discount_cents')
             .eq('event_type_id', appt.event_type_id)
             .eq('organization_id', org.id)
             .maybeSingle()
           priceCents = svcCtx?.price_cents ?? null
+          discountCents = svcCtx?.default_discount_cents || 0
         }
+        const netCents = priceCents != null ? Math.max(0, priceCents - discountCents) : null
 
         // Lançamento em Financeiro (Core) — mesmo padrão que
         // clinic_packages.financial_entry_id já usa. Sem isso, um
         // atendimento concluído gerava comissão pro profissional sem
         // nunca ter lançado a receita que a originou.
         let financialEntryId: string | null = null
-        if (priceCents && priceCents > 0) {
+        if (netCents && netCents > 0) {
           const { data: entry } = await supabase
             .from('financial_entries')
             .insert({
               organization_id: org.id,
               tipo: 'receita',
               categoria: 'Atendimento clínico',
-              valor_cents: priceCents,
+              valor_cents: netCents,
               contato_id: appt.lead_id,
               status: 'pendente',
               competencia: (appt.start_time || new Date().toISOString()).slice(0, 10),
@@ -372,22 +383,22 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
             event_type_id: appt.event_type_id || null,
             attended_at: appt.start_time || new Date().toISOString(),
             total_cents: priceCents,
+            discount_cents: discountCents,
             financial_entry_id: financialEntryId,
           })
           .select('id')
           .maybeSingle()
 
-        // Comissão automática — base = preço cadastrado no contexto
-        // clínico do serviço (clinic_service_context.price_cents), se
-        // houver serviço e profissional vinculados.
-        if (attendance && priceCents) {
+        // Comissão automática — base = valor líquido (preço - desconto do
+        // procedimento), se houver serviço e profissional vinculados.
+        if (attendance && netCents) {
           await maybeCreateClinicCommission({
             organizationId: org.id,
             professionalId: ctx?.professional_id || null,
             patientContatoId: appt.lead_id,
             sourceType: 'atendimento',
             sourceId: attendance.id,
-            baseAmountCents: priceCents,
+            baseAmountCents: netCents,
           })
         }
 

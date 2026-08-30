@@ -74,6 +74,7 @@ const DEFAULT_DRAFT = {
   specialty_id: '',
   room_id: '',
   price: '',
+  discount: '',
 }
 
 export default function EventTypesPanel({
@@ -120,6 +121,7 @@ export default function EventTypesPanel({
       specialty_id: ctx?.specialty_id || '',
       room_id: ctx?.room_id || '',
       price: ctx?.price_cents ? String(ctx.price_cents / 100) : '',
+      discount: ctx?.default_discount_cents ? String(ctx.default_discount_cents / 100) : '',
     })
     setDialogOpen(true)
   }
@@ -145,6 +147,7 @@ export default function EventTypesPanel({
           specialty_id: draft.specialty_id || null,
           room_id: draft.room_id || null,
           price_cents: draft.price ? Math.round(parseFloat(draft.price.replace(',', '.')) * 100) : null,
+          default_discount_cents: draft.discount ? Math.round(parseFloat(draft.discount.replace(',', '.')) * 100) : 0,
         })
       }
     }
@@ -345,7 +348,7 @@ export default function EventTypesPanel({
               {isClinic && (
                 <div className="space-y-3 rounded-md border p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contexto clínico</p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <div className="space-y-2">
                       <Label>Especialidade</Label>
                       <select
@@ -374,6 +377,15 @@ export default function EventTypesPanel({
                         type="number" min={0} step="0.01"
                         value={draft.price}
                         onChange={e => setDraft({ ...draft, price: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Desconto padrão (R$)</Label>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        value={draft.discount}
+                        onChange={e => setDraft({ ...draft, discount: e.target.value })}
+                        placeholder="0,00"
                       />
                     </div>
                   </div>
