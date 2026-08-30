@@ -10,8 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink, User } from 'lucide-react'
 import Link from 'next/link'
+import type { ClinicAppointmentContext } from '@/actions/clinic'
 
 export type CalendarAppointment = {
   id: string
@@ -30,7 +31,9 @@ export type CalendarAppointment = {
   leads: { id: string; name: string } | { id: string; name: string }[] | null
 }
 
-type Mode = 'week' | 'month'
+type Mode = 'week' | 'month' | 'day'
+
+type ClinicOption = { id: string; name: string }
 
 type Props = {
   orgSlug: string
@@ -38,6 +41,10 @@ type Props = {
   mode: Mode
   onCancel: (a: CalendarAppointment) => void
   onComplete: (a: CalendarAppointment) => void
+  /** Só usado no modo 'day' (Agenda do dia, uma coluna por profissional) —
+   *  nicho Clínicas. Nos demais modos/nichos ficam vazios/ignorados. */
+  clinicProfessionals?: ClinicOption[]
+  clinicContexts?: Record<string, ClinicAppointmentContext>
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -257,6 +264,163 @@ function WeekView({
   )
 }
 
+/* -------- Day view (agenda do dia, uma coluna por profissional) -------- */
+
+const UNASSIGNED_COL = '__unassigned__'
+
+function DayProfessionalView({
+  day,
+  appointments,
+  professionals,
+  contexts,
+  onSelect,
+}: {
+  day: Date
+  appointments: CalendarAppointment[]
+  professionals: ClinicOption[]
+  contexts: Record<string, ClinicAppointmentContext>
+  onSelect: (a: CalendarAppointment) => void
+}) {
+  const hours = Array.from({ length: WEEK_END_HOUR - WEEK_START_HOUR + 1 }, (_, i) => WEEK_START_HOUR + i)
+
+  // Agenda do dia só existe pra quem tem agendamento no dia OU está cadastrado
+  // ativo — mas colunas vazias (profissional sem nada hoje) ainda aparecem,
+  // pra dar visão de disponibilidade. Um bucket "Sem profissional" aparece só
+  // se existir algum agendamento do dia sem professional_id (dado legado ou
+  // não preenchido), pra não sumir com o agendamento da agenda.
+  const dayAppts = useMemo(
+    () => appointments.filter(a => a.status !== 'canceled' && sameDay(new Date(a.start_time), day)),
+    [appointments, day],
+  )
+  const hasUnassigned = dayAppts.some(a => !contexts[a.id]?.professional_id)
+  const columns = useMemo(
+    () => [...professionals, ...(hasUnassigned ? [{ id: UNASSIGNED_COL, name: 'Sem profissional' }] : [])],
+    [professionals, hasUnassigned],
+  )
+
+  const byColumn = useMemo(() => {
+    const map = new Map<string, CalendarAppointment[]>()
+    for (const a of dayAppts) {
+      const colId = contexts[a.id]?.professional_id || UNASSIGNED_COL
+      if (!map.has(colId)) map.set(colId, [])
+      map.get(colId)!.push(a)
+    }
+    return map
+  }, [dayAppts, contexts])
+
+  if (columns.length === 0) {
+    return (
+      <div className="border rounded-lg bg-card py-16 text-center text-sm text-muted-foreground">
+        Cadastre profissionais em Profissionais para usar a agenda do dia.
+      </div>
+    )
+  }
+
+  const gridCols = `60px repeat(${columns.length}, minmax(160px, 1fr))`
+
+  return (
+    <div className="border rounded-lg overflow-x-auto bg-card">
+      <div className="min-w-max">
+        {/* Column headers */}
+        <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
+          <div /> {/* gutter */}
+          {columns.map(col => (
+            <div key={col.id} className="px-3 py-2 text-center border-l">
+              <div className="flex items-center justify-center gap-1.5 text-sm font-semibold truncate">
+                <User className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                {col.name}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {(byColumn.get(col.id) || []).length} agendamento{(byColumn.get(col.id) || []).length === 1 ? '' : 's'}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time grid */}
+        <div className="grid relative" style={{ gridTemplateColumns: gridCols }}>
+          <div>
+            {hours.map(h => (
+              <div
+                key={h}
+                className="text-[10px] text-muted-foreground text-right pr-2 border-b border-border/40"
+                style={{ height: HOUR_HEIGHT_PX }}
+              >
+                <span className="relative -top-1.5">{String(h).padStart(2, '0')}:00</span>
+              </div>
+            ))}
+          </div>
+
+          {columns.map(col => {
+            const appts = byColumn.get(col.id) || []
+            return (
+              <div key={col.id} className="relative border-l" style={{ height: hours.length * HOUR_HEIGHT_PX }}>
+                {hours.map(h => (
+                  <div key={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT_PX }} />
+                ))}
+
+                {appts.map(a => {
+                  const start = new Date(a.start_time)
+                  const end = new Date(a.end_time)
+                  const startHour = start.getHours() + start.getMinutes() / 60
+                  const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+
+                  const visibleTop = Math.max(0, startHour - WEEK_START_HOUR) * HOUR_HEIGHT_PX
+                  const visibleHeight = Math.max(22, durationHours * HOUR_HEIGHT_PX - 2)
+
+                  if (startHour >= WEEK_END_HOUR + 1) return null
+                  if (startHour + durationHours <= WEEK_START_HOUR) return null
+
+                  const et = pickFirst(a.event_types)
+                  const color = et?.color || '#3b82f6'
+                  const layout: 'tiny' | 'short' | 'tall' =
+                    visibleHeight < 32 ? 'tiny' : visibleHeight < 56 ? 'short' : 'tall'
+                  const paddingCls = layout === 'tiny' ? 'px-1.5 py-0.5' : 'p-1.5'
+                  const textCls = layout === 'tiny' ? 'text-[10px]' : 'text-[11px]'
+
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => onSelect(a)}
+                      className={`absolute left-1 right-1 rounded text-left leading-tight overflow-hidden border hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(a.status)}`}
+                      style={{
+                        top: visibleTop,
+                        height: visibleHeight,
+                        backgroundColor: `${color}22`,
+                        borderLeft: `3px solid ${color}`,
+                      }}
+                      title={`${a.guest_name} — ${et?.name || ''} (${fmtTime(a.start_time)} - ${fmtTime(a.end_time)})`}
+                    >
+                      {layout === 'tiny' ? (
+                        <div className="flex items-baseline gap-1 truncate">
+                          <span className="text-muted-foreground tabular-nums shrink-0">{fmtTime(a.start_time)}</span>
+                          <span className="font-semibold truncate">{a.guest_name}</span>
+                        </div>
+                      ) : layout === 'short' ? (
+                        <>
+                          <div className="font-semibold truncate">{a.guest_name}</div>
+                          <div className="text-muted-foreground tabular-nums">{fmtTime(a.start_time)}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-semibold truncate">{a.guest_name}</div>
+                          <div className="text-muted-foreground truncate">{et?.name || ''}</div>
+                          <div className="text-muted-foreground tabular-nums">{fmtTime(a.start_time)}</div>
+                        </>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* -------- Month view -------- */
 
 function MonthView({
@@ -377,6 +541,8 @@ export default function AppointmentsCalendar({
   mode,
   onCancel,
   onComplete,
+  clinicProfessionals = [],
+  clinicContexts = {},
 }: Props) {
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<CalendarAppointment | null>(null)
@@ -387,6 +553,11 @@ export default function AppointmentsCalendar({
       const end = addDays(start, 6)
       return { start, end }
     }
+    if (mode === 'day') {
+      const start = new Date(cursor)
+      start.setHours(0, 0, 0, 0)
+      return { start, end: start }
+    }
     const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
     const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
     return { start, end }
@@ -395,6 +566,7 @@ export default function AppointmentsCalendar({
   function go(direction: number) {
     const next = new Date(cursor)
     if (mode === 'week') next.setDate(next.getDate() + 7 * direction)
+    else if (mode === 'day') next.setDate(next.getDate() + direction)
     else next.setMonth(next.getMonth() + direction)
     setCursor(next)
   }
@@ -416,6 +588,9 @@ export default function AppointmentsCalendar({
         return `${s.getDate()} ${MONTH_NAMES[s.getMonth()].slice(0, 3)} – ${e.getDate()} ${MONTH_NAMES[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`
       }
       return `${s.getDate()} ${MONTH_NAMES[s.getMonth()].slice(0, 3)} ${s.getFullYear()} – ${e.getDate()} ${MONTH_NAMES[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`
+    }
+    if (mode === 'day') {
+      return `${DAY_NAMES_LONG[range.start.getDay()]}, ${range.start.getDate()} de ${MONTH_NAMES[range.start.getMonth()]} ${range.start.getFullYear()}`
     }
     return `${MONTH_NAMES[range.start.getMonth()]} ${range.start.getFullYear()}`
   }, [range, mode])
@@ -446,6 +621,14 @@ export default function AppointmentsCalendar({
           orgSlug={orgSlug}
           weekStart={range.start}
           appointments={appointments}
+          onSelect={setSelected}
+        />
+      ) : mode === 'day' ? (
+        <DayProfessionalView
+          day={range.start}
+          appointments={appointments}
+          professionals={clinicProfessionals}
+          contexts={clinicContexts}
           onSelect={setSelected}
         />
       ) : (

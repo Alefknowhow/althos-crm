@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Calendar, ExternalLink, X, Check, CalendarDays, CalendarRange, List as ListIcon } from 'lucide-react'
+import { Calendar, ExternalLink, X, Check, CalendarDays, CalendarRange, List as ListIcon, Users } from 'lucide-react'
 import { cancelAppointment, markAppointmentCompleted } from '@/actions/appointments'
 import { setClinicAppointmentStatus, type ClinicAppointmentContext } from '@/actions/clinic'
 import { CLINIC_STATUSES, CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
@@ -177,7 +177,7 @@ export default function AppointmentsListPanel({
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
-  const [view, setView] = useState<'week' | 'month' | 'list'>('week')
+  const [view, setView] = useState<'week' | 'month' | 'list' | 'day'>('week')
   const professionalNameById = new Map(clinicProfessionals.map(p => [p.id, p.name]))
 
   async function handleClinicStatusChange(a: Appointment, status: ClinicStatus) {
@@ -270,6 +270,19 @@ export default function AppointmentsListPanel({
       {/* Top bar: view toggle + new appointment */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 w-fit">
+          {isClinic && clinicProfessionals.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setView('day')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md inline-flex items-center gap-1.5 transition-colors ${
+                view === 'day'
+                  ? 'bg-background   text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" /> Agenda do dia
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setView('week')}
@@ -330,6 +343,8 @@ export default function AppointmentsListPanel({
           mode={view}
           onCancel={handleCancel}
           onComplete={handleComplete}
+          clinicProfessionals={clinicProfessionals}
+          clinicContexts={clinicContexts}
         />
       )}
     </div>
