@@ -182,12 +182,12 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: 'consultar_clientes_inativos',
     description:
-      'Vertical Viagens: lista clientes sem nova compra há N dias, com o detalhe da ÚLTIMA venda (valor, destino, mês, comissão) — a mesma base de Dashboard > Clientes. Use para "clientes sem comprar há X dias", "clientes inativos", "quem não compra há mais tempo", especialmente quando o usuário também filtrar por valor mínimo da última compra (ex.: "e que gastaram mais de R$500").',
+      'Lista clientes sem nova venda/atendimento há N dias, com o detalhe da ÚLTIMA transação (valor + data, e destino/serviço/imóvel quando aplicável) — mesma base de Dashboard > Clientes, adaptada ao nicho da org (Viagens: reservas; Clínicas: atendimentos; Imobiliárias: negociações fechadas; demais: vendas). Use SEMPRE que a pergunta combinar "dias sem comprar/atender"/"clientes inativos"/"não volta há quanto tempo" com um filtro de valor (ex.: "e que gastaram mais de R$500").',
     input_schema: {
       type: 'object',
       properties: {
-        dias_sem_comprar: { type: 'integer', description: 'Mínimo de dias desde a última compra. Padrão: 30.' },
-        valor_minimo_ultima_compra: { type: 'number', description: 'Valor mínimo (em R$) da ÚLTIMA compra do cliente, pra filtrar só quem tinha ticket relevante. Opcional.' },
+        dias_sem_comprar: { type: 'integer', description: 'Mínimo de dias desde a última venda/atendimento. Padrão: 30.' },
+        valor_minimo_ultima_compra: { type: 'number', description: 'Valor mínimo (em R$) da ÚLTIMA transação do cliente, pra filtrar só quem tinha ticket relevante. Opcional.' },
       },
     },
   },
@@ -269,7 +269,7 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
  * negócio, tanto na lista enviada ao modelo (menos ruído, roteamento mais
  * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
 
-const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios', 'consultar_clientes_inativos'])
+const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios'])
 const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos', 'consultar_estoque'])
 const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
 const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
@@ -281,6 +281,14 @@ export function copilotNicheFor(niche: string | null | undefined): CopilotNiche 
   if (isClinicNiche(niche)) return 'clinic'
   if (isRealEstateNiche(niche)) return 'real_estate'
   return 'generic'
+}
+
+/** Resolve o CopilotNiche da org a partir do orgId — usado por tools que
+ *  precisam ramificar por nicho mas só recebem AnalyticsContext (sem o
+ *  niche já resolvido, ao contrário do prompt/lista de tools do route.ts). */
+async function resolveOrgNicheForTools(ctx: AnalyticsContext): Promise<CopilotNiche> {
+  const { data } = await ctx.supabase.from('organizations').select('niche').eq('id', ctx.orgId).maybeSingle()
+  return copilotNicheFor((data as any)?.niche)
 }
 
 /** Tools genéricas (todo nicho) + só o conjunto específico do nicho da org. */
@@ -1014,42 +1022,133 @@ async function queryBlocks(_input: Record<string, any>, ctx: AnalyticsContext): 
   }
 }
 
+type LastTransaction = { contato_id: string; amount_cents: number; date: string; extra: string | null }
+
+/** Nicho Viagens: reservas fechadas (travel_sales). */
+async function lastTransactionsTravel(ctx: AnalyticsContext): Promise<LastTransaction[]> {
+  const { data } = await ctx.supabase
+    .from('travel_sales')
+    .select('contato_id, destination, total_cents, created_at, status')
+    .eq('organization_id', ctx.orgId)
+    .neq('status', 'cancelado')
+    .not('contato_id', 'is', null)
+  const byContato = new Map<string, LastTransaction>()
+  for (const r of (data as any[]) || []) {
+    const prev = byContato.get(r.contato_id)
+    if (!prev || r.created_at > prev.date) {
+      byContato.set(r.contato_id, { contato_id: r.contato_id, amount_cents: r.total_cents || 0, date: r.created_at, extra: r.destination || null })
+    }
+  }
+  return Array.from(byContato.values())
+}
+
+/** Nicho Clínicas: atendimentos (não é venda genérica — usa clinic_attendances). */
+async function lastTransactionsClinic(ctx: AnalyticsContext): Promise<LastTransaction[]> {
+  const { data } = await ctx.supabase
+    .from('clinic_attendances')
+    .select('patient_contato_id, total_cents, discount_cents, attended_at, event_types(name)')
+    .eq('organization_id', ctx.orgId)
+    .not('patient_contato_id', 'is', null)
+  const byContato = new Map<string, LastTransaction>()
+  for (const r of (data as any[]) || []) {
+    const prev = byContato.get(r.patient_contato_id)
+    if (!prev || r.attended_at > prev.date) {
+      const net = Math.max(0, (r.total_cents || 0) - (r.discount_cents || 0))
+      byContato.set(r.patient_contato_id, { contato_id: r.patient_contato_id, amount_cents: net, date: r.attended_at, extra: r.event_types?.name || null })
+    }
+  }
+  return Array.from(byContato.values())
+}
+
+/** Nicho Imobiliárias: negociações fechadas (property_deals). */
+async function lastTransactionsRealEstate(ctx: AnalyticsContext): Promise<LastTransaction[]> {
+  const { data } = await ctx.supabase
+    .from('property_deals')
+    .select('contato_id, final_price_cents, monthly_rent_cents, closed_at, status, properties(title)')
+    .eq('organization_id', ctx.orgId)
+    .neq('status', 'cancelado')
+    .not('contato_id', 'is', null)
+  const byContato = new Map<string, LastTransaction>()
+  for (const r of (data as any[]) || []) {
+    const date = r.closed_at || ''
+    if (!date) continue
+    const prev = byContato.get(r.contato_id)
+    if (!prev || date > prev.date) {
+      byContato.set(r.contato_id, { contato_id: r.contato_id, amount_cents: r.final_price_cents || r.monthly_rent_cents || 0, date, extra: r.properties?.title || null })
+    }
+  }
+  return Array.from(byContato.values())
+}
+
+/** Demais nichos: vendas genéricas (sales). */
+async function lastTransactionsGeneric(ctx: AnalyticsContext): Promise<LastTransaction[]> {
+  const { data } = await ctx.supabase
+    .from('sales')
+    .select('contato_id, amount_cents, sale_date, status, products(name)')
+    .eq('organization_id', ctx.orgId)
+    .neq('status', 'cancelled')
+    .not('contato_id', 'is', null)
+  const byContato = new Map<string, LastTransaction>()
+  for (const r of (data as any[]) || []) {
+    const prev = byContato.get(r.contato_id)
+    if (!prev || r.sale_date > prev.date) {
+      byContato.set(r.contato_id, { contato_id: r.contato_id, amount_cents: r.amount_cents || 0, date: r.sale_date, extra: r.products?.name || null })
+    }
+  }
+  return Array.from(byContato.values())
+}
+
 /**
- * Reaproveita a MESMA base de Dashboard > Clientes (getRecompraRanking,
- * actions/dashboard-tabs.ts) — ranking de clientes por dias sem comprar,
- * com o valor/destino da última venda — em vez de reinventar a consulta.
- * Permite ao copiloto responder perguntas combinando "tempo sem comprar" +
- * "valor da última compra", que consultar_top_leads não cobre (só olha
- * contatos em geral, não vendas fechadas).
+ * Clientes sem nova venda/atendimento há N dias, com o detalhe da ÚLTIMA
+ * transação — mesmo conceito de Dashboard > Clientes (RecompraTable), mas
+ * generalizado pra qualquer nicho: cada um tem sua própria fonte de "venda"
+ * (travel_sales, clinic_attendances, property_deals, ou o `sales` genérico),
+ * já que não existe uma tabela única de vendas no CRM. Cobre o que
+ * consultar_top_leads não cobre: cruzar "tempo sem comprar" com "valor da
+ * última compra" — top_leads só olha contatos em geral, não transações reais.
  */
 async function queryInactiveCustomers(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
-  const { getRecompraRanking } = await import('@/actions/dashboard-tabs')
   const diasMin = Number(input.dias_sem_comprar) || 30
   const valorMinimoCents = input.valor_minimo_ultima_compra ? Math.round(Number(input.valor_minimo_ultima_compra) * 100) : 0
 
-  const ranking = await getRecompraRanking(ctx.orgId, 500)
-  if (ranking === null) {
-    return { summary: 'Esse indicador (clientes por tempo sem comprar) só existe pra org do nicho de viagens.', view: { type: 'none' } }
+  const niche = await resolveOrgNicheForTools(ctx)
+  const transactions = niche === 'travel'
+    ? await lastTransactionsTravel(ctx)
+    : niche === 'clinic'
+      ? await lastTransactionsClinic(ctx)
+      : niche === 'real_estate'
+        ? await lastTransactionsRealEstate(ctx)
+        : await lastTransactionsGeneric(ctx)
+
+  if (transactions.length === 0) {
+    return { summary: 'Nenhuma venda/atendimento com cliente vinculado encontrado ainda.', view: { type: 'none' } }
   }
 
-  const filtered = ranking.filter(r => r.days_since_last_sale >= diasMin && r.total_cents >= valorMinimoCents)
-  if (filtered.length === 0) {
+  const { data: contatos } = await ctx.supabase
+    .from('contatos')
+    .select('id, name')
+    .eq('organization_id', ctx.orgId)
+    .in('id', transactions.map(t => t.contato_id))
+  const nameById = new Map<string, string>((contatos || []).map((c: any) => [c.id, c.name]))
+
+  const now = Date.now()
+  const rows = transactions
+    .map(t => ({ ...t, name: nameById.get(t.contato_id) || 'Cliente removido', days: Math.floor((now - new Date(t.date).getTime()) / 86_400_000) }))
+    .filter(r => r.days >= diasMin && r.amount_cents >= valorMinimoCents)
+    .sort((a, b) => b.days - a.days)
+
+  if (rows.length === 0) {
     return { summary: `Nenhum cliente encontrado com ${diasMin}+ dias sem comprar${valorMinimoCents > 0 ? ` e última compra acima de ${fmtCurrency(valorMinimoCents)}` : ''}.`, view: { type: 'none' } }
   }
 
-  const rows = filtered.slice(0, 30)
+  const top = rows.slice(0, 30)
+  const label = niche === 'clinic' ? 'atender' : 'comprar'
   return {
-    summary: `${filtered.length} clientes com ${diasMin}+ dias sem comprar${valorMinimoCents > 0 ? ` e última compra acima de ${fmtCurrency(valorMinimoCents)}` : ''}. O mais antigo: ${rows[0].name}, ${rows[0].days_since_last_sale} dias, última compra de ${fmtCurrency(rows[0].total_cents)}${rows[0].destination ? ` para ${rows[0].destination}` : ''}.`,
+    summary: `${rows.length} clientes com ${diasMin}+ dias sem ${label}${valorMinimoCents > 0 ? ` e última compra acima de ${fmtCurrency(valorMinimoCents)}` : ''}. O mais antigo: ${top[0].name}, ${top[0].days} dias, última transação de ${fmtCurrency(top[0].amount_cents)}${top[0].extra ? ` (${top[0].extra})` : ''}.`,
     view: {
       type: 'table',
-      columns: ['Cliente', 'Dias sem comprar', 'Última compra', 'Destino', 'Data'],
-      rows: rows.map(r => [
-        r.name,
-        String(r.days_since_last_sale),
-        fmtCurrency(r.total_cents),
-        r.destination || '—',
-        new Date(r.last_sale_date).toLocaleDateString('pt-BR'),
-      ]),
+      columns: ['Cliente', 'Dias sem comprar', 'Última transação', 'Detalhe', 'Data'],
+      rows: top.map(r => [r.name, String(r.days), fmtCurrency(r.amount_cents), r.extra || '—', new Date(r.date).toLocaleDateString('pt-BR')]),
     },
   }
 }
