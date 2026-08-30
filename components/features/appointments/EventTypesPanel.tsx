@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,10 @@ import {
   deleteEventType,
 } from '@/actions/appointments'
 import { upsertClinicServiceContext, type ClinicServiceContext } from '@/actions/clinic'
+import {
+  listClinicSupplyRecipe, upsertClinicSupplyRecipe, deleteClinicSupplyRecipe,
+  type ClinicSupplyRecipeRow,
+} from '@/actions/clinic-estoque'
 
 type EventType = {
   id: string
@@ -60,6 +64,7 @@ type Props = {
   clinicRooms?: ClinicOption[]
   clinicProfessionals?: ClinicOption[]
   clinicServiceContexts?: Record<string, ClinicServiceContext>
+  clinicSupplies?: ClinicOption[]
 }
 
 const DEFAULT_DRAFT = {
@@ -82,6 +87,7 @@ const DEFAULT_DRAFT = {
 export default function EventTypesPanel({
   orgSlug, eventTypes, pipelines, stages,
   isClinic = false, clinicSpecialties = [], clinicRooms = [], clinicProfessionals = [], clinicServiceContexts = {},
+  clinicSupplies = [],
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -407,6 +413,10 @@ export default function EventTypesPanel({
                 </div>
               )}
 
+              {isClinic && editingId && clinicSupplies.length > 0 && (
+                <SupplyRecipeEditor orgSlug={orgSlug} eventTypeId={editingId} supplies={clinicSupplies} />
+              )}
+
               <DialogFooter>
                 <Button type="submit" disabled={saving || draft.name.length < 2}>
                   {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
@@ -509,6 +519,74 @@ export default function EventTypesPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+/**
+ * Receita de insumos por procedimento (Estoque, exclusivo Clínicas) — quanto
+ * de cada insumo esse procedimento consome por uso. Salvo direto ao
+ * adicionar/remover linha (sem depender do "Salvar" do procedimento), já
+ * que a receita vive numa tabela própria (clinic_supply_recipe).
+ */
+function SupplyRecipeEditor({ orgSlug, eventTypeId, supplies }: { orgSlug: string; eventTypeId: string; supplies: ClinicOption[] }) {
+  const [rows, setRows] = useState<ClinicSupplyRecipeRow[]>([])
+  const [newSupplyId, setNewSupplyId] = useState('')
+  const [newQty, setNewQty] = useState('')
+  const [, startTransition] = useTransition()
+
+  useEffect(() => {
+    listClinicSupplyRecipe(orgSlug, eventTypeId).then(setRows)
+  }, [orgSlug, eventTypeId])
+
+  function handleAdd() {
+    if (!newSupplyId || !newQty || Number(newQty) <= 0) return
+    startTransition(async () => {
+      const res = await upsertClinicSupplyRecipe(orgSlug, eventTypeId, newSupplyId, Number(newQty))
+      if (res.ok) {
+        toast.success('Insumo vinculado ao procedimento')
+        setNewSupplyId('')
+        setNewQty('')
+        listClinicSupplyRecipe(orgSlug, eventTypeId).then(setRows)
+      } else toast.error(res.error)
+    })
+  }
+
+  function handleRemove(id: string) {
+    startTransition(async () => {
+      const res = await deleteClinicSupplyRecipe(orgSlug, id)
+      if (res.ok) setRows(r => r.filter(row => row.id !== id))
+      else toast.error(res.error)
+    })
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Insumos consumidos (baixa automática ao finalizar atendimento)</p>
+      {rows.length > 0 && (
+        <div className="space-y-1.5">
+          {rows.map(r => (
+            <div key={r.id} className="flex items-center justify-between text-sm rounded-md border px-2.5 py-1.5">
+              <span>{r.supply_name} <span className="text-muted-foreground">— {r.quantity_per_use} {r.unit} por uso</span></span>
+              <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => handleRemove(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs">Insumo</Label>
+          <select className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm" value={newSupplyId} onChange={e => setNewSupplyId(e.target.value)}>
+            <option value="">Selecione...</option>
+            {supplies.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+        <div className="w-28 space-y-1">
+          <Label className="text-xs">Qtd. por uso</Label>
+          <Input type="number" min={0} step="0.001" value={newQty} onChange={e => setNewQty(e.target.value)} />
+        </div>
+        <Button type="button" variant="outline" onClick={handleAdd}>Adicionar</Button>
+      </div>
     </div>
   )
 }

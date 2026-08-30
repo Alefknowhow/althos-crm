@@ -48,6 +48,7 @@ import {
   Building2,
   ShieldAlert,
   Target,
+  Boxes,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -387,6 +388,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <HeartPulse className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Prontuário</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('estoque_clinica') && isModuleEnabled(org.niche, 'estoque_clinica') && (
+          <SidebarNavLink href={`${base}/estoque`}>
+            <span className="flex items-center gap-2.5">
+              <Boxes className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Estoque</span>
             </span>
           </SidebarNavLink>
         )}

@@ -50,6 +50,7 @@ type Props = {
   clinicServiceContexts?: Record<string, ClinicServiceContext>
   clinicAppointmentContexts?: Record<string, ClinicAppointmentContext>
   clinicReminderSettings?: ClinicReminderSettings | null
+  clinicSupplies?: ClinicOption[]
 }
 
 export default function AppointmentsAdminTabs(props: Props) {
@@ -85,6 +86,7 @@ export default function AppointmentsAdminTabs(props: Props) {
           clinicRooms={props.clinicRooms}
           clinicProfessionals={props.clinicProfessionals}
           clinicServiceContexts={props.clinicServiceContexts}
+          clinicSupplies={props.clinicSupplies}
         />
       </TabsContent>
 

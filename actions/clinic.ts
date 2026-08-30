@@ -6,6 +6,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ClinicStatus } from '@/lib/clinic-constants'
 import { maybeCreateClinicCommission } from '@/actions/clinic-commissions'
+import { consumeSupplyForAttendance } from '@/actions/clinic-estoque'
 import { inngest } from '@/lib/inngest/client'
 
 /**
@@ -437,7 +438,19 @@ export async function setClinicAppointmentStatus(
           })
         }
 
+        // Baixa automática de insumos (Estoque) — consome a receita
+        // cadastrada em clinic_supply_recipe para o procedimento, se
+        // houver. Sem receita cadastrada, não faz nada (opcional por
+        // procedimento).
         if (attendance) {
+          await consumeSupplyForAttendance({
+            organizationId: org.id,
+            eventTypeId: appt.event_type_id || null,
+            attendanceId: attendance.id,
+            professionalId: ctx?.professional_id || null,
+            patientContatoId: appt.lead_id,
+          })
+
           await inngest.send({
             name: 'clinic.attendance.completed',
             data: { orgId: org.id, leadId: appt.lead_id, attendanceId: attendance.id },

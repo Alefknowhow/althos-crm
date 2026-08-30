@@ -14,7 +14,7 @@ export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
   | 'cotacoes' | 'roteirista' | 'ofertas' | 'embarques' | 'bloqueios' | 'reservas' | 'documentos_viagem'
   // Módulos específicos da vertical de Clínicas.
-  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica' | 'comissoes_clinica' | 'retornos_clinica' | 'prontuario_clinica'
+  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica' | 'comissoes_clinica' | 'retornos_clinica' | 'prontuario_clinica' | 'estoque_clinica'
   // Módulos específicos da vertical de Imobiliárias.
   | 'imoveis'
   // Módulos específicos da vertical de Seguros.
@@ -28,7 +28,7 @@ export type ModuleKey =
   | 'catalogo' | 'vendas' | 'agendamentos'
 
 const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarques', 'bloqueios', 'reservas', 'documentos_viagem']
-const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica', 'prontuario_clinica']
+const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica', 'prontuario_clinica', 'estoque_clinica']
 // Prontuário existe no banco/código mas fica com visibilidade travada em
 // false até uma decisão de compliance — ver docs/audit/clinicas-lgpd.md.
 // O log de acesso (clinic_data_access_log) já foi implementado (item 1 da

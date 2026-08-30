@@ -13,6 +13,7 @@ import {
   listClinicSpecialties, listClinicProfessionals, listClinicRooms, listClinicAppointmentContexts,
   getClinicReminderSettings, type ClinicReminderSettings,
 } from '@/actions/clinic'
+import { listClinicSupplies } from '@/actions/clinic-estoque'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,15 +40,17 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
   let clinicAppointmentContexts: Record<string, any> = {}
   let clinicServiceContexts: Record<string, any> = {}
   let reminderSettings: ClinicReminderSettings | null = null
+  let clinicSupplies: { id: string; name: string }[] = []
   if (isClinic) {
     const allAppointmentIds = [...upcoming, ...past].map((a: any) => a.id)
-    const [specialties, professionals, rooms, apptContexts, svcContextsRows, reminder] = await Promise.all([
+    const [specialties, professionals, rooms, apptContexts, svcContextsRows, reminder, supplies] = await Promise.all([
       listClinicSpecialties(params.orgSlug),
       listClinicProfessionals(params.orgSlug),
       listClinicRooms(params.orgSlug),
       listClinicAppointmentContexts(params.orgSlug, allAppointmentIds),
       supabase.from('clinic_service_context').select('event_type_id, specialty_id, price_cents, room_id, default_discount_cents, professional_id').eq('organization_id', org.id),
       getClinicReminderSettings(params.orgSlug),
+      listClinicSupplies(params.orgSlug),
     ])
     clinicSpecialties = specialties.filter(s => s.active)
     clinicProfessionals = professionals.filter(p => p.active)
@@ -55,6 +58,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
     clinicAppointmentContexts = apptContexts
     clinicServiceContexts = Object.fromEntries((svcContextsRows.data || []).map((r: any) => [r.event_type_id, r]))
     reminderSettings = reminder
+    clinicSupplies = supplies.filter(s => s.active).map(s => ({ id: s.id, name: s.name }))
   }
 
   const pipelineIds = (pipelinesForStages.data || []).map(p => p.id)
@@ -89,6 +93,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
         clinicServiceContexts={clinicServiceContexts}
         clinicAppointmentContexts={clinicAppointmentContexts}
         clinicReminderSettings={reminderSettings}
+        clinicSupplies={clinicSupplies}
       />
     </div>
   )
