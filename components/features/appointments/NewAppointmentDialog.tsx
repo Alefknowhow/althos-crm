@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,15 @@ type EventType = {
 
 type ClinicOption = { id: string; name: string }
 
+export type AppointmentPrefill = {
+  date?: string // YYYY-MM-DD
+  time?: string // HH:MM
+  professionalId?: string | null
+  guestName?: string
+  guestEmail?: string
+  guestPhone?: string | null
+}
+
 type Props = {
   orgSlug: string
   eventTypes: EventType[]
@@ -37,6 +46,15 @@ type Props = {
   isClinic?: boolean
   clinicProfessionals?: ClinicOption[]
   clinicRooms?: ClinicOption[]
+  /** Modo controlado — usado pelo duplo clique no calendário e por "Agendar
+   *  retorno" no popup de detalhe, que abrem o diálogo programaticamente
+   *  (sem o botão "+ Novo agendamento") já com data/hora/paciente
+   *  preenchidos. Sem esses props, o componente funciona como antes
+   *  (botão próprio, estado interno). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  prefill?: AppointmentPrefill | null
+  hideTrigger?: boolean
 }
 
 function todayLocal(): string {
@@ -49,10 +67,16 @@ function todayLocal(): string {
   return `${y}-${m}-${day}`
 }
 
-export default function NewAppointmentDialog({ orgSlug, eventTypes, isClinic = false, clinicProfessionals = [], clinicRooms = [] }: Props) {
+export default function NewAppointmentDialog({
+  orgSlug, eventTypes, isClinic = false, clinicProfessionals = [], clinicRooms = [],
+  open: openProp, onOpenChange: onOpenChangeProp, prefill, hideTrigger = false,
+}: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
-  const [open, setOpen] = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : openState
+  const setOpen = isControlled ? (onOpenChangeProp || (() => {})) : setOpenState
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
@@ -68,6 +92,24 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes, isClinic = f
     professionalId: '',
     roomId: '',
   })
+
+  // Modo controlado: toda vez que o diálogo abre com um prefill novo (duplo
+  // clique num horário, ou "Agendar retorno" a partir de um agendamento
+  // existente), reseta o form com os valores certos em vez de manter o que
+  // sobrou da última abertura.
+  useEffect(() => {
+    if (!open || !prefill) return
+    setForm(f => ({
+      ...f,
+      date: prefill.date ?? f.date,
+      time: prefill.time ?? f.time,
+      professionalId: prefill.professionalId ?? f.professionalId,
+      name: prefill.guestName ?? f.name,
+      email: prefill.guestEmail ?? f.email,
+      phone: prefill.guestPhone ?? f.phone,
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefill])
 
   function onEventTypeChange(id: string) {
     const et = eventTypes.find(e => e.id === id)
@@ -121,7 +163,7 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes, isClinic = f
     }
   }
 
-  if (eventTypes.length === 0) {
+  if (eventTypes.length === 0 && !hideTrigger) {
     return (
       <Button disabled title="Crie um tipo de evento antes de marcar agendamentos">
         <Plus className="w-4 h-4 mr-1" /> Novo agendamento
@@ -131,11 +173,13 @@ export default function NewAppointmentDialog({ orgSlug, eventTypes, isClinic = f
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-1" /> Novo agendamento
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="w-4 h-4 mr-1" /> Novo agendamento
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Novo agendamento manual</DialogTitle>

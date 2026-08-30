@@ -10,9 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink, User } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink, User, CalendarPlus, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { ClinicAppointmentContext } from '@/actions/clinic'
+import { CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
 
 export type CalendarAppointment = {
   id: string
@@ -46,11 +47,30 @@ type Props = {
    *  nicho Clínicas. Nos demais modos/nichos ficam vazios/ignorados. */
   clinicProfessionals?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
+  /** Duplo clique num horário vazio (Semana/Dia) — abre o diálogo de novo
+   *  agendamento prefilled. Sem isso os horários vazios não são clicáveis. */
+  onSlotDoubleClick?: (date: Date, time: string, professionalId?: string) => void
   /** Horários configurados em "Horários disponíveis" — usados pra restringir
    *  Semana/Dia aos dias da semana e à faixa de horário realmente atendidos,
    *  em vez de sempre mostrar todos os 7 dias e a janela fixa 7h–21h. Sem
    *  nenhum horário configurado ainda, cai no fallback (todos os dias, 7–21h). */
   availabilities?: Availability[]
+  /** Nicho Clínicas — habilita os botões rápidos de avançar estágio
+   *  (Confirmar/Iniciar atendimento/Concluir/Não compareceu) e "Agendar
+   *  retorno" no popup de detalhe do agendamento. */
+  isClinic?: boolean
+  onClinicStatusChange?: (a: CalendarAppointment, status: ClinicStatus) => void
+  onScheduleReturn?: (a: CalendarAppointment) => void
+}
+
+// Progressão padrão de status usada por plataformas de agenda consolidadas
+// (Doctoralia, Boulevard etc.): um botão primário "próximo passo" por
+// status, em vez de expor a máquina de estados inteira de uma vez.
+const NEXT_CLINIC_STATUS: Partial<Record<ClinicStatus, ClinicStatus>> = {
+  aguardando_confirmacao: 'confirmado',
+  agendado: 'confirmado',
+  confirmado: 'em_atendimento',
+  em_atendimento: 'realizado',
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -204,6 +224,7 @@ function WeekView({
   onSelect,
   hourRange,
   availableDays,
+  onSlotDoubleClick,
 }: {
   orgSlug: string
   weekStart: Date
@@ -211,6 +232,7 @@ function WeekView({
   onSelect: (a: CalendarAppointment) => void
   hourRange: { startHour: number; endHour: number }
   availableDays: Set<number> | null
+  onSlotDoubleClick?: (date: Date, time: string) => void
 }) {
   const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const days = availableDays ? allDays.filter(d => availableDays.has(d.getDay())) : allDays
@@ -298,14 +320,37 @@ function WeekView({
               className="relative border-l"
               style={{ height: hours.length * HOUR_HEIGHT_PX }}
             >
-              {/* Hour divider lines */}
-              {hours.map(h => (
-                <div
-                  key={h}
-                  className="border-b border-border/40"
-                  style={{ height: HOUR_HEIGHT_PX }}
-                />
-              ))}
+              {/* Hour divider lines — cada hora se divide em 2 faixas de 30min
+                  clicáveis (duplo clique cria um agendamento nesse
+                  dia/horário, igual ao padrão já usado em Tarefas). */}
+              {onSlotDoubleClick ? (
+                hours.map(h => (
+                  <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/40">
+                    <button
+                      type="button"
+                      onDoubleClick={() => onSlotDoubleClick(d, `${String(h).padStart(2, '0')}:00`)}
+                      title="Duplo clique para criar um agendamento"
+                      className="block w-full text-left hover:bg-primary/5"
+                      style={{ height: HOUR_HEIGHT_PX / 2 }}
+                    />
+                    <button
+                      type="button"
+                      onDoubleClick={() => onSlotDoubleClick(d, `${String(h).padStart(2, '0')}:30`)}
+                      title="Duplo clique para criar um agendamento"
+                      className="block w-full text-left hover:bg-primary/5"
+                      style={{ height: HOUR_HEIGHT_PX / 2 }}
+                    />
+                  </div>
+                ))
+              ) : (
+                hours.map(h => (
+                  <div
+                    key={h}
+                    className="border-b border-border/40"
+                    style={{ height: HOUR_HEIGHT_PX }}
+                  />
+                ))
+              )}
 
               {/* Appointment blocks */}
               {appts.map(a => {
@@ -398,6 +443,7 @@ function DayProfessionalView({
   contexts,
   onSelect,
   hourRange,
+  onSlotDoubleClick,
 }: {
   day: Date
   appointments: CalendarAppointment[]
@@ -405,6 +451,7 @@ function DayProfessionalView({
   contexts: Record<string, ClinicAppointmentContext>
   onSelect: (a: CalendarAppointment) => void
   hourRange: { startHour: number; endHour: number }
+  onSlotDoubleClick?: (date: Date, time: string, professionalId?: string) => void
 }) {
   const hours = Array.from({ length: hourRange.endHour - hourRange.startHour + 1 }, (_, i) => hourRange.startHour + i)
 
@@ -481,9 +528,30 @@ function DayProfessionalView({
             const overlapLayout = computeOverlapLayout(appts)
             return (
               <div key={col.id} className="relative border-l" style={{ height: hours.length * HOUR_HEIGHT_PX }}>
-                {hours.map(h => (
-                  <div key={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT_PX }} />
-                ))}
+                {onSlotDoubleClick ? (
+                  hours.map(h => (
+                    <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/40">
+                      <button
+                        type="button"
+                        onDoubleClick={() => onSlotDoubleClick(day, `${String(h).padStart(2, '0')}:00`, col.id === UNASSIGNED_COL ? undefined : col.id)}
+                        title="Duplo clique para criar um agendamento"
+                        className="block w-full text-left hover:bg-primary/5"
+                        style={{ height: HOUR_HEIGHT_PX / 2 }}
+                      />
+                      <button
+                        type="button"
+                        onDoubleClick={() => onSlotDoubleClick(day, `${String(h).padStart(2, '0')}:30`, col.id === UNASSIGNED_COL ? undefined : col.id)}
+                        title="Duplo clique para criar um agendamento"
+                        className="block w-full text-left hover:bg-primary/5"
+                        style={{ height: HOUR_HEIGHT_PX / 2 }}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  hours.map(h => (
+                    <div key={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT_PX }} />
+                  ))
+                )}
 
                 {appts.map(a => {
                   const start = new Date(a.start_time)
@@ -680,6 +748,10 @@ export default function AppointmentsCalendar({
   clinicProfessionals = [],
   clinicContexts = {},
   availabilities = [],
+  onSlotDoubleClick,
+  isClinic = false,
+  onClinicStatusChange,
+  onScheduleReturn,
 }: Props) {
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<CalendarAppointment | null>(null)
@@ -764,6 +836,7 @@ export default function AppointmentsCalendar({
           onSelect={setSelected}
           hourRange={hourRange}
           availableDays={availableDays}
+          onSlotDoubleClick={onSlotDoubleClick}
         />
       ) : mode === 'day' ? (
         <DayProfessionalView
@@ -773,6 +846,7 @@ export default function AppointmentsCalendar({
           contexts={clinicContexts}
           onSelect={setSelected}
           hourRange={hourRange}
+          onSlotDoubleClick={onSlotDoubleClick}
         />
       ) : (
         <MonthView monthStart={range.start} appointments={appointments} onSelect={setSelected} availableDays={availableDays} />
@@ -860,6 +934,39 @@ export default function AppointmentsCalendar({
                   )}
                 </div>
 
+                {isClinic && (() => {
+                  const clinicStatus = clinicContexts[selected.id]?.clinic_status as ClinicStatus | undefined
+                  const nextStatus = clinicStatus ? NEXT_CLINIC_STATUS[clinicStatus] : undefined
+                  const isTerminal = clinicStatus === 'cancelado' || clinicStatus === 'no_show' || clinicStatus === 'reagendado'
+                  return (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1.5">Status clínico</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline">{CLINIC_STATUS_LABEL[clinicStatus || 'agendado']}</Badge>
+                        {nextStatus && onClinicStatusChange && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => onClinicStatusChange(selected, nextStatus)}
+                          >
+                            {CLINIC_STATUS_LABEL[nextStatus]} <ArrowRight className="w-3 h-3 ml-1" />
+                          </Button>
+                        )}
+                        {!isTerminal && clinicStatus !== 'realizado' && onClinicStatusChange && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-muted-foreground"
+                            onClick={() => onClinicStatusChange(selected, 'no_show')}
+                          >
+                            Não compareceu
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 {selectedLead?.id && (
                   <Link
                     href={`/app/${orgSlug}/contatos/${selectedLead.id}`}
@@ -870,26 +977,45 @@ export default function AppointmentsCalendar({
                 )}
               </div>
 
-              {selected.status === 'scheduled' && (
-                <DialogFooter className="flex sm:justify-between gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      onCancel(selected)
-                      setSelected(null)
-                    }}
-                    className="text-destructive"
-                  >
-                    <X className="w-4 h-4 mr-1" /> Cancelar
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      onComplete(selected)
-                      setSelected(null)
-                    }}
-                  >
-                    <Check className="w-4 h-4 mr-1" /> Marcar concluído
-                  </Button>
+              {(selected.status === 'scheduled' || (isClinic && onScheduleReturn)) && (
+                <DialogFooter className="flex sm:justify-between gap-2 flex-wrap">
+                  <div className="flex gap-2">
+                    {selected.status === 'scheduled' && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          onCancel(selected)
+                          setSelected(null)
+                        }}
+                        className="text-destructive"
+                      >
+                        <X className="w-4 h-4 mr-1" /> Cancelar
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {isClinic && onScheduleReturn && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          onScheduleReturn(selected)
+                          setSelected(null)
+                        }}
+                      >
+                        <CalendarPlus className="w-4 h-4 mr-1" /> Agendar retorno
+                      </Button>
+                    )}
+                    {selected.status === 'scheduled' && (
+                      <Button
+                        onClick={() => {
+                          onComplete(selected)
+                          setSelected(null)
+                        }}
+                      >
+                        <Check className="w-4 h-4 mr-1" /> Marcar concluído
+                      </Button>
+                    )}
+                  </div>
                 </DialogFooter>
               )}
             </>

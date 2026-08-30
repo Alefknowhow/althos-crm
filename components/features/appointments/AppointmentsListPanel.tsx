@@ -23,7 +23,7 @@ import { CLINIC_STATUSES, CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/c
 import AppointmentsCalendar, {
   type CalendarAppointment,
 } from './AppointmentsCalendar'
-import NewAppointmentDialog from './NewAppointmentDialog'
+import NewAppointmentDialog, { type AppointmentPrefill } from './NewAppointmentDialog'
 
 type Appointment = CalendarAppointment
 
@@ -181,6 +181,36 @@ export default function AppointmentsListPanel({
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<'week' | 'month' | 'list' | 'day'>('week')
   const professionalNameById = new Map(clinicProfessionals.map(p => [p.id, p.name]))
+
+  // Duplo clique num horário vazio (Semana/Dia) ou "Agendar retorno" a
+  // partir de um agendamento existente — os dois abrem o mesmo diálogo de
+  // novo agendamento, só muda o que vem preenchido.
+  const [quickCreate, setQuickCreate] = useState<AppointmentPrefill | null>(null)
+
+  function handleSlotDoubleClick(date: Date, time: string, professionalId?: string) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    setQuickCreate({ date: `${y}-${m}-${d}`, time, professionalId })
+  }
+
+  function handleScheduleReturn(a: Appointment) {
+    // Sugere 14 dias após a última consulta como ponto de partida — o
+    // operador ajusta a data/hora certa no diálogo antes de confirmar.
+    const suggested = new Date(a.start_time)
+    suggested.setDate(suggested.getDate() + 14)
+    const y = suggested.getFullYear()
+    const m = String(suggested.getMonth() + 1).padStart(2, '0')
+    const d = String(suggested.getDate()).padStart(2, '0')
+    setQuickCreate({
+      date: `${y}-${m}-${d}`,
+      time: new Date(a.start_time).toTimeString().slice(0, 5),
+      professionalId: clinicContexts[a.id]?.professional_id || undefined,
+      guestName: a.guest_name,
+      guestEmail: a.guest_email,
+      guestPhone: a.guest_phone,
+    })
+  }
 
   async function handleClinicStatusChange(a: Appointment, status: ClinicStatus) {
     const res = await setClinicAppointmentStatus(orgSlug, a.id, status)
@@ -350,8 +380,26 @@ export default function AppointmentsListPanel({
           clinicProfessionals={clinicProfessionals}
           clinicContexts={clinicContexts}
           availabilities={availabilities}
+          onSlotDoubleClick={handleSlotDoubleClick}
+          isClinic={isClinic}
+          onClinicStatusChange={handleClinicStatusChange}
+          onScheduleReturn={isClinic ? handleScheduleReturn : undefined}
         />
       )}
+
+      {/* Diálogo controlado — aberto pelo duplo clique num horário vazio ou
+          por "Agendar retorno" no popup de detalhe (ver AppointmentsCalendar). */}
+      <NewAppointmentDialog
+        orgSlug={orgSlug}
+        eventTypes={eventTypes}
+        isClinic={isClinic}
+        clinicProfessionals={clinicProfessionals}
+        clinicRooms={clinicRooms}
+        hideTrigger
+        open={quickCreate !== null}
+        onOpenChange={o => !o && setQuickCreate(null)}
+        prefill={quickCreate}
+      />
     </div>
   )
 }
