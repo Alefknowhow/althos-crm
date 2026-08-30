@@ -231,6 +231,8 @@ export type ClinicAppointmentContext = {
   clinic_status: string
   confirmed_at: string | null
   no_show_at: string | null
+  checked_in_at: string | null
+  finished_at: string | null
 }
 
 export async function listClinicAppointmentContexts(orgSlug: string, appointmentIds: string[]): Promise<Record<string, ClinicAppointmentContext>> {
@@ -239,7 +241,7 @@ export async function listClinicAppointmentContexts(orgSlug: string, appointment
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_appointment_context')
-    .select('appointment_id, professional_id, room_id, clinic_status, confirmed_at, no_show_at')
+    .select('appointment_id, professional_id, room_id, clinic_status, confirmed_at, no_show_at, checked_in_at, finished_at')
     .eq('organization_id', org.id)
     .in('appointment_id', appointmentIds)
   const out: Record<string, ClinicAppointmentContext> = {}
@@ -250,6 +252,8 @@ export async function listClinicAppointmentContexts(orgSlug: string, appointment
       clinic_status: r.clinic_status,
       confirmed_at: r.confirmed_at,
       no_show_at: r.no_show_at,
+      checked_in_at: r.checked_in_at,
+      finished_at: r.finished_at,
     }
   }
   return out
@@ -275,17 +279,38 @@ export async function upsertClinicAppointmentContext(
   return { ok: true as const }
 }
 
+export type ClinicPaymentOverride = {
+  total_cents?: number | null
+  discount_cents?: number
+  payment_method?: string | null
+  installments?: number | null
+}
+
 /** Avança/altera o status clínico do agendamento. Não mexe no
  *  appointments.status (Core) além dos dois casos óbvios de sincronização
  *  (realizado→completed, cancelado/no_show→canceled) — pra não quebrar
- *  telas/relatórios genéricos que já leem o status Core. */
-export async function setClinicAppointmentStatus(orgSlug: string, appointmentId: string, status: ClinicStatus) {
+ *  telas/relatórios genéricos que já leem o status Core.
+ *
+ *  `paymentOverride` só é usado ao avançar pra 'realizado' — permite que a
+ *  Agenda capture valor/forma de pagamento/parcelas no momento de
+ *  finalizar o atendimento, em vez de sempre cair no preço de tabela do
+ *  procedimento (que ainda é o fallback quando nada é passado). */
+export async function setClinicAppointmentStatus(
+  orgSlug: string,
+  appointmentId: string,
+  status: ClinicStatus,
+  paymentOverride?: ClinicPaymentOverride,
+) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
   const patch: Record<string, unknown> = { clinic_status: status, updated_at: new Date().toISOString() }
   if (status === 'confirmado') patch.confirmed_at = new Date().toISOString()
   if (status === 'no_show') patch.no_show_at = new Date().toISOString()
+  // Chegada/finalização — carimbadas com o horário de quando o status
+  // passa por aqui (reenviar o mesmo status atualiza o carimbo).
+  if (status === 'em_atendimento') patch.checked_in_at = new Date().toISOString()
+  if (status === 'realizado') patch.finished_at = new Date().toISOString()
 
   const { error } = await supabase
     .from('clinic_appointment_context')
@@ -338,8 +363,8 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
         .maybeSingle()
       if (!existing) {
         // Preço + desconto default = clinic_service_context do tipo de
-        // evento, se cadastrado — o valor real cobrado (com desconto/forma
-        // de pagamento) fica editável depois na tela de Atendimentos.
+        // evento, se cadastrado — sobrescrito por paymentOverride quando a
+        // Agenda captura o valor/forma de pagamento reais ao finalizar.
         let priceCents: number | null = null
         let discountCents = 0
         if (appt.event_type_id) {
@@ -351,6 +376,10 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
             .maybeSingle()
           priceCents = svcCtx?.price_cents ?? null
           discountCents = svcCtx?.default_discount_cents || 0
+        }
+        if (paymentOverride) {
+          if (paymentOverride.total_cents !== undefined) priceCents = paymentOverride.total_cents
+          if (paymentOverride.discount_cents !== undefined) discountCents = paymentOverride.discount_cents
         }
         const netCents = priceCents != null ? Math.max(0, priceCents - discountCents) : null
 
@@ -370,6 +399,7 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
               contato_id: appt.lead_id,
               status: 'pendente',
               competencia: (appt.start_time || new Date().toISOString()).slice(0, 10),
+              forma_pagamento: paymentOverride?.payment_method || null,
             })
             .select('id')
             .maybeSingle()
@@ -387,6 +417,8 @@ export async function setClinicAppointmentStatus(orgSlug: string, appointmentId:
             attended_at: appt.start_time || new Date().toISOString(),
             total_cents: priceCents,
             discount_cents: discountCents,
+            payment_method: paymentOverride?.payment_method || null,
+            installments: paymentOverride?.installments ?? null,
             financial_entry_id: financialEntryId,
           })
           .select('id')

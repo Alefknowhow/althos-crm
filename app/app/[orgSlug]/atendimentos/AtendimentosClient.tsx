@@ -34,7 +34,7 @@ function toDatetimeLocal(iso: string): string {
 const EMPTY: ClinicAttendanceInput = {
   patient_contato_id: '', professional_id: null, event_type_id: null,
   attended_at: new Date().toISOString(), notes: null, recommendations: null, next_return_date: null,
-  total_cents: null, discount_cents: 0, payment_method: null,
+  total_cents: null, discount_cents: 0, payment_method: null, installments: null,
 }
 
 function fmtCurrency(cents: number): string {
@@ -86,6 +86,7 @@ export default function AtendimentosClient({
       total_cents: row.total_cents,
       discount_cents: row.discount_cents,
       payment_method: row.payment_method,
+      installments: row.installments,
     })
     setDialogOpen(true)
   }
@@ -223,6 +224,17 @@ export default function AtendimentosClient({
                     </SelectContent>
                   </Select>
                 </div>
+                {draft.payment_method === 'credito' && (
+                  <div className="space-y-2">
+                    <Label>Parcelas</Label>
+                    <Input
+                      type="number" min={1} max={24} step={1}
+                      value={draft.installments ?? ''}
+                      onChange={e => setDraft({ ...draft, installments: e.target.value ? Number(e.target.value) : null })}
+                      placeholder="1"
+                    />
+                  </div>
+                )}
               </div>
               {draft.total_cents != null && (
                 <p className="text-xs text-muted-foreground">
@@ -278,7 +290,10 @@ export default function AtendimentosClient({
                 <div className="text-right shrink-0">
                   <div className="text-sm font-semibold tabular-nums">{fmtCurrency(Math.max(0, a.total_cents - a.discount_cents))}</div>
                   {a.payment_method && (
-                    <div className="text-[10px] text-muted-foreground">{PAYMENT_METHOD_LABEL[a.payment_method] || a.payment_method}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {PAYMENT_METHOD_LABEL[a.payment_method] || a.payment_method}
+                      {a.installments && a.installments > 1 ? ` · ${a.installments}x` : ''}
+                    </div>
                   )}
                 </div>
               )}

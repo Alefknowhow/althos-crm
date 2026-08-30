@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -59,8 +61,18 @@ type Props = {
    *  (Confirmar/Iniciar atendimento/Concluir/Não compareceu) e "Agendar
    *  retorno" no popup de detalhe do agendamento. */
   isClinic?: boolean
-  onClinicStatusChange?: (a: CalendarAppointment, status: ClinicStatus) => void
+  onClinicStatusChange?: (a: CalendarAppointment, status: ClinicStatus, payment?: ClinicFinalizePayment) => void
   onScheduleReturn?: (a: CalendarAppointment) => void
+}
+
+/** Valor/forma de pagamento/parcelas capturados no momento de finalizar o
+ *  atendimento (avançar pra 'realizado') — sobrescreve o preço de tabela
+ *  do procedimento quando informado. */
+export type ClinicFinalizePayment = {
+  total_cents?: number | null
+  discount_cents?: number
+  payment_method?: string | null
+  installments?: number | null
 }
 
 // Progressão padrão de status usada por plataformas de agenda consolidadas
@@ -71,6 +83,20 @@ const NEXT_CLINIC_STATUS: Partial<Record<ClinicStatus, ClinicStatus>> = {
   agendado: 'confirmado',
   confirmado: 'em_atendimento',
   em_atendimento: 'realizado',
+}
+
+// Rótulo do botão de "próximo passo" — mais concreto que o nome cru do
+// status (ex.: "Paciente chegou" em vez de "Em atendimento"), pedido
+// explicitamente pra refletir o check-in/check-out do dia a dia.
+const NEXT_ACTION_LABEL: Partial<Record<ClinicStatus, string>> = {
+  confirmado: 'Confirmar',
+  em_atendimento: 'Paciente chegou',
+  realizado: 'Finalizar atendimento',
+}
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  pix: 'PIX', credito: 'Cartão de Crédito', debito: 'Cartão de Débito',
+  dinheiro: 'Dinheiro', boleto: 'Boleto', transferencia: 'Transferência',
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -756,6 +782,30 @@ export default function AppointmentsCalendar({
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<CalendarAppointment | null>(null)
 
+  // Diálogo de "Finalizar atendimento" — captura valor/forma de pagamento/
+  // parcelas antes de avançar o status pra 'realizado', em vez de sempre
+  // cair no preço de tabela do procedimento.
+  const [finalizeTarget, setFinalizeTarget] = useState<CalendarAppointment | null>(null)
+  const [finalizeForm, setFinalizeForm] = useState({ total: '', discount: '', paymentMethod: '', installments: '' })
+
+  function openFinalizeDialog(appt: CalendarAppointment) {
+    setFinalizeTarget(appt)
+    setFinalizeForm({ total: '', discount: '', paymentMethod: '', installments: '' })
+  }
+
+  function submitFinalize(e: React.FormEvent) {
+    e.preventDefault()
+    if (!finalizeTarget || !onClinicStatusChange) return
+    onClinicStatusChange(finalizeTarget, 'realizado', {
+      total_cents: finalizeForm.total ? Math.round(parseFloat(finalizeForm.total.replace(',', '.')) * 100) : undefined,
+      discount_cents: finalizeForm.discount ? Math.round(parseFloat(finalizeForm.discount.replace(',', '.')) * 100) : undefined,
+      payment_method: finalizeForm.paymentMethod || undefined,
+      installments: finalizeForm.paymentMethod === 'credito' && finalizeForm.installments ? Number(finalizeForm.installments) : undefined,
+    })
+    setFinalizeTarget(null)
+    setSelected(null)
+  }
+
   const hourRange = useMemo(() => computeHourRange(availabilities), [availabilities])
   const availableDays = useMemo(() => computeAvailableDays(availabilities), [availabilities])
 
@@ -935,7 +985,8 @@ export default function AppointmentsCalendar({
                 </div>
 
                 {isClinic && (() => {
-                  const clinicStatus = clinicContexts[selected.id]?.clinic_status as ClinicStatus | undefined
+                  const ctx = clinicContexts[selected.id]
+                  const clinicStatus = ctx?.clinic_status as ClinicStatus | undefined
                   const nextStatus = clinicStatus ? NEXT_CLINIC_STATUS[clinicStatus] : undefined
                   const isTerminal = clinicStatus === 'cancelado' || clinicStatus === 'no_show' || clinicStatus === 'reagendado'
                   return (
@@ -947,9 +998,15 @@ export default function AppointmentsCalendar({
                           <Button
                             size="sm"
                             className="h-7 text-xs"
-                            onClick={() => onClinicStatusChange(selected, nextStatus)}
+                            onClick={() => {
+                              if (nextStatus === 'realizado') {
+                                openFinalizeDialog(selected)
+                              } else {
+                                onClinicStatusChange(selected, nextStatus)
+                              }
+                            }}
                           >
-                            {CLINIC_STATUS_LABEL[nextStatus]} <ArrowRight className="w-3 h-3 ml-1" />
+                            {NEXT_ACTION_LABEL[nextStatus] || CLINIC_STATUS_LABEL[nextStatus]} <ArrowRight className="w-3 h-3 ml-1" />
                           </Button>
                         )}
                         {!isTerminal && clinicStatus !== 'realizado' && onClinicStatusChange && (
@@ -963,6 +1020,12 @@ export default function AppointmentsCalendar({
                           </Button>
                         )}
                       </div>
+                      {(ctx?.checked_in_at || ctx?.finished_at) && (
+                        <div className="mt-1.5 text-[11px] text-muted-foreground space-x-3">
+                          {ctx.checked_in_at && <span>Chegou às {new Date(ctx.checked_in_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                          {ctx.finished_at && <span>Finalizou às {new Date(ctx.finished_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
@@ -1024,6 +1087,72 @@ export default function AppointmentsCalendar({
                 </DialogFooter>
               )}
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!finalizeTarget} onOpenChange={o => !o && setFinalizeTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Finalizar atendimento</DialogTitle>
+          </DialogHeader>
+          {finalizeTarget && (
+            <form onSubmit={submitFinalize} className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                {finalizeTarget.guest_name} — deixe em branco pra usar o preço de tabela do procedimento.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Valor cobrado (R$)</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={finalizeForm.total}
+                    onChange={e => setFinalizeForm(f => ({ ...f, total: e.target.value }))}
+                    placeholder="Preço de tabela"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Desconto (R$)</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={finalizeForm.discount}
+                    onChange={e => setFinalizeForm(f => ({ ...f, discount: e.target.value }))}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Forma de pagamento</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                    value={finalizeForm.paymentMethod}
+                    onChange={e => setFinalizeForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                  >
+                    <option value="">(Não informado)</option>
+                    {Object.entries(PAYMENT_METHOD_LABEL).map(([k, l]) => (
+                      <option key={k} value={k}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                {finalizeForm.paymentMethod === 'credito' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Parcelas</Label>
+                    <Input
+                      type="number" min={1} max={24} step={1}
+                      value={finalizeForm.installments}
+                      onChange={e => setFinalizeForm(f => ({ ...f, installments: e.target.value }))}
+                      placeholder="1"
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="submit">
+                  <Check className="w-4 h-4 mr-1" /> Finalizar
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

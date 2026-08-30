@@ -21,7 +21,7 @@ import { cancelAppointment, markAppointmentCompleted } from '@/actions/appointme
 import { setClinicAppointmentStatus, type ClinicAppointmentContext, type ClinicServiceContext } from '@/actions/clinic'
 import { CLINIC_STATUSES, CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
 import AppointmentsCalendar, {
-  type CalendarAppointment,
+  type CalendarAppointment, type ClinicFinalizePayment,
 } from './AppointmentsCalendar'
 import NewAppointmentDialog, { type AppointmentPrefill } from './NewAppointmentDialog'
 
@@ -219,8 +219,8 @@ export default function AppointmentsListPanel({
     })
   }
 
-  async function handleClinicStatusChange(a: Appointment, status: ClinicStatus) {
-    const res = await setClinicAppointmentStatus(orgSlug, a.id, status)
+  async function handleClinicStatusChange(a: Appointment, status: ClinicStatus, payment?: ClinicFinalizePayment) {
+    const res = await setClinicAppointmentStatus(orgSlug, a.id, status, payment)
     if (res.ok) {
       toast.success('Status atualizado')
       startTransition(() => router.refresh())
