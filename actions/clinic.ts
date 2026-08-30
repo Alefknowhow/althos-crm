@@ -189,6 +189,8 @@ export type ClinicServiceContext = {
   /** Desconto padrão pré-aplicado quando o atendimento desse procedimento é
    *  concluído — editável depois por atendimento individual. */
   default_discount_cents?: number
+  /** Profissional exclusivo desse procedimento — null = qualquer profissional pode realizá-lo. */
+  professional_id?: string | null
 }
 
 export async function getClinicServiceContext(orgSlug: string, eventTypeId: string): Promise<ClinicServiceContext | null> {
@@ -196,7 +198,7 @@ export async function getClinicServiceContext(orgSlug: string, eventTypeId: stri
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_service_context')
-    .select('specialty_id, price_cents, room_id, default_discount_cents')
+    .select('specialty_id, price_cents, room_id, default_discount_cents, professional_id')
     .eq('event_type_id', eventTypeId)
     .eq('organization_id', org.id)
     .maybeSingle()
@@ -214,6 +216,7 @@ export async function upsertClinicServiceContext(orgSlug: string, eventTypeId: s
     price_cents: ctx.price_cents ?? null,
     room_id: ctx.room_id || null,
     default_discount_cents: ctx.default_discount_cents ?? 0,
+    professional_id: ctx.professional_id || null,
   })
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/agendamentos`)

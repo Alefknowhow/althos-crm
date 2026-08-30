@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus } from 'lucide-react'
 import { createManualAppointment } from '@/actions/appointments'
-import { upsertClinicAppointmentContext } from '@/actions/clinic'
+import { upsertClinicAppointmentContext, type ClinicServiceContext } from '@/actions/clinic'
 import { traduzirErro } from '@/lib/utils/error-translator'
 
 type EventType = {
@@ -46,6 +46,10 @@ type Props = {
   isClinic?: boolean
   clinicProfessionals?: ClinicOption[]
   clinicRooms?: ClinicOption[]
+  /** Contexto clínico por event_type_id — usado pra restringir o select de
+   *  profissional ao procedimento escolhido (quando o procedimento tem um
+   *  profissional exclusivo cadastrado). */
+  clinicServiceContexts?: Record<string, ClinicServiceContext>
   /** Modo controlado — usado pelo duplo clique no calendário e por "Agendar
    *  retorno" no popup de detalhe, que abrem o diálogo programaticamente
    *  (sem o botão "+ Novo agendamento") já com data/hora/paciente
@@ -68,7 +72,7 @@ function todayLocal(): string {
 }
 
 export default function NewAppointmentDialog({
-  orgSlug, eventTypes, isClinic = false, clinicProfessionals = [], clinicRooms = [],
+  orgSlug, eventTypes, isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicServiceContexts = {},
   open: openProp, onOpenChange: onOpenChangeProp, prefill, hideTrigger = false,
 }: Props) {
   const router = useRouter()
@@ -113,12 +117,25 @@ export default function NewAppointmentDialog({
 
   function onEventTypeChange(id: string) {
     const et = eventTypes.find(e => e.id === id)
+    // Procedimento com profissional exclusivo já vem pré-selecionado; se o
+    // procedimento anterior tinha um profissional fixo diferente, troca —
+    // sem isso o form podia ficar com um profissional que não faz aquele
+    // procedimento.
+    const restrictedProfessionalId = clinicServiceContexts[id]?.professional_id || ''
     setForm(f => ({
       ...f,
       eventTypeId: id,
       duration: f.customDuration ? f.duration : et?.duration_minutes || 30,
+      professionalId: restrictedProfessionalId || f.professionalId,
     }))
   }
+
+  // Profissional exclusivo do procedimento escolhido (se houver) — restringe
+  // o select a só ele; sem procedimento restrito, mostra todos.
+  const restrictedProfessionalId = clinicServiceContexts[form.eventTypeId]?.professional_id || null
+  const availableProfessionals = restrictedProfessionalId
+    ? clinicProfessionals.filter(p => p.id === restrictedProfessionalId)
+    : clinicProfessionals
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -280,9 +297,11 @@ export default function NewAppointmentDialog({
                     className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
                     value={form.professionalId}
                     onChange={e => setForm({ ...form, professionalId: e.target.value })}
+                    disabled={!!restrictedProfessionalId}
+                    title={restrictedProfessionalId ? 'Esse procedimento só pode ser feito por este profissional' : undefined}
                   >
                     <option value="">Sem profissional definido</option>
-                    {clinicProfessionals.map(p => (
+                    {availableProfessionals.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>

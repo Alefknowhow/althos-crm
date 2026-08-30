@@ -46,7 +46,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
       listClinicProfessionals(params.orgSlug),
       listClinicRooms(params.orgSlug),
       listClinicAppointmentContexts(params.orgSlug, allAppointmentIds),
-      supabase.from('clinic_service_context').select('event_type_id, specialty_id, price_cents, room_id').eq('organization_id', org.id),
+      supabase.from('clinic_service_context').select('event_type_id, specialty_id, price_cents, room_id, default_discount_cents, professional_id').eq('organization_id', org.id),
       getClinicReminderSettings(params.orgSlug),
     ])
     clinicSpecialties = specialties.filter(s => s.active)

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,7 @@ type Props = {
   isClinic?: boolean
   clinicSpecialties?: ClinicOption[]
   clinicRooms?: ClinicOption[]
+  clinicProfessionals?: ClinicOption[]
   clinicServiceContexts?: Record<string, ClinicServiceContext>
 }
 
@@ -73,13 +74,14 @@ const DEFAULT_DRAFT = {
   stage_id: '',
   specialty_id: '',
   room_id: '',
+  professional_id: '',
   price: '',
   discount: '',
 }
 
 export default function EventTypesPanel({
   orgSlug, eventTypes, pipelines, stages,
-  isClinic = false, clinicSpecialties = [], clinicRooms = [], clinicServiceContexts = {},
+  isClinic = false, clinicSpecialties = [], clinicRooms = [], clinicProfessionals = [], clinicServiceContexts = {},
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -120,6 +122,7 @@ export default function EventTypesPanel({
       stage_id: et.stage_id || '',
       specialty_id: ctx?.specialty_id || '',
       room_id: ctx?.room_id || '',
+      professional_id: ctx?.professional_id || '',
       price: ctx?.price_cents ? String(ctx.price_cents / 100) : '',
       discount: ctx?.default_discount_cents ? String(ctx.default_discount_cents / 100) : '',
     })
@@ -146,6 +149,7 @@ export default function EventTypesPanel({
         await upsertClinicServiceContext(orgSlug, eventTypeId, {
           specialty_id: draft.specialty_id || null,
           room_id: draft.room_id || null,
+          professional_id: draft.professional_id || null,
           price_cents: draft.price ? Math.round(parseFloat(draft.price.replace(',', '.')) * 100) : null,
           default_discount_cents: draft.discount ? Math.round(parseFloat(draft.discount.replace(',', '.')) * 100) : 0,
         })
@@ -305,7 +309,7 @@ export default function EventTypesPanel({
                   />
                 </div>
 
-                {pipelines.length > 0 && (
+                {!isClinic && pipelines.length > 0 && (
                   <>
                     <div className="space-y-2">
                       <Label>Pipeline para o lead</Label>
@@ -348,7 +352,18 @@ export default function EventTypesPanel({
               {isClinic && (
                 <div className="space-y-3 rounded-md border p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contexto clínico</p>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Profissional</Label>
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
+                        value={draft.professional_id}
+                        onChange={e => setDraft({ ...draft, professional_id: e.target.value })}
+                      >
+                        <option value="">(Qualquer profissional)</option>
+                        {clinicProfessionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
                     <div className="space-y-2">
                       <Label>Especialidade</Label>
                       <select
@@ -412,72 +427,66 @@ export default function EventTypesPanel({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {eventTypes.map(et => (
-            <Card key={et.id} className="overflow-hidden">
-              <div
-                className="h-1.5 w-full"
-                style={{ backgroundColor: et.color || '#3b82f6' }}
-              />
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base">{et.name}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {et.duration_minutes} min · /{et.slug}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={et.is_active}
-                    onCheckedChange={c => handleToggle(et, c)}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {et.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{et.description}</p>
-                )}
-                {et.location && (
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Local:</span> {et.location}
-                  </p>
-                )}
-                {!et.is_active && (
-                  <Badge variant="outline" className="text-xs">
-                    Pausado
-                  </Badge>
-                )}
-
-                <div className="flex items-center gap-1 pt-2 border-t mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyPublicLink(et)}
-                    title="Copiar link público"
-                  >
-                    <Copy className="w-3.5 h-3.5 mr-1" /> Link
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEdit(et)}
-                    title="Editar"
-                  >
-                    <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
-                  </Button>
-                  <div className="flex-1" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEtToDelete(et)}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">{label}</th>
+                <th className="px-3 py-2 font-medium">Duração</th>
+                {isClinic && <th className="px-3 py-2 font-medium">Profissional</th>}
+                {isClinic && <th className="px-3 py-2 font-medium text-right">Preço</th>}
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {eventTypes.map(et => {
+                const ctx = clinicServiceContexts[et.id]
+                const professionalName = ctx?.professional_id
+                  ? clinicProfessionals.find(p => p.id === ctx.professional_id)?.name || '—'
+                  : 'Qualquer profissional'
+                return (
+                  <tr key={et.id} className="hover:bg-muted/20">
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: et.color || '#3b82f6' }} />
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{et.name}</div>
+                          {et.description && <div className="text-xs text-muted-foreground truncate max-w-[280px]">{et.description}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{et.duration_minutes} min</td>
+                    {isClinic && <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{professionalName}</td>}
+                    {isClinic && (
+                      <td className="px-3 py-2.5 whitespace-nowrap text-right tabular-nums">
+                        {ctx?.price_cents ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ctx.price_cents / 100) : '—'}
+                      </td>
+                    )}
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <Switch checked={et.is_active} onCheckedChange={c => handleToggle(et, c)} />
+                        {!et.is_active && <Badge variant="outline" className="text-[10px]">Pausado</Badge>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => copyPublicLink(et)} title="Copiar link público">
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(et)} title="Editar">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" onClick={() => setEtToDelete(et)} title="Excluir">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

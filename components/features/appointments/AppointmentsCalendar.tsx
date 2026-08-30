@@ -1005,7 +1005,12 @@ export default function AppointmentsCalendar({
                         <CalendarPlus className="w-4 h-4 mr-1" /> Agendar retorno
                       </Button>
                     )}
-                    {selected.status === 'scheduled' && (
+                    {/* Nicho Clínicas usa só a progressão de status clínico (acima) —
+                        ela já termina em "Realizado" e dispara o Atendimento +
+                        lançamento em Financeiro. O botão genérico "Marcar
+                        concluído" ficava como um segundo caminho que marcava
+                        completed sem passar por esse fluxo. */}
+                    {selected.status === 'scheduled' && !isClinic && (
                       <Button
                         onClick={() => {
                           onComplete(selected)

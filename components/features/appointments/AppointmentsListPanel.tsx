@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table'
 import { Calendar, ExternalLink, X, Check, CalendarDays, CalendarRange, List as ListIcon, Users } from 'lucide-react'
 import { cancelAppointment, markAppointmentCompleted } from '@/actions/appointments'
-import { setClinicAppointmentStatus, type ClinicAppointmentContext } from '@/actions/clinic'
+import { setClinicAppointmentStatus, type ClinicAppointmentContext, type ClinicServiceContext } from '@/actions/clinic'
 import { CLINIC_STATUSES, CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
 import AppointmentsCalendar, {
   type CalendarAppointment,
@@ -39,6 +39,7 @@ type Props = {
   clinicProfessionals?: ClinicOption[]
   clinicRooms?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
+  clinicServiceContexts?: Record<string, ClinicServiceContext>
   availabilities?: Availability[]
 }
 
@@ -146,15 +147,21 @@ function AppointmentRow({
       <TableCell className="text-right">
         {appt.status === 'scheduled' && (
           <div className="flex gap-1 justify-end">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onComplete(appt)}
-              disabled={loading}
-              title="Marcar como concluído"
-            >
-              <Check className="w-3.5 h-3.5 text-green-600" />
-            </Button>
+            {/* Nicho Clínicas usa o select de status clínico acima (que já
+                termina em "Realizado" e gera Atendimento + Financeiro) — o
+                atalho genérico de concluir ficava como um segundo caminho
+                que não passava por esse fluxo. */}
+            {!isClinic && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onComplete(appt)}
+                disabled={loading}
+                title="Marcar como concluído"
+              >
+                <Check className="w-3.5 h-3.5 text-green-600" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -174,7 +181,7 @@ function AppointmentRow({
 
 export default function AppointmentsListPanel({
   orgSlug, upcoming, past, eventTypes,
-  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {}, availabilities = [],
+  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {}, clinicServiceContexts = {}, availabilities = [],
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -358,6 +365,7 @@ export default function AppointmentsListPanel({
           isClinic={isClinic}
           clinicProfessionals={clinicProfessionals}
           clinicRooms={clinicRooms}
+          clinicServiceContexts={clinicServiceContexts}
         />
       </div>
 
@@ -395,6 +403,7 @@ export default function AppointmentsListPanel({
         isClinic={isClinic}
         clinicProfessionals={clinicProfessionals}
         clinicRooms={clinicRooms}
+        clinicServiceContexts={clinicServiceContexts}
         hideTrigger
         open={quickCreate !== null}
         onOpenChange={o => !o && setQuickCreate(null)}
