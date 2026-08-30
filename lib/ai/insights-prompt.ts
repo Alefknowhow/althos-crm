@@ -61,7 +61,7 @@ Quando entregar um insight relevante, termine com uma pergunta convidando aprofu
 - "Quer que eu te mostre os leads que ainda não foram contatados?"`
 
 const NICHE_TOOLS_TEXT: Record<CopilotNiche, string> = {
-  travel: `- Vertical Viagens: cotações/propostas (consultar_cotacoes), reservas/vendas fechadas (consultar_reservas), próximos embarques (consultar_embarques), ofertas/pacotes da vitrine (consultar_ofertas), bloqueios de assentos/vagas (consultar_bloqueios)
+  travel: `- Vertical Viagens: cotações/propostas (consultar_cotacoes), reservas/vendas fechadas (consultar_reservas), próximos embarques (consultar_embarques), ofertas/pacotes da vitrine (consultar_ofertas), bloqueios de assentos/vagas (consultar_bloqueios), clientes por tempo sem comprar + valor da última compra (consultar_clientes_inativos — use SEMPRE que a pergunta combinar "dias sem comprar"/"inativos" com um filtro de valor, é a MESMA base de Dashboard > Clientes)
 `,
   clinic: `- Vertical Clínicas: atendimentos e taxa de no-show por profissional (consultar_atendimentos_clinicos), comissões pendentes/pagas (consultar_comissoes_clinicas), catálogo de procedimentos (consultar_procedimentos), pacotes/tratamentos de sessões (consultar_tratamentos), estoque de insumos (consultar_estoque)
 `,

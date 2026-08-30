@@ -180,6 +180,18 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'consultar_clientes_inativos',
+    description:
+      'Vertical Viagens: lista clientes sem nova compra há N dias, com o detalhe da ÚLTIMA venda (valor, destino, mês, comissão) — a mesma base de Dashboard > Clientes. Use para "clientes sem comprar há X dias", "clientes inativos", "quem não compra há mais tempo", especialmente quando o usuário também filtrar por valor mínimo da última compra (ex.: "e que gastaram mais de R$500").',
+    input_schema: {
+      type: 'object',
+      properties: {
+        dias_sem_comprar: { type: 'integer', description: 'Mínimo de dias desde a última compra. Padrão: 30.' },
+        valor_minimo_ultima_compra: { type: 'number', description: 'Valor mínimo (em R$) da ÚLTIMA compra do cliente, pra filtrar só quem tinha ticket relevante. Opcional.' },
+      },
+    },
+  },
+  {
     name: 'consultar_ofertas',
     description:
       'Resumo das ofertas/pacotes da vitrine de viagens: total cadastrado, publicados vs. rascunho e distribuição por categoria. Use para "ofertas", "pacotes", "vitrine", "quantos pacotes publicados".',
@@ -257,7 +269,7 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
  * negócio, tanto na lista enviada ao modelo (menos ruído, roteamento mais
  * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
 
-const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios'])
+const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios', 'consultar_clientes_inativos'])
 const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos', 'consultar_estoque'])
 const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
 const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
@@ -308,6 +320,8 @@ export async function executeAnalyticsTool(
         return await queryDepartures(input, ctx)
       case 'consultar_bloqueios':
         return await queryBlocks(input, ctx)
+      case 'consultar_clientes_inativos':
+        return await queryInactiveCustomers(input, ctx)
       case 'consultar_ofertas':
         return await queryOffers(input, ctx)
       case 'consultar_tarefas':
@@ -996,6 +1010,46 @@ async function queryBlocks(_input: Record<string, any>, ctx: AnalyticsContext): 
       type: 'table',
       columns: ['Origem', 'Destino', 'Total', 'Disponíveis'],
       rows: rows.map(r => [r.origem || '—', r.destino || '—', String(r.assentos_total || 0), String(r.assentos_disponiveis || 0)]),
+    },
+  }
+}
+
+/**
+ * Reaproveita a MESMA base de Dashboard > Clientes (getRecompraRanking,
+ * actions/dashboard-tabs.ts) — ranking de clientes por dias sem comprar,
+ * com o valor/destino da última venda — em vez de reinventar a consulta.
+ * Permite ao copiloto responder perguntas combinando "tempo sem comprar" +
+ * "valor da última compra", que consultar_top_leads não cobre (só olha
+ * contatos em geral, não vendas fechadas).
+ */
+async function queryInactiveCustomers(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { getRecompraRanking } = await import('@/actions/dashboard-tabs')
+  const diasMin = Number(input.dias_sem_comprar) || 30
+  const valorMinimoCents = input.valor_minimo_ultima_compra ? Math.round(Number(input.valor_minimo_ultima_compra) * 100) : 0
+
+  const ranking = await getRecompraRanking(ctx.orgId, 500)
+  if (ranking === null) {
+    return { summary: 'Esse indicador (clientes por tempo sem comprar) só existe pra org do nicho de viagens.', view: { type: 'none' } }
+  }
+
+  const filtered = ranking.filter(r => r.days_since_last_sale >= diasMin && r.total_cents >= valorMinimoCents)
+  if (filtered.length === 0) {
+    return { summary: `Nenhum cliente encontrado com ${diasMin}+ dias sem comprar${valorMinimoCents > 0 ? ` e última compra acima de ${fmtCurrency(valorMinimoCents)}` : ''}.`, view: { type: 'none' } }
+  }
+
+  const rows = filtered.slice(0, 30)
+  return {
+    summary: `${filtered.length} clientes com ${diasMin}+ dias sem comprar${valorMinimoCents > 0 ? ` e última compra acima de ${fmtCurrency(valorMinimoCents)}` : ''}. O mais antigo: ${rows[0].name}, ${rows[0].days_since_last_sale} dias, última compra de ${fmtCurrency(rows[0].total_cents)}${rows[0].destination ? ` para ${rows[0].destination}` : ''}.`,
+    view: {
+      type: 'table',
+      columns: ['Cliente', 'Dias sem comprar', 'Última compra', 'Destino', 'Data'],
+      rows: rows.map(r => [
+        r.name,
+        String(r.days_since_last_sale),
+        fmtCurrency(r.total_cents),
+        r.destination || '—',
+        new Date(r.last_sale_date).toLocaleDateString('pt-BR'),
+      ]),
     },
   }
 }
