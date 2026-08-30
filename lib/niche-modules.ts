@@ -14,7 +14,7 @@ export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
   | 'cotacoes' | 'roteirista' | 'ofertas' | 'embarques' | 'bloqueios' | 'reservas' | 'documentos_viagem'
   // Módulos específicos da vertical de Clínicas.
-  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica' | 'comissoes_clinica' | 'retornos_clinica'
+  | 'profissionais' | 'orcamentos_clinica' | 'atendimentos_clinica' | 'tratamentos_clinica' | 'lista_espera_clinica' | 'comissoes_clinica' | 'retornos_clinica' | 'prontuario_clinica'
   // Módulos específicos da vertical de Imobiliárias.
   | 'imoveis'
   // Módulos específicos da vertical de Seguros.
@@ -28,7 +28,15 @@ export type ModuleKey =
   | 'catalogo' | 'vendas' | 'agendamentos'
 
 const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarques', 'bloqueios', 'reservas', 'documentos_viagem']
-const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica']
+const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica', 'prontuario_clinica']
+// Prontuário existe no banco/código mas fica com visibilidade travada em
+// false até uma decisão de compliance — ver docs/audit/clinicas-lgpd.md.
+// O log de acesso (clinic_data_access_log) já foi implementado (item 1 da
+// recomendação da auditoria); os itens 2-5 (aviso de conteúdo, retenção,
+// consentimento, revisão jurídica dos termos) ainda estão em aberto.
+// Pra habilitar: trocar PRONTUARIO_ENABLED pra true depois de decidir
+// isso — não precisa mexer em mais nada, o módulo já está pronto.
+const PRONTUARIO_ENABLED = false
 const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
 const INSURANCE_ONLY: ModuleKey[] = ['seguros']
 const TRAFFIC_ONLY: ModuleKey[] = ['trafego']
@@ -60,6 +68,7 @@ export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey
   const realEstate = isRealEstateNiche(niche)
   const insurance = isInsuranceNiche(niche)
   const traffic = isTrafficNiche(niche)
+  if (key === 'prontuario_clinica') return clinic && PRONTUARIO_ENABLED
   if (TRAVEL_ONLY.includes(key)) return travel
   if (CLINIC_ONLY.includes(key)) return clinic
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate

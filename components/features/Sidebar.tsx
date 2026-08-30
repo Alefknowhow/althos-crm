@@ -42,6 +42,7 @@ import {
   Hourglass,
   Percent,
   CalendarCheck2,
+  HeartPulse,
   Home,
   Handshake,
   Building2,
@@ -377,6 +378,15 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
             <span className="flex items-center gap-2.5">
               <CalendarCheck2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
               <span>Retornos</span>
+            </span>
+          </SidebarNavLink>
+        )}
+
+        {can('prontuario_clinica') && isModuleEnabled(org.niche, 'prontuario_clinica') && (
+          <SidebarNavLink href={`${base}/prontuario`}>
+            <span className="flex items-center gap-2.5">
+              <HeartPulse className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Prontuário</span>
             </span>
           </SidebarNavLink>
         )}

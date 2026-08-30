@@ -30,6 +30,7 @@ export type PermissionKey =
   | 'tratamentos_clinica'
   | 'lista_espera_clinica'
   | 'comissoes_clinica'
+  | 'prontuario_clinica'
   // Nicho de imobiliárias
   | 'imoveis'
   // Nicho de seguros
@@ -84,6 +85,10 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'tratamentos_clinica', label: 'Tratamentos e Pacotes', section: 'Clínicas' },
   { key: 'lista_espera_clinica', label: 'Lista de Espera', section: 'Clínicas' },
   { key: 'comissoes_clinica', label: 'Comissões', section: 'Clínicas' },
+  // Prontuário fica com permissão própria (não reaproveita atendimentos_clinica
+  // como Retornos faz) — dado de saúde sensível pede controle de acesso
+  // mais restrito, mesmo com o módulo ainda oculto por padrão.
+  { key: 'prontuario_clinica', label: 'Prontuário', section: 'Clínicas' },
   // Imobiliárias (só orgs do nicho imobiliário)
   { key: 'imoveis',        label: 'Imóveis',           section: 'Imobiliárias' },
   // Seguros (só orgs do nicho de seguros)
@@ -159,6 +164,7 @@ export function defaultMemberPermissions(): Permissions {
     tratamentos_clinica: false,
     lista_espera_clinica: false,
     comissoes_clinica: false,
+    prontuario_clinica: false,
     imoveis:       false,
     seguros:       false,
     trafego:       false,
@@ -174,7 +180,7 @@ export function defaultMemberPermissions(): Permissions {
 const TRAVEL_ONLY_KEYS = new Set<PermissionKey>([
   'reservas', 'cotacoes', 'ofertas', 'embarques', 'bloqueios', 'explorar_voos', 'documentos', 'roteirista',
 ])
-const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'imoveis', 'seguros', 'trafego'])
+const NON_TRAVEL_ONLY_KEYS = new Set<PermissionKey>(['sales', 'calendar', 'profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'prontuario_clinica', 'imoveis', 'seguros', 'trafego'])
 
 /**
  * Group modules by section for rendering. Pass `isTravel` to hide the
