@@ -121,6 +121,37 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'consultar_contatos',
+    description:
+      'Busca detalhada de contatos/clientes com filtros e retorna a LISTA COMPLETA (nome, telefone, e-mail, cidade, endereço, status, valor) — não um resumo agregado. Use para qualquer pedido de listagem específica: "quais clientes moram em [cidade]", "lista de clientes de [cidade/estado]", "clientes com tag X", "clientes acima de R$ X", "me dá o telefone/e-mail de...". Sempre que o usuário pedir uma LISTA (não uma contagem), use esta tool em vez de consultar_top_leads ou consultar_kpis.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        cidade: { type: 'string', description: 'Filtra por cidade (contatos.city). Aceita nome parcial.' },
+        estado: { type: 'string', description: 'Filtra por estado (UF).' },
+        status: { type: 'string', enum: ['lead', 'cliente', 'inativo'], description: 'Filtra por status do contato. Omitido = todos.' },
+        tag: { type: 'string', description: 'Filtra contatos que tenham essa tag.' },
+        valor_minimo: { type: 'number', description: 'Valor mínimo (R$) do contato (value_cents). Opcional.' },
+        busca: { type: 'string', description: 'Busca livre por nome, e-mail ou telefone. Opcional.' },
+        limite: { type: 'integer', description: 'Máximo de contatos a retornar (1 a 100). Padrão: 30.' },
+      },
+    },
+  },
+  {
+    name: 'consultar_agendamentos_detalhado',
+    description:
+      'Lista agendamentos individuais (não um resumo por status) — cliente, serviço/procedimento, profissional (quando aplicável), data/hora e status. Use quando o usuário pedir a AGENDA em si: "quais são os agendamentos de amanhã/desta semana", "agenda de [profissional]", "quem tem consulta/reunião marcada", "próximos agendamentos". Para contagens agregadas, use consultar_agendamentos.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        direcao: { type: 'string', enum: ['futuros', 'passados'], description: 'Futuros (a partir de agora) ou passados. Padrão: futuros.' },
+        dias: { type: 'integer', description: 'Janela de dias a considerar (1 a 90). Padrão: 14.' },
+        status: { type: 'string', description: 'Filtra por status do agendamento (ex.: scheduled, completed, canceled). Opcional.' },
+        limite: { type: 'integer', description: 'Máximo de agendamentos a retornar (1 a 100). Padrão: 30.' },
+      },
+    },
+  },
+  {
     name: 'consultar_top_leads',
     description:
       'Lista os N leads mais quentes/recentes/valiosos da org. Use para "melhores leads", "leads mais quentes", "top clientes", "quem vale mais", "mostre os leads recentes".',
@@ -318,6 +349,10 @@ export async function executeAnalyticsTool(
         return await queryAppointments(input, ctx)
       case 'consultar_marketing':
         return await queryMarketing(input, ctx)
+      case 'consultar_contatos':
+        return await queryContacts(input, ctx)
+      case 'consultar_agendamentos_detalhado':
+        return await queryAppointmentsDetailed(input, ctx)
       case 'consultar_top_leads':
         return await queryTopLeads(input, ctx)
       case 'consultar_cotacoes':
@@ -808,6 +843,111 @@ async function queryMarketing(
       rows: rows
         .slice(0, 15)
         .map(r => [r.name, fmtCurrency(r.spend), String(r.leads), r.cpl > 0 ? fmtCurrency(r.cpl) : '—']),
+    },
+  }
+}
+
+function formatAddress(r: { street?: string | null; number?: string | null; district?: string | null; city?: string | null; state?: string | null }): string {
+  const line1 = [r.street, r.number].filter(Boolean).join(', ')
+  const line2 = [r.district, r.city, r.state].filter(Boolean).join(' - ')
+  return [line1, line2].filter(Boolean).join(' — ') || '—'
+}
+
+/**
+ * Busca detalhada de contatos — a IA precisa conseguir ENTREGAR uma lista
+ * completa (nome/telefone/e-mail/endereço), não só contagens/rankings
+ * limitados como consultar_top_leads. Sem isso, pedidos do tipo "quais
+ * clientes moram em Itajaí" batiam num beco sem saída (nenhuma tool cobria
+ * filtro geográfico + retorno de lista completa).
+ */
+async function queryContacts(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const limite = Math.min(100, Math.max(1, Number(input.limite) || 30))
+
+  let q = ctx.supabase
+    .from('contatos')
+    .select('name, phone, email, city, state, street, number, district, status, value_cents, tags')
+    .eq('organization_id', ctx.orgId)
+    .order('name')
+    .limit(limite)
+
+  if (input.cidade) q = q.ilike('city', `%${input.cidade}%`)
+  if (input.estado) q = q.ilike('state', `%${input.estado}%`)
+  if (input.status) q = q.eq('status', input.status)
+  if (input.tag) q = q.contains('tags', [input.tag])
+  if (input.valor_minimo) q = q.gte('value_cents', Math.round(Number(input.valor_minimo) * 100))
+  if (input.busca) q = q.or(`name.ilike.%${input.busca}%,email.ilike.%${input.busca}%,phone.ilike.%${input.busca}%`)
+
+  const { data, error } = await q
+  if (error) return { summary: `Erro ao buscar contatos: ${error.message}`, view: { type: 'none' } }
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhum contato encontrado com esses filtros.', view: { type: 'none' } }
+  }
+
+  return {
+    summary: `${rows.length} contato(s) encontrado(s)${input.cidade ? ` em "${input.cidade}"` : ''}${input.status ? `, status ${input.status}` : ''}. Lista completa na tabela — nome, telefone, e-mail e endereço de cada um.`,
+    view: {
+      type: 'table',
+      columns: ['Nome', 'Telefone', 'E-mail', 'Endereço', 'Status', 'Valor'],
+      rows: rows.map(r => [
+        r.name || '—',
+        r.phone || '—',
+        r.email || '—',
+        formatAddress(r),
+        r.status || '—',
+        r.value_cents ? fmtCurrency(r.value_cents) : '—',
+      ]),
+    },
+  }
+}
+
+/**
+ * Lista agendamentos individuais (cliente, serviço, profissional quando
+ * aplicável, data/hora, status) — consultar_agendamentos só dá contagem por
+ * status, não serve pra "quais são os agendamentos de amanhã".
+ */
+async function queryAppointmentsDetailed(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const direction = input.direcao === 'passados' ? 'passados' : 'futuros'
+  const dias = Math.min(90, Math.max(1, Number(input.dias) || 14))
+  const limite = Math.min(100, Math.max(1, Number(input.limite) || 30))
+  const now = new Date()
+  const edge = new Date(now)
+  edge.setDate(edge.getDate() + (direction === 'futuros' ? dias : -dias))
+
+  let q = ctx.supabase
+    .from('appointments')
+    .select('start_time, status, guest_name, contato_id, contatos(name), event_types(name)')
+    .eq('organization_id', ctx.orgId)
+    .neq('status', 'canceled')
+
+  if (direction === 'futuros') {
+    q = q.gte('start_time', now.toISOString()).lte('start_time', edge.toISOString()).order('start_time', { ascending: true })
+  } else {
+    q = q.gte('start_time', edge.toISOString()).lte('start_time', now.toISOString()).order('start_time', { ascending: false })
+  }
+  if (input.status) q = q.eq('status', input.status)
+  q = q.limit(limite)
+
+  const { data, error } = await q
+  if (error) return { summary: `Erro ao buscar agendamentos: ${error.message}`, view: { type: 'none' } }
+
+  const rows = (data as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhum agendamento ${direction} encontrado nos próximos/últimos ${dias} dias.`, view: { type: 'none' } }
+  }
+
+  return {
+    summary: `${rows.length} agendamento(s) ${direction} encontrados (janela de ${dias} dias). O mais próximo: ${rows[0].contatos?.name || rows[0].guest_name || 'sem cliente'}, ${rows[0].event_types?.name || 'sem serviço definido'}, em ${new Date(rows[0].start_time).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`,
+    view: {
+      type: 'table',
+      columns: ['Cliente', 'Serviço', 'Data/Hora', 'Status'],
+      rows: rows.map(r => [
+        r.contatos?.name || r.guest_name || '—',
+        r.event_types?.name || '—',
+        new Date(r.start_time).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        r.status || '—',
+      ]),
     },
   }
 }
