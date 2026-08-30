@@ -42,7 +42,14 @@ export type ClinicSupplyRow = {
   last_purchase_nf_number: string | null
   active: boolean
   stock_value_cents: number
+  avg_daily_consumption: number | null
+  duration_days: number | null
 }
+
+// Janela usada pra calcular o consumo médio diário — consumo por atendimento
+// dos últimos N dias / N. Curta o suficiente pra refletir o ritmo atual da
+// clínica, longa o suficiente pra não virar ruído com poucos atendimentos.
+const CONSUMPTION_AVG_WINDOW_DAYS = 30
 
 export async function listClinicSupplies(orgSlug: string): Promise<ClinicSupplyRow[]> {
   const org = await getCurrentOrganization(orgSlug)
@@ -53,12 +60,37 @@ export async function listClinicSupplies(orgSlug: string): Promise<ClinicSupplyR
     .eq('organization_id', org.id)
     .order('name')
 
-  return (data || []).map((r: any) => ({
-    ...r,
-    quantity_in_stock: Number(r.quantity_in_stock),
-    min_stock_alert: r.min_stock_alert != null ? Number(r.min_stock_alert) : null,
-    stock_value_cents: Math.round(Number(r.quantity_in_stock) * (r.last_unit_cost_cents || 0)),
-  }))
+  const supplies = data || []
+  if (supplies.length === 0) return []
+
+  const windowStart = new Date()
+  windowStart.setDate(windowStart.getDate() - CONSUMPTION_AVG_WINDOW_DAYS)
+  const { data: consumption } = await supabase
+    .from('clinic_supply_consumption_log')
+    .select('supply_id, quantity')
+    .eq('organization_id', org.id)
+    .eq('source', 'atendimento')
+    .gte('consumed_at', windowStart.toISOString())
+
+  const totalBySupply = new Map<string, number>()
+  for (const c of consumption || []) {
+    totalBySupply.set(c.supply_id, (totalBySupply.get(c.supply_id) || 0) + Number(c.quantity))
+  }
+
+  return supplies.map((r: any) => {
+    const quantityInStock = Number(r.quantity_in_stock)
+    const totalConsumed = totalBySupply.get(r.id) || 0
+    const avgDailyConsumption = totalConsumed > 0 ? totalConsumed / CONSUMPTION_AVG_WINDOW_DAYS : null
+    const durationDays = avgDailyConsumption && avgDailyConsumption > 0 ? Math.floor(quantityInStock / avgDailyConsumption) : null
+    return {
+      ...r,
+      quantity_in_stock: quantityInStock,
+      min_stock_alert: r.min_stock_alert != null ? Number(r.min_stock_alert) : null,
+      stock_value_cents: Math.round(quantityInStock * (r.last_unit_cost_cents || 0)),
+      avg_daily_consumption: avgDailyConsumption,
+      duration_days: durationDays,
+    }
+  })
 }
 
 export type ClinicSupplyInput = {

@@ -149,6 +149,8 @@ function ItensTab({ orgSlug, supplies, onChanged }: { orgSlug: string; supplies:
               <th className="text-right font-medium px-3 py-2">Qtd. em estoque</th>
               <th className="text-right font-medium px-3 py-2">Valor unitário</th>
               <th className="text-right font-medium px-3 py-2">Valor em estoque</th>
+              <th className="text-right font-medium px-3 py-2">Consumo médio/dia</th>
+              <th className="text-right font-medium px-3 py-2">Duração</th>
               <th className="text-left font-medium px-3 py-2">Última compra</th>
               <th className="text-left font-medium px-3 py-2">Nº NF</th>
               <th className="text-right font-medium px-3 py-2">Ações</th>
@@ -168,6 +170,16 @@ function ItensTab({ orgSlug, supplies, onChanged }: { orgSlug: string; supplies:
                   <td className="px-3 py-2 text-right">{s.quantity_in_stock} {s.unit}</td>
                   <td className="px-3 py-2 text-right">{s.last_unit_cost_cents != null ? formatCurrency(s.last_unit_cost_cents) : '—'}</td>
                   <td className="px-3 py-2 text-right">{formatCurrency(s.stock_value_cents)}</td>
+                  <td className="px-3 py-2 text-right text-muted-foreground">
+                    {s.avg_daily_consumption != null ? `${s.avg_daily_consumption.toFixed(2)} ${s.unit}/dia` : '—'}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {s.duration_days != null ? (
+                      <span className={s.duration_days <= 7 ? 'text-red-600 font-medium' : s.duration_days <= 15 ? 'text-amber-600 font-medium' : ''}>
+                        {s.duration_days} {s.duration_days === 1 ? 'dia' : 'dias'}
+                      </span>
+                    ) : '—'}
+                  </td>
                   <td className="px-3 py-2">{formatDateBR(s.last_purchase_at)}</td>
                   <td className="px-3 py-2">{s.last_purchase_nf_number || '—'}</td>
                   <td className="px-3 py-2 text-right">
@@ -194,7 +206,7 @@ function ItensTab({ orgSlug, supplies, onChanged }: { orgSlug: string; supplies:
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Nenhum insumo encontrado.</td></tr>
+              <tr><td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">Nenhum insumo encontrado.</td></tr>
             )}
           </tbody>
         </table>
