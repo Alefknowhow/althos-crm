@@ -98,6 +98,7 @@ export default function AppointmentsAdminTabs(props: Props) {
           clinicProfessionals={props.clinicProfessionals}
           clinicRooms={props.clinicRooms}
           clinicContexts={props.clinicAppointmentContexts}
+          availabilities={props.availabilities}
         />
       </TabsContent>
     </Tabs>

@@ -34,6 +34,7 @@ export type CalendarAppointment = {
 type Mode = 'week' | 'month' | 'day'
 
 type ClinicOption = { id: string; name: string }
+type Availability = { id: string; day_of_week: number; start_time: string; end_time: string; event_type_id: string | null }
 
 type Props = {
   orgSlug: string
@@ -45,6 +46,11 @@ type Props = {
    *  nicho Clínicas. Nos demais modos/nichos ficam vazios/ignorados. */
   clinicProfessionals?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
+  /** Horários configurados em "Horários disponíveis" — usados pra restringir
+   *  Semana/Dia aos dias da semana e à faixa de horário realmente atendidos,
+   *  em vez de sempre mostrar todos os 7 dias e a janela fixa 7h–21h. Sem
+   *  nenhum horário configurado ainda, cai no fallback (todos os dias, 7–21h). */
+  availabilities?: Availability[]
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -87,11 +93,108 @@ function statusOpacity(s: string): string {
   return ''
 }
 
+function parseHour(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h + (m || 0) / 60
+}
+
+// Fallback window pra quem ainda não configurou "Horários disponíveis" — sem
+// isso o calendário ficaria vazio (0 dias, 0 horas) até o primeiro cadastro.
+const FALLBACK_START_HOUR = 7
+const FALLBACK_END_HOUR = 21
+
+/** Faixa de horário a exibir na grade — min(início) a max(fim) entre todos
+ *  os horários cadastrados, arredondado pra hora cheia. Sem cadastro, cai
+ *  no fallback fixo. */
+function computeHourRange(availabilities: Availability[]): { startHour: number; endHour: number } {
+  if (availabilities.length === 0) return { startHour: FALLBACK_START_HOUR, endHour: FALLBACK_END_HOUR }
+  let start = Infinity
+  let end = -Infinity
+  for (const a of availabilities) {
+    start = Math.min(start, Math.floor(parseHour(a.start_time)))
+    end = Math.max(end, Math.ceil(parseHour(a.end_time)))
+  }
+  return { startHour: start, endHour: end }
+}
+
+/** Dias da semana (0=domingo…6=sábado) com pelo menos um horário cadastrado.
+ *  `null` = sem cadastro nenhum ainda → não filtra, mostra os 7 dias. */
+function computeAvailableDays(availabilities: Availability[]): Set<number> | null {
+  if (availabilities.length === 0) return null
+  return new Set(availabilities.map(a => a.day_of_week))
+}
+
+type OverlapSlot = { col: number; cols: number }
+
+/**
+ * Divide agendamentos que se sobrepõem no tempo em colunas lado a lado (como
+ * Google Calendar/Doctoralia) — sem isso, 2 agendamentos simultâneos (ex.:
+ * profissionais diferentes atendendo ao mesmo tempo) ficavam empilhados um
+ * por cima do outro. Algoritmo guloso: cada evento entra na primeira coluna
+ * cujo último evento já terminou antes dele começar; o nº de colunas de um
+ * grupo (cluster transitivo de sobreposições) vale pra todo mundo nele, pra
+ * uma sequência de horários escalonados não brigar por coluna 0.
+ */
+function computeOverlapLayout(appts: CalendarAppointment[]): Map<string, OverlapSlot> {
+  const layout = new Map<string, OverlapSlot>()
+  const sorted = [...appts].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+
+  let cluster: CalendarAppointment[] = []
+  let clusterEnd = -Infinity
+
+  function flushCluster() {
+    if (cluster.length === 0) return
+    const colEnds: number[] = []
+    const colOf = new Map<string, number>()
+    for (const a of cluster) {
+      const start = new Date(a.start_time).getTime()
+      const end = new Date(a.end_time).getTime()
+      let placed = false
+      for (let c = 0; c < colEnds.length; c++) {
+        if (colEnds[c] <= start) {
+          colEnds[c] = end
+          colOf.set(a.id, c)
+          placed = true
+          break
+        }
+      }
+      if (!placed) {
+        colEnds.push(end)
+        colOf.set(a.id, colEnds.length - 1)
+      }
+    }
+    const cols = colEnds.length
+    for (const a of cluster) layout.set(a.id, { col: colOf.get(a.id)!, cols })
+    cluster = []
+  }
+
+  for (const a of sorted) {
+    const start = new Date(a.start_time).getTime()
+    const end = new Date(a.end_time).getTime()
+    if (cluster.length > 0 && start >= clusterEnd) {
+      flushCluster()
+      clusterEnd = -Infinity
+    }
+    cluster.push(a)
+    clusterEnd = Math.max(clusterEnd, end)
+  }
+  flushCluster()
+
+  return layout
+}
+
+/** left/width em % pra um bloco dentro da coluna, considerando quantas
+ *  colunas o overlap layout pediu — com um pequeno gap entre elas. */
+function overlapStyle(slot: OverlapSlot): { left: string; width: string } {
+  const pct = 100 / slot.cols
+  return {
+    left: `calc(${slot.col * pct}% + 2px)`,
+    width: `calc(${pct}% - 4px)`,
+  }
+}
+
 /* -------- Week view -------- */
 
-// Visible time window — tweak here if the org typically books outside 8–20.
-const WEEK_START_HOUR = 7
-const WEEK_END_HOUR = 21
 const HOUR_HEIGHT_PX = 56
 
 function WeekView({
@@ -99,35 +202,52 @@ function WeekView({
   weekStart,
   appointments,
   onSelect,
+  hourRange,
+  availableDays,
 }: {
   orgSlug: string
   weekStart: Date
   appointments: CalendarAppointment[]
   onSelect: (a: CalendarAppointment) => void
+  hourRange: { startHour: number; endHour: number }
+  availableDays: Set<number> | null
 }) {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-  const hours = Array.from({ length: WEEK_END_HOUR - WEEK_START_HOUR + 1 }, (_, i) => WEEK_START_HOUR + i)
+  const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const days = availableDays ? allDays.filter(d => availableDays.has(d.getDay())) : allDays
+  const hours = Array.from({ length: hourRange.endHour - hourRange.startHour + 1 }, (_, i) => hourRange.startHour + i)
 
-  // Group appointments by day-of-week index, only those that intersect the visible week.
+  // Group appointments by date (only visible days), only those that intersect the visible week.
   const byDay = useMemo(() => {
-    const map = new Map<number, CalendarAppointment[]>()
-    const weekEnd = addDays(weekStart, 7)
+    const map = new Map<string, CalendarAppointment[]>()
+    for (const d of days) map.set(d.toDateString(), [])
     for (const a of appointments) {
+      if (a.status === 'canceled') continue
       const start = new Date(a.start_time)
-      if (start < weekStart || start >= weekEnd) continue
-      const idx = Math.floor((start.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000))
-      if (!map.has(idx)) map.set(idx, [])
-      map.get(idx)!.push(a)
+      const key = start.toDateString()
+      if (map.has(key)) map.get(key)!.push(a)
     }
     return map
-  }, [weekStart, appointments])
+  }, [days, appointments])
 
   const today = new Date()
+
+  // As larguras de coluna são dinâmicas (número de dias varia conforme os
+  // horários cadastrados), então o grid usa inline style em vez de uma
+  // classe Tailwind estática.
+  const gridCols = `60px repeat(${days.length}, 1fr)`
+
+  if (days.length === 0) {
+    return (
+      <div className="border rounded-lg bg-card py-16 text-center text-sm text-muted-foreground">
+        Nenhum dia com horário cadastrado em &quot;Horários disponíveis&quot;.
+      </div>
+    )
+  }
 
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
       {/* Day headers */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/30">
+      <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
         <div /> {/* gutter */}
         {days.map((d, i) => {
           const isToday = sameDay(d, today)
@@ -154,7 +274,7 @@ function WeekView({
       </div>
 
       {/* Time grid */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] relative">
+      <div className="grid relative" style={{ gridTemplateColumns: gridCols }}>
         {/* Hour gutter */}
         <div>
           {hours.map(h => (
@@ -170,7 +290,8 @@ function WeekView({
 
         {/* Day columns */}
         {days.map((d, i) => {
-          const appts = (byDay.get(i) || []).filter(a => a.status !== 'canceled')
+          const appts = byDay.get(d.toDateString()) || []
+          const overlapLayout = computeOverlapLayout(appts)
           return (
             <div
               key={i}
@@ -194,15 +315,16 @@ function WeekView({
                 const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
                 // Clamp to visible window so a 7am block stays visible even if start is 6:50.
-                const visibleTop = Math.max(0, startHour - WEEK_START_HOUR) * HOUR_HEIGHT_PX
+                const visibleTop = Math.max(0, startHour - hourRange.startHour) * HOUR_HEIGHT_PX
                 // Minimum 22px so a 15-min slot can still show a single line legibly.
                 const visibleHeight = Math.max(22, durationHours * HOUR_HEIGHT_PX - 2)
 
-                if (startHour >= WEEK_END_HOUR + 1) return null
-                if (startHour + durationHours <= WEEK_START_HOUR) return null
+                if (startHour >= hourRange.endHour + 1) return null
+                if (startHour + durationHours <= hourRange.startHour) return null
 
                 const et = pickFirst(a.event_types)
                 const color = et?.color || '#3b82f6'
+                const slot = overlapLayout.get(a.id) || { col: 0, cols: 1 }
 
                 // Adaptive layout: pick what to show based on available height.
                 //  - tiny  (<32px): just the name in a single line, tight padding
@@ -218,12 +340,13 @@ function WeekView({
                     key={a.id}
                     type="button"
                     onClick={() => onSelect(a)}
-                    className={`absolute left-1 right-1 rounded text-left leading-tight overflow-hidden border     hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(
+                    className={`absolute rounded text-left leading-tight overflow-hidden border hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(
                       a.status,
                     )}`}
                     style={{
                       top: visibleTop,
                       height: visibleHeight,
+                      ...overlapStyle(slot),
                       backgroundColor: `${color}22`,
                       borderLeft: `3px solid ${color}`,
                     }}
@@ -274,14 +397,16 @@ function DayProfessionalView({
   professionals,
   contexts,
   onSelect,
+  hourRange,
 }: {
   day: Date
   appointments: CalendarAppointment[]
   professionals: ClinicOption[]
   contexts: Record<string, ClinicAppointmentContext>
   onSelect: (a: CalendarAppointment) => void
+  hourRange: { startHour: number; endHour: number }
 }) {
-  const hours = Array.from({ length: WEEK_END_HOUR - WEEK_START_HOUR + 1 }, (_, i) => WEEK_START_HOUR + i)
+  const hours = Array.from({ length: hourRange.endHour - hourRange.startHour + 1 }, (_, i) => hourRange.startHour + i)
 
   // Agenda do dia só existe pra quem tem agendamento no dia OU está cadastrado
   // ativo — mas colunas vazias (profissional sem nada hoje) ainda aparecem,
@@ -353,6 +478,7 @@ function DayProfessionalView({
 
           {columns.map(col => {
             const appts = byColumn.get(col.id) || []
+            const overlapLayout = computeOverlapLayout(appts)
             return (
               <div key={col.id} className="relative border-l" style={{ height: hours.length * HOUR_HEIGHT_PX }}>
                 {hours.map(h => (
@@ -365,14 +491,15 @@ function DayProfessionalView({
                   const startHour = start.getHours() + start.getMinutes() / 60
                   const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 
-                  const visibleTop = Math.max(0, startHour - WEEK_START_HOUR) * HOUR_HEIGHT_PX
+                  const visibleTop = Math.max(0, startHour - hourRange.startHour) * HOUR_HEIGHT_PX
                   const visibleHeight = Math.max(22, durationHours * HOUR_HEIGHT_PX - 2)
 
-                  if (startHour >= WEEK_END_HOUR + 1) return null
-                  if (startHour + durationHours <= WEEK_START_HOUR) return null
+                  if (startHour >= hourRange.endHour + 1) return null
+                  if (startHour + durationHours <= hourRange.startHour) return null
 
                   const et = pickFirst(a.event_types)
                   const color = et?.color || '#3b82f6'
+                  const slot = overlapLayout.get(a.id) || { col: 0, cols: 1 }
                   const layout: 'tiny' | 'short' | 'tall' =
                     visibleHeight < 32 ? 'tiny' : visibleHeight < 56 ? 'short' : 'tall'
                   const paddingCls = layout === 'tiny' ? 'px-1.5 py-0.5' : 'p-1.5'
@@ -383,10 +510,11 @@ function DayProfessionalView({
                       key={a.id}
                       type="button"
                       onClick={() => onSelect(a)}
-                      className={`absolute left-1 right-1 rounded text-left leading-tight overflow-hidden border hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(a.status)}`}
+                      className={`absolute rounded text-left leading-tight overflow-hidden border hover:z-10 transition-shadow ${paddingCls} ${textCls} ${statusOpacity(a.status)}`}
                       style={{
                         top: visibleTop,
                         height: visibleHeight,
+                        ...overlapStyle(slot),
                         backgroundColor: `${color}22`,
                         borderLeft: `3px solid ${color}`,
                       }}
@@ -427,10 +555,12 @@ function MonthView({
   monthStart,
   appointments,
   onSelect,
+  availableDays,
 }: {
   monthStart: Date
   appointments: CalendarAppointment[]
   onSelect: (a: CalendarAppointment) => void
+  availableDays: Set<number> | null
 }) {
   // Compute grid: start from Sunday before-or-on the 1st, render 6 weeks.
   const gridStart = startOfWeek(monthStart)
@@ -460,10 +590,12 @@ function MonthView({
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
       <div className="grid grid-cols-7 border-b bg-muted/30">
-        {DAY_NAMES_SHORT.map(d => (
+        {DAY_NAMES_SHORT.map((d, i) => (
           <div
             key={d}
-            className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium border-l first:border-l-0"
+            className={`px-2 py-2 text-center text-[10px] uppercase tracking-wider font-medium border-l first:border-l-0 ${
+              availableDays && !availableDays.has(i) ? 'text-muted-foreground/40' : 'text-muted-foreground'
+            }`}
           >
             {d}
           </div>
@@ -478,12 +610,16 @@ function MonthView({
           const list = byDate.get(key) || []
           const show = list.slice(0, 3)
           const overflow = list.length - show.length
+          // Dia da semana sem horário cadastrado — deixa mais apagado (ainda
+          // mostra os agendamentos que existirem, caso alguma exceção tenha
+          // sido criada manualmente fora do expediente configurado).
+          const isUnavailableWeekday = !!availableDays && !availableDays.has(d.getDay())
 
           return (
             <div
               key={i}
               className={`min-h-[110px] border-l border-t first:border-l-0 p-1.5 text-xs ${
-                !inMonth ? 'bg-muted/20 text-muted-foreground' : ''
+                !inMonth ? 'bg-muted/20 text-muted-foreground' : isUnavailableWeekday ? 'bg-muted/10' : ''
               }`}
               style={{ borderTopWidth: i < 7 ? 0 : 1 }}
             >
@@ -543,9 +679,13 @@ export default function AppointmentsCalendar({
   onComplete,
   clinicProfessionals = [],
   clinicContexts = {},
+  availabilities = [],
 }: Props) {
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<CalendarAppointment | null>(null)
+
+  const hourRange = useMemo(() => computeHourRange(availabilities), [availabilities])
+  const availableDays = useMemo(() => computeAvailableDays(availabilities), [availabilities])
 
   const range = useMemo(() => {
     if (mode === 'week') {
@@ -622,6 +762,8 @@ export default function AppointmentsCalendar({
           weekStart={range.start}
           appointments={appointments}
           onSelect={setSelected}
+          hourRange={hourRange}
+          availableDays={availableDays}
         />
       ) : mode === 'day' ? (
         <DayProfessionalView
@@ -630,9 +772,10 @@ export default function AppointmentsCalendar({
           professionals={clinicProfessionals}
           contexts={clinicContexts}
           onSelect={setSelected}
+          hourRange={hourRange}
         />
       ) : (
-        <MonthView monthStart={range.start} appointments={appointments} onSelect={setSelected} />
+        <MonthView monthStart={range.start} appointments={appointments} onSelect={setSelected} availableDays={availableDays} />
       )}
 
       <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>

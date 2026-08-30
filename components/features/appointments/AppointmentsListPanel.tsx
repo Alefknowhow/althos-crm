@@ -28,6 +28,7 @@ import NewAppointmentDialog from './NewAppointmentDialog'
 type Appointment = CalendarAppointment
 
 type ClinicOption = { id: string; name: string }
+type Availability = { id: string; day_of_week: number; start_time: string; end_time: string; event_type_id: string | null }
 
 type Props = {
   orgSlug: string
@@ -38,6 +39,7 @@ type Props = {
   clinicProfessionals?: ClinicOption[]
   clinicRooms?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
+  availabilities?: Availability[]
 }
 
 function pickFirst<T>(x: T | T[] | null | undefined): T | null {
@@ -172,7 +174,7 @@ function AppointmentRow({
 
 export default function AppointmentsListPanel({
   orgSlug, upcoming, past, eventTypes,
-  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {},
+  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {}, availabilities = [],
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -345,6 +347,7 @@ export default function AppointmentsListPanel({
           onComplete={handleComplete}
           clinicProfessionals={clinicProfessionals}
           clinicContexts={clinicContexts}
+          availabilities={availabilities}
         />
       )}
     </div>
