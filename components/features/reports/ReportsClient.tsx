@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins, ChevronDown, ChevronRight, ExternalLink, Home } from 'lucide-react'
+import { FileSpreadsheet, Printer, Loader2, FileBarChart, ShoppingCart, CalendarDays, Coins, ChevronDown, ChevronRight, ExternalLink, Home, Stethoscope, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,14 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getReport, type ReportType, type ReportData, type CommissionGroupBy } from '@/actions/reports'
 import { toCsv, downloadCsv } from '@/lib/reports/csv'
 
-type Props = { orgSlug: string; isTravel?: boolean; isImobiliaria?: boolean }
+type Props = { orgSlug: string; isTravel?: boolean; isImobiliaria?: boolean; isClinic?: boolean }
 
-const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; travelOnly?: boolean; imobiliariaOnly?: boolean; hideForTravel?: boolean }[] = [
+const REPORTS: {
+  type: ReportType; label: string; icon: React.ReactNode
+  travelOnly?: boolean; imobiliariaOnly?: boolean; hideForTravel?: boolean
+  clinicOnly?: boolean; hideForClinic?: boolean
+}[] = [
   { type: 'leads', label: 'Leads', icon: <FileBarChart className="h-4 w-4" /> },
-  { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" />, hideForTravel: true },
+  { type: 'sales', label: 'Vendas', icon: <ShoppingCart className="h-4 w-4" />, hideForTravel: true, hideForClinic: true },
   { type: 'appointments', label: 'Agendamentos', icon: <CalendarDays className="h-4 w-4" />, hideForTravel: true },
   { type: 'commission', label: 'Reservas', icon: <Coins className="h-4 w-4" />, travelOnly: true },
   { type: 'imoveis', label: 'Imóveis', icon: <Home className="h-4 w-4" />, imobiliariaOnly: true },
+  { type: 'attendances', label: 'Atendimentos', icon: <Stethoscope className="h-4 w-4" />, clinicOnly: true },
+  { type: 'retornos', label: 'Retornos', icon: <Repeat className="h-4 w-4" />, clinicOnly: true },
 ]
 
 function ymd(d: Date): string {
@@ -55,9 +61,10 @@ const ERROR_MSG: Record<string, string> = {
   query_error: 'Erro ao buscar os dados. Tente novamente.',
 }
 
-export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria = false }: Props) {
+export default function ReportsClient({ orgSlug, isTravel = false, isImobiliaria = false, isClinic = false }: Props) {
   const reports = REPORTS.filter(r =>
-    (!r.travelOnly || isTravel) && (!r.imobiliariaOnly || isImobiliaria) && (!r.hideForTravel || !isTravel),
+    (!r.travelOnly || isTravel) && (!r.imobiliariaOnly || isImobiliaria) && (!r.hideForTravel || !isTravel)
+    && (!r.clinicOnly || isClinic) && (!r.hideForClinic || !isClinic),
   )
   const init = presetRange(30)
   const [type, setType] = useState<ReportType>('leads')
