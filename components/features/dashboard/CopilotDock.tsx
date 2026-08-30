@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sparkles, Send, X, User as UserIcon, Loader2, Pin, Trash2, Plus, History, Pencil, Check, ArrowLeft } from 'lucide-react'
+import { Sparkles, Send, X, Loader2, Pin, Trash2, Plus, Pencil, Check, PanelLeft } from 'lucide-react'
 import { getCopilotInit } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
 import {
@@ -15,7 +15,7 @@ import {
 
 const AnalyticsViewCard = dynamic(() => import('@/components/features/ai/AnalyticsViewCard'), {
   ssr: false,
-  loading: () => <div className="h-24 rounded-lg bg-muted animate-pulse" />,
+  loading: () => <div className="h-24 rounded-xl bg-muted animate-pulse" />,
 })
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: any } }
@@ -35,10 +35,19 @@ function renderMarkdownLite(text: string): React.ReactNode {
   )
 }
 
+function formatSessionDate(iso: string) {
+  const d = new Date(iso)
+  const today = new Date()
+  const isToday = d.toDateString() === today.toDateString()
+  if (isToday) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
 /** Botão flutuante de Copiloto IA — presente em todas as telas do app (ver
  * app/app/[orgSlug]/layout.tsx). `period` é opcional: só o dashboard passa
  * (contexto de período selecionado no painel); nas demais telas o copiloto
- * funciona sem esse contexto extra. */
+ * funciona sem esse contexto extra. Layout em duas colunas (histórico à
+ * esquerda, chat à direita), inspirado no claude.ai. */
 export default function CopilotDock({ orgSlug, period }: { orgSlug: string; period?: string }) {
   const [open, setOpen] = useState(false)
   const [initialized, setInitialized] = useState(false)
@@ -48,7 +57,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   const [credits, setCredits] = useState<number | null>(null)
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [showList, setShowList] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -74,6 +83,16 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streaming])
 
+  // Fecha com Escape, como qualquer overlay do app.
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   async function refreshSessions() {
     const list = await listInsightsSessions(orgSlug)
     setSessions(list as SessionSummary[])
@@ -89,9 +108,8 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   }
 
   async function switchToSession(id: string) {
-    if (streaming) return
+    if (streaming || id === sessionId) return
     setSessionId(id)
-    setShowList(false)
     const msgs = await listInsightsMessages(orgSlug, id)
     setMessages(msgs as Message[])
   }
@@ -102,7 +120,6 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     if (!res.ok) { toast.error('Não foi possível criar conversa'); return }
     setSessionId(res.sessionId)
     setMessages([])
-    setShowList(false)
     refreshSessions()
   }
 
@@ -112,11 +129,8 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     const remaining = sessions.filter(s => s.id !== id)
     setSessions(remaining)
     if (id === sessionId) {
-      if (remaining.length > 0) {
-        switchToSession(remaining[0].id)
-      } else {
-        handleNewConversation()
-      }
+      if (remaining.length > 0) switchToSession(remaining[0].id)
+      else handleNewConversation()
     }
   }
 
@@ -211,190 +225,215 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
           type="button"
           onClick={() => setOpen(true)}
           title="Abrir chat IA"
-          className="group fixed bottom-6 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity"
+          className="group fixed bottom-6 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-105 hover:opacity-90 transition-all"
           aria-label="Abrir copiloto IA"
         >
           <Sparkles className="w-6 h-6" />
-          <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-popover border px-2.5 py-1.5 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-lg bg-popover border px-2.5 py-1.5 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
             Abrir chat IA
           </span>
         </button>
       )}
 
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-1/2 sm:min-w-[420px] sm:max-w-3xl bg-background border-l flex flex-col">
-          <div className="h-16 border-b px-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              {showList ? (
-                <Button variant="ghost" size="icon" onClick={() => setShowList(false)} aria-label="Voltar à conversa">
-                  <ArrowLeft className="w-4 h-4" />
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-6 md:p-10">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] animate-in fade-in duration-200"
+            onClick={() => setOpen(false)}
+          />
+
+          <div className="relative z-10 w-full h-full sm:h-[88vh] max-w-6xl bg-background rounded-[28px] border border-border/60 shadow-2xl overflow-hidden flex animate-in fade-in zoom-in-[0.97] slide-in-from-bottom-3 duration-300 ease-out">
+            {/* ── Sidebar: histórico de conversas ── */}
+            <div
+              className={`shrink-0 border-r bg-muted/30 flex-col transition-[width] duration-200 overflow-hidden ${
+                sidebarOpen ? 'w-[260px] flex' : 'w-0 hidden sm:flex'
+              }`}
+            >
+              <div className="h-16 shrink-0 flex items-center px-4">
+                <span className="text-sm font-semibold tracking-tight">Conversas</span>
+              </div>
+              <div className="px-3 pb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start gap-2 rounded-xl h-9 text-sm font-normal border-border/70 hover:bg-background"
+                  onClick={handleNewConversation}
+                >
+                  <Plus className="w-4 h-4" /> Nova conversa
                 </Button>
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">{showList ? 'Conversas' : 'Copiloto IA'}</p>
-                {!showList && credits != null && (
-                  <p className="text-[10px] text-muted-foreground leading-tight">{credits} créditos restantes</p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
+                {sessions.map(s => (
+                  <div
+                    key={s.id}
+                    className={`group flex items-center gap-1 rounded-xl px-2.5 py-2 text-sm cursor-pointer transition-colors ${
+                      s.id === sessionId ? 'bg-background shadow-sm' : 'hover:bg-background/70'
+                    }`}
+                    onClick={() => renamingId !== s.id && switchToSession(s.id)}
+                  >
+                    {renamingId === s.id ? (
+                      <>
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={e => setRenameValue(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') setRenamingId(null) }}
+                          className="h-7 text-xs flex-1 rounded-lg"
+                        />
+                        <Button variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg" onClick={e => { e.stopPropagation(); confirmRename() }}>
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate leading-tight">{s.title || 'Nova conversa'}</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{formatSessionDate(s.updated_at)}</p>
+                        </div>
+                        <Button
+                          variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg opacity-0 group-hover:opacity-100"
+                          onClick={e => { e.stopPropagation(); startRename(s) }}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+                          onClick={e => { e.stopPropagation(); handleDeleteSession(s.id) }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {sessions.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-8">Nenhuma conversa ainda.</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {!showList && (
-                <>
-                  <Button variant="ghost" size="icon" onClick={handleNewConversation} title="Nova conversa" aria-label="Nova conversa">
+
+            {/* ── Chat ── */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="h-16 shrink-0 border-b px-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setSidebarOpen(v => !v)} title="Mostrar/ocultar histórico">
+                    <PanelLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-tight tracking-tight">Copiloto IA</p>
+                    {credits != null && (
+                      <p className="text-[11px] text-muted-foreground leading-tight">{credits} créditos restantes</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={handleNewConversation} title="Nova conversa" aria-label="Nova conversa">
                     <Plus className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setShowList(true)} title="Conversas" aria-label="Ver conversas">
-                    <History className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
+                    <X className="w-4 h-4" />
                   </Button>
-                </>
-              )}
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {showList ? (
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              <Button variant="outline" size="sm" className="w-full mb-2 justify-start gap-2" onClick={handleNewConversation}>
-                <Plus className="w-3.5 h-3.5" /> Nova conversa
-              </Button>
-              {sessions.map(s => (
-                <div
-                  key={s.id}
-                  className={`group flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm hover:bg-muted cursor-pointer ${s.id === sessionId ? 'bg-muted' : ''}`}
-                  onClick={() => renamingId !== s.id && switchToSession(s.id)}
-                >
-                  {renamingId === s.id ? (
-                    <>
-                      <Input
-                        autoFocus
-                        value={renameValue}
-                        onChange={e => setRenameValue(e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                        onKeyDown={e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') setRenamingId(null) }}
-                        className="h-7 text-xs flex-1"
-                      />
-                      <Button variant="ghost" size="icon" className="w-6 h-6 shrink-0" onClick={e => { e.stopPropagation(); confirmRename() }}>
-                        <Check className="w-3.5 h-3.5" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex-1 truncate">{s.title || 'Nova conversa'}</span>
-                      <Button
-                        variant="ghost" size="icon" className="w-6 h-6 shrink-0 opacity-0 group-hover:opacity-100"
-                        onClick={e => { e.stopPropagation(); startRename(s) }}
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon" className="w-6 h-6 shrink-0 opacity-0 group-hover:opacity-100 text-destructive"
-                        onClick={e => { e.stopPropagation(); handleDeleteSession(s.id) }}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </>
-                  )}
                 </div>
-              ))}
-              {sessions.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-8">Nenhuma conversa ainda.</p>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {!enabled ? (
-                  <div className="text-sm text-muted-foreground text-center py-8">
-                    O copiloto não está disponível no seu plano.
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">Pergunte algo sobre o seu negócio:</p>
-                    {SUGGESTED_PROMPTS.map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => send(p)}
-                        className="w-full text-left text-xs border rounded-lg px-3 py-2.5 hover:bg-muted hover:border-primary/40 transition-all"
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  messages.map(m => (
-                    <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                      <div
-                        className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${
-                          m.role === 'user' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-primary/10 text-primary'
-                        }`}
-                      >
-                        {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="max-w-[720px] mx-auto px-6 sm:px-8 py-8 space-y-7">
+                  {!enabled ? (
+                    <div className="text-sm text-muted-foreground text-center py-8">
+                      O copiloto não está disponível no seu plano.
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="pt-10 space-y-5">
+                      <div className="space-y-1.5">
+                        <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-xl font-semibold tracking-tight">Como posso ajudar?</h3>
+                        <p className="text-sm text-muted-foreground">Pergunte algo sobre o seu negócio.</p>
                       </div>
-                      <div className={`${m.role === 'user' ? 'max-w-[80%]' : 'max-w-[88%] flex-1'} space-y-2`}>
-                        {m.tool_calls && m.tool_calls.length > 0 && m.tool_calls.map((tc, i) => (
-                          <div key={i} className="space-y-1">
-                            <AnalyticsViewCard view={tc.result.view} label={tc.name} />
-                            {tc.result.view?.type !== 'none' && (
-                              <button
-                                type="button"
-                                onClick={() => handlePin(tc.name.replace('consultar_', ''), tc.result.view)}
-                                className="text-[10px] text-primary hover:underline inline-flex items-center gap-1"
-                              >
-                                <Pin className="w-2.5 h-2.5" /> Fixar no painel
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        {m.content && (
-                          <div
-                            className={`rounded-none px-3.5 py-2 text-sm whitespace-pre-wrap ${
-                              m.role === 'user' ? 'bg-primary text-primary-foreground inline-block' : 'bg-muted'
-                            }`}
+                      <div className="grid gap-2">
+                        {SUGGESTED_PROMPTS.map(p => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => send(p)}
+                            className="w-full text-left text-sm border border-border/70 rounded-2xl px-4 py-3 hover:bg-muted/60 hover:border-primary/40 transition-all"
                           >
-                            {renderMarkdownLite(m.content)}
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    messages.map(m => (
+                      <div key={m.id}>
+                        {m.role === 'user' ? (
+                          <div className="flex justify-end">
+                            <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary text-primary-foreground px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
+                              {m.content}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {m.tool_calls && m.tool_calls.length > 0 && m.tool_calls.map((tc, i) => (
+                              <div key={i} className="space-y-1.5">
+                                <AnalyticsViewCard view={tc.result.view} label={tc.name} />
+                                {tc.result.view?.type !== 'none' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePin(tc.name.replace('consultar_', ''), tc.result.view)}
+                                    className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
+                                  >
+                                    <Pin className="w-3 h-3" /> Fixar no painel
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {m.content && (
+                              <div className="text-[15px] leading-7 text-foreground whitespace-pre-wrap">
+                                {renderMarkdownLite(m.content)}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
+                    ))
+                  )}
+                  {streaming && messages[messages.length - 1]?.content === '' && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">consultando os dados...</span>
                     </div>
-                  ))
-                )}
-                {streaming && messages[messages.length - 1]?.content === '' && (
-                  <div className="flex gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span className="text-muted-foreground text-xs">consultando os dados...</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={endRef} />
+                  )}
+                  <div ref={endRef} />
+                </div>
               </div>
 
               {enabled && (
-                <form onSubmit={handleSubmit} className="border-t bg-card p-3 flex gap-2 shrink-0">
-                  <Input
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    placeholder="Pergunte sobre seu negócio..."
-                    disabled={streaming || !sessionId}
-                    className="flex-1 h-10 text-sm"
-                  />
-                  <Button type="submit" size="icon" disabled={streaming || !input.trim()} className="h-10 w-10 shrink-0">
-                    {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </Button>
-                </form>
+                <div className="shrink-0 px-6 sm:px-8 pb-6 pt-2">
+                  <form
+                    onSubmit={handleSubmit}
+                    className="max-w-[720px] mx-auto flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 px-2 py-2 transition-colors"
+                  >
+                    <Input
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      placeholder="Pergunte sobre seu negócio..."
+                      disabled={streaming || !sessionId}
+                      className="flex-1 h-9 text-[15px] border-none bg-transparent shadow-none focus-visible:ring-0"
+                    />
+                    <Button type="submit" size="icon" disabled={streaming || !input.trim()} className="h-9 w-9 shrink-0 rounded-xl">
+                      {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                  </form>
+                </div>
               )}
-            </>
-          )}
+            </div>
+          </div>
         </div>
       )}
     </>
