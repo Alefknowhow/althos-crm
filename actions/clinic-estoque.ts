@@ -335,6 +335,7 @@ export type ClinicSupplyInvoiceRow = {
   storage_path: string | null
   created_at: string
   item_count: number
+  financial_entry_id: string | null
 }
 
 export async function listClinicSupplyInvoices(orgSlug: string, search?: string): Promise<ClinicSupplyInvoiceRow[]> {
@@ -342,7 +343,7 @@ export async function listClinicSupplyInvoices(orgSlug: string, search?: string)
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_supply_invoices')
-    .select('id, nf_number, supplier_name, issued_at, total_cents, import_method, storage_path, created_at, clinic_supply_invoice_items(count)')
+    .select('id, nf_number, supplier_name, issued_at, total_cents, import_method, storage_path, created_at, financial_entry_id, clinic_supply_invoice_items(count)')
     .eq('organization_id', org.id)
     .order('issued_at', { ascending: false })
     .limit(200)
@@ -357,6 +358,7 @@ export async function listClinicSupplyInvoices(orgSlug: string, search?: string)
     storage_path: r.storage_path,
     created_at: r.created_at,
     item_count: r.clinic_supply_invoice_items?.[0]?.count ?? 0,
+    financial_entry_id: r.financial_entry_id,
   }))
 
   if (search?.trim()) {
@@ -382,6 +384,11 @@ export type ClinicSupplyInvoiceItemInput = {
  * last_unit_cost_cents/last_purchase_at/last_purchase_nf_number. Itens sem
  * supply_id e sem create_new_supply ficam só registrados na NF, sem afetar
  * estoque (mapeamento pendente).
+ *
+ * Também gera automaticamente um lançamento de despesa em Financeiro
+ * (categoria "Insumos (NF)") pelo valor total da NF, linkado via
+ * financial_entry_id — mesmo padrão de clinic_attendances.financial_entry_id
+ * pro lado da receita.
  */
 export async function createClinicSupplyInvoice(orgSlug: string, input: {
   nf_number: string | null
@@ -395,6 +402,25 @@ export async function createClinicSupplyInvoice(orgSlug: string, input: {
   const { org, user } = await requireEstoqueAccess(orgSlug)
   const supabase = createClient()
 
+  let financialEntryId: string | null = null
+  if (input.total_cents && input.total_cents > 0) {
+    const { data: entry } = await supabase
+      .from('financial_entries')
+      .insert({
+        organization_id: org.id,
+        tipo: 'despesa',
+        categoria: 'Insumos (NF)',
+        valor_cents: input.total_cents,
+        competencia: (input.issued_at || new Date().toISOString()).slice(0, 10),
+        status: 'pendente',
+        nota_fiscal: input.nf_number || null,
+        observacoes: input.supplier_name ? `Fornecedor: ${input.supplier_name}` : null,
+      })
+      .select('id')
+      .maybeSingle()
+    financialEntryId = entry?.id ?? null
+  }
+
   const { data: invoice, error: invErr } = await supabase
     .from('clinic_supply_invoices')
     .insert({
@@ -405,6 +431,7 @@ export async function createClinicSupplyInvoice(orgSlug: string, input: {
       total_cents: input.total_cents,
       import_method: input.import_method,
       storage_path: input.storage_path || null,
+      financial_entry_id: financialEntryId,
       created_by: user.id,
     })
     .select('id')
@@ -456,6 +483,7 @@ export async function createClinicSupplyInvoice(orgSlug: string, input: {
   }
 
   revalidatePath(`/app/${orgSlug}/estoque`)
+  revalidatePath(`/app/${orgSlug}/financeiro`)
   return { ok: true as const, invoiceId: invoice.id as string }
 }
 

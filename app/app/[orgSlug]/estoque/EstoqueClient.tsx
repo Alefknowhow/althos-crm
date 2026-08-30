@@ -430,6 +430,7 @@ function NotasTab({ orgSlug, initialInvoices, supplies, onChanged }: {
               <th className="text-right font-medium px-3 py-2">Valor total</th>
               <th className="text-left font-medium px-3 py-2">Itens</th>
               <th className="text-left font-medium px-3 py-2">Importação</th>
+              <th className="text-left font-medium px-3 py-2">Financeiro</th>
             </tr>
           </thead>
           <tbody>
@@ -441,10 +442,15 @@ function NotasTab({ orgSlug, initialInvoices, supplies, onChanged }: {
                 <td className="px-3 py-2 text-right">{i.total_cents != null ? formatCurrency(i.total_cents) : '—'}</td>
                 <td className="px-3 py-2">{i.item_count}</td>
                 <td className="px-3 py-2"><Badge variant="outline">{methodLabel[i.import_method] || i.import_method}</Badge></td>
+                <td className="px-3 py-2">
+                  {i.financial_entry_id
+                    ? <Badge variant="outline" className="border-emerald-400 text-emerald-600">Lançado</Badge>
+                    : <span className="text-muted-foreground text-xs">—</span>}
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Nenhuma NF importada.</td></tr>
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Nenhuma NF importada.</td></tr>
             )}
           </tbody>
         </table>
