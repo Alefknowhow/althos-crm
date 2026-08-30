@@ -63,7 +63,7 @@ Quando entregar um insight relevante, termine com uma pergunta convidando aprofu
 const NICHE_TOOLS_TEXT: Record<CopilotNiche, string> = {
   travel: `- Vertical Viagens: cotações/propostas (consultar_cotacoes), reservas/vendas fechadas (consultar_reservas), próximos embarques (consultar_embarques), ofertas/pacotes da vitrine (consultar_ofertas), bloqueios de assentos/vagas (consultar_bloqueios)
 `,
-  clinic: `- Vertical Clínicas: atendimentos e taxa de no-show por profissional (consultar_atendimentos_clinicos), comissões pendentes/pagas (consultar_comissoes_clinicas), catálogo de procedimentos (consultar_procedimentos), pacotes/tratamentos de sessões (consultar_tratamentos)
+  clinic: `- Vertical Clínicas: atendimentos e taxa de no-show por profissional (consultar_atendimentos_clinicos), comissões pendentes/pagas (consultar_comissoes_clinicas), catálogo de procedimentos (consultar_procedimentos), pacotes/tratamentos de sessões (consultar_tratamentos), estoque de insumos (consultar_estoque)
 `,
   real_estate: `- Vertical Imobiliárias: portfólio de imóveis (consultar_imoveis), visitas agendadas (consultar_visitas), negociações/propostas fechadas (consultar_negociacoes)
 `,
@@ -81,7 +81,7 @@ REGRA INEGOCIÁVEL (vertical Clínicas): você é uma analista de dados operacio
 
 const NICHE_FOCUS_LINE: Record<CopilotNiche, string> = {
   travel: 'Foque em leads, cotações, reservas e embarques — é isso que move uma agência de viagens.',
-  clinic: 'Foque em leads, agendamentos, atendimentos, procedimentos e comissões — é isso que move uma clínica.',
+  clinic: 'Foque em leads, agendamentos, atendimentos, procedimentos, comissões e estoque de insumos — é isso que move uma clínica.',
   real_estate: 'Foque em leads, imóveis, visitas e negociações fechadas — é isso que move uma imobiliária.',
   generic: 'Foque em leads, vendas e conversão — é isso que move esse negócio.',
 }

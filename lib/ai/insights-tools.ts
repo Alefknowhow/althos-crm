@@ -228,6 +228,12 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     input_schema: { type: 'object', properties: { periodo: PERIOD_PARAM } },
   },
   {
+    name: 'consultar_estoque',
+    description:
+      'Vertical Clínicas: estoque de insumos — valor total em estoque, itens com estoque baixo, itens mais consumidos no período. Use para "estoque", "insumos", "quanto tenho em estoque", "o que está acabando", "itens mais consumidos".',
+    input_schema: { type: 'object', properties: { periodo: PERIOD_PARAM } },
+  },
+  {
     name: 'consultar_imoveis',
     description:
       'Vertical Imobiliárias: portfólio de imóveis — quantos disponíveis/reservados/vendidos/alugados, valor médio, distribuição por tipo/finalidade. Use para "imóveis", "portfólio", "quantos imóveis disponíveis", "estoque de imóveis".',
@@ -252,7 +258,7 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
  * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
 
 const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios'])
-const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos'])
+const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos', 'consultar_estoque'])
 const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
 const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
 
@@ -314,6 +320,8 @@ export async function executeAnalyticsTool(
         return await queryProcedures(input, ctx)
       case 'consultar_tratamentos':
         return await queryTreatments(input, ctx)
+      case 'consultar_estoque':
+        return await queryStock(input, ctx)
       case 'consultar_imoveis':
         return await queryProperties(input, ctx)
       case 'consultar_visitas':
@@ -1212,6 +1220,54 @@ async function queryTreatments(input: Record<string, any>, ctx: AnalyticsContext
   return {
     summary: `${rows.length} tratamentos/pacotes no período (${label}), ${active} ativos, valor total ${fmtCurrency(totalValue)}. ${expiringSoon} vencendo nos próximos 15 dias.`,
     view: { type: 'kpis', items },
+  }
+}
+
+async function queryStock(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const { start, label } = periodWindow(input.periodo)
+
+  const { data: supplies } = await ctx.supabase
+    .from('clinic_supplies')
+    .select('id, name, unit, quantity_in_stock, min_stock_alert, last_unit_cost_cents')
+    .eq('organization_id', ctx.orgId)
+    .eq('active', true)
+
+  const rows = (supplies as any[]) || []
+  if (rows.length === 0) {
+    return { summary: 'Nenhum insumo cadastrado no estoque.', view: { type: 'none' } }
+  }
+
+  let totalValueCents = 0
+  const lowStock: string[] = []
+  for (const s of rows) {
+    totalValueCents += Math.round(Number(s.quantity_in_stock) * (s.last_unit_cost_cents || 0))
+    if (s.min_stock_alert != null && Number(s.quantity_in_stock) <= Number(s.min_stock_alert)) lowStock.push(s.name)
+  }
+
+  const { data: consumption } = await ctx.supabase
+    .from('clinic_supply_consumption_log')
+    .select('quantity, supply_id, clinic_supplies(name, unit)')
+    .eq('organization_id', ctx.orgId)
+    .eq('source', 'atendimento')
+    .gte('consumed_at', start.toISOString())
+
+  const byItem = new Map<string, { qty: number; unit: string }>()
+  for (const c of (consumption as any[]) || []) {
+    const name = c.clinic_supplies?.name || 'Insumo removido'
+    const prev = byItem.get(name) || { qty: 0, unit: c.clinic_supplies?.unit || 'un' }
+    prev.qty += Number(c.quantity)
+    byItem.set(name, prev)
+  }
+  const topConsumed = Array.from(byItem.entries())
+    .map(([name, v]) => ({ name, value: v.qty }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10)
+
+  return {
+    summary: `${rows.length} insumos ativos no estoque, valor total ${fmtCurrency(totalValueCents)}. ${lowStock.length} com estoque baixo${lowStock.length > 0 ? ` (${lowStock.slice(0, 5).join(', ')}${lowStock.length > 5 ? '...' : ''})` : ''}. Mais consumidos no período (${label}): ${topConsumed.slice(0, 5).map(t => `${t.name} (${t.value})`).join(', ') || 'sem consumo registrado'}.`,
+    view: topConsumed.length > 0
+      ? { type: 'bar', data: topConsumed, color: '#f59e0b' }
+      : { type: 'none' },
   }
 }
 
