@@ -71,7 +71,7 @@ export async function getClinicDashboardMetrics(orgSlug: string): Promise<Clinic
       .eq('status', 'aguardando'),
     supabase
       .from('clinic_attendances')
-      .select('professional_id, event_type_id, clinic_professionals(name), event_types(name)')
+      .select('professional_id, event_type_id, total_cents, discount_cents, clinic_professionals(name), event_types(name)')
       .eq('organization_id', org.id)
       .gte('attended_at', since30d),
   ])
@@ -94,24 +94,16 @@ export async function getClinicDashboardMetrics(orgSlug: string): Promise<Clinic
     .slice(0, 20)
     .map(([label, value]) => ({ label, value, valueLabel: `${value}` }))
 
-  // Faturamento por serviço (30d) — preço cadastrado em
-  // clinic_service_context × contagem de atendimentos daquele serviço.
-  const eventTypeIds = Array.from(new Set((attendances30d || []).map((a: any) => a.event_type_id).filter(Boolean)))
-  let priceByEventType = new Map<string, number>()
-  if (eventTypeIds.length > 0) {
-    const { data: prices } = await supabase
-      .from('clinic_service_context')
-      .select('event_type_id, price_cents')
-      .eq('organization_id', org.id)
-      .in('event_type_id', eventTypeIds)
-    priceByEventType = new Map((prices || []).map(p => [p.event_type_id, p.price_cents || 0]))
-  }
+  // Receita por serviço (30d) — valor efetivamente cobrado
+  // (clinic_attendances.total_cents - discount_cents, editável na tela de
+  // Atendimentos), não mais o preço de tabela — reflete descontos/ajustes
+  // caso a caso.
   const byService = new Map<string, number>()
   for (const a of (attendances30d || []) as any[]) {
     const name = a.event_types?.name
-    if (!name || !a.event_type_id) continue
-    const price = priceByEventType.get(a.event_type_id) || 0
-    byService.set(name, (byService.get(name) || 0) + price)
+    if (!name) continue
+    const net = Math.max(0, (a.total_cents || 0) - (a.discount_cents || 0))
+    byService.set(name, (byService.get(name) || 0) + net)
   }
   const revenueByService = Array.from(byService.entries())
     .sort((a, b) => b[1] - a[1])

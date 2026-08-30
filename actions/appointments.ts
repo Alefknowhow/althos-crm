@@ -385,9 +385,22 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
       },
       created_by: user.id,
     })
+
+    // Nicho Clínicas: um retorno é só um agendamento pendente de ser
+    // marcado — assim que o paciente agenda de novo (por aqui ou por
+    // "Agendar retorno" no popup do calendário), o item some da lista de
+    // Retornos sozinho, sem precisar de outra ação manual. No-op fora do
+    // nicho (a tabela simplesmente não tem linha pra esse paciente).
+    await supabase
+      .from('clinic_attendances')
+      .update({ return_status: 'agendado' })
+      .eq('organization_id', org.id)
+      .eq('patient_contato_id', leadId)
+      .eq('return_status', 'pendente')
   }
 
   revalidatePath(`/app/${orgSlug}/agendamentos`)
+  revalidatePath(`/app/${orgSlug}/retornos`)
   return { ok: true as const, appointmentId: appt.id }
 }
 

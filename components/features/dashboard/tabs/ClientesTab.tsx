@@ -29,9 +29,13 @@ const SEGMENT_LABEL: Record<string, string> = {
 }
 const SEGMENT_ORDER = ['novo', 'ativo', 'recorrente', 'vip', 'em_risco'] as const
 
-/** Clientes — "quem são e como estão se comportando?". Foco em retenção e
- *  relacionamento, não é uma segunda página de vendas. */
-export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
+/** Clientes/Pacientes — "quem são e como estão se comportando?". Foco em
+ *  retenção e relacionamento, não é uma segunda página de vendas. No nicho
+ *  Clínicas os rótulos viram "paciente" (mesmo dado por baixo). */
+export default async function ClientesTab({ ctx, isClinic = false }: { ctx: WidgetCtx; isClinic?: boolean }) {
+  const who = isClinic ? 'Paciente' : 'Cliente'
+  const whoLower = who.toLowerCase()
+  const whoPlural = isClinic ? 'Pacientes' : 'Clientes'
   const [ticket, ltv, cities, vipCustomers, atRiskCustomers, repurchase, segmentation] = await Promise.all([
     getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
     getCustomerLTV(ctx.orgId),
@@ -48,19 +52,19 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
-          label="Clientes ativos"
+          label={`${whoPlural} ativos`}
           value={String(activeCustomers)}
-          help="Clientes com compra concluída, exceto os em risco (sem comprar há 90+ dias)."
+          help={`${whoPlural} com compra concluída, exceto os em risco (sem comprar há 90+ dias).`}
         />
         <KpiCard
-          label="Novos clientes"
+          label={`Novos ${whoLower}s`}
           value={String(segmentation.novo)}
-          help="Clientes com exatamente 1 compra, feita nos últimos 30 dias."
+          help={`${whoPlural} com exatamente 1 compra, feita nos últimos 30 dias.`}
         />
         <KpiCard
-          label="Clientes recorrentes"
+          label={`${whoPlural} recorrentes`}
           value={String(segmentation.recorrente)}
-          help="Clientes com 2 ou mais compras (fora do grupo VIP), não em risco."
+          help={`${whoPlural} com 2 ou mais compras (fora do grupo VIP), não em risco.`}
         />
         <KpiCard
           label="Taxa de recompra"
@@ -81,57 +85,57 @@ export default async function ClientesTab({ ctx }: { ctx: WidgetCtx }) {
           help="Receita do período dividida pelo número de vendas concluídas."
         />
         <KpiCard
-          label="Clientes VIP"
+          label={`${whoPlural} VIP`}
           value={String(segmentation.vip)}
-          help="Clientes entre os 10% de maior valor total comprado (histórico completo), não em risco."
+          help={`${whoPlural} entre os 10% de maior valor total comprado (histórico completo), não em risco.`}
         />
         <KpiCard
-          label="Clientes em risco"
+          label={`${whoPlural} em risco`}
           value={String(segmentation.em_risco)}
-          help="Clientes com ao menos uma compra, sem nenhuma compra nova há 90+ dias."
+          help={`${whoPlural} com ao menos uma compra, sem nenhuma compra nova há 90+ dias.`}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <BarListCard
-          title="Segmentação de clientes"
+          title={`Segmentação de ${whoLower}s`}
           help="Distribuição por comportamento de compra: novo, ativo, recorrente, VIP e em risco."
           icon={Layers}
           rows={SEGMENT_ORDER.map(k => ({ label: SEGMENT_LABEL[k], value: segmentation[k], valueLabel: String(segmentation[k]) }))}
           color="#0f62fe"
-          emptyText="Nenhum cliente com compra concluída ainda."
+          emptyText={`Nenhum ${whoLower} com compra concluída ainda.`}
         />
         <BarListCard
-          title="Clientes VIP"
-          help="Top 5 clientes por valor total histórico comprado."
+          title={`${whoPlural} VIP`}
+          help="Top 5 por valor total histórico comprado."
           icon={Crown}
           rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
           color="#f1c21b"
           emptyText="Nenhuma venda concluída registrada ainda."
         />
         <BarListCard
-          title="Clientes em risco"
-          help="Clientes sem nenhuma compra há mais de 90 dias, ordenados pelo mais tempo parado."
+          title={`${whoPlural} em risco`}
+          help="Sem nenhuma compra há mais de 90 dias, ordenados pelo mais tempo parado."
           icon={AlertTriangle}
           rows={atRiskCustomers.map(c => ({ label: c.name, value: c.days_since_last_sale, valueLabel: `${c.days_since_last_sale}d` }))}
           color="#da1e28"
-          emptyText="Nenhum cliente parado há mais de 90 dias."
+          emptyText={`Nenhum ${whoLower} parado há mais de 90 dias.`}
         />
         <Card className={`${COMPACT_CARD_H} flex flex-col overflow-hidden`}>
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-base flex items-center gap-2">
               <MapPin className="w-4 h-4 text-blue-600" />
-              Clientes por cidade
+              {whoPlural} por cidade
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
               {cities.some(c => c.commission_cents > 0)
-                ? 'Barra = receita total (verde = comissão). Linha = nº de clientes.'
-                : 'Barra = receita total. Linha = nº de clientes.'}
+                ? `Barra = receita total (verde = comissão). Linha = nº de ${whoLower}s.`
+                : `Barra = receita total. Linha = nº de ${whoLower}s.`}
             </p>
           </CardHeader>
           <CardContent className="flex-1 min-h-0">
             {cities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum cliente com cidade cadastrada.</p>
+              <p className="text-sm text-muted-foreground">Nenhum {whoLower} com cidade cadastrada.</p>
             ) : (
               <CityRevenueChart rows={cities} hasCommission={cities.some(c => c.commission_cents > 0)} />
             )}

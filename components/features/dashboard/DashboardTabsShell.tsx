@@ -14,6 +14,7 @@ export default function DashboardTabsShell({
   imoveis,
   trafego,
   defaultTab,
+  isClinic = false,
 }: {
   /** Filtros/título da Inicial — renderizado junto com as abas dentro do
    *  mesmo container sticky, pra ambos ficarem fixos ao rolar a página. */
@@ -25,6 +26,10 @@ export default function DashboardTabsShell({
   equipe: ReactNode
   /** Só passado quando a org é do nicho Clínicas — aba opcional. */
   clinica?: ReactNode
+  /** Nicho Clínicas: "Vendas" some (o "atendimento concluído" já é a
+   *  venda), "Clientes" vira "Pacientes", "Clínica" vira "Atendimentos" —
+   *  as 5 abas ficam Visão Geral/Pipeline/Pacientes/Equipe/Atendimentos. */
+  isClinic?: boolean
   /** Só passado quando a org é do nicho Imobiliária — aba opcional. */
   imoveis?: ReactNode
   /** Só passado quando a org é do nicho Agências de Tráfego — aba opcional. */
@@ -34,10 +39,13 @@ export default function DashboardTabsShell({
    *  comportamento existente pra quem não passa essa prop. */
   defaultTab?: string
 }) {
-  const extraTabs = (clinica ? 1 : 0) + (imoveis ? 1 : 0) + (trafego ? 1 : 0)
+  // Nicho Clínicas troca "Vendas" por "Clínica" (renomeada pra Atendimentos)
+  // no mesmo slot — 5 abas fixas, sem crescer a barra. Nos demais nichos,
+  // "Clínica"/Imobiliária/Tráfego são extras opcionais de verdade.
+  const extraTabs = (clinica && !isClinic ? 1 : 0) + (imoveis ? 1 : 0) + (trafego ? 1 : 0)
   const tabCount = 5 + extraTabs
   const gridColsClass = tabCount === 8 ? 'grid-cols-8' : tabCount === 7 ? 'grid-cols-7' : tabCount === 6 ? 'grid-cols-6' : 'grid-cols-5'
-  const validTabs = ['visao-geral', 'pipeline', 'vendas', 'clientes', 'equipe', ...(clinica ? ['clinica'] : []), ...(imoveis ? ['imoveis'] : []), ...(trafego ? ['trafego'] : [])]
+  const validTabs = ['visao-geral', 'pipeline', ...(isClinic ? [] : ['vendas']), 'clientes', 'equipe', ...(clinica ? ['clinica'] : []), ...(imoveis ? ['imoveis'] : []), ...(trafego ? ['trafego'] : [])]
   const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
   return (
     <Tabs defaultValue={initialTab} className="space-y-4">
@@ -55,10 +63,10 @@ export default function DashboardTabsShell({
         <TabsList className={`grid gap-1 h-auto w-full sm:inline-flex sm:w-auto sm:gap-0 ${gridColsClass}`}>
           <TabsTrigger value="visao-geral" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Visão Geral</TabsTrigger>
           <TabsTrigger value="pipeline" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Pipeline</TabsTrigger>
-          <TabsTrigger value="vendas" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Vendas</TabsTrigger>
-          <TabsTrigger value="clientes" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Clientes</TabsTrigger>
+          {!isClinic && <TabsTrigger value="vendas" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Vendas</TabsTrigger>}
+          <TabsTrigger value="clientes" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">{isClinic ? 'Pacientes' : 'Clientes'}</TabsTrigger>
           <TabsTrigger value="equipe" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Equipe</TabsTrigger>
-          {clinica && <TabsTrigger value="clinica" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Clínica</TabsTrigger>}
+          {clinica && <TabsTrigger value="clinica" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">{isClinic ? 'Atendimentos' : 'Clínica'}</TabsTrigger>}
           {imoveis && <TabsTrigger value="imoveis" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Imobiliária</TabsTrigger>}
           {trafego && <TabsTrigger value="trafego" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Tráfego</TabsTrigger>}
         </TabsList>
@@ -69,9 +77,11 @@ export default function DashboardTabsShell({
       <TabsContent value="pipeline" className="space-y-4">
         {pipeline}
       </TabsContent>
-      <TabsContent value="vendas" className="space-y-4">
-        {vendas}
-      </TabsContent>
+      {!isClinic && (
+        <TabsContent value="vendas" className="space-y-4">
+          {vendas}
+        </TabsContent>
+      )}
       <TabsContent value="clientes" className="space-y-4">
         {clientes}
       </TabsContent>

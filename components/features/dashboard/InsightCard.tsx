@@ -25,6 +25,7 @@ const TAB_KEYWORDS: Record<string, string[]> = {
   vendas: ['/vendas', 'venda', 'receita', 'produto'],
   clientes: ['/vendas', 'cliente', 'ltv', 'recompra'],
   equipe: ['/equipe', 'vendedor', 'resposta', 'atendimento'],
+  clinica: ['/atendimentos', '/agendamentos', 'atendimento', 'no-show', 'no show', 'retorno', 'comissão'],
 }
 
 const MOCK_FALLBACK: Record<string, string> = {
@@ -33,6 +34,7 @@ const MOCK_FALLBACK: Record<string, string> = {
   vendas: 'A receita cresceu em relação ao período anterior — confira o detalhamento por produto.',
   clientes: '3 clientes VIP não compram há mais de 60 dias — vale um contato de reativação.',
   equipe: 'Um vendedor concentra mais de 50% dos leads atribuídos — considere redistribuir.',
+  clinica: 'A taxa de no-show está dentro do normal — sem sinais de alerta no período.',
 }
 
 export default async function InsightCard({ orgSlug, tab }: { orgSlug: string; tab: string }) {

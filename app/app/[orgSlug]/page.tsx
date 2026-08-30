@@ -116,6 +116,7 @@ export default async function OrgDashboard({
 
       <DashboardTabsShell
         defaultTab={searchParams.tab}
+        isClinic={isClinicNiche((org as any).niche)}
         stickyHeader={
           <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
@@ -148,7 +149,7 @@ export default async function OrgDashboard({
         }
         clientes={
           <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-            <ClientesTab ctx={ctx} />
+            <ClientesTab ctx={ctx} isClinic={isClinicNiche((org as any).niche)} />
           </Suspense>
         }
         equipe={

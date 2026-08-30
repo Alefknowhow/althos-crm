@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -33,6 +34,16 @@ function toDatetimeLocal(iso: string): string {
 const EMPTY: ClinicAttendanceInput = {
   patient_contato_id: '', professional_id: null, event_type_id: null,
   attended_at: new Date().toISOString(), notes: null, recommendations: null, next_return_date: null,
+  total_cents: null, discount_cents: 0, payment_method: null,
+}
+
+function fmtCurrency(cents: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
+}
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  pix: 'PIX', credito: 'Cartão de Crédito', debito: 'Cartão de Débito',
+  dinheiro: 'Dinheiro', boleto: 'Boleto', transferencia: 'Transferência',
 }
 
 export default function AtendimentosClient({
@@ -72,6 +83,9 @@ export default function AtendimentosClient({
       notes: row.notes,
       recommendations: row.recommendations,
       next_return_date: row.next_return_date,
+      total_cents: row.total_cents,
+      discount_cents: row.discount_cents,
+      payment_method: row.payment_method,
     })
     setDialogOpen(true)
   }
@@ -96,8 +110,27 @@ export default function AtendimentosClient({
     toast.success('Atendimento excluído')
   }
 
+  const totalRevenue = attendances.reduce((acc, a) => acc + Math.max(0, (a.total_cents || 0) - a.discount_cents), 0)
+  const withValue = attendances.filter(a => a.total_cents != null)
+  const avgTicket = withValue.length > 0 ? Math.round(totalRevenue / withValue.length) : 0
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Atendimentos (últimos 200)</p>
+          <p className="text-lg font-semibold">{attendances.length}</p>
+        </div>
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Receita registrada</p>
+          <p className="text-lg font-semibold">{fmtCurrency(totalRevenue)}</p>
+        </div>
+        <div className="rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">Ticket médio</p>
+          <p className="text-lg font-semibold">{fmtCurrency(avgTicket)}</p>
+        </div>
+      </div>
+
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">
           {attendances.length === 0 ? 'Nenhum atendimento registrado ainda' : `${attendances.length} atendimento(s)`}
@@ -159,6 +192,44 @@ export default function AtendimentosClient({
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Valor cobrado</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={draft.total_cents != null ? (draft.total_cents / 100).toFixed(2) : ''}
+                    onChange={e => setDraft({ ...draft, total_cents: e.target.value ? Math.round(Number(e.target.value) * 100) : null })}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Desconto</Label>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    value={draft.discount_cents ? (draft.discount_cents / 100).toFixed(2) : ''}
+                    onChange={e => setDraft({ ...draft, discount_cents: e.target.value ? Math.round(Number(e.target.value) * 100) : 0 })}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Forma de pagamento</Label>
+                  <Select value={draft.payment_method || 'none'} onValueChange={v => setDraft({ ...draft, payment_method: v === 'none' ? null : v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {Object.entries(PAYMENT_METHOD_LABEL).map(([k, label]) => (
+                        <SelectItem key={k} value={k}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {draft.total_cents != null && (
+                <p className="text-xs text-muted-foreground">
+                  Líquido pra receita: <span className="font-medium text-foreground">{fmtCurrency(Math.max(0, draft.total_cents - (draft.discount_cents || 0)))}</span>
+                </p>
+              )}
+
               <div className="space-y-2">
                 <Label>Observações operacionais</Label>
                 <Textarea rows={2} value={draft.notes || ''} onChange={e => setDraft({ ...draft, notes: e.target.value || null })} placeholder="Sem dado clínico sensível — só observações comerciais/operacionais." />
@@ -198,6 +269,14 @@ export default function AtendimentosClient({
                   {a.next_return_date ? ` · retorno sugerido: ${new Date(a.next_return_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
                 </p>
               </div>
+              {a.total_cents != null && (
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-semibold tabular-nums">{fmtCurrency(Math.max(0, a.total_cents - a.discount_cents))}</div>
+                  {a.payment_method && (
+                    <div className="text-[10px] text-muted-foreground">{PAYMENT_METHOD_LABEL[a.payment_method] || a.payment_method}</div>
+                  )}
+                </div>
+              )}
               <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(a)}><Pencil className="w-3.5 h-3.5" /></Button>
               <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(a)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
