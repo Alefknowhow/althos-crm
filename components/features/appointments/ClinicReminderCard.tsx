@@ -23,7 +23,15 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800',
 }
 
-export default function ClinicReminderCard({ orgSlug, settings }: { orgSlug: string; settings: ClinicReminderSettings }) {
+export default function ClinicReminderCard({
+  orgSlug, settings, compact = false,
+}: {
+  orgSlug: string
+  settings: ClinicReminderSettings
+  /** Versão compacta (badge + botão, sem descrição) — usada ao lado das
+   *  abas de Agendamentos em vez de ocupar uma linha inteira própria. */
+  compact?: boolean
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -34,6 +42,32 @@ export default function ClinicReminderCard({ orgSlug, settings }: { orgSlug: str
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Template de lembrete criado — envie para aprovação em Templates WhatsApp.')
     router.refresh()
+  }
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2 shrink-0" title="Lembrete automático de agendamento (24h antes)">
+        <BellRing className="w-3.5 h-3.5 text-muted-foreground shrink-0 hidden sm:block" />
+        {settings.templateName ? (
+          <>
+            <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[settings.templateStatus || 'local']}`}>
+              {STATUS_LABEL[settings.templateStatus || 'local']}
+            </Badge>
+            {settings.templateStatus !== 'approved' && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                <Link href={`/app/${orgSlug}/whatsapp-templates`}>
+                  Ver template <ExternalLink className="w-3 h-3 ml-1" />
+                </Link>
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button size="sm" className="h-7 text-xs" onClick={handleCreate} disabled={loading}>
+            {loading ? 'Criando...' : 'Criar lembrete automático'}
+          </Button>
+        )}
+      </div>
+    )
   }
 
   return (

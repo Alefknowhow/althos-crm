@@ -13,7 +13,6 @@ import {
   listClinicSpecialties, listClinicProfessionals, listClinicRooms, listClinicAppointmentContexts,
   getClinicReminderSettings, type ClinicReminderSettings,
 } from '@/actions/clinic'
-import ClinicReminderCard from '@/components/features/appointments/ClinicReminderCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,10 +74,6 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
         hint="Crie tipos de evento, defina horários disponíveis e gerencie agendamentos."
       />
 
-      {isClinic && reminderSettings && (
-        <ClinicReminderCard orgSlug={params.orgSlug} settings={reminderSettings} />
-      )}
-
       <AppointmentsAdminTabs
         orgSlug={params.orgSlug}
         eventTypes={eventTypes as any[]}
@@ -93,6 +88,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
         clinicRooms={clinicRooms}
         clinicServiceContexts={clinicServiceContexts}
         clinicAppointmentContexts={clinicAppointmentContexts}
+        clinicReminderSettings={reminderSettings}
       />
     </div>
   )

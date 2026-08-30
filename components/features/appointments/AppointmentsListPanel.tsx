@@ -269,8 +269,10 @@ export default function AppointmentsListPanel({
 
   return (
     <div className="space-y-4">
-      {/* Top bar: view toggle + new appointment */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      {/* Top bar: view toggle + new appointment — sticky logo abaixo das abas
+          (que já são sticky, 56px de altura), pra só a área de
+          calendário/agenda/lista rolar por baixo dos dois. */}
+      <div className="sticky top-14 z-10 -mx-3 sm:-mx-5 px-3 sm:px-5 py-3 bg-background border-b flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 w-fit">
           {isClinic && clinicProfessionals.length > 0 && (
             <button

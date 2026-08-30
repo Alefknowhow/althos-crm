@@ -5,7 +5,8 @@ import { Calendar, Clock, List } from 'lucide-react'
 import EventTypesPanel from './EventTypesPanel'
 import AvailabilityPanel from './AvailabilityPanel'
 import AppointmentsListPanel from './AppointmentsListPanel'
-import type { ClinicServiceContext, ClinicAppointmentContext } from '@/actions/clinic'
+import ClinicReminderCard from './ClinicReminderCard'
+import type { ClinicServiceContext, ClinicAppointmentContext, ClinicReminderSettings } from '@/actions/clinic'
 
 type EventType = {
   id: string
@@ -48,23 +49,29 @@ type Props = {
   clinicRooms?: ClinicOption[]
   clinicServiceContexts?: Record<string, ClinicServiceContext>
   clinicAppointmentContexts?: Record<string, ClinicAppointmentContext>
+  clinicReminderSettings?: ClinicReminderSettings | null
 }
 
 export default function AppointmentsAdminTabs(props: Props) {
   return (
     <Tabs defaultValue="event-types" className="space-y-4">
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 bg-background">
-        <TabsList>
-          <TabsTrigger value="event-types" className="gap-2">
-            <Calendar className="w-4 h-4" /> Tipos de evento
-          </TabsTrigger>
-          <TabsTrigger value="availability" className="gap-2">
-            <Clock className="w-4 h-4" /> Horários disponíveis
-          </TabsTrigger>
-          <TabsTrigger value="appointments" className="gap-2">
-            <List className="w-4 h-4" /> Agendamentos
-          </TabsTrigger>
-        </TabsList>
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 -mt-2 bg-background border-b">
+        <div className="h-14 flex items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="event-types" className="gap-2">
+              <Calendar className="w-4 h-4" /> Tipos de evento
+            </TabsTrigger>
+            <TabsTrigger value="availability" className="gap-2">
+              <Clock className="w-4 h-4" /> Horários disponíveis
+            </TabsTrigger>
+            <TabsTrigger value="appointments" className="gap-2">
+              <List className="w-4 h-4" /> Agendamentos
+            </TabsTrigger>
+          </TabsList>
+          {props.isClinic && props.clinicReminderSettings && (
+            <ClinicReminderCard orgSlug={props.orgSlug} settings={props.clinicReminderSettings} compact />
+          )}
+        </div>
       </div>
 
       <TabsContent value="event-types">
