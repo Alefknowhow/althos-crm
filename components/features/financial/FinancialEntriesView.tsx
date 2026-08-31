@@ -230,6 +230,7 @@ export default function FinancialEntriesView({
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [newOpen, setNewOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
+  const [previewAttachment, setPreviewAttachment] = useState<{ url: string; name: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -492,12 +493,27 @@ export default function FinancialEntriesView({
           open={!!detailsId}
           onOpenChange={o => !o && setDetailsId(null)}
           onEdit={() => { setEditId(detailsEntry.id); setDetailsId(null) }}
-          onOpenAttachment={async path => {
+          onOpenAttachment={async (path, isImage, name) => {
             const res = await getFinancialAttachmentUrl(orgSlug, detailsEntry.id, path)
-            if (res.ok) window.open(res.url, '_blank', 'noopener,noreferrer')
-            else toast.error(res.error)
+            if (!res.ok) { toast.error(res.error); return }
+            // Imagem abre num pop-up dentro do próprio app; PDF continua em
+            // nova aba (o navegador já renderiza PDF bem, sem precisar de
+            // visualizador próprio aqui).
+            if (isImage) setPreviewAttachment({ url: res.url, name })
+            else window.open(res.url, '_blank', 'noopener,noreferrer')
           }}
         />
+      )}
+
+      {previewAttachment && (
+        <Dialog open onOpenChange={o => !o && setPreviewAttachment(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="truncate">{previewAttachment.name}</DialogTitle>
+            </DialogHeader>
+            <img src={previewAttachment.url} alt={previewAttachment.name} className="w-full max-h-[75vh] object-contain rounded-md" />
+          </DialogContent>
+        </Dialog>
       )}
 
       {editEntry && (
@@ -599,7 +615,7 @@ function EntryDetailsModal({
   open: boolean
   onOpenChange: (o: boolean) => void
   onEdit: () => void
-  onOpenAttachment: (path: string) => void
+  onOpenAttachment: (path: string, isImage: boolean, name: string) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -648,11 +664,12 @@ function EntryDetailsModal({
               <ul className="space-y-1.5">
                 {entry.anexos.map((a, i) => {
                   const isPdf = a.mime_type === 'application/pdf'
+                  const isImage = !isPdf && (a.mime_type?.startsWith('image/') ?? false)
                   const key = a.storage_object_id ?? a.path
                   return (
                     <li key={`${key}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
                       {isPdf ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
-                      <button type="button" onClick={() => onOpenAttachment(key!)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
+                      <button type="button" onClick={() => onOpenAttachment(key!, isImage, a.name)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
                         {a.name}
                       </button>
                     </li>
@@ -1185,6 +1202,7 @@ function EditEntryDialog({
   const [tagsText, setTagsText] = useState((entry.tags || []).join(', '))
   const [duplicating, setDuplicating] = useState(false)
   const [ocrFile, setOcrFile] = useState<File | null>(null)
+  const [previewAttachment, setPreviewAttachment] = useState<{ url: string; name: string } | null>(null)
 
   async function handleDuplicate() {
     setDuplicating(true)
@@ -1237,10 +1255,11 @@ function EditEntryDialog({
     else toast.error(res.error)
   }
 
-  async function handleOpenAttachment(path: string) {
+  async function handleOpenAttachment(path: string, isImage: boolean, name: string) {
     const res = await getFinancialAttachmentUrl(orgSlug, e.id, path)
-    if (res.ok) window.open(res.url, '_blank', 'noopener,noreferrer')
-    else toast.error(res.error)
+    if (!res.ok) { toast.error(res.error); return }
+    if (isImage) setPreviewAttachment({ url: res.url, name })
+    else window.open(res.url, '_blank', 'noopener,noreferrer')
   }
 
   async function applyExtracted(data: ExtractedFinancialDocument) {
@@ -1262,6 +1281,7 @@ function EditEntryDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -1348,11 +1368,12 @@ function EditEntryDialog({
                 <ul className="space-y-1.5">
                   {e.anexos.map((a, i) => {
                     const isPdf = a.mime_type === 'application/pdf'
+                    const isImage = !isPdf && (a.mime_type?.startsWith('image/') ?? false)
                     const key = a.storage_object_id ?? a.path
                     return (
                       <li key={`${key}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
                         {isPdf ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
-                        <button type="button" onClick={() => handleOpenAttachment(key!)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
+                        <button type="button" onClick={() => handleOpenAttachment(key!, isImage, a.name)} className="flex-1 min-w-0 truncate text-left text-xs text-foreground hover:underline">
                           {a.name}
                         </button>
                         <button type="button" onClick={() => handleRemoveAttachment(key!)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remover anexo">
@@ -1392,5 +1413,17 @@ function EditEntryDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {previewAttachment && (
+      <Dialog open onOpenChange={o => !o && setPreviewAttachment(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewAttachment.name}</DialogTitle>
+          </DialogHeader>
+          <img src={previewAttachment.url} alt={previewAttachment.name} className="w-full max-h-[75vh] object-contain rounded-md" />
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   )
 }
