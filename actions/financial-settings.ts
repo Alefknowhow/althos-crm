@@ -9,7 +9,7 @@ import { FINANCIAL_SETTING_TYPES, type FinancialSettingType } from '@/lib/financ
 
 export type { FinancialSettingType }
 
-export type PaymentScheduleType = 'dia_fixo' | 'decendio'
+export type PaymentScheduleType = 'dia_fixo' | 'decendio' | 'semanal'
 
 export type FinancialSettingRow = {
   id: string
@@ -73,12 +73,14 @@ export async function createFinancialSetting(orgSlug: string, type: FinancialSet
  * Configura como a operadora paga a comissão — só faz sentido pra
  * type='operadora'. 'dia_fixo' usa paymentDay (dia do mês, 1-31);
  * 'decendio' usa offsetDays (dias após o fechamento do bloco de 10 dias em
- * que a venda caiu).
+ * que a venda caiu); 'semanal' não usa nenhum dos dois — corte a cada 8
+ * dias com vencimento fixo em 7 dias após o corte (ver
+ * lib/financial/operator-payment.ts:nextSemanalPaymentDate).
  */
 export async function updateFinancialSettingPaymentSchedule(
   orgSlug: string,
   id: string,
-  input: { scheduleType: 'dia_fixo' | 'decendio'; paymentDay: number | null; offsetDays: number | null },
+  input: { scheduleType: PaymentScheduleType; paymentDay: number | null; offsetDays: number | null },
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

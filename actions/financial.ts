@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
-import { nextOperatorPaymentDate, nextDecendioPaymentDate } from '@/lib/financial/operator-payment'
+import { nextOperatorPaymentDate, nextDecendioPaymentDate, nextSemanalPaymentDate } from '@/lib/financial/operator-payment'
 import { previousRange } from '@/lib/utils/period-range'
 import {
   addMonthsIso, computeRecurrenceDates, computeInstallmentDates,
@@ -116,12 +116,15 @@ export async function syncSaleRevenueEntry(
     .ilike('name', sale.operator.trim())
     .maybeSingle()
 
-  // Duas formas de pagamento cadastráveis por operadora (Configurações >
-  // Operadoras): dia fixo do mês, ou "decêndio" (paga X dias depois que o
-  // bloco de 10 dias em que a venda caiu se fecha).
+  // Três formas de pagamento cadastráveis por operadora (Configurações >
+  // Operadoras): dia fixo do mês, "decêndio" (paga X dias depois que o
+  // bloco de 10 dias em que a venda caiu se fecha), ou "semanal" (corte a
+  // cada 8 dias, vencimento fixo em 7 dias após o corte).
   let repasseDate: string | null = null
   if (opSetting?.payment_schedule_type === 'decendio' && opSetting.payment_offset_days != null) {
     repasseDate = nextDecendioPaymentDate(opSetting.payment_offset_days)
+  } else if (opSetting?.payment_schedule_type === 'semanal') {
+    repasseDate = nextSemanalPaymentDate()
   } else if (opSetting?.payment_day) {
     repasseDate = nextOperatorPaymentDate(opSetting.payment_day)
   }

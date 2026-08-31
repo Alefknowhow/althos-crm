@@ -114,7 +114,8 @@ function SettingListCard({
           <p className="text-[11px] text-muted-foreground -mt-1.5">
             Configure como cada operadora paga a comissão — a receita da venda é lançada na data
             calculada. &quot;Dia fixo&quot; paga sempre no mesmo dia do mês; &quot;Decêndio&quot; paga X dias depois
-            que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha.
+            que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha; &quot;Semanal&quot; corta
+            a cada 8 dias (1-8, 9-16, 17-24, 25-fim — 4x/mês) e vence sempre 7 dias após o corte.
           </p>
         )}
 
@@ -138,6 +139,7 @@ function SettingListCard({
                         <SelectContent>
                           <SelectItem value="dia_fixo">Dia fixo</SelectItem>
                           <SelectItem value="decendio">Decêndio</SelectItem>
+                          <SelectItem value="semanal">Semanal</SelectItem>
                         </SelectContent>
                       </Select>
                       {item.payment_schedule_type === 'decendio' ? (
@@ -149,6 +151,13 @@ function SettingListCard({
                           title="Dias após o fechamento do decêndio em que a operadora paga"
                           className="h-7 w-16 text-xs px-2"
                         />
+                      ) : item.payment_schedule_type === 'semanal' ? (
+                        <span
+                          className="text-[11px] text-muted-foreground shrink-0"
+                          title="Corte a cada 8 dias, vencimento fixo em 7 dias após o corte"
+                        >
+                          +7 dias
+                        </span>
                       ) : (
                         <Input
                           type="number" min={1} max={31}

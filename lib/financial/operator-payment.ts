@@ -28,3 +28,19 @@ export function nextDecendioPaymentDate(offsetDays: number, from = new Date()): 
   decendioEnd.setUTCDate(decendioEnd.getUTCDate() + offsetDays)
   return decendioEnd.toISOString().slice(0, 10)
 }
+
+/**
+ * Data de pagamento (ISO) de operadoras que pagam "semanal" — cada mês se
+ * divide em 4 blocos de corte de 8 dias (1-8, 9-16, 17-24, 25-fim do mês);
+ * o vencimento é sempre 7 dias depois do corte em que a venda caiu. Regra
+ * fixa (sem offset configurável, diferente do decêndio).
+ */
+export function nextSemanalPaymentDate(from = new Date()): string {
+  const day = from.getUTCDate()
+  const lastDayOfMonth = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 0)).getUTCDate()
+  const cutoffDay = day <= 8 ? 8 : day <= 16 ? 16 : day <= 24 ? 24 : lastDayOfMonth
+
+  const cutoff = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), cutoffDay))
+  cutoff.setUTCDate(cutoff.getUTCDate() + 7)
+  return cutoff.toISOString().slice(0, 10)
+}
