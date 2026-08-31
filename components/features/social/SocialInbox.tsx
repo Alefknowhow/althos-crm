@@ -27,6 +27,7 @@ import {
   type SocialMessageRow,
 } from '@/actions/social-inbox'
 import ImageEditor from '@/components/features/ImageEditor'
+import SocialLeadDetailPanel from '@/components/features/social/SocialLeadDetailPanel'
 import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, X, FileText } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -151,9 +152,17 @@ type Props = {
   selectedConversation: SocialConversationRow | null
   initialMessages: SocialMessageRow[]
   justConnected?: boolean
+  /** Alimentam o painel "Detalhes do lead" (SocialLeadDetailPanel) — mesma
+   *  estrutura tabulada usada no WhatsApp. Todos opcionais pra não quebrar
+   *  quem ainda não passa esses props. */
+  members?: { user_id: string; name: string; email: string }[]
+  panelContext?: any
+  emailTemplates?: any[]
+  orgName?: string
 }
 
-export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, justConnected }: Props) {
+export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, justConnected, members = [], panelContext, emailTemplates = [], orgName }: Props) {
+  const [panelOpen, setPanelOpen] = useState(true)
   // Lista ao vivo — semeada pelo server, atualizada em tempo real abaixo.
   const [conversations, setConversations] = useState(conversationsProp)
   useEffect(() => { setConversations(conversationsProp) }, [conversationsProp])
@@ -1012,6 +1021,19 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
           )}
         </DialogContent>
       </Dialog>
+
+      {selectedConversation && (
+        <SocialLeadDetailPanel
+          orgSlug={orgSlug}
+          conversation={selectedConversation}
+          context={panelContext}
+          members={members}
+          templates={emailTemplates}
+          orgName={orgName}
+          open={panelOpen}
+          onToggle={() => setPanelOpen(o => !o)}
+        />
+      )}
     </div>
   )
 }

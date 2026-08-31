@@ -148,6 +148,24 @@ export async function addLeadNote(orgSlug: string, leadId: string, formData: For
   return { ok: true }
 }
 
+/** Lista só as anotações (contato_activities type='note') de um lead — usado
+ *  pela aba "Anotações" do painel de detalhes (WhatsApp/Instagram). */
+export async function listContatoNotes(orgSlug: string, contatoId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return []
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contato_activities')
+    .select('id, payload, created_at, created_by')
+    .eq('contato_id', contatoId)
+    .eq('organization_id', org.id)
+    .eq('type', 'note')
+    .order('created_at', { ascending: false })
+  return data || []
+}
+
 import { inngest } from '@/lib/inngest/client'
 
 export async function updateLead(orgSlug: string, leadId: string, formData: FormData) {

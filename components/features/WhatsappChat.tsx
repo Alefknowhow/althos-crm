@@ -34,7 +34,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], isMock, pipelineStages = [], aiEnabledGlobally = false }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], emailTemplates = [], orgName, isMock, pipelineStages = [], aiEnabledGlobally = false }: any) {
   // Lista ao vivo — semeada pelo server, depois atualizada em tempo real
   // (ver efeito abaixo) pra não precisar de F5 quando chega mensagem nova.
   const [conversations, setConversations] = useState(conversationsProp)
@@ -1127,6 +1127,8 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           conversation={selectedConversation}
           context={panelContext}
           members={members}
+          templates={emailTemplates}
+          orgName={orgName}
           open={panelOpen}
           onToggle={() => setPanelOpen(o => !o)}
         />

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
 import { getConversationContext, listScheduledMessages } from '@/actions/whatsapp'
 import { getWaTemplates } from '@/actions/whatsapp-templates'
+import { listEmailTemplates } from '@/actions/emails'
 import { getObjectSignedUrls } from '@/actions/storage'
 import WhatsappChat from '@/components/features/WhatsappChat'
 
@@ -53,6 +54,10 @@ export default async function ConversasPage({ params, searchParams }: { params: 
 
   // Templates aprovados servem de fallback quando a janela de 24h está fechada.
   const templates = await getWaTemplates(params.orgSlug)
+
+  // Templates de e-mail + nome da org — alimenta o botão "Enviar e-mail" do
+  // painel de detalhes do lead (SendEmailDialog, mesmo componente usado em Contatos).
+  const emailTemplates = await listEmailTemplates(params.orgSlug)
 
   // Se o Agente IA está ligado globalmente pra essa org — controla se o
   // toggle "IA nesta conversa" aparece no cabeçalho do chat (não faz
@@ -107,6 +112,8 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         panelContext={panelContext}
         scheduled={scheduled}
         templates={templates}
+        emailTemplates={emailTemplates}
+        orgName={org.name}
         isMock={!org.whatsapp_access_token || org.whatsapp_access_token === 'mock'}
         aiEnabledGlobally={aiEnabledGlobally}
       />

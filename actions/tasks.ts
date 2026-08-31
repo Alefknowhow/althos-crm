@@ -202,6 +202,21 @@ export async function listTasksForSale(orgSlug: string, saleId: string): Promise
   return (data as SaleTaskRow[]) ?? []
 }
 
+/** Tarefas vinculadas diretamente a um lead/contato — usado pela aba
+ *  "Atividades" do painel de detalhes (WhatsApp/Instagram), que vive numa
+ *  rota diferente da página de Contatos e precisa buscar isso sozinho. */
+export async function listTasksForContato(orgSlug: string, contatoId: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('organization_id', org.id)
+    .eq('contato_id', contatoId)
+    .order('due_date', { ascending: true })
+  return data ?? []
+}
+
 export type TaskUpdateInput = Partial<TaskInput>
 
 export async function updateTask(orgSlug: string, taskId: string, input: TaskUpdateInput) {
