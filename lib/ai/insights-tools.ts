@@ -231,6 +231,18 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'consultar_cotacao_completa',
+    description:
+      'Vertical Viagens: mergulho completo numa cotação/proposta específica — status, período, destinos, voos/hotéis propostos, valor, e o link público de compartilhamento (quando já existir). Use quando o usuário pedir detalhes de UMA cotação/cliente específico. Pra pedidos genéricos ("me manda a cotação de X", "detalhes da proposta de X"), prefira responder com o LINK PÚBLICO em vez de listar tudo que está dentro dela — só entre em detalhe de um campo específico (valor, data, destino) quando a pergunta pedir exatamente isso.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        busca: { type: 'string', description: 'Nome do cliente ou título da cotação. Aceita nome parcial.' },
+      },
+      required: ['busca'],
+    },
+  },
+  {
     name: 'consultar_bloqueios',
     description:
       'Resumo dos bloqueios de assentos/vagas de viagem: quantidade, ocupação (vendidos vs. disponíveis) e prazos próximos de vencer. Use para "bloqueios", "vagas bloqueadas", "quanto ainda tenho de bloqueio", "ocupação dos bloqueios".',
@@ -326,7 +338,7 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
  * negócio, tanto na lista enviada ao modelo (menos ruído, roteamento mais
  * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
 
-const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios', 'consultar_reserva_completa', 'consultar_viagens_cliente'])
+const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios', 'consultar_reserva_completa', 'consultar_viagens_cliente', 'consultar_cotacao_completa'])
 const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos', 'consultar_estoque'])
 const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
 const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
@@ -391,6 +403,8 @@ export async function executeAnalyticsTool(
         return await queryFullReservation(input, ctx)
       case 'consultar_viagens_cliente':
         return await queryClientTravelHistory(input, ctx)
+      case 'consultar_cotacao_completa':
+        return await queryFullQuotation(input, ctx)
       case 'consultar_bloqueios':
         return await queryBlocks(input, ctx)
       case 'consultar_clientes_inativos':
@@ -1420,6 +1434,60 @@ async function queryClientTravelHistory(input: Record<string, any>, ctx: Analyti
         r.status || '—',
       ]),
     },
+  }
+}
+
+/**
+ * Mergulho completo numa cotação/proposta: status, período, destinos,
+ * voos/hotéis propostos, valor e o link público de compartilhamento
+ * (/p/{public_token}, mesmo link usado em ProposalsList.tsx) — mascarado
+ * como [rótulo](link), nunca a URL crua. Não gera um public_token novo se
+ * não existir (isso é uma ação de "compartilhar" feita na tela de Cotações,
+ * uma tool de consulta não deve ter esse efeito colateral).
+ */
+async function queryFullQuotation(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const busca = String(input.busca || '').trim()
+  if (!busca) return { summary: 'Informe o nome do cliente ou o título da cotação pra buscar.', view: { type: 'none' } }
+
+  const { data: matches } = await ctx.supabase
+    .from('travel_proposals')
+    .select('id, title, status, client_name, start_date, end_date, total_cents, public_token, destinations, flights, hotels')
+    .eq('organization_id', ctx.orgId)
+    .or(`client_name.ilike.%${busca}%,title.ilike.%${busca}%`)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  if (!matches || matches.length === 0) {
+    return { summary: `Nenhuma cotação encontrada para "${busca}".`, view: { type: 'none' } }
+  }
+
+  const q = matches[0] as any
+  const otherMatches = matches.slice(1)
+
+  const destinations = (q.destinations as any[]) || []
+  const flights = (q.flights as any[]) || []
+  const hotels = (q.hotels as any[]) || []
+
+  const parts: string[] = []
+  parts.push(`Cotação "${q.title || 'sem título'}" para ${q.client_name || 'cliente não informado'} — status ${labelStatus(QUOTE_STATUS_LABEL, q.status)}, período ${q.start_date ? new Date(`${q.start_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'} a ${q.end_date ? new Date(`${q.end_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'}, valor ${fmtCurrency(q.total_cents || 0)}.`)
+
+  if (destinations.length > 0) parts.push(`Destinos: ${destinations.map((d: any) => d.name || d).join(', ')}.`)
+  if (flights.length > 0) parts.push(`Voos propostos: ${flights.map((f: any) => [f.companhia, f.origem && f.destino ? `${f.origem}→${f.destino}` : null].filter(Boolean).join(' ')).join('; ')}.`)
+  if (hotels.length > 0) parts.push(`Hotéis propostos: ${hotels.map((h: any) => h.nome || h.name).filter(Boolean).join(', ')}.`)
+
+  if (q.public_token) {
+    parts.push(`Link público da cotação: [Ver cotação completa](/p/${q.public_token})`)
+  } else {
+    parts.push('Essa cotação ainda não tem um link público gerado — gere o link direto na tela de Cotações (botão de compartilhar).')
+  }
+
+  if (otherMatches.length > 0) {
+    parts.push(`Encontrei outras ${otherMatches.length} cotação(ões) parecida(s) pra "${busca}" — me diga o título exato se não era essa.`)
+  }
+
+  return {
+    summary: parts.join(' '),
+    view: { type: 'none' },
   }
 }
 
