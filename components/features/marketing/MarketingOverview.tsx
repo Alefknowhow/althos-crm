@@ -457,7 +457,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       {/* Painel superior fixo (filtros/período/contas) — só a área de
           cards/gráficos abaixo rola, pra manter os filtros sempre à mão em
           telas com muito conteúdo. */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 -mt-3 pb-3 bg-background space-y-3">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 -mt-6 pb-3 bg-background space-y-3">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -540,6 +540,25 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           </DropdownMenu>
         )}
       </div>
+
+      {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo
+          de campanha. Fica dentro do painel fixo junto com o resto dos
+          filtros (período/conta/etc), não solto mais abaixo. */}
+      {!noAccountsYet && !noCampaignsYet && (
+        <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
+          <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
+            {OBJECTIVE_FILTERS.map(f => (
+              <TabsTrigger
+                key={f.value}
+                value={f.value}
+                className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
+              >
+                {f.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
       </div>
 
       {/* Setup banner if no accounts/campaigns yet */}
@@ -572,21 +591,6 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           gráfico vazio), então nem renderiza. */}
       {!noAccountsYet && !noCampaignsYet && (
         <>
-          {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo de campanha */}
-          <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
-            <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
-              {OBJECTIVE_FILTERS.map(f => (
-                <TabsTrigger
-                  key={f.value}
-                  value={f.value}
-                  className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
-                >
-                  {f.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
           {/* KPI cards — dinâmicos, controlados pelo MetricPicker. Número exato
               de colunas (não auto-fit) pra nunca quebrar linha, mesmo com o
               cap de 8 métricas simultâneas. */}
