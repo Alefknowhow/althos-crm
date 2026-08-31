@@ -103,6 +103,17 @@ export default function ScheduleClient({
     return p >= 0 && p <= 100 ? p : null
   }, [today, windowStart, totalDays])
 
+  const dayWidthPct = 100 / totalDays
+
+  // Linha vertical fina marcando o início de cada dia — só o próprio
+  // limite (0%) e o fim (100%) ficam de fora, já cobertos pela borda do
+  // container.
+  const dayLines = useMemo(() => {
+    const lines: number[] = []
+    for (let i = 1; i < totalDays; i++) lines.push((i / totalDays) * 100)
+    return lines
+  }, [totalDays])
+
   // Trips que aparecem no gantt: que sobrepõem a janela
   const ganttTrips = useMemo(() => {
     return filtered.map(t => {
@@ -228,11 +239,15 @@ export default function ScheduleClient({
 
             {/* rows */}
             <div className="relative max-h-[60vh] overflow-y-auto">
-              {/* today line */}
+              {/* linhas verticais marcando cada dia */}
+              {dayLines.map((pct, i) => (
+                <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
+              ))}
+              {/* coluna do dia de hoje, pintada */}
               {todayPct !== null && (
-                <div className="absolute top-0 bottom-0 w-px bg-rose-500/70 z-10 pointer-events-none"
-                  style={{ left: `${todayPct}%` }}>
-                  <span className="absolute -top-0 -translate-x-1/2 text-[9px] text-rose-600 bg-card px-1">hoje</span>
+                <div className="absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30 z-10 pointer-events-none"
+                  style={{ left: `${todayPct}%`, width: `${dayWidthPct}%` }}>
+                  <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-medium text-primary bg-card px-1 whitespace-nowrap">Hoje</span>
                 </div>
               )}
               {ganttTrips.length === 0 ? (
