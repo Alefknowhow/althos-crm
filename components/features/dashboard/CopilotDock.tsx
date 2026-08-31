@@ -12,6 +12,7 @@ import { pinCardToDashboard } from '@/actions/dashboard-layout'
 import {
   listInsightsSessions, createInsightsSession, deleteInsightsSession, renameInsightsSession, listInsightsMessages,
 } from '@/actions/ai_insights'
+import { useCopilot } from '@/components/features/CopilotProvider'
 
 const AnalyticsViewCard = dynamic(() => import('@/components/features/ai/AnalyticsViewCard'), {
   ssr: false,
@@ -43,13 +44,15 @@ function formatSessionDate(iso: string) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-/** Botão flutuante de Copiloto IA — presente em todas as telas do app (ver
+/** Painel do Copiloto IA — aberto/fechado pelo botão da header
+ * (CopilotTriggerButton), estado compartilhado via CopilotProvider (ver
  * app/app/[orgSlug]/layout.tsx). `period` é opcional: só o dashboard passa
  * (contexto de período selecionado no painel); nas demais telas o copiloto
  * funciona sem esse contexto extra. Layout em duas colunas (histórico à
- * esquerda, chat à direita), inspirado no claude.ai. */
+ * esquerda, chat à direita), inspirado no claude.ai — no mobile a sidebar
+ * vira um drawer sobreposto em vez de dividir a largura com o chat. */
 export default function CopilotDock({ orgSlug, period }: { orgSlug: string; period?: string }) {
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useCopilot()
   const [initialized, setInitialized] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -82,6 +85,14 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streaming])
+
+  // Sidebar de histórico vem aberta por padrão no desktop (pedido explícito:
+  // histórico à esquerda, chat à direita); no mobile ela vira um drawer
+  // sobreposto e começa fechada — senão cobre o chat inteiro na primeira
+  // abertura.
+  useEffect(() => {
+    if (window.innerWidth < 640) setSidebarOpen(false)
+  }, [])
 
   // Fecha com Escape, como qualquer overlay do app.
   useEffect(() => {
@@ -220,37 +231,35 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
 
   return (
     <>
-      {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          title="Abrir chat IA"
-          className="group fixed bottom-6 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-105 hover:opacity-90 transition-all"
-          aria-label="Abrir copiloto IA"
-        >
-          <Sparkles className="w-6 h-6" />
-          <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-lg bg-popover border px-2.5 py-1.5 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-            Abrir chat IA
-          </span>
-        </button>
-      )}
-
       {open && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-6 md:p-10">
+        <div className="fixed inset-0 z-40 flex items-center justify-center sm:p-6 md:p-10">
           <div
-            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] animate-in fade-in duration-200"
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] animate-in fade-in duration-200 hidden sm:block"
             onClick={() => setOpen(false)}
           />
 
-          <div className="relative z-10 w-full h-full sm:h-[88vh] max-w-6xl bg-background rounded-[28px] border border-border/60 shadow-2xl overflow-hidden flex animate-in fade-in zoom-in-[0.97] slide-in-from-bottom-3 duration-300 ease-out">
-            {/* ── Sidebar: histórico de conversas ── */}
+          <div className="relative z-10 w-full h-full sm:h-[88vh] max-w-6xl bg-background sm:rounded-[28px] border-0 sm:border sm:border-border/60 shadow-none sm:shadow-2xl overflow-hidden flex animate-in fade-in sm:zoom-in-[0.97] slide-in-from-bottom-3 duration-300 ease-out">
+            {/* ── Sidebar: histórico de conversas — inline no desktop,
+                drawer sobreposto no mobile (a tela é estreita demais pra
+                dividir espaço com o chat). ── */}
+            {sidebarOpen && (
+              <div
+                className="absolute inset-0 z-20 bg-black/40 sm:hidden animate-in fade-in duration-150"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
             <div
-              className={`shrink-0 border-r bg-muted/30 flex-col transition-[width] duration-200 overflow-hidden ${
-                sidebarOpen ? 'w-[260px] flex' : 'w-0 hidden sm:flex'
-              }`}
+              className={
+                sidebarOpen
+                  ? 'shrink-0 border-r bg-muted/30 flex flex-col overflow-hidden absolute inset-y-0 left-0 z-30 w-[85%] max-w-[320px] translate-x-0 transition-transform duration-200 ease-out sm:static sm:z-auto sm:w-[260px] sm:max-w-none sm:translate-x-0'
+                  : 'shrink-0 border-r bg-muted/30 hidden overflow-hidden absolute inset-y-0 left-0 z-30 w-[85%] max-w-[320px] -translate-x-full transition-transform duration-200 ease-out sm:flex sm:flex-col sm:static sm:z-auto sm:w-0 sm:max-w-none sm:translate-x-0'
+              }
             >
-              <div className="h-16 shrink-0 flex items-center px-4">
+              <div className="h-16 shrink-0 flex items-center justify-between px-4">
                 <span className="text-sm font-semibold tracking-tight">Conversas</span>
+                <Button variant="ghost" size="icon" className="w-7 h-7 rounded-lg sm:hidden" onClick={() => setSidebarOpen(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
               <div className="px-3 pb-2">
                 <Button

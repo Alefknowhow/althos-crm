@@ -24,6 +24,8 @@ import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
+import { CopilotProvider } from '@/components/features/CopilotProvider'
+import { CopilotTriggerButton } from '@/components/features/CopilotTriggerButton'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 
 export default async function OrgLayout({
@@ -98,6 +100,7 @@ export default async function OrgLayout({
 
   return (
     <QueryProvider>
+    <CopilotProvider>
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-plex print:static print:h-auto print:overflow-visible print:block">
       <div className="print:hidden">
         {isFrozen ? (
@@ -156,6 +159,7 @@ export default async function OrgLayout({
               <div className="md:hidden">
                 <CommandPaletteTrigger orgSlug={params.orgSlug} />
               </div>
+              {canUseCopilot && <CopilotTriggerButton />}
               <HeaderSearchBar />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
@@ -194,6 +198,7 @@ export default async function OrgLayout({
         {canUseCopilot && <CopilotDock orgSlug={params.orgSlug} />}
       </div>
     </div>
+    </CopilotProvider>
     </QueryProvider>
   )
 }
