@@ -82,17 +82,39 @@ export type ClinicProfessional = {
   avatar_storage_object_id: string | null
   /** Preenchido só na leitura (signed URL do R2) — ver resolveClinicProfessionalAvatars. */
   avatar_url?: string | null
+  /** Contato que é a fonte de verdade do cadastro pessoal — null nos
+   *  profissionais legados (cadastrados antes do vínculo com Contatos). */
+  contato_id: string | null
 }
 
+/**
+ * Cadastro base (nome/foto/telefone/e-mail) vive em `contatos`;
+ * clinic_professionals é o VÍNCULO clínico (especialidade/registro/
+ * comissão). Faz LEFT JOIN e acha campo-a-campo: contato tem prioridade,
+ * cai pros campos legados da própria linha quando não há contato_id
+ * (profissional cadastrado antes dessa mudança).
+ */
 export async function listClinicProfessionals(orgSlug: string): Promise<ClinicProfessional[]> {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_professionals')
-    .select('id, name, specialty_id, registration_no, commission_pct, active, phone, email, avatar_storage_object_id')
+    .select('id, name, specialty_id, registration_no, commission_pct, active, phone, email, avatar_storage_object_id, contato_id, contatos(name, phone, email, avatar_storage_object_id)')
     .eq('organization_id', org.id)
     .order('name', { ascending: true })
-  const rows = data || []
+
+  const rows = (data || []).map((r: any) => ({
+    id: r.id,
+    specialty_id: r.specialty_id,
+    registration_no: r.registration_no,
+    commission_pct: r.commission_pct,
+    active: r.active,
+    contato_id: r.contato_id,
+    name: r.contatos?.name || r.name,
+    phone: r.contatos?.phone ?? r.phone,
+    email: r.contatos?.email ?? r.email,
+    avatar_storage_object_id: r.contatos?.avatar_storage_object_id ?? r.avatar_storage_object_id,
+  }))
   return resolveClinicProfessionalAvatars(orgSlug, rows)
 }
 
@@ -113,26 +135,29 @@ export async function resolveClinicProfessionalAvatars<T extends { avatar_storag
 }
 
 export type ClinicProfessionalInput = {
-  name: string
+  /** Contato que é a fonte de verdade do cadastro pessoal — obrigatório pra
+   *  profissionais novos (cadastro base agora é feito em Contatos). */
+  contato_id: string
   specialty_id: string | null
   registration_no: string | null
   commission_pct: number | null
-  phone?: string | null
-  email?: string | null
 }
 
 export async function createClinicProfessional(orgSlug: string, input: ClinicProfessionalInput) {
   const org = await requireProfissionaisAccess(orgSlug)
-  if (!input.name.trim()) return { ok: false as const, error: 'Nome é obrigatório.' }
+  if (!input.contato_id) return { ok: false as const, error: 'Selecione um contato.' }
   const supabase = createClient()
+
+  const { data: contato } = await supabase.from('contatos').select('name').eq('id', input.contato_id).eq('organization_id', org.id).maybeSingle()
+  if (!contato) return { ok: false as const, error: 'Contato não encontrado.' }
+
   const { error } = await supabase.from('clinic_professionals').insert({
     organization_id: org.id,
-    name: input.name.trim(),
+    contato_id: input.contato_id,
+    name: contato.name, // cópia denormalizada (fallback caso o contato seja excluído — contato_id vira null via ON DELETE SET NULL)
     specialty_id: input.specialty_id || null,
     registration_no: input.registration_no || null,
     commission_pct: input.commission_pct ?? null,
-    phone: input.phone || null,
-    email: input.email || null,
   })
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/profissionais`)
@@ -143,12 +168,10 @@ export async function updateClinicProfessional(orgSlug: string, id: string, inpu
   const org = await requireProfissionaisAccess(orgSlug)
   const supabase = createClient()
   const patch: Record<string, unknown> = {}
-  if (input.name !== undefined) patch.name = input.name.trim()
+  if (input.contato_id !== undefined) patch.contato_id = input.contato_id || null
   if (input.specialty_id !== undefined) patch.specialty_id = input.specialty_id || null
   if (input.registration_no !== undefined) patch.registration_no = input.registration_no || null
   if (input.commission_pct !== undefined) patch.commission_pct = input.commission_pct
-  if (input.phone !== undefined) patch.phone = input.phone || null
-  if (input.email !== undefined) patch.email = input.email || null
   if (input.active !== undefined) patch.active = input.active
   const { error } = await supabase.from('clinic_professionals').update(patch).eq('id', id).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
@@ -156,83 +179,11 @@ export async function updateClinicProfessional(orgSlug: string, id: string, inpu
   return { ok: true as const }
 }
 
-const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
-const MAX_PROFESSIONAL_AVATAR_SIZE = 5 * 1024 * 1024
-
-export async function uploadClinicProfessionalAvatar(orgSlug: string, professionalId: string, formData: FormData) {
-  const org = await requireProfissionaisAccess(orgSlug)
-  const supabase = createClient()
-
-  const file = formData.get('file') as File | null
-  if (!file || typeof file !== 'object') return { ok: false as const, error: 'Arquivo ausente' }
-  if (!ALLOWED_AVATAR_MIME.has(file.type)) return { ok: false as const, error: 'Use uma imagem PNG, JPG ou WebP.' }
-  if (file.size > MAX_PROFESSIONAL_AVATAR_SIZE) return { ok: false as const, error: 'Imagem muito grande (máx. 5MB).' }
-
-  const { data: professional } = await supabase
-    .from('clinic_professionals')
-    .select('id, avatar_storage_object_id')
-    .eq('id', professionalId)
-    .eq('organization_id', org.id)
-    .maybeSingle()
-  if (!professional) return { ok: false as const, error: 'Profissional não encontrado' }
-
-  const { uploadFile, deleteObject, getObjectSignedUrl } = await import('@/actions/storage')
-  const contentType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
-  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
-
-  const uploaded = await uploadFile(orgSlug, { category: 'avatars', scopeId: professionalId, filename: file.name, contentType, base64 })
-  if (!uploaded.ok) return { ok: false as const, error: uploaded.error }
-
-  const { error: updateError } = await supabase
-    .from('clinic_professionals')
-    .update({ avatar_storage_object_id: uploaded.objectId })
-    .eq('id', professionalId)
-    .eq('organization_id', org.id)
-  if (updateError) {
-    await deleteObject(orgSlug, uploaded.objectId)
-    return { ok: false as const, error: updateError.message }
-  }
-
-  if (professional.avatar_storage_object_id) {
-    await deleteObject(orgSlug, professional.avatar_storage_object_id)
-  }
-
-  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
-  if (!signed.ok) return { ok: false as const, error: signed.error }
-
-  revalidatePath(`/app/${orgSlug}/profissionais`)
-  revalidatePath(`/app/${orgSlug}/agendamentos`)
-  return { ok: true as const, url: signed.url }
-}
-
-export async function removeClinicProfessionalAvatar(orgSlug: string, professionalId: string) {
-  const org = await requireProfissionaisAccess(orgSlug)
-  const supabase = createClient()
-
-  const { data: professional } = await supabase
-    .from('clinic_professionals')
-    .select('avatar_storage_object_id')
-    .eq('id', professionalId)
-    .eq('organization_id', org.id)
-    .maybeSingle()
-  if (!professional) return { ok: false as const, error: 'Profissional não encontrado' }
-
-  const { error } = await supabase
-    .from('clinic_professionals')
-    .update({ avatar_storage_object_id: null })
-    .eq('id', professionalId)
-    .eq('organization_id', org.id)
-  if (error) return { ok: false as const, error: error.message }
-
-  if (professional.avatar_storage_object_id) {
-    const { deleteObject } = await import('@/actions/storage')
-    await deleteObject(orgSlug, professional.avatar_storage_object_id)
-  }
-
-  revalidatePath(`/app/${orgSlug}/profissionais`)
-  revalidatePath(`/app/${orgSlug}/agendamentos`)
-  return { ok: true as const }
-}
+// Upload de foto/telefone/e-mail do profissional passou a ser feito no
+// cadastro do Contato vinculado (actions/contatos.ts::uploadContatoAvatar) —
+// removido daqui pra não ter duas fontes de verdade. Profissionais legados
+// sem contato_id mantêm os campos próprios (avatar_storage_object_id/phone/
+// email) só como fallback de leitura em listClinicProfessionals.
 
 export async function deleteClinicProfessional(orgSlug: string, id: string) {
   const org = await requireProfissionaisAccess(orgSlug)

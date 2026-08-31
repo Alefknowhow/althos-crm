@@ -55,18 +55,18 @@ type Props = {
 
 export default function AppointmentsAdminTabs(props: Props) {
   return (
-    <Tabs defaultValue="event-types" className="space-y-4">
+    <Tabs defaultValue="appointments" className="space-y-4">
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 -mt-2 bg-background border-b">
         <div className="h-14 flex items-center justify-between gap-3">
           <TabsList>
+            <TabsTrigger value="appointments" className="gap-2">
+              <List className="w-4 h-4" /> Agendamentos
+            </TabsTrigger>
             <TabsTrigger value="event-types" className="gap-2">
               <Calendar className="w-4 h-4" /> {props.isClinic ? 'Procedimentos' : 'Tipos de evento'}
             </TabsTrigger>
             <TabsTrigger value="availability" className="gap-2">
               <Clock className="w-4 h-4" /> Horários disponíveis
-            </TabsTrigger>
-            <TabsTrigger value="appointments" className="gap-2">
-              <List className="w-4 h-4" /> Agendamentos
             </TabsTrigger>
           </TabsList>
           {props.isClinic && props.clinicReminderSettings && (
