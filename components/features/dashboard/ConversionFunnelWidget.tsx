@@ -198,13 +198,13 @@ export default function ConversionFunnelWidget({
             Nenhum lead corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex items-stretch gap-4 overflow-x-auto pt-2 pb-1">
+          <div className="flex-1 min-h-0 flex items-stretch gap-3 pt-2 pb-1">
             {result.stages.map((stage, idx) => {
               const heightPct = Math.max(6, (stage.count / maxCount) * 100)
               const color = stage.color || '#0f62fe'
 
               return (
-                <div key={stage.id} className="flex flex-col items-center w-[92px] shrink-0">
+                <div key={stage.id} className="flex flex-col items-center flex-1 min-w-0">
                   {/* Área da coluna — a barra fica ancorada embaixo e cresce
                       pra cima conforme o valor. */}
                   <div className="flex-1 w-full flex items-end justify-center min-h-0">
@@ -214,7 +214,7 @@ export default function ConversionFunnelWidget({
                       onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
                       onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
                       title="Ver no Pipeline"
-                      className="w-11 rounded-t-md cursor-pointer transition-all hover:brightness-95"
+                      className="w-full max-w-[56px] rounded-t-md cursor-pointer transition-all hover:brightness-95"
                       style={{ height: `${heightPct}%`, backgroundColor: color }}
                     />
                   </div>

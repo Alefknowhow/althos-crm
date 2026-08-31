@@ -74,16 +74,16 @@ export default function StageThroughputWidget({ orgSlug, pipelineId }: Props) {
             Nenhuma entrada de estágio no período selecionado.
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex items-stretch gap-4 overflow-x-auto pt-2 pb-1">
+          <div className="flex-1 min-h-0 flex items-stretch gap-3 pt-2 pb-1">
             {stages.map((stage: StageThroughputRow) => {
               const heightPct = Math.max(6, (stage.count / maxCount) * 100)
               const color = stage.stage_color || '#0f62fe'
 
               return (
-                <div key={stage.stage_id} className="flex flex-col items-center w-[92px] shrink-0">
+                <div key={stage.stage_id} className="flex flex-col items-center flex-1 min-w-0">
                   <div className="flex-1 w-full flex items-end justify-center min-h-0">
                     <div
-                      className="w-11 rounded-t-md"
+                      className="w-full max-w-[56px] rounded-t-md"
                       style={{ height: `${heightPct}%`, backgroundColor: color }}
                     />
                   </div>

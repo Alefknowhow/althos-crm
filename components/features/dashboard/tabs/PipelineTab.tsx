@@ -6,6 +6,7 @@ import { getTicketMedio, getLossReasons } from '@/actions/dashboard-tabs'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
+import StageThroughputWidget from '../StageThroughputWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
 import SourcePerformanceWidget from '../SourcePerformanceWidget'
 import TimeInStageWidget from '../TimeInStageWidget'
@@ -93,6 +94,10 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           initialResult={ctx.initialFunnel}
           sourceOptions={ctx.funnelSourceOptions}
         />
+      </Suspense>
+
+      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+        <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
       </Suspense>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
