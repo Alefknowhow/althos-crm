@@ -448,7 +448,7 @@ export async function createTravelSale(
   if (extracted) {
     const operatorOptions = await listSaleOperatorOptions(orgSlug)
     const patch = extractedToSaleFieldsPatch(extracted, { operatorOptions })
-    const travelers = extractedTravelers(extracted, (contato as any).name)
+    const travelers = extractedTravelers(extracted)
     prefill = { ...prefill, ...patch, ...(travelers.length > 0 ? { travelers } : {}) }
   }
   if (voucherOptions?.voucher) {

@@ -701,7 +701,7 @@ function SaleEditor({
         operatorOptions,
         existingIncludedItems: Array.isArray(prev.included_items) ? prev.included_items : [],
       })
-      const newTravelers = extractedTravelers(extracted, prev.client_name)
+      const newTravelers = extractedTravelers(extracted)
       const existingTravelers: any[] = Array.isArray(prev.travelers) ? prev.travelers : []
       const existingNames = new Set(existingTravelers.map(t => (t.name || '').trim().toLowerCase()))
       const mergedTravelers = [...existingTravelers, ...newTravelers.filter(t => !existingNames.has(t.name.trim().toLowerCase()))]
@@ -949,7 +949,7 @@ function SaleEditor({
           <div className="rounded-lg border bg-muted/20 p-3 space-y-2.5 lg:min-h-[280px]">
             <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-primary" />
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Outros viajantes indo junto</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Viajantes</p>
             </div>
             <div className="space-y-2">
               {travelers.map((t, i) => (
@@ -1087,7 +1087,6 @@ function SaleEditor({
           <VoucherExtractDialog
             orgSlug={orgSlug}
             saleId={s.id}
-            clientName={s.client_name}
             source={extractSource}
             open={extractOpen}
             onOpenChange={setExtractOpen}

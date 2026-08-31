@@ -131,12 +131,10 @@ function buildSections(data: ExtractedTravelDocument): Section[] {
 }
 
 export default function VoucherExtractDialog({
-  orgSlug, saleId, clientName, source, open, onOpenChange, onScalarFieldsExtracted, onTravelersExtracted, onProductCreated,
+  orgSlug, saleId, source, open, onOpenChange, onScalarFieldsExtracted, onTravelersExtracted, onProductCreated,
 }: {
   orgSlug: string
   saleId: string
-  /** Nome do cliente/titular da reserva — usado pra não listar o titular de novo como "outro viajante". */
-  clientName?: string | null
   source: ExtractSource | null
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -181,14 +179,14 @@ export default function VoucherExtractDialog({
     if (extracted.informacoes_servico) patch.service_info = extracted.informacoes_servico
     if (Object.keys(patch).length > 0) onScalarFieldsExtracted(patch)
 
-    // Outros viajantes indo junto — titular da reserva não entra aqui (já é
-    // o cliente da venda), só quem mais aparece no voucher.
+    // Viajantes: o cliente (quem contratou/pagou) não é necessariamente
+    // quem viaja, então não filtra ninguém por nome bater com o cliente —
+    // lista todo mundo que o documento trouxer.
     if (onTravelersExtracted && Array.isArray(extracted.viajantes) && extracted.viajantes.length > 0) {
-      const titular = (clientName || extracted.cliente || '').trim().toLowerCase()
-      const others = extracted.viajantes
-        .filter(v => v.nome && v.nome.trim().toLowerCase() !== titular)
+      const travelers = extracted.viajantes
+        .filter(v => v.nome)
         .map(v => ({ name: v.nome || '', birth_date: v.data_nascimento || '', cpf: v.cpf || '' }))
-      if (others.length > 0) onTravelersExtracted(others)
+      if (travelers.length > 0) onTravelersExtracted(travelers)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extracted])

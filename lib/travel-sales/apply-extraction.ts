@@ -35,15 +35,16 @@ export function matchOperator(raw: string | null | undefined, options: string[])
   return partial || name
 }
 
-/** Viajantes extraídos, excluindo o titular (já é o cliente da venda). */
+/** Todos os viajantes extraídos do documento. O "cliente" (quem contratou/
+ *  pagou a viagem) não é necessariamente um dos viajantes — por isso NÃO
+ *  filtra ninguém daqui por nome bater com o cliente; se o cliente também
+ *  estiver viajando, o próprio documento já traz o nome dele na lista. */
 export function extractedTravelers(
   extracted: ExtractedTravelDocument,
-  clientName?: string | null,
 ): { name: string; birth_date: string; cpf: string }[] {
   if (!Array.isArray(extracted.viajantes) || extracted.viajantes.length === 0) return []
-  const titular = (clientName || extracted.cliente || '').trim().toLowerCase()
   return extracted.viajantes
-    .filter(v => v.nome && v.nome.trim().toLowerCase() !== titular)
+    .filter(v => v.nome)
     .map(v => ({ name: v.nome || '', birth_date: v.data_nascimento || '', cpf: v.cpf || '' }))
 }
 

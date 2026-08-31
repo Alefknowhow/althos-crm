@@ -142,13 +142,22 @@ export type ExtractedTravelDocument = {
   }[]
 }
 
+/** Reforço de prompt pra viajantes/datas de nascimento — em documentos com
+ *  vários produtos (ex.: hotel + voo no mesmo voucher), o modelo às vezes só
+ *  captura o campo `cliente`/titular e ignora a lista completa de nome +
+ *  data de nascimento + CPF que aparece repetida em cada apartamento/quarto
+ *  ou na lista de passageiros do voo — mesmo quando ambas as seções trazem
+ *  a mesma pessoa com o dado completo. */
+const TRAVELERS_PROMPT_HINT =
+  'Preste atenção especial ao campo `viajantes`: procure em TODAS as seções do documento (lista de hóspedes de cada apartamento/quarto, lista de passageiros do voo — "PAX", "Dados do(s) passageiro(s)", etc.) por blocos repetidos de Nome + Data de nascimento + CPF, um por pessoa, e inclua CADA pessoa encontrada em `viajantes` com esses três campos preenchidos sempre que aparecerem no documento (mesmo que a mesma pessoa apareça em mais de uma seção — nesse caso, uma linha só, sem duplicar). Nunca deixe `data_nascimento`/`cpf` vazios só porque a pessoa também aparece no campo `cliente` — são dados independentes. O campo `cliente` é APENAS quem contratou/pagou a viagem (titular/comprador) e pode ser uma pessoa que nem está na lista de viajantes.'
+
 const EXTRACT_TOOL: Anthropic.Messages.Tool = {
   name: 'extract_travel_document',
   description: 'Extrai os dados estruturados de um orçamento, voucher ou reserva de viagem — todos os produtos presentes (hospedagem, voo, cruzeiro, transfer, seguro, passeio, locação de veículo), valores e políticas.',
   input_schema: {
     type: 'object',
     properties: {
-      cliente: { type: ['string', 'null'], description: 'Nome do cliente/passageiro principal, se identificável' },
+      cliente: { type: ['string', 'null'], description: 'Nome de quem contratou/pagou a viagem (titular da reserva, "nome do titular" no voucher) — NÃO é necessariamente um dos viajantes; extraia separado da lista de viajantes' },
       destino: { type: ['string', 'null'], description: 'Destino principal da viagem' },
       hotel: { type: ['string', 'null'], description: 'Nome da primeira/principal hospedagem (também detalhada em `hospedagens`)' },
       operadora: { type: ['string', 'null'], description: 'Operadora/companhia responsável pelo pacote' },
@@ -348,7 +357,7 @@ export async function extractTravelDocumentFromFile(
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2400,
-    system: 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Responda sempre com a ferramenta extract_travel_document. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável).',
+    system: 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Responda sempre com a ferramenta extract_travel_document. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável). ' + TRAVELERS_PROMPT_HINT,
     messages: [{
       role: 'user',
       content: [
@@ -368,7 +377,7 @@ export async function extractTravelDocumentFromFile(
   return normalizeExtractedDocument(toolBlock.input)
 }
 
-const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável). Para cada trecho aéreo (`voos`), NUNCA deixe a data de embarque (`data`) vazia se ela aparecer no documento em qualquer formato (ex.: "Dom. 06 de set. de 2026") — sempre converta pra YYYY-MM-DD. Cada trecho/conexão do voucher é um item separado em `voos`, marcado com o mesmo `sentido` (ida ou volta); quando houver conexão/escala entre dois trechos do mesmo sentido, preencha `escala_local` e `escala_duracao` no trecho que vem DEPOIS da escala. Sempre que o documento informar código de aeroporto (IATA), número de bilhete, código de web check-in, horário de chegada e franquia de bagagem, extraia esses campos também.'
+const EXTRACT_SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos de viagem (orçamentos, vouchers de operadora, reservas) em português do Brasil. Extraia TODOS os produtos presentes no documento (hospedagem, voo, cruzeiro, transfer, seguro, passeio/ingresso, locação de veículo) — um documento pode ter vários produtos do mesmo tipo. Quando um campo não estiver presente no documento, use null (ou array vazio quando aplicável). Para cada trecho aéreo (`voos`), NUNCA deixe a data de embarque (`data`) vazia se ela aparecer no documento em qualquer formato (ex.: "Dom. 06 de set. de 2026") — sempre converta pra YYYY-MM-DD. Cada trecho/conexão do voucher é um item separado em `voos`, marcado com o mesmo `sentido` (ida ou volta); quando houver conexão/escala entre dois trechos do mesmo sentido, preencha `escala_local` e `escala_duracao` no trecho que vem DEPOIS da escala. Sempre que o documento informar código de aeroporto (IATA), número de bilhete, código de web check-in, horário de chegada e franquia de bagagem, extraia esses campos também. ' + TRAVELERS_PROMPT_HINT
 
 const arrayField = (props: Record<string, any>, required: string[]) => ({
   type: Type.ARRAY,
