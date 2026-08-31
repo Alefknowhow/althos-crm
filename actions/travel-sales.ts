@@ -5,6 +5,8 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { isTravelNiche } from '@/lib/niche'
 import { revalidatePath } from 'next/cache'
+import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
+import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
 
 export type TravelSaleRow = {
   id: string
@@ -399,7 +401,12 @@ function mapProposalToSaleFields(proposal: any): Record<string, any> {
  * do CRM, para que o vendedor não consiga registrar um cliente que não foi
  * cadastrado. O nome do cliente da venda vem sempre do contato vinculado.
  */
-export async function createTravelSale(orgSlug: string, proposalId: string | null | undefined, contatoId: string) {
+export async function createTravelSale(
+  orgSlug: string,
+  proposalId: string | null | undefined,
+  contatoId: string,
+  voucherOptions?: { extracted?: ExtractedTravelDocument | null; voucher?: { url: string; name: string } | null },
+) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'reservas')
@@ -434,6 +441,20 @@ export async function createTravelSale(orgSlug: string, proposalId: string | nul
     linkedProposalId = (proposal as any).id
   }
 
+  // Prefill vindo de um voucher lido por IA no próprio "Nova venda" — mesma
+  // ideia da proposta acima, só que a partir do documento em vez de uma
+  // proposta salva. Sem proposta vinculada (esse fluxo não gera uma).
+  const extracted = voucherOptions?.extracted
+  if (extracted) {
+    const operatorOptions = await listSaleOperatorOptions(orgSlug)
+    const patch = extractedToSaleFieldsPatch(extracted, { operatorOptions })
+    const travelers = extractedTravelers(extracted, (contato as any).name)
+    prefill = { ...prefill, ...patch, ...(travelers.length > 0 ? { travelers } : {}) }
+  }
+  if (voucherOptions?.voucher) {
+    prefill.vouchers = [voucherOptions.voucher]
+  }
+
   const { data, error } = await supabase
     .from('travel_sales')
     .insert({
@@ -449,6 +470,11 @@ export async function createTravelSale(orgSlug: string, proposalId: string | nul
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
+
+  if (extracted) {
+    const { bulkCreateSaleProductsFromExtraction } = await import('@/actions/sale-products')
+    await bulkCreateSaleProductsFromExtraction(orgSlug, (data as TravelSaleRow).id, extracted)
+  }
 
   // In-app notification (org-wide) so the team sees the new sale in the bell.
   const { createNotification } = await import('@/actions/notifications')

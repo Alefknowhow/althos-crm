@@ -30,21 +30,24 @@ import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
   getContatoTravelerInfo, listSaleOperatorOptions, type TravelSaleRow, type FlightSegment,
 } from '@/actions/travel-sales'
-import { listSaleProducts, createSaleProduct, deleteSaleProduct, type SaleProduct } from '@/actions/sale-products'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ContratoManagerDialog from '@/components/features/reservas/ContratoManagerDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import VoucherUploadAndReview from '@/components/features/reservas/VoucherUploadAndReview'
+import VoucherUploadWithOcr from '@/components/features/reservas/VoucherUploadWithOcr'
 import VoucherExtractDialog, { type ExtractSource } from '@/components/features/reservas/VoucherExtractDialog'
+import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
+import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
+import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
   MapPin, Calendar, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
   Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
-  Package, ListTodo, FolderOpen, Hotel,
+  Package, ListTodo, FolderOpen,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -235,6 +238,7 @@ export default function TravelSalesView({
   const [creating, setCreating] = useState(false)
   const [pickedProposal, setPickedProposal] = useState<string>('none')
   const [pickedContato, setPickedContato] = useState<string>('')
+  const [voucherResult, setVoucherResult] = useState<{ voucher: Voucher; extracted: ExtractedTravelDocument | null } | null>(null)
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -273,13 +277,19 @@ export default function TravelSalesView({
   async function handleCreate() {
     if (!pickedContato) { toast.error('Selecione o cliente (contato do CRM)'); return }
     setCreating(true)
-    const res = await createTravelSale(orgSlug, pickedProposal === 'none' ? null : pickedProposal, pickedContato)
+    const res = await createTravelSale(
+      orgSlug,
+      pickedProposal === 'none' ? null : pickedProposal,
+      pickedContato,
+      voucherResult ? { extracted: voucherResult.extracted, voucher: voucherResult.voucher } : undefined,
+    )
     setCreating(false)
     if (!res.ok) { toast.error(res.error); return }
 
     setNewOpen(false)
     setPickedProposal('none')
     setPickedContato('')
+    setVoucherResult(null)
     toast.success('Venda criada')
     setSelectedId(res.data.id)
     router.refresh()
@@ -324,9 +334,10 @@ export default function TravelSalesView({
         />
         <NewSaleDialog
           orgSlug={orgSlug}
-          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+          open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setVoucherResult(null) } }}
           proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
           leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
+          voucherResult={voucherResult} setVoucherResult={setVoucherResult}
           creating={creating} onCreate={handleCreate}
         />
       </>
@@ -465,9 +476,10 @@ export default function TravelSalesView({
 
       <NewSaleDialog
         orgSlug={orgSlug}
-        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato('') } }}
+        open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) { setPickedProposal('none'); setPickedContato(''); setVoucherResult(null) } }}
         proposals={proposals} picked={pickedProposal} setPicked={handlePickProposal}
         leads={leads} pickedContato={pickedContato} setPickedContato={setPickedContato}
+        voucherResult={voucherResult} setVoucherResult={setVoucherResult}
         creating={creating} onCreate={handleCreate}
       />
 
@@ -490,7 +502,7 @@ export default function TravelSalesView({
 
 function NewSaleDialog({
   orgSlug, open, onOpenChange, proposals, picked, setPicked, leads, pickedContato, setPickedContato,
-  creating, onCreate,
+  voucherResult, setVoucherResult, creating, onCreate,
 }: {
   orgSlug: string
   open: boolean
@@ -501,9 +513,12 @@ function NewSaleDialog({
   leads: LeadOption[]
   pickedContato: string
   setPickedContato: (v: string) => void
+  voucherResult: { voucher: Voucher; extracted: ExtractedTravelDocument | null } | null
+  setVoucherResult: (v: { voucher: Voucher; extracted: ExtractedTravelDocument | null } | null) => void
   creating: boolean
   onCreate: () => void
 }) {
+  const extracted = voucherResult?.extracted
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -518,6 +533,11 @@ function NewSaleDialog({
           <div className="space-y-2">
             <Label className="text-xs">Cliente <span className="text-destructive">*</span></Label>
             <ContactCombobox leads={leads} value={pickedContato} onChange={setPickedContato} />
+            {extracted?.cliente && (
+              <p className="text-xs text-muted-foreground">
+                O voucher indica o cliente <strong>{extracted.cliente}</strong> — procure e selecione-o acima.
+              </p>
+            )}
             {leads.length === 0 && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" /> Nenhum contato cadastrado ainda — cadastre o cliente em Contatos primeiro.
@@ -542,9 +562,37 @@ function NewSaleDialog({
             </Select>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Depois de criar, você pode enviar o voucher e autopreencher os dados com IA na tela da venda.
-          </p>
+          <div className="space-y-2">
+            <Label className="text-xs">Voucher <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            {voucherResult ? (
+              <div className="rounded-md border p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm truncate">📎 {voucherResult.voucher.name}</span>
+                  <button type="button" className="text-xs text-muted-foreground hover:text-destructive shrink-0" onClick={() => setVoucherResult(null)}>
+                    Remover
+                  </button>
+                </div>
+                {extracted ? (
+                  <p className="text-xs text-muted-foreground">
+                    {[extracted.destino, extracted.operadora, extracted.localizador_pacote].filter(Boolean).join(' · ') || 'Lido, mas sem dados reconhecíveis.'}
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-700">A leitura automática falhou — o voucher fica salvo mesmo assim, é só preencher os dados manualmente.</p>
+                )}
+              </div>
+            ) : (
+              <VoucherUploadWithOcr
+                orgSlug={orgSlug}
+                label="Enviar voucher (upload + leitura por IA)"
+                onExtracted={setVoucherResult}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              Envie o voucher da reserva pra preencher destino, datas, operadora, localizador, produtos,
+              outros viajantes e observações automaticamente. Fica salvo na venda mesmo sem enviar aqui —
+              dá pra adicionar depois pelo botão "Add voucher".
+            </p>
+          </div>
         </div>
 
         <DialogFooter>
@@ -636,6 +684,43 @@ function SaleEditor({
   }
 
   const router = useRouter()
+
+  /** Botão "Add voucher" (venda já existente) — mesma extração usada na aba
+   *  Vouchers, só que aplica tudo de uma vez (campos + produtos) em vez de
+   *  exigir revisão item a item. O voucher em si já fica salvo mesmo se a
+   *  leitura por IA falhar. */
+  async function handleVoucherExtracted({ voucher, extracted }: { voucher: Voucher; extracted: ExtractedTravelDocument | null }) {
+    setS(prev => {
+      const nextVouchers = [...(Array.isArray(prev.vouchers) ? prev.vouchers : []), voucher]
+      // Voucher persiste na hora — não depende do botão "Salvar" pra
+      // sobreviver a um refresh/troca de aba (mesmo padrão da aba Vouchers).
+      updateTravelSale(orgSlug, prev.id, { vouchers: nextVouchers })
+      if (!extracted) return { ...prev, vouchers: nextVouchers }
+
+      const patch = extractedToSaleFieldsPatch(extracted, {
+        operatorOptions,
+        existingIncludedItems: Array.isArray(prev.included_items) ? prev.included_items : [],
+      })
+      const newTravelers = extractedTravelers(extracted, prev.client_name)
+      const existingTravelers: any[] = Array.isArray(prev.travelers) ? prev.travelers : []
+      const existingNames = new Set(existingTravelers.map(t => (t.name || '').trim().toLowerCase()))
+      const mergedTravelers = [...existingTravelers, ...newTravelers.filter(t => !existingNames.has(t.name.trim().toLowerCase()))]
+
+      const merged = mergeExtractedFields({ ...prev, vouchers: nextVouchers }, patch, voucher.name)
+      return { ...merged, travelers: mergedTravelers }
+    })
+
+    if (!extracted) { toast.success('Voucher adicionado.'); return }
+    // Produtos não fazem parte do "Salvar" da aba Dados — persistem na hora,
+    // igual o botão "Adicionar" já fazia na aba Vouchers.
+    const result = await bulkCreateSaleProductsFromExtraction(orgSlug, sale.id, extracted)
+    if (result.ok && result.created > 0) {
+      setProductsRefreshKey(k => k + 1)
+      toast.success(`Voucher lido — ${result.created} produto(s) adicionado(s) em Produtos. Revise e salve os dados da reserva.`)
+    } else {
+      toast.success('Voucher lido — revise e salve os dados da reserva.')
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -744,6 +829,9 @@ function SaleEditor({
 
         {/* ── Dados da Reserva ────────────────────────────────── */}
         <TabsContent value="dados" className="space-y-4 pt-4">
+        <div className="flex justify-end">
+          <VoucherUploadWithOcr orgSlug={orgSlug} label="Add voucher" onExtracted={handleVoucherExtracted} />
+        </div>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Lado esquerdo */}
           <div className="space-y-3">
@@ -768,9 +856,7 @@ function SaleEditor({
               <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
             </div>
 
-            <QuickHospedagensField orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} onChanged={() => setProductsRefreshKey(k => k + 1)} />
-
-            <Field label="Itens inclusos na negociação">
+            <Field label="Itens inclusos na reserva">
               <div className="flex flex-wrap gap-1.5">
                 {INCLUDED_ITEMS.map(item => {
                   const active = included.includes(item.key)
@@ -1071,70 +1157,6 @@ function OperatorInput({ value, onChange, options }: { value: string; onChange: 
   )
 }
 
-/** Lista rápida de hospedagens (só o nome) sincronizada direto com
- *  sale_products (kind='hospedagem') — detalhes completos (check-in/regime/
- *  etc.) ficam na aba Produtos; aqui é só o atalho pra não obrigar o agente
- *  a trocar de aba pra registrar o nome do hotel. */
-function QuickHospedagensField({
-  orgSlug, saleId, refreshKey, onChanged,
-}: {
-  orgSlug: string
-  saleId: string
-  refreshKey: number
-  onChanged: () => void
-}) {
-  const [hospedagens, setHospedagens] = useState<SaleProduct[] | null>(null)
-  const [newName, setNewName] = useState('')
-  const [adding, setAdding] = useState(false)
-
-  useEffect(() => {
-    listSaleProducts(orgSlug, saleId).then(all => setHospedagens(all.filter(p => p.kind === 'hospedagem')))
-  }, [orgSlug, saleId, refreshKey])
-
-  async function handleAdd() {
-    if (!newName.trim()) return
-    setAdding(true)
-    const res = await createSaleProduct(orgSlug, saleId, { kind: 'hospedagem', data: { hotel: newName.trim() } })
-    setAdding(false)
-    if (!res.ok) { toast.error(res.error); return }
-    setNewName('')
-    onChanged()
-  }
-
-  async function handleRemove(id: string) {
-    setHospedagens(prev => prev?.filter(h => h.id !== id) ?? null)
-    const res = await deleteSaleProduct(orgSlug, id)
-    if (!res.ok) { toast.error(res.error); onChanged() }
-  }
-
-  return (
-    <Field label="Hotel">
-      <div className="space-y-1.5">
-        {(hospedagens || []).map(h => (
-          <div key={h.id} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5">
-            <Hotel className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="flex-1 min-w-0 truncate text-sm">{h.data?.hotel || '—'}</span>
-            <button type="button" onClick={() => handleRemove(h.id)} className="shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remover hospedagem">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-        <div className="flex gap-1.5">
-          <Input
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
-            placeholder="Nome do hotel…"
-          />
-          <Button type="button" variant="outline" size="sm" className="shrink-0" disabled={adding} onClick={handleAdd}>
-            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-          </Button>
-        </div>
-        <p className="text-[11px] text-muted-foreground">Detalhes completos (check-in, regime, localizador…) na aba Produtos.</p>
-      </div>
-    </Field>
-  )
-}
 
 /** Campo de nome do viajante com sugestões de Contatos conforme digita —
  *  clicar numa sugestão auto-preenche nascimento/CPF do cadastro (substitui

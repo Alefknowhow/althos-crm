@@ -215,6 +215,27 @@ export async function bulkCreateSaleProductsFromExtraction(
       },
     })
   }
+  for (const p of extracted.passeios || []) {
+    rows.push({
+      organization_id: org.id, sale_id: saleId, kind: 'passeio', status: 'pending', sort_order: i++,
+      data: {
+        nome: p.nome || null, data: p.data || null,
+        observacoes: [p.descricao, p.duracao].filter(Boolean).join(' — ') || null,
+      },
+    })
+  }
+  for (const l of extracted.locacoes || []) {
+    rows.push({
+      organization_id: org.id, sale_id: saleId, kind: 'veiculo', status: 'pending', sort_order: i++,
+      data: {
+        nome: l.categoria_veiculo || null, fornecedor: l.locadora || null, data: l.retirada_data || null,
+        observacoes: [
+          l.retirada_local ? `Retirada: ${l.retirada_local}` : null,
+          l.devolucao_local ? `Devolução: ${l.devolucao_local}${l.devolucao_data ? ` (${l.devolucao_data})` : ''}` : null,
+        ].filter(Boolean).join(' · ') || null,
+      },
+    })
+  }
 
   if (rows.length === 0) return { ok: true as const, created: 0 }
 
