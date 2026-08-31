@@ -17,7 +17,7 @@ export default async function SocialLayout({
   const connection = connections[0] ?? null
 
   return (
-    <div className="h-[calc(100vh-4rem)] -m-6 flex flex-col bg-background overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] -mx-6 -mb-6 flex flex-col bg-background overflow-hidden">
       <div className="h-16 px-4 sm:px-6 border-b bg-background flex items-center shrink-0">
         <InstagramTabsNav
           orgSlug={params.orgSlug}

@@ -102,7 +102,7 @@ export default async function PipelinePage({
   const staleDays = settings?.stale_lead_days ?? 7
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)]">
+    <div className="flex flex-col h-[calc(100vh-6rem)] pt-3">
       <div className="flex-1 overflow-hidden">
         <KanbanBoard
           orgSlug={params.orgSlug}

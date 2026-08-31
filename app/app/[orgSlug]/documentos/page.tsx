@@ -23,7 +23,7 @@ export default async function DocumentosPage({ params }: { params: { orgSlug: st
   if (travel) {
     const docs = await listOrgDocuments(params.orgSlug)
     return (
-      <div className="flex flex-col h-full gap-4">
+      <div className="flex flex-col h-full gap-4 pt-3">
         <PageHeader
           title="Documentos"
           hint="Envie o PDF já pronto com um rótulo — depois é só abrir ou imprimir direto da lista."
@@ -36,7 +36,7 @@ export default async function DocumentosPage({ params }: { params: { orgSlug: st
   const templates = await listDocumentTemplates(params.orgSlug)
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col h-full gap-4 pt-3">
       <PageHeader
         title="Documentos"
         hint="Crie modelos de documentos e contratos reutilizáveis, com campos entre {{chaves}} preenchidos automaticamente."

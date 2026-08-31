@@ -35,7 +35,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
   }))
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 space-y-6">
       <PageHeader
         title="Tarefas"
         hint="Calendário e lista sincronizados — Pendentes, Atrasadas e Concluídas."

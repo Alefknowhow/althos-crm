@@ -24,7 +24,7 @@ export default async function AvaliacoesPage({
     : []
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 space-y-6">
       <ReviewsClient
         orgSlug={params.orgSlug}
         locations={locations}

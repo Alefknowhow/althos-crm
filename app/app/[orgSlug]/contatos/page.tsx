@@ -278,7 +278,7 @@ export default async function ContatosPage({
   )
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col h-full gap-4 pt-3">
       <ContatosView
         orgSlug={params.orgSlug}
         contatos={listRows as any[]}

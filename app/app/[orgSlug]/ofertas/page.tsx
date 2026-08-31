@@ -19,7 +19,7 @@ export default async function OffersPage({ params }: { params: { orgSlug: string
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 space-y-6">
       <PageHeader
         title="Ofertas"
         hint="Monte pacotes prontos (do mesmo jeito que uma cotação, sem cliente) e publique na vitrine. Cada oferta vira uma cotação com um clique."

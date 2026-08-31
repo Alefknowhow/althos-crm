@@ -15,7 +15,7 @@ export default async function BloqueiosPage({ params }: { params: { orgSlug: str
   const blocks = await listTravelBlocks(params.orgSlug)
 
   return (
-    <div className="space-y-6">
+    <div className="pt-3 space-y-6">
       <PageHeader
         title="Bloqueios"
         hint="Mapa dos lotes de assentos garantidos com a operadora: trecho, datas, voos, assentos disponíveis e prazo de release. Use os botões +/- pra baixar ou devolver assentos conforme vende."
