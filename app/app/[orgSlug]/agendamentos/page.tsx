@@ -35,7 +35,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
   // Contexto clínico — só busca quando o nicho é Clínicas, pra não pagar
   // essas queries extras em nenhum outro tenant.
   let clinicSpecialties: { id: string; name: string }[] = []
-  let clinicProfessionals: { id: string; name: string }[] = []
+  let clinicProfessionals: { id: string; name: string; avatar_url?: string | null }[] = []
   let clinicRooms: { id: string; name: string }[] = []
   let clinicAppointmentContexts: Record<string, any> = {}
   let clinicServiceContexts: Record<string, any> = {}

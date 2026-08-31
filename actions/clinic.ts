@@ -77,6 +77,11 @@ export type ClinicProfessional = {
   registration_no: string | null
   commission_pct: number | null
   active: boolean
+  phone: string | null
+  email: string | null
+  avatar_storage_object_id: string | null
+  /** Preenchido só na leitura (signed URL do R2) — ver resolveClinicProfessionalAvatars. */
+  avatar_url?: string | null
 }
 
 export async function listClinicProfessionals(orgSlug: string): Promise<ClinicProfessional[]> {
@@ -84,10 +89,27 @@ export async function listClinicProfessionals(orgSlug: string): Promise<ClinicPr
   const supabase = createClient()
   const { data } = await supabase
     .from('clinic_professionals')
-    .select('id, name, specialty_id, registration_no, commission_pct, active')
+    .select('id, name, specialty_id, registration_no, commission_pct, active, phone, email, avatar_storage_object_id')
     .eq('organization_id', org.id)
     .order('name', { ascending: true })
-  return data || []
+  const rows = data || []
+  return resolveClinicProfessionalAvatars(orgSlug, rows)
+}
+
+/** Resolve avatar_storage_object_id → signed URL do R2 em lote — mesmo
+ *  padrão de resolveContatoAvatars (actions/contatos.ts). */
+export async function resolveClinicProfessionalAvatars<T extends { avatar_storage_object_id: string | null }>(
+  orgSlug: string,
+  rows: T[],
+): Promise<(T & { avatar_url: string | null })[]> {
+  const objectIds = rows.map(r => r.avatar_storage_object_id).filter((id): id is string => !!id)
+  if (objectIds.length === 0) return rows.map(r => ({ ...r, avatar_url: null }))
+  const { getObjectSignedUrls } = await import('@/actions/storage')
+  const urls = await getObjectSignedUrls(orgSlug, objectIds)
+  return rows.map(r => ({
+    ...r,
+    avatar_url: r.avatar_storage_object_id ? urls.get(r.avatar_storage_object_id) ?? null : null,
+  }))
 }
 
 export type ClinicProfessionalInput = {
@@ -95,6 +117,8 @@ export type ClinicProfessionalInput = {
   specialty_id: string | null
   registration_no: string | null
   commission_pct: number | null
+  phone?: string | null
+  email?: string | null
 }
 
 export async function createClinicProfessional(orgSlug: string, input: ClinicProfessionalInput) {
@@ -107,6 +131,8 @@ export async function createClinicProfessional(orgSlug: string, input: ClinicPro
     specialty_id: input.specialty_id || null,
     registration_no: input.registration_no || null,
     commission_pct: input.commission_pct ?? null,
+    phone: input.phone || null,
+    email: input.email || null,
   })
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/profissionais`)
@@ -121,10 +147,90 @@ export async function updateClinicProfessional(orgSlug: string, id: string, inpu
   if (input.specialty_id !== undefined) patch.specialty_id = input.specialty_id || null
   if (input.registration_no !== undefined) patch.registration_no = input.registration_no || null
   if (input.commission_pct !== undefined) patch.commission_pct = input.commission_pct
+  if (input.phone !== undefined) patch.phone = input.phone || null
+  if (input.email !== undefined) patch.email = input.email || null
   if (input.active !== undefined) patch.active = input.active
   const { error } = await supabase.from('clinic_professionals').update(patch).eq('id', id).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/profissionais`)
+  return { ok: true as const }
+}
+
+const ALLOWED_AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
+const MAX_PROFESSIONAL_AVATAR_SIZE = 5 * 1024 * 1024
+
+export async function uploadClinicProfessionalAvatar(orgSlug: string, professionalId: string, formData: FormData) {
+  const org = await requireProfissionaisAccess(orgSlug)
+  const supabase = createClient()
+
+  const file = formData.get('file') as File | null
+  if (!file || typeof file !== 'object') return { ok: false as const, error: 'Arquivo ausente' }
+  if (!ALLOWED_AVATAR_MIME.has(file.type)) return { ok: false as const, error: 'Use uma imagem PNG, JPG ou WebP.' }
+  if (file.size > MAX_PROFESSIONAL_AVATAR_SIZE) return { ok: false as const, error: 'Imagem muito grande (máx. 5MB).' }
+
+  const { data: professional } = await supabase
+    .from('clinic_professionals')
+    .select('id, avatar_storage_object_id')
+    .eq('id', professionalId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!professional) return { ok: false as const, error: 'Profissional não encontrado' }
+
+  const { uploadFile, deleteObject, getObjectSignedUrl } = await import('@/actions/storage')
+  const contentType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+
+  const uploaded = await uploadFile(orgSlug, { category: 'avatars', scopeId: professionalId, filename: file.name, contentType, base64 })
+  if (!uploaded.ok) return { ok: false as const, error: uploaded.error }
+
+  const { error: updateError } = await supabase
+    .from('clinic_professionals')
+    .update({ avatar_storage_object_id: uploaded.objectId })
+    .eq('id', professionalId)
+    .eq('organization_id', org.id)
+  if (updateError) {
+    await deleteObject(orgSlug, uploaded.objectId)
+    return { ok: false as const, error: updateError.message }
+  }
+
+  if (professional.avatar_storage_object_id) {
+    await deleteObject(orgSlug, professional.avatar_storage_object_id)
+  }
+
+  const signed = await getObjectSignedUrl(orgSlug, uploaded.objectId)
+  if (!signed.ok) return { ok: false as const, error: signed.error }
+
+  revalidatePath(`/app/${orgSlug}/profissionais`)
+  revalidatePath(`/app/${orgSlug}/agendamentos`)
+  return { ok: true as const, url: signed.url }
+}
+
+export async function removeClinicProfessionalAvatar(orgSlug: string, professionalId: string) {
+  const org = await requireProfissionaisAccess(orgSlug)
+  const supabase = createClient()
+
+  const { data: professional } = await supabase
+    .from('clinic_professionals')
+    .select('avatar_storage_object_id')
+    .eq('id', professionalId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!professional) return { ok: false as const, error: 'Profissional não encontrado' }
+
+  const { error } = await supabase
+    .from('clinic_professionals')
+    .update({ avatar_storage_object_id: null })
+    .eq('id', professionalId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  if (professional.avatar_storage_object_id) {
+    const { deleteObject } = await import('@/actions/storage')
+    await deleteObject(orgSlug, professional.avatar_storage_object_id)
+  }
+
+  revalidatePath(`/app/${orgSlug}/profissionais`)
+  revalidatePath(`/app/${orgSlug}/agendamentos`)
   return { ok: true as const }
 }
 

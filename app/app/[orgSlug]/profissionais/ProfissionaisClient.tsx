@@ -16,10 +16,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, Users, Stethoscope, DoorOpen } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Stethoscope, DoorOpen, Camera, User as UserIcon } from 'lucide-react'
 import {
   type ClinicProfessional, type ClinicSpecialty, type ClinicRoom, type ClinicProfessionalInput,
   createClinicProfessional, updateClinicProfessional, deleteClinicProfessional,
+  uploadClinicProfessionalAvatar,
   createClinicSpecialty, updateClinicSpecialty, deleteClinicSpecialty,
   createClinicRoom, updateClinicRoom, deleteClinicRoom,
 } from '@/actions/clinic'
@@ -83,7 +84,7 @@ export default function ProfissionaisClient({
 // ── Profissionais ────────────────────────────────────────────────────────────
 
 const EMPTY_PROFESSIONAL: ClinicProfessionalInput = {
-  name: '', specialty_id: null, registration_no: null, commission_pct: null,
+  name: '', specialty_id: null, registration_no: null, commission_pct: null, phone: null, email: null,
 }
 
 function ProfessionalsPanel({
@@ -97,17 +98,35 @@ function ProfessionalsPanel({
 }) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingAvatarUrl, setEditingAvatarUrl] = useState<string | null>(null)
   const [draft, setDraft] = useState<ClinicProfessionalInput>(EMPTY_PROFESSIONAL)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [toDelete, setToDelete] = useState<ClinicProfessional | null>(null)
 
   const specialtyName = (id: string | null) => specialties.find(s => s.id === id)?.name || '—'
 
-  function openNew() { setEditingId(null); setDraft(EMPTY_PROFESSIONAL); setDialogOpen(true) }
+  function openNew() { setEditingId(null); setEditingAvatarUrl(null); setDraft(EMPTY_PROFESSIONAL); setDialogOpen(true) }
   function openEdit(p: ClinicProfessional) {
     setEditingId(p.id)
-    setDraft({ name: p.name, specialty_id: p.specialty_id, registration_no: p.registration_no, commission_pct: p.commission_pct })
+    setEditingAvatarUrl(p.avatar_url || null)
+    setDraft({ name: p.name, specialty_id: p.specialty_id, registration_no: p.registration_no, commission_pct: p.commission_pct, phone: p.phone, email: p.email })
     setDialogOpen(true)
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !editingId) return
+    setUploadingAvatar(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await uploadClinicProfessionalAvatar(orgSlug, editingId, fd)
+    setUploadingAvatar(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setEditingAvatarUrl(res.url)
+    onChange(professionals.map(p => (p.id === editingId ? { ...p, avatar_url: res.url } : p)))
+    toast.success('Foto atualizada')
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -144,6 +163,25 @@ function ProfessionalsPanel({
             <DialogContent>
               <DialogHeader><DialogTitle>{editingId ? 'Editar profissional' : 'Novo profissional'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSave} className="space-y-4">
+                {editingId && (
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-16 h-16 rounded-full overflow-hidden border bg-muted shrink-0 flex items-center justify-center">
+                      {editingAvatarUrl ? (
+                        <img src={editingAvatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-7 h-7 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer">
+                        <Camera className="w-3.5 h-3.5" />
+                        {uploadingAvatar ? 'Enviando...' : 'Alterar foto'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingAvatar} onChange={handleAvatarChange} />
+                      </label>
+                      <p className="text-[11px] text-muted-foreground">PNG, JPG ou WebP, até 5MB.</p>
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Nome *</Label>
                   <Input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} required />
@@ -167,6 +205,14 @@ function ProfessionalsPanel({
                     <Label>Comissão (%)</Label>
                     <Input type="number" min={0} max={100} step="0.1" value={draft.commission_pct ?? ''} onChange={e => setDraft({ ...draft, commission_pct: e.target.value ? Number(e.target.value) : null })} />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Telefone</Label>
+                    <Input value={draft.phone || ''} onChange={e => setDraft({ ...draft, phone: e.target.value || null })} placeholder="(00) 00000-0000" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>E-mail</Label>
+                    <Input type="email" value={draft.email || ''} onChange={e => setDraft({ ...draft, email: e.target.value || null })} />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={saving || draft.name.trim().length < 2}>{saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}</Button>
@@ -184,6 +230,13 @@ function ProfessionalsPanel({
           <div className="rounded-md border divide-y">
             {professionals.map(p => (
               <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                <div className="w-8 h-8 rounded-full overflow-hidden border bg-muted shrink-0 flex items-center justify-center">
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserIcon className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{p.name}</span>

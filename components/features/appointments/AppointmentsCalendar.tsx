@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,8 @@ import {
 import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink, User, CalendarPlus, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { ClinicAppointmentContext } from '@/actions/clinic'
-import { CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
+import { CLINIC_STATUS_LABEL, CLINIC_STATUS_COLOR, CLINIC_STAGE_LEGEND, type ClinicStatus } from '@/lib/clinic-constants'
+import { Calendar as MiniCalendar } from '@/components/ui/calendar'
 
 export type CalendarAppointment = {
   id: string
@@ -36,7 +37,7 @@ export type CalendarAppointment = {
 
 type Mode = 'week' | 'month' | 'day'
 
-type ClinicOption = { id: string; name: string }
+type ClinicOption = { id: string; name: string; avatar_url?: string | null }
 type Availability = { id: string; day_of_week: number; start_time: string; end_time: string; event_type_id: string | null }
 
 type Props = {
@@ -481,6 +482,19 @@ function DayProfessionalView({
 }) {
   const hours = Array.from({ length: hourRange.endHour - hourRange.startHour + 1 }, (_, i) => hourRange.startHour + i)
 
+  // Linha vermelha de "agora" — só no dia de hoje, atualizada a cada minuto
+  // (não precisa de mais frequência que isso pra uma linha de horário).
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  const isToday = sameDay(now, day)
+  const nowHour = now.getHours() + now.getMinutes() / 60
+  const nowOffsetPx = isToday && nowHour >= hourRange.startHour && nowHour <= hourRange.endHour + 1
+    ? (nowHour - hourRange.startHour) * HOUR_HEIGHT_PX
+    : null
+
   // Agenda do dia só existe pra quem tem agendamento no dia OU está cadastrado
   // ativo — mas colunas vazias (profissional sem nada hoje) ainda aparecem,
   // pra dar visão de disponibilidade. Um bucket "Sem profissional" aparece só
@@ -514,18 +528,36 @@ function DayProfessionalView({
     )
   }
 
-  const gridCols = `60px repeat(${columns.length}, minmax(160px, 1fr))`
+  // Largura fixa de coluna (nem espremida com poucos profissionais, nem
+  // esticada exageradamente com muitos) — antes era minmax(160px, 1fr), que
+  // esticava pra preencher a tela toda com 1-2 profissionais. overflow-x-auto
+  // + min-w-max no wrapper já cuidam do scroll lateral quando excede a tela.
+  const COLUMN_WIDTH_PX = 220
+  const gridCols = `60px repeat(${columns.length}, ${COLUMN_WIDTH_PX}px)`
 
   return (
-    <div className="border rounded-lg overflow-x-auto bg-card">
-      <div className="min-w-max">
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 flex-wrap px-0.5 text-[11px] text-muted-foreground">
+        {CLINIC_STAGE_LEGEND.map(item => (
+          <span key={item.label} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            {item.label}
+          </span>
+        ))}
+      </div>
+      <div className="border rounded-lg overflow-x-auto bg-card">
+        <div className="min-w-max">
         {/* Column headers */}
         <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
           <div /> {/* gutter */}
           {columns.map(col => (
             <div key={col.id} className="px-3 py-2 text-center border-l">
               <div className="flex items-center justify-center gap-1.5 text-sm font-semibold truncate">
-                <User className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                {col.avatar_url ? (
+                  <img src={col.avatar_url} alt={col.name} className="w-5 h-5 rounded-full object-cover shrink-0" />
+                ) : (
+                  <User className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                )}
                 {col.name}
               </div>
               <div className="text-[10px] text-muted-foreground">
@@ -537,6 +569,15 @@ function DayProfessionalView({
 
         {/* Time grid */}
         <div className="grid relative" style={{ gridTemplateColumns: gridCols }}>
+          {isToday && nowOffsetPx != null && (
+            <div
+              className="absolute left-[60px] right-0 z-20 pointer-events-none flex items-center"
+              style={{ top: nowOffsetPx }}
+            >
+              <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shrink-0" />
+              <div className="flex-1 h-[2px] bg-red-500" />
+            </div>
+          )}
           <div>
             {hours.map(h => (
               <div
@@ -592,7 +633,12 @@ function DayProfessionalView({
                   if (startHour + durationHours <= hourRange.startHour) return null
 
                   const et = pickFirst(a.event_types)
-                  const color = et?.color || '#3b82f6'
+                  const clinicStatus = contexts[a.id]?.clinic_status as ClinicStatus | undefined
+                  // Cor por estágio do agendamento (chegou? em atendimento?
+                  // finalizado? cancelado?) — não mais pelo procedimento, que
+                  // já é identificado pelo nome no texto do card. Ver legenda
+                  // no cabeçalho da agenda (CLINIC_STAGE_LEGEND).
+                  const color = CLINIC_STATUS_COLOR[clinicStatus || 'agendado']
                   const slot = overlapLayout.get(a.id) || { col: 0, cols: 1 }
                   const layout: 'tiny' | 'short' | 'tall' =
                     visibleHeight < 32 ? 'tiny' : visibleHeight < 56 ? 'short' : 'tall'
@@ -612,7 +658,7 @@ function DayProfessionalView({
                         backgroundColor: `${color}22`,
                         borderLeft: `3px solid ${color}`,
                       }}
-                      title={`${a.guest_name} — ${et?.name || ''} (${fmtTime(a.start_time)} - ${fmtTime(a.end_time)})`}
+                      title={`${a.guest_name} — ${et?.name || ''} (${fmtTime(a.start_time)} - ${fmtTime(a.end_time)}) — ${CLINIC_STATUS_LABEL[clinicStatus || 'agendado']}`}
                     >
                       {layout === 'tiny' ? (
                         <div className="flex items-baseline gap-1 truncate">
@@ -622,7 +668,7 @@ function DayProfessionalView({
                       ) : layout === 'short' ? (
                         <>
                           <div className="font-semibold truncate">{a.guest_name}</div>
-                          <div className="text-muted-foreground tabular-nums">{fmtTime(a.start_time)}</div>
+                          <div className="text-muted-foreground truncate">{et?.name || ''}</div>
                         </>
                       ) : (
                         <>
@@ -638,6 +684,7 @@ function DayProfessionalView({
             )
           })}
         </div>
+      </div>
       </div>
     </div>
   )
@@ -889,15 +936,27 @@ export default function AppointmentsCalendar({
           onSlotDoubleClick={onSlotDoubleClick}
         />
       ) : mode === 'day' ? (
-        <DayProfessionalView
-          day={range.start}
-          appointments={appointments}
-          professionals={clinicProfessionals}
-          contexts={clinicContexts}
-          onSelect={setSelected}
-          hourRange={hourRange}
-          onSlotDoubleClick={onSlotDoubleClick}
-        />
+        <div className="flex gap-3 items-start">
+          <div className="hidden lg:block shrink-0">
+            <MiniCalendar
+              mode="single"
+              selected={cursor}
+              onSelect={d => d && setCursor(d)}
+              className="border rounded-lg bg-card p-2"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <DayProfessionalView
+              day={range.start}
+              appointments={appointments}
+              professionals={clinicProfessionals}
+              contexts={clinicContexts}
+              onSelect={setSelected}
+              hourRange={hourRange}
+              onSlotDoubleClick={onSlotDoubleClick}
+            />
+          </div>
+        </div>
       ) : (
         <MonthView monthStart={range.start} appointments={appointments} onSelect={setSelected} availableDays={availableDays} />
       )}

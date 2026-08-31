@@ -19,6 +19,32 @@ export const CLINIC_STATUS_LABEL: Record<ClinicStatus, string> = {
   no_show: 'Não compareceu',
 }
 
+/**
+ * Cor por ESTÁGIO do agendamento (não por procedimento) — usada na agenda
+ * diária por profissional. Agrupa os 8 status granulares em 4 estágios
+ * visuais (o que importa pra quem olha a agenda de relance é "chegou?
+ * está sendo atendido? já terminou? foi cancelado?", não o status exato).
+ * O nome do procedimento continua identificado por texto dentro do card.
+ */
+export const CLINIC_STATUS_COLOR: Record<ClinicStatus, string> = {
+  aguardando_confirmacao: '#94a3b8', // cinza — ainda nem confirmado
+  agendado: '#3b82f6',               // azul — agendado, ainda não chegou
+  confirmado: '#3b82f6',             // azul — confirmado, ainda não chegou
+  reagendado: '#3b82f6',             // azul — reagendado, ainda não chegou
+  em_atendimento: '#f59e0b',         // âmbar — em atendimento agora
+  realizado: '#10b981',              // verde — atendimento finalizado
+  cancelado: '#ef4444',              // vermelho — cancelado
+  no_show: '#ef4444',                // vermelho — não compareceu
+}
+
+/** Legenda (estágio → cor + rótulo curto) pra exibir na agenda. */
+export const CLINIC_STAGE_LEGEND: { color: string; label: string }[] = [
+  { color: '#3b82f6', label: 'Não chegou' },
+  { color: '#f59e0b', label: 'Em atendimento' },
+  { color: '#10b981', label: 'Finalizado' },
+  { color: '#ef4444', label: 'Cancelado / faltou' },
+]
+
 export const CLINIC_QUOTE_STATUSES = [
   'rascunho', 'enviado', 'visualizado', 'aprovado', 'recusado', 'expirado', 'cancelado',
 ] as const

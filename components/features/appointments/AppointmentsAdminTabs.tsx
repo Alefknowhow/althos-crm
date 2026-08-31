@@ -33,7 +33,7 @@ type Availability = {
 
 type Pipeline = { id: string; name: string; is_default: boolean }
 type Stage = { id: string; name: string; pipeline_id: string }
-type ClinicOption = { id: string; name: string }
+type ClinicOption = { id: string; name: string; avatar_url?: string | null }
 
 type Props = {
   orgSlug: string
