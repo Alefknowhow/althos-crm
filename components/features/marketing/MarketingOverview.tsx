@@ -457,7 +457,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
       {/* Painel superior fixo (filtros/período/contas) — só a área de
           cards/gráficos abaixo rola, pra manter os filtros sempre à mão em
           telas com muito conteúdo. */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 pb-3 bg-background space-y-3" style={{ marginTop: '-0.75rem' }}>
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-3 bg-background space-y-3" style={{ marginTop: '-0.75rem' }}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
