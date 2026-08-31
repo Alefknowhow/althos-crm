@@ -1193,7 +1193,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   // "Máximo" não tem janela anterior de mesmo tamanho pra comparar (o
   // período já busca tudo que existir) — pula o cálculo, o card de
   // comparação simplesmente não aparece nesse caso.
-  let previousCampaigns: { campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number }[] = []
+  let previousCampaigns: { campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number; meta_leads: number; meta_messaging_started: number; meta_purchases: number }[] = []
   if (period !== 'max') {
     const startDate = new Date(`${start}T00:00:00`)
     const lengthMs = Date.now() - startDate.getTime()
@@ -1204,19 +1204,22 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
 
     const { data: prevMetrics } = await supabase
       .from('campaign_metrics_daily')
-      .select('campaign_id, spend_cents, impressions, clicks')
+      .select('campaign_id, spend_cents, impressions, clicks, meta_leads, meta_messaging_started, meta_purchases')
       .in('campaign_id', campaignIds)
       .eq('organization_id', org.id)
       .gte('date', prevStart)
       .lte('date', prevEnd)
 
     const campaignMetaById = new Map((campaigns || []).map(c => [c.id, { ad_account_id: c.ad_account_id, objective_group: classifyObjective(c.objective) }]))
-    const prevByCampaign = new Map<string, { spend_cents: number; impressions: number; clicks: number }>()
+    const prevByCampaign = new Map<string, { spend_cents: number; impressions: number; clicks: number; meta_leads: number; meta_messaging_started: number; meta_purchases: number }>()
     for (const m of prevMetrics || []) {
-      const cur = prevByCampaign.get(m.campaign_id) || { spend_cents: 0, impressions: 0, clicks: 0 }
+      const cur = prevByCampaign.get(m.campaign_id) || { spend_cents: 0, impressions: 0, clicks: 0, meta_leads: 0, meta_messaging_started: 0, meta_purchases: 0 }
       cur.spend_cents += m.spend_cents || 0
       cur.impressions += m.impressions || 0
       cur.clicks += m.clicks || 0
+      cur.meta_leads += m.meta_leads || 0
+      cur.meta_messaging_started += m.meta_messaging_started || 0
+      cur.meta_purchases += m.meta_purchases || 0
       prevByCampaign.set(m.campaign_id, cur)
     }
     previousCampaigns = Array.from(prevByCampaign.entries()).map(([campaignId, v]) => ({
@@ -1417,6 +1420,9 @@ export type AdConversionRow = {
   meta_messaging_started: number
   meta_purchases: number
   meta_purchase_value_cents: number
+  impressions: number
+  clicks: number
+  spend_cents: number
 }
 
 /**
@@ -1471,6 +1477,9 @@ export async function getAdConversionRows(
           meta_messaging_started: i.meta_messaging_started,
           meta_purchases: i.meta_purchases,
           meta_purchase_value_cents: i.meta_purchase_value_cents,
+          impressions: i.impressions,
+          clicks: i.clicks,
+          spend_cents: i.spend_cents,
         })
       }
     }

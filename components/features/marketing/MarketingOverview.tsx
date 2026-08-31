@@ -51,6 +51,7 @@ import CampaignsTable from './CampaignsTable'
 import MetricsChart from './MetricsChart'
 import ImpressionsCpmChart from './ImpressionsCpmChart'
 import ConversionByAdChart from './ConversionByAdChart'
+import AdSpendCpmChart from './AdSpendCpmChart'
 import MetricPicker from './MetricPicker'
 import AccountFilter from './AccountFilter'
 import type { ObjectiveGroup } from '@/lib/marketing/objective'
@@ -95,7 +96,7 @@ type Overview = {
   timeSeries: TimeSeriesPoint[]
   sourcesByLeads: Array<{ name: string; value: number }>
   byObjective: Array<{ group: ObjectiveGroup; spend_cents: number; leads: number; meta_messaging_started: number; won_deals: number; revenue_cents: number }>
-  previousCampaigns: Array<{ campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number }>
+  previousCampaigns: Array<{ campaign_id: string; ad_account_id: string | null; objective_group: ObjectiveGroup; spend_cents: number; impressions: number; clicks: number; meta_leads: number; meta_messaging_started: number; meta_purchases: number }>
 }
 
 const OBJECTIVE_FILTERS: Array<{ value: ObjectiveGroup | 'all'; label: string }> = [
@@ -410,9 +411,12 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
         acc.spend_cents += c.spend_cents
         acc.impressions += c.impressions
         acc.clicks += c.clicks
+        acc.meta_leads += c.meta_leads
+        acc.meta_messaging_started += c.meta_messaging_started
+        acc.meta_purchases += c.meta_purchases
         return acc
       },
-      { spend_cents: 0, impressions: 0, clicks: 0 },
+      { spend_cents: 0, impressions: 0, clicks: 0, meta_leads: 0, meta_messaging_started: 0, meta_purchases: 0 },
     )
     return { previousFilteredTotals: totals, hasPreviousData: matching.length > 0 }
   }, [overview.previousCampaigns, objectiveFilter, accountFilter])
@@ -444,6 +448,10 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
   return (
     <div className="space-y-6">
+      {/* Painel superior fixo (filtros/período/contas) — só a área de
+          cards/gráficos abaixo rola, pra manter os filtros sempre à mão em
+          telas com muito conteúdo. */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-3 -mt-3 pb-3 bg-background space-y-3">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -525,6 +533,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+      </div>
       </div>
 
       {/* Setup banner if no accounts/campaigns yet */}
@@ -615,52 +624,18 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               </CardContent>
             </Card>
 
-            {/* Sources by leads */}
+            {/* Custo por anúncio — substitui "Leads por campanha": mais
+                acionável pra quem gerencia a verba (onde o dinheiro está
+                indo e a que custo, anúncio a anúncio). */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Leads por campanha</CardTitle>
+                <CardTitle className="text-base">Custo por anúncio</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Valor investido, CPM e valor por conversão de cada anúncio.
+                </p>
               </CardHeader>
               <CardContent>
-                {overview.sourcesByLeads.length === 0 ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground text-center px-4">
-                    Atribuição ainda sem dados. Configure o <strong>utm_campaign</strong> nas suas
-                    campanhas para conectar.
-                  </div>
-                ) : (
-                  <>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <PieChart>
-                        <Pie
-                          data={overview.sourcesByLeads}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={45}
-                          outerRadius={70}
-                          paddingAngle={2}
-                        >
-                          {overview.sourcesByLeads.map((_, i) => (
-                            <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RTooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="space-y-1 mt-2">
-                      {overview.sourcesByLeads.map((s, i) => (
-                        <div key={s.name} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }}
-                            />
-                            <span className="truncate">{s.name}</span>
-                          </div>
-                          <span className="tabular-nums text-muted-foreground">{s.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <AdSpendCpmChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
               </CardContent>
             </Card>
           </div>
@@ -683,7 +658,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               <CardHeader>
                 <CardTitle className="text-base">Conversão por anúncio</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Ranking dos anúncios individuais — cada um pode ter um objetivo diferente, escolha a métrica.
+                  Ranking dos anúncios individuais — conversões, cliques e impressões numa única barra.
                 </p>
               </CardHeader>
               <CardContent>
@@ -779,6 +754,42 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
                       previous={previousFilteredTotals.clicks > 0 ? Math.round(previousFilteredTotals.spend_cents / previousFilteredTotals.clicks) : 0}
                       format={fmtCurrency}
                     />
+                    {(() => {
+                      // Conversões = conversas iniciadas + leads + compras da
+                      // Meta — mesmo conceito agregado usado em
+                      // metricRegistry.cost_per_conversion, só que aqui
+                      // comparando atual vs. período anterior.
+                      const curConversions = filteredTotals.meta_messaging_started + filteredTotals.meta_leads + filteredTotals.meta_purchases
+                      const prevConversions = previousFilteredTotals.meta_messaging_started + previousFilteredTotals.meta_leads + previousFilteredTotals.meta_purchases
+                      return (
+                        <>
+                          <ComparisonStat
+                            label="Conversões"
+                            current={curConversions}
+                            previous={prevConversions}
+                            format={fmtNumber}
+                          />
+                          <ComparisonStat
+                            label="Custo por conversa"
+                            current={filteredTotals.meta_messaging_started > 0 ? Math.round(filteredTotals.spend_cents / filteredTotals.meta_messaging_started) : 0}
+                            previous={previousFilteredTotals.meta_messaging_started > 0 ? Math.round(previousFilteredTotals.spend_cents / previousFilteredTotals.meta_messaging_started) : 0}
+                            format={fmtCurrency}
+                          />
+                          <ComparisonStat
+                            label="CPM"
+                            current={filteredTotals.impressions > 0 ? Math.round((filteredTotals.spend_cents / filteredTotals.impressions) * 1000) : 0}
+                            previous={previousFilteredTotals.impressions > 0 ? Math.round((previousFilteredTotals.spend_cents / previousFilteredTotals.impressions) * 1000) : 0}
+                            format={fmtCurrency}
+                          />
+                          <ComparisonStat
+                            label="Custo por conversão"
+                            current={curConversions > 0 ? Math.round(filteredTotals.spend_cents / curConversions) : 0}
+                            previous={prevConversions > 0 ? Math.round(previousFilteredTotals.spend_cents / prevConversions) : 0}
+                            format={fmtCurrency}
+                          />
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
               </CardContent>

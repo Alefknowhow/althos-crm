@@ -12,36 +12,40 @@ const DRILL_DOWN_ERROR_LABEL: Record<DrillDownError, string> = {
   unknown: 'Falha ao buscar dados da Meta.',
 }
 
-const number = (v: number) => new Intl.NumberFormat('pt-BR').format(v)
+const currency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+const currencyShort = (v: number) => `R$${v >= 1000 ? `${(v / 1000).toFixed(1).replace('.0', '')}k` : Math.round(v)}`
+
+function conversions(r: AdConversionRow): number {
+  return r.meta_messaging_started + r.meta_leads + r.meta_purchases
+}
 
 const METRICS: [SegmentMetric, SegmentMetric, SegmentMetric] = [
   {
-    key: 'conversoes', label: 'Conversões', color: '#14b8a6',
-    extract: (r: AdConversionRow) => r.meta_messaging_started + r.meta_leads + r.meta_purchases,
-    format: number,
+    key: 'investido', label: 'Valor investido', color: '#f97316',
+    extract: (r: AdConversionRow) => r.spend_cents / 100,
+    format: currency, formatShort: currencyShort,
   },
   {
-    key: 'cliques', label: 'Cliques', color: '#0ea5e9',
-    extract: (r: AdConversionRow) => r.clicks,
-    format: number,
+    // CPM = custo por mil impressões, em reais: (spend_cents/impressions) * 1000 / 100.
+    key: 'cpm', label: 'CPM', color: '#ec4899',
+    extract: (r: AdConversionRow) => (r.impressions > 0 ? (r.spend_cents / r.impressions) * 10 : 0),
+    format: currency, formatShort: currencyShort,
   },
   {
-    key: 'impressoes', label: 'Impressões', color: '#8b5cf6',
-    extract: (r: AdConversionRow) => r.impressions,
-    format: number,
+    key: 'valorPorConversao', label: 'Valor por conversão', color: '#6366f1',
+    extract: (r: AdConversionRow) => (conversions(r) > 0 ? r.spend_cents / conversions(r) / 100 : 0),
+    format: currency, formatShort: currencyShort,
   },
 ]
 
 /**
- * Ranking em barras dos ANÚNCIOS individuais (não campanhas) — cada anúncio
- * vira UMA barra com 3 estágios de cor (conversões/cliques/impressões).
- * Como as escalas são muito diferentes, cada estágio é normalizado contra o
- * máximo da própria métrica entre os anúncios exibidos (ver
- * AdSegmentedBarChart) — o objetivo é comparar anúncios entre si em cada
- * indicador, não somar valores absolutos. Dados vêm direto da Meta
- * (level=ad), buscados no cliente só quando este card está visível.
+ * Mesmo padrão visual de ConversionByAdChart (barra única por anúncio, 3
+ * estágios normalizados) — aqui pro custo: valor investido, CPM e valor por
+ * conversão. Fica no lugar de "Leads por campanha" (removido — esse dado
+ * de custo por anúncio individual é mais acionável pra quem gerencia a
+ * verba do que a distribuição de leads por campanha).
  */
-export default function ConversionByAdChart({
+export default function AdSpendCpmChart({
   orgSlug, adAccountId, period,
 }: {
   orgSlug: string
@@ -94,7 +98,7 @@ export default function ConversionByAdChart({
           metrics={METRICS}
           nameOf={(r: AdConversionRow) => r.name}
           campaignOf={(r: AdConversionRow) => r.campaign_name}
-          emptyLabel="Nenhum dado de conversão no período."
+          emptyLabel="Nenhum dado de investimento no período."
         />
       )}
     </div>
