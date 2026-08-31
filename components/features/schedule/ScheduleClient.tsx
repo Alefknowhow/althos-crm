@@ -45,10 +45,10 @@ function tripState(t: ScheduledTrip, today: Date): TripState {
   return 'upcoming'
 }
 
-const STATE_META: Record<TripState, { label: string; bar: string; dot: string; badge: string }> = {
-  upcoming: { label: 'Próxima', bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  ongoing: { label: 'Em andamento', bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
+const STATE_META: Record<TripState, { label: string; bar: string; dot: string; badge: string; row: string }> = {
+  upcoming: { label: 'Próxima', bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', row: 'bg-indigo-500/[0.06]' },
+  ongoing: { label: 'Em andamento', bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', row: 'bg-emerald-500/[0.06]' },
+  past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', row: 'bg-slate-400/[0.06]' },
 }
 
 function whatsappLink(phone?: string | null): string | null {
@@ -113,6 +113,17 @@ export default function ScheduleClient({
     for (let i = 1; i < totalDays; i++) lines.push((i / totalDays) * 100)
     return lines
   }, [totalDays])
+
+  // Número do dia, centralizado em cada coluna — linha bem discreta acima
+  // das viagens, só pra orientar visualmente.
+  const dayNumbers = useMemo(() => {
+    const out: { day: number; leftPct: number }[] = []
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(windowStart.getTime() + i * DAY)
+      out.push({ day: d.getDate(), leftPct: (i / totalDays) * 100 })
+    }
+    return out
+  }, [windowStart, totalDays])
 
   // Trips que aparecem no gantt: que sobrepõem a janela
   const ganttTrips = useMemo(() => {
@@ -237,8 +248,26 @@ export default function ScheduleClient({
               ))}
             </div>
 
-            {/* rows */}
-            <div className="relative max-h-[60vh] overflow-y-auto">
+            {/* dia do mês — linha bem discreta, fundo diferenciado pra
+                separar visualmente do resto da grade */}
+            <div className="relative h-4 border-b bg-muted/60">
+              {dayNumbers.map((d, i) => (
+                <div key={i}
+                  className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70"
+                  style={{ left: `${d.leftPct}%`, width: `${dayWidthPct}%` }}>
+                  {d.day}
+                </div>
+              ))}
+            </div>
+
+            {/* rows — altura mínima padrão, preenche até o fim da tela;
+                além disso rola verticalmente em vez de esticar a página.
+                Linhas de grade horizontais a cada 48px (altura de uma linha
+                de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
+            <div
+              className="relative min-h-[360px] h-[calc(100vh-460px)] overflow-y-auto"
+              style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
+            >
               {/* linhas verticais marcando cada dia */}
               {dayLines.map((pct, i) => (
                 <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
@@ -257,7 +286,7 @@ export default function ScheduleClient({
               ) : ganttTrips.map(({ trip, left, width, state }) => {
                 const meta = STATE_META[state]
                 return (
-                  <div key={trip.id} className="relative h-12 border-b last:border-b-0">
+                  <div key={trip.id} className={cn('relative h-12 border-b last:border-b-0', meta.row)}>
                     <button
                       type="button"
                       onClick={() => openTrip(trip)}
