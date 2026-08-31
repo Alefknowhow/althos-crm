@@ -1203,25 +1203,76 @@ const PRODUCT_KIND_LABEL: Record<string, string> = {
   cruzeiro: 'Cruzeiro', seguro: 'Seguro', ingresso: 'Ingresso', veiculo: 'Veículo', outro: 'Outro',
 }
 
-/** Resume o jsonb solto de um sale_product num texto legível — os campos
- *  variam por `kind` (ver actions/sale-products.ts), então tenta os campos
- *  mais comuns primeiro e cai pra um dump genérico se não reconhecer. */
+/**
+ * Rótulos de campo por tipo de produto — espelha KIND_FIELDS em
+ * components/features/reservas/SaleProductsTab.tsx (fonte de verdade da UI
+ * de edição). Mantido em sincronia manual: se um campo novo for adicionado
+ * lá, adicionar aqui também pra IA conseguir ler.
+ */
+const PRODUCT_FIELD_LABELS: Record<string, Record<string, string>> = {
+  aereo: {
+    companhia: 'Companhia', numero_voo: 'Nº do voo', sentido: 'Sentido', localizador: 'Localizador (check-in)',
+    bilhete: 'Nº do bilhete', origem: 'Origem', destino: 'Destino', data: 'Data de embarque',
+    hora_embarque: 'Hora de embarque', data_chegada: 'Data de chegada', hora_chegada: 'Hora de chegada',
+    horario: 'Horário', passageiros: 'Passageiros', bagagem: 'Franquia de bagagem',
+  },
+  hospedagem: {
+    hotel: 'Hotel', localizador: 'Localizador', titular: 'Titular', check_in: 'Check-in', hora_checkin: 'Horário do check-in',
+    check_out: 'Check-out', hora_checkout: 'Horário do check-out', tipo_quarto: 'Tipo de quarto', regime: 'Regime',
+    endereco: 'Endereço', email: 'E-mail do hotel', telefone: 'Telefone do hotel',
+    informacoes_adicionais: 'Informações adicionais', politica_cancelamento: 'Política de cancelamento', condicoes: 'Condições',
+  },
+  transfer: {
+    titular: 'Titular', codigo_reserva: 'Código da reserva', data: 'Data', horario: 'Horário', origem: 'Local de partida',
+    destino: 'Destino', tipo_servico: 'Tipo de serviço', fornecedor: 'Empresa/motorista', contato: 'Contato', observacoes: 'Detalhes',
+  },
+  cruzeiro: {
+    titular: 'Titular', localizador: 'Localizador', companhia: 'Companhia marítima', navio: 'Navio', roteiro: 'Roteiro',
+    embarque_porto: 'Porto de embarque', embarque_data: 'Data de embarque', desembarque_porto: 'Porto de desembarque',
+    desembarque_data: 'Data de desembarque', cabine: 'Cabine', categoria: 'Categoria da cabine', deck: 'Deck',
+    localizacao: 'Localização', vista: 'Vista', regime: 'Plano de alimentação', observacoes: 'Detalhes',
+  },
+  passeio: { nome: 'Nome', data: 'Data', fornecedor: 'Fornecedor', localizador: 'Localizador', observacoes: 'Observações' },
+  seguro: { nome: 'Seguradora/plano', data: 'Vigência a partir de', fornecedor: 'Fornecedor', localizador: 'Apólice', observacoes: 'Observações' },
+  ingresso: {
+    atracao: 'Atração', titular: 'Titular', data: 'Data', codigo_reserva: 'Código da reserva',
+    fornecedor: 'Prestador de serviço', contato: 'Contato', observacoes: 'Detalhes',
+  },
+  veiculo: { nome: 'Veículo', data: 'Retirada', fornecedor: 'Locadora', localizador: 'Localizador', observacoes: 'Observações' },
+  outro: { nome: 'Nome', data: 'Data', fornecedor: 'Fornecedor', localizador: 'Localizador', observacoes: 'Observações' },
+}
+
+/** Resume o jsonb solto de um sale_product num texto legível — passa por
+ *  TODOS os campos conhecidos daquele `kind` (não só um subconjunto), pra
+ *  não esconder dado que já está cadastrado (horário, bagagem, escala,
+ *  etc.). Voo com múltiplos trechos (`data.legs[]`) lista escala/bagagem
+ *  por trecho também. */
 function formatProductData(kind: string, data: Record<string, any>): string {
   const d = data || {}
-  if (kind === 'aereo') {
-    return [d.companhia, d.numero_voo && `voo ${d.numero_voo}`, d.origem && d.destino ? `${d.origem} → ${d.destino}` : null, d.data, d.horario, d.localizador && `localizador ${d.localizador}`].filter(Boolean).join(', ') || '—'
+  const labels = PRODUCT_FIELD_LABELS[kind] || {}
+  const fields = Object.entries(labels)
+    .filter(([key]) => d[key] !== undefined && d[key] !== null && d[key] !== '')
+    .map(([key, label]) => `${label}: ${d[key]}`)
+
+  if (Array.isArray(d.legs) && d.legs.length > 0) {
+    const legsText = d.legs.map((l: any, i: number) => {
+      const legParts = [
+        l.origem && l.destino ? `${l.origem} → ${l.destino}` : null,
+        l.data, l.horario, l.duracao && `duração ${l.duracao}`,
+        l.bagagem && `bagagem ${l.bagagem}`,
+        l.escala_local && `escala em ${l.escala_local}${l.escala_duracao ? ` (${l.escala_duracao})` : ''}`,
+      ].filter(Boolean)
+      return `trecho ${i + 1}: ${legParts.join(', ')}`
+    }).join(' | ')
+    fields.push(`Trechos: ${legsText}`)
   }
-  if (kind === 'hospedagem') {
-    return [d.hotel, d.check_in && d.check_out ? `${d.check_in} a ${d.check_out}` : null, d.tipo_quarto, d.localizador && `localizador ${d.localizador}`].filter(Boolean).join(', ') || '—'
+
+  if (fields.length === 0) {
+    // Kind não mapeado ou sem nenhum campo conhecido preenchido — dump genérico.
+    const generic = Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
+    return generic || '—'
   }
-  if (kind === 'transfer') {
-    return [d.fornecedor, d.origem && d.destino ? `${d.origem} → ${d.destino}` : null, d.data, d.horario].filter(Boolean).join(', ') || '—'
-  }
-  if (kind === 'cruzeiro') {
-    return [d.companhia, d.navio, d.roteiro, d.embarque_data].filter(Boolean).join(', ') || '—'
-  }
-  const generic = Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
-  return generic || '—'
+  return fields.join(', ')
 }
 
 /**
