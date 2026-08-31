@@ -456,8 +456,11 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
     <div className="space-y-6">
       {/* Painel superior fixo (filtros/período/contas) — só a área de
           cards/gráficos abaixo rola, pra manter os filtros sempre à mão em
-          telas com muito conteúdo. */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-3 bg-background space-y-3" style={{ marginTop: '-0.75rem' }}>
+          telas com muito conteúdo. <main> não tem mais pt-* (removido
+          globalmente em app/[orgSlug]/layout.tsx), então esse painel já
+          nasce colado — sem margin-top negativo nem pt-* próprio (ver
+          .harness/agents/ux.md). */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-3 bg-background space-y-3">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
