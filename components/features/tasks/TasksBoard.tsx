@@ -1246,7 +1246,7 @@ function TaskPopoverContent({
             type="button"
             onClick={() => onSetPriority(p)}
             className={cn(
-              'text-[10px] px-2 h-5 rounded-full border transition-colors',
+              'text-[10px] px-2 h-5 rounded-pill border transition-colors',
               task.priority === p ? PRIORITY_META[p].cls : 'text-muted-foreground border-border hover:bg-muted',
             )}
           >
@@ -1334,7 +1334,7 @@ function TaskListRow({
               </span>
               <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 {member && (
-                  <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-none', memberLabelColor(member.user_id))}>
+                  <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-pill leading-none', memberLabelColor(member.user_id))}>
                     {member.name}
                   </span>
                 )}
