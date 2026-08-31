@@ -172,8 +172,14 @@ function PeriodFilterDropdown({
   return (
     <div className="flex items-center gap-1.5 shrink-0">
       <Select value={value} onValueChange={v => onChange(v as PeriodId, customFrom, customTo)}>
-        <SelectTrigger className="h-9 text-xs w-[150px]">
-          <span className="flex items-center gap-1.5 truncate"><CalendarRange className="w-3.5 h-3.5 shrink-0 text-muted-foreground" /><SelectValue /></span>
+        <SelectTrigger className="h-9 text-xs w-[150px] gap-1.5">
+          {/* Ícone como irmão direto do trigger (não dentro de outro <span>) —
+              o seletor [&>span]:line-clamp-1 do SelectTrigger força
+              -webkit-box no span filho direto, o que empurrava o ícone pra
+              uma "linha" separada do texto quando os dois ficavam dentro do
+              mesmo span. */}
+          <CalendarRange className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+          <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {(Object.entries(PERIOD_LABELS) as [PeriodId, string][]).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
@@ -338,11 +344,11 @@ export default function FinancialEntriesView({
     return (
       <>
         <div className="flex items-center justify-end gap-2 mb-4">
-          <Button variant="outline" onClick={() => setCsvOpen(true)}>
-            <Upload className="w-4 h-4 mr-1.5" /> Importar CSV
-          </Button>
           <Button onClick={() => setNewOpen(true)}>
             <Plus className="w-4 h-4 mr-1.5" /> Lançamento
+          </Button>
+          <Button variant="outline" onClick={() => setCsvOpen(true)}>
+            <Upload className="w-4 h-4 mr-1.5" /> Importar CSV
           </Button>
         </div>
         <EmptyState
@@ -360,10 +366,6 @@ export default function FinancialEntriesView({
     <div className="space-y-3">
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <Button size="sm" className="h-9 px-3 shrink-0" onClick={() => setNewOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" /> Lançamento
-        </Button>
-
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} placeholder="Pesquisar lançamentos…" className="pl-8 h-9" />
@@ -386,6 +388,10 @@ export default function FinancialEntriesView({
             {Object.entries(STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
+
+        <Button size="sm" className="h-9 px-3 shrink-0" onClick={() => setNewOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" /> Lançamento
+        </Button>
 
         <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setCsvOpen(true)}>
           <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar CSV</span>

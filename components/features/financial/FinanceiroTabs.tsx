@@ -16,7 +16,7 @@ export default function FinanceiroTabs({
 }) {
   return (
     <Tabs defaultValue="lancamentos">
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-2 bg-background">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 -mt-2 pb-[9px] bg-background">
         <TabsList>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
