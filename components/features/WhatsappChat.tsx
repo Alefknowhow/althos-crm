@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import ConversationDetailPanel, { agentColor, memberInitials } from '@/components/features/ConversationDetailPanel'
+import ConversationDetailPanel, { agentColor, memberInitials, memberShortLabel } from '@/components/features/ConversationDetailPanel'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
 import ImageEditor from '@/components/features/ImageEditor'
 import { LinkPreviewCard, linkifyText } from '@/components/features/LinkPreviewCard'
@@ -666,33 +666,11 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                   <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
                 </span>
 
-                {/* Janela de 24h + etapa do pipeline na mesma linha (economiza uma linha) */}
+                {/* Janela de 24h isolada — vendedor + etapa saem daqui e viram
+                    a linha de baixo, lado a lado, pra ficar fácil de bater o
+                    olho em quem é responsável e onde o lead está no funil. */}
                 <div className="flex items-center gap-1">
                   <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
-                  {c.contatos?.id && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={e => e.stopPropagation()}
-                          className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[90px] hover:bg-primary/20 transition-colors"
-                          title={c.contatos?.pipeline_stages?.name ? `Etapa: ${c.contatos.pipeline_stages.name} — clique para mudar` : 'Definir etapa'}
-                        >
-                          <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
-                          <span className="truncate">{c.contatos?.pipeline_stages?.name || 'Sem etapa'}</span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                        {pipelineStages
-                          .filter((s: any) => !c.contatos?.pipeline_id || s.pipeline_id === c.contatos.pipeline_id)
-                          .map((s: any) => (
-                            <DropdownMenuItem key={s.id} onClick={() => handleQuickStageChange(c.contatos.id, c.contatos?.stage_id ?? null, s.id)}>
-                              {s.name}
-                            </DropdownMenuItem>
-                          ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -703,15 +681,17 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                         <button
                           type="button"
                           onClick={e => e.stopPropagation()}
-                          className={`h-5 w-5 rounded-full shrink-0 ${agentColor(c.contatos?.assigned_to ?? null)} text-white text-[9px] font-semibold flex items-center justify-center hover:ring-2 hover:ring-offset-1 hover:ring-primary/40 transition-all`}
+                          className={`h-5 w-[76px] shrink-0 rounded-pill ${agentColor(c.contatos?.assigned_to ?? null)} text-white text-[9px] font-semibold flex items-center justify-center px-1.5 truncate hover:ring-2 hover:ring-offset-1 hover:ring-primary/40 transition-all`}
                           title={(() => {
                             const m = memberById[c.contatos?.assigned_to]
                             return m ? `Responsável: ${m.name || m.email} — clique para mudar` : 'Sem responsável — clique para atribuir'
                           })()}
                         >
-                          {c.contatos?.assigned_to
-                            ? memberInitials(memberById[c.contatos.assigned_to]?.name, memberById[c.contatos.assigned_to]?.email)
-                            : <span className="opacity-70">?</span>}
+                          <span className="truncate">
+                            {c.contatos?.assigned_to
+                              ? memberShortLabel(memberById[c.contatos.assigned_to]?.name, memberById[c.contatos.assigned_to]?.email)
+                              : 'Sem resp.'}
+                          </span>
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
@@ -721,6 +701,36 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                             {m.name || m.email}
                           </DropdownMenuItem>
                         ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  {c.contatos?.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        {(() => {
+                          const stageColor = c.contatos?.pipeline_stages?.color || '#8a3ffc'
+                          return (
+                            <button
+                              type="button"
+                              onClick={e => e.stopPropagation()}
+                              className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-pill border max-w-[90px] transition-colors"
+                              style={{ backgroundColor: `${stageColor}26`, color: stageColor, borderColor: `${stageColor}40` }}
+                              title={c.contatos?.pipeline_stages?.name ? `Etapa: ${c.contatos.pipeline_stages.name} — clique para mudar` : 'Definir etapa'}
+                            >
+                              <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: stageColor }} />
+                              <span className="truncate">{c.contatos?.pipeline_stages?.name || 'Sem etapa'}</span>
+                            </button>
+                          )
+                        })()}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        {pipelineStages
+                          .filter((s: any) => !c.contatos?.pipeline_id || s.pipeline_id === c.contatos.pipeline_id)
+                          .map((s: any) => (
+                            <DropdownMenuItem key={s.id} onClick={() => handleQuickStageChange(c.contatos.id, c.contatos?.stage_id ?? null, s.id)}>
+                              {s.name}
+                            </DropdownMenuItem>
+                          ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

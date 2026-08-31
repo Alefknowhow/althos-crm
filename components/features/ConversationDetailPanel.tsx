@@ -35,6 +35,15 @@ export function memberInitials(name?: string, email?: string): string {
   return base.slice(0, 2).toUpperCase()
 }
 
+/** "Emili Segabinazzi" -> "Emili S." — nome completo curto pra caber numa
+ *  etiqueta de largura fixa, mais legível que as duas iniciais soltas. */
+export function memberShortLabel(name?: string, email?: string): string {
+  const base = name?.trim() || email?.split('@')[0] || 'Sem resp.'
+  const parts = base.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0]} ${parts[1][0].toUpperCase()}.`
+  return parts[0] || 'Sem resp.'
+}
+
 export default function ConversationDetailPanel({
   orgSlug,
   conversation,

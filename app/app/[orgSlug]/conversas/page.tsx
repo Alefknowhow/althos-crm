@@ -16,7 +16,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // verdade (fica pro próximo passo, quando o volume justificar).
   const { data: conversationsRaw } = await supabase
     .from('whatsapp_conversations')
-    .select('*, contatos(id, name, avatar_url, avatar_storage_object_id, assigned_to, stage_id, pipeline_id, pipeline_stages(name))')
+    .select('*, contatos(id, name, avatar_url, avatar_storage_object_id, assigned_to, stage_id, pipeline_id, pipeline_stages(name, color))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
     .limit(300)
