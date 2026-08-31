@@ -526,8 +526,16 @@ export async function extractTravelDocumentFromFileGemini(
 function str(v: any, max: number): string | null {
   return typeof v === 'string' && v.trim() ? v.slice(0, max) : null
 }
+/** Normaliza pra YYYY-MM-DD. O prompt pede esse formato, mas o modelo às
+ *  vezes devolve a data como está no documento original (ex.: "01/01/1990",
+ *  formato comum em vouchers brasileiros) — em vez de descartar, converte
+ *  DD/MM/YYYY também, pra não perder um dado que na prática foi encontrado. */
 function date(v: any): string | null {
-  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null
+  if (typeof v !== 'string') return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
+  const br = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`
+  return null
 }
 function int(v: any): number | null {
   return v != null && Number.isFinite(Number(v)) ? Math.round(Number(v)) : null
