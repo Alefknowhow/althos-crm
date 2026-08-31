@@ -49,13 +49,11 @@ export default function DashboardTabsShell({
   const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
   return (
     <Tabs defaultValue={initialTab} className="space-y-4">
-      {/* `top-0` de um elemento sticky é medido a partir da padding-edge do
-          ancestral com scroll (o <main>, que tem pt-3) — uma margin negativa
-          no próprio elemento só afasta a folga ANTES de grudar; depois de
-          grudado (rolando a página) ele volta a respeitar esse padding.
-          -top-3 desloca o ponto de grude pra dentro do padding do <main>,
-          cancelando o respiro nos dois estados (colado ou não). */}
-      <div className="sticky -top-3 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-0 -mt-3 pb-2 space-y-2 bg-background">
+      {/* <main> não tem mais pt-* (removido globalmente em
+          app/[orgSlug]/layout.tsx), então esse painel já nasce colado — sem
+          precisar de margin-top negativo, de -top-3 nem de pt-* próprio (ver
+          .harness/agents/ux.md). */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-2 space-y-2 bg-background">
         {stickyHeader}
         {/* Mobile: grid de N colunas iguais numa linha só (célula do grid dá
             a mesma largura pra todas, independente do tamanho do texto) —
