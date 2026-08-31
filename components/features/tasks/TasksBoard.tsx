@@ -1293,6 +1293,7 @@ function TaskListRow({
   const done = task.status === 'done'
   const member = members.find(m => m.user_id === task.assigned_to)
   const relatedTypeLabel = task.related ? (RELATED_TYPE_LABELS[task.related.type as RelatedTypeValue] ?? 'Relacionado') : null
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   return (
     <div className={cn(
@@ -1316,49 +1317,61 @@ function TaskListRow({
           : <Circle className="w-[18px] h-[18px] text-muted-foreground hover:text-foreground transition-colors" />}
       </button>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        title={task.title}
-        className="flex-1 min-w-0 text-left space-y-0.5"
-      >
-        {/* Linha 1: título (esq.) | responsável + data/hora (dir., nunca quebra). */}
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            'text-sm font-medium truncate flex-1 min-w-0',
-            done ? 'line-through text-muted-foreground' : 'text-foreground',
-          )}>
-            {task.title}
-          </span>
-          <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-            {member && (
-              <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-none', memberLabelColor(member.user_id))}>
-                {member.name}
+      <Popover open={previewOpen} onOpenChange={setPreviewOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title={task.title}
+            className="flex-1 min-w-0 text-left space-y-0.5"
+          >
+            {/* Linha 1: título (esq.) | responsável + data/hora (dir., nunca quebra). */}
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'text-sm font-medium truncate flex-1 min-w-0',
+                done ? 'line-through text-muted-foreground' : 'text-foreground',
+              )}>
+                {task.title}
               </span>
-            )}
-            <span className={cn(
-              'text-xs',
-              date ? (overdue && !done ? 'text-destructive font-medium' : 'text-muted-foreground/80') : 'text-muted-foreground/40',
-            )}>
-              {date ? `${date}${time ? ` · ${time}` : ''}` : 'Sem data'}
-            </span>
-          </span>
-        </div>
+              <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                {member && (
+                  <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-none', memberLabelColor(member.user_id))}>
+                    {member.name}
+                  </span>
+                )}
+                <span className={cn(
+                  'text-xs',
+                  date ? (overdue && !done ? 'text-destructive font-medium' : 'text-muted-foreground/80') : 'text-muted-foreground/40',
+                )}>
+                  {date ? `${date}${time ? ` · ${time}` : ''}` : 'Sem data'}
+                </span>
+              </span>
+            </div>
 
-        {/* Linha 2: descrição (esq.) | vínculo da tarefa (dir.). */}
-        {(task.description || task.related) && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-              {task.description || ''}
-            </span>
-            {task.related && (
-              <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                {relatedTypeLabel}: {task.related.label}
-              </span>
+            {/* Linha 2: descrição (esq.) | vínculo da tarefa (dir.). */}
+            {(task.description || task.related) && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                  {task.description || ''}
+                </span>
+                {task.related && (
+                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                    {relatedTypeLabel}: {task.related.label}
+                  </span>
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </button>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-72 p-0" onClick={e => e.stopPropagation()}>
+          <TaskPopoverContent
+            task={task} orgSlug={orgSlug} members={members}
+            onToggleDone={() => { onToggleDone(); setPreviewOpen(false) }}
+            onSetPriority={p => onSetPriority(p)}
+            onEdit={() => { setPreviewOpen(false); onOpen() }}
+            onDelete={() => { onDelete(); setPreviewOpen(false) }}
+          />
+        </PopoverContent>
+      </Popover>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
