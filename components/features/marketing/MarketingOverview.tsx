@@ -145,20 +145,26 @@ function fmtNumber(n: number): string {
  *  ou ruim (depende da métrica: investimento subir não é "ruim"), só mostra
  *  a direção e o tamanho da mudança. */
 function ComparisonStat({
-  label, current, previous, format,
+  label, current, previous, format, invertColor = false,
 }: {
   label: string
   current: number
   previous: number
   format: (v: number) => string
+  /** true pra métricas de CUSTO (CPC, custo por conversa, CPM, custo por
+   *  conversão) — subir é ruim (vermelho), descer é bom (verde). Sem isso,
+   *  toda métrica tratava "subir" como positivo (verde), o que faz sentido
+   *  pra investimento/conversões mas é o oposto do esperado pra custo. */
+  invertColor?: boolean
 }) {
   const delta = previous > 0 ? ((current - previous) / previous) * 100 : null
+  const isGood = delta == null ? null : invertColor ? delta < 0 : delta >= 0
   return (
     <div className="rounded-lg border p-3 space-y-1">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="text-base font-bold tabular-nums">{format(current)}</p>
       {delta != null ? (
-        <p className={cn('text-xs tabular-nums flex items-center gap-1', delta >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+        <p className={cn('text-xs tabular-nums flex items-center gap-1', isGood ? 'text-emerald-600' : 'text-red-600')}>
           {delta >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
           <span className="text-muted-foreground">vs {format(previous)}</span>
@@ -753,6 +759,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
                       current={filteredTotals.clicks > 0 ? Math.round(filteredTotals.spend_cents / filteredTotals.clicks) : 0}
                       previous={previousFilteredTotals.clicks > 0 ? Math.round(previousFilteredTotals.spend_cents / previousFilteredTotals.clicks) : 0}
                       format={fmtCurrency}
+                      invertColor
                     />
                     {(() => {
                       // Conversões = conversas iniciadas + leads + compras da
@@ -774,18 +781,21 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
                             current={filteredTotals.meta_messaging_started > 0 ? Math.round(filteredTotals.spend_cents / filteredTotals.meta_messaging_started) : 0}
                             previous={previousFilteredTotals.meta_messaging_started > 0 ? Math.round(previousFilteredTotals.spend_cents / previousFilteredTotals.meta_messaging_started) : 0}
                             format={fmtCurrency}
+                            invertColor
                           />
                           <ComparisonStat
                             label="CPM"
                             current={filteredTotals.impressions > 0 ? Math.round((filteredTotals.spend_cents / filteredTotals.impressions) * 1000) : 0}
                             previous={previousFilteredTotals.impressions > 0 ? Math.round((previousFilteredTotals.spend_cents / previousFilteredTotals.impressions) * 1000) : 0}
                             format={fmtCurrency}
+                            invertColor
                           />
                           <ComparisonStat
                             label="Custo por conversão"
                             current={curConversions > 0 ? Math.round(filteredTotals.spend_cents / curConversions) : 0}
                             previous={prevConversions > 0 ? Math.round(previousFilteredTotals.spend_cents / prevConversions) : 0}
                             format={fmtCurrency}
+                            invertColor
                           />
                         </>
                       )
