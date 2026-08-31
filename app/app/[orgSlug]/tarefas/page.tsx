@@ -42,9 +42,10 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
   const saleIds = Array.from(new Set(rows.filter(r => r.sale_id).map(r => r.sale_id)))
   const saleLabel = new Map<string, string>()
   if (saleIds.length > 0) {
-    const { data } = await supabase.from('travel_sales').select('id, client_name, destination, sale_number').in('id', saleIds)
+    const { data } = await supabase.from('travel_sales').select('id, client_name, destination, sale_number, package_locator').in('id', saleIds)
     for (const s of data || []) {
-      saleLabel.set(s.id, s.sale_number ? `#${s.sale_number} — ${s.client_name || s.destination || ''}` : (s.client_name || s.destination || 'Reserva'))
+      const loc = s.package_locator || s.sale_number
+      saleLabel.set(s.id, loc ? `#${loc} — ${s.client_name || s.destination || ''}` : (s.client_name || s.destination || 'Reserva'))
     }
   }
 

@@ -251,7 +251,7 @@ export default function TravelSalesView({
       if (seller !== 'all' && s.created_by !== seller) return false
       if (!matchesDateBucket(s.created_at, dateBucket)) return false
       if (q) {
-        const hay = [s.client_name, s.destination, s.hotel_name, s.airline, s.sale_number]
+        const hay = [s.client_name, s.destination, s.hotel_name, s.airline, s.sale_number, s.package_locator]
           .filter(Boolean).join(' ').toLowerCase()
         if (!hay.includes(q)) return false
       }

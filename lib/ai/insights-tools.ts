@@ -1343,7 +1343,7 @@ async function queryFullReservation(input: Record<string, any>, ctx: AnalyticsCo
   const travelers = (sale.travelers as any[]) || []
 
   const parts: string[] = []
-  parts.push(`Reserva ${sale.sale_number || sale.id.slice(0, 8)} — ${sale.client_name || contato?.name || 'sem cliente'}, destino ${sale.destination || '—'}, ${sale.departure_date ? new Date(`${sale.departure_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'} a ${sale.return_date ? new Date(`${sale.return_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'}, valor ${fmtCurrency(sale.total_cents || 0)}, status ${sale.status}. Operadora: ${sale.operator || '—'}. Localizadores — pacote: ${sale.package_locator || '—'}, aéreo: ${sale.air_locator || '—'}, hotel: ${sale.hotel_locator || '—'}.`)
+  parts.push(`Reserva ${sale.package_locator || sale.sale_number || sale.id.slice(0, 8)} — ${sale.client_name || contato?.name || 'sem cliente'}, destino ${sale.destination || '—'}, ${sale.departure_date ? new Date(`${sale.departure_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'} a ${sale.return_date ? new Date(`${sale.return_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'}, valor ${fmtCurrency(sale.total_cents || 0)}, status ${sale.status}. Operadora: ${sale.operator || '—'}. Localizadores — pacote: ${sale.package_locator || '—'}, aéreo: ${sale.air_locator || '—'}, hotel: ${sale.hotel_locator || '—'}.`)
 
   if (products && products.length > 0) {
     parts.push(`Produtos cadastrados: ${products.map((p: any) => `${PRODUCT_KIND_LABEL[p.kind] || p.kind} (${formatProductData(p.kind, p.data)})`).join('; ')}.`)

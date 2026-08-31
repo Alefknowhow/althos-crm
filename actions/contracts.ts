@@ -230,12 +230,12 @@ export async function sendContractForSignature(
     .download(contract.pdf_path)
   if (downloadError || !file) return { ok: false as const, error: downloadError?.message || 'Não foi possível ler o PDF salvo.' }
 
-  const { data: sale } = await supabase.from('travel_sales').select('sale_number').eq('id', saleId).maybeSingle()
+  const { data: sale } = await supabase.from('travel_sales').select('sale_number, package_locator').eq('id', saleId).maybeSingle()
 
   try {
     const doc = await createAutentiqueDocument(
       keyRes.apiKey,
-      `Contrato ${sale?.sale_number || saleId}`,
+      `Contrato ${sale?.package_locator || sale?.sale_number || saleId}`,
       [
         { name: signer.name, email: signer.email, phone: signer.phone },
         { name: signer2.name, email: signer2.email, phone: signer2.phone },

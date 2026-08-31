@@ -58,13 +58,16 @@ export async function searchRelatedEntities(orgSlug: string, entityType: string,
   }
 
   if (entityType === 'reserva') {
-    let sel = supabase.from('travel_sales').select('id, client_name, destination, sale_number').eq('organization_id', org.id).limit(20)
-    if (q) sel = sel.or(`client_name.ilike.%${q}%,destination.ilike.%${q}%,sale_number.ilike.%${q}%`)
+    let sel = supabase.from('travel_sales').select('id, client_name, destination, sale_number, package_locator').eq('organization_id', org.id).limit(20)
+    if (q) sel = sel.or(`client_name.ilike.%${q}%,destination.ilike.%${q}%,sale_number.ilike.%${q}%,package_locator.ilike.%${q}%`)
     const { data } = await sel
-    return (data || []).map((r: any) => ({
-      id: r.id,
-      label: r.sale_number ? `#${r.sale_number} — ${r.client_name || r.destination || ''}` : (r.client_name || r.destination || 'Reserva'),
-    }))
+    return (data || []).map((r: any) => {
+      const loc = r.package_locator || r.sale_number
+      return {
+        id: r.id,
+        label: loc ? `#${loc} — ${r.client_name || r.destination || ''}` : (r.client_name || r.destination || 'Reserva'),
+      }
+    })
   }
 
   if (entityType === 'travel_proposal') {
