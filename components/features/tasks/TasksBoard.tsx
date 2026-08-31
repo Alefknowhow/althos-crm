@@ -324,15 +324,6 @@ export default function TasksBoard({
     return byGroup
   }, [periodTasks])
 
-  const assigneeCounts = useMemo(() => {
-    const c: Record<string, number> = { all: tasks.length, none: 0 }
-    for (const t of tasks) {
-      if (!t.assigned_to) c.none++
-      else c[t.assigned_to] = (c[t.assigned_to] ?? 0) + 1
-    }
-    return c
-  }, [tasks])
-
   // ── Mutations (otimistas, sem reload) ──────────────────────────────────────
   async function handleToggleDone(task: Task) {
     const next = task.status === 'done' ? 'open' : 'done'
@@ -514,9 +505,14 @@ export default function TasksBoard({
         )}
         <button
           type="button"
-          onClick={() => setTodayOnly(v => !v)}
+          onClick={() => {
+            setCalMonth(startOfMonth(new Date()))
+            setWeekAnchor(startOfWeek(new Date()))
+            setSelectedDay(null)
+            setTodayOnly(true)
+          }}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors shrink-0',
+            'inline-flex items-center gap-1.5 px-3 h-8 rounded-pill border text-xs font-medium transition-colors shrink-0',
             FOCUS_RING,
             todayOnly
               ? 'bg-primary text-primary-foreground border-primary'
@@ -556,13 +552,6 @@ export default function TasksBoard({
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => { setCalMonth(startOfMonth(new Date())); setWeekAnchor(startOfWeek(new Date())); setSelectedDay(null) }}
-            className={cn('px-2.5 h-8 rounded-md border text-xs font-medium hover:bg-muted transition-colors ml-1', FOCUS_RING)}
-          >
-            Hoje
-          </button>
         </div>
 
         <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
@@ -590,9 +579,9 @@ export default function TasksBoard({
               value={assignee}
               onValueChange={v => setAssignee(v as AssigneeFilter)}
               options={[
-                { value: 'all', label: `Responsável: Todos (${assigneeCounts.all})` },
-                { value: 'none', label: `Responsável: Sem responsável (${assigneeCounts.none})` },
-                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
+                { value: 'all', label: 'Responsável: Todos' },
+                { value: 'none', label: 'Responsável: Sem responsável' },
+                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name}` })),
               ]}
             />
           )}
@@ -1327,7 +1316,7 @@ function TaskListRow({
             {/* Linha 1: título (esq.) | responsável + data/hora (dir., nunca quebra). */}
             <div className="flex items-center gap-2">
               <span className={cn(
-                'text-sm font-medium truncate flex-1 min-w-0',
+                'text-sm font-bold truncate flex-1 min-w-0',
                 done ? 'line-through text-muted-foreground' : 'text-foreground',
               )}>
                 {task.title}

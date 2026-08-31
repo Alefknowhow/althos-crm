@@ -142,7 +142,7 @@ const config = {
         lg: 'var(--radius)',
         md: 'var(--radius)',
         sm: 'var(--radius)',
-        pill: '20px',
+        pill: '5px',
       },
       keyframes: {
         'accordion-down': {
