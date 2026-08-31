@@ -1322,27 +1322,42 @@ function TaskListRow({
         title={task.title}
         className="flex-1 min-w-0 text-left space-y-0.5"
       >
-        <span className={cn(
-          'text-sm font-medium truncate block',
-          done ? 'line-through text-muted-foreground' : 'text-foreground',
-        )}>
-          {task.title}
-        </span>
-        {task.related && (
-          <span className="text-xs text-muted-foreground truncate block">
-            {relatedTypeLabel} · {task.related.label}
+        {/* Linha 1: título (esq.) | responsável + data/hora (dir., nunca quebra). */}
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            'text-sm font-medium truncate flex-1 min-w-0',
+            done ? 'line-through text-muted-foreground' : 'text-foreground',
+          )}>
+            {task.title}
           </span>
-        )}
-        <span className="text-xs text-muted-foreground/80 truncate block">
-          {date ? (
-            <span className={cn(overdue && !done && 'text-destructive font-medium')}>
-              {date}{time ? ` · ${time}` : ''}
+          <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+            {member && (
+              <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-none', memberLabelColor(member.user_id))}>
+                {member.name}
+              </span>
+            )}
+            <span className={cn(
+              'text-xs',
+              date ? (overdue && !done ? 'text-destructive font-medium' : 'text-muted-foreground/80') : 'text-muted-foreground/40',
+            )}>
+              {date ? `${date}${time ? ` · ${time}` : ''}` : 'Sem data'}
             </span>
-          ) : (
-            <span className="text-muted-foreground/40">Sem data</span>
-          )}
-          {member && ` · ${member.name}`}
-        </span>
+          </span>
+        </div>
+
+        {/* Linha 2: descrição (esq.) | vínculo da tarefa (dir.). */}
+        {(task.description || task.related) && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+              {task.description || ''}
+            </span>
+            {task.related && (
+              <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                {relatedTypeLabel}: {task.related.label}
+              </span>
+            )}
+          </div>
+        )}
       </button>
 
       <DropdownMenu>
