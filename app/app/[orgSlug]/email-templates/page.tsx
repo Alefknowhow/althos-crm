@@ -19,6 +19,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
     .from('email_templates')
     .select('id, name, subject, category, created_at')
     .eq('organization_id', org.id)
+    .or('category.is.null,category.neq.custom_oneoff')
     .order('created_at', { ascending: false })
 
   return (

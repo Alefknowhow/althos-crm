@@ -23,7 +23,7 @@ function renderTemplate(templateStr: string, variables: any) {
   })
 }
 
-export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) {
+export default function SendEmailDialog({ orgSlug, lead, templates, org, trigger }: any) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -54,9 +54,13 @@ export default function SendEmailDialog({ orgSlug, lead, templates, org }: any) 
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="flex gap-2 items-center">
-        <Mail className="w-4 h-4" /> Enviar E-mail
-      </Button>
+      {trigger ? (
+        <span onClick={() => setOpen(true)}>{trigger}</span>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="flex gap-2 items-center">
+          <Mail className="w-4 h-4" /> Enviar E-mail
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">

@@ -131,9 +131,46 @@ export async function listEmailTemplates(orgSlug: string) {
     .from('email_templates')
     .select('id, name, subject, category')
     .eq('organization_id', org.id)
+    .or('category.is.null,category.neq.custom_oneoff')
     .order('name', { ascending: true })
 
   return data || []
+}
+
+/**
+ * Envio avulso (sem template) — cria um template descartável só pra
+ * reaproveitar o pipeline de envio já testado (renderização, fila via
+ * Inngest, retry, histórico em email_sends) em vez de duplicar essa lógica.
+ * category='custom_oneoff' marca esses templates pra serem escondidos da
+ * tela de gestão de templates (email-templates/page.tsx) e do seletor do
+ * SendEmailDialog (listEmailTemplates) — não devem poluir a lista de
+ * templates reutilizáveis do usuário.
+ */
+export async function sendCustomEmailToLead(orgSlug: string, leadId: string, toEmail: string, subject: string, bodyHtml: string) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  if (!toEmail) return { ok: false as const, error: 'Lead não tem e-mail cadastrado.' }
+  if (!subject.trim()) return { ok: false as const, error: 'Informe um assunto.' }
+
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .insert({
+      organization_id: org.id,
+      name: `Envio avulso — ${new Date().toLocaleDateString('pt-BR')}`,
+      subject,
+      body_html: bodyHtml,
+      category: 'custom_oneoff',
+    })
+    .select('id')
+    .single()
+
+  if (templateError || !template) {
+    return { ok: false as const, error: templateError?.message || 'Erro ao preparar envio' }
+  }
+
+  return queueEmailForLead(orgSlug, leadId, template.id, toEmail)
 }
 
 export async function queueEmailForLead(orgSlug: string, leadId: string, templateId: string, toEmail: string) {
