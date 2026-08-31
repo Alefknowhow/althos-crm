@@ -13,12 +13,14 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import {
   getAdvancedFunnel as _getAdvancedFunnel,
   getFunnelSourceOptions as _getFunnelSourceOptions,
+  getStageThroughput as _getStageThroughput,
   type FunnelPeriod,
   type FunnelSource,
   type FunnelResult,
+  type StageThroughputRow,
 } from './dashboard'
 
-export type { FunnelPeriod, FunnelSource, FunnelResult } from './dashboard'
+export type { FunnelPeriod, FunnelSource, FunnelResult, StageThroughputRow } from './dashboard'
 
 /**
  * Server action wrapper around getAdvancedFunnel. Takes orgSlug (client
@@ -38,4 +40,18 @@ export async function fetchFunnelSourceOptions(orgSlug: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   return _getFunnelSourceOptions(org.id)
+}
+
+/**
+ * Server action wrapper around getStageThroughput — o funil histórico
+ * (quantos leads entraram em cada estágio no período), complementar ao
+ * getAdvancedFunnel (distribuição atual).
+ */
+export async function fetchStageThroughput(
+  orgSlug: string,
+  filters: { period: FunnelPeriod; pipelineId: string | null },
+): Promise<StageThroughputRow[]> {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  return _getStageThroughput(org.id, filters)
 }

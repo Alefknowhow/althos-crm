@@ -8,6 +8,7 @@ import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
+import StageThroughputWidget from '../StageThroughputWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
 import SellersRankingWidget from '../SellersRankingWidget'
 import PipelineAtRiskWidget from '../PipelineAtRiskWidget'
@@ -101,14 +102,23 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
         </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
-        <ConversionFunnelWidget
-          orgSlug={ctx.orgSlug}
-          pipelineId={ctx.pipelineId}
-          initialResult={ctx.initialFunnel}
-          sourceOptions={ctx.funnelSourceOptions}
-        />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+            <ConversionFunnelWidget
+              orgSlug={ctx.orgSlug}
+              pipelineId={ctx.pipelineId}
+              initialResult={ctx.initialFunnel}
+              sourceOptions={ctx.funnelSourceOptions}
+            />
+          </Suspense>
+        </div>
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+            <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
+          </Suspense>
+        </div>
+      </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="visao-geral" />
