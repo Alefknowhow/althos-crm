@@ -29,27 +29,27 @@ const SUGGESTED_PROMPTS = [
   'Resumo da semana',
 ]
 
-// Linkifica URLs completas e caminhos internos (ex.: /voucher-print/...) que
-// a IA devolve em texto puro — sem isso um link de voucher não é clicável.
-// Regex separada (não-global) só pra checar se um pedaço É um link — usar a
-// mesma instância global do split() no .test() causaria bug de lastIndex.
-const LINK_SPLIT_PATTERN = /(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)/g
-const LINK_TEST_PATTERN = /^(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)$/
+// Tokeniza **negrito**, [rótulo](link) markdown, e URLs/caminhos crus
+// (fallback caso a tool não tenha mascarado o link) numa única passada — a
+// IA é instruída a sempre usar [rótulo](link) pra voucher/documento (nunca
+// URL crua na resposta), mas o fallback evita link não-clicável se algum
+// texto escapar sem o formato.
+const TOKEN_PATTERN = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)/g
+const MD_LINK_PATTERN = /^\[([^\]]+)\]\(([^)]+)\)$/
+const BARE_LINK_PATTERN = /^(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)$/
 
 function renderMarkdownLite(text: string): React.ReactNode {
-  const boldParts = text.split(/(\*\*[^*]+\*\*)/g)
-  return boldParts.map((part, i) => {
+  const parts = text.split(TOKEN_PATTERN)
+  return parts.map((part, i) => {
     if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i}>{part.slice(2, -2)}</strong>
-    const linkPieces = part.split(LINK_SPLIT_PATTERN)
-    return (
-      <span key={i}>
-        {linkPieces.map((piece, j) =>
-          LINK_TEST_PATTERN.test(piece)
-            ? <a key={j} href={piece} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{piece}</a>
-            : <span key={j}>{piece}</span>,
-        )}
-      </span>
-    )
+    const mdLink = MD_LINK_PATTERN.exec(part)
+    if (mdLink) {
+      return <a key={i} href={mdLink[2]} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{mdLink[1]}</a>
+    }
+    if (BARE_LINK_PATTERN.test(part)) {
+      return <a key={i} href={part} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{part}</a>
+    }
+    return <span key={i}>{part}</span>
   })
 }
 

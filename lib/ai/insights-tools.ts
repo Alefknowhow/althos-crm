@@ -1286,9 +1286,12 @@ async function queryFullReservation(input: Record<string, any>, ctx: AnalyticsCo
     parts.push('Nenhum produto cadastrado na aba Produtos dessa reserva.')
   }
 
-  parts.push(`Voucher do sistema (documento oficial pra visualizar/imprimir): ${voucherLink}`)
+  parts.push(`Voucher do sistema (documento oficial pra visualizar/imprimir): [Abrir voucher completo](${voucherLink})`)
   if (uploadedVouchers.length > 0) {
-    parts.push(`Arquivos de voucher anexados: ${uploadedVouchers.map(v => `${v.name || 'arquivo'} — ${v.url}`).join('; ')}.`)
+    // Link em formato [rótulo](url) — o chat renderiza como texto clicável
+    // com o nome do arquivo, nunca a URL crua (mais legível, e evita link
+    // gigante do Storage aparecendo por extenso na conversa).
+    parts.push(`Arquivos de voucher anexados: ${uploadedVouchers.map((v, i) => `[${v.name || `voucher ${i + 1}`}](${v.url})`).join(', ')}.`)
   }
 
   if (travelers.length > 0) {
