@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -73,6 +73,25 @@ export default function ScheduleClient({
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
+  // Zoom (Ctrl+scroll): quantos meses cabem na janela visível — menos meses
+  // = colunas de dia mais largas (zoom in), mais meses = mais estreitas.
+  const [monthsSpan, setMonthsSpan] = useState(3)
+  const ganttRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ganttRef.current
+    if (!el) return
+    // preventDefault só funciona com um listener nativo não-passivo — o
+    // onWheel do React é passivo por padrão, não bloquearia o zoom do
+    // navegador (Ctrl+scroll também dá zoom na página inteira).
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      setMonthsSpan(v => Math.min(6, Math.max(1, v + (e.deltaY < 0 ? -1 : 1))))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   const filtered = useMemo(() => {
     let out = trips
@@ -81,14 +100,14 @@ export default function ScheduleClient({
     return out
   }, [trips, filter, owner, today])
 
-  // Janela do gantt: 3 meses a partir do mês atual (+ offset)
+  // Janela do gantt: monthsSpan meses a partir do mês atual (+ offset)
   const windowStart = useMemo(() => firstOfMonth(addMonths(today, monthOffset)), [today, monthOffset])
-  const windowEnd = useMemo(() => addMonths(windowStart, 3), [windowStart])
+  const windowEnd = useMemo(() => addMonths(windowStart, monthsSpan), [windowStart, monthsSpan])
   const totalDays = Math.max(1, Math.round((windowEnd.getTime() - windowStart.getTime()) / DAY))
 
   const months = useMemo(() => {
     const out: { label: string; leftPct: number; widthPct: number }[] = []
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < monthsSpan; i++) {
       const mStart = addMonths(windowStart, i)
       const mEnd = addMonths(mStart, 1)
       const left = (mStart.getTime() - windowStart.getTime()) / DAY / totalDays * 100
@@ -128,10 +147,14 @@ export default function ScheduleClient({
   // Trips que aparecem no gantt: que sobrepõem a janela
   const ganttTrips = useMemo(() => {
     return filtered.map(t => {
-      const dep = parseDate(t.departure_date)
-      const ret = parseDate(t.return_date) || dep
-      if (!dep) return null
-      const end = ret || dep
+      const depRaw = parseDate(t.departure_date)
+      const retRaw = parseDate(t.return_date) || depRaw
+      if (!depRaw) return null
+      // parseDate ancora em T12:00:00 (meio-dia) — windowStart/windowEnd são
+      // meia-noite. Sem normalizar pra início do dia aqui, a marcação nasce
+      // deslocada meio dia (metade de uma coluna) pra direita.
+      const dep = startOfDay(depRaw)
+      const end = startOfDay(retRaw || depRaw)
       // overlap test
       if (end < windowStart || dep >= windowEnd) return null
       const clampedStart = Math.max(dep.getTime(), windowStart.getTime())
@@ -218,14 +241,14 @@ export default function ScheduleClient({
 
         {/* ── Gantt ───────────────────────────────────────────── */}
         <TabsContent value="gantt" className="mt-4">
-          <div className="rounded-none border bg-card overflow-hidden">
+          <div ref={ganttRef} className="rounded-none border bg-card overflow-hidden">
             {/* nav header */}
             <div className="flex items-center justify-between gap-2 p-3 border-b">
               <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o - 1)}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-sm font-medium">
-                {months[0]?.label} — {months[2]?.label}
+                {months[0]?.label} — {months[months.length - 1]?.label}
               </span>
               <div className="flex items-center gap-2">
                 {monthOffset !== 0 && (
@@ -265,7 +288,7 @@ export default function ScheduleClient({
                 Linhas de grade horizontais a cada 48px (altura de uma linha
                 de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
             <div
-              className="relative min-h-[360px] h-[calc(100vh-460px)] overflow-y-auto"
+              className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto"
               style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
             >
               {/* linhas verticais marcando cada dia */}
@@ -292,7 +315,7 @@ export default function ScheduleClient({
                       onClick={() => openTrip(trip)}
                       title={`${trip.client_name || trip.lead_name || 'Viagem'} — ${trip.destination || ''}`}
                       className={cn(
-                        'absolute top-1/2 -translate-y-1/2 h-7 rounded-md px-2 flex items-center text-[11px] font-medium text-white   hover:brightness-95 transition-all overflow-hidden',
+                        'absolute top-1/2 -translate-y-1/2 h-10 rounded-md px-2 flex items-center text-[11px] font-medium text-white   hover:brightness-95 transition-all overflow-hidden',
                         meta.bar,
                       )}
                       style={{ left: `${left}%`, width: `${width}%`, minWidth: 60 }}
