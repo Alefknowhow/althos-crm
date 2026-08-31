@@ -106,6 +106,7 @@ export default function AppointmentsAdminTabs(props: Props) {
           eventTypes={props.eventTypes}
           isClinic={props.isClinic}
           clinicProfessionals={props.clinicProfessionals}
+          clinicSpecialties={props.clinicSpecialties}
           clinicRooms={props.clinicRooms}
           clinicContexts={props.clinicAppointmentContexts}
           clinicServiceContexts={props.clinicServiceContexts}

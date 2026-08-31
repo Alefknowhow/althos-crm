@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { isClinicNiche } from '@/lib/niche'
 import {
   listClinicSpecialties, listClinicProfessionals, listClinicRooms, listClinicAppointmentContexts,
-  getClinicReminderSettings, type ClinicReminderSettings,
+  getClinicReminderSettings, type ClinicReminderSettings, type ClinicProfessional,
 } from '@/actions/clinic'
 import { listClinicSupplies } from '@/actions/clinic-estoque'
 
@@ -35,7 +35,7 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
   // Contexto clínico — só busca quando o nicho é Clínicas, pra não pagar
   // essas queries extras em nenhum outro tenant.
   let clinicSpecialties: { id: string; name: string }[] = []
-  let clinicProfessionals: { id: string; name: string; avatar_url?: string | null }[] = []
+  let clinicProfessionals: ClinicProfessional[] = []
   let clinicRooms: { id: string; name: string }[] = []
   let clinicAppointmentContexts: Record<string, any> = {}
   let clinicServiceContexts: Record<string, any> = {}
@@ -72,7 +72,9 @@ export default async function AgendamentosPage({ params }: { params: { orgSlug: 
       : { data: [] }
 
   return (
-    <div className="space-y-6">
+    // -mb-[18px] come dentro do pb-5 (20px) do <main> — deixa a agenda quase
+    // colada na borda inferior (~2px), pedido explícito pra essa tela.
+    <div className="space-y-6 -mb-[18px]">
       <PageHeader
         title="Agendamentos"
         hint="Crie tipos de evento, defina horários disponíveis e gerencie agendamentos."

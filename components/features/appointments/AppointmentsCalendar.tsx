@@ -37,7 +37,16 @@ export type CalendarAppointment = {
 
 type Mode = 'week' | 'month' | 'day'
 
-type ClinicOption = { id: string; name: string; avatar_url?: string | null }
+type ClinicOption = {
+  id: string
+  name: string
+  avatar_url?: string | null
+  specialty_id?: string | null
+  registration_no?: string | null
+  commission_pct?: number | null
+  phone?: string | null
+  email?: string | null
+}
 type Availability = { id: string; day_of_week: number; start_time: string; end_time: string; event_type_id: string | null }
 
 type Props = {
@@ -49,6 +58,9 @@ type Props = {
   /** Só usado no modo 'day' (Agenda do dia, uma coluna por profissional) —
    *  nicho Clínicas. Nos demais modos/nichos ficam vazios/ignorados. */
   clinicProfessionals?: ClinicOption[]
+  /** Nomes de especialidade, pra exibir no popup de detalhe do profissional
+   *  (agenda do dia) — só o id fica em clinicProfessionals.specialty_id. */
+  clinicSpecialties?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
   /** Duplo clique num horário vazio (Semana/Dia) — abre o diálogo de novo
    *  agendamento prefilled. Sem isso os horários vazios não são clicáveis. */
@@ -242,7 +254,7 @@ function overlapStyle(slot: OverlapSlot): { left: string; width: string } {
 
 /* -------- Week view -------- */
 
-const HOUR_HEIGHT_PX = 56
+const HOUR_HEIGHT_PX = 72
 
 function WeekView({
   orgSlug,
@@ -329,7 +341,7 @@ function WeekView({
           {hours.map(h => (
             <div
               key={h}
-              className="text-[10px] text-muted-foreground text-right pr-2 border-b border-border/40"
+              className="text-[10px] text-muted-foreground text-right pr-2 border-b border-border/60"
               style={{ height: HOUR_HEIGHT_PX }}
             >
               <span className="relative -top-1.5">{String(h).padStart(2, '0')}:00</span>
@@ -352,12 +364,12 @@ function WeekView({
                   dia/horário, igual ao padrão já usado em Tarefas). */}
               {onSlotDoubleClick ? (
                 hours.map(h => (
-                  <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/40">
+                  <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/60">
                     <button
                       type="button"
                       onDoubleClick={() => onSlotDoubleClick(d, `${String(h).padStart(2, '0')}:00`)}
                       title="Duplo clique para criar um agendamento"
-                      className="block w-full text-left hover:bg-primary/5"
+                      className="block w-full text-left hover:bg-primary/5 border-b border-border/20"
                       style={{ height: HOUR_HEIGHT_PX / 2 }}
                     />
                     <button
@@ -373,9 +385,11 @@ function WeekView({
                 hours.map(h => (
                   <div
                     key={h}
-                    className="border-b border-border/40"
+                    className="border-b border-border/60"
                     style={{ height: HOUR_HEIGHT_PX }}
-                  />
+                  >
+                    <div className="border-b border-border/20" style={{ height: HOUR_HEIGHT_PX / 2 }} />
+                  </div>
                 ))
               )}
 
@@ -467,6 +481,7 @@ function DayProfessionalView({
   day,
   appointments,
   professionals,
+  clinicSpecialties = [],
   contexts,
   onSelect,
   hourRange,
@@ -475,11 +490,14 @@ function DayProfessionalView({
   day: Date
   appointments: CalendarAppointment[]
   professionals: ClinicOption[]
+  clinicSpecialties?: ClinicOption[]
   contexts: Record<string, ClinicAppointmentContext>
   onSelect: (a: CalendarAppointment) => void
   hourRange: { startHour: number; endHour: number }
   onSlotDoubleClick?: (date: Date, time: string, professionalId?: string) => void
 }) {
+  const [profilePopup, setProfilePopup] = useState<ClinicOption | null>(null)
+  const specialtyName = (id: string | null | undefined) => clinicSpecialties.find(s => s.id === id)?.name || null
   const hours = Array.from({ length: hourRange.endHour - hourRange.startHour + 1 }, (_, i) => hourRange.startHour + i)
 
   // Linha vermelha de "agora" — só no dia de hoje, atualizada a cada minuto
@@ -536,6 +554,7 @@ function DayProfessionalView({
   const gridCols = `60px repeat(${columns.length}, ${COLUMN_WIDTH_PX}px)`
 
   return (
+    <>
     <div className="space-y-2">
       <div className="flex items-center gap-3 flex-wrap px-0.5 text-[11px] text-muted-foreground">
         {CLINIC_STAGE_LEGEND.map(item => (
@@ -550,21 +569,31 @@ function DayProfessionalView({
         {/* Column headers */}
         <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: gridCols }}>
           <div /> {/* gutter */}
-          {columns.map(col => (
-            <div key={col.id} className="px-3 py-2 text-center border-l">
-              <div className="flex items-center justify-center gap-1.5 text-sm font-semibold truncate">
-                {col.avatar_url ? (
-                  <img src={col.avatar_url} alt={col.name} className="w-5 h-5 rounded-full object-cover shrink-0" />
-                ) : (
-                  <User className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                )}
-                {col.name}
+          {columns.map(col => {
+            const hasProfile = col.id !== UNASSIGNED_COL
+            return (
+              <div key={col.id} className="px-3 py-2 text-center border-l">
+                <div className="flex items-center justify-center gap-1.5 text-sm font-semibold truncate">
+                  <button
+                    type="button"
+                    disabled={!hasProfile}
+                    onClick={() => hasProfile && setProfilePopup(col)}
+                    title={hasProfile ? 'Ver dados do profissional' : undefined}
+                    className={hasProfile ? 'shrink-0 rounded-full hover:ring-2 hover:ring-primary/40 transition-shadow' : 'shrink-0'}
+                  >
+                    {col.avatar_url ? (
+                      <img src={col.avatar_url} alt={col.name} className="w-6 h-6 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                        <User className="w-3.5 h-3.5 text-muted-foreground" />
+                      </span>
+                    )}
+                  </button>
+                  <span className="truncate">{col.name}</span>
+                </div>
               </div>
-              <div className="text-[10px] text-muted-foreground">
-                {(byColumn.get(col.id) || []).length} agendamento{(byColumn.get(col.id) || []).length === 1 ? '' : 's'}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Time grid */}
@@ -582,7 +611,7 @@ function DayProfessionalView({
             {hours.map(h => (
               <div
                 key={h}
-                className="text-[10px] text-muted-foreground text-right pr-2 border-b border-border/40"
+                className="text-[10px] text-muted-foreground text-right pr-2 border-b border-border/60"
                 style={{ height: HOUR_HEIGHT_PX }}
               >
                 <span className="relative -top-1.5">{String(h).padStart(2, '0')}:00</span>
@@ -597,12 +626,12 @@ function DayProfessionalView({
               <div key={col.id} className="relative border-l" style={{ height: hours.length * HOUR_HEIGHT_PX }}>
                 {onSlotDoubleClick ? (
                   hours.map(h => (
-                    <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/40">
+                    <div key={h} style={{ height: HOUR_HEIGHT_PX }} className="border-b border-border/60">
                       <button
                         type="button"
                         onDoubleClick={() => onSlotDoubleClick(day, `${String(h).padStart(2, '0')}:00`, col.id === UNASSIGNED_COL ? undefined : col.id)}
                         title="Duplo clique para criar um agendamento"
-                        className="block w-full text-left hover:bg-primary/5"
+                        className="block w-full text-left hover:bg-primary/5 border-b border-border/20"
                         style={{ height: HOUR_HEIGHT_PX / 2 }}
                       />
                       <button
@@ -616,7 +645,9 @@ function DayProfessionalView({
                   ))
                 ) : (
                   hours.map(h => (
-                    <div key={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT_PX }} />
+                    <div key={h} className="border-b border-border/60" style={{ height: HOUR_HEIGHT_PX }}>
+                      <div className="border-b border-border/20" style={{ height: HOUR_HEIGHT_PX / 2 }} />
+                    </div>
                   ))
                 )}
 
@@ -687,6 +718,58 @@ function DayProfessionalView({
       </div>
       </div>
     </div>
+
+    <Dialog open={!!profilePopup} onOpenChange={o => !o && setProfilePopup(null)}>
+      <DialogContent className="max-w-sm">
+        {profilePopup && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                {profilePopup.avatar_url ? (
+                  <img src={profilePopup.avatar_url} alt={profilePopup.name} className="w-14 h-14 rounded-full object-cover" />
+                ) : (
+                  <span className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                    <User className="w-6 h-6 text-muted-foreground" />
+                  </span>
+                )}
+                <div>
+                  <DialogTitle>{profilePopup.name}</DialogTitle>
+                  {specialtyName(profilePopup.specialty_id) && (
+                    <p className="text-sm text-muted-foreground">{specialtyName(profilePopup.specialty_id)}</p>
+                  )}
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              {profilePopup.registration_no && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-medium text-foreground">Registro:</span> {profilePopup.registration_no}
+                </div>
+              )}
+              {profilePopup.commission_pct != null && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-medium text-foreground">Comissão:</span> {profilePopup.commission_pct}%
+                </div>
+              )}
+              {profilePopup.phone && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="w-3.5 h-3.5" /> {profilePopup.phone}
+                </div>
+              )}
+              {profilePopup.email && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="w-3.5 h-3.5" /> {profilePopup.email}
+                </div>
+              )}
+              {!profilePopup.registration_no && profilePopup.commission_pct == null && !profilePopup.phone && !profilePopup.email && (
+                <p className="text-muted-foreground">Sem dados adicionais cadastrados.</p>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
@@ -729,8 +812,8 @@ function MonthView({
   }, [appointments])
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-card">
-      <div className="grid grid-cols-7 border-b bg-muted/30">
+    <div className="border rounded-lg overflow-hidden bg-card flex flex-col h-[calc(100vh-280px)] min-h-[420px]">
+      <div className="grid grid-cols-7 border-b bg-muted/30 shrink-0">
         {DAY_NAMES_SHORT.map((d, i) => (
           <div
             key={d}
@@ -743,7 +826,11 @@ function MonthView({
         ))}
       </div>
 
-      <div className="grid grid-cols-7">
+      {/* grid-rows-6 + flex-1 faz o mês inteiro caber na altura disponível
+          sem precisar rolar a página — cada célula encolhe/cresce igual,
+          em vez da altura fixa antiga (min-h-110px × 6 linhas estourava a
+          viewport em telas mais baixas). */}
+      <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-0">
         {cells.map((d, i) => {
           const inMonth = d.getMonth() === monthStart.getMonth()
           const isToday = sameDay(d, today)
@@ -759,7 +846,7 @@ function MonthView({
           return (
             <div
               key={i}
-              className={`min-h-[110px] border-l border-t first:border-l-0 p-1.5 text-xs ${
+              className={`min-h-0 overflow-hidden border-l border-t first:border-l-0 p-1.5 text-xs ${
                 !inMonth ? 'bg-muted/20 text-muted-foreground' : isUnavailableWeekday ? 'bg-muted/10' : ''
               }`}
               style={{ borderTopWidth: i < 7 ? 0 : 1 }}
@@ -819,6 +906,7 @@ export default function AppointmentsCalendar({
   onCancel,
   onComplete,
   clinicProfessionals = [],
+  clinicSpecialties = [],
   clinicContexts = {},
   availabilities = [],
   onSlotDoubleClick,
@@ -828,6 +916,32 @@ export default function AppointmentsCalendar({
 }: Props) {
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<CalendarAppointment | null>(null)
+
+  // Filtros de Semana/Mês (Dia já filtra por profissional via colunas) —
+  // profissional específico e/ou só atrasados (horário já passou mas o
+  // paciente ainda não chegou, nem foi cancelado/marcado como falta).
+  const [professionalFilter, setProfessionalFilter] = useState<string>('all')
+  const [overdueOnly, setOverdueOnly] = useState(false)
+
+  const isOverdue = (a: CalendarAppointment) => {
+    const status = clinicContexts[a.id]?.clinic_status
+    const notStartedYet = !status || ['aguardando_confirmacao', 'agendado', 'confirmado', 'reagendado'].includes(status)
+    return notStartedYet && new Date(a.start_time).getTime() < Date.now()
+  }
+
+  const filteredAppointments = useMemo(() => {
+    let rows = appointments
+    if (professionalFilter !== 'all') {
+      rows = rows.filter(a => clinicContexts[a.id]?.professional_id === professionalFilter)
+    }
+    if (overdueOnly) {
+      rows = rows.filter(isOverdue)
+    }
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointments, professionalFilter, overdueOnly, clinicContexts])
+
+  const overdueCount = useMemo(() => appointments.filter(isOverdue).length, [appointments, clinicContexts])
 
   // Diálogo de "Finalizar atendimento" — captura valor/forma de pagamento/
   // parcelas antes de avançar o status pra 'realizado', em vez de sempre
@@ -925,11 +1039,33 @@ export default function AppointmentsCalendar({
         <div className="w-[120px]" /> {/* spacer to balance the row */}
       </div>
 
+      {(mode === 'week' || mode === 'month') && clinicProfessionals.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={professionalFilter}
+            onChange={e => setProfessionalFilter(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            <option value="all">Todos os profissionais</option>
+            {clinicProfessionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <Button
+            type="button"
+            variant={overdueOnly ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setOverdueOnly(v => !v)}
+          >
+            Atrasados{overdueCount > 0 ? ` (${overdueCount})` : ''}
+          </Button>
+        </div>
+      )}
+
       {mode === 'week' ? (
         <WeekView
           orgSlug={orgSlug}
           weekStart={range.start}
-          appointments={appointments}
+          appointments={filteredAppointments}
           onSelect={setSelected}
           hourRange={hourRange}
           availableDays={availableDays}
@@ -950,6 +1086,7 @@ export default function AppointmentsCalendar({
               day={range.start}
               appointments={appointments}
               professionals={clinicProfessionals}
+              clinicSpecialties={clinicSpecialties}
               contexts={clinicContexts}
               onSelect={setSelected}
               hourRange={hourRange}
@@ -958,7 +1095,7 @@ export default function AppointmentsCalendar({
           </div>
         </div>
       ) : (
-        <MonthView monthStart={range.start} appointments={appointments} onSelect={setSelected} availableDays={availableDays} />
+        <MonthView monthStart={range.start} appointments={filteredAppointments} onSelect={setSelected} availableDays={availableDays} />
       )}
 
       <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>

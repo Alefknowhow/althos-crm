@@ -37,6 +37,7 @@ type Props = {
   eventTypes: { id: string; name: string; duration_minutes: number; color: string | null }[]
   isClinic?: boolean
   clinicProfessionals?: ClinicOption[]
+  clinicSpecialties?: ClinicOption[]
   clinicRooms?: ClinicOption[]
   clinicContexts?: Record<string, ClinicAppointmentContext>
   clinicServiceContexts?: Record<string, ClinicServiceContext>
@@ -181,7 +182,7 @@ function AppointmentRow({
 
 export default function AppointmentsListPanel({
   orgSlug, upcoming, past, eventTypes,
-  isClinic = false, clinicProfessionals = [], clinicRooms = [], clinicContexts = {}, clinicServiceContexts = {}, availabilities = [],
+  isClinic = false, clinicProfessionals = [], clinicSpecialties = [], clinicRooms = [], clinicContexts = {}, clinicServiceContexts = {}, availabilities = [],
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -386,6 +387,7 @@ export default function AppointmentsListPanel({
           onCancel={handleCancel}
           onComplete={handleComplete}
           clinicProfessionals={clinicProfessionals}
+          clinicSpecialties={clinicSpecialties}
           clinicContexts={clinicContexts}
           availabilities={availabilities}
           onSlotDoubleClick={handleSlotDoubleClick}
