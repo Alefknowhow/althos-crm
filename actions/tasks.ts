@@ -11,6 +11,116 @@ import { z } from 'zod'
 
 export type TaskInput = z.infer<typeof taskSchema>
 
+/** Aplica a regra "só um slot de relacionamento por vez": zera os outros dois
+ *  (contato_id / sale_id / related_entity_*) sempre que um deles é setado. */
+function relationshipUpdates(v: Partial<TaskInput>): Record<string, unknown> {
+  const updates: Record<string, unknown> = {}
+  if (v.contato_id) {
+    updates.contato_id = v.contato_id
+    updates.sale_id = null
+    updates.related_entity_type = null
+    updates.related_entity_id = null
+  } else if (v.sale_id) {
+    updates.sale_id = v.sale_id
+    updates.contato_id = null
+    updates.related_entity_type = null
+    updates.related_entity_id = null
+  } else if (v.related_entity_type && v.related_entity_id) {
+    updates.related_entity_type = v.related_entity_type
+    updates.related_entity_id = v.related_entity_id
+    updates.contato_id = null
+    updates.sale_id = null
+  } else {
+    updates.contato_id = null
+    updates.sale_id = null
+    updates.related_entity_type = null
+    updates.related_entity_id = null
+  }
+  return updates
+}
+
+export type RelatedEntityOption = { id: string; label: string }
+
+/** Busca registros de um tipo de entidade pra popular o combobox "Relacionado
+ *  a" (TaskDialog / EditSheet). Uniforme pra todos os tipos, mesmo os que
+ *  internamente mapeiam pra contato_id/sale_id (contato/reserva) — mantém o
+ *  componente de UI simples, sem casos especiais por tipo. */
+export async function searchRelatedEntities(orgSlug: string, entityType: string, query: string): Promise<RelatedEntityOption[]> {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const q = (query || '').trim()
+
+  if (entityType === 'contato') {
+    let sel = supabase.from('contatos').select('id, name').eq('organization_id', org.id).limit(20)
+    if (q) sel = sel.ilike('name', `%${q}%`)
+    const { data } = await sel
+    return (data || []).map((r: any) => ({ id: r.id, label: r.name }))
+  }
+
+  if (entityType === 'reserva') {
+    let sel = supabase.from('travel_sales').select('id, client_name, destination, sale_number').eq('organization_id', org.id).limit(20)
+    if (q) sel = sel.or(`client_name.ilike.%${q}%,destination.ilike.%${q}%,sale_number.ilike.%${q}%`)
+    const { data } = await sel
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      label: r.sale_number ? `#${r.sale_number} — ${r.client_name || r.destination || ''}` : (r.client_name || r.destination || 'Reserva'),
+    }))
+  }
+
+  if (entityType === 'travel_proposal') {
+    let sel = supabase.from('travel_proposals').select('id, title, client_name').eq('organization_id', org.id).limit(20)
+    if (q) sel = sel.or(`title.ilike.%${q}%,client_name.ilike.%${q}%`)
+    const { data } = await sel
+    return (data || []).map((r: any) => ({ id: r.id, label: [r.title, r.client_name].filter(Boolean).join(' — ') || 'Cotação' }))
+  }
+
+  if (entityType === 'appointment') {
+    let sel = supabase.from('appointments').select('id, guest_name, start_time').eq('organization_id', org.id).order('start_time', { ascending: false }).limit(20)
+    if (q) sel = sel.ilike('guest_name', `%${q}%`)
+    const { data } = await sel
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      label: `${r.guest_name || 'Agendamento'}${r.start_time ? ' — ' + new Date(r.start_time).toLocaleDateString('pt-BR') : ''}`,
+    }))
+  }
+
+  if (entityType === 'sale') {
+    const { data } = await supabase.from('sales').select('id, amount_cents, sale_date, contato_id').eq('organization_id', org.id).order('sale_date', { ascending: false }).limit(50)
+    const rows = (data || []) as any[]
+    const names = await contatoNamesFor(supabase, rows.map(r => r.contato_id))
+    let out = rows.map(r => ({ id: r.id, label: `${names.get(r.contato_id) || 'Venda'} — R$ ${((r.amount_cents || 0) / 100).toFixed(2)}` }))
+    if (q) out = out.filter(o => o.label.toLowerCase().includes(q.toLowerCase()))
+    return out.slice(0, 20)
+  }
+
+  if (entityType === 'property_deal') {
+    const { data } = await supabase.from('property_deals').select('id, deal_type, contato_id').eq('organization_id', org.id).limit(50)
+    const rows = (data || []) as any[]
+    const names = await contatoNamesFor(supabase, rows.map(r => r.contato_id))
+    let out = rows.map(r => ({ id: r.id, label: `${names.get(r.contato_id) || 'Negócio'} (${r.deal_type === 'locacao' ? 'Locação' : 'Venda'})` }))
+    if (q) out = out.filter(o => o.label.toLowerCase().includes(q.toLowerCase()))
+    return out.slice(0, 20)
+  }
+
+  if (entityType === 'property_proposal') {
+    const { data } = await supabase.from('property_proposals').select('id, operation_type, contato_id').eq('organization_id', org.id).limit(50)
+    const rows = (data || []) as any[]
+    const names = await contatoNamesFor(supabase, rows.map(r => r.contato_id))
+    let out = rows.map(r => ({ id: r.id, label: `${names.get(r.contato_id) || 'Proposta'} (${r.operation_type === 'locacao' ? 'Locação' : 'Venda'})` }))
+    if (q) out = out.filter(o => o.label.toLowerCase().includes(q.toLowerCase()))
+    return out.slice(0, 20)
+  }
+
+  return []
+}
+
+async function contatoNamesFor(supabase: ReturnType<typeof createClient>, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const uniq = Array.from(new Set(ids.filter(Boolean))) as string[]
+  if (uniq.length === 0) return new Map()
+  const { data } = await supabase.from('contatos').select('id, name').in('id', uniq)
+  return new Map((data || []).map((c: any) => [c.id, c.name]))
+}
+
 /** Returns the org's first (position 0) column id, creating a default
  *  "A Fazer" column when none exists yet. Keeps every org with at least one
  *  column so the board always has somewhere to drop tasks. */
@@ -53,11 +163,10 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     description: v.description || null,
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
     priority:    v.priority || 'normal',
-    contato_id:     v.contato_id  || null,
     assigned_to: v.assigned_to || user.id,
-    sale_id: v.sale_id || null,
     status: 'open',
     column_id: columnId,
+    ...relationshipUpdates(v),
   })
 
   if (error) return { ok: false as const, error: error.message }
@@ -102,9 +211,12 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.description !== undefined) updates.description = input.description || null
   if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null
   if (input.priority    !== undefined) updates.priority    = input.priority
-  if (input.contato_id     !== undefined) updates.contato_id     = input.contato_id || null
   if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to || null
-  if (input.sale_id !== undefined) updates.sale_id = input.sale_id || null
+  // "Relacionado a" só é reescrito quando o form manda algum dos três campos —
+  // evita zerar o vínculo existente em updates parciais que não tocam nele.
+  if (input.contato_id !== undefined || input.sale_id !== undefined || input.related_entity_type !== undefined || input.related_entity_id !== undefined) {
+    Object.assign(updates, relationshipUpdates(input))
+  }
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
 
@@ -131,7 +243,9 @@ export async function toggleTaskStatus(orgSlug: string, taskId: string, status: 
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId).eq('organization_id', org.id)
+  const { error } = await supabase.from('tasks')
+    .update({ status, completed_at: status === 'done' ? new Date().toISOString() : null })
+    .eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false, error: error.message }
 
   revalidatePath(`/app/${orgSlug}/tarefas`)
@@ -145,7 +259,9 @@ export async function setTaskStatus(orgSlug: string, taskId: string, status: 'op
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId).eq('organization_id', org.id)
+  const { error } = await supabase.from('tasks')
+    .update({ status, completed_at: status === 'done' ? new Date().toISOString() : null })
+    .eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
   revalidatePath(`/app/${orgSlug}/tarefas`)

@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -27,7 +27,8 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import LeadCombobox from '@/components/features/LeadCombobox'
+import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
+import { relatedTypeOptions, RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
 import UserAvatar from '@/components/features/UserAvatar'
 import TaskDialog from '@/components/features/TaskDialog'
 import { updateTask, deleteTask, toggleTaskStatus, setTaskPriority } from '@/actions/tasks'
@@ -47,29 +48,38 @@ type Task = {
   status: 'open' | 'doing' | 'done'
   priority: 'low' | 'normal' | 'high'
   due_date?: string | null
+  completed_at?: string | null
+  created_at?: string | null
   assigned_to?: string | null
   assignee_name?: string | null
   column_id?: string | null
+  sale_id?: string | null
+  related_entity_type?: string | null
+  related_entity_id?: string | null
+  related?: { type: string; label: string } | null
   leads?: { id: string; name: string } | null
 }
 
 type PriorityFilter = 'all' | 'low' | 'normal' | 'high'
 type AssigneeFilter = 'all' | 'none' | string
-type GroupId = 'pending' | 'overdue' | 'done'
+type GroupId = 'overdue' | 'today' | 'upcoming' | 'done'
 type StatusFilter = 'all' | GroupId
+type RelatedFilter = 'all' | string
 type CalView = 'month' | 'week'
 
 const GROUPS: { id: GroupId; label: string; empty: string }[] = [
-  { id: 'pending',  label: 'Pendentes',  empty: 'Nenhuma tarefa pendente' },
-  { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada' },
-  { id: 'done',     label: 'Concluídas', empty: 'Nenhuma tarefa concluída' },
+  { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada.' },
+  { id: 'today',    label: 'Hoje',       empty: 'Nenhuma tarefa para hoje.' },
+  { id: 'upcoming', label: 'Próximas',   empty: 'Nenhuma tarefa programada.' },
+  { id: 'done',     label: 'Concluídas', empty: 'Nenhuma tarefa concluída.' },
 ]
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'all',     label: 'Todos os status' },
-  { value: 'pending', label: 'Pendentes' },
-  { value: 'overdue', label: 'Atrasadas' },
-  { value: 'done',    label: 'Concluídas' },
+  { value: 'all',      label: 'Todos' },
+  { value: 'overdue',  label: 'Atrasadas' },
+  { value: 'today',    label: 'Hoje' },
+  { value: 'upcoming', label: 'Próximas' },
+  { value: 'done',     label: 'Concluídas' },
 ]
 
 const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -111,8 +121,16 @@ function combineDueDate(date: string, time: string): string | null {
 
 function classify(t: Task): GroupId {
   if (t.status === 'done') return 'done'
-  if (isOverdue(t)) return 'overdue'
-  return 'pending'
+  const d = t.due_date?.split('T')[0]
+  if (!d) return 'upcoming'
+  if (d < todayISO()) return 'overdue'
+  if (d === todayISO()) return 'today'
+  return 'upcoming'
+}
+
+function completedAtMs(t: Task): number {
+  const iso = t.completed_at || t.created_at /* fallback shouldn't happen post-backfill */
+  return iso ? new Date(iso).getTime() : 0
 }
 
 function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
@@ -159,26 +177,33 @@ function stateDotClass(t: Task): string {
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
-const EXPANDED_STORAGE_KEY = 'tasks-groups-expanded'
-const DEFAULT_EXPANDED: Record<GroupId, boolean> = { pending: true, overdue: true, done: false }
+// v2: shape mudou de 3 grupos (pending/overdue/done) pra 4
+// (overdue/today/upcoming/done) — chave nova evita ler um JSON velho
+// incompatível de sessão anterior.
+const EXPANDED_STORAGE_KEY = 'tasks-groups-expanded-v2'
+const DEFAULT_EXPANDED: Record<GroupId, boolean> = { overdue: true, today: true, upcoming: true, done: false }
 
 export default function TasksBoard({
   initialTasks,
   orgSlug,
   members = [],
   currentUserId,
+  niche,
 }: {
   initialTasks: Task[]
   orgSlug: string
   members?: Member[]
   /** Usuário logado — habilita o chip rápido "Minhas". */
   currentUserId?: string
+  /** Nicho da org — filtra as opções do filtro/tipo "Relacionado a". */
+  niche?: string | null
 }) {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [assignee, setAssignee] = useState<AssigneeFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [relatedFilter, setRelatedFilter] = useState<RelatedFilter>('all')
   const [onlyMine, setOnlyMine] = useState(false)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Task | null>(null)
@@ -188,6 +213,7 @@ export default function TasksBoard({
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()))
   const [todayOnly, setTodayOnly] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
   const [quickAdd, setQuickAdd] = useState<{ date: string; time?: string } | null>(null)
@@ -222,15 +248,21 @@ export default function TasksBoard({
     return t.title.toLowerCase().includes(needle) || (t.description ?? '').toLowerCase().includes(needle)
   }
 
+  function matchesRelated(t: Task, f: RelatedFilter): boolean {
+    if (f === 'all') return true
+    return (t.related?.type ?? null) === f
+  }
+
   const filtered = useMemo(
     () => tasks.filter(t =>
       (priority === 'all' || t.priority === priority) &&
       matchesAssignee(t, assignee) &&
       (statusFilter === 'all' || classify(t) === statusFilter) &&
+      matchesRelated(t, relatedFilter) &&
       (!onlyMine || t.assigned_to === currentUserId) &&
       matchesSearch(t, search),
     ),
-    [tasks, priority, assignee, statusFilter, onlyMine, currentUserId, search],
+    [tasks, priority, assignee, statusFilter, relatedFilter, onlyMine, currentUserId, search],
   )
 
   const tasksByDate = useMemo(() => {
@@ -251,6 +283,9 @@ export default function TasksBoard({
   // avulso: o único recorte diário é o toggle "Hoje" (mais abaixo). Tarefas
   // sem data ficam sempre visíveis (não têm período pra pertencer).
   const periodTasks = useMemo(() => {
+    if (selectedDay) {
+      return filtered.filter(t => t.due_date && t.due_date.split('T')[0] === selectedDay)
+    }
     if (todayOnly) {
       const t0 = todayISO()
       return filtered.filter(t => t.due_date && t.due_date.split('T')[0] === t0)
@@ -269,18 +304,23 @@ export default function TasksBoard({
       if (!d) return true
       return d >= weekStart && d <= weekEnd
     })
-  }, [filtered, todayOnly, calView, calMonth, weekAnchor])
+  }, [filtered, selectedDay, todayOnly, calView, calMonth, weekAnchor])
 
   const grouped = useMemo(() => {
-    const byGroup: Record<GroupId, Task[]> = { pending: [], overdue: [], done: [] }
+    const byGroup: Record<GroupId, Task[]> = { overdue: [], today: [], upcoming: [], done: [] }
     for (const t of periodTasks) byGroup[classify(t)].push(t)
-    for (const id of Object.keys(byGroup) as GroupId[]) {
-      byGroup[id].sort((a, b) => {
-        const da = dueDateOnly(a)?.getTime() ?? Infinity
-        const db = dueDateOnly(b)?.getTime() ?? Infinity
-        return da - db
-      })
+    // Atrasadas/Hoje/Próximas: due_date ASC, depois horário ASC (undated por
+    // último). Concluídas: completed_at DESC (mais recente primeiro).
+    const byDateAsc = (a: Task, b: Task) => {
+      const da = dueDateOnly(a)?.getTime() ?? Infinity
+      const db = dueDateOnly(b)?.getTime() ?? Infinity
+      if (da !== db) return da - db
+      return (dueTimeOnly(a.due_date) || '').localeCompare(dueTimeOnly(b.due_date) || '')
     }
+    byGroup.overdue.sort(byDateAsc)
+    byGroup.today.sort((a, b) => (dueTimeOnly(a.due_date) || '').localeCompare(dueTimeOnly(b.due_date) || ''))
+    byGroup.upcoming.sort(byDateAsc)
+    byGroup.done.sort((a, b) => completedAtMs(b) - completedAtMs(a))
     return byGroup
   }, [periodTasks])
 
@@ -518,7 +558,7 @@ export default function TasksBoard({
           </button>
           <button
             type="button"
-            onClick={() => { setCalMonth(startOfMonth(new Date())); setWeekAnchor(startOfWeek(new Date())) }}
+            onClick={() => { setCalMonth(startOfMonth(new Date())); setWeekAnchor(startOfWeek(new Date())); setSelectedDay(null) }}
             className={cn('px-2.5 h-8 rounded-md border text-xs font-medium hover:bg-muted transition-colors ml-1', FOCUS_RING)}
           >
             Hoje
@@ -545,42 +585,77 @@ export default function TasksBoard({
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {members.length > 0 && (
             <ResponsiveSelect
-              className="h-8 w-[150px] text-xs"
+              className="h-8 w-[170px] text-xs"
               aria-label="Filtrar por responsável"
               value={assignee}
               onValueChange={v => setAssignee(v as AssigneeFilter)}
               options={[
-                { value: 'all', label: `Todos (${assigneeCounts.all})` },
-                { value: 'none', label: `Sem responsável (${assigneeCounts.none})` },
-                ...members.map(m => ({ value: m.user_id, label: `${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
+                { value: 'all', label: `Responsável: Todos (${assigneeCounts.all})` },
+                { value: 'none', label: `Responsável: Sem responsável (${assigneeCounts.none})` },
+                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name} (${assigneeCounts[m.user_id] ?? 0})` })),
               ]}
             />
           )}
           <ResponsiveSelect
-            className="h-8 w-[130px] text-xs"
+            className="h-8 w-[150px] text-xs"
             aria-label="Filtrar por prioridade"
             value={priority}
             onValueChange={v => setPriority(v as PriorityFilter)}
             options={[
-              { value: 'all', label: 'Toda prioridade' },
-              { value: 'high', label: PRIORITY_META.high.label },
-              { value: 'normal', label: PRIORITY_META.normal.label },
-              { value: 'low', label: PRIORITY_META.low.label },
+              { value: 'all', label: 'Prioridade: Todas' },
+              { value: 'high', label: `Prioridade: ${PRIORITY_META.high.label}` },
+              { value: 'normal', label: `Prioridade: ${PRIORITY_META.normal.label}` },
+              { value: 'low', label: `Prioridade: ${PRIORITY_META.low.label}` },
             ]}
           />
           <ResponsiveSelect
-            className="h-8 w-[140px] text-xs"
+            className="h-8 w-[150px] text-xs"
             aria-label="Filtrar por status"
             value={statusFilter}
             onValueChange={v => setStatusFilter(v as StatusFilter)}
-            options={STATUS_OPTIONS}
+            options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.value === 'all' ? 'Status: Todos' : `Status: ${o.label}` }))}
+          />
+          <ResponsiveSelect
+            className="h-8 w-[180px] text-xs"
+            aria-label="Filtrar por relacionado a"
+            value={relatedFilter}
+            onValueChange={v => setRelatedFilter(v as RelatedFilter)}
+            options={[
+              { value: 'all', label: 'Relacionado a: Todos' },
+              ...relatedTypeOptions(niche).map(o => ({ value: o.value, label: `Relacionado a: ${o.label}` })),
+            ]}
           />
         </div>
       </div>
 
-      {/* Corpo: lista 40% à esquerda + calendário 60% à direita */}
+      {/* Chips de filtros ativos — cada × zera só aquele filtro */}
+      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all' || onlyMine || todayOnly || selectedDay) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {selectedDay && (
+            <FilterChip label={`Dia: ${new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })}`} onClear={() => setSelectedDay(null)} />
+          )}
+          {todayOnly && <FilterChip label="Hoje" onClear={() => setTodayOnly(false)} />}
+          {onlyMine && <FilterChip label="Minhas" onClear={() => setOnlyMine(false)} />}
+          {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
+          {assignee !== 'all' && (
+            <FilterChip
+              label={`Responsável: ${assignee === 'none' ? 'Sem responsável' : (members.find(m => m.user_id === assignee)?.name ?? '—')}`}
+              onClear={() => setAssignee('all')}
+            />
+          )}
+          {statusFilter !== 'all' && <FilterChip label={`Status: ${GROUPS.find(g => g.id === statusFilter)?.label ?? statusFilter}`} onClear={() => setStatusFilter('all')} />}
+          {relatedFilter !== 'all' && (
+            <FilterChip
+              label={`Relacionado a: ${RELATED_TYPE_LABELS[relatedFilter as RelatedTypeValue] ?? relatedFilter}`}
+              onClear={() => setRelatedFilter('all')}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Corpo: calendário 35% à esquerda + lista 65% à direita */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="hidden lg:block lg:w-[60%] min-w-0 lg:order-2">
+        <div className="hidden lg:block lg:w-[35%] min-w-0 lg:order-1">
           {calView === 'month' ? (
             <MonthGrid
               days={monthDays}
@@ -593,6 +668,8 @@ export default function TasksBoard({
               setOpenPopoverId={setOpenPopoverId}
               dragOverKey={dragOverKey}
               setDragOverKey={setDragOverKey}
+              selectedDay={selectedDay}
+              onDayClick={d => { setSelectedDay(prev => prev === d ? null : d); setTodayOnly(false) }}
               onDropDay={handleDropOnDay}
               onChipDragStart={onChipDragStart}
               onChipDragEnd={onChipDragEnd}
@@ -637,16 +714,27 @@ export default function TasksBoard({
           )}
         </div>
 
-        {/* Lista — 40%, sempre escopada ao período visível no calendário */}
-        <div className="w-full lg:w-[40%] min-w-0 space-y-2 lg:order-1">
-          <div className="px-0.5">
+        {/* Lista — 65%, sempre escopada ao período visível no calendário */}
+        <div className="w-full lg:w-[65%] min-w-0 space-y-2 lg:order-2">
+          <div className="px-0.5 flex items-center gap-2">
             <span className="text-sm font-semibold">
-              {todayOnly
-                ? 'Tarefas de hoje'
-                : calView === 'month'
-                  ? `Tarefas de ${calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`
-                  : `Tarefas de ${weekRangeLabel(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(weekAnchor), i)))}`}
+              {selectedDay
+                ? new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long' }).toUpperCase()
+                : todayOnly
+                  ? 'Tarefas de hoje'
+                  : calView === 'month'
+                    ? `Tarefas de ${calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`
+                    : `Tarefas de ${weekRangeLabel(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(weekAnchor), i)))}`}
             </span>
+            {selectedDay && (
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="text-xs text-primary hover:underline"
+              >
+                Voltar para Hoje
+              </button>
+            )}
           </div>
 
           <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
@@ -707,6 +795,7 @@ export default function TasksBoard({
         task={editing}
         orgSlug={orgSlug}
         members={members}
+        niche={niche}
         onClose={() => setEditing(null)}
         onSaved={(updated) => {
           setTasks(prev => prev.map(t => (t.id === updated.id ? { ...t, ...updated } : t)))
@@ -724,6 +813,7 @@ export default function TasksBoard({
       <TaskDialog
         orgSlug={orgSlug}
         members={members}
+        niche={niche}
         defaultDate={quickAdd?.date}
         defaultTime={quickAdd?.time}
         open={!!quickAdd}
@@ -731,6 +821,22 @@ export default function TasksBoard({
         trigger={<span className="hidden" />}
       />
     </div>
+  )
+}
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <Badge variant="secondary" className="gap-1 pr-1 font-normal">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remover filtro: ${label}`}
+        className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </Badge>
   )
 }
 
@@ -748,7 +854,7 @@ function weekRangeLabel(days: Date[]) {
 function MonthGrid({
   days, calMonth, todayYmd, tasksByDate, members, highlightId,
   openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
-  onDropDay, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
+  selectedDay, onDayClick, onDropDay, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
 }: {
   days: Date[]
   calMonth: Date
@@ -760,6 +866,8 @@ function MonthGrid({
   setOpenPopoverId: (id: string | null) => void
   dragOverKey: string | null
   setDragOverKey: (k: string | null) => void
+  selectedDay: string | null
+  onDayClick: (d: string) => void
   onDropDay: (e: React.DragEvent, dayYmd: string) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
   onChipDragEnd: () => void
@@ -779,25 +887,28 @@ function MonthGrid({
           const dayTasks = tasksByDate[key] || []
           const inMonth = d.getMonth() === calMonth.getMonth()
           const isToday = key === todayYmd
+          const isSelected = selectedDay === key
           const isWeekend = d.getDay() === 0 || d.getDay() === 6
-          const visible = dayTasks.slice(0, 3)
-          const overflow = dayTasks.length - visible.length
+          const dots = dayTasks.slice(0, 3)
+          const overflow = dayTasks.length - dots.length
           const isDragOver = dragOverKey === `month:${key}`
           return (
             <div
               key={key}
+              onClick={() => onDayClick(key)}
               onDoubleClick={() => onQuickAdd(key)}
               onDragOver={e => { e.preventDefault(); setDragOverKey(`month:${key}`) }}
               onDragLeave={() => setDragOverKey(null)}
               onDrop={e => onDropDay(e, key)}
-              title="Duplo clique para criar uma tarefa neste dia"
+              title="Clique para ver as tarefas do dia · duplo clique para criar uma nova"
               className={cn(
-                'min-h-[96px] sm:min-h-[108px] min-w-0 border-b border-r p-1.5 text-left align-top transition-colors',
+                'min-h-[96px] sm:min-h-[108px] min-w-0 border-b border-r p-1.5 text-left align-top transition-colors cursor-pointer',
                 (i + 1) % 7 === 0 && 'border-r-0',
                 i >= 35 && 'border-b-0',
                 !inMonth && 'bg-muted/20',
                 isWeekend && inMonth && 'bg-muted/10',
                 isToday && 'bg-sky-50 dark:bg-sky-950/25',
+                isSelected && 'ring-2 ring-inset ring-primary',
                 isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/50',
                 !isDragOver && 'hover:bg-muted/30',
               )}
@@ -811,30 +922,26 @@ function MonthGrid({
               >
                 {d.getDate()}
               </span>
-              <div className="space-y-0.5">
-                {visible.map(t => (
-                  <CalendarTaskChip
-                    key={t.id}
-                    task={t}
-                    members={members}
-                    highlighted={highlightId === t.id}
-                    open={openPopoverId === t.id}
-                    onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
-                    onDragStart={e => onChipDragStart(e, t.id)}
-                    onDragEnd={onChipDragEnd}
-                    renderPopover={close => renderPopover(t, close)}
-                  />
-                ))}
-                {overflow > 0 && (
-                  <DayOverflowPopover
-                    tasks={dayTasks}
-                    members={members}
-                    highlightId={highlightId}
-                    label={`+ ${overflow} tarefa${overflow > 1 ? 's' : ''}`}
-                    renderPopover={renderPopover}
-                  />
-                )}
-              </div>
+              {dayTasks.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+                  {dots.map(t => (
+                    <CalendarTaskDot
+                      key={t.id}
+                      task={t}
+                      members={members}
+                      highlighted={highlightId === t.id}
+                      open={openPopoverId === t.id}
+                      onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
+                      onDragStart={e => onChipDragStart(e, t.id)}
+                      onDragEnd={onChipDragEnd}
+                      renderPopover={close => renderPopover(t, close)}
+                    />
+                  ))}
+                  {overflow > 0 && (
+                    <span className="text-[10px] text-muted-foreground leading-none">+{overflow}</span>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
@@ -899,53 +1006,41 @@ function CalendarTaskChip({
   )
 }
 
-function DayOverflowPopover({
-  tasks, members, highlightId, label, renderPopover,
+/** Indicador compacto (bolinha) usado na grade do mês — sem título, pra não
+ *  truncar texto na célula. Clique abre o mesmo popover completo da tarefa;
+ *  a lista ao lado é quem mostra o conteúdo (título, contexto, data). */
+function CalendarTaskDot({
+  task, members, highlighted, open, onOpenChange, onDragStart, onDragEnd, renderPopover,
 }: {
-  tasks: Task[]
+  task: Task
   members: Member[]
-  highlightId: string | null
-  label: string
-  renderPopover: (task: Task, close: () => void) => React.ReactNode
+  highlighted: boolean
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  onDragStart: (e: React.DragEvent) => void
+  onDragEnd: () => void
+  renderPopover: (close: () => void) => React.ReactNode
 }) {
-  const [open, setOpen] = useState(false)
+  const member = members.find(m => m.user_id === task.assigned_to)
+  const time = dueTimeOnly(task.due_date)
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <span
+          draggable
+          onDragStart={e => { e.stopPropagation(); onDragStart(e) }}
+          onDragEnd={onDragEnd}
           onClick={e => e.stopPropagation()}
-          className="w-full text-left text-[10px] text-muted-foreground hover:text-foreground px-1"
-        >
-          {label}
-        </button>
+          title={[task.title, time, member?.name].filter(Boolean).join(' · ')}
+          className={cn(
+            'inline-block w-2 h-2 rounded-full cursor-grab active:cursor-grabbing shrink-0',
+            stateDotClass(task),
+            highlighted && 'ring-2 ring-primary/50',
+          )}
+        />
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-1.5" align="start" onClick={e => e.stopPropagation()}>
-        <div className="space-y-0.5 max-h-72 overflow-y-auto">
-          {tasks.map(t => {
-            const time = dueTimeOnly(t.due_date)
-            return (
-              <Popover key={t.id}>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted flex items-center gap-1.5',
-                      t.status === 'done' && 'opacity-60 line-through',
-                      highlightId === t.id && 'ring-1 ring-primary/50',
-                    )}
-                  >
-                    <span className={cn('w-2 h-2 rounded-[3px] shrink-0', stateDotClass(t))} />
-                    {time && <span className="text-muted-foreground tabular-nums">{time}</span>}
-                    <span className="truncate">{t.title}</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-72 p-0">
-                  {renderPopover(t, () => setOpen(false))}
-                </PopoverContent>
-              </Popover>
-            )
-          })}
-        </div>
+      <PopoverContent align="start" className="w-72 p-0" onClick={e => e.stopPropagation()}>
+        {renderPopover(() => onOpenChange(false))}
       </PopoverContent>
     </Popover>
   )
@@ -1197,10 +1292,11 @@ function TaskListRow({
   const time = dueTimeOnly(task.due_date)
   const done = task.status === 'done'
   const member = members.find(m => m.user_id === task.assigned_to)
+  const relatedTypeLabel = task.related ? (RELATED_TYPE_LABELS[task.related.type as RelatedTypeValue] ?? 'Relacionado') : null
 
   return (
     <div className={cn(
-      'group relative flex items-center gap-3 pl-4 pr-3.5 h-[50px] hover:bg-muted/30 transition-colors duration-150',
+      'group relative flex items-center gap-3 pl-4 pr-3.5 py-2.5 min-h-[50px] hover:bg-muted/30 transition-colors duration-150',
       highlighted && 'bg-primary/5 ring-1 ring-inset ring-primary/40',
     )}>
       <span
@@ -1224,7 +1320,7 @@ function TaskListRow({
         type="button"
         onClick={onOpen}
         title={task.title}
-        className="flex-1 min-w-0 text-left"
+        className="flex-1 min-w-0 text-left space-y-0.5"
       >
         <span className={cn(
           'text-sm font-medium truncate block',
@@ -1232,26 +1328,22 @@ function TaskListRow({
         )}>
           {task.title}
         </span>
+        {task.related && (
+          <span className="text-xs text-muted-foreground truncate block">
+            {relatedTypeLabel} · {task.related.label}
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground/80 truncate block">
+          {date ? (
+            <span className={cn(overdue && !done && 'text-destructive font-medium')}>
+              {date}{time ? ` · ${time}` : ''}
+            </span>
+          ) : (
+            <span className="text-muted-foreground/40">Sem data</span>
+          )}
+          {member && ` · ${member.name}`}
+        </span>
       </button>
-
-      <div className="hidden sm:flex items-center gap-1 shrink-0">
-        {member && (
-          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium truncate max-w-[80px]', memberLabelColor(member.user_id))}>
-            {(member.name || member.email || '').trim().split(/\s+/)[0]}
-          </span>
-        )}
-      </div>
-
-      <div className="w-[86px] shrink-0 flex items-center gap-1 text-xs">
-        {date ? (
-          <span className={cn('inline-flex items-center gap-1', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
-            <Calendar className="w-3 h-3 shrink-0" />
-            {date}{time ? ` · ${time}` : ''}
-          </span>
-        ) : (
-          <span className="text-muted-foreground/40">—</span>
-        )}
-      </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -1301,16 +1393,29 @@ function TaskListRow({
 // ── Drawer de edição completa ────────────────────────────────────────────────
 
 function EditSheet({
-  task, orgSlug, members, onClose, onSaved, onDelete,
+  task, orgSlug, members, niche, onClose, onSaved, onDelete,
 }: {
   task: Task | null
   orgSlug: string
   members: Member[]
+  niche?: string | null
   onClose: () => void
   onSaved: (t: Task) => void
   onDelete: (id: string) => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [relatedType, setRelatedType] = useState<RelatedTypeValue>('contato')
+  const [relatedOption, setRelatedOption] = useState<RelatedOption | null>(null)
+  const typeOptions = relatedTypeOptions(niche)
+
+  // Reinicializa o bloco "Relacionado a" sempre que abre uma tarefa diferente.
+  useEffect(() => {
+    if (!task) return
+    if (task.leads) { setRelatedType('contato'); setRelatedOption({ id: task.leads.id, label: task.leads.name }) }
+    else if (task.sale_id && task.related) { setRelatedType('reserva'); setRelatedOption({ id: task.sale_id, label: task.related.label }) }
+    else if (task.related_entity_type && task.related_entity_id && task.related) { setRelatedType(task.related_entity_type as RelatedTypeValue); setRelatedOption({ id: task.related_entity_id, label: task.related.label }) }
+    else { setRelatedType('contato'); setRelatedOption(null) }
+  }, [task])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -1318,13 +1423,17 @@ function EditSheet({
     const fd = new FormData(e.currentTarget)
     const dueDateRaw = fd.get('due_date') as string
     const dueTimeRaw = fd.get('due_time') as string
+    const relationPayload =
+      relatedType === 'contato' ? { contato_id: relatedOption?.id || '' }
+      : relatedType === 'reserva' ? { sale_id: relatedOption?.id || '' }
+      : { related_entity_type: (relatedOption ? relatedType : '') as any, related_entity_id: relatedOption?.id || '' }
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
       due_date:    combineDueDate(dueDateRaw, dueTimeRaw) || '',
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
-      contato_id:     fd.get('contato_id')     as string,
       assigned_to: ((fd.get('assigned_to') as string) === '__unassigned__' ? '' : fd.get('assigned_to') as string),
+      ...relationPayload,
     }
     setSaving(true)
     const res = await updateTask(orgSlug, task.id, input)
@@ -1337,16 +1446,17 @@ function EditSheet({
     const assignee_name = input.assigned_to
       ? (members.find(m => m.user_id === input.assigned_to)?.name ?? null)
       : null
-    onSaved({ ...task, ...input, due_date: input.due_date || null, assignee_name })
+    const related = relatedOption ? { type: relatedType, label: relatedOption.label } : null
+    onSaved({ ...task, ...input, due_date: input.due_date || null, assignee_name, related })
   }
 
   const defaultDate = task?.due_date ? task.due_date.split('T')[0] : ''
   const defaultTime = dueTimeOnly(task?.due_date) || ''
 
   return (
-    <Sheet open={!!task} onOpenChange={o => !o && onClose()}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader><SheetTitle>Editar Tarefa</SheetTitle></SheetHeader>
+    <Dialog open={!!task} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Editar Tarefa</DialogTitle></DialogHeader>
         {task && (
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
@@ -1379,12 +1489,26 @@ function EditSheet({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Lead</Label>
-              <LeadCombobox
-                name="contato_id"
-                orgSlug={orgSlug}
-                defaultLead={task.leads ? { id: task.leads.id, name: task.leads.name } : null}
-              />
+              <Label>Relacionado a <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  value={relatedType}
+                  onValueChange={v => { setRelatedType(v as RelatedTypeValue); setRelatedOption(null) }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <RelatedEntityCombobox
+                  orgSlug={orgSlug}
+                  entityType={relatedType}
+                  defaultValue={relatedOption}
+                  onChange={setRelatedOption}
+                />
+              </div>
             </div>
             {members.length > 0 && (
               <div className="space-y-2">
@@ -1400,15 +1524,15 @@ function EditSheet({
                 </Select>
               </div>
             )}
-            <SheetFooter>
+            <DialogFooter>
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir
               </Button>
               <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
-            </SheetFooter>
+            </DialogFooter>
           </form>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

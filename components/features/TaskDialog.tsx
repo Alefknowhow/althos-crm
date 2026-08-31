@@ -36,7 +36,8 @@ import {
 } from '@/components/ui/select'
 
 import { createTask, type TaskInput } from '@/actions/tasks'
-import LeadCombobox from '@/components/features/LeadCombobox'
+import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
+import { relatedTypeOptions, type RelatedTypeValue } from '@/lib/tasks/related-types'
 import { taskSchema } from '@/lib/validators/task'
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
@@ -68,15 +69,22 @@ interface Props {
   onOpenChange?: (open: boolean) => void
   /** Vincula a tarefa criada a uma reserva (Reservas → aba Tarefas → "+ Nova tarefa"). */
   saleId?: string
+  /** Nicho da org — filtra as opções de tipo em "Relacionado a". Sem isso,
+   *  cai no conjunto genérico (Contato/Agendamento/Venda). */
+  niche?: string | null
 }
 
-export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange, saleId }: Props) {
+export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange, saleId, niche }: Props) {
   const router = useRouter()
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
   const setOpen = onOpenChange ?? setOpenState
   const [isPending, startTrans] = useTransition()
   const [dueTime, setDueTime]   = useState(defaultTime || '')
+  const [relatedType, setRelatedType] = useState<RelatedTypeValue>(defaultLead ? 'contato' : 'contato')
+  const [relatedOption, setRelatedOption] = useState<RelatedOption | null>(defaultLead ? { id: defaultLead.id, label: defaultLead.name } : null)
+
+  const typeOptions = relatedTypeOptions(niche)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -102,13 +110,24 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         contato_id: defaultLead?.id || '', assigned_to: '',
       })
       setDueTime(defaultTime || '')
+      setRelatedType('contato')
+      setRelatedOption(defaultLead ? { id: defaultLead.id, label: defaultLead.name } : null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultDate, defaultTime])
+  }, [open, defaultDate, defaultTime, defaultLead])
 
   async function onSubmit(values: FormValues) {
     startTrans(async () => {
-      const payload = { ...values, due_date: combineDueDate(values.due_date || '', dueTime), ...(saleId ? { sale_id: saleId } : {}) }
+      const relationPayload =
+        relatedType === 'contato' ? { contato_id: relatedOption?.id || '' }
+        : relatedType === 'reserva' ? { sale_id: relatedOption?.id || '' }
+        : { related_entity_type: (relatedOption ? relatedType : '') as any, related_entity_id: relatedOption?.id || '' }
+      const payload = {
+        ...values,
+        ...relationPayload,
+        due_date: combineDueDate(values.due_date || '', dueTime),
+        ...(saleId ? { sale_id: saleId } : {}),
+      }
       const res = await createTask(orgSlug, payload as TaskInput)
       if (!res.ok) {
         toast.error(traduzirErro(res.error, 'Erro ao criar tarefa'))
@@ -119,6 +138,8 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         title: '', description: '', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
       })
       setDueTime('')
+      setRelatedType('contato')
+      setRelatedOption(null)
       setOpen(false)
       router.refresh()
     })
@@ -252,25 +273,29 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                 />
               )}
 
-              {/* Lead */}
-              <FormField
-                control={form.control}
-                name="contato_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vincular a Lead <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
-                    <FormControl>
-                      <LeadCombobox
-                        name="contato_id"
-                        orgSlug={orgSlug}
-                        defaultLead={defaultLead || null}
-                        onChange={(lead) => field.onChange(lead?.id || '')}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Relacionado a: tipo + registro específico, lado a lado */}
+              <div className="space-y-2">
+                <Label>Relacionado a <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={relatedType}
+                    onValueChange={v => { setRelatedType(v as RelatedTypeValue); setRelatedOption(null) }}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {typeOptions.map(o => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <RelatedEntityCombobox
+                    orgSlug={orgSlug}
+                    entityType={relatedType}
+                    defaultValue={relatedOption}
+                    onChange={setRelatedOption}
+                  />
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
