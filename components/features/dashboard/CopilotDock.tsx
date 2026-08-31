@@ -29,11 +29,28 @@ const SUGGESTED_PROMPTS = [
   'Resumo da semana',
 ]
 
+// Linkifica URLs completas e caminhos internos (ex.: /voucher-print/...) que
+// a IA devolve em texto puro — sem isso um link de voucher não é clicável.
+// Regex separada (não-global) só pra checar se um pedaço É um link — usar a
+// mesma instância global do split() no .test() causaria bug de lastIndex.
+const LINK_SPLIT_PATTERN = /(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)/g
+const LINK_TEST_PATTERN = /^(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)$/
+
 function renderMarkdownLite(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) =>
-    /^\*\*[^*]+\*\*$/.test(part) ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>,
-  )
+  const boldParts = text.split(/(\*\*[^*]+\*\*)/g)
+  return boldParts.map((part, i) => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i}>{part.slice(2, -2)}</strong>
+    const linkPieces = part.split(LINK_SPLIT_PATTERN)
+    return (
+      <span key={i}>
+        {linkPieces.map((piece, j) =>
+          LINK_TEST_PATTERN.test(piece)
+            ? <a key={j} href={piece} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{piece}</a>
+            : <span key={j}>{piece}</span>,
+        )}
+      </span>
+    )
+  })
 }
 
 function formatSessionDate(iso: string) {

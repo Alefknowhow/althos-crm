@@ -195,6 +195,7 @@ export async function sendInsightMessage(
         executeTool: async (name, input) => {
           const r = await executeAnalyticsTool(name, input, {
             orgId: org.id,
+            orgSlug,
             supabase: supabase as any,
           })
           richToolCalls.push({ name, input, result: r })

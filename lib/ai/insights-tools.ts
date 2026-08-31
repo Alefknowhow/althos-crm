@@ -19,6 +19,7 @@ import { isTravelNiche, isClinicNiche, isRealEstateNiche } from '@/lib/niche'
 
 export type AnalyticsContext = {
   orgId: string
+  orgSlug: string
   supabase: SupabaseClient
 }
 
@@ -205,6 +206,31 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'consultar_reserva_completa',
+    description:
+      'Vertical Viagens: dá um mergulho completo numa reserva específica — dados da venda (destino, datas, valor, operadora, localizadores), TODOS os produtos cadastrados na aba Produtos (voos, hospedagens, transfers, passeios, cruzeiros — com companhia/localizador/datas de cada um), vouchers com o link direto pra abrir, tarefas vinculadas, lista de viajantes com idade calculada, e os parentes cadastrados do cliente principal. Use SEMPRE que a pergunta for sobre UMA reserva/cliente específico: "qual voo/hotel/operadora está na reserva de X", "qual o voucher da reserva X", "quem viaja com X", "quantos anos tem [viajante]", "quais os parentes de X", ou quando o usuário citar um nome de cliente pedindo detalhes da viagem dele.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        busca: { type: 'string', description: 'Nome do cliente, número da reserva ou localizador (voo/hotel/pacote). Aceita nome parcial.' },
+        data: { type: 'string', description: 'Data aproximada da viagem (YYYY-MM-DD), útil quando não souber o nome exato ou houver homônimos.' },
+      },
+      required: ['busca'],
+    },
+  },
+  {
+    name: 'consultar_viagens_cliente',
+    description:
+      'Vertical Viagens: lista TODO o histórico de viagens/reservas de um cliente específico (todas as vendas vinculadas a ele, não só a mais recente). Use para "todas as viagens do cliente X", "histórico de viagens de X", "quantas vezes X já viajou com a gente".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        cliente: { type: 'string', description: 'Nome do cliente (aceita nome parcial).' },
+      },
+      required: ['cliente'],
+    },
+  },
+  {
     name: 'consultar_bloqueios',
     description:
       'Resumo dos bloqueios de assentos/vagas de viagem: quantidade, ocupação (vendidos vs. disponíveis) e prazos próximos de vencer. Use para "bloqueios", "vagas bloqueadas", "quanto ainda tenho de bloqueio", "ocupação dos bloqueios".',
@@ -300,7 +326,7 @@ export const ANALYTICS_TOOLS: Anthropic.Messages.Tool[] = [
  * negócio, tanto na lista enviada ao modelo (menos ruído, roteamento mais
  * preciso) quanto no prompt (ver insights-prompt.ts). ------- */
 
-const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios'])
+const TRAVEL_TOOL_NAMES = new Set(['consultar_cotacoes', 'consultar_reservas', 'consultar_embarques', 'consultar_ofertas', 'consultar_bloqueios', 'consultar_reserva_completa', 'consultar_viagens_cliente'])
 const CLINIC_TOOL_NAMES = new Set(['consultar_atendimentos_clinicos', 'consultar_comissoes_clinicas', 'consultar_procedimentos', 'consultar_tratamentos', 'consultar_estoque'])
 const REAL_ESTATE_TOOL_NAMES = new Set(['consultar_imoveis', 'consultar_visitas', 'consultar_negociacoes'])
 const ALL_NICHE_TOOL_NAMES = new Set(Array.from(TRAVEL_TOOL_NAMES).concat(Array.from(CLINIC_TOOL_NAMES), Array.from(REAL_ESTATE_TOOL_NAMES)))
@@ -361,6 +387,10 @@ export async function executeAnalyticsTool(
         return await queryReservations(input, ctx)
       case 'consultar_embarques':
         return await queryDepartures(input, ctx)
+      case 'consultar_reserva_completa':
+        return await queryFullReservation(input, ctx)
+      case 'consultar_viagens_cliente':
+        return await queryClientTravelHistory(input, ctx)
       case 'consultar_bloqueios':
         return await queryBlocks(input, ctx)
       case 'consultar_clientes_inativos':
@@ -1152,6 +1182,188 @@ async function queryDepartures(
         fmtDate(r.departure_date),
         fmtDate(r.return_date),
         r.total_cents ? fmtCurrency(r.total_cents) : '—',
+      ]),
+    },
+  }
+}
+
+function calcAge(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null
+  const b = new Date(birthDate)
+  if (Number.isNaN(b.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - b.getFullYear()
+  const m = now.getMonth() - b.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--
+  return age
+}
+
+const PRODUCT_KIND_LABEL: Record<string, string> = {
+  aereo: 'Aéreo', hospedagem: 'Hospedagem', transfer: 'Transfer', passeio: 'Passeio',
+  cruzeiro: 'Cruzeiro', seguro: 'Seguro', ingresso: 'Ingresso', veiculo: 'Veículo', outro: 'Outro',
+}
+
+/** Resume o jsonb solto de um sale_product num texto legível — os campos
+ *  variam por `kind` (ver actions/sale-products.ts), então tenta os campos
+ *  mais comuns primeiro e cai pra um dump genérico se não reconhecer. */
+function formatProductData(kind: string, data: Record<string, any>): string {
+  const d = data || {}
+  if (kind === 'aereo') {
+    return [d.companhia, d.numero_voo && `voo ${d.numero_voo}`, d.origem && d.destino ? `${d.origem} → ${d.destino}` : null, d.data, d.horario, d.localizador && `localizador ${d.localizador}`].filter(Boolean).join(', ') || '—'
+  }
+  if (kind === 'hospedagem') {
+    return [d.hotel, d.check_in && d.check_out ? `${d.check_in} a ${d.check_out}` : null, d.tipo_quarto, d.localizador && `localizador ${d.localizador}`].filter(Boolean).join(', ') || '—'
+  }
+  if (kind === 'transfer') {
+    return [d.fornecedor, d.origem && d.destino ? `${d.origem} → ${d.destino}` : null, d.data, d.horario].filter(Boolean).join(', ') || '—'
+  }
+  if (kind === 'cruzeiro') {
+    return [d.companhia, d.navio, d.roteiro, d.embarque_data].filter(Boolean).join(', ') || '—'
+  }
+  const generic = Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
+  return generic || '—'
+}
+
+/**
+ * Mergulho completo numa reserva: dados da venda + produtos (aba Produtos) +
+ * vouchers (com link direto) + tarefas vinculadas + viajantes (com idade) +
+ * parentes do cliente principal — tudo que hoje só dava pra ver abrindo a
+ * reserva manualmente no CRM, aba por aba.
+ */
+async function queryFullReservation(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const busca = String(input.busca || '').trim()
+  if (!busca) return { summary: 'Informe o nome do cliente, número da reserva ou localizador pra buscar.', view: { type: 'none' } }
+
+  let q = ctx.supabase
+    .from('travel_sales')
+    .select('id, sale_number, contato_id, client_name, destination, departure_date, return_date, total_cents, status, operator, package_locator, air_locator, hotel_locator, travelers, vouchers, notes')
+    .eq('organization_id', ctx.orgId)
+    .or(`client_name.ilike.%${busca}%,sale_number.ilike.%${busca}%,package_locator.ilike.%${busca}%,air_locator.ilike.%${busca}%,hotel_locator.ilike.%${busca}%`)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  if (input.data) {
+    q = ctx.supabase
+      .from('travel_sales')
+      .select('id, sale_number, contato_id, client_name, destination, departure_date, return_date, total_cents, status, operator, package_locator, air_locator, hotel_locator, travelers, vouchers, notes')
+      .eq('organization_id', ctx.orgId)
+      .or(`client_name.ilike.%${busca}%,sale_number.ilike.%${busca}%`)
+      .eq('departure_date', input.data)
+      .order('created_at', { ascending: false })
+      .limit(5)
+  }
+
+  const { data: matches } = await q
+  if (!matches || matches.length === 0) {
+    return { summary: `Nenhuma reserva encontrada para "${busca}"${input.data ? ` na data ${input.data}` : ''}.`, view: { type: 'none' } }
+  }
+
+  const sale = matches[0] as any
+  const otherMatches = matches.slice(1)
+
+  const [{ data: products }, { data: tasks }, { data: contato }] = await Promise.all([
+    ctx.supabase.from('sale_products').select('kind, status, data').eq('sale_id', sale.id).order('sort_order'),
+    ctx.supabase.from('tasks').select('title, status, due_date').eq('sale_id', sale.id),
+    sale.contato_id
+      ? ctx.supabase.from('contatos').select('name, phone, email').eq('id', sale.contato_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const relationships = sale.contato_id
+    ? (await ctx.supabase.from('contato_relationships').select('kind, note, related_contato_id, related_name, related_cpf, related_birth_date').eq('contato_id', sale.contato_id)).data
+    : null
+
+  const voucherLink = `/voucher-print/${ctx.orgSlug}/${sale.id}`
+  const uploadedVouchers = (sale.vouchers as any[]) || []
+  const travelers = (sale.travelers as any[]) || []
+
+  const parts: string[] = []
+  parts.push(`Reserva ${sale.sale_number || sale.id.slice(0, 8)} — ${sale.client_name || contato?.name || 'sem cliente'}, destino ${sale.destination || '—'}, ${sale.departure_date ? new Date(`${sale.departure_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'} a ${sale.return_date ? new Date(`${sale.return_date}T00:00:00`).toLocaleDateString('pt-BR') : '—'}, valor ${fmtCurrency(sale.total_cents || 0)}, status ${sale.status}. Operadora: ${sale.operator || '—'}. Localizadores — pacote: ${sale.package_locator || '—'}, aéreo: ${sale.air_locator || '—'}, hotel: ${sale.hotel_locator || '—'}.`)
+
+  if (products && products.length > 0) {
+    parts.push(`Produtos cadastrados: ${products.map((p: any) => `${PRODUCT_KIND_LABEL[p.kind] || p.kind} (${formatProductData(p.kind, p.data)})`).join('; ')}.`)
+  } else {
+    parts.push('Nenhum produto cadastrado na aba Produtos dessa reserva.')
+  }
+
+  parts.push(`Voucher do sistema (documento oficial pra visualizar/imprimir): ${voucherLink}`)
+  if (uploadedVouchers.length > 0) {
+    parts.push(`Arquivos de voucher anexados: ${uploadedVouchers.map(v => `${v.name || 'arquivo'} — ${v.url}`).join('; ')}.`)
+  }
+
+  if (travelers.length > 0) {
+    parts.push(`Viajantes: ${travelers.map(t => `${t.name || 'sem nome'}${t.birth_date ? ` (${calcAge(t.birth_date)} anos)` : ''}`).join(', ')}.`)
+  } else {
+    parts.push('Nenhum viajante cadastrado além do cliente principal.')
+  }
+
+  if (relationships && relationships.length > 0) {
+    parts.push(`Parentes cadastrados de ${sale.client_name || contato?.name}: ${relationships.map((r: any) => `${r.related_name || '—'} (${r.kind})`).join(', ')}.`)
+  }
+
+  if (tasks && tasks.length > 0) {
+    parts.push(`Tarefas vinculadas: ${tasks.map((t: any) => `${t.title} [${t.status}]${t.due_date ? ` até ${new Date(t.due_date).toLocaleDateString('pt-BR')}` : ''}`).join('; ')}.`)
+  }
+
+  if (otherMatches.length > 0) {
+    parts.push(`Encontrei outras ${otherMatches.length} reserva(s) parecida(s) pra "${busca}" — se não era essa, me diga o número da reserva ou a data pra eu buscar a certa.`)
+  }
+
+  return {
+    summary: parts.join(' '),
+    view: {
+      type: 'table',
+      columns: ['Tipo', 'Detalhe'],
+      rows: (products || []).map((p: any) => [PRODUCT_KIND_LABEL[p.kind] || p.kind, formatProductData(p.kind, p.data)]),
+    },
+  }
+}
+
+/** Histórico completo de viagens de um cliente — todas as travel_sales
+ *  vinculadas ao contato, não só a mais recente (isso é o que
+ *  consultar_reservas/consultar_clientes_inativos não cobrem). */
+async function queryClientTravelHistory(input: Record<string, any>, ctx: AnalyticsContext): Promise<AnalyticsResult> {
+  const cliente = String(input.cliente || '').trim()
+  if (!cliente) return { summary: 'Informe o nome do cliente.', view: { type: 'none' } }
+
+  const { data: contatos } = await ctx.supabase
+    .from('contatos')
+    .select('id, name')
+    .eq('organization_id', ctx.orgId)
+    .ilike('name', `%${cliente}%`)
+    .limit(5)
+
+  if (!contatos || contatos.length === 0) {
+    return { summary: `Nenhum cliente encontrado com o nome "${cliente}".`, view: { type: 'none' } }
+  }
+
+  const contatoIds = contatos.map(c => c.id)
+  const { data: sales } = await ctx.supabase
+    .from('travel_sales')
+    .select('sale_number, client_name, destination, departure_date, return_date, total_cents, status, contato_id')
+    .eq('organization_id', ctx.orgId)
+    .in('contato_id', contatoIds)
+    .order('departure_date', { ascending: false })
+
+  const rows = (sales as any[]) || []
+  if (rows.length === 0) {
+    return { summary: `Nenhuma viagem/reserva encontrada pra "${cliente}".`, view: { type: 'none' } }
+  }
+
+  const totalValue = rows.reduce((a, r) => a + (r.total_cents || 0), 0)
+  const name = contatos[0].name
+
+  return {
+    summary: `${rows.length} viagem(ns) encontrada(s) pra ${name}${contatos.length > 1 ? ` (e ${contatos.length - 1} outro(s) contato(s) com nome parecido)` : ''}, somando ${fmtCurrency(totalValue)}.`,
+    view: {
+      type: 'table',
+      columns: ['Destino', 'Ida', 'Volta', 'Valor', 'Status'],
+      rows: rows.map(r => [
+        r.destination || '—',
+        r.departure_date ? new Date(`${r.departure_date}T00:00:00`).toLocaleDateString('pt-BR') : '—',
+        r.return_date ? new Date(`${r.return_date}T00:00:00`).toLocaleDateString('pt-BR') : '—',
+        fmtCurrency(r.total_cents || 0),
+        r.status || '—',
       ]),
     },
   }

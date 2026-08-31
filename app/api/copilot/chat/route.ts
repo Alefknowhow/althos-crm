@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
             messages: history,
             tools,
             executeTool: async (name, input) => {
-              const r = await executeAnalyticsTool(name, input, { orgId: org.id, supabase: supabase as any })
+              const r = await executeAnalyticsTool(name, input, { orgId: org.id, orgSlug, supabase: supabase as any })
               richToolCalls.push({ name, input, result: r })
               return JSON.stringify(r)
             },
