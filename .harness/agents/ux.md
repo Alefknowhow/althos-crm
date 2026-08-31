@@ -20,6 +20,10 @@ Responsável por consistência com o Design System, responsividade, acessibilida
 - Não introduzir uma paleta de cor nova sem necessidade — reaproveitar as variáveis de tema existentes.
 - `overflow-x` em qualquer container de conteúdo dinâmico (mensagem de chat, texto de usuário) precisa de `break-words`/`min-w-0` — causa raiz real e recorrente de scroll horizontal indesejado neste repo.
 - Modais/dialogs de detalhe com grade de dados (2 colunas) precisam de largura suficiente (`max-w-lg` já se mostrou estreito demais para esse padrão em telas reais do produto) e devem colapsar pra 1 coluna em mobile.
+- **Painel superior fixo (sticky) colado na header, sem margem visível**: `<main>` no layout (`app/app/[orgSlug]/layout.tsx`) tem `pt-3` — um elemento `sticky top-0` dentro dele SEMPRE nasce com esse respiro acima. Pra ficar 100% colado (0 margem visível entre a header global e o painel), são necessárias as DUAS correções juntas, não uma ou outra:
+  1. Cancelar o `pt-3` do `<main>` com `style={{ marginTop: '-0.75rem' }}` no próprio elemento sticky (a classe Tailwind `-mt-3` também funciona, mas o inline style elimina qualquer dúvida de geração de classe).
+  2. **Remover qualquer `pt-*` do PRÓPRIO elemento sticky** — esse foi o erro real da primeira tentativa (`components/features/marketing/MarketingOverview.tsx`): a margem negativa cancelou certinho o `pt-3` do `<main>`, mas o painel também tinha `pt-3` como padding interno, recriando os mesmos 12px de espaço antes do conteúdo. Os dois pontos (margem do container pai E padding do próprio elemento) precisam ser conferidos — corrigir só um não resolve e parece um bug "fantasma" que não responde a ajuste de margem.
+  Bleed horizontal usa o padrão já existente `-mx-3 sm:-mx-5 px-3 sm:px-5` (cancela o padding lateral do `<main>`, mesmo raciocínio).
 
 ## Questions/Checks
 - Esse texto pode ser arbitrariamente longo (nome de contato, URL, mensagem)? Ele quebra corretamente ou estoura o container?
