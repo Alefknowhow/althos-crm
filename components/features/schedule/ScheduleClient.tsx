@@ -78,7 +78,11 @@ export default function ScheduleClient({
   const [loadingTasks, startTasks] = useTransition()
   // Zoom (Ctrl+scroll): quantos meses cabem na janela visível — menos meses
   // = colunas de dia mais largas (zoom in), mais meses = mais estreitas.
-  const [monthsSpan, setMonthsSpan] = useState(3)
+  // Padrão ao abrir a tela: 1 mês (28-31 colunas de dia, ~30) em vez dos
+  // 3 meses anteriores — a janela é sempre alinhada a mês inteiro (ver
+  // months/dayNumbers abaixo), por isso não dá pra travar em exatos 30 dias
+  // sem também reformular os cabeçalhos de mês pra janelas parciais.
+  const [monthsSpan, setMonthsSpan] = useState(1)
   const ganttRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
