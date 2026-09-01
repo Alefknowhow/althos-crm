@@ -918,9 +918,10 @@ function DetailPanel({
 
         {/* ── Atividades ──────────────────────────────────────────── */}
         <TabsContent value="atividades" className="space-y-5 pt-4">
-          {/* Tarefas / E-mails / WhatsApp lado a lado — cada bloco é uma
-              frente de trabalho independente; Timeline abaixo cruza as 3. */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          {/* 2x2: Tarefas/E-mails em cima, WhatsApp/Timeline embaixo. As duas
+              listas (Tarefas, E-mails) ficam limitadas a ~10 itens visíveis,
+              com scroll vertical próprio a partir daí. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <div className="border rounded-lg p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tarefas</p>
@@ -928,13 +929,15 @@ function DetailPanel({
                   <Plus className="w-3.5 h-3.5 mr-1" /> Nova tarefa
                 </Button>
               </div>
-              <div className="space-y-3">
-                {selected.tasks.length > 0 ? selected.tasks.map((task: any) => (
-                  <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
-                )) : (
-                  <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma tarefa vinculada.</p>
-                )}
-              </div>
+              {selected.tasks.length > 0 ? (
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                  {selected.tasks.map((task: any) => (
+                    <TaskCard key={task.id} task={task} orgSlug={orgSlug} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma tarefa vinculada.</p>
+              )}
             </div>
 
             <div className="border rounded-lg p-3 space-y-3">
@@ -958,7 +961,7 @@ function DetailPanel({
                 )}
               </div>
               {selected.emailSends.length > 0 ? (
-                <div className="space-y-2 border rounded-lg divide-y">
+                <div className="max-h-[420px] overflow-y-auto border rounded-lg divide-y">
                   {selected.emailSends.map((es: any) => (
                     <div key={es.id} className="flex justify-between items-center px-3 py-2.5">
                       <div>
@@ -991,17 +994,17 @@ function DetailPanel({
                 <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Sem conversa vinculada.</p>
               )}
             </div>
-          </div>
 
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Timeline</p>
-            {selected.activities.length > 0 ? (
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
-            )}
+            <div className="border rounded-lg p-3 space-y-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Timeline</p>
+              {selected.activities.length > 0 ? (
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                  {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
+              )}
+            </div>
           </div>
         </TabsContent>
 

@@ -129,6 +129,7 @@ type Profile = {
   address_notes: string | null
   email?: string | null
   phone?: string | null
+  created_at?: string | null
 } | null
 
 function maskCpf(v: string): string {
@@ -648,6 +649,14 @@ export default function CustomerProfileForm({
             placeholder="Preferências, restrições, contexto pra futuro contato..."
           />
         </div>
+
+        {/* Data de registro — automática, somente leitura. Não é um campo do
+            form (não faz parte de `form`/`save`), só exibe initial.created_at. */}
+        {initial?.created_at && (
+          <div className="text-[11px] text-muted-foreground text-right">
+            Cliente registrado em {new Date(initial.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
 
         <div className="flex justify-end pt-2 border-t">
           <Button onClick={save} disabled={saving}>

@@ -1313,22 +1313,28 @@ function TaskListRow({
             title={task.title}
             className="flex-1 min-w-0 text-left space-y-0.5"
           >
-            {/* Linha 1: título (esq.) | responsável + data/hora (dir., nunca quebra). */}
-            <div className="flex items-center gap-2">
+            {/* Linha 1: título (esq.) | responsável (largura fixa) + data/hora (dir.).
+                Grid com coluna 2 de largura fixa (180px) — o responsável
+                sempre começa no mesmo x, com espaço reservado pra data/hora
+                não empurrar nada. Linha 2 usa o mesmo template, então o
+                vínculo cai exatamente na mesma posição. */}
+            <div className="grid grid-cols-[1fr_180px] gap-x-2 items-center">
               <span className={cn(
-                'text-sm font-bold truncate flex-1 min-w-0',
+                'text-sm font-bold truncate min-w-0',
                 done ? 'line-through text-muted-foreground' : 'text-foreground',
               )}>
                 {task.title}
               </span>
-              <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                {member && (
-                  <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-pill leading-none', memberLabelColor(member.user_id))}>
-                    {member.name}
-                  </span>
-                )}
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-20 shrink-0">
+                  {member && (
+                    <span className={cn('inline-block max-w-full truncate text-[10px] font-medium px-1.5 py-0.5 rounded-pill leading-none', memberLabelColor(member.user_id))}>
+                      {member.name}
+                    </span>
+                  )}
+                </span>
                 <span className={cn(
-                  'text-xs',
+                  'text-xs shrink-0',
                   date ? (overdue && !done ? 'text-destructive font-medium' : 'text-muted-foreground/80') : 'text-muted-foreground/40',
                 )}>
                   {date ? `${date}${time ? ` · ${time}` : ''}` : 'Sem data'}
@@ -1338,15 +1344,13 @@ function TaskListRow({
 
             {/* Linha 2: descrição (esq.) | vínculo da tarefa (dir.). */}
             {(task.description || task.related) && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+              <div className="grid grid-cols-[1fr_180px] gap-x-2 items-center">
+                <span className="text-xs text-muted-foreground truncate min-w-0">
                   {task.description || ''}
                 </span>
-                {task.related && (
-                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                    {relatedTypeLabel}: {task.related.label}
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground truncate whitespace-nowrap">
+                  {task.related ? `${relatedTypeLabel}: ${task.related.label}` : ''}
+                </span>
               </div>
             )}
           </button>
