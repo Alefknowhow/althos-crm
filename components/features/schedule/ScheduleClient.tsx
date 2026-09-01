@@ -35,7 +35,13 @@ function fmtDate(s?: string | null) {
 }
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
+function addDays(d: Date, n: number) { return new Date(d.getTime() + n * DAY) }
 function firstOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
+// Coluna em que "hoje" deve ficar posicionado sempre que o módulo é aberto
+// (não no início/borda da janela) — a navegação avança/retrocede o mesmo
+// número de colunas (dias) por clique.
+const TODAY_COLUMN = 4
+const NAV_STEP_DAYS = 30
 
 type TripState = 'upcoming' | 'ongoing' | 'past'
 function tripState(t: ScheduledTrip, today: Date): TripState {
@@ -72,7 +78,9 @@ export default function ScheduleClient({
   const today = useMemo(() => startOfDay(new Date()), [])
   const [filter, setFilter] = useState<'all' | TripState>('all')
   const [owner, setOwner] = useState<string>('all')
-  const [monthOffset, setMonthOffset] = useState(0)
+  // Deslocamento em dias a partir da posição padrão (hoje na coluna
+  // TODAY_COLUMN) — navegação avança/retrocede NAV_STEP_DAYS colunas por vez.
+  const [dayOffset, setDayOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
@@ -107,22 +115,35 @@ export default function ScheduleClient({
     return out
   }, [trips, filter, owner, today])
 
-  // Janela do gantt: monthsSpan meses a partir do mês atual (+ offset)
-  const windowStart = useMemo(() => firstOfMonth(addMonths(today, monthOffset)), [today, monthOffset])
-  const windowEnd = useMemo(() => addMonths(windowStart, monthsSpan), [windowStart, monthsSpan])
-  const totalDays = Math.max(1, Math.round((windowEnd.getTime() - windowStart.getTime()) / DAY))
+  // Janela do gantt: ~monthsSpan meses (30 dias cada) a partir de uma
+  // posição fixa em dias antes de hoje (TODAY_COLUMN), deslocada por
+  // dayOffset (navegação em blocos de NAV_STEP_DAYS colunas).
+  const totalDays = Math.max(1, monthsSpan * 30)
+  const windowStart = useMemo(
+    () => addDays(startOfDay(today), dayOffset - TODAY_COLUMN),
+    [today, dayOffset],
+  )
+  const windowEnd = useMemo(() => addDays(windowStart, totalDays), [windowStart, totalDays])
 
+  // Janela não é mais alinhada ao início do mês, então o cabeçalho de meses
+  // precisa fatiar por mês-calendário sobreposto à janela, em vez de assumir
+  // meses inteiros a partir de windowStart.
   const months = useMemo(() => {
     const out: { label: string; leftPct: number; widthPct: number }[] = []
-    for (let i = 0; i < monthsSpan; i++) {
-      const mStart = addMonths(windowStart, i)
+    let cursor = firstOfMonth(windowStart)
+    let guard = 0
+    while (cursor.getTime() < windowEnd.getTime() && guard++ < 24) {
+      const mStart = cursor
       const mEnd = addMonths(mStart, 1)
-      const left = (mStart.getTime() - windowStart.getTime()) / DAY / totalDays * 100
-      const width = (mEnd.getTime() - mStart.getTime()) / DAY / totalDays * 100
+      const segStart = Math.max(mStart.getTime(), windowStart.getTime())
+      const segEnd = Math.min(mEnd.getTime(), windowEnd.getTime())
+      const left = (segStart - windowStart.getTime()) / DAY / totalDays * 100
+      const width = (segEnd - segStart) / DAY / totalDays * 100
       out.push({ label: `${MONTHS_PT[mStart.getMonth()]} ${mStart.getFullYear()}`, leftPct: left, widthPct: width })
+      cursor = mEnd
     }
     return out
-  }, [windowStart, totalDays])
+  }, [windowStart, windowEnd, totalDays])
 
   const todayPct = useMemo(() => {
     const p = (today.getTime() - windowStart.getTime()) / DAY / totalDays * 100
@@ -251,17 +272,17 @@ export default function ScheduleClient({
           <div ref={ganttRef} className="rounded-none border bg-card overflow-hidden">
             {/* nav header */}
             <div className="flex items-center justify-between gap-2 p-3 border-b">
-              <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o - 1)}>
+              <Button variant="outline" size="sm" onClick={() => setDayOffset(o => o - NAV_STEP_DAYS)}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-sm font-medium">
                 {months[0]?.label} — {months[months.length - 1]?.label}
               </span>
               <div className="flex items-center gap-2">
-                {monthOffset !== 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setMonthOffset(0)}>Hoje</Button>
+                {dayOffset !== 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setDayOffset(0)}>Hoje</Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o + 1)}>
+                <Button variant="outline" size="sm" onClick={() => setDayOffset(o => o + NAV_STEP_DAYS)}>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
