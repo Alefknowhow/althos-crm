@@ -617,9 +617,17 @@ function DetailPanel({
     router.push(`/app/${orgSlug}/conversas?id=${res.conversationId}`)
   }
 
+  // Nicho viagens: "Total comprado" soma as reservas (travel_sales), não a
+  // tabela genérica `sales` (que fica sempre vazia nesse nicho — Compras já
+  // usa a mesma fonte, ver aba Compras acima).
   const completedSales = selected.sales.filter(s => s.status === 'completed')
-  const totalPurchased = completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
-  const lastPurchase = completedSales[0]?.sale_date || null
+  const travelReservasValid = (selected.travelReservas || []).filter((r: any) => r.status !== 'cancelled')
+  const totalPurchased = isTravel
+    ? travelReservasValid.reduce((a: number, r: any) => a + (r.total_cents || 0), 0)
+    : completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
+  const lastPurchase = isTravel
+    ? (travelReservasValid[0]?.created_at || null)
+    : (completedSales[0]?.sale_date || null)
 
   useEffect(() => {
     let active = true
