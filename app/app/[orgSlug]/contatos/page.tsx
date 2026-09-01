@@ -153,12 +153,13 @@ export default async function ContatosPage({
   // Selected contato (right panel) — fetched server-side so the embedded
   // edit forms' router.refresh() keeps the panel in sync.
   const selId = searchParams.sel || ''
+  const travel = isTravelNiche(org.niche)
   let selected: any = null
   if (selId) {
     const [
       { data: contato }, { data: documents }, { data: sales }, relationships, interests, visits,
       contactPoints, { data: activities }, { data: tasks }, { data: emailSends }, { data: templates },
-      { data: whatsappConv },
+      { data: whatsappConv }, { data: travelReservas }, { data: travelCotacoes },
     ] =
       await Promise.all([
         supabase
@@ -205,6 +206,26 @@ export default async function ContatosPage({
           .eq('organization_id', org.id)
           .order('name', { ascending: true }),
         supabase.from('whatsapp_conversations').select('*').eq('contato_id', selId).maybeSingle(),
+        // Compras (nicho viagens) = reservas (travel_sales), não a tabela
+        // genérica `sales` (que é de outros nichos).
+        travel
+          ? supabase
+              .from('travel_sales')
+              .select('id, client_name, destination, departure_date, return_date, total_cents, status, package_locator, sale_number, created_at')
+              .eq('contato_id', selId)
+              .eq('organization_id', org.id)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
+        // Negociações (nicho viagens) = cotações (travel_proposals) ligadas
+        // ao lead, não o histórico genérico de `negocios`.
+        travel
+          ? supabase
+              .from('travel_proposals')
+              .select('id, title, status, start_date, end_date, total_cents, created_at')
+              .eq('contato_id', selId)
+              .eq('organization_id', org.id)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
       ])
     if (contato) {
       const [resolvedContato] = await resolveContatoAvatars(params.orgSlug, [contato as any])
@@ -222,6 +243,8 @@ export default async function ContatosPage({
         emailSends: emailSends || [],
         templates: templates || [],
         whatsappConv: whatsappConv || null,
+        travelReservas: travelReservas || [],
+        travelCotacoes: travelCotacoes || [],
       }
     }
   }

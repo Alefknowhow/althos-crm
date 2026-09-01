@@ -19,6 +19,9 @@ import {
 } from 'lucide-react'
 
 const DAY = 86400000
+// Largura mínima de cada coluna de dia, em px — abaixo disso a área rola
+// horizontalmente em vez de espremer os dias até ficarem ilegíveis.
+const DAY_PX = 22
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
 function parseDate(s?: string | null): Date | null {
@@ -260,53 +263,58 @@ export default function ScheduleClient({
               </div>
             </div>
 
-            {/* month columns header */}
-            <div className="relative h-7 border-b bg-muted/30">
-              {months.map((m, i) => (
-                <div key={i}
-                  className="absolute top-0 h-full flex items-center justify-center text-[11px] font-medium text-muted-foreground border-l first:border-l-0"
-                  style={{ left: `${m.leftPct}%`, width: `${m.widthPct}%` }}>
-                  {m.label}
+            {/* colunas ganham uma largura mínima em px — se isso passar da
+                largura do painel, a área inteira (cabeçalhos + linhas) rola
+                horizontalmente junto, em vez de espremer os dias. */}
+            <div className="overflow-x-auto">
+              <div style={{ width: `max(100%, ${totalDays * DAY_PX}px)` }}>
+                {/* month columns header */}
+                <div className="relative h-7 border-b bg-muted/30">
+                  {months.map((m, i) => (
+                    <div key={i}
+                      className="absolute top-0 h-full flex items-center justify-center text-[11px] font-medium text-muted-foreground border-l first:border-l-0"
+                      style={{ left: `${m.leftPct}%`, width: `${m.widthPct}%` }}>
+                      {m.label}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* dia do mês — linha bem discreta, fundo diferenciado pra
-                separar visualmente do resto da grade */}
-            <div className="relative h-4 border-b bg-muted/60">
-              {dayNumbers.map((d, i) => (
-                <div key={i}
-                  className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70"
-                  style={{ left: `${d.leftPct}%`, width: `${dayWidthPct}%` }}>
-                  {d.day}
+                {/* dia do mês — linha bem discreta, fundo diferenciado pra
+                    separar visualmente do resto da grade */}
+                <div className="relative h-4 border-b bg-muted/60">
+                  {dayNumbers.map((d, i) => (
+                    <div key={i}
+                      className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70"
+                      style={{ left: `${d.leftPct}%`, width: `${dayWidthPct}%` }}>
+                      {d.day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* rows — altura mínima padrão, preenche até o fim da tela;
-                além disso rola verticalmente em vez de esticar a página.
-                Linhas de grade horizontais a cada 48px (altura de uma linha
-                de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
-            <div
-              className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto"
-              style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
-            >
-              {/* linhas verticais marcando cada dia */}
-              {dayLines.map((pct, i) => (
-                <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
-              ))}
-              {/* coluna do dia de hoje, pintada */}
-              {todayPct !== null && (
-                <div className="absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30 z-10 pointer-events-none"
-                  style={{ left: `${todayPct}%`, width: `${dayWidthPct}%` }}>
-                  <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-medium text-primary bg-card px-1 whitespace-nowrap">Hoje</span>
-                </div>
-              )}
-              {ganttTrips.length === 0 ? (
-                <div className="p-8 text-center text-sm text-muted-foreground">
-                  Nenhuma viagem nesse período. Use as setas para navegar.
-                </div>
-              ) : ganttTrips.map(({ trip, left, width, state }) => {
+                {/* rows — altura mínima padrão, preenche até o fim da tela;
+                    além disso rola verticalmente em vez de esticar a página.
+                    Linhas de grade horizontais a cada 48px (altura de uma linha
+                    de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
+                <div
+                  className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto"
+                  style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
+                >
+                  {/* linhas verticais marcando cada dia */}
+                  {dayLines.map((pct, i) => (
+                    <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
+                  ))}
+                  {/* coluna do dia de hoje, pintada */}
+                  {todayPct !== null && (
+                    <div className="absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30 z-10 pointer-events-none"
+                      style={{ left: `${todayPct}%`, width: `${dayWidthPct}%` }}>
+                      <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-medium text-primary bg-card px-1 whitespace-nowrap">Hoje</span>
+                    </div>
+                  )}
+                  {ganttTrips.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      Nenhuma viagem nesse período. Use as setas para navegar.
+                    </div>
+                  ) : ganttTrips.map(({ trip, left, width, state }) => {
                 const meta = STATE_META[state]
                 return (
                   <div key={trip.id} className={cn('relative h-12 border-b last:border-b-0', meta.row)}>
@@ -328,6 +336,8 @@ export default function ScheduleClient({
                   </div>
                 )
               })}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -352,6 +362,7 @@ export default function ScheduleClient({
               const dep = parseDate(t.departure_date)
               const wa = whatsappLink(t.lead_phone)
               const locator = t.package_locator || t.air_locator
+              const seller = members.find(m => m.user_id === t.created_by)?.name
 
               return (
                 <div key={t.id} className="p-3 hover:bg-muted/40 transition-colors space-y-1.5">
@@ -375,11 +386,39 @@ export default function ScheduleClient({
                           <span className="font-medium truncate">{t.client_name || t.lead_name || 'Viagem'}</span>
                           <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{meta.label}</Badge>
                         </div>
-                        {t.destination && (
-                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{t.destination}</span>
-                          </div>
-                        )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {t.destination && (
+                            <span className="inline-flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{t.destination}</span>
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 shrink-0">
+                            <CalendarDays className="w-3 h-3" /> {fmtDate(t.departure_date)} – {fmtDate(t.return_date)}
+                          </span>
+                          {seller && (
+                            <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
+                              <UserRound className="w-3 h-3 shrink-0" /> <span className="truncate">{seller}</span>
+                            </span>
+                          )}
+                          {t.hotel_name && (
+                            <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
+                              <Hotel className="w-3 h-3 shrink-0" /> {t.hotel_name}
+                            </span>
+                          )}
+                          {(t.airline || t.operator) && (
+                            <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
+                              <Plane className="w-3 h-3 shrink-0" /> {t.airline || t.operator}
+                            </span>
+                          )}
+                          {locator && (
+                            <span className="inline-flex items-center gap-1 shrink-0">
+                              <Ticket className="w-3 h-3" /> {locator}
+                            </span>
+                          )}
+                          <span className="font-medium text-foreground/80 shrink-0">
+                            {formatCurrency(t.total_cents || 0)}
+                          </span>
+                        </div>
                       </div>
                     </button>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -403,30 +442,6 @@ export default function ScheduleClient({
                         <ArrowUpRight className="w-4 h-4" />
                       </Link>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-14 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="w-3 h-3" /> {fmtDate(t.departure_date)} – {fmtDate(t.return_date)}
-                    </span>
-                    {t.hotel_name && (
-                      <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
-                        <Hotel className="w-3 h-3" /> {t.hotel_name}
-                      </span>
-                    )}
-                    {(t.airline || t.operator) && (
-                      <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
-                        <Plane className="w-3 h-3" /> {t.airline || t.operator}
-                      </span>
-                    )}
-                    {locator && (
-                      <span className="inline-flex items-center gap-1">
-                        <Ticket className="w-3 h-3" /> {locator}
-                      </span>
-                    )}
-                    <span className="font-medium text-foreground/80">
-                      {formatCurrency(t.total_cents || 0)}
-                    </span>
                   </div>
                 </div>
               )

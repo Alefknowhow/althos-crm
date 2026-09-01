@@ -47,7 +47,7 @@ import {
   MapPin, Calendar, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
   ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
   Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
-  Package, ListTodo, FolderOpen,
+  Package, ListTodo, FolderOpen, Building2, Ticket, Clock,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
@@ -414,9 +414,16 @@ export default function TravelSalesView({
                   active ? 'bg-primary/5' : 'hover:bg-muted/50',
                 )}
               >
-                <span className="font-medium text-[15px] leading-tight truncate block">
-                  {s.client_name || 'Cliente'}
-                </span>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-[15px] leading-tight truncate">
+                    {s.client_name || 'Cliente'}
+                  </span>
+                  {s.created_at && (
+                    <span className="shrink-0 text-[10px] text-muted-foreground/70 whitespace-nowrap">
+                      {new Date(s.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  )}
+                </div>
                 {(s.destination || s.departure_date || s.return_date) && (
                   <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                     {s.destination && (
@@ -435,12 +442,22 @@ export default function TravelSalesView({
                   </div>
                 )}
                 {(s.operator || s.package_locator || seller) && (
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
-                    {s.operator && <span className="truncate"><span className="opacity-70">Oper:</span> {s.operator}</span>}
-                    {s.operator && s.package_locator && <span className="opacity-50">|</span>}
-                    {s.package_locator && <span className="font-mono truncate"><span className="opacity-70 font-sans">Loc:</span> {s.package_locator}</span>}
-                    {(s.operator || s.package_locator) && seller && <span className="opacity-50">|</span>}
-                    {seller && <span className="truncate"><span className="opacity-70">Res:</span> {seller}</span>}
+                  <div className="mt-1 flex items-center gap-2.5 text-[11px] text-muted-foreground">
+                    {s.operator && (
+                      <span className="flex items-center gap-1 min-w-0 truncate" title={`Operadora: ${s.operator}`}>
+                        <Building2 className="w-3 h-3 shrink-0 opacity-70" /> <span className="truncate">{s.operator}</span>
+                      </span>
+                    )}
+                    {s.package_locator && (
+                      <span className="flex items-center gap-1 min-w-0 truncate font-mono" title={`Localizador: ${s.package_locator}`}>
+                        <Ticket className="w-3 h-3 shrink-0 opacity-70 font-sans" /> <span className="truncate">{s.package_locator}</span>
+                      </span>
+                    )}
+                    {seller && (
+                      <span className="flex items-center gap-1 min-w-0 truncate" title={`Responsável: ${seller}`}>
+                        <UserCircle2 className="w-3 h-3 shrink-0 opacity-70" /> <span className="truncate">{seller}</span>
+                      </span>
+                    )}
                   </div>
                 )}
               </button>
@@ -774,6 +791,11 @@ function SaleEditor({
             )}
             {period && <span>{period}</span>}
             {sellerName && <span>Vendedor: {sellerName}</span>}
+            {s.created_at && (
+              <span className="inline-flex items-center gap-1 truncate" title="Data de criação da reserva">
+                <Clock className="w-3 h-3 shrink-0" /> {new Date(s.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
             {s.proposal_id && (
               <Link href={`/app/${orgSlug}/cotacoes/${s.proposal_id}`} className="inline-flex items-center gap-1 text-primary hover:underline">
                 <ExternalLink className="w-3 h-3" /> Ver proposta
