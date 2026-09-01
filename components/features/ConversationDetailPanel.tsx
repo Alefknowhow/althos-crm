@@ -10,7 +10,7 @@ import { createLeadFromConversation, dismissHandoffSummary } from '@/actions/wha
 import SendEmailDialog from '@/components/features/SendEmailDialog'
 import LeadDataTab, { type Member, type Stage } from '@/components/features/lead-panel/LeadDataTab'
 import LeadDealsTab from '@/components/features/lead-panel/LeadDealsTab'
-import LeadNotesTab from '@/components/features/lead-panel/LeadNotesTab'
+import LeadFlowsTab from '@/components/features/lead-panel/LeadFlowsTab'
 import LeadTasksTab from '@/components/features/lead-panel/LeadTasksTab'
 
 // 8 deterministic agent colors, indexed by a hash of the user id so the same
@@ -190,7 +190,7 @@ export default function ConversationDetailPanel({
             <TabsList className="grid grid-cols-4 h-auto">
               <TabsTrigger value="dados" className="text-[11px] px-1 py-1.5">Dados</TabsTrigger>
               <TabsTrigger value="negociacoes" className="text-[11px] px-1 py-1.5">Negociações</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-[11px] px-1 py-1.5">Anotações</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="text-[11px] px-1 py-1.5">Fluxos</TabsTrigger>
               <TabsTrigger value="atividades" className="text-[11px] px-1 py-1.5">Atividades</TabsTrigger>
             </TabsList>
 
@@ -210,7 +210,7 @@ export default function ConversationDetailPanel({
             </TabsContent>
 
             <TabsContent value="anotacoes" className="pt-4">
-              <LeadNotesTab orgSlug={orgSlug} leadId={lead.id} />
+              <LeadFlowsTab orgSlug={orgSlug} leadId={lead.id} />
             </TabsContent>
 
             <TabsContent value="atividades" className="pt-4">
