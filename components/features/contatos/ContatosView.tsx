@@ -930,7 +930,7 @@ function DetailPanel({
               listas (Tarefas, E-mails) ficam limitadas a ~10 itens visíveis,
               com scroll vertical próprio a partir daí. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <div className="border rounded-lg p-3 space-y-3">
+            <div className="border rounded-lg p-3 space-y-3 min-h-[220px] flex flex-col">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tarefas</p>
                 <Button type="button" size="sm" variant="outline" onClick={() => setNewTaskOpen(true)}>
@@ -944,29 +944,30 @@ function DetailPanel({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma tarefa vinculada.</p>
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg flex-1 flex items-center justify-center">Nenhuma tarefa vinculada.</p>
               )}
             </div>
 
-            <div className="border rounded-lg p-3 space-y-3">
+            <div className="border rounded-lg p-3 space-y-3 min-h-[220px] flex flex-col">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">E-mails</p>
-                {c.email && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <SendEmailDialog
-                      orgSlug={orgSlug}
-                      lead={c}
-                      templates={selected.templates}
-                      org={{ name: orgName }}
-                      trigger={<Button type="button" size="sm" variant="outline">Disparar template</Button>}
-                    />
-                    <SendCustomEmailDialog
-                      orgSlug={orgSlug}
-                      lead={c}
-                      trigger={<Button type="button" size="sm" variant="outline">Enviar e-mail</Button>}
-                    />
-                  </div>
-                )}
+                {/* Sempre visíveis — sem e-mail cadastrado, os próprios
+                    diálogos avisam "Sem e-mail" e desabilitam o envio, em
+                    vez de esconder o botão inteiro. */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <SendEmailDialog
+                    orgSlug={orgSlug}
+                    lead={c}
+                    templates={selected.templates}
+                    org={{ name: orgName }}
+                    trigger={<Button type="button" size="sm" variant="outline">Disparar template</Button>}
+                  />
+                  <SendCustomEmailDialog
+                    orgSlug={orgSlug}
+                    lead={c}
+                    trigger={<Button type="button" size="sm" variant="outline">Enviar e-mail</Button>}
+                  />
+                </div>
               </div>
               {selected.emailSends.length > 0 ? (
                 <div className="max-h-[420px] overflow-y-auto border rounded-lg divide-y">
@@ -981,11 +982,11 @@ function DetailPanel({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhum e-mail enviado.</p>
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg flex-1 flex items-center justify-center">Nenhum e-mail enviado.</p>
               )}
             </div>
 
-            <div className="border rounded-lg p-3 space-y-3">
+            <div className="border rounded-lg p-3 space-y-3 min-h-[220px] flex flex-col">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">WhatsApp</p>
               {selected.whatsappConv ? (
                 <div className="text-sm border rounded-lg p-3 bg-muted/20 flex flex-col items-center justify-center text-center gap-1.5">
@@ -999,18 +1000,18 @@ function DetailPanel({
                   </Link>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Sem conversa vinculada.</p>
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg flex-1 flex items-center justify-center">Sem conversa vinculada.</p>
               )}
             </div>
 
-            <div className="border rounded-lg p-3 space-y-3">
+            <div className="border rounded-lg p-3 space-y-3 min-h-[220px] flex flex-col">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Timeline</p>
               {selected.activities.length > 0 ? (
                 <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {selected.activities.map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma atividade registrada.</p>
+                <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg flex-1 flex items-center justify-center">Nenhuma atividade registrada.</p>
               )}
             </div>
           </div>
