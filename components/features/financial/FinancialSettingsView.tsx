@@ -12,13 +12,13 @@ import {
 import { toast } from 'sonner'
 import { Plus, X, Loader2 } from 'lucide-react'
 import {
-  createFinancialSetting, deleteFinancialSetting, updateFinancialSettingPaymentSchedule,
+  createFinancialSetting, deleteFinancialSetting, updateFinancialSettingPaymentSchedule, updateFinancialSettingFee,
   type FinancialSettingType, type FinancialSettingRow, type PaymentScheduleType,
 } from '@/actions/financial-settings'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { FINANCIAL_SETTING_TYPES } from '@/lib/financial-settings-types'
+import { FINANCIAL_SETTING_TYPES, FINANCIAL_SETTING_HINTS } from '@/lib/financial-settings-types'
 
 export default function FinancialSettingsView({
   orgSlug, settings,
@@ -27,7 +27,7 @@ export default function FinancialSettingsView({
   settings: Record<FinancialSettingType, FinancialSettingRow[]>
 }) {
   return (
-    <div className="max-w-5xl mx-auto grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="max-w-[1600px] mx-auto grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {FINANCIAL_SETTING_TYPES.map(({ type, label }) => (
         <SettingListCard key={type} orgSlug={orgSlug} type={type} label={label} items={settings[type] || []} />
       ))}
@@ -92,13 +92,21 @@ function SettingListCard({
     else toast.error(res.error)
   }
 
+  async function handleFeePercent(item: FinancialSettingRow, value: string) {
+    const n = value.trim() ? parseFloat(value.replace(',', '.')) : null
+    const res = await updateFinancialSettingFee(orgSlug, item.id, n != null && Number.isFinite(n) ? n : null)
+    if (res.ok) router.refresh()
+    else toast.error(res.error)
+  }
+
   const isOperadora = type === 'operadora'
+  const isFormaPagamento = type === 'forma_pagamento'
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">{label}</CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-1.5">
+    <Card className="h-[420px] flex flex-col">
+      <CardHeader className="shrink-0"><CardTitle className="text-base">{label}</CardTitle></CardHeader>
+      <CardContent className="flex-1 min-h-0 flex flex-col gap-3">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Input
             value={value}
             onChange={e => setValue(e.target.value)}
@@ -110,19 +118,23 @@ function SettingListCard({
             {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           </Button>
         </div>
-        {isOperadora && (
-          <p className="text-[11px] text-muted-foreground -mt-1.5">
-            Configure como cada operadora paga a comissão — a receita da venda é lançada na data
-            calculada. &quot;Dia fixo&quot; paga sempre no mesmo dia do mês; &quot;Decêndio&quot; paga X dias depois
-            que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha; &quot;Semanal&quot; corta
-            a cada 8 dias (1-8, 9-16, 17-24, 25-fim — 4x/mês) e vence sempre 7 dias após o corte.
-          </p>
-        )}
 
-        {items.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
-        ) : (
-          <ul className="space-y-1 max-h-64 overflow-y-auto">
+        <p className="text-[11px] text-muted-foreground shrink-0">
+          {FINANCIAL_SETTING_HINTS[type]}
+          {isOperadora && (
+            <>
+              {' '}&quot;Dia fixo&quot; paga sempre no mesmo dia do mês; &quot;Decêndio&quot; paga X dias depois
+              que o bloco de 10 dias (1-10, 11-20, 21-fim) em que a venda caiu se fecha; &quot;Semanal&quot; corta
+              a cada 8 dias (1-8, 9-16, 17-24, 25-fim — 4x/mês) e vence sempre 7 dias após o corte.
+            </>
+          )}
+        </p>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {items.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nenhum item cadastrado ainda.</p>
+          ) : (
+          <ul className="space-y-1">
             {items.map(item => (
               <li key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 text-sm">
                 <span className="truncate">{item.name}</span>
@@ -170,6 +182,19 @@ function SettingListCard({
                       )}
                     </>
                   )}
+                  {isFormaPagamento && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input
+                        type="number" min={0} max={100} step={0.01}
+                        defaultValue={item.payment_fee_percent ?? ''}
+                        onBlur={e => handleFeePercent(item, e.target.value)}
+                        placeholder="0"
+                        title="Taxa cobrada por esse meio de pagamento (%)"
+                        className="h-7 w-16 text-xs px-2"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => setDeleteId(item.id)}
@@ -182,7 +207,8 @@ function SettingListCard({
               </li>
             ))}
           </ul>
-        )}
+          )}
+        </div>
       </CardContent>
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>

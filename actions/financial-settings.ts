@@ -22,6 +22,8 @@ export type FinancialSettingRow = {
   payment_day: number | null
   /** Modo 'decendio' — dias após o fechamento do decêndio (1-10/11-20/21-fim) em que a operadora paga. */
   payment_offset_days: number | null
+  /** Só usado pra type='forma_pagamento' — taxa cobrada pelo meio de pagamento (%), ex.: 3.45 = 3,45%. */
+  payment_fee_percent: number | null
   created_at: string
 }
 
@@ -106,6 +108,31 @@ export async function updateFinancialSettingPaymentSchedule(
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar o pagamento.' }
+
+  revalidatePath(`/app/${orgSlug}/financeiro`)
+  return { ok: true as const }
+}
+
+/** Taxa cobrada pelo meio de pagamento (Configurações > Formas de pagamento)
+ *  — ex.: cartão de crédito, boleto. Guardada como percentual (0-100). */
+export async function updateFinancialSettingFee(orgSlug: string, id: string, feePercent: number | null) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'financial')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  if (feePercent != null && (feePercent < 0 || feePercent > 100)) {
+    return { ok: false as const, error: 'Informe uma taxa entre 0 e 100%.' }
+  }
+
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('financial_settings')
+    .update({ payment_fee_percent: feePercent })
+    .eq('id', id)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message || 'Erro ao salvar a taxa.' }
 
   revalidatePath(`/app/${orgSlug}/financeiro`)
   return { ok: true as const }

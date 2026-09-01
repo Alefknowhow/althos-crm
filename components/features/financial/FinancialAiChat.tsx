@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles, Send, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
+import { Coins, Send, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
 import { getFinancialAiInit, confirmFinancialAiEntry } from '@/actions/financial-ai'
 
 type FinancialAiView =
@@ -215,7 +215,7 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
           className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 transition-opacity"
           aria-label="Abrir IA financeira"
         >
-          <Sparkles className="w-6 h-6" />
+          <Coins className="w-6 h-6" />
         </button>
       )}
 
@@ -224,7 +224,7 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
           <div className="h-16 border-b px-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+                <Coins className="w-4 h-4" />
               </div>
               <div>
                 <p className="text-sm font-semibold leading-tight">IA Financeira</p>
@@ -266,7 +266,7 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
                       m.role === 'user' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-primary/10 text-primary'
                     }`}
                   >
-                    {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Coins className="w-3.5 h-3.5" />}
                   </div>
                   <div className={`${m.role === 'user' ? 'max-w-[80%]' : 'max-w-[88%] flex-1'} space-y-2`}>
                     {m.tool_calls && m.tool_calls.length > 0 && m.tool_calls.map((tc, i) => (
@@ -290,7 +290,7 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
             {streaming && messages[messages.length - 1]?.content === '' && (
               <div className="flex gap-2.5">
                 <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <Coins className="w-3.5 h-3.5" />
                 </div>
                 <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
