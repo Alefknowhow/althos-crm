@@ -14,6 +14,7 @@ import { marketingSyncCronFn } from '@/lib/inngest/marketing-sync-cron'
 import { sendCampaignFn } from '@/lib/inngest/send-campaigns-cron'
 import { processInstagramInboundFn } from '@/lib/inngest/social-inbound'
 import { processWhatsappInboundFn } from '@/lib/inngest/whatsapp-inbound'
+import { ingestWhatsappMessageFn } from '@/lib/inngest/whatsapp-ingest'
 import { backupDatabaseCronFn, backupStorageCronFn, backupRetentionCronFn } from '@/lib/inngest/backup-cron'
 import { clinicAppointmentReminderCronFn } from '@/lib/inngest/clinic-crons'
 import { imoveisPipelineAdvanceFn } from '@/lib/inngest/imoveis-pipeline-advance'
@@ -55,6 +56,7 @@ export const { GET, POST, PUT } = serve({
     sendCampaignFn,
     processInstagramInboundFn,
     processWhatsappInboundFn,
+    ingestWhatsappMessageFn,
     backupDatabaseCronFn,
     backupStorageCronFn,
     backupRetentionCronFn,

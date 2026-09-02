@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
-import { resolveAdCampaignExternalId } from '@/lib/meta/ads'
-import { uploadSystemFile } from '@/lib/storage/system'
 
 /**
  * Webhook global do WhatsApp — UMA única URL por App da Meta (não dá pra
@@ -34,66 +32,6 @@ export async function GET(req: Request) {
     return new NextResponse(challenge, { status: 200 })
   }
   return new NextResponse('Forbidden', { status: 403 })
-}
-
-const MEDIA_MESSAGE_TYPES = new Set(['image', 'audio', 'video', 'document', 'sticker'])
-
-/**
- * A mensagem de mídia do WhatsApp só traz um media_id — a URL real é
- * temporária (expira em minutos) e exige o token de acesso pra baixar.
- * Baixa o arquivo e sobe pro Storage Service (R2) pra ter uma URL
- * assinada e cacheada que o CRM consegue exibir depois. Retorna null em
- * qualquer falha (a mensagem ainda é salva, só sem mídia — não trava o
- * webhook).
- */
-async function downloadAndStoreMedia(
-  orgId: string,
-  conversationId: string,
-  mediaId: string,
-  accessToken: string,
-): Promise<{ url: string; objectId: string } | null> {
-  try {
-    const metaRes = await fetch(`https://graph.facebook.com/v26.0/${mediaId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!metaRes.ok) {
-      console.error(`[whatsapp webhook] media metadata fetch failed (${metaRes.status}):`, await metaRes.text().catch(() => ''))
-      return null
-    }
-    const meta = await metaRes.json()
-    if (!meta.url) {
-      console.error('[whatsapp webhook] media metadata has no url:', JSON.stringify(meta))
-      return null
-    }
-
-    const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${accessToken}` } })
-    if (!fileRes.ok) {
-      console.error(`[whatsapp webhook] media file fetch failed (${fileRes.status})`)
-      return null
-    }
-    const bytes = Buffer.from(await fileRes.arrayBuffer())
-
-    const mimeType: string = meta.mime_type || 'application/octet-stream'
-    const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin'
-
-    const uploaded = await uploadSystemFile({
-      organizationId: orgId,
-      category: 'whatsapp',
-      scopeId: conversationId,
-      conversationId,
-      filename: `${mediaId}.${ext}`,
-      contentType: mimeType,
-      body: bytes,
-    })
-    if (!uploaded.ok) {
-      console.error('[whatsapp webhook] media upload failed:', uploaded.error)
-      return null
-    }
-    return { url: uploaded.url, objectId: uploaded.objectId }
-  } catch (e: any) {
-    console.error('[whatsapp webhook] media download failed:', e?.message)
-    return null
-  }
 }
 
 /** Verify Meta's X-Hub-Signature-256 header against the raw body (fail-CLOSED
@@ -162,7 +100,7 @@ export async function POST(req: Request) {
         // seu via Embedded Signup, salvando o phone_number_id na tabela.
         const { data: org } = await supabase
           .from('organizations')
-          .select('id, whatsapp_access_token, meta_access_token')
+          .select('id')
           .eq('whatsapp_phone_number_id', phoneNumberId)
           .maybeSingle()
         if (!org) {
@@ -172,154 +110,17 @@ export async function POST(req: Request) {
         const orgId = org.id
 
         if (change.value.messages) {
+          // Todo o trabalho pesado (resolver conversa/lead, atribuição de
+          // anúncio CTWA, baixar mídia, gravar mensagem) saiu daqui — agora
+          // roda em background (lib/inngest/whatsapp-ingest.ts). O webhook só
+          // identifica a org e enfileira, pra responder à Meta o mais rápido
+          // possível.
           for (const msg of change.value.messages) {
-            const phone = msg.from
-            const contactName = change.value.contacts?.[0]?.profile?.name || phone
-
-            // Idempotency: drop duplicates by Meta's message id before doing any work.
-            // Webhooks can be re-delivered, and without this the conversation
-            // unread_count and lead_activities would double-count on retries.
-            const { data: existing } = await supabase
-              .from('whatsapp_messages')
-              .select('id')
-              .eq('meta_message_id', msg.id)
-              .maybeSingle()
-            if (existing) continue
-
-            let { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('organization_id', orgId).eq('contact_phone', phone).single()
-
-            let leadId = conv?.contato_id
-
-            if (!leadId) {
-              const { data: leads } = await supabase.from('contatos').select('id').eq('organization_id', orgId).eq('phone', phone).limit(1)
-              if (leads && leads.length > 0) leadId = leads[0].id
-            }
-
-            if (!leadId) {
-              const { data: defaultPipeline } = await supabase.from('pipelines').select('id').eq('organization_id', orgId).eq('is_default', true).single()
-              let stageId = null
-              if (defaultPipeline) {
-                const { data: stage } = await supabase.from('pipeline_stages').select('id').eq('pipeline_id', defaultPipeline.id).order('position').limit(1).single()
-                stageId = stage?.id
-              }
-
-              // Conversas iniciadas por anúncio de Click-to-WhatsApp trazem
-              // um objeto `referral` só na primeira mensagem, com o
-              // ctwa_clid — o click ID que permite atribuir a venda de
-              // volta ao anúncio de origem no CAPI (ver actions/contatos.ts,
-              // moveLeadToStage) — e o source_id (ad_id), que resolvemos
-              // agora pro campaign_id local, fechando o elo de CAC/ROAS de
-              // WhatsApp no painel de Marketing (actions/marketing.ts).
-              const referral = msg.referral
-              const ctwaClid: string | null = referral?.ctwa_clid || null
-              const adId: string | null = referral?.source_id || null
-
-              let resolvedCampaignId: string | null = null
-              if (adId && org.meta_access_token) {
-                const campaignExternalId = await resolveAdCampaignExternalId(adId, org.meta_access_token)
-                if (campaignExternalId) {
-                  const { data: matchedCampaign } = await supabase
-                    .from('campaigns')
-                    .select('id')
-                    .eq('organization_id', orgId)
-                    .eq('external_id', campaignExternalId)
-                    .maybeSingle()
-                  resolvedCampaignId = matchedCampaign?.id || null
-                }
-              }
-
-              const { data: newLead } = await supabase.from('contatos').insert({
-                organization_id: orgId,
-                name: contactName,
-                phone: phone,
-                source: 'whatsapp',
-                pipeline_id: defaultPipeline?.id,
-                stage_id: stageId,
-                meta_ctwa_clid: ctwaClid,
-                meta_ad_id: adId,
-                meta_resolved_campaign_id: resolvedCampaignId,
-              }).select('id').single()
-              if (newLead) leadId = newLead.id
-            }
-
-            // Prévia textual da última mensagem para o inbox (modelo WhatsApp Business).
-            const preview: string = msg.text?.body || ({
-              image: '📷 Foto', audio: '🎤 Áudio', video: '🎬 Vídeo',
-              document: '📄 Documento', sticker: 'Figurinha', location: '📍 Localização',
-            } as Record<string, string>)[msg.type] || '[Mídia]'
-
-            if (!conv) {
-              const { data: newConv } = await supabase.from('whatsapp_conversations').insert({
-                organization_id: orgId,
-                contact_phone: phone,
-                contact_name: contactName,
-                contato_id: leadId,
-                last_message_at: new Date(msg.timestamp * 1000).toISOString(),
-                last_inbound_at: new Date(msg.timestamp * 1000).toISOString(),
-                last_message_preview: preview,
-                last_message_direction: 'inbound',
-                unread_count: 1
-              }).select().single()
-              conv = newConv
-            } else {
-              await supabase.from('whatsapp_conversations').update({
-                last_message_at: new Date(msg.timestamp * 1000).toISOString(),
-                last_inbound_at: new Date(msg.timestamp * 1000).toISOString(),
-                last_message_preview: preview,
-                last_message_direction: 'inbound',
-                unread_count: (conv.unread_count || 0) + 1,
-                contato_id: leadId
-              }).eq('id', conv.id)
-            }
-
-            // Mídia (foto, áudio, vídeo, documento, figurinha): baixa e sobe
-            // pro Storage antes de salvar, pra ter uma URL permanente.
-            let messageContent: any = msg
-            if (MEDIA_MESSAGE_TYPES.has(msg.type) && msg[msg.type]?.id && org.whatsapp_access_token) {
-              const media = await downloadAndStoreMedia(orgId, conv.id, msg[msg.type].id, org.whatsapp_access_token)
-              if (media) messageContent = { ...msg, media_url: media.url, media_object_id: media.objectId }
-            }
-
-            const { data: insertedMsg } = await supabase.from('whatsapp_messages').insert({
-              conversation_id: conv.id,
-              organization_id: orgId,
-              direction: 'inbound',
-              type: msg.type,
-              content: messageContent,
-              meta_message_id: msg.id,
-              status: 'delivered'
-            }).select('id').single()
-
-            if (leadId) {
-              await supabase.from('contato_activities').insert({
-                contato_id: leadId,
-                organization_id: orgId,
-                type: 'whatsapp_received',
-                payload: { body: msg.text?.body || '[Mídia]', message_id: msg.id }
-              })
-            }
-
-            // Fire push notification event (throttled in Inngest to 1/org/2min).
+            const contactName = change.value.contacts?.[0]?.profile?.name || msg.from
             await inngest.send({
-              name: 'whatsapp/message.received',
-              data: {
-                orgId,
-                conversationId: conv?.id || null,
-                contactName,
-                messageBody: msg.text?.body || null,
-              },
+              name: 'whatsapp/message.raw',
+              data: { orgId, phoneNumberId, msg, contactName },
             })
-
-            // Aciona o Agente IA (se ligado pra essa org e essa conversa não
-            // estiver pausada — checagens de verdade ficam dentro da
-            // function, aqui só enfileira). Mensagem sem texto (mídia sem
-            // legenda) não aciona: não há o que a IA responda com sentido.
-            if (insertedMsg && msg.text?.body) {
-              await inngest.send({
-                name: 'whatsapp/inbound.received',
-                data: { orgId, conversationId: conv.id, metaMessageId: msg.id },
-              })
-            }
           }
         }
 
