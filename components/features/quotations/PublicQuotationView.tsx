@@ -173,6 +173,12 @@ export type PublicQuotation = {
   price_disclaimer?: string | null
   quoted_at?: string | null
   validity_days?: number | null
+  signature_enabled?: boolean | null
+  signature_name?: string | null
+  signature_photo_url?: string | null
+  signature_message?: string | null
+  signature_bg_color?: string | null
+  signature_text_color?: string | null
   lodgings?: QuotationLodging[]
   flights?: QuotationFlight[]
   cruises?: QuotationCruise[]
@@ -1067,6 +1073,24 @@ export default function PublicQuotationView({
             </div>
           )}
         </section>
+
+        {data.signature_enabled && (data.signature_name || data.signature_message || data.signature_photo_url) && (
+          <section className="reveal">
+            <div className="signature" style={{
+              background: data.signature_bg_color || '#0f172a',
+              color: data.signature_text_color || '#ffffff',
+            }}>
+              {data.signature_photo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={data.signature_photo_url} alt={data.signature_name || ''} className="signature-photo" />
+              )}
+              <div className="signature-text">
+                {data.signature_name && <div className="signature-name">{data.signature_name}</div>}
+                {data.signature_message && <div className="signature-message">{data.signature_message}</div>}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* ───── RODAPÉ ───── */}
@@ -1401,6 +1425,14 @@ const CSS = `
 .alq .btn-primary{background:#25D366;color:#0a3d22;box-shadow:0 8px 24px rgba(37,211,102,.32)}
 .alq .btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
 .alq .btn-ghost:hover{background:var(--navy);color:#fff}
+
+/* Assinatura — destaque abaixo do fechamento, cores escolhidas no editor */
+.alq .signature{display:flex;align-items:center;gap:16px;max-width:640px;margin:32px auto 0;padding:20px 24px;border-radius:16px}
+.alq .signature-photo{width:56px;height:56px;border-radius:999px;object-fit:cover;flex-shrink:0;border:2px solid rgba(255,255,255,.35)}
+.alq .signature-text{min-width:0}
+.alq .signature-name{font-family:'Inter',sans-serif;font-weight:700;font-size:15px}
+.alq .signature-message{font-size:13.5px;opacity:.92;margin-top:3px;line-height:1.4}
+@media(max-width:560px){.alq .signature{flex-direction:column;text-align:center;margin:24px 16px 0}}
 
 /* Rodapé */
 .alq footer{background:var(--navy);color:rgba(255,255,255,.72);margin-top:56px;padding:44px 20px 34px}

@@ -35,7 +35,7 @@ import {
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, ChevronDown, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
-  Car, Shield, KeyRound, Star, Repeat,
+  Car, Shield, KeyRound, Star, Repeat, UserRound,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -54,6 +54,7 @@ const PAYMENT_METHODS = [
 import { saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
+import { getUserProfile } from '@/actions/profile'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
@@ -194,6 +195,39 @@ function CoverUpload({
         )}
       </div>
       <UnsplashPicker orgSlug={orgSlug} hint={unsplashHint} onPick={onChange} />
+    </div>
+  )
+}
+
+/* ═════════════ foto da assinatura (avatar pequeno, upload único) ═════════════ */
+function SignaturePhotoUpload({
+  orgSlug, url, onChange,
+}: { orgSlug: string; url?: string | null; onChange: (u: string | null) => void }) {
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const handle = useCallback(async (file?: File | null) => {
+    if (!file || !file.type.startsWith('image/')) return
+    setBusy(true)
+    const u = await compressAndUpload(orgSlug, file)
+    setBusy(false)
+    if (u) onChange(u)
+  }, [orgSlug, onChange])
+  return (
+    <div className="flex items-center gap-2">
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handle(e.target.files?.[0])} />
+      <div className="relative w-14 h-14 rounded-full overflow-hidden border bg-muted shrink-0 flex items-center justify-center">
+        {url
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={url} alt="Foto da assinatura" className="w-full h-full object-cover" />
+          : <ImageIcon className="w-5 h-5 text-muted-foreground" />}
+      </div>
+      <div className="flex flex-col gap-1">
+        <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={busy}>
+          {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+          {url ? 'Trocar foto' : 'Enviar foto'}
+        </Button>
+        {url && <button type="button" className="text-[11px] text-muted-foreground hover:text-destructive text-left" onClick={() => onChange(null)}>Remover foto</button>}
+      </div>
     </div>
   )
 }
@@ -680,6 +714,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     validity_days: q0.validity_days || 5,
     operadora: q0.operadora || '', commission_total_cents: q0.commission_total_cents || 0,
     offer_published: !!q0.offer_published, offer_category: q0.offer_category || '',
+    signature_enabled: !!(q0 as any).signature_enabled,
+    signature_name: (q0 as any).signature_name || '',
+    signature_photo_url: ((q0 as any).signature_photo_url || null) as string | null,
+    signature_message: (q0 as any).signature_message || '',
+    signature_bg_color: (q0 as any).signature_bg_color || '#0f172a',
+    signature_text_color: (q0 as any).signature_text_color || '#ffffff',
   }))
   // Aéreo/Hospedagem vivem em quotation_products (Construtor de Viagens,
   // infra única compartilhada por todo tipo de produto) — filtra por
@@ -918,6 +958,12 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     payment_conditions: q.payment_conditions.filter(p => p.label || p.value),
     price_disclaimer: q.price_disclaimer || null, validity_days: q.validity_days,
     operadora: q.operadora || null, commission_total_cents: q.commission_total_cents,
+    signature_enabled: q.signature_enabled,
+    signature_name: q.signature_name || null,
+    signature_photo_url: q.signature_photo_url || null,
+    signature_message: q.signature_message || null,
+    signature_bg_color: q.signature_bg_color || null,
+    signature_text_color: q.signature_text_color || null,
     ...(isOffer ? { offer_published: q.offer_published, offer_category: q.offer_category || null } : {}),
     products: [
       ...lodgings.map(({ _key, name, check_in, check_out, ...rest }) => ({
@@ -1879,14 +1925,74 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
           <Link href={`/app/${orgSlug}/configuracoes/organizacoes`} className="underline">configurações da agência</Link>.
         </p>
       </EditBlock>
+
+      {/* ASSINATURA — bloco destacado abaixo do fechamento, no link público */}
+      <EditBlock id="blk-assinatura" icon={UserRound} title="Assinatura"
+        action={
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Switch checked={q.signature_enabled} onCheckedChange={async v => {
+              setQ(s => ({ ...s, signature_enabled: v }))
+              if (v && !q.signature_name && !q.signature_photo_url) {
+                const profile = await getUserProfile(orgSlug)
+                if (profile) setQ(s => ({
+                  ...s,
+                  signature_name: s.signature_name || profile.name,
+                  signature_photo_url: s.signature_photo_url || profile.avatar_url,
+                }))
+              }
+            }} />
+            {q.signature_enabled ? 'Ativada' : 'Desativada'}
+          </label>
+        }>
+        {q.signature_enabled && (
+          <>
+            <p className="text-[11px] text-muted-foreground">
+              Aparece destacada logo abaixo da mensagem de encerramento, no link público.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Nome"><Input value={q.signature_name} onChange={e => setQ(s => ({ ...s, signature_name: e.target.value }))} placeholder="Ex.: Ana Souza" /></F>
+              <F label="Foto"><SignaturePhotoUpload orgSlug={orgSlug} url={q.signature_photo_url} onChange={u => setQ(s => ({ ...s, signature_photo_url: u }))} /></F>
+            </div>
+            <F label="Mensagem"><Textarea rows={2} value={q.signature_message} onChange={e => setQ(s => ({ ...s, signature_message: e.target.value }))} placeholder="Ex.: Qualquer dúvida, estou à disposição! 😊" /></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Cor de fundo">
+                <div className="flex items-center gap-2">
+                  <input type="color" value={q.signature_bg_color} onChange={e => setQ(s => ({ ...s, signature_bg_color: e.target.value }))}
+                    className="w-9 h-9 rounded border cursor-pointer shrink-0" />
+                  <Input value={q.signature_bg_color} onChange={e => setQ(s => ({ ...s, signature_bg_color: e.target.value }))} />
+                </div>
+              </F>
+              <F label="Cor da letra">
+                <div className="flex items-center gap-2">
+                  <input type="color" value={q.signature_text_color} onChange={e => setQ(s => ({ ...s, signature_text_color: e.target.value }))}
+                    className="w-9 h-9 rounded border cursor-pointer shrink-0" />
+                  <Input value={q.signature_text_color} onChange={e => setQ(s => ({ ...s, signature_text_color: e.target.value }))} />
+                </div>
+              </F>
+            </div>
+            <div className="rounded-lg p-4 flex items-center gap-3" style={{ background: q.signature_bg_color, color: q.signature_text_color }}>
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 shrink-0 flex items-center justify-center">
+                {q.signature_photo_url
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={q.signature_photo_url} alt="" className="w-full h-full object-cover" />
+                  : <UserRound className="w-5 h-5 opacity-70" />}
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold truncate">{q.signature_name || 'Seu nome'}</div>
+                <div className="text-xs opacity-90 truncate">{q.signature_message || 'Sua mensagem aparece aqui'}</div>
+              </div>
+            </div>
+          </>
+        )}
+      </EditBlock>
       </GroupSection>
     </div>
   )
 
   return (
-    <div className="pb-8">
+    <div className="pt-3 pb-8">
       {/* Toolbar + navegação entre blocos — um único bloco sticky, sem espaço entre as duas linhas */}
-      <div style={{ top: -20 }} className="sticky z-20 -mx-3 sm:-mx-5 -mt-5 bg-background/95 backdrop-blur border-b">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 bg-background/95 backdrop-blur border-b">
       <div className="px-3 sm:px-5 py-2.5 flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/app/${orgSlug}/cotacoes`}><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Link>
