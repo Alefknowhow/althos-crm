@@ -42,6 +42,8 @@ export type QuotationOrg = {
   city_state?: string | null
   cnpj?: string | null
   cadastur?: string | null
+  phone?: string | null
+  email?: string | null
 }
 
 export type QuotationLodging = {
@@ -1118,10 +1120,13 @@ export default function PublicQuotationView({
                 <br />
               </>
             )}
-            {org.city_state && <>Estamos em {org.city_state}</>}
-            {org.city_state && org.cnpj && ' · '}
-            {org.cnpj && <>CNPJ {org.cnpj}</>}
-            {org.cadastur && <> · CADASTUR {org.cadastur}</>}
+            {[
+              org.city_state ? `Estamos em ${org.city_state}` : null,
+              org.cnpj ? `CNPJ ${org.cnpj}` : null,
+              org.cadastur ? `CADASTUR ${org.cadastur}` : null,
+              org.phone || null,
+              org.email || null,
+            ].filter(Boolean).join(' · ')}
           </div>
           <div className="rights">© {new Date().getFullYear()} {org.legal_name} · Todos os direitos reservados.</div>
         </div>

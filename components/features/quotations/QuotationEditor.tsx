@@ -35,7 +35,7 @@ import {
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, ChevronDown, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
-  Car, Shield, KeyRound, Star, Repeat, UserRound,
+  Car, Shield, KeyRound, Star, Repeat, UserRound, Building2,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -720,6 +720,17 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     signature_message: (q0 as any).signature_message || '',
     signature_bg_color: (q0 as any).signature_bg_color || '#0f172a',
     signature_text_color: (q0 as any).signature_text_color || '#ffffff',
+    footer_override: !!(q0 as any).footer_override,
+    footer_legal_name: (q0 as any).footer_legal_name || '',
+    footer_logo_url: ((q0 as any).footer_logo_url || null) as string | null,
+    footer_address: (q0 as any).footer_address || '',
+    footer_cnpj: (q0 as any).footer_cnpj || '',
+    footer_cadastur: (q0 as any).footer_cadastur || '',
+    footer_instagram_url: (q0 as any).footer_instagram_url || '',
+    footer_site_url: (q0 as any).footer_site_url || '',
+    footer_whatsapp_number: (q0 as any).footer_whatsapp_number || '',
+    footer_phone: (q0 as any).footer_phone || '',
+    footer_email: (q0 as any).footer_email || '',
   }))
   // Aéreo/Hospedagem vivem em quotation_products (Construtor de Viagens,
   // infra única compartilhada por todo tipo de produto) — filtra por
@@ -964,6 +975,17 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
     signature_message: q.signature_message || null,
     signature_bg_color: q.signature_bg_color || null,
     signature_text_color: q.signature_text_color || null,
+    footer_override: q.footer_override,
+    footer_legal_name: q.footer_legal_name || null,
+    footer_logo_url: q.footer_logo_url || null,
+    footer_address: q.footer_address || null,
+    footer_cnpj: q.footer_cnpj || null,
+    footer_cadastur: q.footer_cadastur || null,
+    footer_instagram_url: q.footer_instagram_url || null,
+    footer_site_url: q.footer_site_url || null,
+    footer_whatsapp_number: q.footer_whatsapp_number || null,
+    footer_phone: q.footer_phone || null,
+    footer_email: q.footer_email || null,
     ...(isOffer ? { offer_published: q.offer_published, offer_category: q.offer_category || null } : {}),
     products: [
       ...lodgings.map(({ _key, name, check_in, check_out, ...rest }) => ({
@@ -1981,6 +2003,46 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
                 <div className="text-sm font-semibold truncate">{q.signature_name || 'Seu nome'}</div>
                 <div className="text-xs opacity-90 truncate">{q.signature_message || 'Sua mensagem aparece aqui'}</div>
               </div>
+            </div>
+          </>
+        )}
+      </EditBlock>
+
+      {/* RODAPÉ / IDENTIDADE DA AGÊNCIA — por padrão usa os dados da
+          organização; quando ativado, usa dados só desta cotação. */}
+      <EditBlock id="blk-rodape" icon={Building2} title="Rodapé e informações da agência"
+        action={
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Switch checked={q.footer_override} onCheckedChange={v => setQ(s => ({ ...s, footer_override: v }))} />
+            {q.footer_override ? 'Personalizado' : 'Padrão da agência'}
+          </label>
+        }>
+        {!q.footer_override ? (
+          <p className="text-[11px] text-muted-foreground">
+            Usa logo, nome, endereço, CNPJ, CADASTUR, Instagram, site, WhatsApp, telefone e e-mail das{' '}
+            <Link href={`/app/${orgSlug}/configuracoes/organizacoes`} className="underline">configurações da agência</Link>.
+            Ative para usar outras informações só nesta cotação.
+          </p>
+        ) : (
+          <>
+            <p className="text-[11px] text-muted-foreground">Vale só para esta cotação — não altera as configurações da agência.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Nome/razão social"><Input value={q.footer_legal_name} onChange={e => setQ(s => ({ ...s, footer_legal_name: e.target.value }))} /></F>
+              <F label="Logo"><SignaturePhotoUpload orgSlug={orgSlug} url={q.footer_logo_url} onChange={u => setQ(s => ({ ...s, footer_logo_url: u }))} /></F>
+            </div>
+            <F label="Endereço"><Input value={q.footer_address} onChange={e => setQ(s => ({ ...s, footer_address: e.target.value }))} placeholder="Ex.: Florianópolis / SC" /></F>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="CNPJ"><Input value={q.footer_cnpj} onChange={e => setQ(s => ({ ...s, footer_cnpj: e.target.value }))} /></F>
+              <F label="CADASTUR"><Input value={q.footer_cadastur} onChange={e => setQ(s => ({ ...s, footer_cadastur: e.target.value }))} /></F>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Instagram"><Input value={q.footer_instagram_url} onChange={e => setQ(s => ({ ...s, footer_instagram_url: e.target.value }))} placeholder="https://instagram.com/..." /></F>
+              <F label="Site"><Input value={q.footer_site_url} onChange={e => setQ(s => ({ ...s, footer_site_url: e.target.value }))} placeholder="https://..." /></F>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <F label="WhatsApp" hint="usado nos botões de contato"><Input value={q.footer_whatsapp_number} onChange={e => setQ(s => ({ ...s, footer_whatsapp_number: e.target.value }))} placeholder="55DDNNNNNNNNN" /></F>
+              <F label="Telefone"><Input value={q.footer_phone} onChange={e => setQ(s => ({ ...s, footer_phone: e.target.value }))} /></F>
+              <F label="E-mail"><Input type="email" value={q.footer_email} onChange={e => setQ(s => ({ ...s, footer_email: e.target.value }))} /></F>
             </div>
           </>
         )}

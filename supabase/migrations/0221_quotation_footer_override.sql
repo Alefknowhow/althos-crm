@@ -1,0 +1,158 @@
+-- Rodapé/identidade da agência no link público — por padrão usa os dados
+-- da organização (org_settings/organizations), mas cada cotação pode
+-- sobrepor com informações próprias (ex.: outra marca/CNPJ vendendo o
+-- mesmo pacote).
+alter table travel_proposals
+  add column if not exists footer_override boolean not null default false,
+  add column if not exists footer_legal_name text,
+  add column if not exists footer_logo_url text,
+  add column if not exists footer_address text,
+  add column if not exists footer_cnpj text,
+  add column if not exists footer_cadastur text,
+  add column if not exists footer_instagram_url text,
+  add column if not exists footer_site_url text,
+  add column if not exists footer_whatsapp_number text,
+  add column if not exists footer_phone text,
+  add column if not exists footer_email text;
+
+create or replace function public.get_public_quotation(p_token text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  q   public.travel_proposals%rowtype;
+  org jsonb;
+  expired boolean;
+begin
+  select * into q from public.travel_proposals
+  where public_token = p_token
+    and status in ('draft','sent','viewed','won','lost','accepted','rejected')
+  limit 1;
+  if not found then return null; end if;
+
+  expired := coalesce(q.quoted_at, q.updated_at) + make_interval(days => coalesce(q.validity_days, 5)) < now()
+             and q.status not in ('won','accepted');
+
+  select jsonb_build_object(
+    'legal_name',      case when q.footer_override then q.footer_legal_name else coalesce(s.legal_name, o.name) end,
+    'brand_logo_url',  case when q.footer_override then q.footer_logo_url else coalesce(s.brand_logo_url, o.logo_url) end,
+    'brand_accent',    s.brand_accent,
+    'instagram_url',   case when q.footer_override then q.footer_instagram_url else coalesce(s.instagram_url, nullif(o.instagram,'')) end,
+    'site_url',        case when q.footer_override then q.footer_site_url else coalesce(s.site_url, nullif(o.website,'')) end,
+    'terms_url',       s.terms_url,
+    'privacy_url',     s.privacy_url,
+    'whatsapp_number', case when q.footer_override then q.footer_whatsapp_number else coalesce(s.whatsapp_number, nullif(o.contact_phone,'')) end,
+    'city_state',      case when q.footer_override then q.footer_address else coalesce(s.city_state, nullif(trim(concat_ws(' / ', nullif(o.address_city,''), nullif(o.address_state,''))), '')) end,
+    'cnpj',            case when q.footer_override then q.footer_cnpj else coalesce(s.cnpj, nullif(o.cnpj,'')) end,
+    'cadastur',        case when q.footer_override then q.footer_cadastur else nullif(o.cadastur,'') end,
+    'phone',           case when q.footer_override then q.footer_phone else nullif(o.contact_phone,'') end,
+    'email',           case when q.footer_override then q.footer_email else nullif(o.contact_email,'') end
+  ) into org
+  from public.organizations o
+  left join public.org_settings s on s.org_id = o.id
+  where o.id = q.organization_id;
+
+  return jsonb_build_object(
+    'id', q.id,
+    'status', q.status,
+    'expired', expired,
+    'client_name', q.client_name,
+    'title', q.title,
+    'subtitle', q.subtitle,
+    'cover_image_url', q.cover_image_url,
+    'origin_label', q.origin_label,
+    'origin_note', q.origin_note,
+    'destinations', q.destinations,
+    'departure_date', q.start_date,
+    'return_date', q.end_date,
+    'pax_adults', q.pax_adults,
+    'pax_children', q.pax_children,
+    'children_ages', to_jsonb(q.children_ages),
+    'occupancy_label', q.occupancy_label,
+    'intro_html', q.intro_html,
+    'important_html', q.important_html,
+    'closing_html', q.closing_html,
+    'cancellation_html', q.cancellation_html,
+    'itinerary_html', q.itinerary_html,
+    'flights_html', q.flights_html,
+    'tours_html', q.tours_html,
+    'included', q.included,
+    'not_included', q.not_included,
+    'price_per_person_cents', q.price_per_person_cents,
+    'total_cents', q.total_cents,
+    'currency', q.currency,
+    'payment_conditions', q.payment_conditions,
+    'price_disclaimer', q.price_disclaimer,
+    'quoted_at', coalesce(q.quoted_at, q.updated_at),
+    'validity_days', q.validity_days,
+    'signature_enabled', q.signature_enabled,
+    'signature_name', q.signature_name,
+    'signature_photo_url', q.signature_photo_url,
+    'signature_message', q.signature_message,
+    'signature_bg_color', q.signature_bg_color,
+    'signature_text_color', q.signature_text_color,
+    'lodgings', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'name', p.name,
+        'check_in', p.data->>'check_in', 'check_out', p.data->>'check_out',
+        'check_in_time', p.data->>'check_in_time', 'check_out_time', p.data->>'check_out_time',
+        'star_rating', (p.data->>'star_rating')::integer,
+        'room_category', p.data->>'room_category', 'board', p.data->>'board',
+        'description_html', p.data->>'description_html', 'photos', coalesce(p.data->'photos', '[]'::jsonb),
+        'lat', (p.data->>'lat')::double precision, 'lng', (p.data->>'lng')::double precision,
+        'tripadvisor_data', p.data->'tripadvisor_data',
+        'is_alternative_option', coalesce((p.data->>'is_alternative_option')::boolean, false),
+        'option_price_per_person_cents', (p.data->>'option_price_per_person_cents')::integer,
+        'option_total_cents', (p.data->>'option_total_cents')::integer
+      ) order by p.sort_order)
+      from public.quotation_products p where p.quotation_id = q.id and p.product_type = 'hospedagem'
+    ), '[]'::jsonb),
+    'flights', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'leg_type', p.data->>'leg_type',
+        'from_code', p.data->>'from_code', 'from_city', p.data->>'from_city',
+        'to_code', p.data->>'to_code', 'to_city', p.data->>'to_city',
+        'airline', p.data->>'airline', 'flight_number', p.data->>'flight_number',
+        'date', p.data->>'date', 'departure_time', p.data->>'departure_time',
+        'arrival_date', p.data->>'arrival_date', 'arrival_time', p.data->>'arrival_time',
+        'duration_label', p.data->>'duration_label', 'stopover_label', p.data->>'stopover_label',
+        'baggage', coalesce(p.data->'baggage', '[]'::jsonb), 'cabin_class', p.data->>'cabin_class'
+      ) order by p.sort_order)
+      from public.quotation_products p where p.quotation_id = q.id and p.product_type = 'aereo'
+    ), '[]'::jsonb),
+    'cruises', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'name', p.name, 'summary', p.summary,
+        'date_start', p.date_start, 'date_end', p.date_end, 'price_cents', p.price_cents,
+        'data', p.data
+      ) order by p.sort_order)
+      from public.quotation_products p where p.quotation_id = q.id and p.product_type = 'cruzeiro'
+    ), '[]'::jsonb),
+    'other_products', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'product_type', p.product_type, 'name', p.name, 'summary', p.summary,
+        'date_start', p.date_start, 'date_end', p.date_end, 'price_cents', p.price_cents,
+        'data', p.data
+      ) order by p.sort_order)
+      from public.quotation_products p where p.quotation_id = q.id and p.product_type in ('transfer', 'passeio', 'seguro', 'locacao')
+    ), '[]'::jsonb),
+    'itinerary_days', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', d.id, 'day_label', d.day_label, 'date', d.date,
+        'title', d.title, 'items', d.items
+      ) order by d.sort_order)
+      from public.quotation_itinerary_days d where d.quotation_id = q.id
+    ), '[]'::jsonb),
+    'map_pins', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'label', p.label, 'type', p.type, 'lat', p.lat, 'lng', p.lng
+      ))
+      from public.quotation_map_pins p where p.quotation_id = q.id
+    ), '[]'::jsonb),
+    'org', org
+  );
+end;
+$$;
