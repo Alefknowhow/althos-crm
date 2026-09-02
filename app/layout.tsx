@@ -30,8 +30,12 @@ export const metadata: Metadata = {
   applicationName: "Althos CRM",
   manifest: "/manifest.webmanifest",
   icons: {
+    // Favicon (aba do navegador) continua com a logo antiga — é
+    // compartilhado com o site institucional, que ainda não foi
+    // atualizado. O ícone do app instalado no celular (iOS) já usa a
+    // logo nova.
     icon: [{ url: "/logo-mark.png", type: "image/png" }],
-    apple: [{ url: "/logo-mark.png" }],
+    apple: [{ url: "/logo-mark-v2.png" }],
   },
   appleWebApp: {
     capable: true,
