@@ -35,7 +35,7 @@ import {
   Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
   ChevronLeft, ChevronRight, ChevronDown, ShoppingBag,
   CreditCard, QrCode, Receipt, Ticket, Ship, LayoutGrid, FileEdit, Layers,
-  Car, Shield, KeyRound, Star, Repeat, UserRound, Building2,
+  Car, Shield, KeyRound, Star, Repeat, UserRound, Building2, Save,
 } from 'lucide-react'
 
 // Métodos de pagamento pré-dispostos (toggle on/off como as bagagens).
@@ -51,7 +51,10 @@ const PAYMENT_METHODS = [
   { label: 'Boleto', icon: Receipt, placeholder: 'Ex.: entrada + saldo em 2x' },
 ] as const
 
-import { saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, convertOfferToQuotation, type QuotationFull } from '@/actions/quotations'
+import {
+  saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, convertOfferToQuotation, type QuotationFull,
+  listFooterProfiles, createFooterProfile, deleteFooterProfile, type FooterProfileRow,
+} from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
 import { uploadFormAsset } from '@/actions/upload'
 import { getUserProfile } from '@/actions/profile'
@@ -791,6 +794,57 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
   const [activeGroup, setActiveGroup] = useState<GroupId>('resumo')
   const [flightsTextOpen, setFlightsTextOpen] = useState(() => !!initial.quotation.flights_html?.trim())
   const [cruiseOcrOpen, setCruiseOcrOpen] = useState(false)
+
+  // Marcas salvas de rodapé/identidade (2ª agência) — evita redigitar os
+  // mesmos dados toda vez que uma cotação usa uma marca diferente.
+  const [footerProfiles, setFooterProfiles] = useState<FooterProfileRow[]>([])
+  const [footerProfileBusy, setFooterProfileBusy] = useState(false)
+  useEffect(() => { listFooterProfiles(orgSlug).then(setFooterProfiles) }, [orgSlug])
+
+  function applyFooterProfile(p: FooterProfileRow) {
+    setQ(s => ({
+      ...s,
+      footer_override: true,
+      footer_legal_name: p.legal_name || '',
+      footer_logo_url: p.logo_url,
+      footer_address: p.address || '',
+      footer_cnpj: p.cnpj || '',
+      footer_cadastur: p.cadastur || '',
+      footer_instagram_url: p.instagram_url || '',
+      footer_site_url: p.site_url || '',
+      footer_whatsapp_number: p.whatsapp_number || '',
+      footer_phone: p.phone || '',
+      footer_email: p.email || '',
+    }))
+  }
+
+  async function saveFooterProfile() {
+    const name = window.prompt('Nome para salvar esta marca (ex.: nome da outra agência):')?.trim()
+    if (!name) return
+    setFooterProfileBusy(true)
+    const res = await createFooterProfile(orgSlug, {
+      name,
+      legal_name: q.footer_legal_name || null,
+      logo_url: q.footer_logo_url,
+      address: q.footer_address || null,
+      cnpj: q.footer_cnpj || null,
+      cadastur: q.footer_cadastur || null,
+      instagram_url: q.footer_instagram_url || null,
+      site_url: q.footer_site_url || null,
+      whatsapp_number: q.footer_whatsapp_number || null,
+      phone: q.footer_phone || null,
+      email: q.footer_email || null,
+    })
+    setFooterProfileBusy(false)
+    if (res.ok) { toast.success('Marca salva'); listFooterProfiles(orgSlug).then(setFooterProfiles) }
+    else toast.error(res.error)
+  }
+
+  async function removeFooterProfile(id: string) {
+    const res = await deleteFooterProfile(orgSlug, id)
+    if (res.ok) setFooterProfiles(ps => ps.filter(p => p.id !== id))
+    else toast.error(res.error)
+  }
 
   // "Ler com IA" no bloco Cruzeiro — cria um cruzeiro novo com os campos
   // preenchidos (append, igual ao OCR de voo — nunca sobrescreve o que já
@@ -2026,7 +2080,34 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
         ) : (
           <>
             <p className="text-[11px] text-muted-foreground">Vale só para esta cotação — não altera as configurações da agência.</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-end gap-2">
+              <F label="Usar marca salva">
+                <Select value="" onValueChange={v => { const p = footerProfiles.find(x => x.id === v); if (p) applyFooterProfile(p) }}>
+                  <SelectTrigger className="w-56"><SelectValue placeholder={footerProfiles.length ? 'Selecionar…' : 'Nenhuma marca salva ainda'} /></SelectTrigger>
+                  <SelectContent>
+                    {footerProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <Button type="button" size="sm" variant="outline" onClick={saveFooterProfile} disabled={footerProfileBusy}>
+                {footerProfileBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                Salvar dados
+              </Button>
+            </div>
+            {footerProfiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {footerProfiles.map(p => (
+                  <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full border bg-muted/30 px-2.5 py-1 text-xs">
+                    {p.name}
+                    <button type="button" className="text-muted-foreground hover:text-destructive" aria-label={`Remover marca ${p.name}`}
+                      onClick={() => removeFooterProfile(p.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 border-t pt-3">
               <F label="Nome/razão social"><Input value={q.footer_legal_name} onChange={e => setQ(s => ({ ...s, footer_legal_name: e.target.value }))} /></F>
               <F label="Logo"><SignaturePhotoUpload orgSlug={orgSlug} url={q.footer_logo_url} onChange={u => setQ(s => ({ ...s, footer_logo_url: u }))} /></F>
             </div>
