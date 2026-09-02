@@ -9,7 +9,7 @@ import {
   sendWhatsappMessage, markConversationAsRead, seedMockConversations, simulateInboundMessage, cancelScheduledMessage,
   setConversationArchived, setConversationMuted, setConversationPinned, setConversationFavorite,
   markConversationAsUnread, clearConversationMessages, deleteConversation, blockWhatsappContact,
-  sendWhatsappMedia, setConversationAutomationPaused,
+  sendWhatsappMedia, setConversationAutomationPaused, suggestWhatsappReply,
 } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -22,7 +22,7 @@ import { LinkPreviewCard, linkifyText } from '@/components/features/LinkPreviewC
 import { extractFirstUrl } from '@/lib/link-preview/extract-url'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { Download } from 'lucide-react'
-import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound, Sparkles } from 'lucide-react'
+import { Clock, X, FileText, MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, UserRound, Sparkles, Loader2 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -44,6 +44,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   const [sending, setSending] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [simulating, setSimulating] = useState(false)
+  const [suggestingReply, setSuggestingReply] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -256,6 +257,27 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       setInput(text) // restore so the user doesn't lose what they typed
     }
     setSending(false)
+    inputRef.current?.focus()
+  }
+
+  // "Sugestão de resposta" — a IA lê a conversa e só preenche a caixa de
+  // texto; quem decide se envia (e pode editar antes) é o humano, igual
+  // deixar um rascunho pronto. Não substitui o que já estava digitado sem
+  // perguntar, pra não apagar algo que o atendente já tinha começado.
+  async function handleSuggestReply() {
+    if (!selectedConversation || suggestingReply) return
+    if (input.trim()) {
+      const overwrite = window.confirm('Já tem um texto na caixa de digitação. Substituir pela sugestão da IA?')
+      if (!overwrite) return
+    }
+    setSuggestingReply(true)
+    const res = await suggestWhatsappReply(orgSlug, selectedConversation.id)
+    setSuggestingReply(false)
+    if (!res.ok) {
+      toast.error('Não foi possível gerar sugestão', { description: res.error })
+      return
+    }
+    setInput(res.suggestion)
     inputRef.current?.focus()
   }
 
@@ -1015,6 +1037,21 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
                   {simulating ? '...' : '🧪'}
                 </Button>
               )}
+
+              {/* Sugestão de resposta da IA — discreto de propósito: só
+                  preenche a caixa, não envia nada sozinho. */}
+              <button
+                type="button"
+                onClick={handleSuggestReply}
+                disabled={suggestingReply}
+                className="min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground/60 hover:text-primary disabled:opacity-50 shrink-0"
+                title="Sugestão de resposta (IA)"
+                aria-label="Sugestão de resposta (IA)"
+              >
+                {suggestingReply
+                  ? <Loader2 className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] animate-spin" />
+                  : <Sparkles className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]" />}
+              </button>
 
               {/* Emojis */}
               <div className="relative shrink-0">
