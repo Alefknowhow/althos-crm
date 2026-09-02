@@ -105,7 +105,7 @@ export function SupportWidget({ orgSlug }: { orgSlug: string }) {
         <div className="fixed bottom-5 right-5 z-[60] flex h-[min(70vh,560px)] w-[min(calc(100vw-2.5rem),380px)] flex-col overflow-hidden rounded-none border border-border bg-card  ">
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-border bg-gradient-to-br from-brand-600 to-brand-700 px-4 py-3 text-white">
-            <LogoMark gradient={false} className="h-8 w-8 text-white/20" />
+            <LogoMark gradient={false} v2 className="h-8 w-8 text-white/20" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold leading-tight">Suporte Althos</p>
               <p className="text-xs text-white/80">Responde na hora, com IA</p>

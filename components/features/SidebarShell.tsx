@@ -85,7 +85,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
             style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
           >
             <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-4 shrink-0">
-              <Logo className="sidebar-brand" />
+              <Logo className="sidebar-brand" v2 />
               <button
                 ref={closeRef}
                 type="button"
