@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sparkles, Send, X, Loader2, Pin, Trash2, Plus, Pencil, Check, PanelLeft } from 'lucide-react'
+import { LogoMark } from '@/components/brand/Logo'
 import { getCopilotInit } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
 import {
@@ -227,7 +228,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
             streamedTools.push({ name: event.name, input: event.input, result: event.result })
             setMessages(prev => prev.map(m => (m.id === draftId ? { ...m, tool_calls: [...streamedTools] } : m)))
           } else if (event.type === 'error') {
-            toast.error('Copiloto', { description: event.error })
+            toast.error('Althos AI', { description: event.error })
           }
         }
       }
@@ -346,11 +347,9 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                   <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setSidebarOpen(v => !v)} title="Mostrar/ocultar histórico">
                     <PanelLeft className="w-4 h-4" />
                   </Button>
-                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
+                  <LogoMark v2 className="h-8 w-8 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold leading-tight tracking-tight">Copiloto IA</p>
+                    <p className="text-sm font-semibold leading-tight tracking-tight">Althos AI</p>
                     {credits != null && (
                       <p className="text-[11px] text-muted-foreground leading-tight">{credits} créditos restantes</p>
                     )}
@@ -375,9 +374,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                   ) : messages.length === 0 ? (
                     <div className="pt-10 space-y-5">
                       <div className="space-y-1.5">
-                        <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
-                          <Sparkles className="w-5 h-5" />
-                        </div>
+                        <LogoMark v2 className="h-11 w-11 rounded-2xl mb-3" />
                         <h3 className="text-xl font-semibold tracking-tight">Como posso ajudar?</h3>
                         <p className="text-sm text-muted-foreground">Pergunte algo sobre o seu negócio.</p>
                       </div>
