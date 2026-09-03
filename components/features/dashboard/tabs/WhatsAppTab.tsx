@@ -57,31 +57,33 @@ export default async function WhatsAppTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Heatmap de horários</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Volume de mensagens (enviadas + recebidas) por hora do dia e dia da semana — {totalMessages} mensagem{totalMessages === 1 ? '' : 's'} no período.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <WhatsAppHeatmap cells={data.heatmap} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <Card className="h-[360px] flex flex-col">
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-base">Heatmap de horários</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Volume de mensagens (enviadas + recebidas) por hora do dia e dia da semana — {totalMessages} mensagem{totalMessages === 1 ? '' : 's'} no período.
+            </p>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 overflow-auto">
+            <WhatsAppHeatmap cells={data.heatmap} />
+          </CardContent>
+        </Card>
 
-      <Card className="h-[360px] flex flex-col">
-        <CardHeader className="pb-2 shrink-0">
-          <CardTitle className="text-base">Mensagens enviadas x recebidas</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">Volume diário no período selecionado.</p>
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0">
-          {data.daily.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sem mensagens no período selecionado.</p>
-          ) : (
-            <WhatsAppDailyChartInner data={data.daily} />
-          )}
-        </CardContent>
-      </Card>
+        <Card className="h-[360px] flex flex-col">
+          <CardHeader className="pb-2 shrink-0">
+            <CardTitle className="text-base">Mensagens enviadas x recebidas</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Coluna empilhada = total do dia (recebidas + enviadas); linha = quantas enviadas foram respondidas pelo Agente IA.</p>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0">
+            {data.daily.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem mensagens no período selecionado.</p>
+            ) : (
+              <WhatsAppDailyChartInner data={data.daily} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

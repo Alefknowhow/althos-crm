@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export type WhatsappHeatmapCell = { dow: number; hour: number; count: number }
 
-export type WhatsappDailyPoint = { date: string; inbound: number; outbound: number }
+export type WhatsappDailyPoint = { date: string; inbound: number; outbound: number; aiAnswered: number }
 
 export type WhatsappAnalytics = {
   heatmap: WhatsappHeatmapCell[]
@@ -74,7 +74,7 @@ export async function getWhatsappAnalytics(
 
   const { data: rawMessages } = await supabase
     .from('whatsapp_messages')
-    .select('conversation_id, direction, created_at')
+    .select('conversation_id, direction, created_at, sent_by_name')
     .eq('organization_id', orgId)
     .gte('created_at', since.toISOString())
     .order('conversation_id', { ascending: true })
@@ -87,7 +87,7 @@ export async function getWhatsappAnalytics(
 
   // ---- Heatmap (hora x dia da semana) + série diária enviada x recebida ----
   const heatmapMap = new Map<string, number>()
-  const dailyMap = new Map<string, { inbound: number; outbound: number }>()
+  const dailyMap = new Map<string, { inbound: number; outbound: number; aiAnswered: number }>()
   let totalInbound = 0
   let totalOutbound = 0
 
@@ -99,8 +99,14 @@ export async function getWhatsappAnalytics(
     heatmapMap.set(hKey, (heatmapMap.get(hKey) || 0) + 1)
 
     const dayKey = d.toISOString().slice(0, 10)
-    const entry = dailyMap.get(dayKey) || { inbound: 0, outbound: 0 }
-    if (m.direction === 'inbound') { entry.inbound++; totalInbound++ } else { entry.outbound++; totalOutbound++ }
+    const entry = dailyMap.get(dayKey) || { inbound: 0, outbound: 0, aiAnswered: 0 }
+    if (m.direction === 'inbound') { entry.inbound++; totalInbound++ } else {
+      entry.outbound++
+      totalOutbound++
+      // Mensagem enviada pelo Agente IA — lib/inngest/whatsapp-inbound.ts
+      // grava sent_by_name: 'IA' em toda resposta automática.
+      if ((m as any).sent_by_name === 'IA') entry.aiAnswered++
+    }
     dailyMap.set(dayKey, entry)
   }
 
@@ -113,7 +119,7 @@ export async function getWhatsappAnalytics(
 
   const daily: WhatsappDailyPoint[] = Array.from(dailyMap.entries())
     .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([date, v]) => ({ date, inbound: v.inbound, outbound: v.outbound }))
+    .map(([date, v]) => ({ date, inbound: v.inbound, outbound: v.outbound, aiAnswered: v.aiAnswered }))
 
   // ---- Agrupamento por conversa: tempo de resposta, taxa de resposta,
   //      conversas iniciadas x recebidas ----
