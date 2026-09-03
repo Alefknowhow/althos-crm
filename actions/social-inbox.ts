@@ -473,6 +473,27 @@ export async function createLeadFromSocialConversation(orgSlug: string, conversa
   if (!conv) return { ok: false as const, error: 'Conversa não encontrada.' }
   if (conv.contato_id) return { ok: false as const, error: 'Esta conversa já tem um lead vinculado.' }
 
+  // Dedup: se já existe um contato com esse @Instagram (cadastrado manualmente
+  // ou criado numa conversa/automação anterior), reaproveita em vez de criar
+  // outro — só vincula a conversa a ele.
+  if (conv.sender_username) {
+    const { data: existingContato } = await supabase
+      .from('contatos')
+      .select('id')
+      .eq('organization_id', g.org.id)
+      .ilike('instagram_username', conv.sender_username)
+      .maybeSingle()
+    if (existingContato) {
+      await supabase
+        .from('social_conversations')
+        .update({ contato_id: existingContato.id })
+        .eq('id', conv.id)
+        .eq('organization_id', g.org.id)
+      revalidatePath(`/app/${orgSlug}/social/inbox`)
+      return { ok: true as const, leadId: existingContato.id, reused: true as const }
+    }
+  }
+
   const { data: pipeline } = await supabase
     .from('pipelines')
     .select('id')
@@ -498,6 +519,7 @@ export async function createLeadFromSocialConversation(orgSlug: string, conversa
       stage_id:        firstStage.id,
       name:            conv.sender_name || (conv.sender_username ? `@${conv.sender_username}` : 'Lead do Instagram'),
       source:          'instagram',
+      instagram_username: conv.sender_username || null,
       avatar_url:      conv.sender_avatar_url || null,
     })
     .select('id')

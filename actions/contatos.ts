@@ -860,9 +860,23 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
 const primaryContactSchema = z.object({
   email: z.string().email('E-mail inválido').optional().or(z.literal('')).nullable(),
   phone: z.string().optional().nullable(),
+  instagram_username: z.string().optional().nullable(),
 })
 
-/** Atualiza o e-mail/telefone principal (contatos.email/phone) — usados em busca, WhatsApp, etc. */
+/** Normaliza o @usuário do Instagram: remove "@", espaços e a URL, se colada
+ *  (ex.: "https://instagram.com/fulano" ou "@fulano" -> "fulano"). */
+function normalizeInstagramUsername(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const withoutUrl = trimmed.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+  const cleaned = withoutUrl.replace(/^@/, '').replace(/\/$/, '').trim()
+  return cleaned || null
+}
+
+/** Atualiza o e-mail/telefone/Instagram principal (contatos.email/phone/
+ *  instagram_username) — usados em busca, WhatsApp e dedup de leads do
+ *  Instagram (ver lib/social/engine.ts::maybeCreateLead). */
 export async function updateContatoPrimaryContact(orgSlug: string, contatoId: string, raw: unknown) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -875,7 +889,11 @@ export async function updateContatoPrimaryContact(orgSlug: string, contatoId: st
 
   const { error } = await supabase
     .from('contatos')
-    .update({ email: parsed.data.email || null, phone: parsed.data.phone || null })
+    .update({
+      email: parsed.data.email || null,
+      phone: parsed.data.phone || null,
+      instagram_username: normalizeInstagramUsername(parsed.data.instagram_username),
+    })
     .eq('id', contatoId)
     .eq('organization_id', org.id)
 

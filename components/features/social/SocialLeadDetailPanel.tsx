@@ -52,6 +52,7 @@ export default function SocialLeadDetailPanel({
     setCreating(true)
     const res = await createLeadFromSocialConversation(orgSlug, conversation.id)
     if (!res.ok) toast.error('Não foi possível criar o lead', { description: (res as any).error })
+    else if ((res as any).reused) toast.success('Contato já existia — conversa vinculada a ele')
     else toast.success('Lead criado e vinculado à conversa')
     setCreating(false)
     router.refresh()

@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil, Upload, FileText, FileImage } from 'lucide-react'
+import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil, Upload, FileText, FileImage, AtSign, ExternalLink } from 'lucide-react'
 import {
   upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
   removeContatoContactPoint, getDocumentSignedUrl, type ContatoContactPoint,
@@ -129,6 +129,7 @@ type Profile = {
   address_notes: string | null
   email?: string | null
   phone?: string | null
+  instagram_username?: string | null
   created_at?: string | null
 } | null
 
@@ -186,6 +187,7 @@ export default function CustomerProfileForm({
     date_of_birth: initial?.date_of_birth || '',
     email: initial?.email || '',
     phone: initial?.phone || '',
+    instagram_username: initial?.instagram_username || '',
     cpf: initial?.cpf || '',
     rg: initial?.rg || '',
     passport_number: initial?.passport_number || '',
@@ -246,11 +248,11 @@ export default function CustomerProfileForm({
   // acidental (nada grava sozinho enquanto a pessoa digita).
   async function save() {
     setSaving(true)
-    const { email, phone, name, ...rest } = form
+    const { email, phone, instagram_username, name, ...rest } = form
     const payload = name.trim() ? { name: name.trim(), ...rest } : rest
     const [profileRes, contactRes] = await Promise.all([
       upsertCustomerProfile(orgSlug, leadId, payload),
-      updateContatoPrimaryContact(orgSlug, leadId, { email, phone }),
+      updateContatoPrimaryContact(orgSlug, leadId, { email, phone, instagram_username }),
     ])
     setSaving(false)
     if (!profileRes.ok) { toast.error((profileRes as any).error || 'Erro ao salvar'); return }
@@ -328,6 +330,19 @@ export default function CustomerProfileForm({
               </div>
             ))}
           </div>
+          {form.instagram_username && (
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Instagram</div>
+              <a
+                href={`https://instagram.com/${form.instagram_username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                <AtSign className="w-3.5 h-3.5" /> {form.instagram_username} <ExternalLink className="w-3 h-3 opacity-60" />
+              </a>
+            </div>
+          )}
           {points.length > 0 && (
             <div className="space-y-1.5 pt-2 border-t">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Outros contatos</div>
@@ -419,6 +434,31 @@ export default function CustomerProfileForm({
                 onChange={e => setForm({ ...form, phone: e.target.value })}
                 placeholder="(00) 00000-0000"
               />
+            </div>
+            <div className="space-y-1.5 w-48">
+              <FieldLabel>
+                <Label className="text-xs">Instagram</Label>
+                {form.instagram_username && (
+                  <a
+                    href={`https://instagram.com/${form.instagram_username.replace(/^@/, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Abrir perfil no Instagram"
+                    className="text-muted-foreground/60 hover:text-primary"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </FieldLabel>
+              <div className="relative">
+                <AtSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+                <Input
+                  className={`pl-8 ${DARK_FIELD}`}
+                  value={form.instagram_username}
+                  onChange={e => setForm({ ...form, instagram_username: e.target.value })}
+                  placeholder="usuario"
+                />
+              </div>
             </div>
           </div>
 

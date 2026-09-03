@@ -72,7 +72,23 @@ async function maybeCreateLead(
   accessToken?: string,
 ): Promise<string | null> {
   const externalRef = inbound.senderUsername ? `@${inbound.senderUsername}` : inbound.senderId
+
   // De-dupe: don't create a second lead for the same Instagram sender.
+  // Primeiro tenta pelo @usuário salvo em contatos.instagram_username — cobre
+  // tanto leads criados por este mesmo fluxo automático quanto contatos já
+  // cadastrados manualmente (ou vindos de outro canal) com o Instagram
+  // preenchido. Cai pra checagem antiga por `source` só como fallback, pra
+  // não duplicar leads criados antes dessa coluna existir.
+  if (inbound.senderUsername) {
+    const { data: byUsername } = await supabase
+      .from('contatos')
+      .select('id')
+      .eq('organization_id', orgId)
+      .ilike('instagram_username', inbound.senderUsername)
+      .maybeSingle()
+    if (byUsername) return byUsername.id
+  }
+
   const { data: existing } = await supabase
     .from('contatos')
     .select('id')
@@ -115,6 +131,7 @@ async function maybeCreateLead(
       stage_id: defaultStage?.id ?? null,
       name: inbound.senderUsername ? `@${inbound.senderUsername}` : 'Lead do Instagram',
       source: `instagram:${externalRef}`,
+      instagram_username: inbound.senderUsername || null,
       avatar_url: avatarUrl,
     })
     .select('id')
