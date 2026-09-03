@@ -85,54 +85,42 @@ export async function getDashboardMetrics(
     ? ((currentLeads || 0) - previousLeads) / previousLeads * 100
     : 0
 
-  // 2. Conversões no período (leads movidos para "Fechado")
-  const { data: closedStage } = await supabase
-    .from('pipeline_stages')
-    .select('id')
-    .ilike('name', '%fechado%')
-    .limit(1)
-    .maybeSingle()
-
+  // 2. Conversões no período (leads com deal_status = 'ganho', fechados dentro
+  // da janela). Usa deal_status/closed_at — não mais o nome do estágio do
+  // pipeline ("Fechado"): estágios de ganho são configuráveis por org via
+  // pipeline_stages.is_won (ver 0042/0110), e o rótulo pode ser qualquer
+  // coisa (ex.: "Venda concluída"), então casar por nome do estágio deixava
+  // de contar conversões em qualquer pipeline que não usasse esse texto.
   let currentConversions = 0
   let previousConversions = 0
   let currentRevenue = 0
 
-  if (closedStage) {
+  {
     let convQ = supabase
       .from('contatos')
-      .select('*', { count: 'exact', head: true })
+      .select('value_cents', { count: 'exact' })
       .eq('organization_id', orgId)
-      .eq('stage_id', closedStage.id)
-      .gte('updated_at', start.toISOString())
+      .eq('deal_status', 'ganho')
+      .gte('closed_at', start.toISOString())
     if (pipelineId) convQ = convQ.eq('pipeline_id', pipelineId)
     if (sellerId) convQ = convQ.eq('assigned_to', sellerId)
-    const { count: convCount } = await convQ
+    const { data: convRows, count: convCount } = await convQ
 
     currentConversions = convCount || 0
+    currentRevenue = (convRows || []).reduce((a: number, r: any) => a + (r.value_cents || 0), 0)
 
     let prevConvQ = supabase
       .from('contatos')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', orgId)
-      .eq('stage_id', closedStage.id)
-      .gte('updated_at', previousStart.toISOString())
-      .lte('updated_at', previousEnd.toISOString())
+      .eq('deal_status', 'ganho')
+      .gte('closed_at', previousStart.toISOString())
+      .lte('closed_at', previousEnd.toISOString())
     if (pipelineId) prevConvQ = prevConvQ.eq('pipeline_id', pipelineId)
     if (sellerId) prevConvQ = prevConvQ.eq('assigned_to', sellerId)
     const { count: prevConvCount } = await prevConvQ
 
     previousConversions = prevConvCount || 0
-
-    // Aggregated server-side via RPC so we don't pull every closed lead row
-    // into Node just to sum a column.
-    const { data: revenueSum } = await supabase.rpc('dashboard_revenue', {
-      p_org_id: orgId,
-      p_stage_id: closedStage.id,
-      p_start: start.toISOString(),
-      p_pipeline_id: pipelineId || null,
-    })
-
-    currentRevenue = Number(revenueSum) || 0
   }
 
   // 3. Tarefas concluídas
