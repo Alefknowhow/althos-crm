@@ -559,8 +559,8 @@ function TripDetail({
             </Button>
           )}
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/app/${orgSlug}/reservas`}>
-              <ExternalLink className="w-4 h-4 mr-1.5" /> Abrir venda
+            <Link href={`/app/${orgSlug}/reservas?sale=${trip.id}`}>
+              <ExternalLink className="w-4 h-4 mr-1.5" /> Abrir reserva
             </Link>
           </Button>
         </div>
