@@ -60,6 +60,17 @@ const STATE_META: Record<TripState, { label: string; bar: string; dot: string; b
   past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', row: 'bg-slate-400/[0.06]' },
 }
 
+/** Rótulo da etiqueta de estado — para "Próxima" mostra a contagem
+ *  regressiva ("Faltam N dias") em vez do texto fixo, mais útil pra
+ *  priorizar o que precisa de atenção primeiro. */
+function stateLabel(state: TripState, dep: Date | null, today: Date): string {
+  if (state !== 'upcoming' || !dep) return STATE_META[state].label
+  const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+  if (days <= 0) return 'Embarca hoje'
+  if (days === 1) return 'Falta 1 dia'
+  return `Faltam ${days} dias`
+}
+
 function whatsappLink(phone?: string | null): string | null {
   if (!phone) return null
   let digits = phone.replace(/\D/g, '')
@@ -409,7 +420,7 @@ export default function ScheduleClient({
                         <div className="flex items-center gap-2">
                           <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
                           <span className="font-medium truncate">{t.client_name || t.lead_name || 'Viagem'}</span>
-                          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{meta.label}</Badge>
+                          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
                         </div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
                           {t.destination && (
@@ -485,6 +496,7 @@ export default function ScheduleClient({
               tasks={tasks}
               loadingTasks={loadingTasks}
               state={tripState(selected, today)}
+              today={today}
               sellerName={members.find(m => m.user_id === selected.created_by)?.name}
             />
           )}
@@ -495,23 +507,25 @@ export default function ScheduleClient({
 }
 
 function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, state, sellerName,
+  orgSlug, trip, tasks, loadingTasks, state, today, sellerName,
 }: {
   orgSlug: string
   trip: ScheduledTrip
   tasks: TripTask[]
   loadingTasks: boolean
   state: TripState
+  today: Date
   sellerName?: string
 }) {
   const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
+  const dep = parseDate(trip.departure_date)
   return (
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 pr-6">
           <span className="truncate">{trip.client_name || trip.lead_name || 'Viagem'}</span>
-          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{meta.label}</Badge>
+          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
         </DialogTitle>
       </DialogHeader>
 
