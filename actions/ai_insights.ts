@@ -146,6 +146,25 @@ export async function sendInsightMessage(
     .eq('organization_id', org.id)
     .order('created_at', { ascending: true })
 
+  // Nomeia a conversa pela primeira mensagem, igual o Claude faz — mesma
+  // lógica de app/api/copilot/chat/route.ts (o caminho streaming).
+  if (!prior || prior.length === 0) {
+    const { data: session } = await supabase
+      .from('ai_insights_sessions')
+      .select('title')
+      .eq('id', sessionId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (!session?.title || session.title === 'Nova conversa') {
+      const autoTitle = userMessage.length > 60 ? `${userMessage.slice(0, 60).trim()}…` : userMessage
+      await supabase
+        .from('ai_insights_sessions')
+        .update({ title: autoTitle })
+        .eq('id', sessionId)
+        .eq('organization_id', org.id)
+    }
+  }
+
   // Persist the user turn first so it shows up even if the LLM errors out.
   await supabase.from('ai_insights_messages').insert({
     session_id: sessionId,

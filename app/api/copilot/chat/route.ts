@@ -93,6 +93,27 @@ export async function POST(req: NextRequest) {
     .eq('organization_id', org.id)
     .order('created_at', { ascending: true })
 
+  // Nomeia a conversa pela primeira mensagem, igual o Claude faz — só na
+  // primeira mensagem de verdade (prior vazio) e só se o título ainda não
+  // foi definido manualmente pelo usuário (renomear antes de mandar a
+  // primeira mensagem é um caso raro, mas não deve ser sobrescrito).
+  if (!prior || prior.length === 0) {
+    const { data: session } = await supabase
+      .from('ai_insights_sessions')
+      .select('title')
+      .eq('id', sessionId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (!session?.title || session.title === 'Nova conversa') {
+      const autoTitle = userMessage.length > 60 ? `${userMessage.slice(0, 60).trim()}…` : userMessage
+      await supabase
+        .from('ai_insights_sessions')
+        .update({ title: autoTitle })
+        .eq('id', sessionId)
+        .eq('organization_id', org.id)
+    }
+  }
+
   await supabase.from('ai_insights_messages').insert({
     session_id: sessionId,
     organization_id: org.id,
