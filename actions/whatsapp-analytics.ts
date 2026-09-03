@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/server'
  *  conversa, índice idx_whatsapp_conversations_assigned_to já existe).
  */
 
-export type WhatsappHeatmapCell = { dow: number; hour: number; count: number }
+export type WhatsappHeatmapCell = { dow: number; hour: number; inbound: number; outbound: number }
 
 export type WhatsappDailyPoint = { date: string; inbound: number; outbound: number; aiAnswered: number }
 
@@ -86,7 +86,7 @@ export async function getWhatsappAnalytics(
   )
 
   // ---- Heatmap (hora x dia da semana) + série diária enviada x recebida ----
-  const heatmapMap = new Map<string, number>()
+  const heatmapMap = new Map<string, { inbound: number; outbound: number }>()
   const dailyMap = new Map<string, { inbound: number; outbound: number; aiAnswered: number }>()
   let totalInbound = 0
   let totalOutbound = 0
@@ -96,7 +96,10 @@ export async function getWhatsappAnalytics(
     const dow = d.getDay() // 0=domingo..6=sábado
     const hour = d.getHours()
     const hKey = `${dow}-${hour}`
-    heatmapMap.set(hKey, (heatmapMap.get(hKey) || 0) + 1)
+    const hCell = heatmapMap.get(hKey) || { inbound: 0, outbound: 0 }
+    if (m.direction === 'inbound') hCell.inbound++
+    else hCell.outbound++
+    heatmapMap.set(hKey, hCell)
 
     const dayKey = d.toISOString().slice(0, 10)
     const entry = dailyMap.get(dayKey) || { inbound: 0, outbound: 0, aiAnswered: 0 }
@@ -113,7 +116,8 @@ export async function getWhatsappAnalytics(
   const heatmap: WhatsappHeatmapCell[] = []
   for (let dow = 0; dow < 7; dow++) {
     for (let hour = 0; hour < 24; hour++) {
-      heatmap.push({ dow, hour, count: heatmapMap.get(`${dow}-${hour}`) || 0 })
+      const cell = heatmapMap.get(`${dow}-${hour}`) || { inbound: 0, outbound: 0 }
+      heatmap.push({ dow, hour, inbound: cell.inbound, outbound: cell.outbound })
     }
   }
 
