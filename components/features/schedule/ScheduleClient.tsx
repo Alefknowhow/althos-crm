@@ -226,7 +226,7 @@ export default function ScheduleClient({
 
   return (
     <>
-      <Tabs defaultValue="gantt">
+      <Tabs defaultValue="list">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <TabsList>
             <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
