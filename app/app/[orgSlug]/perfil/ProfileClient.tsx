@@ -11,68 +11,21 @@ import UserAvatar from '@/components/features/UserAvatar'
 import {
   updateProfileInfo,
   requestEmailChange,
-  changePassword,
   uploadUserAvatar,
   removeUserAvatar,
   type UserProfile,
 } from '@/actions/profile'
-import { deleteOrganization } from '@/actions/organization'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import {
   User,
   Mail,
-  Lock,
-  Building2,
-  ExternalLink,
   CheckCircle2,
-  Eye,
-  EyeOff,
   Trash2,
   Camera,
   Loader2,
 } from 'lucide-react'
-import Link from 'next/link'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: 'Proprietário',
-  admin: 'Admin',
-  member: 'Membro',
-}
-
-// ── Section card ─────────────────────────────────────────────────────────────
-
-function Section({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.ElementType
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="bg-card border border-border rounded-none overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-primary" />
-        </div>
-        <h2 className="font-semibold text-sm">{title}</h2>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  )
-}
+import { Section } from './ProfileSection'
+import { ProfileSecuritySection } from './ProfileSecuritySection'
+import { ProfileOrganizationsSection } from './ProfileOrganizationsSection'
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -165,63 +118,6 @@ export default function ProfileClient({
       toast.error(res.error)
     }
     setSavingEmail(false)
-  }
-
-  // ── Troca de senha ───────────────────────────────────────────────────────
-  const [currentPass,   setCurrentPass]   = useState('')
-  const [newPass,       setNewPass]       = useState('')
-  const [confirmPass,   setConfirmPass]   = useState('')
-  const [showPass,      setShowPass]      = useState(false)
-  const [savingPass,    setSavingPass]    = useState(false)
-
-  async function handleChangePassword() {
-    if (!currentPass) {
-      toast.error('Informe sua senha atual.')
-      return
-    }
-    if (newPass.length < 8) {
-      toast.error('A nova senha precisa ter pelo menos 8 caracteres.')
-      return
-    }
-    if (newPass !== confirmPass) {
-      toast.error('As senhas não coincidem.')
-      return
-    }
-    setSavingPass(true)
-    const res = await changePassword(currentPass, newPass)
-    if (res.ok) {
-      toast.success('Senha alterada com sucesso!')
-      setCurrentPass('')
-      setNewPass('')
-      setConfirmPass('')
-    } else {
-      toast.error(res.error)
-    }
-    setSavingPass(false)
-  }
-
-  // ── Excluir organização ───────────────────────────────────────────────────
-  const [orgToDelete, setOrgToDelete] = useState<{ slug: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const canDeleteOrgs = profile.memberships.filter(m => m.organizations).length > 1
-
-  async function handleDeleteOrg() {
-    if (!orgToDelete) return
-    setDeleting(true)
-    const res = await deleteOrganization(orgToDelete.slug)
-    setDeleting(false)
-    if (res.ok) {
-      toast.success('Organização excluída.')
-      const deletedActive = orgToDelete.slug === orgSlug
-      setOrgToDelete(null)
-      if (deletedActive && res.nextSlug) {
-        window.location.href = `/app/${res.nextSlug}/pipeline`
-      } else {
-        router.refresh()
-      }
-    } else {
-      toast.error(res.error)
-    }
   }
 
   const infoChanged = name !== profile.name || phone !== profile.phone
@@ -357,148 +253,10 @@ export default function ProfileClient({
       </Section>
 
       {/* ── Segurança ─────────────────────────────────────────────────────── */}
-      <Section icon={Lock} title="Segurança">
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="current-pass">Senha atual</Label>
-            <Input
-              id="current-pass"
-              type={showPass ? 'text' : 'password'}
-              value={currentPass}
-              onChange={e => setCurrentPass(e.target.value)}
-              placeholder="sua senha atual"
-              autoComplete="current-password"
-              className="h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="new-pass">Nova senha</Label>
-            <div className="relative">
-              <Input
-                id="new-pass"
-                type={showPass ? 'text' : 'password'}
-                value={newPass}
-                onChange={e => setNewPass(e.target.value)}
-                placeholder="mínimo 8 caracteres"
-                autoComplete="new-password"
-                className="h-10 pr-10"
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowPass(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="confirm-pass">Confirmar nova senha</Label>
-            <Input
-              id="confirm-pass"
-              type={showPass ? 'text' : 'password'}
-              value={confirmPass}
-              onChange={e => setConfirmPass(e.target.value)}
-              placeholder="repita a senha"
-              className="h-10"
-            />
-            {confirmPass && newPass !== confirmPass && (
-              <p className="text-xs text-destructive">As senhas não coincidem.</p>
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleChangePassword}
-              disabled={savingPass || !currentPass || !newPass || !confirmPass}
-              size="sm"
-              variant="outline"
-              className="min-w-[160px]"
-            >
-              {savingPass ? 'Alterando…' : 'Alterar senha'}
-            </Button>
-          </div>
-        </div>
-      </Section>
+      <ProfileSecuritySection />
 
       {/* ── Organizações ─────────────────────────────────────────────────── */}
-      <Section icon={Building2} title="Minhas organizações">
-        <div className="space-y-2">
-          {profile.memberships.map((m, i) => {
-            const org = m.organizations
-            if (!org) return null
-            const isActive = org.slug === orgSlug
-            return (
-              <div
-                key={i}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                  isActive
-                    ? 'border-primary/40 bg-primary/5'
-                    : 'border-border bg-muted/30'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{org.name}</p>
-                  <p className="text-xs text-muted-foreground">{ROLE_LABEL[m.role] ?? m.role}</p>
-                </div>
-                {isActive && (
-                  <Badge variant="secondary" className="text-[10px] shrink-0">atual</Badge>
-                )}
-                {!isActive && (
-                  <Link href={`/app/${org.slug}/pipeline`}>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
-                      Abrir <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </Link>
-                )}
-                {canDeleteOrgs && ['owner', 'admin'].includes(m.role) && (
-                  <button
-                    type="button"
-                    title="Excluir organização"
-                    onClick={() => setOrgToDelete({ slug: org.slug, name: org.name })}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </Section>
-
-      {/* ── Confirmação de exclusão ───────────────────────────────────────── */}
-      <AlertDialog open={!!orgToDelete} onOpenChange={op => !op && setOrgToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir organização?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está prestes a excluir <strong>{orgToDelete?.name}</strong>. Esta ação é
-              permanente e remove todos os leads, pipelines, formulários e demais dados dessa
-              organização. Não há como desfazer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => {
-                e.preventDefault()
-                handleDeleteOrg()
-              }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ProfileOrganizationsSection profile={profile} orgSlug={orgSlug} />
 
     </div>
   )
