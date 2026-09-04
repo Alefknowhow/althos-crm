@@ -14,16 +14,14 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import EmptyState from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { cn, formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import {
   deleteFinancialEntry, updateFinancialEntry, getFinancialAttachmentUrl, type FinancialEntryRow,
 } from '@/actions/financial'
@@ -31,14 +29,14 @@ import { type FinancialSettingType, type FinancialSettingRow } from '@/actions/f
 import FinancialCsvImporter from './FinancialCsvImporter'
 import { toast } from 'sonner'
 import {
-  Wallet, Plus, Upload, Trash2, Search, Repeat, CreditCard,
-  Eye, Pencil, CheckCircle2, Circle, TrendingUp, TrendingDown,
+  Wallet, Plus, Upload, Search, Circle, TrendingUp, TrendingDown,
 } from 'lucide-react'
 import {
-  STATUS_LABELS, STATUS_VARIANT, PAGE_SIZE, type PeriodId, type SortKey,
-  fmtDate, periodRange, PeriodFilterDropdown, SummaryCard,
+  STATUS_LABELS, PAGE_SIZE, type PeriodId, type SortKey,
+  periodRange, PeriodFilterDropdown, SummaryCard,
 } from './FinancialEntriesShared'
-import { SortableHead, IconAction, EntryDetailsModal } from './FinancialEntriesTableWidgets'
+import { EntryDetailsModal } from './FinancialEntriesTableWidgets'
+import { FinancialEntriesTable } from './FinancialEntriesTable'
 import { NewEntryDialog } from './FinancialEntriesNewDialog'
 import { EditEntryDialog } from './FinancialEntriesEditDialog'
 
@@ -233,67 +231,15 @@ export default function FinancialEntriesView({
       </div>
 
       {/* ── Tabela ──────────────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableHead label="Data" active={sort.key === 'competencia'} dir={sort.dir} onClick={() => toggleSort('competencia')} />
-              <TableHead>Descrição</TableHead>
-              <TableHead>Cliente/Fornecedor</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Tipo</TableHead>
-              <SortableHead label="Vencimento" active={sort.key === 'vencimento'} dir={sort.dir} onClick={() => toggleSort('vencimento')} />
-              <SortableHead label="Valor" active={sort.key === 'valor_cents'} dir={sort.dir} onClick={() => toggleSort('valor_cents')} className="text-right" />
-              <SortableHead label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-40 text-center">
-                  <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground py-6">
-                    <Wallet className="w-6 h-6 opacity-40 mb-1" />
-                    <p className="text-sm font-medium">Nenhum lançamento encontrado</p>
-                    <p className="text-xs">Tente alterar os filtros ou realizar uma nova pesquisa.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : pageRows.map(e => (
-              <TableRow key={e.id} className="cursor-pointer" onClick={() => setDetailsId(e.id)}>
-                <TableCell className="whitespace-nowrap text-xs">{fmtDate(e.competencia)}</TableCell>
-                <TableCell className="max-w-[220px]">
-                  <span className="truncate block text-sm">
-                    {e.observacoes || e.categoria}
-                    {e.is_recurring && <Repeat className="inline w-3 h-3 ml-1 text-muted-foreground align-[-1px]" aria-label="Recorrente" />}
-                    {e.installment_group_id && <CreditCard className="inline w-3 h-3 ml-1 text-muted-foreground align-[-1px]" aria-label={`Parcela ${e.parcela_numero}/${e.parcela_total}`} />}
-                  </span>
-                </TableCell>
-                <TableCell className="max-w-[160px] text-xs text-muted-foreground truncate">{e.contato_nome || e.operadora || '—'}</TableCell>
-                <TableCell className="text-xs">{e.categoria}</TableCell>
-                <TableCell>
-                  {e.tipo === 'receita'
-                    ? <span className="inline-flex items-center gap-1 text-xs text-success"><TrendingUp className="w-3.5 h-3.5" /> Receita</span>
-                    : <span className="inline-flex items-center gap-1 text-xs text-destructive"><TrendingDown className="w-3.5 h-3.5" /> Despesa</span>}
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-xs">{fmtDate(e.vencimento)}</TableCell>
-                <TableCell className={cn('text-right text-sm font-semibold tabular-nums whitespace-nowrap', e.tipo === 'receita' ? 'text-success' : 'text-destructive')}>
-                  {e.tipo === 'despesa' ? '- ' : ''}{formatCurrency(e.valor_cents)}
-                </TableCell>
-                <TableCell><Badge variant={STATUS_VARIANT[e.status]} className="text-[10px] px-1.5 py-0">{STATUS_LABELS[e.status]}</Badge></TableCell>
-                <TableCell onClick={ev => ev.stopPropagation()}>
-                  <div className="flex items-center justify-end gap-1">
-                    <IconAction icon={Eye} label="Ver detalhes" onClick={() => setDetailsId(e.id)} />
-                    <IconAction icon={e.status === 'pago' ? Circle : CheckCircle2} label={e.status === 'pago' ? 'Marcar como pendente' : 'Marcar como pago'} onClick={() => handleToggleStatus(e)} />
-                    <IconAction icon={Pencil} label="Editar" onClick={() => setEditId(e.id)} />
-                    <IconAction icon={Trash2} label="Excluir" tone="destructive" onClick={() => setDeleteId(e.id)} />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <FinancialEntriesTable
+        pageRows={pageRows}
+        sort={sort}
+        toggleSort={toggleSort}
+        onOpenDetails={setDetailsId}
+        onEdit={setEditId}
+        onDelete={setDeleteId}
+        onToggleStatus={handleToggleStatus}
+      />
 
       {sorted.length > 0 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
