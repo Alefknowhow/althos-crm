@@ -21,7 +21,7 @@ interface PageHeaderProps {
  * agora vai pra lá também — este componente só registra o hint no contexto
  * e renderiza as ações, pra não gastar mais uma linha inteira em cada tela.
  */
-export function PageHeader({ title, hint, actions, className }: PageHeaderProps) {
+export function PageHeader({ title: _title, hint, actions, className }: PageHeaderProps) {
   const { setHint } = usePageHint()
 
   useEffect(() => {

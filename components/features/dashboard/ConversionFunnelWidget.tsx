@@ -42,25 +42,6 @@ function fmtCurrency(cents: number): string {
   )
 }
 
-/**
- * Encodes a FunnelSource into a stable string for the dropdown value,
- * and decodes back. Avoids holding two pieces of state in sync.
- */
-function encodeSource(s: FunnelSource): string {
-  switch (s.kind) {
-    case 'all':
-      return 'all'
-    case 'manual':
-      return 'manual'
-    case 'form':
-      return `form:${s.formId}`
-    case 'campaign':
-      return `campaign:${s.utmCampaign}`
-    case 'utm_source':
-      return `utm_source:${s.value}`
-  }
-}
-
 function decodeSource(s: string): FunnelSource {
   if (s === 'all' || !s) return { kind: 'all' }
   if (s === 'manual') return { kind: 'manual' }

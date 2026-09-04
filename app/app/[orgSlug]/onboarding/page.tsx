@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { updateOnboardingStep, createInitialFunnel } from '@/actions/onboarding'
 import { toast } from 'sonner'
-import { Building2, PieChart, Users, Upload, MessageSquare, CheckCircle2 } from 'lucide-react'
+import { Building2, Upload, MessageSquare } from 'lucide-react'
 
 const SECTORS = [
   { id: 'clinica', name: 'Clínica / Saúde', stages: ['Agendamento', 'Consulta', 'Tratamento', 'Pós-atendimento'] },
@@ -47,7 +47,7 @@ export default function OnboardingPage({ params }: { params: { orgSlug: string }
         toast.success('Onboarding concluído!')
         router.push(`/app/${params.orgSlug}`)
       }
-    } catch (error: any) {
+    } catch {
       toast.error('Erro ao salvar progresso')
     } finally {
       setLoading(false)

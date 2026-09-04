@@ -998,7 +998,6 @@ export async function getRevenueForecast(
   const histStart = new Date()
   histStart.setDate(histStart.getDate() - 90)
 
-  const stageIds = stages.map(s => s.id)
   const { data: histChanges } = await supabase
     .from('contato_activities')
     .select('contato_id, payload, created_at')

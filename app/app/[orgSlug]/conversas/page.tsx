@@ -1,4 +1,4 @@
-import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { listOrgMembers } from '@/actions/team'
 import { getConversationContext, listScheduledMessages } from '@/actions/whatsapp'

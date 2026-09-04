@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Printer, MapPin, Plane, Hotel, Car, ShieldCheck, ArrowLeft, MessageCircle, Mail,
-  Users, CalendarDays, Info, AlertTriangle, Compass, Ticket, Sparkles, Hash, Phone, Globe,
+  Info, AlertTriangle, Compass, Ticket, Sparkles, Hash, Phone, Globe,
   Backpack, Briefcase, Luggage, Ship,
 } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'

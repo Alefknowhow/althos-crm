@@ -12,7 +12,7 @@
 import { useState, useTransition } from 'react'
 import { Gift, Copy, Check, Ticket, Users, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { redeemCoupon, redeemReferral } from '@/actions/referrals'
+import { redeemCoupon } from '@/actions/referrals'
 import type { ReferralOverview, AppliedCoupon } from '@/actions/referrals'
 
 function discountLabel(type: string, value: number) {
@@ -52,7 +52,7 @@ export default function ReferralCouponsSection({
   )
 }
 
-function ReferralCard({ orgSlug, overview }: { orgSlug: string; overview: ReferralOverview }) {
+function ReferralCard({ orgSlug: _orgSlug, overview }: { orgSlug: string; overview: ReferralOverview }) {
   const [copied, setCopied] = useState(false)
   const code = overview.referralCode
 

@@ -35,18 +35,6 @@ function responseColor(r: SocialAutomation['response_type']) {
   return r === 'ai' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyAutomations() {
-  return (
-    <div className="flex flex-col items-center justify-center text-center py-12 px-6">
-      <p className="text-sm text-muted-foreground max-w-xs">
-        Nenhuma regra antiga cadastrada. Novas automações são criadas acima, em &ldquo;Automações do Instagram&rdquo;.
-      </p>
-    </div>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {

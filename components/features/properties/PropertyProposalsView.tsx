@@ -40,10 +40,6 @@ function strToCents(s: string) {
   const n = parseFloat((s || '').replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0
 }
-function centsToStr(c: number) {
-  return c ? (c / 100).toFixed(2).replace('.', ',') : ''
-}
-
 export default function PropertyProposalsView({
   orgSlug, proposals, properties, contatos, fixedPropertyId, preselectedPropertyIds, preselectedContatoId, onDialogClose,
 }: {
@@ -100,9 +96,8 @@ export default function PropertyProposalsView({
 
   function toggleProperty(id: string, checked: boolean) {
     setSelected(prev => {
-      const next = { ...prev }
-      if (checked) next[id] = next[id] ?? ''
-      else delete next[id]
+      if (checked) return { ...prev, [id]: prev[id] ?? '' }
+      const { [id]: _omit, ...next } = prev
       return next
     })
   }

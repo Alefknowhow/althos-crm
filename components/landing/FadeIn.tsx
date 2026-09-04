@@ -7,11 +7,6 @@ const defaultVariants: Variants = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
 }
 
-const containerVariants: Variants = {
-  hidden: {},
-  show:   { transition: { staggerChildren: 0.1 } },
-}
-
 /** Wraps children in a fade+slide-up animation triggered when entering the viewport. */
 export function FadeIn({
   children,

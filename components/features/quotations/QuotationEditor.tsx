@@ -8,7 +8,7 @@
  * Imagens: upload/colar/arrastar com compressão client-side.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -19,22 +19,20 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   ArrowLeft, Plus, Trash2, Loader2, Copy, ExternalLink,
   CheckCircle2, Link2, Image as ImageIcon, Search,
   MapPin, Plane, BedDouble, Route, AlertTriangle, Wallet,
-  Sparkles, FileText, Map as MapIcon, MessageCircle, Settings2, LocateFixed,
+  Sparkles, FileText, Map as MapIcon, MessageCircle, LocateFixed,
   Ticket, Ship,
   Car, Shield, KeyRound, Star, Repeat, UserRound, Building2, Save,
 } from 'lucide-react'
 
 import {
-  saveQuotation, generateQuotationLink, tripadvisorLookup, unsplashSearch, unsplashTrackDownload, convertOfferToQuotation, type QuotationFull,
+  saveQuotation, generateQuotationLink, tripadvisorLookup, convertOfferToQuotation, type QuotationFull,
   listFooterProfiles, createFooterProfile, deleteFooterProfile, type FooterProfileRow,
 } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
-import { uploadFormAsset } from '@/actions/upload'
 import { getUserProfile } from '@/actions/profile'
 import { CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
@@ -48,7 +46,7 @@ import {
   FARE_CONDITIONS, PAYMENT_METHODS, INCLUDED_SUGGESTIONS, NOT_INCLUDED_SUGGESTIONS, BOARD_OPTIONS,
   nk, withKeys, centsToStr, strToCents, computeFlightDuration, hasHtml,
   ToggleRichField, CoverUpload, SignaturePhotoUpload, PhotoGallery,
-  SortableList, F, EditBlock, GROUPS, type GroupId, GroupNavMobile, GroupNavSidebar, GroupSection,
+  SortableList, F, EditBlock, type GroupId, GroupNavMobile, GroupNavSidebar, GroupSection,
   Disclosure, StringList, BaggagePicker,
 } from './QuotationEditorFields'
 

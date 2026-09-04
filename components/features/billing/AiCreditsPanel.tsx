@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { Sparkles, Zap, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { getPublicCreditPackOptions, type CreditPackOption } from '@/actions/ai-credit-pricing'

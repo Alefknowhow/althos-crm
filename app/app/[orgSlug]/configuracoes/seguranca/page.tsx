@@ -5,7 +5,7 @@ import SecurityClient from './SecurityClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SegurancaPage({ params }: { params: { orgSlug: string } }) {
+export default async function SegurancaPage({ params: _params }: { params: { orgSlug: string } }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

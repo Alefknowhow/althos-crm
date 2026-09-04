@@ -444,7 +444,7 @@ export async function convertOfferToQuotation(orgSlug: string, offerId: string) 
   for (const table of ['quotation_products', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
     const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', offerId)
     if (rows?.length) {
-      const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
+      const copies = (rows as any[]).map(({ id: _id, created_at: _ca, quotation_id: _qid, ...r }) => ({ ...r, quotation_id: newId }))
       await supabase.from(table).insert(copies)
     }
   }
@@ -485,7 +485,7 @@ export async function convertQuotationToOffer(orgSlug: string, quotationId: stri
   for (const table of ['quotation_products', 'quotation_itinerary_days', 'quotation_map_pins'] as const) {
     const { data: rows } = await supabase.from(table).select('*').eq('quotation_id', quotationId)
     if (rows?.length) {
-      const copies = (rows as any[]).map(({ id, created_at, quotation_id, ...r }) => ({ ...r, quotation_id: newId }))
+      const copies = (rows as any[]).map(({ id: _id, created_at: _ca, quotation_id: _qid, ...r }) => ({ ...r, quotation_id: newId }))
       await supabase.from(table).insert(copies)
     }
   }

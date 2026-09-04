@@ -575,7 +575,7 @@ function msgTextForSuggestion(m: { content: any; type: string }): string {
  * pausa, teto de respostas) que só fazem sentido pro fluxo automático.
  */
 export async function suggestWhatsappReply(orgSlug: string, conversationId: string) {
-  const user = await requireAuth()
+  await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 

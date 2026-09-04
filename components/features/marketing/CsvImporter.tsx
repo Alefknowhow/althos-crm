@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Upload, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { bulkRecordCampaignMetrics } from '@/actions/marketing'
-import { normalizeHeader, detectColumn, parseDate, parseMoney, parseCsv } from '@/lib/csv'
+import { detectColumn, parseDate, parseMoney, parseCsv } from '@/lib/csv'
 
 type Campaign = { id: string; name: string }
 
@@ -87,11 +87,6 @@ const HEADER_SYNONYMS = {
 // detect these AND no daily date column, we ask the user to re-export with
 // the "Por dia" breakdown enabled — importing a single row that aggregates
 // 30 days of spend into one date is misleading.
-const PERIOD_START_SYNONYMS = [
-  'inicio dos relatorios',
-  'início dos relatórios',
-  'reporting starts',
-]
 const PERIOD_END_SYNONYMS = [
   'encerramento dos relatorios',
   'encerramento dos relatórios',
@@ -108,7 +103,7 @@ export default function CsvImporter({
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [parsed, setParsed] = useState<ParsedRow[] | null>(null)
-  const [headers, setHeaders] = useState<string[]>([])
+  const [, setHeaders] = useState<string[]>([])
   const [importing, setImporting] = useState(false)
 
   function handleFile(file: File) {

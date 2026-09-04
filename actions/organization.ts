@@ -3,7 +3,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { slugify } from '@/lib/utils/slugify'
 import { requireAuth, getCurrentOrganization, isSuperAdmin } from '@/lib/supabase/types'
-import { traduzirErro } from '@/lib/utils/error-translator'
 import { revalidatePath } from 'next/cache'
 import { DEFAULT_QUALIFIER_PROMPT } from '@/lib/ai/qualifier-prompt'
 import { defaultMemberPermissions } from '@/lib/permissions'

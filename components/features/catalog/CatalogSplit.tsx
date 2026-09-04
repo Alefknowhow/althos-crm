@@ -55,7 +55,7 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic 
   }
 
   async function handleDuplicate(product: any) {
-    const { id, created_at, updated_at, ...rest } = product
+    const { id: _id, created_at: _ca, updated_at: _ua, ...rest } = product
     const result = await createProduct(orgSlug, { ...rest, name: `${product.name} (Cópia)`, is_active: true })
     if (result.ok) {
       toast.success('Item duplicado com sucesso')

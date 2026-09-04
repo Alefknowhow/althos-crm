@@ -106,7 +106,7 @@ const SELECT = '*, properties(title, code), contatos(name), property_proposal_it
 export async function listProposals(orgSlug: string, propertyId?: string): Promise<PropertyProposalRow[]> {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
-  let query = supabase.from('property_proposals').select(SELECT).eq('organization_id', org.id)
+  const query = supabase.from('property_proposals').select(SELECT).eq('organization_id', org.id)
   const { data } = await query.order('updated_at', { ascending: false }).limit(500)
   let rows = (data || []).map(mapRow)
   if (propertyId) rows = rows.filter(p => p.items.some(it => it.propertyId === propertyId))

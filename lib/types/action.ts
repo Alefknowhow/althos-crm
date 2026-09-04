@@ -9,8 +9,8 @@
  *   if (res.ok) res.data  // TypeScript sabe que data existe
  *   else res.error        // TypeScript sabe que error existe
  */
-export type ActionResult<T = void> =
-  | (T extends void ? { ok: true } : { ok: true; data: T })
+export type ActionResult<T = undefined> =
+  | (T extends undefined ? { ok: true } : { ok: true; data: T })
   | { ok: false; error: string }
 
 /**

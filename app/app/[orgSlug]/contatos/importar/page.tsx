@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { FileUp, Loader2, Check } from 'lucide-react'
 
 export default function ImportLeadsPage({ params }: { params: { orgSlug: string } }) {
-  const [file, setFile] = useState<File | null>(null)
+  const [, setFile] = useState<File | null>(null)
   const [data, setData] = useState<any[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [mapping, setMapping] = useState({ name: '', email: '', phone: '' })
@@ -50,7 +50,7 @@ export default function ImportLeadsPage({ params }: { params: { orgSlug: string 
       await triggerCsvImport(params.orgSlug, data, mapping)
       toast.success('Importação iniciada em segundo plano! Você receberá uma notificação em breve.')
       router.push(`/app/${params.orgSlug}/contatos`)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao iniciar importação')
     } finally {
       setLoading(false)

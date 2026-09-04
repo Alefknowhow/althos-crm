@@ -59,7 +59,7 @@ export default function PlataformaClient({
 }) {
   const router = useRouter()
   const [subscriptions, setSubscriptions] = useState(initialSubscriptions)
-  const [summary, setSummary] = useState(initialSummary)
+  const [summary] = useState(initialSummary)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<PlatformSubscription | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)

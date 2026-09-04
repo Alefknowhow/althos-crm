@@ -2,8 +2,6 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
   Search, ExternalLink, Settings2, ShieldCheck, ShieldOff,
   Building2, Sparkles,

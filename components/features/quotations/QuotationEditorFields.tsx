@@ -80,7 +80,7 @@ export function computeFlightDuration(f: { date?: string | null; departure_time?
   const dep = new Date(`${f.date}T${f.departure_time}`)
   const arr = new Date(`${f.arrival_date || f.date}T${f.arrival_time}`)
   if (Number.isNaN(dep.getTime()) || Number.isNaN(arr.getTime())) return null
-  let diffMin = Math.round((arr.getTime() - dep.getTime()) / 60000)
+  const diffMin = Math.round((arr.getTime() - dep.getTime()) / 60000)
   if (diffMin <= 0) return null
   const h = Math.floor(diffMin / 60)
   const m = diffMin % 60

@@ -21,7 +21,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { StorageService, buildObjectKey, SIGNED_URL_TTL_SECONDS, type StorageCategory, type StorageObjectRef } from '@/lib/storage'
+import { StorageService, SIGNED_URL_TTL_SECONDS, type StorageCategory, type StorageObjectRef } from '@/lib/storage'
 
 // Margem de segurança: uma URL cacheada só é reaproveitada se ainda faltar
 // mais que isso pra expirar — evita entregar uma URL que morre nos

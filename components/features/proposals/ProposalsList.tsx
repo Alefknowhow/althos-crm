@@ -14,11 +14,8 @@ import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
-import { createProposal, deleteProposal, duplicateProposal, updateProposal, type ProposalRow } from '@/actions/travel-proposals'
+import { createProposal, deleteProposal, duplicateProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { generateQuotationLink, convertQuotationToOffer, createSaleFromQuotation, getQuotationProductsSummary } from '@/actions/quotations'
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from '@/components/ui/popover'
 import { toast } from 'sonner'
 import {
   FileSignature, Plus, MapPin, Users, CalendarRange, Trash2, Pencil,

@@ -41,7 +41,7 @@ export default function ContatosView({
   pipelines,
   allTags,
   allSources,
-  savedFilters,
+  savedFilters: _savedFilters,
   filters,
   isTravel,
   isRealEstate,

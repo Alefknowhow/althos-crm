@@ -38,7 +38,6 @@ export function TaskPopoverContent({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const pm = PRIORITY_META[task.priority]
   const date = fmtDate(task.due_date)
   const time = dueTimeOnly(task.due_date)
   const done = task.status === 'done'

@@ -1,5 +1,4 @@
 import { getBillingCatalog } from '@/actions/super-admin'
-import { formatPrice } from '@/lib/billing/plans'
 import PlanCard from './PlanCard'
 import CouponManager from './CouponManager'
 import { Package, Ticket } from 'lucide-react'

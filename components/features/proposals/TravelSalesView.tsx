@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
@@ -45,9 +45,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
   MapPin, Calendar, CheckCircle2, Trash2, ArrowLeft, Receipt, Plus, Search, UserCircle2,
-  ExternalLink, Paperclip, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
-  Ban, Wallet, FileBadge, FileSignature, Sparkles, UserPlus, Plane,
-  Package, ListTodo, FolderOpen, Building2, Ticket, Clock,
+  ExternalLink, Upload, X, Loader2, FileIcon, ImageIcon, Users, Save, Check, ChevronsUpDown,
+  Ban, Wallet, FileBadge, FileSignature, Sparkles,
+  Package, ListTodo, Building2, Ticket, Clock,
 } from 'lucide-react'
 
 type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }

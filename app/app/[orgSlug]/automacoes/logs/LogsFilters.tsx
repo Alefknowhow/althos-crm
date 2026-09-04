@@ -18,7 +18,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 ]
 
 export default function LogsFilters({
-  orgSlug,
+  orgSlug: _orgSlug,
   automations,
   current,
 }: {

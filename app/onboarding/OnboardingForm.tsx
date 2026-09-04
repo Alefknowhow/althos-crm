@@ -188,7 +188,7 @@ function NewOrgForm() {
 // FULL ONBOARDING WIZARD — new user, 3 steps
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function FullOnboardingForm({ userEmail }: { userEmail?: string }) {
+function FullOnboardingForm({ userEmail: _userEmail }: { userEmail?: string }) {
   const [step,    setStep]    = useState(1)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import EmptyState from '@/components/ui/empty-state'
-import { cn, formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import {
   createPackage, deletePackage, generateProposalFromPackage, type ShowcaseRow,
 } from '@/actions/travel-showcase'

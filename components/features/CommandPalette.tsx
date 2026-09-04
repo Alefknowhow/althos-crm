@@ -248,7 +248,7 @@ export default function CommandPalette({ orgSlug }: { orgSlug: string }) {
  * Header trigger — visible button + keyboard hint. Renders the palette
  * itself; pairing in one component avoids prop-drilling open state.
  */
-export function CommandPaletteTrigger({ orgSlug }: { orgSlug: string }) {
+export function CommandPaletteTrigger({ orgSlug: _orgSlug }: { orgSlug: string }) {
   // Detect platform once for the displayed shortcut hint. Falls back to
   // Ctrl on unknown UAs.
   const [isMac, setIsMac] = useState(false)

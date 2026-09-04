@@ -257,7 +257,7 @@ function overlapStyle(slot: OverlapSlot): { left: string; width: string } {
 const HOUR_HEIGHT_PX = 72
 
 function WeekView({
-  orgSlug,
+  orgSlug: _orgSlug,
   weekStart,
   appointments,
   onSelect,

@@ -348,7 +348,7 @@ export function WeekTimeline({
               })}
 
               {/* Tarefas com horário, posicionadas proporcionalmente */}
-              {timed.map((t, idx) => {
+              {timed.map((t, _idx) => {
                 const time = dueTimeOnly(t.due_date)!
                 const [hh, mm] = time.split(':').map(Number)
                 const top = (hh - hours[0]) * ROW_H + (mm / 60) * ROW_H

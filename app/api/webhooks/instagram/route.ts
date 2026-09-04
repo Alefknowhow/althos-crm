@@ -102,7 +102,6 @@ export async function POST(req: Request) {
       // ── Direct messages ──────────────────────────────────────────────
       for (const m of entry.messaging || []) {
         const senderId = m.sender?.id
-        const recipientId = m.recipient?.id
 
         // Confirmação de entrega/leitura — não é uma interação nova, só
         // atualiza o status de uma mensagem já enviada por nós. Processa

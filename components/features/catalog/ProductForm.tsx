@@ -72,7 +72,7 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
       } else {
         toast.error(traduzirErro(result.error))
       }
-    } catch (error) {
+    } catch {
       toast.error('Ocorreu um erro inesperado')
     } finally {
       setLoading(false)
@@ -141,7 +141,7 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
           <FormField
             control={form.control}
             name="price_cents"
-            render={({ field }) => (
+            render={({ field: _field }) => (
               <FormItem>
                 <FormLabel>Preço</FormLabel>
                 <FormControl>

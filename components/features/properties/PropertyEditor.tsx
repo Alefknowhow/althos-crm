@@ -77,7 +77,9 @@ export default function PropertyEditor({
     if (firstRun.current) { firstRun.current = false; return }
     setSaveState('saving')
     const timer = setTimeout(async () => {
-      const { id, organization_id, code, created_by, created_at, updated_at, ...input } = p
+      const {
+        id: _id, organization_id: _oid, code: _code, created_by: _cb, created_at: _ca, updated_at: _ua, ...input
+      } = p
       const res = await updateProperty(orgSlug, p.id, input)
       if (res.ok) setSaveState('saved')
       else { setSaveState('error'); toast.error(res.error || 'Erro ao salvar') }
@@ -302,7 +304,7 @@ export default function PropertyEditor({
           <F label="Fotos">
             <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleUpload(e.target.files, 'photo')} />
             <div className="flex flex-wrap gap-2">
-              {photos.map((m, i) => (
+              {photos.map((m, _i) => (
                 <div key={m.id} className="relative group w-24 h-20 rounded-md overflow-hidden border bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={m.storage_key} alt="" className="w-full h-full object-cover" />

@@ -132,7 +132,6 @@ export default function InviteManager({ initialInvites }: { initialInvites: any[
           {invites.map(inv => {
             const used      = !!inv.used_at
             const expired   = inv.expires_at && new Date(inv.expires_at) < new Date() && !used
-            const inviteUrl = `${origin}/invite/${inv.token}`
 
             return (
               <div

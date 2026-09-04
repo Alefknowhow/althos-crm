@@ -176,10 +176,6 @@ export default function AutomationRunsPanel({ orgSlug, runs, steps }: Props) {
           const isOpen = openId === run.id
           const totalSteps = steps.length || run.current_step + 1
           const currentStepDef = steps[run.current_step]
-          const progressPct = Math.min(
-            100,
-            Math.round(((run.status === 'completed' ? totalSteps : run.current_step) / Math.max(1, totalSteps)) * 100),
-          )
 
           return (
             <Card key={run.id} className="overflow-hidden">

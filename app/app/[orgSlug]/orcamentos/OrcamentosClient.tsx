@@ -55,7 +55,7 @@ const EMPTY_QUOTE: ClinicQuoteInput = {
 }
 
 export default function OrcamentosClient({
-  orgSlug, initialQuotes, professionals, eventTypes,
+  orgSlug, initialQuotes, professionals, eventTypes: _eventTypes,
 }: {
   orgSlug: string
   initialQuotes: ClinicQuoteListRow[]

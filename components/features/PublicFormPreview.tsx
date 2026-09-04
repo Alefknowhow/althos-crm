@@ -2,7 +2,6 @@ import React from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import Image from 'next/image'
 
 export type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'select' | 'single_choice' | 'multi_select' | 'date' | 'checkbox' | 'rating' | 'opinion_scale'
 

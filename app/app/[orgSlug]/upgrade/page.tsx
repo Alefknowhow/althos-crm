@@ -1,8 +1,8 @@
 import { getCurrentOrganization } from '@/lib/supabase/types'
-import { PUBLIC_PLANS, getPlan, formatPrice, isAccessBlocked } from '@/lib/billing/plans'
+import { PUBLIC_PLANS, formatPrice } from '@/lib/billing/plans'
 import { PLAN_FEATURES } from '@/lib/billing/plan-features'
 import UpgradeCheckoutButton from '@/components/features/billing/UpgradeCheckoutButton'
-import { CheckCircle2, XCircle, Sparkles, Clock, AlertCircle, Zap, Users, Rocket } from 'lucide-react'
+import { CheckCircle2, Sparkles, Clock, AlertCircle, Zap, Users, Rocket } from 'lucide-react'
 import Link from 'next/link'
 
 // Canonical feature matrix shared with the checkout popup (CheckoutModal) via

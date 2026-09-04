@@ -20,10 +20,6 @@ export type ImoveisDashboardMetrics = {
   propertiesByCity: { label: string; value: number; valueLabel: string }[]
 }
 
-function fmtCurrency(cents: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
-}
-
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho', sent: 'Enviada', viewed: 'Vista', won: 'Aceita', lost: 'Recusada', expired: 'Expirada',
 }

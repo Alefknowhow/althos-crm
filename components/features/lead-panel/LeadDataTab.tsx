@@ -12,7 +12,7 @@ import { ImagePlus, Loader2 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage,
-  uploadContatoAvatar, removeContatoAvatar, resolveContatoAvatars, addLeadNote,
+  uploadContatoAvatar, resolveContatoAvatars, addLeadNote,
 } from '@/actions/contatos'
 import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
 

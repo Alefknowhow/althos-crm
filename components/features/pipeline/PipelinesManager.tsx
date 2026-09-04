@@ -96,7 +96,7 @@ export default function PipelinesManager({
     }
   }
 
-  async function handleDelete(id: string, name: string) {
+  async function handleDelete(id: string, _name: string) {
     const res = await deletePipeline(orgSlug, id)
     if (res.ok) {
       toast.success('Pipeline excluído')

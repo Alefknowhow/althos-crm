@@ -23,7 +23,6 @@ import {
   TrendingUp,
   Target,
   Megaphone,
-  Plus,
   Upload,
   Settings,
   Receipt,

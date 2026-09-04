@@ -41,9 +41,7 @@ export default function SaleTasksList({
   }
 
   useEffect(() => {
-    let cancelled = false
-    reload().then(() => {})
-    return () => { cancelled = true }
+    reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgSlug, saleId])
 

@@ -148,7 +148,7 @@ export interface EmailConfig {
   email_from_address?: string | null
 }
 
-export async function checkEmail(org: EmailConfig): Promise<HealthResult> {
+export async function checkEmail(_org: EmailConfig): Promise<HealthResult> {
   const base: Omit<HealthResult, 'status' | 'summary' | 'details'> = {
     integration: 'email',
     checkedAt: nowISO(),

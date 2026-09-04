@@ -1,7 +1,7 @@
 /**
  * Tiny, dependency-free CSV utilities (client-safe).
  *
- * "Exportar Excel" in the product = a UTF-8 CSV. A leading BOM (﻿) makes
+ * "Exportar Excel" in the product = a UTF-8 CSV. A leading BOM (U+FEFF) makes
  * Excel open it with the right encoding so accents (ã, ç, é…) don't break, and
  * CRLF line endings keep legacy Excel happy. No external lib needed.
  */

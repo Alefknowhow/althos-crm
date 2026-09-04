@@ -1,4 +1,4 @@
-import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import EmailTemplateEditor from '@/components/features/EmailTemplateEditor'

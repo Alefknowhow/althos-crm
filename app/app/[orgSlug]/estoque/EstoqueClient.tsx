@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -19,7 +19,7 @@ import {
 import { Plus, Pencil, Trash2, Package, AlertTriangle, TrendingDown, Boxes, Upload } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import {
-  createClinicSupply, updateClinicSupply, deleteClinicSupply, adjustClinicSupplyStock,
+  createClinicSupply, updateClinicSupply, deleteClinicSupply,
   parseClinicSupplyInvoiceXml, createClinicSupplyInvoice,
   type ClinicSupplyRow, type ClinicSupplyConsumptionRow, type ClinicSupplyInvoiceRow, type ClinicEstoqueKpis,
   type NfeReviewResult, type NfeReviewItem,
@@ -51,7 +51,6 @@ export default function EstoqueClient({
   professionals: ClinicProfessional[]
 }) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
 
   return (
     <div className="space-y-6">
@@ -108,7 +107,7 @@ function ItensTab({ orgSlug, supplies, onChanged }: { orgSlug: string; supplies:
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ClinicSupplyRow | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -322,7 +321,7 @@ function SupplyDialog({ orgSlug, open, onOpenChange, editing, onSaved }: {
 
 // ── Consumo (backlog) ────────────────────────────────────────────────────────
 
-function ConsumoTab({ orgSlug, initialConsumption, professionals }: {
+function ConsumoTab({ orgSlug: _orgSlug, initialConsumption, professionals }: {
   orgSlug: string
   initialConsumption: ClinicSupplyConsumptionRow[]
   professionals: ClinicProfessional[]

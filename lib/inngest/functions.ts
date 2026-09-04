@@ -20,7 +20,7 @@ export const sendEmail = inngest.createFunction(
     id: 'send-email',
     triggers: [{ event: 'email.send' }],
   },
-  async ({ event, step }) => {
+  async ({ event, step: _step }) => {
     const { emailSendId } = event.data
     const supabase = createAdminClient()
 
@@ -98,7 +98,7 @@ export const importLeadsCsv = inngest.createFunction(
     id: 'import-leads-csv',
     triggers: [{ event: 'leads.import_csv' }]
   },
-  async ({ event, step }) => {
+  async ({ event, step: _step }) => {
     const { orgId, userId, rows, mapping } = event.data
     const supabase = createAdminClient()
 
@@ -138,7 +138,7 @@ export const importLeadsCsv = inngest.createFunction(
         const { error } = await supabase.from('contatos').insert(leadData)
         if (error) throw error
         successCount++
-      } catch (err) {
+      } catch {
         errorCount++
       }
     }

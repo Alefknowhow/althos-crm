@@ -15,9 +15,7 @@ import {
   getCashFlowSeries,
   getExpensesByCategory,
   getUpcomingDueEntries,
-  getAccountsOverview,
   getStrategicIndicators,
-  getFinancialDashboardData,
 } from '@/actions/financial'
 
 export type FinancialAiView =

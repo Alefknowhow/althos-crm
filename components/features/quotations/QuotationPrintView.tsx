@@ -33,7 +33,6 @@ import {
   Printer, ArrowLeft, Check, X, Phone, Mail, Clock,
   Plane, Building2, Car, Shield, Ship, Package, User, Ticket, KeyRound, ArrowUpRight,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { BAGGAGE_OPTIONS, CABIN_LABELS } from './PublicQuotationView'
 
 /* ───────────────────────── tipos ───────────────────────── */

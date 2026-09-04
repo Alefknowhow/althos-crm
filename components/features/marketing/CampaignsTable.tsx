@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -243,7 +242,6 @@ export default function CampaignsTable({
   chartSelection?: Set<string> | 'all'
   onToggleChartSelection?: (campaignId: string) => void
 }) {
-  const router = useRouter()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rowToDelete, setRowToDelete] = useState<CampaignRow | null>(null)
 

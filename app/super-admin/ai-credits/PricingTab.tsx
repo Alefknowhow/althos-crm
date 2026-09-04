@@ -30,7 +30,6 @@ export default function PricingTab({
 }) {
   const router = useRouter()
   const [editingKey, setEditingKey] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
 
   function refresh() { router.refresh() }
 

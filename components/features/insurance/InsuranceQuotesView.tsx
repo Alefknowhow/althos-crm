@@ -80,9 +80,8 @@ export default function InsuranceQuotesView({
 
   function toggleInsurer(id: string, checked: boolean) {
     setSelected(prev => {
-      const next = { ...prev }
-      if (checked) next[id] = next[id] ?? { premium: '', coverage: '', franquia: '', conditions: '' }
-      else delete next[id]
+      if (checked) return { ...prev, [id]: prev[id] ?? { premium: '', coverage: '', franquia: '', conditions: '' } }
+      const { [id]: _omit, ...next } = prev
       return next
     })
   }

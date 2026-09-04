@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, Plus, Settings, Star } from 'lucide-react'
+import { ChevronDown, Settings, Star } from 'lucide-react'
 
 type Pipeline = { id: string; name: string; is_default: boolean }
 

@@ -122,7 +122,7 @@ export default function OrgSetupWizard({ orgSlug, initialName }: Props) {
 
   function patch(key: keyof FormData, value: string) {
     setForm(prev => ({ ...prev, [key]: value }))
-    setErrors(prev => { const next = { ...prev }; delete next[key]; return next })
+    setErrors(prev => { const { [key]: _omit, ...next } = prev; return next })
   }
 
   // ── Validation per step ───────────────────────────────────────────────────

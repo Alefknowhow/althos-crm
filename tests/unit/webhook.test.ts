@@ -86,7 +86,7 @@ describe('verifyStaticToken', () => {
     process.env[VAR] = 'super-secret-token'
   })
   afterEach(() => {
-    if (ORIGINAL === undefined) delete process.env[VAR]
+    if (ORIGINAL === undefined) Reflect.deleteProperty(process.env, VAR)
     else process.env[VAR] = ORIGINAL
   })
 
@@ -104,7 +104,7 @@ describe('verifyStaticToken', () => {
   })
 
   it('fails CLOSED when the env secret is not set', () => {
-    delete process.env[VAR]
+    Reflect.deleteProperty(process.env, VAR)
     expect(verifyStaticToken('anything', VAR)).toEqual({
       ok: false,
       reason: 'secret_not_configured',

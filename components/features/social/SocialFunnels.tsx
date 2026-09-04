@@ -243,7 +243,7 @@ function FunnelBuilder({
     const kwArr = keywords.split(',').map(k => k.trim()).filter(Boolean)
     const [u, s] = await Promise.all([
       updateFunnel(orgSlug, funnel.id, { name: name || 'Automação', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead, reply_publicly: isCommentish ? replyPublicly : false }),
-      saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order, ...rest }) => rest)),
+      saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order: _so, ...rest }) => rest)),
     ])
     setSaving(false)
     if (!u.ok) { toast.error(u.error); return }

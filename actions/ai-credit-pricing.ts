@@ -3,7 +3,7 @@
 import { isSuperAdmin } from '@/lib/supabase/types'
 import { createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { getPlanMeta, type PlanId } from '@/lib/plans/config'
+import type { PlanId } from '@/lib/plans/config'
 
 /**
  * Calculadora de precificação de créditos de IA (super-admin). Fonte de

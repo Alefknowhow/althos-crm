@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import CheckoutModal from './CheckoutModal'
-import { Loader2 } from 'lucide-react'
 
 type Props = {
   orgSlug:   string

@@ -32,7 +32,7 @@ export async function connectMetaAdsAccounts(orgSlug: string, selectedAccountIds
     return { ok: false as const, error: 'Sessão de conexão expirada, tente conectar novamente' }
   }
 
-  const { listAdAccountsForToken, getLongLivedToken } = await import('@/lib/meta/ads-oauth')
+  const { listAdAccountsForToken } = await import('@/lib/meta/ads-oauth')
   let available
   try {
     available = await listAdAccountsForToken(token)

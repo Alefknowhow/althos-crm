@@ -35,7 +35,7 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
   }
 
   async function handleDuplicate(product: any) {
-    const { id, created_at, updated_at, ...rest } = product
+    const { id: _id, created_at: _ca, updated_at: _ua, ...rest } = product
     const result = await createProduct(orgSlug, {
       ...rest,
       name: `${product.name} (Cópia)`,

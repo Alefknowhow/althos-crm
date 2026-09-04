@@ -26,7 +26,7 @@ import {
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { toast } from 'sonner'
 import {
-  FileStack, Plus, Trash2, ArrowLeft, Search, Save, Sparkles, ExternalLink, Printer,
+  FileStack, Trash2, ArrowLeft, Search, Save, Sparkles, ExternalLink, Printer,
 } from 'lucide-react'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'

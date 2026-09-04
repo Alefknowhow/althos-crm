@@ -21,7 +21,7 @@ export type MetaTemplatePayload = {
 /** Faz upload da mídia do cabeçalho pra Meta e devolve o `header_handle`
  * exigido pelo componente HEADER — a API de templates não aceita URL
  * pública direto como as mensagens avulsas aceitam. */
-async function uploadHeaderHandle(wabaId: string, accessToken: string, mediaUrl: string, headerType: string): Promise<string> {
+async function uploadHeaderHandle(wabaId: string, accessToken: string, mediaUrl: string, _headerType: string): Promise<string> {
   // 1. Baixa o arquivo do nosso Storage.
   const fileRes = await fetch(mediaUrl)
   if (!fileRes.ok) throw new Error('Não foi possível baixar a mídia do cabeçalho.')

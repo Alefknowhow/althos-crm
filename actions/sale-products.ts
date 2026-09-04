@@ -44,7 +44,7 @@ export async function listSaleProducts(orgSlug: string, saleId: string): Promise
 export async function createSaleProduct(
   orgSlug: string, saleId: string, input: { kind: SaleProductKind; data: Record<string, any>; status?: 'confirmed' | 'pending' },
 ) {
-  const { user, org, allowed, reason } = await authorize(orgSlug)
+  const { org, allowed, reason } = await authorize(orgSlug)
   if (!allowed) return { ok: false as const, error: reason }
   const supabase = createClient()
 

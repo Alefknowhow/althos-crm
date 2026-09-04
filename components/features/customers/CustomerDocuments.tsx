@@ -81,7 +81,7 @@ function fileExt(doc: Doc): string {
 
 export default function CustomerDocuments({
   orgSlug,
-  leadId,
+  leadId: _leadId,
   profileId,
   initialDocuments,
 }: {

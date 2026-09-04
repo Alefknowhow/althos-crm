@@ -237,7 +237,7 @@ export default function CustomerProfileForm({
         state: data.uf || f.state,
       }))
       toast.success('Endereço preenchido')
-    } catch (e: any) {
+    } catch {
       toast.error('Falha ao consultar CEP')
     } finally {
       setCepLoading(false)

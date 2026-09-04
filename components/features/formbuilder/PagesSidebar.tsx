@@ -2,7 +2,7 @@
 
 import { Plus, Sparkles, PartyPopper } from 'lucide-react'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { getFieldTypeDef } from './FieldTypeMeta'
 import FieldTypePicker from './FieldTypePicker'

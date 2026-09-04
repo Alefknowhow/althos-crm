@@ -12,7 +12,6 @@ import { cancelTravelSale } from '@/actions/travel-sales'
 import { toast } from 'sonner'
 import { Ban } from 'lucide-react'
 
-function centsToReais(c: number) { return c ? String((c / 100).toFixed(2)).replace('.', ',') : '' }
 function reaisToCents(s: string) {
   const n = parseFloat((s || '').replace(/\./g, '').replace(',', '.'))
   return Number.isFinite(n) ? Math.round(n * 100) : 0

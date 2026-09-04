@@ -12,7 +12,7 @@ import {
   sendWhatsappMedia, setConversationAutomationPaused, suggestWhatsappReply,
 } from '@/actions/whatsapp'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ConversationDetailPanel, { agentColor, memberInitials, memberShortLabel } from '@/components/features/ConversationDetailPanel'
