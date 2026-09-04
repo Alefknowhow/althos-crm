@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, X, Loader2, Pin, Trash2, Plus, Pencil, Check, PanelLeft } from 'lucide-react'
+import { Send, X, Loader2, Plus, PanelLeft } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { getCopilotInit } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
@@ -14,53 +13,12 @@ import {
   listInsightsSessions, createInsightsSession, deleteInsightsSession, renameInsightsSession, listInsightsMessages,
 } from '@/actions/ai_insights'
 import { useCopilot } from '@/components/features/CopilotProvider'
-
-const AnalyticsViewCard = dynamic(() => import('@/components/features/ai/AnalyticsViewCard'), {
-  ssr: false,
-  loading: () => <div className="h-24 rounded-xl bg-muted animate-pulse" />,
-})
+import { CopilotDockSidebar } from './CopilotDockSidebar'
+import { CopilotDockMessages } from './CopilotDockMessages'
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: any } }
 type Message = { id: string; role: 'user' | 'assistant' | 'system'; content: string; tool_calls: ToolCall[] | null }
 type SessionSummary = { id: string; title: string | null; created_at: string; updated_at: string }
-
-const SUGGESTED_PROMPTS = [
-  'Onde estou perdendo mais leads no funil?',
-  'Qual meu forecast de receita do mês?',
-  'Resumo da semana',
-]
-
-// Tokeniza **negrito**, [rótulo](link) markdown, e URLs/caminhos crus
-// (fallback caso a tool não tenha mascarado o link) numa única passada — a
-// IA é instruída a sempre usar [rótulo](link) pra voucher/documento (nunca
-// URL crua na resposta), mas o fallback evita link não-clicável se algum
-// texto escapar sem o formato.
-const TOKEN_PATTERN = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)/g
-const MD_LINK_PATTERN = /^\[([^\]]+)\]\(([^)]+)\)$/
-const BARE_LINK_PATTERN = /^(https?:\/\/[^\s)]+|\/voucher-print\/[^\s)]+)$/
-
-function renderMarkdownLite(text: string): React.ReactNode {
-  const parts = text.split(TOKEN_PATTERN)
-  return parts.map((part, i) => {
-    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i}>{part.slice(2, -2)}</strong>
-    const mdLink = MD_LINK_PATTERN.exec(part)
-    if (mdLink) {
-      return <a key={i} href={mdLink[2]} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{mdLink[1]}</a>
-    }
-    if (BARE_LINK_PATTERN.test(part)) {
-      return <a key={i} href={part} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:opacity-80">{part}</a>
-    }
-    return <span key={i}>{part}</span>
-  })
-}
-
-function formatSessionDate(iso: string) {
-  const d = new Date(iso)
-  const today = new Date()
-  const isToday = d.toDateString() === today.toDateString()
-  if (isToday) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
 
 /** Painel do Copiloto IA — aberto/fechado pelo botão da header
  * (CopilotTriggerButton), estado compartilhado via CopilotProvider (ver
@@ -260,85 +218,21 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
             {/* ── Sidebar: histórico de conversas — inline no desktop,
                 drawer sobreposto no mobile (a tela é estreita demais pra
                 dividir espaço com o chat). ── */}
-            {sidebarOpen && (
-              <div
-                className="absolute inset-0 z-20 bg-black/40 sm:hidden animate-in fade-in duration-150"
-                onClick={() => setSidebarOpen(false)}
-              />
-            )}
-            <div
-              className={
-                sidebarOpen
-                  ? 'shrink-0 border-r bg-muted/30 flex flex-col overflow-hidden absolute inset-y-0 left-0 z-30 w-[85%] max-w-[320px] translate-x-0 transition-transform duration-200 ease-out sm:static sm:z-auto sm:w-[260px] sm:max-w-none sm:translate-x-0'
-                  : 'shrink-0 border-r bg-muted/30 hidden overflow-hidden absolute inset-y-0 left-0 z-30 w-[85%] max-w-[320px] -translate-x-full transition-transform duration-200 ease-out sm:flex sm:flex-col sm:static sm:z-auto sm:w-0 sm:max-w-none sm:translate-x-0'
-              }
-            >
-              <div className="h-16 shrink-0 flex items-center justify-between px-4">
-                <span className="text-sm font-semibold tracking-tight">Conversas</span>
-                <Button variant="ghost" size="icon" className="w-7 h-7 rounded-lg sm:hidden" onClick={() => setSidebarOpen(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="px-3 pb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start gap-2 rounded-xl h-9 text-sm font-normal border-border/70 hover:bg-background"
-                  onClick={handleNewConversation}
-                >
-                  <Plus className="w-4 h-4" /> Nova conversa
-                </Button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
-                {sessions.map(s => (
-                  <div
-                    key={s.id}
-                    className={`group flex items-center gap-1 rounded-xl px-2.5 py-2 text-sm cursor-pointer transition-colors ${
-                      s.id === sessionId ? 'bg-background shadow-sm' : 'hover:bg-background/70'
-                    }`}
-                    onClick={() => renamingId !== s.id && switchToSession(s.id)}
-                  >
-                    {renamingId === s.id ? (
-                      <>
-                        <Input
-                          autoFocus
-                          value={renameValue}
-                          onChange={e => setRenameValue(e.target.value)}
-                          onClick={e => e.stopPropagation()}
-                          onKeyDown={e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') setRenamingId(null) }}
-                          className="h-7 text-xs flex-1 rounded-lg"
-                        />
-                        <Button variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg" onClick={e => { e.stopPropagation(); confirmRename() }}>
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate leading-tight">{s.title || 'Nova conversa'}</p>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{formatSessionDate(s.updated_at)}</p>
-                        </div>
-                        <Button
-                          variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg opacity-0 group-hover:opacity-100"
-                          onClick={e => { e.stopPropagation(); startRename(s) }}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon" className="w-6 h-6 shrink-0 rounded-lg opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                          onClick={e => { e.stopPropagation(); handleDeleteSession(s.id) }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                {sessions.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-8">Nenhuma conversa ainda.</p>
-                )}
-              </div>
-            </div>
+            <CopilotDockSidebar
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+              sessions={sessions}
+              sessionId={sessionId}
+              renamingId={renamingId}
+              renameValue={renameValue}
+              setRenameValue={setRenameValue}
+              onNewConversation={handleNewConversation}
+              onSwitchSession={switchToSession}
+              onStartRename={startRename}
+              onConfirmRename={confirmRename}
+              onCancelRename={() => setRenamingId(null)}
+              onDeleteSession={handleDeleteSession}
+            />
 
             {/* ── Chat ── */}
             <div className="flex-1 flex flex-col min-w-0">
@@ -366,74 +260,14 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                <div className="max-w-[720px] mx-auto px-6 sm:px-8 py-8 space-y-7">
-                  {!enabled ? (
-                    <div className="text-sm text-muted-foreground text-center py-8">
-                      O copiloto não está disponível no seu plano.
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <div className="pt-10 space-y-5">
-                      <div className="space-y-1.5">
-                        <LogoMark v2 className="h-11 w-11 rounded-2xl mb-3" />
-                        <h3 className="text-xl font-semibold tracking-tight">Como posso ajudar?</h3>
-                        <p className="text-sm text-muted-foreground">Pergunte algo sobre o seu negócio.</p>
-                      </div>
-                      <div className="grid gap-2">
-                        {SUGGESTED_PROMPTS.map(p => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => send(p)}
-                            className="w-full text-left text-sm border border-border/70 rounded-2xl px-4 py-3 hover:bg-muted/60 hover:border-primary/40 transition-all"
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map(m => (
-                      <div key={m.id}>
-                        {m.role === 'user' ? (
-                          <div className="flex justify-end">
-                            <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary text-primary-foreground px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
-                              {m.content}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {m.tool_calls && m.tool_calls.length > 0 && m.tool_calls.map((tc, i) => (
-                              <div key={i} className="space-y-1.5">
-                                <AnalyticsViewCard view={tc.result.view} label={tc.name} />
-                                {tc.result.view?.type !== 'none' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePin(tc.name.replace('consultar_', ''), tc.result.view)}
-                                    className="text-[11px] text-primary hover:underline inline-flex items-center gap-1"
-                                  >
-                                    <Pin className="w-3 h-3" /> Fixar no painel
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {m.content && (
-                              <div className="text-[15px] leading-7 text-foreground whitespace-pre-wrap">
-                                {renderMarkdownLite(m.content)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                  {streaming && messages[messages.length - 1]?.content === '' && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">consultando os dados...</span>
-                    </div>
-                  )}
-                  <div ref={endRef} />
-                </div>
+                <CopilotDockMessages
+                  enabled={enabled}
+                  messages={messages}
+                  streaming={streaming}
+                  onSend={send}
+                  onPin={handlePin}
+                  endRef={endRef}
+                />
               </div>
 
               {enabled && (
