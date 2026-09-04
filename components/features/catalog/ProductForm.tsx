@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { z } from 'zod'
+import { ProductFormTrafficFields } from './ProductFormTrafficFields'
 
 type ProductFormValues = z.infer<typeof productInputSchema>
 
@@ -278,54 +279,7 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
           )}
         />
 
-        {isTraffic && (
-          <div className="space-y-4 rounded-lg border p-4">
-            <FormField
-              control={form.control}
-              name="is_recurring"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Plano recorrente (assinatura mensal)</FormLabel>
-                    <FormDescription>
-                      A venda deste plano vira uma assinatura com duração e contrato.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {isRecurring && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* O contrato de cada venda deste plano tem conteúdo próprio,
-                    editável direto no popup "Gerenciar contrato" — não tem
-                    mais vínculo com um modelo/template escolhido aqui. */}
-                <FormField
-                  control={form.control}
-                  name="duration_months"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duração padrão (meses)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Ex: 12"
-                          {...field}
-                          value={field.value || ''}
-                          onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {isTraffic && <ProductFormTrafficFields form={form} isRecurring={isRecurring} />}
 
         <FormField
           control={form.control}
