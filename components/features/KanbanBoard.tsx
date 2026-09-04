@@ -16,26 +16,14 @@ import KanbanColumn from './KanbanColumn'
 import LeadCard, { type CardMember } from './LeadCard'
 import MobilePipelineList from './pipeline/MobilePipelineList'
 import PipelineListView from './pipeline/PipelineListView'
-import CurrencyInput from './pipeline/CurrencyInput'
 import { moveLeadToStage } from '@/actions/contatos'
 import LeadDetailDrawer from './LeadDetailDrawer'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from './pipeline/StageMoveDialogs'
-import { createLead } from '@/actions/contatos'
+import { isNegotiationStage } from './pipeline/StageMoveDialogs'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
-import { Search, AlarmClock, X, LayoutGrid, List } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { KanbanBoardToolbar } from './KanbanBoardToolbar'
+import { KanbanBoardNewLeadDialog } from './KanbanBoardNewLeadDialog'
+import { KanbanBoardMoveDialogs } from './KanbanBoardMoveDialogs'
 
 type Member = { id: string; name: string; email: string }
 type SortKey = 'recent' | 'value_desc' | 'name'
@@ -252,104 +240,18 @@ export default function KanbanBoard({
   return (
     <div className="flex h-full flex-col gap-3">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        {toolbarStart}
-
-        {/* Board / list view toggle — desktop only (mobile uses the stage accordion) */}
-        <div className="hidden md:inline-flex h-9 items-center rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setView('board')}
-            title="Visualizar em quadro"
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-sm transition-colors',
-              view === 'board' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <LayoutGrid className="h-4 w-4" />
-            <span className="hidden sm:inline">Quadro</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            title="Visualizar em lista"
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded px-2.5 text-sm transition-colors',
-              view === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <List className="h-4 w-4" />
-            <span className="hidden sm:inline">Lista</span>
-          </button>
-        </div>
-
-        {members.length > 0 && (
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Responsável" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos responsáveis</SelectItem>
-              <SelectItem value="unassigned">Sem responsável</SelectItem>
-              {members.map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.name || m.email}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <Select value={tierFilter} onValueChange={setTierFilter}>
-          <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas IA</SelectItem>
-            <SelectItem value="hot">🔥 Quente</SelectItem>
-            <SelectItem value="warm">🟡 Morno</SelectItem>
-            <SelectItem value="cold">🔵 Frio</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={sortKey} onValueChange={v => setSortKey(v as SortKey)}>
-          <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="recent">Mais recentes</SelectItem>
-            <SelectItem value="value_desc">Maior valor</SelectItem>
-            <SelectItem value="name">Nome (A-Z)</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="relative min-w-[180px] flex-1 max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar negócios…"
-            className="h-9 pl-9"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setStalledOnly(v => !v)}
-          className={cn(
-            'inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors',
-            stalledOnly
-              ? 'border-amber-300 bg-amber-50 text-amber-700'
-              : 'border-border text-muted-foreground hover:bg-secondary',
-          )}
-        >
-          <AlarmClock className="h-4 w-4" />
-          Parados
-        </button>
-
-        {filtersActive && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-            Limpar
-          </button>
-        )}
-      </div>
+      <KanbanBoardToolbar
+        toolbarStart={toolbarStart}
+        view={view} setView={setView}
+        members={members}
+        ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
+        tierFilter={tierFilter} setTierFilter={setTierFilter}
+        sortKey={sortKey} setSortKey={setSortKey}
+        search={search} setSearch={setSearch}
+        stalledOnly={stalledOnly} setStalledOnly={setStalledOnly}
+        filtersActive={filtersActive}
+        clearFilters={clearFilters}
+      />
 
       {/* Mobile — stage accordion (replaces board/list on small screens) */}
       <div className="flex md:hidden flex-1 min-h-0">
@@ -413,54 +315,12 @@ export default function KanbanBoard({
       )}
       </div>
 
-      <LostMoveDialog
-        open={!!lostMovePrompt}
-        onCancel={() => {
-          if (lostMovePrompt) {
-            setLeads(prev => prev.map(l => (l.id === lostMovePrompt.leadId ? { ...l, stage_id: lostMovePrompt.oldStageId } : l)))
-          }
-          setLostMovePrompt(null)
-        }}
-        onConfirm={(dealStatus, reason) => {
-          if (lostMovePrompt) {
-            commitStageMove(lostMovePrompt.leadId, lostMovePrompt.newStageId, lostMovePrompt.oldStageId, { dealStatus, reason })
-          }
-          setLostMovePrompt(null)
-        }}
-      />
-
-      <WonValueDialog
-        open={!!wonMovePrompt}
-        defaultCents={wonMovePrompt?.defaultCents}
-        onCancel={() => {
-          if (wonMovePrompt) {
-            setLeads(prev => prev.map(l => (l.id === wonMovePrompt.leadId ? { ...l, stage_id: wonMovePrompt.oldStageId } : l)))
-          }
-          setWonMovePrompt(null)
-        }}
-        onConfirm={valueCents => {
-          if (wonMovePrompt) {
-            commitStageMove(wonMovePrompt.leadId, wonMovePrompt.newStageId, wonMovePrompt.oldStageId, undefined, valueCents)
-          }
-          setWonMovePrompt(null)
-        }}
-      />
-
-      <NegotiationValueDialog
-        open={!!negotiationMovePrompt}
-        defaultCents={negotiationMovePrompt?.defaultCents}
-        onCancel={() => {
-          if (negotiationMovePrompt) {
-            setLeads(prev => prev.map(l => (l.id === negotiationMovePrompt.leadId ? { ...l, stage_id: negotiationMovePrompt.oldStageId } : l)))
-          }
-          setNegotiationMovePrompt(null)
-        }}
-        onConfirm={valueCents => {
-          if (negotiationMovePrompt) {
-            commitStageMove(negotiationMovePrompt.leadId, negotiationMovePrompt.newStageId, negotiationMovePrompt.oldStageId, undefined, valueCents)
-          }
-          setNegotiationMovePrompt(null)
-        }}
+      <KanbanBoardMoveDialogs
+        lostMovePrompt={lostMovePrompt} setLostMovePrompt={setLostMovePrompt}
+        wonMovePrompt={wonMovePrompt} setWonMovePrompt={setWonMovePrompt}
+        negotiationMovePrompt={negotiationMovePrompt} setNegotiationMovePrompt={setNegotiationMovePrompt}
+        setLeads={setLeads}
+        commitStageMove={commitStageMove}
       />
 
       <LeadDetailDrawer
@@ -473,73 +333,15 @@ export default function KanbanBoard({
       />
 
       {/* New lead dialog */}
-      <Dialog
-        open={!!createStageId}
-        onOpenChange={(op: boolean) => { if (!op) { setCreateStageId(null); setNewLeadSource('manual') } }}
-      >
-        <DialogContent>
-          <DialogHeader><DialogTitle>Novo Lead</DialogTitle></DialogHeader>
-          <form onSubmit={async e => {
-            e.preventDefault()
-            setLoading(true)
-            const res = await createLead(orgSlug, new FormData(e.currentTarget))
-            setLoading(false)
-            if (res.ok) {
-              setCreateStageId(null)
-              setNewLeadSource('manual')
-              toast.success('Lead criado')
-            } else {
-              toast.error(traduzirErro(res.error))
-            }
-          }}>
-            <input type="hidden" name="stage_id" value={createStageId || ''} />
-            <input type="hidden" name="source" value={newLeadSource} />
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input name="name" required autoFocus />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>E-mail</Label>
-                  <Input name="email" type="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input name="phone" placeholder="(11) 99999-9999" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Valor</Label>
-                  <CurrencyInput name="value_cents" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Origem</Label>
-                  <Select value={newLeadSource} onValueChange={setNewLeadSource}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Cadastro manual</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="form">Formulário</SelectItem>
-                      <SelectItem value="meta_ads">Meta Ads</SelectItem>
-                      <SelectItem value="api">API</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Tags (separadas por vírgula)</Label>
-                <Input name="tags" placeholder="urgente, indicação" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>{loading ? 'Salvando…' : 'Salvar'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <KanbanBoardNewLeadDialog
+        orgSlug={orgSlug}
+        createStageId={createStageId}
+        setCreateStageId={setCreateStageId}
+        newLeadSource={newLeadSource}
+        setNewLeadSource={setNewLeadSource}
+        loading={loading}
+        setLoading={setLoading}
+      />
     </div>
   )
 }
