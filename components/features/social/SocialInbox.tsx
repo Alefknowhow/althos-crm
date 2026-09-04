@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -26,124 +25,14 @@ import {
   type SocialConversationRow,
   type SocialMessageRow,
 } from '@/actions/social-inbox'
-import ImageEditor from '@/components/features/ImageEditor'
 import SocialLeadDetailPanel from '@/components/features/social/SocialLeadDetailPanel'
-import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, Plus, Send, Pencil, X, FileText } from 'lucide-react'
+import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
-
-// Conjunto enxuto de emojis comuns para atendimento (sem libs externas) —
-// mesmo padrão usado no WhatsappChat.tsx.
-const EMOJIS = [
-  '😀','😁','😂','🤣','😊','😍','😘','😎','🤗','🤔','😅','😉','🙂','😇','🥳','😏',
-  '👍','👎','👏','🙏','💪','🤝','👋','✌️','🤙','👌','🫶','💯','🔥','✨','⭐','🎉',
-  '❤️','🧡','💛','💚','💙','💜','🤍','💔','😢','😭','😅','😡','😱','🤯','🥺','😴',
-  '✅','❌','⚠️','📌','📎','📷','🎁','💰','💳','🛫','🏨','🌴','🗺️','📅','⏰','📞',
-]
-
-// Alturas fixas pra "forma de onda" decorativa da barra de gravação — mesma
-// do WhatsappChat.tsx.
-const WAVEFORM_BARS = Array.from({ length: 40 }, (_, i) => 6 + Math.round(10 * Math.abs(Math.sin(i * 0.7))))
-
-function Avatar({ name, username, avatarUrl, size = 'md' }: { name: string | null; username: string | null; avatarUrl: string | null; size?: 'md' | 'lg' }) {
-  const label = name || username || '?'
-  const initials = label.slice(0, 2).toUpperCase()
-  const dim = size === 'lg' ? 'h-14 w-14' : 'h-11 w-11'
-  if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avatarUrl} alt={label} className={`${dim} rounded-full object-cover shrink-0`} />
-  }
-  return (
-    <div className={`${dim} rounded-full bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white flex items-center justify-center text-xs font-semibold shrink-0`}>
-      {initials}
-    </div>
-  )
-}
-
-// Tick de confirmação ao lado do horário — mesmas regras do WhatsappChat,
-// sem o estado "lida" (Instagram manda read/delivery mas não temos double-
-// check azul específico no design daqui; reaproveita as mesmas cores).
-function ConversationTicks({ status }: { status?: string | null }) {
-  if (status === 'failed') {
-    return <span title="Falha no envio" className="text-red-500 text-[11px] leading-none shrink-0">⚠</span>
-  }
-  if (!status || status === 'pending' || status === 'sending') {
-    return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/60" aria-label="Enviando">
-        <circle cx="12" cy="12" r="9" /><path d="M12 8v4l2.5 2.5" />
-      </svg>
-    )
-  }
-  const isRead = status === 'read'
-  const isDouble = status === 'delivered' || status === 'read'
-  return (
-    <svg
-      width={isDouble ? 16 : 11}
-      height="10"
-      viewBox={isDouble ? '0 0 18 11' : '0 0 12 11'}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`shrink-0 ${isRead ? 'text-sky-500' : 'text-muted-foreground/70'}`}
-      aria-label={isRead ? 'Lida' : isDouble ? 'Entregue' : 'Enviada'}
-    >
-      <path d="M1 5.5 4.5 9 11 1.5" />
-      {isDouble && <path d="M6 5.5 9.5 9 16 1.5" />}
-    </svg>
-  )
-}
-
-// Horário do inbox no estilo WhatsApp — mesma função do WhatsappChat.tsx.
-function formatInboxTime(iso?: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ''
-  const now = new Date()
-  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-  const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000)
-  if (days <= 0) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  if (days === 1) return 'Ontem'
-  if (days < 7) return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-}
-
-// Renderiza a mídia de uma mensagem, dispatch por media_type.
-function renderInstagramMedia(m: SocialMessageRow, onImageClick?: (url: string) => void): React.ReactNode {
-  if (!m.media_url) return null
-  const type = m.media_type || 'image'
-  if (type === 'image') {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={m.media_url} alt="" className="max-w-full rounded-2xl mb-1 max-h-64 object-cover cursor-pointer"
-        onClick={() => onImageClick?.(m.media_url!)}
-      />
-    )
-  }
-  if (type === 'video') {
-    // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <video controls src={m.media_url} className="rounded-2xl max-w-full max-h-64 mb-1" />
-  }
-  if (type === 'audio') {
-    // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <audio controls src={m.media_url} className="max-w-[220px] mb-1" />
-  }
-  return (
-    <a href={m.media_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 underline mb-1">
-      <FileText className="w-4 h-4 shrink-0" />
-      <span className="truncate">Documento</span>
-    </a>
-  )
-}
+import { EMOJIS, WAVEFORM_BARS, Avatar, ConversationTicks, renderInstagramMedia } from './SocialInboxHelpers'
+import { ConfirmActionDialog, ImageComposerDialog, LightboxDialog } from './SocialInboxDialogs'
+import { SocialInboxSidebar } from './SocialInboxSidebar'
 
 type Props = {
   orgSlug: string
@@ -541,62 +430,14 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
 
   return (
     <div className="flex w-full h-full border-t border-[#efefef] dark:border-[#262626]">
-      <div className={`w-full md:w-1/3 md:max-w-[350px] border-r border-[#efefef] dark:border-[#262626] flex-col bg-white dark:bg-black ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="px-3 py-2 border-b border-[#efefef] dark:border-[#262626] shrink-0">
-          <Input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Pesquisar"
-            className="h-9 text-sm rounded-xl bg-[#efefef] dark:bg-[#262626] border-none"
-          />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map(c => (
-            <div
-              key={c.id}
-              onClick={() => router.push(`/app/${orgSlug}/social/inbox?id=${c.id}`)}
-              className={`p-3 cursor-pointer hover:bg-[#fafafa] dark:hover:bg-[#121212] transition-colors flex gap-3 justify-between items-center ${selectedConversation?.id === c.id ? 'bg-[#efefef] dark:bg-[#1a1a1a]' : ''}`}
-            >
-              <Avatar name={c.sender_name} username={c.sender_username} avatarUrl={c.sender_avatar_url} size="lg" />
-              <div className="overflow-hidden flex-1 pr-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-medium text-sm truncate">
-                    {c.sender_name || (c.sender_username ? `@${c.sender_username}` : 'Instagram')}
-                  </span>
-                  {c.pinned && <Pin className="w-3 h-3 shrink-0 text-muted-foreground" />}
-                  {c.automation_paused && (
-                    <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                      manual
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 truncate">
-                  {c.last_message_direction === 'outbound' && c.last_message_preview && <span>Você: </span>}
-                  {c.last_message_preview || '—'}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <span className="flex items-center gap-1">
-                  {c.last_message_direction === 'outbound' && <ConversationTicks status={c.last_message_status} />}
-                  <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-[#3797f0]' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
-                </span>
-                {c.unread_count > 0 && (
-                  <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px] shrink-0">
-                    {c.unread_count}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          ))}
-          {filteredConversations.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              {conversations.length === 0
-                ? 'Nenhuma conversa ainda. As DMs do Instagram aparecem aqui automaticamente.'
-                : 'Nenhuma conversa corresponde à busca.'}
-            </div>
-          )}
-        </div>
-      </div>
+      <SocialInboxSidebar
+        filteredConversations={filteredConversations}
+        totalCount={conversations.length}
+        selectedConversation={selectedConversation}
+        query={query}
+        setQuery={setQuery}
+        onSelect={id => router.push(`/app/${orgSlug}/social/inbox?id=${id}`)}
+      />
 
       <div
         className={`relative flex-1 flex-col bg-white dark:bg-black ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
@@ -876,151 +717,33 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
         )}
       </div>
 
-      <AlertDialog open={!!confirmAction} onOpenChange={o => !o && setConfirmAction(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction === 'clear' && 'Limpar conversa?'}
-              {confirmAction === 'delete' && 'Apagar conversa?'}
-              {confirmAction === 'block' && (selectedConversation?.blocked ? 'Desbloquear contato?' : 'Bloquear contato?')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmAction === 'clear' && 'Apaga todas as mensagens desta conversa, mas mantém o contato na lista. Essa ação não pode ser desfeita.'}
-              {confirmAction === 'delete' && 'Apaga a conversa e todas as mensagens permanentemente. Essa ação não pode ser desfeita.'}
-              {confirmAction === 'block' && (selectedConversation?.blocked
-                ? 'O CRM volta a permitir o envio de mensagens manuais e automáticas pra esse contato.'
-                : 'O Instagram não oferece um bloqueio real pela API — isso só impede o CRM de enviar mensagens (manuais e automáticas) pra esse contato. Pra bloquear de verdade, use o app do Instagram.')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={actionLoading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className={confirmAction !== 'block' || !selectedConversation?.blocked ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
-              onClick={handleConfirmedAction}
-              disabled={actionLoading}
-            >
-              {actionLoading ? 'Aguarde...' : 'Confirmar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmActionDialog
+        confirmAction={confirmAction}
+        setConfirmAction={setConfirmAction}
+        selectedConversation={selectedConversation}
+        actionLoading={actionLoading}
+        onConfirm={handleConfirmedAction}
+      />
 
       {/* Revisão de imagem(ns) antes de enviar — igual ao WhatsApp normal. */}
-      <Dialog open={pendingImages.length > 0} onOpenChange={o => !o && closeImageComposer()}>
-        <DialogContent className="max-w-lg p-0 gap-0 bg-black text-white border-none overflow-hidden">
-          {editingImage && pendingImages[composerIndex] ? (
-            <div className="h-[70vh]">
-              <ImageEditor
-                file={pendingImages[composerIndex].file}
-                onCancel={() => setEditingImage(false)}
-                onApply={handleApplyEditedImage}
-              />
-            </div>
-          ) : (
-          <>
-          <div className="flex items-center justify-between px-4 py-3">
-            <button type="button" onClick={closeImageComposer} className="text-white/80 hover:text-white" aria-label="Cancelar">
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-white/70">{pendingImages.length > 1 ? `${composerIndex + 1} de ${pendingImages.length}` : ''}</span>
-              {pendingImages[composerIndex] && (
-                <button type="button" onClick={() => setEditingImage(true)} className="text-white/80 hover:text-white" aria-label="Editar imagem" title="Editar imagem">
-                  <Pencil className="w-[18px] h-[18px]" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {pendingImages[composerIndex] && (
-            <div className="flex items-center justify-center bg-black/40 min-h-[320px] max-h-[55vh] p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pendingImages[composerIndex].previewUrl} alt="" className="max-h-full max-w-full object-contain rounded" />
-            </div>
-          )}
-
-          {pendingImages.length > 1 && (
-            <div className="flex gap-2 px-4 py-2 overflow-x-auto bg-black/60">
-              {pendingImages.map((p, i) => (
-                <div key={i} className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setComposerIndex(i)}
-                    className={`w-12 h-12 rounded-md overflow-hidden border-2 ${i === composerIndex ? 'border-[#3797f0]' : 'border-transparent opacity-70'}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.previewUrl} alt="" className="w-full h-full object-cover" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removePendingImage(i)}
-                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black text-white flex items-center justify-center"
-                    aria-label="Remover imagem"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => composerFileInputRef.current?.click()}
-                className="w-12 h-12 rounded-md border-2 border-dashed border-white/30 flex items-center justify-center text-white/60 hover:text-white shrink-0"
-                aria-label="Adicionar mais imagens"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-
-          <input ref={composerFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleComposerAddMore} />
-
-          <div className="flex items-center gap-2 px-4 py-3 bg-black/60">
-            <Textarea
-              value={pendingImages[composerIndex]?.caption || ''}
-              onChange={e => {
-                const v = e.target.value
-                setPendingImages(prev => prev.map((p, i) => i === composerIndex ? { ...p, caption: v } : p))
-              }}
-              placeholder="Adicionar legenda..."
-              rows={1}
-              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none min-h-[40px]"
-            />
-            {pendingImages.length === 1 && (
-              <button
-                type="button"
-                onClick={() => composerFileInputRef.current?.click()}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/10 text-white/70 shrink-0"
-                title="Adicionar mais imagens"
-                aria-label="Adicionar mais imagens"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleSendImageQueue}
-              disabled={sendingQueue}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-[#3797f0] text-white hover:opacity-90 shrink-0 disabled:opacity-50"
-              title="Enviar"
-              aria-label="Enviar"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
-          </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImageComposerDialog
+        pendingImages={pendingImages}
+        setPendingImages={setPendingImages}
+        composerIndex={composerIndex}
+        setComposerIndex={setComposerIndex}
+        editingImage={editingImage}
+        setEditingImage={setEditingImage}
+        closeImageComposer={closeImageComposer}
+        handleApplyEditedImage={handleApplyEditedImage}
+        removePendingImage={removePendingImage}
+        composerFileInputRef={composerFileInputRef}
+        handleComposerAddMore={handleComposerAddMore}
+        sendingQueue={sendingQueue}
+        handleSendImageQueue={handleSendImageQueue}
+      />
 
       {/* Ampliar imagem recebida/enviada — popup em vez de nova aba. */}
-      <Dialog open={!!lightboxUrl} onOpenChange={o => !o && setLightboxUrl(null)}>
-        <DialogContent className="max-w-3xl p-2 bg-black/95 border-none">
-          {lightboxUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={lightboxUrl} alt="" className="w-full max-h-[85vh] object-contain rounded" />
-          )}
-        </DialogContent>
-      </Dialog>
+      <LightboxDialog lightboxUrl={lightboxUrl} setLightboxUrl={setLightboxUrl} />
 
       {selectedConversation && (
         <SocialLeadDetailPanel
