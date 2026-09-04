@@ -291,7 +291,7 @@ export function TagEditor({
   }
 
   return (
-    <div ref={rootRef} className="relative inline-flex" onPointerDown={stop} onClick={stop}>
+    <div ref={rootRef} className="inline-flex" onPointerDown={stop} onClick={stop}>
       <button
         type="button"
         title="Adicionar tags"
@@ -304,8 +304,16 @@ export function TagEditor({
         <Plus className="h-2.5 w-2.5" /> Tag
       </button>
 
+      {/* Ancorado no canto da linha de badges/tags (ancestral `relative` mais
+          próximo — ver o wrapper em LeadCard), não neste botão: como o botão
+          "+ Tag" fica depois das tags já existentes numa linha que quebra
+          (flex-wrap), a posição dele muda conforme tags são adicionadas. Se o
+          popover seguisse o botão, ele "andava" a cada tag nova e acabava
+          escondido atrás da coluna vizinha do Kanban. Ancorar no canto direito
+          da linha (que sempre ocupa a largura inteira do card) mantém o
+          popover sempre no mesmo lugar. */}
       {open && (
-        <div className="absolute left-0 top-6 z-30 w-52 rounded-lg border bg-popover p-2  ">
+        <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border bg-popover p-2  ">
           <div className="mb-1.5 flex items-center gap-1 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <Tag className="h-3 w-3" /> Tags
           </div>
@@ -527,7 +535,7 @@ export default function LeadCard({
 
       {/* Badges + tags row */}
       {(tier || lead.status === 'cliente' || tags.length > 0 || !isOverlay) && (
-        <div className="flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
+        <div className="relative flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
               <Sparkles className="h-2.5 w-2.5" />
