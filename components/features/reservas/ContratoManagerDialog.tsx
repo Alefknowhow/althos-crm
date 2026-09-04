@@ -10,12 +10,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Loader2, FileSignature, Send, Download, Eye, RefreshCw, CheckCircle2,
-  Mail, FileText, Clock, XCircle, Copy, Settings2,
+  Loader2, FileSignature, Download, Eye, CheckCircle2,
+  FileText, Clock, XCircle, Settings2,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -29,6 +27,8 @@ import {
 } from '@/actions/contracts'
 import ContractPrintView from '@/components/features/reservas/ContractPrintView'
 import ContractTemplatePrintView from '@/components/features/reservas/ContractTemplatePrintView'
+import { ContratoManagerSignatureCard } from '@/components/features/reservas/ContratoManagerSignatureCard'
+import { ContratoManagerLinkCard } from '@/components/features/reservas/ContratoManagerLinkCard'
 
 type Props = {
   orgSlug: string
@@ -282,105 +282,31 @@ export default function ContratoManagerDialog({ orgSlug, saleId, clientName, cli
             </Card>
 
             {/* 2. Assinatura */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Send className="w-4 h-4" /> Assinatura digital (Autentique)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isSigned ? (
-                  <p className="text-sm text-muted-foreground">
-                    Este contrato já foi assinado por <strong>{contract.signer_name}</strong> e{' '}
-                    <strong>{contract.signer2_name}</strong>.
-                  </p>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Cliente (contratante)</p>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-xs">Nome</Label>
-                          <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">E-mail</Label>
-                          <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Telefone (WhatsApp)</Label>
-                          <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2 border-t">
-                      <p className="text-xs font-medium text-muted-foreground pt-2">Agência (contratada)</p>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-xs">Nome do responsável</Label>
-                          <Input value={signer2Name} onChange={e => setSigner2Name(e.target.value)} placeholder="Nome completo" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">E-mail</Label>
-                          <Input value={signer2Email} onChange={e => setSigner2Email(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Telefone (WhatsApp)</Label>
-                          <Input value={signer2Phone} onChange={e => setSigner2Phone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {!isSent ? (
-                      <Button size="sm" onClick={handleSend} disabled={sending || !hasPdf} className="w-full sm:w-auto">
-                        {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
-                        Enviar para assinatura
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
-                        {refreshing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
-                        Atualizar status de assinatura
-                      </Button>
-                    )}
-                    {!hasPdf && !isSent && (
-                      <p className="text-xs text-muted-foreground">Gere o PDF do contrato antes de enviar para assinatura.</p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <ContratoManagerSignatureCard
+              isSigned={isSigned}
+              contract={contract}
+              signerName={signerName} setSignerName={setSignerName}
+              signerEmail={signerEmail} setSignerEmail={setSignerEmail}
+              signerPhone={signerPhone} setSignerPhone={setSignerPhone}
+              signer2Name={signer2Name} setSigner2Name={setSigner2Name}
+              signer2Email={signer2Email} setSigner2Email={setSigner2Email}
+              signer2Phone={signer2Phone} setSigner2Phone={setSigner2Phone}
+              isSent={isSent}
+              hasPdf={hasPdf}
+              sending={sending}
+              refreshing={refreshing}
+              onSend={handleSend}
+              onRefresh={handleRefresh}
+            />
 
             {/* 3. Atalhos de envio do link */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Mail className="w-4 h-4" /> Atalhos — reenviar link de assinatura
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={emailTo}
-                    onChange={e => setEmailTo(e.target.value)}
-                    placeholder="email@exemplo.com"
-                    className="text-xs"
-                    disabled={!contract?.signature_link}
-                  />
-                  <Button size="sm" variant="outline" onClick={handleSendEmail} disabled={!contract?.signature_link} title="Enviar por e-mail">
-                    <Mail className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={handleCopyLink} disabled={!contract?.signature_link} title="Copiar link">
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {contract?.signature_link
-                    ? 'Para enviar por WhatsApp, use o botão de atalho na conversa do cliente em Conversas.'
-                    : 'Disponível depois que o contrato for enviado para assinatura.'}
-                </p>
-              </CardContent>
-            </Card>
+            <ContratoManagerLinkCard
+              emailTo={emailTo}
+              setEmailTo={setEmailTo}
+              hasSignatureLink={!!contract?.signature_link}
+              onSendEmail={handleSendEmail}
+              onCopyLink={handleCopyLink}
+            />
           </div>
         )}
       </DialogContent>
