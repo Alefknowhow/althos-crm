@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { inngest } from '@/lib/inngest/client'
 import { checkContatoPermission, FROZEN_ERROR } from './contatos-shared'
+import { listOrgMembers } from './team'
 
 /* =========================================================
  *  Pipeline / stage movement, assignment, value, tags, qualification
@@ -188,10 +189,19 @@ export async function getLead(orgSlug: string, leadId: string) {
   const supabase = createClient()
 
   const { data: lead } = await supabase.from('contatos').select('*, pipeline_stages(name)').eq('id', leadId).eq('organization_id', org.id).maybeSingle()
-  const { data: activities } = await supabase.from('contato_activities').select('*').eq('contato_id', leadId).order('created_at', { ascending: false })
+  const { data: activitiesRaw } = await supabase.from('contato_activities').select('*').eq('contato_id', leadId).order('created_at', { ascending: false })
   const { data: automation_runs } = await supabase.from('automation_runs').select('*, automations(name)').eq('contato_id', leadId).order('started_at', { ascending: false })
 
-  return { lead, activities, automation_runs }
+  // Resolve created_by -> nome do membro, pra timeline mostrar quem fez
+  // cada ação (o dado já era gravado, só não era exibido).
+  const members = await listOrgMembers(orgSlug)
+  const memberNameById = new Map(members.map(m => [m.user_id, m.name || m.email]))
+  const activities = (activitiesRaw || []).map(a => ({
+    ...a,
+    created_by_name: a.created_by ? (memberNameById.get(a.created_by) || null) : null,
+  }))
+
+  return { lead, activities, automation_runs, members }
 }
 
 export async function assignLead(orgSlug: string, leadId: string, userId: string | null) {

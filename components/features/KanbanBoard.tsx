@@ -469,6 +469,7 @@ export default function KanbanBoard({
         leadId={selectedLeadId}
         orgSlug={orgSlug}
         stages={stages}
+        members={members}
       />
 
       {/* New lead dialog */}

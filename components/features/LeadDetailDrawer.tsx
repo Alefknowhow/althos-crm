@@ -1,27 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { getLead } from '@/actions/contatos'
-import LeadDetailActions from './LeadDetailActions'
+import { deleteLead } from '@/actions/contatos'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ExternalLink, Trash2 } from 'lucide-react'
+import LeadDataTab, { type Member as LeadDataMember, type Stage as LeadDataStage } from './lead-panel/LeadDataTab'
 
-type Lead = {
-  id: string
-  name: string
-  email?: string
-  phone?: string
-  value_cents?: number
-  tags?: string[]
-  pipeline_stages?: { name: string }
-}
+type Member = { id: string; name: string; email: string }
 
-export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, stages }: any) {
-  const [lead, setLead] = useState<Lead | null>(null)
+export default function LeadDetailDrawer({
+  orgSlug, leadId, open, onOpenChange, stages, members = [],
+}: {
+  orgSlug: string
+  leadId: string | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  stages: LeadDataStage[]
+  members?: Member[]
+}) {
+  const router = useRouter()
+  const [lead, setLead] = useState<any | null>(null)
   const [activities, setActivities] = useState<any[]>([])
   const [automationRuns, setAutomationRuns] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // limpa estado ao trocar lead
   useEffect(() => {
@@ -56,60 +65,67 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
     }
   }, [open, leadId, orgSlug])
 
+  async function handleDelete() {
+    if (!lead) return
+    setDeleting(true)
+    const res = await deleteLead(orgSlug, lead.id)
+    setDeleting(false)
+    if (!res.ok) {
+      const { toast } = await import('sonner')
+      toast.error(res.error || 'Erro ao excluir lead')
+      return
+    }
+    setDeleteOpen(false)
+    onOpenChange(false)
+    router.refresh()
+  }
+
+  // LeadDataTab foi construído pro painel do WhatsApp — reaproveitado aqui
+  // pra não manter dois formulários de lead em paralelo (o antigo daqui não
+  // tinha valor editável, foto, notas, nem os popups de Ganho/Perda/
+  // Negociação ao trocar de estágio; o de lá já tinha tudo isso pronto).
+  const leadDataMembers: LeadDataMember[] = members.map(m => ({ user_id: m.id, name: m.name, email: m.email }))
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col h-full w-full max-w-none sm:max-w-md overflow-y-auto">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto">
+          {!lead && !error && (
+            <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+          )}
 
-        {!lead && !error && (
-          <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-        )}
+          {error && (
+            <div className="p-8 text-center text-destructive">{error}</div>
+          )}
 
-        {error && (
-          <div className="p-8 text-center text-destructive">{error}</div>
-        )}
+          {lead && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 pr-6">
+                  <span className="truncate">{lead.name}</span>
+                  {lead.pipeline_stages?.name && <Badge>{lead.pipeline_stages.name}</Badge>}
+                </DialogTitle>
+              </DialogHeader>
 
-        {lead && (
-          <>
-            <SheetHeader>
-              <SheetTitle>{lead.name}</SheetTitle>
-            </SheetHeader>
-
-            <div className="mt-4 space-y-6 flex-1 pb-10">
-
-              <div className="text-sm">
-                <div className="text-muted-foreground">{lead.email || 'Sem email'}</div>
-                <div className="text-muted-foreground">{lead.phone || 'Sem telefone'}</div>
+              <div className="flex items-center gap-2 -mt-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/app/${orgSlug}/contatos/${lead.id}`}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir na aba de Contatos
+                  </Link>
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
+                </Button>
               </div>
 
-              <LeadDetailActions lead={lead} orgSlug={orgSlug} stages={stages} />
-
-              <div className="space-y-2 text-sm border-t pt-4">
-                <div>
-                  <span className="text-muted-foreground font-medium">Estágio:</span>{' '}
-                  <Badge>{lead.pipeline_stages?.name}</Badge>
-                </div>
-
-                <div>
-                  <span className="text-muted-foreground font-medium">Valor:</span>{' '}
-                  R$ {((lead.value_cents || 0) / 100).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2
-                  })}
-                </div>
-
-                <div className="flex gap-1 flex-wrap">
-                  <span className="text-muted-foreground font-medium">Tags:</span>
-                  {lead.tags?.length ? (
-                    lead.tags.map((t) => (
-                      <Badge key={t} variant="outline">{t}</Badge>
-                    ))
-                  ) : (
-                    <span className="text-muted-foreground">Nenhuma</span>
-                  )}
-                </div>
-              </div>
+              <LeadDataTab
+                orgSlug={orgSlug}
+                lead={lead}
+                stages={stages}
+                members={leadDataMembers}
+              />
 
               <Tabs defaultValue="timeline" className="w-full border-t pt-4">
-
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="automations">Automações</TabsTrigger>
@@ -123,7 +139,7 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
                   ) : (
                     activities.map((act) => (
                       <div key={act.id} className="text-sm">
-                        <div className="font-medium">
+                        <div className="font-medium flex items-center gap-1.5">
                           {act.type === 'manual_created'
                             ? 'Criado manualmente'
                             : act.type === 'stage_changed'
@@ -131,6 +147,9 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
                               : act.type === 'note'
                                 ? 'Nota'
                                 : act.type}
+                          {act.created_by_name && (
+                            <span className="text-xs font-normal text-muted-foreground">por {act.created_by_name}</span>
+                          )}
                         </div>
 
                         {act.type === 'note' && (
@@ -188,12 +207,22 @@ export default function LeadDetailDrawer({ orgSlug, leadId, open, onOpenChange, 
                     ))
                   )}
                 </TabsContent>
-
               </Tabs>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Tem certeza?</DialogTitle></DialogHeader>
+          <div className="py-4 text-sm">Essa ação não pode ser desfeita. O lead e todas suas atividades serão perdidos.</div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? 'Excluindo...' : 'Excluir'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
