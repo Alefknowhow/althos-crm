@@ -9,15 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Loader2, FileSignature, Send, Download, Eye, RefreshCw, CheckCircle2,
-  Mail, FileText, Clock, XCircle, Copy, Settings2,
-} from 'lucide-react'
-import Link from 'next/link'
+import { Loader2, FileSignature, CheckCircle2, FileText, Clock, XCircle } from 'lucide-react'
 import {
   getPlanSaleContract,
   uploadPlanContractPdf,
@@ -30,7 +22,10 @@ import {
   savePlanContractBody,
 } from '@/actions/plan-contracts'
 import PlanContractPrintView from '@/components/features/agencias-trafego/PlanContractPrintView'
-import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
+import { PlanoContratoSignatureCard } from '@/components/features/agencias-trafego/PlanoContratoSignatureCard'
+import { PlanoContratoLinkCard } from '@/components/features/agencias-trafego/PlanoContratoLinkCard'
+import { PlanoContratoBodyCard } from '@/components/features/agencias-trafego/PlanoContratoBodyCard'
+import { PlanoContratoDocumentCard } from '@/components/features/agencias-trafego/PlanoContratoDocumentCard'
 
 type Props = {
   orgSlug: string
@@ -287,168 +282,54 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
               )}
             </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Documento
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={handleGenerate} disabled={generating}>
-                  {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <FileSignature className="w-4 h-4 mr-1.5" />}
-                  {hasPdf ? 'Gerar novamente' : 'Gerar contrato (PDF)'}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleView('pdf')} disabled={!hasPdf}>
-                  <Eye className="w-4 h-4 mr-1.5" /> Visualizar PDF
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleView('signed')} disabled={!isSigned}>
-                  <Download className="w-4 h-4 mr-1.5" /> Baixar assinado
-                </Button>
-                <Button size="sm" variant="ghost" asChild>
-                  <Link href={`/app/${orgSlug}/vendas/${saleId}/contrato`} target="_blank">
-                    <Settings2 className="w-4 h-4 mr-1.5" /> Ver modelo
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <PlanoContratoDocumentCard
+              orgSlug={orgSlug}
+              saleId={saleId}
+              generating={generating}
+              hasPdf={hasPdf}
+              isSigned={isSigned}
+              onGenerate={handleGenerate}
+              onView={handleView}
+            />
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Conteúdo deste contrato
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Ajuste cláusulas específicas desta venda sem alterar o modelo padrão do Plano — vale só pra este contrato.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isSent || isSigned ? (
-                  <p className="text-xs text-muted-foreground">
-                    Este contrato já foi {isSigned ? 'assinado' : 'enviado pra assinatura'} — o conteúdo não pode mais ser editado.
-                  </p>
-                ) : !editingBody ? (
-                  <Button size="sm" variant="outline" onClick={openBodyEditor} disabled={bodyLoading}>
-                    {bodyLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Settings2 className="w-4 h-4 mr-1.5" />}
-                    Editar conteúdo deste contrato
-                  </Button>
-                ) : (
-                  <>
-                    <TiptapEmailEditor orgSlug={orgSlug} value={bodyHtml} onChange={setBodyHtml} placeholder="Texto do contrato…" />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSaveBody} disabled={savingBody}>
-                        {savingBody ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : null}
-                        Salvar conteúdo
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditingBody(false)} disabled={savingBody}>
-                        Cancelar
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Salve aqui antes de gerar o PDF pra usar este texto em vez do modelo padrão.
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <PlanoContratoBodyCard
+              orgSlug={orgSlug}
+              isSent={isSent}
+              isSigned={isSigned}
+              editingBody={editingBody}
+              bodyLoading={bodyLoading}
+              bodyHtml={bodyHtml}
+              setBodyHtml={setBodyHtml}
+              savingBody={savingBody}
+              onOpenEditor={openBodyEditor}
+              onSave={handleSaveBody}
+              onCancel={() => setEditingBody(false)}
+            />
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Send className="w-4 h-4" /> Assinatura digital (Autentique)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {isSigned ? (
-                  <p className="text-sm text-muted-foreground">
-                    Este contrato já foi assinado por <strong>{contract.signer_name}</strong> e{' '}
-                    <strong>{contract.signer2_name}</strong>.
-                  </p>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Cliente (contratante)</p>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-xs">Nome</Label>
-                          <Input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Nome completo" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">E-mail</Label>
-                          <Input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Telefone (WhatsApp)</Label>
-                          <Input value={signerPhone} onChange={e => setSignerPhone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
-                        </div>
-                      </div>
-                    </div>
+            <PlanoContratoSignatureCard
+              isSigned={isSigned}
+              contract={contract}
+              signerName={signerName} setSignerName={setSignerName}
+              signerEmail={signerEmail} setSignerEmail={setSignerEmail}
+              signerPhone={signerPhone} setSignerPhone={setSignerPhone}
+              signer2Name={signer2Name} setSigner2Name={setSigner2Name}
+              signer2Email={signer2Email} setSigner2Email={setSigner2Email}
+              signer2Phone={signer2Phone} setSigner2Phone={setSigner2Phone}
+              isSent={isSent}
+              hasPdf={hasPdf}
+              sending={sending}
+              refreshing={refreshing}
+              onSend={handleSend}
+              onRefresh={handleRefresh}
+            />
 
-                    <div className="space-y-2 pt-2 border-t">
-                      <p className="text-xs font-medium text-muted-foreground pt-2">Agência (contratada)</p>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-xs">Nome do responsável</Label>
-                          <Input value={signer2Name} onChange={e => setSigner2Name(e.target.value)} placeholder="Nome completo" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">E-mail</Label>
-                          <Input value={signer2Email} onChange={e => setSigner2Email(e.target.value)} placeholder="email@exemplo.com" disabled={isSent} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Telefone (WhatsApp)</Label>
-                          <Input value={signer2Phone} onChange={e => setSigner2Phone(e.target.value)} placeholder="5511999999999" disabled={isSent} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {!isSent ? (
-                      <Button size="sm" onClick={handleSend} disabled={sending || !hasPdf} className="w-full sm:w-auto">
-                        {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
-                        Enviar para assinatura
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
-                        {refreshing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
-                        Atualizar status de assinatura
-                      </Button>
-                    )}
-                    {!hasPdf && !isSent && (
-                      <p className="text-xs text-muted-foreground">Gere o PDF do contrato antes de enviar para assinatura.</p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Mail className="w-4 h-4" /> Atalhos — reenviar link de assinatura
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={emailTo}
-                    onChange={e => setEmailTo(e.target.value)}
-                    placeholder="email@exemplo.com"
-                    className="text-xs"
-                    disabled={!contract?.signature_link}
-                  />
-                  <Button size="sm" variant="outline" onClick={handleSendEmail} disabled={!contract?.signature_link} title="Enviar por e-mail">
-                    <Mail className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={handleCopyLink} disabled={!contract?.signature_link} title="Copiar link">
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {contract?.signature_link
-                    ? 'Compartilhe o link acima com o cliente pra assinatura.'
-                    : 'Disponível depois que o contrato for enviado para assinatura.'}
-                </p>
-              </CardContent>
-            </Card>
+            <PlanoContratoLinkCard
+              emailTo={emailTo}
+              setEmailTo={setEmailTo}
+              hasSignatureLink={!!contract?.signature_link}
+              onSendEmail={handleSendEmail}
+              onCopyLink={handleCopyLink}
+            />
           </div>
         )}
       </DialogContent>
