@@ -42,6 +42,7 @@ import {
   Webhook,
   ArrowRight,
   XCircle,
+  Smile,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { nicheKeyFor } from '@/lib/niche'
@@ -57,6 +58,7 @@ const STEP_TYPES = [
   { id: 'close_deal',    label: 'Fechar Negociação', icon: XCircle,       color: '#dc2626', desc: 'Marca o lead como perdido ou desqualificado, tirando-o do board' },
   { id: 'add_tag',       label: 'Adicionar Tag',    icon: Tag,            color: '#a855f7', desc: 'Adiciona uma tag ao perfil do lead' },
   { id: 'send_push',     label: 'Notificação Push', icon: Bell,           color: '#0ea5e9', desc: 'Envia push notification para a equipe' },
+  { id: 'send_nps_survey', label: 'Pesquisa NPS',   icon: Smile,          color: '#22c55e', desc: 'Envia a pergunta "de 0 a 10..." por WhatsApp e aguarda a nota' },
   { id: 'webhook',       label: 'Webhook Externo',  icon: Webhook,        color: '#d946ef', desc: 'Chama uma URL externa com dados do lead' },
   { id: 'wait',          label: 'Aguardar',         icon: Clock,          color: '#94a3b8', desc: 'Pausa a execução por um período definido' },
 ] as const
@@ -105,6 +107,7 @@ function describeTrigger(type: string, config: any, forms: Props['forms'], stage
   if (type === 'lead.stale')         return `Sem contato há ${config?.staleDays ?? 7} dias`
   if (type === 'appointment.booked') return 'Novo agendamento recebido'
   if (type === 'customer.birthday')  return 'No aniversário do cliente'
+  if (type === 'customer.converted') return 'Quando o lead vira cliente (negócio ganho)'
   if (type === 'clinic.appointment.confirmed') return 'Paciente confirmou o agendamento'
   if (type === 'clinic.quote.approved')        return 'Orçamento aprovado'
   if (type === 'clinic.attendance.completed')  return 'Atendimento registrado como realizado'
@@ -132,6 +135,7 @@ function describeStep(step: Step, stages: Props['stages']): string {
     case 'add_tag':       return c.tag ? `Tag: ${c.tag}` : 'Sem tag configurada'
     case 'send_push':     return c.title || 'Sem título configurado'
     case 'webhook':       return c.url ? c.url.replace(/^https?:\/\//, '').slice(0, 32) : 'Sem URL configurada'
+    case 'send_nps_survey': return 'Pergunta fixa "de 0 a 10..."'
     default:              return ''
   }
 }
@@ -594,6 +598,14 @@ function StepConfig({
               onChange={e => patch({ headers: e.target.value })} />
           </div>
         </div>
+      )
+    case 'send_nps_survey':
+      return (
+        <p className="text-xs text-muted-foreground">
+          Manda "De 0 a 10, o quanto você recomendaria a gente para um amigo ou familiar?" pelo WhatsApp do lead
+          e marca o cadastro como aguardando resposta. Sem configuração — combine com um passo <b>Aguardar</b> antes
+          pra esperar alguns dias após a venda.
+        </p>
       )
     default:
       return null

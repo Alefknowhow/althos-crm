@@ -1,6 +1,6 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
-  Stethoscope, Building2, Shield, type LucideIcon,
+  Stethoscope, Building2, Shield, Smile, type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -25,6 +25,7 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'lead.stale',          label: 'Lead sem Contato',         desc: 'Dispara após N dias sem atividade',                   icon: Clock,         color: '#94a3b8' },
   { id: 'appointment.booked',  label: 'Agendamento Realizado',    desc: 'Dispara quando um agendamento é criado',              icon: Calendar,      color: '#10b981' },
   { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)', icon: Gift,   color: '#ec4899' },
+  { id: 'customer.converted',  label: 'Cliente Convertido',       desc: 'Dispara quando o lead vira cliente (negócio ganho) — combine com um passo "Esperar" antes de enviar a pesquisa NPS', icon: Smile, color: '#22c55e' },
 
   // Vertical Clínicas — sem configuração extra (igual appointment.booked).
   { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },

@@ -109,7 +109,7 @@ export default function LeadDetailDrawer({
 
               <div className="flex items-center gap-2 -mt-2">
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/app/${orgSlug}/contatos/${lead.id}`}>
+                  <Link href={`/app/${orgSlug}/contatos?sel=${lead.id}`}>
                     <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir na aba de Contatos
                   </Link>
                 </Button>

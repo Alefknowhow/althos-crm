@@ -138,6 +138,16 @@ export async function moveLeadToStage(
     data: { orgId: org.id, leadId, stageId: newStageId }
   })
 
+  // Dispara só na transição real pra cliente (não em re-saves de quem já
+  // era) — alimenta automações como "Enviar pesquisa NPS N dias depois"
+  // (ver lib/automations/trigger-meta.ts e o step send_nps_survey).
+  if (stage?.is_won && lead?.status !== 'cliente') {
+    await inngest.send({
+      name: 'customer.converted',
+      data: { orgId: org.id, leadId },
+    })
+  }
+
   // ── Travel niche: auto-create a pre-filled sale when the lead is won ───────
   if (stage?.is_won) {
     const { maybeCreateTravelSaleOnWon } = await import('@/actions/travel-sales')

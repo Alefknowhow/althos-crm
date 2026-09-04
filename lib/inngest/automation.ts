@@ -116,6 +116,9 @@ export const processAutomationEventVerticals = inngest.createFunction(
       { event: 'seguros.policy.issued' },
       { event: 'seguros.policy.renewal_due' },
       { event: 'seguros.claim.opened' },
+      // Genérico (Core) — cabe aqui só porque a outra function já está no
+      // teto de 10 triggers do Inngest, não por afinidade com verticais.
+      { event: 'customer.converted' },
     ]
   },
   handleAutomationEvent,
@@ -325,6 +328,17 @@ export const executeAutomationRun = inngest.createFunction(
                     await supabase.from('contatos').update({ tags: newTags }).eq('id', lead.id)
                   }
                   break;
+
+                case 'send_nps_survey': {
+                  // Mesmo núcleo do disparo manual (actions/contatos-customers.ts
+                  // ::triggerNpsSurvey) — aqui rodando com o client admin, sem
+                  // sessão de usuário (contexto de cron/automação).
+                  const { sendNpsSurveyCore } = await import('@/lib/nps/send-survey')
+                  const res = await sendNpsSurveyCore(supabase, orgConfig, lead)
+                  sent = { phone: lead.phone }
+                  if (!res.ok) { status = 'error'; message = res.error }
+                  break;
+                }
 
                 case 'send_push': {
                   if (stepDef.config.title) {

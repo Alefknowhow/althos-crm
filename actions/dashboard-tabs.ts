@@ -867,3 +867,36 @@ export async function getTopDestinations(orgId: string, since: Date, limit = 6):
     .sort((a, b) => b.total_cents - a.total_cents)
     .slice(0, limit)
 }
+
+/* -------- NPS (Net Promoter Score) -------- */
+
+export type NpsResult = {
+  score: number
+  promoters: number
+  passives: number
+  detractors: number
+  responses: number
+}
+
+/** NPS clássico: %promotores (9-10) menos %detratores (0-6), sobre as
+ *  respostas já registradas (manual ou via pesquisa disparada). Sem
+ *  respostas ainda, `score` fica 0 mas isso não significa "neutro" — o
+ *  widget deve checar `responses === 0` pra mostrar "sem dados" em vez de
+ *  um NPS zerado enganoso. */
+export async function getNpsScore(orgId: string): Promise<NpsResult> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contatos')
+    .select('nps_score')
+    .eq('organization_id', orgId)
+    .not('nps_score', 'is', null)
+
+  const scores = (data || []).map((r: any) => r.nps_score as number)
+  const responses = scores.length
+  const promoters = scores.filter(s => s >= 9).length
+  const detractors = scores.filter(s => s <= 6).length
+  const passives = responses - promoters - detractors
+  const score = responses > 0 ? Math.round(((promoters - detractors) / responses) * 100) : 0
+
+  return { score, promoters, passives, detractors, responses }
+}

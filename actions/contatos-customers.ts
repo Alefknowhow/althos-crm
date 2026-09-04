@@ -185,3 +185,72 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
   revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const }
 }
+
+/* =========================================================
+ *  NPS (Net Promoter Score)
+ * ========================================================= */
+
+/** Disparo manual da pesquisa NPS (0-10) por WhatsApp — o mesmo botão que a
+ *  automação "Enviar pesquisa NPS" aciona automaticamente (ver
+ *  lib/nps/send-survey.ts, reaproveitado nos dois casos). */
+export async function triggerNpsSurvey(orgSlug: string, leadId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: lead } = await supabase
+    .from('contatos')
+    .select('id, name, phone')
+    .eq('id', leadId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!lead) return { ok: false as const, error: 'Contato não encontrado.' }
+
+  const { sendNpsSurveyCore } = await import('@/lib/nps/send-survey')
+  const res = await sendNpsSurveyCore(supabase, org, lead)
+  if (!res.ok) return { ok: false as const, error: res.error }
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
+}
+
+/** Registro manual da nota (0-10) — cobre o período até a leitura automática
+ *  da resposta do WhatsApp existir (pipeline de ingestão em refatoração no
+ *  momento). Também funciona pra registrar uma nota vinda de outro canal
+ *  (ligação, e-mail, presencial). */
+export async function setNpsScore(orgSlug: string, leadId: string, score: number | null) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  if (score != null && (score < 0 || score > 10 || !Number.isInteger(score))) {
+    return { ok: false as const, error: 'A nota precisa ser um número inteiro entre 0 e 10.' }
+  }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('contatos')
+    .update({
+      nps_score: score,
+      nps_status: score != null ? 'respondido' : 'none',
+      nps_responded_at: score != null ? new Date().toISOString() : null,
+    })
+    .eq('id', leadId)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  if (score != null) {
+    await supabase.from('contato_activities').insert({
+      contato_id: leadId,
+      organization_id: org.id,
+      type: 'nps_responded',
+      payload: { score, manual: true },
+      created_by: user.id,
+    })
+  }
+
+  revalidatePath(`/app/${orgSlug}/contatos`)
+  return { ok: true as const }
+}

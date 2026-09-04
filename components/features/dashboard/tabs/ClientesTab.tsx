@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import {
   getTicketMedio, getCustomerLTV, getCustomersByCity, getVipCustomers, getAtRiskCustomers,
-  getRepurchaseRate, getCustomerSegmentation,
+  getRepurchaseRate, getCustomerSegmentation, getNpsScore,
 } from '@/actions/dashboard-tabs'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
@@ -36,7 +36,7 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
   const who = isClinic ? 'Paciente' : 'Cliente'
   const whoLower = who.toLowerCase()
   const whoPlural = isClinic ? 'Pacientes' : 'Clientes'
-  const [ticket, ltv, cities, vipCustomers, atRiskCustomers, repurchase, segmentation] = await Promise.all([
+  const [ticket, ltv, cities, vipCustomers, atRiskCustomers, repurchase, segmentation, nps] = await Promise.all([
     getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
     getCustomerLTV(ctx.orgId),
     getCustomersByCity(ctx.orgId),
@@ -44,6 +44,7 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
     getAtRiskCustomers(ctx.orgId),
     getRepurchaseRate(ctx.orgId),
     getCustomerSegmentation(ctx.orgId),
+    getNpsScore(ctx.orgId),
   ])
 
   const activeCustomers = segmentation.novo + segmentation.ativo + segmentation.recorrente + segmentation.vip
@@ -51,6 +52,16 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard
+          label="NPS"
+          value={nps.responses > 0 ? String(nps.score) : '—'}
+          help={
+            nps.responses > 0
+              ? `${nps.promoters} promotor(es), ${nps.passives} neutro(s), ${nps.detractors} detrator(es) — ${nps.responses} resposta(s) no total. NPS = %promotores − %detratores.`
+              : `Nenhuma resposta de NPS registrada ainda. Dispare a pesquisa em Contatos ou crie uma automação com o gatilho "Cliente Convertido".`
+          }
+          trend={nps.responses === 0 ? undefined : nps.score >= 50 ? 'up' : nps.score < 0 ? 'down' : undefined}
+        />
         <KpiCard
           label={`${whoPlural} ativos`}
           value={String(activeCustomers)}

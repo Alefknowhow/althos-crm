@@ -29,6 +29,7 @@ import {
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
+import { NpsSection } from '@/components/features/contatos/NpsSection'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
@@ -317,6 +318,19 @@ export function DetailPanel({
             initialDocuments={selected.documents}
             initialEditMode={dadosEditRequested}
           />
+
+          {/* NPS — só faz sentido pós-venda */}
+          {c.status === 'cliente' && (
+            <NpsSection
+              orgSlug={orgSlug}
+              leadId={c.id}
+              phone={c.phone}
+              npsScore={c.nps_score ?? null}
+              npsStatus={c.nps_status ?? null}
+              npsSentAt={c.nps_sent_at ?? null}
+              npsRespondedAt={c.nps_responded_at ?? null}
+            />
+          )}
 
           {/* Parentesco */}
           <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
