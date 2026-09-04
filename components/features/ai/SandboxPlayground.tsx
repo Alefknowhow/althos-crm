@@ -14,24 +14,18 @@ import {
 import {
   Bot,
   Send,
-  Plus,
-  Trash2,
-  Settings,
   Sparkles,
-  User as UserIcon,
   AlertTriangle,
   Loader2,
-  Wrench,
-  ChevronDown,
-  ChevronUp,
   PanelLeft,
-  X,
 } from 'lucide-react'
 import {
   sendSandboxMessage,
   createSandboxSession,
   deleteSandboxSession,
 } from '@/actions/ai_attendant'
+import { SandboxPlaygroundSidebar } from './SandboxPlaygroundSidebar'
+import { SandboxPlaygroundMessages } from './SandboxPlaygroundMessages'
 
 type Message = {
   id: string
@@ -60,14 +54,6 @@ type Props = {
   sessions: SandboxSession[]
   activeSessionId: string
   initialMessages: Message[]
-}
-
-function fmtCostBRL(usdCents: number | null | undefined): string {
-  if (!usdCents) return '—'
-  // Quick USD→BRL conversion at ~R$5.0. For accurate FX, store/fetch a rate.
-  const brl = (usdCents / 100) * 5.0
-  if (brl < 0.01) return '< R$ 0,01'
-  return `R$ ${brl.toFixed(4)}`
 }
 
 type ToolCallRecord = { name: string; input: Record<string, any>; output: string }
@@ -186,97 +172,17 @@ export default function SandboxPlayground({
   return (
     <div className="h-full flex">
       {/* Sidebar with sessions */}
-      <aside className={`w-full md:w-72 border-r bg-muted/20 flex-col ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex`}>
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <h2 className="font-semibold text-sm">Testar Agente</h2>
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/app/${orgSlug}/configuracoes/agente-ia`}
-                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 p-1"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => setMobileView('chat')}
-                className="md:hidden p-1 rounded-md hover:bg-muted text-muted-foreground"
-                aria-label="Fechar lista"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Teste a persona antes de conectar WhatsApp.
-          </p>
-          <Button size="sm" className="w-full" onClick={newSession}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Nova conversa
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {sessions.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">
-              Sem conversas ainda.
-            </p>
-          ) : (
-            sessions.map(s => {
-              const active = s.id === activeSessionId
-              return (
-                <div
-                  key={s.id}
-                  className={`group rounded-md text-xs flex items-center justify-between gap-1 ${
-                    active ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted'
-                  }`}
-                >
-                  <Link
-                    href={`/app/${orgSlug}/configuracoes/agente-ia?tab=testar&session=${s.id}`}
-                    onClick={() => setMobileView('chat')}
-                    className="flex-1 px-2 py-2 min-w-0"
-                  >
-                    <div className="font-medium truncate">{s.title || 'Conversa'}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {new Date(s.updated_at).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setSessionToDelete(s.id)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive p-2 transition-opacity"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              )
-            })
-          )}
-        </div>
-
-        <div className="p-3 border-t bg-card text-xs space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div
-              className={`w-2 h-2 rounded-full ${attendantEnabled ? 'bg-green-500' : 'bg-amber-500'}`}
-            />
-            <span className="text-muted-foreground">
-              Atendente: <strong>{attendantEnabled ? 'Ativo' : 'Pausado'}</strong>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div
-              className={`w-2 h-2 rounded-full ${hasApiKey ? 'bg-green-500' : 'bg-red-500'}`}
-            />
-            <span className="text-muted-foreground">
-              API Anthropic: <strong>{hasApiKey ? 'configurada' : 'pendente'}</strong>
-            </span>
-          </div>
-        </div>
-      </aside>
+      <SandboxPlaygroundSidebar
+        orgSlug={orgSlug}
+        attendantEnabled={attendantEnabled}
+        hasApiKey={hasApiKey}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        mobileView={mobileView}
+        setMobileView={setMobileView}
+        onNewSession={newSession}
+        onDeleteSession={setSessionToDelete}
+      />
 
       {/* Chat area */}
       <main className={`flex-1 flex-col bg-background ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
@@ -318,92 +224,12 @@ export default function SandboxPlayground({
           </div>
         )}
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-sm text-muted-foreground space-y-2">
-              <Bot className="w-10 h-10 opacity-30" />
-              <p>Mande a primeira mensagem como se fosse um cliente.</p>
-              <p className="text-xs">
-                Ex: &quot;Oi, vi um anúncio de vocês, queria saber preço.&quot;
-              </p>
-            </div>
-          ) : (
-            messages.map(m => (
-              <div
-                key={m.id}
-                className={`flex gap-3 ${
-                  m.role === 'user' ? 'flex-row-reverse' : ''
-                } ${m.role === 'system' ? 'justify-center' : ''}`}
-              >
-                {m.role !== 'system' && (
-                  <div
-                    className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${
-                      m.role === 'user'
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                    }`}
-                  >
-                    {m.role === 'user' ? (
-                      <UserIcon className="w-4 h-4" />
-                    ) : (
-                      <Bot className="w-4 h-4" />
-                    )}
-                  </div>
-                )}
-                <div
-                  className={`max-w-[70%] ${
-                    m.role === 'user' ? 'items-end' : ''
-                  } ${m.role === 'system' ? 'max-w-full' : ''}`}
-                >
-                  {/* Tool calls (above the assistant text bubble, if any) */}
-                  {m.role === 'assistant' && toolCallsByMessageId[m.id]?.length > 0 && (
-                    <div className="mb-2 space-y-1.5">
-                      {toolCallsByMessageId[m.id].map((tc, i) => (
-                        <ToolCallCard key={i} call={tc} />
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    className={`rounded-none px-4 py-2.5 text-sm whitespace-pre-wrap ${
-                      m.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : m.role === 'system'
-                          ? 'bg-destructive/10 text-destructive text-xs italic px-3 py-1.5'
-                          : 'bg-muted'
-                    }`}
-                  >
-                    {m.content}
-                  </div>
-                  {m.role === 'assistant' && (m.tokens_input || m.tokens_output) && (
-                    <div className="text-[10px] text-muted-foreground mt-1 px-2 flex gap-2">
-                      <span>
-                        {m.tokens_input}→{m.tokens_output} tok
-                      </span>
-                      {(m.cache_read_tokens || 0) > 0 && (
-                        <span className="text-green-600">cache: {m.cache_read_tokens}</span>
-                      )}
-                      <span>·</span>
-                      <span>{fmtCostBRL(m.cost_cents)}</span>
-                      {m.model && <span>· {m.model.replace('claude-', '')}</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-
-          {sending && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Bot className="w-4 h-4" />
-              </div>
-              <div className="bg-muted rounded-none px-4 py-2.5 text-sm flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span className="text-muted-foreground">pensando...</span>
-              </div>
-            </div>
-          )}
-        </div>
+        <SandboxPlaygroundMessages
+          messages={messages}
+          toolCallsByMessageId={toolCallsByMessageId}
+          sending={sending}
+          scrollRef={scrollRef}
+        />
 
         <div className="border-t bg-card p-4">
           <form
@@ -444,49 +270,6 @@ export default function SandboxPlayground({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  )
-}
-
-/**
- * Compact card showing what tool the AI invoked, its inputs and the textual
- * result. Collapsed by default — operator clicks to expand and inspect.
- */
-function ToolCallCard({ call }: { call: ToolCallRecord }) {
-  const [open, setOpen] = useState(false)
-  const inputPreview =
-    Object.entries(call.input || {})
-      .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
-      .join(' · ') || '(sem parâmetros)'
-  return (
-    <div className="border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 rounded-lg overflow-hidden text-xs">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-amber-100/60 dark:hover:bg-amber-900/20 transition-colors"
-      >
-        <Wrench className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-amber-800 dark:text-amber-200 truncate">
-            {call.name}({inputPreview})
-          </div>
-        </div>
-        {open ? (
-          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-        )}
-      </button>
-      {open && (
-        <div className="px-3 pb-2 pt-1 border-t border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-            Resultado
-          </div>
-          <pre className="whitespace-pre-wrap font-mono text-[10px] text-foreground/80 leading-relaxed">
-            {call.output}
-          </pre>
-        </div>
-      )}
     </div>
   )
 }
