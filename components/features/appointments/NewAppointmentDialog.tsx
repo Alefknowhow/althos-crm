@@ -19,6 +19,7 @@ import { Plus } from 'lucide-react'
 import { createManualAppointment } from '@/actions/appointments'
 import { upsertClinicAppointmentContext, type ClinicServiceContext } from '@/actions/clinic'
 import { traduzirErro } from '@/lib/utils/error-translator'
+import { NewAppointmentDialogClinicFields } from './NewAppointmentDialogClinicFields'
 
 type EventType = {
   id: string
@@ -133,9 +134,6 @@ export default function NewAppointmentDialog({
   // Profissional exclusivo do procedimento escolhido (se houver) — restringe
   // o select a só ele; sem procedimento restrito, mostra todos.
   const restrictedProfessionalId = clinicServiceContexts[form.eventTypeId]?.professional_id || null
-  const availableProfessionals = restrictedProfessionalId
-    ? clinicProfessionals.filter(p => p.id === restrictedProfessionalId)
-    : clinicProfessionals
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -288,41 +286,16 @@ export default function NewAppointmentDialog({
             </div>
           </div>
 
-          {isClinic && (clinicProfessionals.length > 0 || clinicRooms.length > 0) && (
-            <div className="grid grid-cols-2 gap-3">
-              {clinicProfessionals.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Profissional</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
-                    value={form.professionalId}
-                    onChange={e => setForm({ ...form, professionalId: e.target.value })}
-                    disabled={!!restrictedProfessionalId}
-                    title={restrictedProfessionalId ? 'Esse procedimento só pode ser feito por este profissional' : undefined}
-                  >
-                    <option value="">Sem profissional definido</option>
-                    {availableProfessionals.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {clinicRooms.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Sala</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
-                    value={form.roomId}
-                    onChange={e => setForm({ ...form, roomId: e.target.value })}
-                  >
-                    <option value="">Sem sala definida</option>
-                    {clinicRooms.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+          {isClinic && (
+            <NewAppointmentDialogClinicFields
+              clinicProfessionals={clinicProfessionals}
+              clinicRooms={clinicRooms}
+              professionalId={form.professionalId}
+              roomId={form.roomId}
+              restrictedProfessionalId={restrictedProfessionalId}
+              onProfessionalChange={id => setForm({ ...form, professionalId: id })}
+              onRoomChange={id => setForm({ ...form, roomId: id })}
+            />
           )}
 
           <div className="space-y-2">
