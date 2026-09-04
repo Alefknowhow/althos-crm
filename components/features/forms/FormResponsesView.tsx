@@ -2,14 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Filter, X, ExternalLink, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { Search, Filter, X, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { FormResponseDetailSheet } from './FormResponseDetailSheet'
 
 type FormField = {
   id: string
@@ -320,90 +319,13 @@ export default function FormResponsesView({
       )}
 
       {/* Detail drawer */}
-      <Sheet open={!!selected} onOpenChange={o => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-          {selected && (
-            <>
-              <SheetHeader>
-                <SheetTitle>Resposta de {pickLead(selected)?.name || 'Lead'}</SheetTitle>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(selected.created_at).toLocaleString('pt-BR')}
-                </p>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-6">
-                {/* Lead info */}
-                {selectedLead && (
-                  <section>
-                    <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                      Lead
-                    </h3>
-                    <div className="border rounded-lg p-3 space-y-1 text-sm bg-muted/20">
-                      <div>
-                        <strong>Nome:</strong> {selectedLead.name || '—'}
-                      </div>
-                      <div>
-                        <strong>E-mail:</strong> {selectedLead.email || '—'}
-                      </div>
-                      <div>
-                        <strong>Telefone:</strong> {selectedLead.phone || '—'}
-                      </div>
-                      {selectedLead.id && (
-                        <Link
-                          href={`/app/${orgSlug}/contatos/${selectedLead.id}`}
-                          className="inline-flex items-center gap-1 text-primary hover:underline text-xs mt-1"
-                        >
-                          Abrir lead <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      )}
-                    </div>
-                  </section>
-                )}
-
-                {/* Answers */}
-                <section>
-                  <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                    Respostas
-                  </h3>
-                  <div className="border rounded-lg divide-y">
-                    {fields.length === 0 ? (
-                      <p className="p-3 text-sm text-muted-foreground">Sem campos definidos.</p>
-                    ) : (
-                      fields.map(f => (
-                        <div key={f.id} className="p-3 text-sm">
-                          <div className="text-xs text-muted-foreground">{f.label}</div>
-                          <div className="font-medium break-words">
-                            {renderCell(f, selected.data?.[f.id])}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-
-                {/* Meta */}
-                <section>
-                  <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                    Origem (meta)
-                  </h3>
-                  {selected.meta && Object.keys(selected.meta).length > 0 ? (
-                    <div className="border rounded-lg divide-y text-xs font-mono">
-                      {Object.entries(selected.meta).map(([k, v]) => (
-                        <div key={k} className="p-2 flex gap-2">
-                          <span className="text-muted-foreground min-w-[120px]">{k}</span>
-                          <span className="break-all">{String(v)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Sem dados de origem.</p>
-                  )}
-                </section>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+      <FormResponseDetailSheet
+        orgSlug={orgSlug}
+        fields={fields}
+        selected={selected}
+        selectedLead={selectedLead}
+        onOpenChange={o => !o && setSelected(null)}
+      />
     </div>
   )
 }
