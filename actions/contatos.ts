@@ -250,6 +250,10 @@ export async function moveLeadToStage(
    * is_lost, assume 'perdido' com motivo genérico (fallback — nunca bloqueia
    * o drag-and-drop por falta dessa informação). */
   closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+  /** Valor em centavos a gravar junto com a mudança de etapa — usado ao
+   * entrar em "Negociação" (valor sendo negociado) ou numa etapa is_won
+   * (valor final da conversão, que pode ter mudado durante a negociação). */
+  valueCents?: number,
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -276,6 +280,7 @@ export async function moveLeadToStage(
   // Ganhou o negócio → vira cliente automaticamente (antes exigia uma ação
   // manual separada que nada na tela disparava).
   const updates: Record<string, any> = { stage_id: newStageId, updated_at: new Date().toISOString() }
+  if (valueCents != null) updates.value_cents = valueCents
   if (stage?.is_won && lead?.status !== 'cliente') {
     updates.status = 'cliente'
     updates.became_customer_at = lead?.became_customer_at || new Date().toISOString()
@@ -315,6 +320,7 @@ export async function moveLeadToStage(
   // histórico) — se não houver um por algum motivo (contato criado antes
   // desta tabela existir), cria um agora pra não perder o rastro daqui pra frente.
   const negocioUpdates: Record<string, any> = { stage_id: newStageId, updated_at: new Date().toISOString() }
+  if (valueCents != null) negocioUpdates.value_cents = valueCents
   if (stage?.is_won) { negocioUpdates.status = 'won'; negocioUpdates.won_at = new Date().toISOString() }
   else if (stage?.is_lost) { negocioUpdates.status = 'lost'; negocioUpdates.lost_at = new Date().toISOString() }
 
@@ -339,7 +345,7 @@ export async function moveLeadToStage(
         contato_id: leadId,
         pipeline_id: contatoRow.pipeline_id,
         stage_id: newStageId,
-        value_cents: contatoRow.value_cents || 0,
+        value_cents: valueCents ?? (contatoRow.value_cents || 0),
         assigned_to: user.id,
         created_by: user.id,
         ...negocioUpdates,

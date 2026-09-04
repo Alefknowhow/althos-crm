@@ -17,7 +17,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // verdade (fica pro próximo passo, quando o volume justificar).
   const { data: conversationsRaw } = await supabase
     .from('whatsapp_conversations')
-    .select('*, contatos(id, name, avatar_url, avatar_storage_object_id, assigned_to, stage_id, pipeline_id, pipeline_stages(name, color))')
+    .select('*, contatos(id, name, avatar_url, avatar_storage_object_id, assigned_to, stage_id, pipeline_id, value_cents, pipeline_stages(name, color))')
     .eq('organization_id', org.id)
     .order('last_message_at', { ascending: false })
     .limit(300)
@@ -48,7 +48,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
   // organization_id direto, então filtra via join com pipelines.
   const { data: pipelineStages } = await supabase
     .from('pipeline_stages')
-    .select('id, name, pipeline_id, position, pipelines!inner(organization_id)')
+    .select('id, name, pipeline_id, position, is_won, is_lost, pipelines!inner(organization_id)')
     .eq('pipelines.organization_id', org.id)
     .order('position', { ascending: true })
 
@@ -108,7 +108,7 @@ export default async function ConversasPage({ params, searchParams }: { params: 
         selectedConversation={selectedConversation}
         initialMessages={messages}
         members={members}
-        pipelineStages={(pipelineStages || []).map(s => ({ id: s.id, name: s.name, pipeline_id: s.pipeline_id, position: s.position }))}
+        pipelineStages={(pipelineStages || []).map(s => ({ id: s.id, name: s.name, pipeline_id: s.pipeline_id, position: s.position, is_won: !!s.is_won, is_lost: !!s.is_lost }))}
         panelContext={panelContext}
         scheduled={scheduled}
         templates={templates}

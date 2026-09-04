@@ -437,14 +437,14 @@ export async function getSocialConversationContext(orgSlug: string, conversation
     .eq('is_default', true)
     .maybeSingle()
 
-  let stages: { id: string; name: string }[] = []
+  let stages: { id: string; name: string; is_won: boolean; is_lost: boolean }[] = []
   if (pipeline) {
     const { data: st } = await supabase
       .from('pipeline_stages')
-      .select('id, name, position')
+      .select('id, name, position, is_won, is_lost')
       .eq('pipeline_id', pipeline.id)
       .order('position', { ascending: true })
-    stages = (st ?? []).map(s => ({ id: s.id, name: s.name }))
+    stages = (st ?? []).map(s => ({ id: s.id, name: s.name, is_won: !!s.is_won, is_lost: !!s.is_lost }))
   }
 
   return { conversation, lead, stages }

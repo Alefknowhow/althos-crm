@@ -14,9 +14,10 @@ import {
   updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage,
   uploadContatoAvatar, removeContatoAvatar, resolveContatoAvatars, addLeadNote,
 } from '@/actions/contatos'
+import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
 
 export type Member = { user_id: string; name: string; email: string }
-export type Stage = { id: string; name: string }
+export type Stage = { id: string; name: string; is_won?: boolean; is_lost?: boolean }
 
 function initials(name: string): string {
   const parts = (name || '?').trim().split(/\s+/).filter(Boolean)
@@ -108,6 +109,14 @@ export default function LeadDataTab({
   const [note, setNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
 
+  // Popups ao mover pra etapa is_won/is_lost/"Negociação" — mesma regra do
+  // Kanban (ver components/features/pipeline/StageMoveDialogs.tsx), só que
+  // aqui a troca é feita direto num <select>, sem otimismo visual: só muda
+  // de fato depois da confirmação.
+  const [lostPrompt, setLostPrompt] = useState<string | null>(null)
+  const [wonPrompt, setWonPrompt] = useState<string | null>(null)
+  const [negotiationPrompt, setNegotiationPrompt] = useState<string | null>(null)
+
   useEffect(() => {
     setName(lead?.name ?? '')
     setEmail(lead?.email ?? '')
@@ -156,12 +165,27 @@ export default function LeadDataTab({
     router.refresh()
   }
 
-  async function handleChangeStage(stageId: string) {
-    if (stageId === lead.stage_id) return
-    const res = await moveLeadToStage(orgSlug, lead.id, stageId, lead.stage_id)
+  async function commitStageChange(
+    stageId: string,
+    closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+    valueCents?: number,
+  ) {
+    const res = await moveLeadToStage(orgSlug, lead.id, stageId, lead.stage_id, closeInfo, valueCents)
     if ((res as any)?.ok === false) toast.error('Não foi possível mover de estágio', { description: (res as any).error })
-    else toast.success('Estágio atualizado')
+    else {
+      toast.success('Estágio atualizado')
+      if (valueCents != null) setValue(formatCurrency(valueCents))
+    }
     router.refresh()
+  }
+
+  function handleChangeStage(stageId: string) {
+    if (stageId === lead.stage_id) return
+    const stage = stages.find(s => s.id === stageId)
+    if (stage?.is_lost) { setLostPrompt(stageId); return }
+    if (stage?.is_won) { setWonPrompt(stageId); return }
+    if (isNegotiationStage(stage)) { setNegotiationPrompt(stageId); return }
+    commitStageChange(stageId)
   }
 
   async function handleSaveTags() {
@@ -298,6 +322,33 @@ export default function LeadDataTab({
           {savingNote ? 'Salvando...' : 'Adicionar observação'}
         </Button>
       </section>
+
+      <LostMoveDialog
+        open={!!lostPrompt}
+        onCancel={() => setLostPrompt(null)}
+        onConfirm={(dealStatus, reason) => {
+          if (lostPrompt) commitStageChange(lostPrompt, { dealStatus, reason })
+          setLostPrompt(null)
+        }}
+      />
+      <WonValueDialog
+        open={!!wonPrompt}
+        defaultCents={lead.value_cents}
+        onCancel={() => setWonPrompt(null)}
+        onConfirm={valueCents => {
+          if (wonPrompt) commitStageChange(wonPrompt, undefined, valueCents)
+          setWonPrompt(null)
+        }}
+      />
+      <NegotiationValueDialog
+        open={!!negotiationPrompt}
+        defaultCents={lead.value_cents}
+        onCancel={() => setNegotiationPrompt(null)}
+        onConfirm={valueCents => {
+          if (negotiationPrompt) commitStageChange(negotiationPrompt, undefined, valueCents)
+          setNegotiationPrompt(null)
+        }}
+      />
     </div>
   )
 }

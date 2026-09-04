@@ -23,8 +23,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -32,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from './pipeline/StageMoveDialogs'
 import { createLead } from '@/actions/contatos'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
@@ -186,27 +185,42 @@ export default function KanbanBoard({
   }
 
   // ── Movimentação de estágio (compartilhada por drag-and-drop e seletor) ────────
-  // Ao cair numa etapa is_lost, pede pra distinguir Perdido de Desqualificado
-  // (+ motivo) antes de confirmar — o card já foi movido otimisticamente, mas
-  // só efetiva a chamada ao servidor (e o fechamento de fato) após a escolha.
+  // Ao cair numa etapa is_lost/is_won/"Negociação", pede uma confirmação
+  // (motivo ou valor) antes de efetivar — o card já foi movido
+  // otimisticamente, mas só chama o servidor após a escolha.
   const [lostMovePrompt, setLostMovePrompt] = useState<{ leadId: string; newStageId: string; oldStageId: string } | null>(null)
+  const [wonMovePrompt, setWonMovePrompt] = useState<{ leadId: string; newStageId: string; oldStageId: string; defaultCents: number } | null>(null)
+  const [negotiationMovePrompt, setNegotiationMovePrompt] = useState<{ leadId: string; newStageId: string; oldStageId: string; defaultCents: number } | null>(null)
 
   async function commitStageMove(
     leadId: string,
     newStageId: string,
     oldStageId: string,
     closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+    valueCents?: number,
   ) {
-    const res = await moveLeadToStage(orgSlug, leadId, newStageId, oldStageId, closeInfo)
+    const res = await moveLeadToStage(orgSlug, leadId, newStageId, oldStageId, closeInfo, valueCents)
     if (!res.ok) {
       setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, stage_id: oldStageId } : l)))
       toast.error(traduzirErro(res.error, 'Erro ao mover lead'))
+    } else if (valueCents != null) {
+      setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, value_cents: valueCents } : l)))
     }
   }
 
   function requestStageMove(leadId: string, newStageId: string, oldStageId: string) {
-    if (stagesById[newStageId]?.is_lost) {
+    const stage = stagesById[newStageId]
+    const lead = leads.find(l => l.id === leadId)
+    if (stage?.is_lost) {
       setLostMovePrompt({ leadId, newStageId, oldStageId })
+      return
+    }
+    if (stage?.is_won) {
+      setWonMovePrompt({ leadId, newStageId, oldStageId, defaultCents: lead?.value_cents || 0 })
+      return
+    }
+    if (isNegotiationStage(stage)) {
+      setNegotiationMovePrompt({ leadId, newStageId, oldStageId, defaultCents: lead?.value_cents || 0 })
       return
     }
     commitStageMove(leadId, newStageId, oldStageId)
@@ -415,6 +429,40 @@ export default function KanbanBoard({
         }}
       />
 
+      <WonValueDialog
+        open={!!wonMovePrompt}
+        defaultCents={wonMovePrompt?.defaultCents}
+        onCancel={() => {
+          if (wonMovePrompt) {
+            setLeads(prev => prev.map(l => (l.id === wonMovePrompt.leadId ? { ...l, stage_id: wonMovePrompt.oldStageId } : l)))
+          }
+          setWonMovePrompt(null)
+        }}
+        onConfirm={valueCents => {
+          if (wonMovePrompt) {
+            commitStageMove(wonMovePrompt.leadId, wonMovePrompt.newStageId, wonMovePrompt.oldStageId, undefined, valueCents)
+          }
+          setWonMovePrompt(null)
+        }}
+      />
+
+      <NegotiationValueDialog
+        open={!!negotiationMovePrompt}
+        defaultCents={negotiationMovePrompt?.defaultCents}
+        onCancel={() => {
+          if (negotiationMovePrompt) {
+            setLeads(prev => prev.map(l => (l.id === negotiationMovePrompt.leadId ? { ...l, stage_id: negotiationMovePrompt.oldStageId } : l)))
+          }
+          setNegotiationMovePrompt(null)
+        }}
+        onConfirm={valueCents => {
+          if (negotiationMovePrompt) {
+            commitStageMove(negotiationMovePrompt.leadId, negotiationMovePrompt.newStageId, negotiationMovePrompt.oldStageId, undefined, valueCents)
+          }
+          setNegotiationMovePrompt(null)
+        }}
+      />
+
       <LeadDetailDrawer
         open={!!selectedLeadId}
         onOpenChange={(op: boolean) => !op && setSelectedLeadId(null)}
@@ -492,91 +540,5 @@ export default function KanbanBoard({
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-/** Pede pra distinguir Perdido de Desqualificado (+ motivo) ao mover um card
- * pra uma etapa is_lost. Perdido = negociação real que não avançou;
- * Desqualificado = nunca foi um lead viável — são conversões diferentes
- * pro relatório, por isso não usam o mesmo rótulo por padrão. */
-const OTHER_REASON = '__outro__'
-
-/** Lista padronizada de motivos — mantém o relatório "Motivos de perda"
- *  (BarListCard em PipelineTab, agrupado por igualdade exata de texto)
- *  útil em vez de fragmentado em dezenas de variações de texto livre. */
-const LOSS_REASON_OPTIONS = [
-  'Sem resposta / não retornou contato',
-  'Achou caro / orçamento incompatível',
-  'Fechou com concorrente',
-  'Fora do perfil / não qualificado',
-  'Desistiu da compra/viagem',
-  'Adiou a decisão',
-  'Não tinha interesse real',
-]
-
-/** Pede pra distinguir Perdido de Desqualificado (+ motivo) ao mover um card
- * pra uma etapa is_lost. Perdido = negociação real que não avançou;
- * Desqualificado = nunca foi um lead viável — são conversões diferentes
- * pro relatório, por isso não usam o mesmo rótulo por padrão. */
-function LostMoveDialog({
-  open, onCancel, onConfirm,
-}: {
-  open: boolean
-  onCancel: () => void
-  onConfirm: (dealStatus: 'perdido' | 'desqualificado', reason: string) => void
-}) {
-  const [dealStatus, setDealStatus] = useState<'perdido' | 'desqualificado'>('perdido')
-  const [reasonOption, setReasonOption] = useState('')
-  const [customReason, setCustomReason] = useState('')
-
-  useEffect(() => {
-    if (open) { setDealStatus('perdido'); setReasonOption(''); setCustomReason('') }
-  }, [open])
-
-  const finalReason = reasonOption === OTHER_REASON ? customReason.trim() : reasonOption
-
-  return (
-    <Dialog open={open} onOpenChange={op => { if (!op) onCancel() }}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Encerrar negociação</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <RadioGroup value={dealStatus} onValueChange={v => setDealStatus(v as 'perdido' | 'desqualificado')}>
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="perdido" id="lost-perdido" />
-              <Label htmlFor="lost-perdido">Perdido — negociação real que não avançou</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="desqualificado" id="lost-desqualificado" />
-              <Label htmlFor="lost-desqualificado">Desqualificado — nunca foi um lead viável</Label>
-            </div>
-          </RadioGroup>
-          <div className="space-y-2">
-            <Label>Motivo</Label>
-            <Select value={reasonOption} onValueChange={setReasonOption}>
-              <SelectTrigger><SelectValue placeholder="Selecione um motivo" /></SelectTrigger>
-              <SelectContent>
-                {LOSS_REASON_OPTIONS.map(r => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-                <SelectItem value={OTHER_REASON}>Outro (descrever)</SelectItem>
-              </SelectContent>
-            </Select>
-            {reasonOption === OTHER_REASON && (
-              <Textarea
-                value={customReason}
-                onChange={e => setCustomReason(e.target.value)}
-                placeholder="Descreva o motivo…"
-                rows={3}
-                autoFocus
-              />
-            )}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
-          <Button onClick={() => onConfirm(dealStatus, finalReason || 'Motivo não informado')}>Confirmar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

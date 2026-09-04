@@ -33,6 +33,7 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { assignLead, moveLeadToStage } from '@/actions/contatos'
+import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
 
 export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], emailTemplates = [], orgName, isMock, pipelineStages = [], aiEnabledGlobally = false }: any) {
   // Lista ao vivo — semeada pelo server, depois atualizada em tempo real
@@ -102,13 +103,36 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
   // Etapa do funil do lead vinculado (para a tag compacta no cabeçalho).
   const stageName: string | null = panelContext?.lead?.pipeline_stages?.name ?? null
 
+  // Popups ao mover pra etapa is_won/is_lost/"Negociação" — mesma regra do
+  // Kanban (ver components/features/pipeline/StageMoveDialogs.tsx).
+  const [quickStagePrompt, setQuickStagePrompt] = useState<{
+    kind: 'lost' | 'won' | 'negotiation'
+    contatoId: string
+    currentStageId: string | null
+    newStageId: string
+    defaultCents: number
+  } | null>(null)
+
   // Troca rápida de etapa/responsável direto na lista de conversas, sem
   // precisar abrir a conversa. contatoId é o lead vinculado à conversa.
-  async function handleQuickStageChange(contatoId: string, currentStageId: string | null, newStageId: string) {
-    if (!contatoId || newStageId === currentStageId) return
-    const res = await moveLeadToStage(orgSlug, contatoId, newStageId, currentStageId || '')
+  async function commitQuickStageChange(
+    contatoId: string, currentStageId: string | null, newStageId: string,
+    closeInfo?: { dealStatus: 'perdido' | 'desqualificado'; reason: string },
+    valueCents?: number,
+  ) {
+    const res = await moveLeadToStage(orgSlug, contatoId, newStageId, currentStageId || '', closeInfo, valueCents)
     if ((res as any)?.ok === false) toast.error('Não foi possível mover de etapa', { description: (res as any).error })
     else { toast.success('Etapa atualizada'); router.refresh() }
+  }
+
+  function handleQuickStageChange(contatoId: string, currentStageId: string | null, newStageId: string) {
+    if (!contatoId || newStageId === currentStageId) return
+    const stage = pipelineStages.find((s: any) => s.id === newStageId)
+    const defaultCents = conversations.find((c: any) => c.contatos?.id === contatoId)?.contatos?.value_cents || 0
+    if (stage?.is_lost) { setQuickStagePrompt({ kind: 'lost', contatoId, currentStageId, newStageId, defaultCents }); return }
+    if (stage?.is_won) { setQuickStagePrompt({ kind: 'won', contatoId, currentStageId, newStageId, defaultCents }); return }
+    if (isNegotiationStage(stage)) { setQuickStagePrompt({ kind: 'negotiation', contatoId, currentStageId, newStageId, defaultCents }); return }
+    commitQuickStageChange(contatoId, currentStageId, newStageId)
   }
 
   async function handleQuickAssign(contatoId: string, userId: string | null) {
@@ -1317,6 +1341,33 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           )}
         </DialogContent>
       </Dialog>
+
+      <LostMoveDialog
+        open={quickStagePrompt?.kind === 'lost'}
+        onCancel={() => setQuickStagePrompt(null)}
+        onConfirm={(dealStatus, reason) => {
+          if (quickStagePrompt) commitQuickStageChange(quickStagePrompt.contatoId, quickStagePrompt.currentStageId, quickStagePrompt.newStageId, { dealStatus, reason })
+          setQuickStagePrompt(null)
+        }}
+      />
+      <WonValueDialog
+        open={quickStagePrompt?.kind === 'won'}
+        defaultCents={quickStagePrompt?.defaultCents}
+        onCancel={() => setQuickStagePrompt(null)}
+        onConfirm={valueCents => {
+          if (quickStagePrompt) commitQuickStageChange(quickStagePrompt.contatoId, quickStagePrompt.currentStageId, quickStagePrompt.newStageId, undefined, valueCents)
+          setQuickStagePrompt(null)
+        }}
+      />
+      <NegotiationValueDialog
+        open={quickStagePrompt?.kind === 'negotiation'}
+        defaultCents={quickStagePrompt?.defaultCents}
+        onCancel={() => setQuickStagePrompt(null)}
+        onConfirm={valueCents => {
+          if (quickStagePrompt) commitQuickStageChange(quickStagePrompt.contatoId, quickStagePrompt.currentStageId, quickStagePrompt.newStageId, undefined, valueCents)
+          setQuickStagePrompt(null)
+        }}
+      />
     </div>
   )
 }
