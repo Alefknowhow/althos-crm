@@ -1,0 +1,243 @@
+import type { BlogPost } from './posts'
+
+export const POSTS_PART_3: BlogPost[] = [
+  {
+    slug: 'funil-vendas-aumentar-taxa-conversao',
+    title: 'Como aumentar a taxa de conversão do seu funil de vendas',
+    description:
+      'Táticas práticas para aumentar a conversão em cada etapa do funil: velocidade de resposta, qualificação, quebra de objeções e redução de atrito.',
+    category: 'Funil de Vendas',
+    author: 'Equipe Althos',
+    date: '2026-05-07',
+    readingMinutes: 7,
+    excerpt:
+      'Dobrar a conversão do funil costuma render mais que dobrar o investimento em tráfego — e é mais barato. Veja onde mexer em cada etapa.',
+    blocks: [
+      { type: 'p', text: 'Antes de gastar mais com anúncios, vale uma pergunta: e se você convertesse melhor o que já entra? Aumentar a taxa de conversão do funil multiplica resultado sem aumentar a verba. Vamos etapa por etapa.' },
+      { type: 'h2', text: 'No topo: velocidade de resposta' },
+      { type: 'p', text: 'O fator que mais move conversão no topo é o tempo de resposta. Responder em minutos, e não em horas, pode multiplicar suas chances. Automatize o primeiro contato para nunca deixar um lead esfriar.' },
+      { type: 'h2', text: 'No meio: qualificação e nutrição' },
+      { type: 'ul', items: [
+        'Qualifique para não empurrar quem não tem perfil.',
+        'Nutra os mornos com conteúdo e prova até amadurecerem.',
+        'Mantenha o follow-up constante — a maioria das vendas mora aqui.',
+      ] },
+      { type: 'h2', text: 'No fundo: quebra de objeções e atrito' },
+      { type: 'p', text: 'Perto do fechamento, conversão é função de remover dúvidas e fricção. Tenha respostas prontas para as objeções mais comuns e elimine atritos (formulário longo, processo confuso, demora para enviar proposta).' },
+      { type: 'h2', text: 'Meça onde os leads travam' },
+      { type: 'p', text: 'Não dá para melhorar o que você não enxerga. Acompanhe a conversão de cada etapa para descobrir o gargalo — quase sempre ele está concentrado em um ponto específico.' },
+      { type: 'quote', text: 'Melhorar 10% em cada etapa do funil pode quase dobrar o resultado final. O segredo é saber onde mexer.' },
+      { type: 'p', text: 'No Althos CRM, você vê a conversão por etapa, identifica o gargalo e age com automação de resposta e follow-up. Conversão deixa de ser sorte e vira processo.' },
+      { type: 'cta', text: 'Descubra o gargalo do seu funil e converta mais sem gastar mais.' },
+    ],
+  },
+  {
+    slug: 'funil-vendas-reativar-leads-frios',
+    title: 'Leads frios: como reativar a base que você já tem',
+    description:
+      'Sua base de leads antigos vale dinheiro. Veja como reativar leads frios com segmentação, ofertas certas e cadência sem parecer desesperado.',
+    category: 'Funil de Vendas',
+    author: 'Equipe Althos',
+    date: '2026-05-01',
+    readingMinutes: 5,
+    excerpt:
+      'Antes de comprar mais leads, olhe para os que você já tem. Uma base de contatos antigos bem trabalhada costuma ser a fonte de venda mais barata.',
+    blocks: [
+      { type: 'p', text: 'Toda empresa acumula uma lista de leads que um dia demonstraram interesse e nunca compraram. Em vez de tratá-los como perdidos, encare-os como ativo: já conhecem você e custaram caro para entrar. Reativar é a venda mais barata que existe.' },
+      { type: 'h2', text: 'Segmente antes de falar' },
+      { type: 'ul', items: [
+        'Por etapa em que pararam (proposta enviada vale mais que primeiro contato).',
+        'Por motivo da perda (preço, timing, escolheu concorrente).',
+        'Por tempo desde o último contato.',
+      ] },
+      { type: 'h2', text: 'Dê um motivo para voltar' },
+      { type: 'p', text: 'Reativação genérica ("oi, ainda tem interesse?") rende pouco. Traga novidade: um novo recurso, uma condição especial, um caso de sucesso parecido com o problema dele. Mostre que algo mudou desde a última conversa.' },
+      { type: 'h2', text: 'Cadência sem desespero' },
+      { type: 'p', text: 'Reative com uma sequência curta e espaçada, não com bombardeio. Respeite quem pede para sair e concentre energia em quem reabre a conversa.' },
+      { type: 'quote', text: 'A base que você já tem é uma mina. A maioria das empresas só não cava.' },
+      { type: 'p', text: 'No Althos CRM, leads perdidos ficam organizados por motivo e etapa, prontos para campanhas de reativação automáticas. Você transforma contatos esquecidos em novas vendas — sem gastar mais com tráfego.' },
+      { type: 'cta', text: 'Reative sua base e venda para quem já te conhece.' },
+    ],
+  },
+  {
+    slug: 'funil-vendas-previsao-receita',
+    title: 'Previsão de receita: como prever vendas com o seu funil',
+    description:
+      'Como usar o funil de vendas para prever receita: ponderação por etapa, probabilidade de fechamento e por que a previsão muda a gestão do negócio.',
+    category: 'Funil de Vendas',
+    author: 'Equipe Althos',
+    date: '2026-04-24',
+    readingMinutes: 6,
+    excerpt:
+      'Prever quanto você vai faturar no mês não é adivinhação — é matemática do funil. Veja como transformar oportunidades em previsão confiável.',
+    blocks: [
+      { type: 'p', text: 'Tomar decisões (contratar, investir, comprar estoque) sem prever receita é arriscado. A boa notícia: um funil bem gerido já contém a previsão. Basta ler os números do jeito certo.' },
+      { type: 'h2', text: 'Como funciona a previsão ponderada' },
+      { type: 'p', text: 'Cada etapa do funil tem uma probabilidade média de fechamento. Multiplicando o valor de cada oportunidade pela probabilidade da etapa em que ela está, você chega a uma previsão realista — nem otimista demais, nem pessimista.' },
+      { type: 'ul', items: [
+        'Proposta enviada: probabilidade média alta.',
+        'Em negociação: alta, perto do fechamento.',
+        'Qualificado: média.',
+        'Novo lead: baixa.',
+      ] },
+      { type: 'h2', text: 'Por que isso muda a gestão' },
+      { type: 'p', text: 'Com previsão, você antecipa o mês fraco e age antes — intensifica prospecção, ativa a base, ajusta a meta. Sem ela, você só descobre o problema quando já é tarde.' },
+      { type: 'h2', text: 'Cuidado com o funil inflado' },
+      { type: 'p', text: 'A previsão só vale se o funil for honesto. Oportunidades paradas há meses ou mal qualificadas distorcem o número. Higienize o funil regularmente.' },
+      { type: 'quote', text: 'Quem prevê receita gerencia o futuro. Quem não prevê apenas reage ao passado.' },
+      { type: 'p', text: 'No Althos CRM, a previsão de receita é calculada automaticamente a partir do valor e da etapa de cada oportunidade. Você abre o painel e sabe quanto deve faturar — e onde agir para chegar lá.' },
+      { type: 'cta', text: 'Tenha previsão de receita automática direto do seu funil.' },
+    ],
+  },
+  // ─── GESTÃO DE EQUIPE ──────────────────────────────────────────────────────
+  {
+    slug: 'gestao-equipe-definir-metas-vendas',
+    title: 'Como definir metas de vendas que o time realmente bate',
+    description:
+      'Metas de vendas que motivam em vez de frustrar: como calcular a partir do funil, desdobrar em atividades e acompanhar para corrigir a tempo.',
+    category: 'Gestão de Equipe',
+    author: 'Equipe Althos',
+    date: '2026-05-17',
+    readingMinutes: 6,
+    excerpt:
+      'Meta tirada do teto desmotiva e não se cumpre. Veja como definir metas realistas, desdobrá-las em ação e acompanhar sem virar cobrança vazia.',
+    blocks: [
+      { type: 'p', text: 'Meta mal definida faz dois estragos: se for inalcançável, desmotiva; se for frouxa, acomoda. O caminho é construir a meta a partir de dados e desdobrá-la em ações que o time controla no dia a dia.' },
+      { type: 'h2', text: 'Construa a meta de baixo para cima' },
+      { type: 'p', text: 'Em vez de "quero faturar X", parta da capacidade real: número de leads, taxa de conversão e ticket médio. A meta que respeita esses números é desafiadora, mas crível — e o time compra a ideia.' },
+      { type: 'h2', text: 'Desdobre em atividades' },
+      { type: 'ul', items: [
+        'Quantos leads cada vendedor precisa atender?',
+        'Quantas reuniões/propostas por semana?',
+        'Quantos follow-ups por oportunidade?',
+      ] },
+      { type: 'p', text: 'Resultado é consequência de atividade. O vendedor não controla diretamente "fechar 10 vendas", mas controla "fazer 50 contatos qualificados". Metas de atividade dão tração diária.' },
+      { type: 'h2', text: 'Acompanhe para corrigir, não só para cobrar' },
+      { type: 'p', text: 'Meta acompanhada só no fim do mês é meta perdida. Olhe o ritmo semanalmente: se a atividade está abaixo, dá tempo de agir. A cobrança vira apoio.' },
+      { type: 'quote', text: 'Meta sem desdobramento em atividade é só um número de Excel torcendo para dar certo.' },
+      { type: 'p', text: 'No Althos CRM, você define metas, acompanha o progresso em tempo real e vê as atividades de cada vendedor. Dá para corrigir a rota no meio do mês, não no fechamento.' },
+      { type: 'cta', text: 'Defina metas realistas e acompanhe o time em tempo real.' },
+    ],
+  },
+  {
+    slug: 'gestao-equipe-reuniao-vendas-eficiente',
+    title: 'Reunião de vendas: como fazer encontros que geram resultado',
+    description:
+      'Como conduzir reuniões de vendas eficientes: pauta baseada em dados, foco em gargalos e ações, e como evitar a reunião que só toma tempo do time.',
+    category: 'Gestão de Equipe',
+    author: 'Equipe Althos',
+    date: '2026-05-11',
+    readingMinutes: 5,
+    excerpt:
+      'Reunião de vendas pode ser o motor do time ou um buraco de tempo. A diferença está em ter dados na mesa e sair com ações claras.',
+    blocks: [
+      { type: 'p', text: 'A reunião de vendas é um dos rituais mais importantes da gestão comercial — e um dos mais mal aproveitados. Quando vira sessão de desabafo ou repasse de números que ninguém confere, ela só rouba tempo de venda. Veja como torná-la útil.' },
+      { type: 'h2', text: 'Comece com dados, não com opinião' },
+      { type: 'p', text: 'Abra a reunião com os números reais: funil, conversão por etapa, atividades da semana, previsão. Quando todos olham para o mesmo painel, a conversa para de girar em torno de "acho que" e foca no que de fato está acontecendo.' },
+      { type: 'h2', text: 'Foque no gargalo da semana' },
+      { type: 'ul', items: [
+        'Onde os leads estão travando?',
+        'Quem está abaixo do ritmo e por quê?',
+        'Quais oportunidades grandes precisam de ação conjunta?',
+      ] },
+      { type: 'h2', text: 'Saia com ações, donos e prazos' },
+      { type: 'p', text: 'Toda reunião deve terminar com uma lista clara: o que será feito, por quem e até quando. Sem isso, a reunião é só conversa. Na semana seguinte, comece revisando essas ações.' },
+      { type: 'quote', text: 'Reunião boa é curta, baseada em dados e termina com ações. O resto é tempo que poderia virar venda.' },
+      { type: 'p', text: 'No Althos CRM, você leva para a reunião dashboards prontos: funil, ranking, previsão e atividades. A conversa parte de fatos e termina em ações — sem ninguém montar planilha na véspera.' },
+      { type: 'cta', text: 'Leve dados reais para a reunião e saia com ações claras.' },
+    ],
+  },
+  {
+    slug: 'gestao-equipe-comissionamento',
+    title: 'Comissionamento de vendedores: como criar um plano que motiva',
+    description:
+      'Como estruturar comissão de vendas: percentual fixo x escalonado, metas, gatilhos por margem e os erros que fazem o plano desmotivar o time.',
+    category: 'Gestão de Equipe',
+    author: 'Equipe Althos',
+    date: '2026-05-05',
+    readingMinutes: 6,
+    excerpt:
+      'O plano de comissão molda o comportamento do time. Mal desenhado, premia a venda errada. Veja como alinhar incentivo e estratégia.',
+    blocks: [
+      { type: 'p', text: 'Vendedor faz o que é recompensado. Por isso o plano de comissão é, na prática, a sua estratégia comercial traduzida em dinheiro. Um plano mal desenhado incentiva o comportamento errado — descontos excessivos, foco em volume e não em margem, abandono do pós-venda.' },
+      { type: 'h2', text: 'Modelos comuns' },
+      { type: 'ul', items: [
+        'Percentual fixo sobre a venda: simples, mas não diferencia esforço.',
+        'Escalonado por meta: a comissão sobe ao bater faixas — incentiva o "empurrão" final.',
+        'Atrelado à margem: premia quem vende sem destruir preço.',
+      ] },
+      { type: 'h2', text: 'Alinhe a comissão à estratégia' },
+      { type: 'p', text: 'Se a meta é margem, não comissione só faturamento. Se a meta é retenção, recompense também o pós-venda. O incentivo precisa apontar para onde o negócio quer ir.' },
+      { type: 'h2', text: 'Erros que desmotivam' },
+      { type: 'ul', items: [
+        'Regras complicadas que ninguém entende.',
+        'Mudar o plano no meio do jogo.',
+        'Cálculo manual sujeito a erro e desconfiança.',
+      ] },
+      { type: 'quote', text: 'Mostre-me como alguém é comissionado e eu te direi como ele vende.' },
+      { type: 'p', text: 'No Althos CRM, cada venda fica registrada com valor, responsável e etapa, tornando o cálculo de comissão transparente e auditável. O vendedor confia no número — e confiança no plano é parte do que motiva.' },
+      { type: 'cta', text: 'Tenha vendas registradas e comissões transparentes para o time.' },
+    ],
+  },
+  {
+    slug: 'gestao-equipe-onboarding-vendedor',
+    title: 'Onboarding de vendedor: como fazer um novato vender mais rápido',
+    description:
+      'Um processo de onboarding de vendedores que reduz o tempo de rampa: playbook, acompanhamento, metas progressivas e uso do CRM desde o dia 1.',
+    category: 'Gestão de Equipe',
+    author: 'Equipe Althos',
+    date: '2026-04-29',
+    readingMinutes: 6,
+    excerpt:
+      'Cada semana a mais para um vendedor "ramper" custa caro. Um onboarding estruturado encurta esse tempo e reduz a rotatividade.',
+    blocks: [
+      { type: 'p', text: 'Contratar é só o começo. O tempo que um vendedor leva para atingir produtividade plena — a rampa — é um custo silencioso. Onboarding improvisado alonga essa rampa e aumenta a chance de o novato desistir. Estruturar muda o jogo.' },
+      { type: 'h2', text: 'Tenha um playbook, não um "vai aprendendo"' },
+      { type: 'p', text: 'O conhecimento de vendas não pode morar só na cabeça dos veteranos. Documente: como abordar, como qualificar, objeções comuns e respostas, etapas do funil e critérios de avanço. O novato aprende em dias o que levaria meses por tentativa e erro.' },
+      { type: 'h2', text: 'Metas progressivas' },
+      { type: 'ul', items: [
+        'Semana 1: aprender produto, processo e CRM.',
+        'Semanas 2–3: acompanhar e simular (role-play).',
+        'A partir daí: meta crescente até o pleno.',
+      ] },
+      { type: 'h2', text: 'CRM desde o primeiro dia' },
+      { type: 'p', text: 'Quem começa registrando tudo no CRM cria o hábito certo. Quem começa no caderno e na memória vira um problema de gestão depois. Integre a ferramenta ao onboarding como parte do processo, não como burocracia.' },
+      { type: 'h2', text: 'Acompanhe de perto no início' },
+      { type: 'p', text: 'Feedback frequente nas primeiras semanas corrige vícios cedo e dá segurança ao novato. Use gravações e métricas para orientar, não só para avaliar.' },
+      { type: 'quote', text: 'Onboarding ruim não economiza tempo — empurra o custo para frente, em forma de rampa longa e turnover.' },
+      { type: 'p', text: 'No Althos CRM, o novato encontra funil, histórico e processo prontos para seguir desde o dia 1, e o gestor acompanha suas atividades e evolução. A rampa encurta e o padrão se mantém.' },
+      { type: 'cta', text: 'Coloque novos vendedores para produzir mais rápido, com processo claro.' },
+    ],
+  },
+  {
+    slug: 'gestao-equipe-adocao-crm',
+    title: 'Como fazer o time realmente usar o CRM (e parar de resistir)',
+    description:
+      'Por que vendedores resistem ao CRM e como garantir a adoção: simplicidade, valor para o vendedor, dados que entram sozinhos e exemplo da liderança.',
+    category: 'Gestão de Equipe',
+    author: 'Equipe Althos',
+    date: '2026-04-21',
+    readingMinutes: 6,
+    excerpt:
+      'O melhor CRM do mundo não serve para nada se o time não usa. A boa notícia: resistência quase sempre é sintoma, não causa.',
+    blocks: [
+      { type: 'p', text: 'Muitas empresas compram um CRM e seis meses depois o sistema está vazio: o time voltou para o WhatsApp e o caderno. O problema raramente é o vendedor preguiçoso — é o CRM que dá trabalho e não devolve valor. Veja como inverter isso.' },
+      { type: 'h2', text: 'Por que o time resiste' },
+      { type: 'ul', items: [
+        'Dá mais trabalho do que ajuda (preenchimento manual interminável).',
+        'O vendedor não vê benefício para si, só controle do chefe.',
+        'A ferramenta é complicada e lenta.',
+      ] },
+      { type: 'h2', text: 'O segredo: o CRM tem que ajudar a vender' },
+      { type: 'p', text: 'Adoção vem quando o vendedor percebe que o CRM facilita a vida dele: lembra de follow-ups, centraliza conversas, organiza o dia. Quando vira aliado de venda — e não relatório para o gestor — o uso acontece naturalmente.' },
+      { type: 'h2', text: 'Reduza o atrito de entrada de dados' },
+      { type: 'p', text: 'Quanto mais coisa entra sozinha (leads dos anúncios, mensagens do WhatsApp, histórico), menos o vendedor digita. Dado que entra automático é dado que não vira motivo de briga.' },
+      { type: 'h2', text: 'Liderança dá o exemplo' },
+      { type: 'p', text: 'Se o gestor cobra pelo CRM mas decide pelo "achômetro", o time percebe e abandona. A liderança precisa olhar os dados do sistema nas reuniões e decisões.' },
+      { type: 'quote', text: 'CRM que só serve para o chefe vigiar morre. CRM que ajuda o vendedor a vender se torna indispensável.' },
+      { type: 'p', text: 'O Althos CRM foi desenhado para o vendedor: leads e conversas entram automaticamente, a IA atende e os follow-ups são lembrados. Menos digitação, mais venda — e por isso o time usa.' },
+      { type: 'cta', text: 'Adote um CRM que o time usa porque ajuda a vender.' },
+    ],
+  },
+  // ─── TREINAMENTO DE VENDAS ─────────────────────────────────────────────────
+]
