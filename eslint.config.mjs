@@ -5,16 +5,22 @@ import js from "@eslint/js";
 import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
+import reactPlugin from "eslint-plugin-react";
+import jsxA11yPlugin from "eslint-plugin-jsx-a11y";
 
 import quality from "./eslint-rules/index.cjs";
 
 // eslint-config-next@14.2.3 (pinned to this project's Next 14) has a hard
 // peer dependency on eslint ^7||^8 and cannot be loaded under ESLint 9, even
-// through FlatCompat -- its own nested plugins (eslint-plugin-react-hooks,
-// eslint-plugin-jsx-a11y) fail to install against eslint@9. Bridging it back
-// in is a Next 15 upgrade, which is out of scope here. See the report for
-// the fallout: files with `eslint-disable` comments naming next/react-hooks/
-// jsx-a11y rules now fail with "Definition for rule ... was not found".
+// through FlatCompat -- its own nested plugins (eslint-plugin-jsx-a11y) fail
+// to install against eslint@9, so the full config stays out of reach until a
+// Next 15 upgrade. But @next/eslint-plugin-next and eslint-plugin-react-hooks
+// are plain plugins with no such peer constraint (react-hooks@5 explicitly
+// supports eslint@9) -- registered directly below instead of through the
+// config bundle, which is what the many `eslint-disable` comments naming
+// next/react-hooks rules across the codebase actually need to resolve.
 export default defineConfig([
   {
     languageOptions: {
@@ -31,6 +37,32 @@ export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.strict,
 
+  {
+    // react-hooks applies to plain .ts custom hooks too (no JSX required to
+    // call useEffect/useCallback), so this glob is wider than the next/react
+    // JSX-only rules below -- harmless, they just never match in a .ts file.
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    plugins: {
+      "@next/next": nextPlugin,
+      "react-hooks": reactHooksPlugin,
+      react: reactPlugin,
+      "jsx-a11y": jsxA11yPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...reactHooksPlugin.configs.recommended.rules,
+      // Written against ESLint <9's legacy rule API (context.getAncestors),
+      // which no longer exists -- crashes the whole run instead of just
+      // this file. Not worth a patch for one rule from a plugin we're
+      // already using off-label; the pages it'd cover don't nest <Head>.
+      "@next/next/no-duplicate-head": "off",
+      // react/jsx-a11y: registered narrowly (just the two rules the codebase
+      // already has `eslint-disable` comments for) rather than their full
+      // recommended sets, which would surface a new, unreviewed backlog.
+      "react/no-danger": "warn",
+      "jsx-a11y/media-has-caption": "warn",
+    },
+  },
   {
     files: ["**/*.{js,jsx,ts,tsx,mjs,cjs}"],
     plugins: { quality },
@@ -143,5 +175,8 @@ export default defineConfig([
     "package-lock.json",
     "scratch/**",
     "public/**",
+    // Design handoff scaffold, not part of the app (see .gitignore) --
+    // vendor-provided reference code, not ours to split to the line budget.
+    "design_handoff_home/**",
   ]),
 ]);
