@@ -10,11 +10,18 @@
  * nesse modo não dispara eventos de tracking e campos vazios viram o
  * marcador [A CONFIRMAR].
  *
- * Split across four files (this one has the component itself):
+ * Split across several files (this one has the component itself):
  *   - PublicQuotationTypes.ts: the RPC contract types
  *   - PublicQuotationHelpers.tsx: formatters, inline icons, Rich/LazyImg/
  *     Lightbox/Block/useReveal
  *   - PublicQuotationStyles.ts: the CSS template string + urlHref/igHref
+ *   - PublicQuotationProductBlocks.tsx: Hospedagem/Aéreo/Cruzeiro/Transfer/
+ *     Seguro/Passeios/Locação/Mapa
+ *   - PublicQuotationTravelInfo.tsx: Itinerário/Passeios(rich)/Importante/
+ *     O que inclui/Políticas de cancelamento
+ *   - PublicQuotationInvestment.tsx: Investimento/Fechamento+CTA/assinatura
+ *   - PublicQuotationFooter.tsx: rodapé
+ *   - PublicQuotationHotelModal.tsx: modal de detalhe do hotel
  */
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
@@ -24,12 +31,17 @@ import {
   type QuotationPin, type QuotationOtherProduct, type QuotationCruise, type PublicQuotation,
 } from './PublicQuotationTypes'
 import {
-  ensureMapsOptions, pinIconUrl, d, fmtShort, fmtDayMonth, fmtBr, brl, nightsBetween,
-  PIN_COLORS, LEG_LABELS, BAGGAGE_OPTIONS, CABIN_LABELS, hasHtml, Rich, ClampedDescription,
-  IcPin, IcGlobe, IcCal, IcPlane, IcExt, IcWa, IcChat, IcIg, IcImg,
-  IcShip, BAGGAGE_ICONS, LazyImg, Lightbox, Block, useReveal,
+  ensureMapsOptions, pinIconUrl, d, fmtShort, fmtDayMonth, hasHtml, Rich, nightsBetween,
+  IcPin, IcGlobe, IcCal,
+  PIN_COLORS, BAGGAGE_OPTIONS, CABIN_LABELS, LazyImg, Lightbox, useReveal,
 } from './PublicQuotationHelpers'
-import { CSS, urlHref, igHref } from './PublicQuotationStyles'
+import { CSS } from './PublicQuotationStyles'
+import PublicQuotationProductBlocks from './PublicQuotationProductBlocks'
+import PublicQuotationTravelInfo from './PublicQuotationTravelInfo'
+import PublicQuotationInvestment from './PublicQuotationInvestment'
+import PublicQuotationFooter from './PublicQuotationFooter'
+import PublicQuotationHotelModal from './PublicQuotationHotelModal'
+import { computeQuotationBlockNumbers } from './computeQuotationBlockNumbers'
 
 export type {
   QuotationOrg, QuotationLodging, QuotationFlight, QuotationDay,
@@ -217,9 +229,14 @@ export default function PublicQuotationView({
     ? ({ ['--gold' as any]: org.brand_accent, ['--gold-soft' as any]: org.brand_accent } as React.CSSProperties)
     : undefined
 
-  /* numeração dinâmica dos blocos visíveis */
-  let n = 0
-  const num = () => String(++n).padStart(2, '0')
+  /* numeração dinâmica dos blocos visíveis — calculada uma vez, na mesma
+     ordem em que os blocos aparecem no JSX abaixo (idêntico ao contador
+     `num()` incremental que existia antes da divisão em sub-componentes). */
+  const num = useMemo(
+    () => computeQuotationBlockNumbers(data, { lodgings, flights, cruises, transfers, insurances, tours, rentals, pins, days, included, notIncluded }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lodgings.length, flights.length, cruises.length, transfers.length, insurances.length, tours.length, rentals.length, pins.length, days.length, included.length, notIncluded.length, data.flights_html, data.itinerary_html, data.tours_html, data.important_html, data.cancellation_html],
+  )
 
   return (
     <div className="alq" ref={rootRef} style={accentStyle}>
@@ -287,491 +304,36 @@ export default function PublicQuotationView({
           </section>
         )}
 
-        {/* ───── HOSPEDAGEM ───── */}
-        {lodgings.length > 0 && (
-          <Block num={num()} title="Hospedagem" defaultOpen
-            sub={`${lodgings.length} ${lodgings.length > 1 ? 'opções' : lodgings[0].board ? `${lodgings[0].board.toLowerCase()}` : 'hospedagem'}${nights ? ` · ${nights} noites` : ''}`}>
-            {lodgings.map((l, i) => {
-              const ln = nightsBetween(l.check_in, l.check_out)
-              const clickable = !!l.tripadvisor_data
-              return (
-                <div key={l.id || i} className="lodge">
-                  {clickable ? (
-                    <a className="name" role="button" tabIndex={0} onClick={() => openHotel(l)}
-                      onKeyDown={e => { if (e.key === 'Enter') openHotel(l) }}>
-                      {l.name || 'Hospedagem'} <IcExt />
-                    </a>
-                  ) : (
-                    <span className="name static">{l.name || (preview ? AC : 'Hospedagem')}</span>
-                  )}
-                  <div className="meta">
-                    {l.is_alternative_option && <span className="pill gold">Opção {altLodgings.indexOf(l) + 1}</span>}
-                    {!!l.star_rating && (
-                      <span className="pill stars-pill" title={`${l.star_rating} estrela${l.star_rating > 1 ? 's' : ''}`}>
-                        {'★'.repeat(l.star_rating)}{'☆'.repeat(Math.max(0, 5 - l.star_rating))}
-                      </span>
-                    )}
-                    {(l.check_in || l.check_out) && (
-                      <span className="pill">{fmtDayMonth(l.check_in)} → {fmtDayMonth(l.check_out)}{ln ? ` · ${ln} noites` : ''}</span>
-                    )}
-                    {(l.check_in_time || l.check_out_time) && (
-                      <span className="pill">
-                        {l.check_in_time && `Check-in ${l.check_in_time}`}
-                        {l.check_in_time && l.check_out_time && ' · '}
-                        {l.check_out_time && `Check-out ${l.check_out_time}`}
-                      </span>
-                    )}
-                    {l.room_category && <span className="pill gold">{l.room_category}</span>}
-                    {l.board && <span className="pill">{l.board}</span>}
-                  </div>
-                  {/* Descrição só some do card quando há popup (clickable) pra vê-la lá —
-                      sem TripAdvisor vinculado, não existe onde mais mostrá-la. */}
-                  {!clickable && hasHtml(l.description_html) && <Rich html={l.description_html} />}
-                  {(l.photos || []).length > 0 && (
-                    <div className="gallery">
-                      {(l.photos || []).slice(0, 5).map((src, k) => (
-                        <button type="button" className="g" key={k} aria-label="Ampliar foto"
-                          onClick={() => setLightbox({ photos: (l.photos || []), index: k })}>
-                          {k === 0 && <span className="ph"><IcImg /></span>}
-                          <LazyImg src={src} alt={l.name || ''} />
-                          {k === 4 && (l.photos || []).length > 5 && (
-                            <span className="g-more">+{(l.photos || []).length - 5}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </Block>
-        )}
+        <PublicQuotationProductBlocks
+          preview={preview} nights={nights}
+          lodgings={lodgings} altLodgings={altLodgings} openHotel={openHotel}
+          onZoomPhoto={(photos, index) => setLightbox({ photos, index })}
+          flightsHtml={data.flights_html} flights={flights}
+          cruises={cruises}
+          transfers={transfers} insurances={insurances} tours={tours} rentals={rentals}
+          pins={pins} pinTypes={pinTypes} mapRef={mapRef} initMap={initMap}
+          num={num}
+        />
 
-        {/* ───── AÉREO ───── */}
-        {(flights.length > 0 || hasHtml(data.flights_html)) && (
-          <Block num={num()} title="Aéreo"
-            sub={flights.some(f => f.leg_type === 'inbound') ? 'Ida e volta' : 'Trechos da viagem'}>
-            {hasHtml(data.flights_html) ? (
-              <Rich html={data.flights_html} className="rich-body zoomable"
-                onImageClick={src => setLightbox({ photos: [src], index: 0 })} />
-            ) : flights.map((f, i) => {
-              const bags = (f.baggage || []).filter(k => BAGGAGE_ICONS[k])
-              return (
-                <div className="flight-wrap" key={f.id || i}>
-                  {/* Linha 1: tipo · data · duração · classe */}
-                  <div className="fl-top">
-                    <span className="fl-leg">{LEG_LABELS[f.leg_type || ''] || 'Trecho'}</span>
-                    {fmtDayMonth(f.date) && <span className="fl-meta">{fmtDayMonth(f.date)}{f.departure_time ? ` ${f.departure_time}` : ''}</span>}
-                    {(fmtDayMonth(f.arrival_date) || f.arrival_time) && (
-                      <span className="fl-meta">→ {fmtDayMonth(f.arrival_date) || fmtDayMonth(f.date)}{f.arrival_time ? ` ${f.arrival_time}` : ''}</span>
-                    )}
-                    {f.duration_label && <span className="fl-meta">{f.duration_label}</span>}
-                    {f.cabin_class && <span className="pill gold fl-cabin">{CABIN_LABELS[f.cabin_class] || f.cabin_class}</span>}
-                  </div>
-                  {/* Linha 2: origem → destino · cia · código */}
-                  <div className="fl-mid">
-                    <div className="route">
-                      <div className="ap"><div className="code">{f.from_code || '—'}</div><div className="city">{f.from_city || ''}</div></div>
-                      <div className="path"><IcPlane /></div>
-                      <div className="ap"><div className="code">{f.to_code || '—'}</div><div className="city">{f.to_city || ''}</div></div>
-                    </div>
-                    {(f.airline || f.flight_number) && (
-                      <span className="fl-airline">{[f.airline, f.flight_number].filter(Boolean).join(' · ')}</span>
-                    )}
-                  </div>
-                  {(f.stopover_label || bags.length > 0) && (
-                    <div className="fl-bags">
-                      {f.stopover_label && <span className="fl-stop">{f.stopover_label}</span>}
-                      {/* Linha 3: bagagem com ícone + texto reduzido */}
-                      {bags.map(k => {
-                        const Ic = BAGGAGE_ICONS[k]
-                        const opt = BAGGAGE_OPTIONS.find(o => o.key === k)
-                        return <span key={k} className="bag"><Ic />{opt?.short}</span>
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </Block>
-        )}
+        <PublicQuotationTravelInfo
+          itineraryHtml={data.itinerary_html} days={days}
+          toursHtml={data.tours_html} importantHtml={data.important_html} cancellationHtml={data.cancellation_html}
+          included={included} notIncluded={notIncluded}
+          num={{ itinerary: num.itinerary, tours: num.toursHtml, important: num.important, includes: num.includes, cancellation: num.cancellation }}
+        />
 
-        {/* ───── CRUZEIRO ───── */}
-        {cruises.length > 0 && (
-          <Block num={num()} title="Cruzeiro" sub={cruises.length > 1 ? `${cruises.length} cruzeiros` : undefined}>
-            {cruises.map((c, i) => {
-              const cd_ = c.data || {}
-              const pkgs = [cd_.pkg_drinks, cd_.pkg_internet, cd_.pkg_restaurants].filter(Boolean)
-              return (
-                <div className="flight-wrap" key={c.id || i}>
-                  <div className="fl-top">
-                    <span className="fl-leg">{cd_.cruise_line || 'Cruzeiro'}</span>
-                    {cd_.duration_nights && <span className="fl-meta">{cd_.duration_nights} noites</span>}
-                    {cd_.itinerary_name && <span className="fl-meta">{cd_.itinerary_name}</span>}
-                    {cd_.cabin_category && <span className="pill gold fl-cabin">{cd_.cabin_category}{cd_.cabin_type ? ` · ${cd_.cabin_type}` : ''}</span>}
-                  </div>
-                  <div className="fl-mid">
-                    <div className="route">
-                      <div className="ap"><div className="code">{cd_.embark_port || '—'}</div><div className="city">Embarque{fmtDayMonth(c.date_start) ? ` · ${fmtDayMonth(c.date_start)}` : ''}</div></div>
-                      <div className="path"><IcShip /></div>
-                      <div className="ap"><div className="code">{cd_.disembark_port || '—'}</div><div className="city">Desembarque{fmtDayMonth(c.date_end) ? ` · ${fmtDayMonth(c.date_end)}` : ''}</div></div>
-                    </div>
-                    {c.name && <span className="fl-airline">{c.name}</span>}
-                  </div>
-                  {pkgs.length > 0 && (
-                    <div className="fl-bags">
-                      {pkgs.map((p, j) => <span key={j} className="fl-stop">{p}</span>)}
-                    </div>
-                  )}
-                  {(cd_.days?.length ?? 0) > 0 && (
-                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {cd_.days!.map((d, j) => (
-                        <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13 }}>
-                          <span style={{ opacity: 0.6, minWidth: 16 }}>{d.day_number ?? j + 1}</span>
-                          <span>
-                            {d.port || 'Navegação'}
-                            {d.date ? ` — ${fmtDayMonth(d.date)}` : ''}
-                            {(d.arrival || d.departure) ? ` (${[d.arrival, d.departure].filter(Boolean).join(' / ')})` : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </Block>
-        )}
-
-        {/* ───── TRANSFERS ───── */}
-        {transfers.length > 0 && (
-          <Block num={num()} title="Transfer" sub={transfers.length > 1 ? `${transfers.length} transfers` : undefined}>
-            {transfers.map((t, i) => {
-              const d_ = t.data || {}
-              return (
-                <div key={t.id || i} style={{ marginBottom: i < transfers.length - 1 ? 14 : 0, paddingBottom: i < transfers.length - 1 ? 14 : 0, borderBottom: i < transfers.length - 1 ? '1px solid var(--line)' : undefined }}>
-                  {t.name && <p style={{ fontWeight: 600, marginBottom: 4 }}>{t.name}</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
-                    {d_.origin && <div><div style={{ opacity: 0.6, fontSize: 11 }}>ORIGEM</div>{d_.origin}</div>}
-                    {d_.destination && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DESTINO</div>{d_.destination}</div>}
-                    {fmtDayMonth(t.date_start) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DATA</div>{fmtDayMonth(t.date_start)}{d_.time ? ` · ${d_.time}` : ''}</div>}
-                    {d_.round_trip && fmtDayMonth(d_.return_date) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VOLTA</div>{fmtDayMonth(d_.return_date)}{d_.return_time ? ` · ${d_.return_time}` : ''}</div>}
-                    {d_.vehicle && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VEÍCULO</div>{d_.vehicle}</div>}
-                    {d_.pax && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PASSAGEIROS</div>{d_.pax}</div>}
-                    {d_.transfer_type && <div><div style={{ opacity: 0.6, fontSize: 11 }}>TIPO</div>{d_.transfer_type}</div>}
-                  </div>
-                </div>
-              )
-            })}
-          </Block>
-        )}
-
-        {/* ───── SEGURO VIAGEM ───── */}
-        {insurances.length > 0 && (
-          <Block num={num()} title="Seguro viagem" sub={insurances.length > 1 ? `${insurances.length} seguros` : undefined}>
-            {insurances.map((s, i) => {
-              const d_ = s.data || {}
-              return (
-                <div key={s.id || i} style={{ marginBottom: i < insurances.length - 1 ? 14 : 0, paddingBottom: i < insurances.length - 1 ? 14 : 0, borderBottom: i < insurances.length - 1 ? '1px solid var(--line)' : undefined }}>
-                  {(d_.insurer || s.name) && <p style={{ fontWeight: 600, marginBottom: 4 }}>{d_.insurer || s.name}</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
-                    {d_.plan && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PLANO</div>{d_.plan}</div>}
-                    {d_.destination && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DESTINO</div>{d_.destination}</div>}
-                    {(fmtDayMonth(s.date_start) || fmtDayMonth(s.date_end)) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>PERÍODO</div>{fmtDayMonth(s.date_start)} a {fmtDayMonth(s.date_end)}</div>}
-                    {d_.travelers && <div><div style={{ opacity: 0.6, fontSize: 11 }}>VIAJANTES</div>{d_.travelers}</div>}
-                  </div>
-                  {d_.coverage && <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{d_.coverage}</p>}
-                </div>
-              )
-            })}
-          </Block>
-        )}
-
-        {/* ───── PASSEIOS/INGRESSOS ESTRUTURADOS ───── */}
-        {tours.length > 0 && (
-          <Block num={num()} title="Ingressos e passeios" sub={tours.length > 1 ? `${tours.length} passeios` : undefined}>
-            {tours.map((t, i) => {
-              const d_ = t.data || {}
-              return (
-                <div key={t.id || i} style={{ marginBottom: i < tours.length - 1 ? 14 : 0, paddingBottom: i < tours.length - 1 ? 14 : 0, borderBottom: i < tours.length - 1 ? '1px solid var(--line)' : undefined }}>
-                  {t.name && <p style={{ fontWeight: 600, marginBottom: 4 }}>{t.name}</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
-                    {fmtDayMonth(t.date_start) && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DATA</div>{fmtDayMonth(t.date_start)}</div>}
-                    {d_.duration_label && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DURAÇÃO</div>{d_.duration_label}</div>}
-                    {d_.includes && <div><div style={{ opacity: 0.6, fontSize: 11 }}>INCLUI</div>{d_.includes}</div>}
-                  </div>
-                  {t.summary && <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{t.summary}</p>}
-                </div>
-              )
-            })}
-          </Block>
-        )}
-
-        {/* ───── LOCAÇÃO DE VEÍCULO ───── */}
-        {rentals.length > 0 && (
-          <Block num={num()} title="Locação de veículo" sub={rentals.length > 1 ? `${rentals.length} locações` : undefined}>
-            {rentals.map((r, i) => {
-              const d_ = r.data || {}
-              return (
-                <div key={r.id || i} style={{ marginBottom: i < rentals.length - 1 ? 14 : 0, paddingBottom: i < rentals.length - 1 ? 14 : 0, borderBottom: i < rentals.length - 1 ? '1px solid var(--line)' : undefined }}>
-                  {(d_.company || r.name) && <p style={{ fontWeight: 600, marginBottom: 4 }}>{[d_.company, d_.vehicle_category].filter(Boolean).join(' — ') || r.name}</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, fontSize: 13 }}>
-                    {d_.pickup_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>RETIRADA</div>{d_.pickup_location}{fmtDayMonth(r.date_start) ? ` · ${fmtDayMonth(r.date_start)}` : ''}</div>}
-                    {d_.dropoff_location && <div><div style={{ opacity: 0.6, fontSize: 11 }}>DEVOLUÇÃO</div>{d_.dropoff_location}{fmtDayMonth(r.date_end) ? ` · ${fmtDayMonth(r.date_end)}` : ''}</div>}
-                  </div>
-                  {d_.notes && <p style={{ fontSize: 12, opacity: 0.75, marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{d_.notes}</p>}
-                </div>
-              )
-            })}
-          </Block>
-        )}
-
-        {/* ───── MAPA ───── */}
-        {pins.length > 0 && (
-          <Block num={num()} title="Mapa da viagem" sub="Hospedagem e pontos marcados" onFirstOpen={initMap}>
-            <div ref={mapRef} className="alq-map" />
-            <div className="map-legend">
-              {pinTypes.includes('lodging') && <span><i className="dot" style={{ background: PIN_COLORS.lodging }} /> Hospedagem</span>}
-              {(pinTypes.includes('attraction') || pinTypes.includes('custom')) && <span><i className="dot" style={{ background: PIN_COLORS.attraction }} /> Atrações</span>}
-              {pinTypes.includes('airport') && <span><i className="dot" style={{ background: PIN_COLORS.airport }} /> Aeroporto</span>}
-            </div>
-          </Block>
-        )}
-
-        {/* ───── ITINERÁRIO ───── */}
-        {hasHtml(data.itinerary_html) ? (
-          <Block num={num()} title="Itinerário" sub="Roteiro da viagem">
-            <Rich html={data.itinerary_html} className="rich-body" />
-          </Block>
-        ) : days.length > 0 ? (
-          <Block num={num()} title="Itinerário" sub="Dia a dia sugerido">
-            <div className="timeline">
-              {days.map((day, i) => (
-                <div className="day" key={day.id || i}>
-                  <div className="dh">
-                    <span>{[day.day_label, fmtDayMonth(day.date)].filter(Boolean).join(' · ')}</span>
-                    {day.title}
-                  </div>
-                  {(day.items || []).length > 0 && (
-                    <ul>{(day.items || []).map((it, k) => <li key={k}>{it}</li>)}</ul>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Block>
-        ) : null}
-
-        {/* ───── PASSEIOS E INGRESSOS ───── */}
-        {hasHtml(data.tours_html) && (
-          <Block num={num()} title="Passeios e Ingressos" sub="Atrações e experiências da viagem">
-            <Rich html={data.tours_html} className="rich-body" />
-          </Block>
-        )}
-
-        {/* ───── IMPORTANTE ───── */}
-        {hasHtml(data.important_html) && (
-          <Block num={num()} title="Importante" sub="Antes de fechar, leia com atenção">
-            <Rich html={data.important_html} className="important" />
-          </Block>
-        )}
-
-        {/* ───── O QUE INCLUI ───── */}
-        {(included.length > 0 || notIncluded.length > 0) && (
-          <Block num={num()} title="O que inclui" sub="Tudo que está — e o que não está — no pacote">
-            <div className="incl">
-              {included.length > 0 && (
-                <div className="col-ok">
-                  <h4>Incluso</h4>
-                  <ul className="yes">{included.map((it, i) => <li key={i}>{it}</li>)}</ul>
-                </div>
-              )}
-              {notIncluded.length > 0 && (
-                <div>
-                  <h4 style={{ color: 'var(--no)' }}>Não incluso</h4>
-                  <ul className="nope">{notIncluded.map((it, i) => <li key={i}>{it}</li>)}</ul>
-                </div>
-              )}
-            </div>
-          </Block>
-        )}
-
-        {/* ───── POLÍTICAS DE CANCELAMENTO ───── */}
-        {hasHtml(data.cancellation_html) && (
-          <Block num={num()} title="Políticas de cancelamento" sub="Condições de alteração, cancelamento e reembolso">
-            <Rich html={data.cancellation_html} className="important" />
-          </Block>
-        )}
-
-        {/* ───── INVESTIMENTO ───── */}
-        <section className="invest reveal">
-          <div className="eyebrow">Investimento</div>
-          <h3>Valores do pacote</h3>
-          {altLodgings.length > 1 ? (
-            <>
-              <p className="opt-note">Escolha uma das opções de hospedagem abaixo — o valor do pacote muda conforme a escolha.</p>
-              <div className="opt-grid">
-                {altLodgings.map((l, i) => (
-                  <div className="opt-card" key={l.id || i}>
-                    <span className="opt-badge">Opção {i + 1}</span>
-                    <div className="opt-name">{l.name || `Hospedagem ${i + 1}`}</div>
-                    {l.room_category && <div className="opt-room">{l.room_category}</div>}
-                    <div className="opt-prices">
-                      <div>
-                        <div className="lbl">Por pessoa</div>
-                        <div className="amt">{brl(l.option_price_per_person_cents) || (preview ? AC : '—')}</div>
-                      </div>
-                      <div>
-                        <div className="lbl">Total</div>
-                        <div className="amt">{brl(l.option_total_cents) || (preview ? AC : '—')}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="price-grid">
-              <div className="price-card">
-                <div className="lbl">Por pessoa</div>
-                <div className="amt">{brl(data.price_per_person_cents) || (preview ? AC : '—')}</div>
-                {data.occupancy_label && <div className="note">em {data.occupancy_label}</div>}
-              </div>
-              <div className="price-card total">
-                <div className="lbl">Total{paxTotal > 0 ? ` · ${paxTotal} ${paxTotal > 1 ? 'pessoas' : 'pessoa'}` : ''}</div>
-                <div className="amt">{brl(data.total_cents) || (preview ? AC : '—')}</div>
-                <div className="note">pacote completo</div>
-              </div>
-            </div>
-          )}
-          {paymentConditions.length > 0 && (
-            <div className="pay">
-              {paymentConditions.map((p, i) => (
-                <div className="row" key={i}><span>{p.label}:</span><b>{p.value}</b></div>
-              ))}
-            </div>
-          )}
-          <div className="disclaimer">
-            {data.price_disclaimer || 'Preços sujeitos a alteração sem aviso prévio e à disponibilidade no momento da reserva.'}<br />
-            {data.quoted_at && <>Cotação realizada em {fmtBr(data.quoted_at)} · câmbio e tarifas aéreas podem variar até a emissão.</>}
-          </div>
-        </section>
-
-        {/* ───── FECHAMENTO + CTA ───── */}
-        <section className="closing reveal">
-          {hasHtml(data.closing_html)
-            ? <Rich html={data.closing_html} className="closing-rich" />
-            : <>
-              <h3>Vamos garantir essa viagem?</h3>
-              <p>É só dar o sinal verde que travamos a tarifa e reservamos tudo. Qualquer dúvida, chama no WhatsApp.</p>
-            </>}
-          {waNumber && (
-            <div className="cta-row">
-              <a className="btn btn-primary" target="_blank" rel="noopener noreferrer"
-                onClick={() => trackCta('reservar')}
-                href={waHref(`Oi! Quero reservar o pacote "${data.title || 'da proposta'}" ✈️`)}>
-                <IcWa /> Reservar agora
-              </a>
-              <a className="btn btn-ghost" target="_blank" rel="noopener noreferrer"
-                onClick={() => trackCta('duvidas')}
-                href={waHref(`Oi! Tenho algumas dúvidas sobre a proposta "${data.title || 'de viagem'}"`)}>
-                <IcChat /> Tirar dúvidas
-              </a>
-            </div>
-          )}
-        </section>
-
-        {data.signature_enabled && (data.signature_name || data.signature_message || data.signature_photo_url) && (
-          <section className="reveal">
-            <div className="signature" style={{
-              background: data.signature_bg_color || '#0f172a',
-              color: data.signature_text_color || '#ffffff',
-            }}>
-              {data.signature_photo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.signature_photo_url} alt={data.signature_name || ''} className="signature-photo" />
-              )}
-              <div className="signature-text">
-                {data.signature_name && <div className="signature-name">{data.signature_name}</div>}
-                {data.signature_message && <div className="signature-message">{data.signature_message}</div>}
-              </div>
-            </div>
-          </section>
-        )}
+        <PublicQuotationInvestment
+          data={data} preview={preview} altLodgings={altLodgings} paxTotal={paxTotal}
+          paymentConditions={paymentConditions} waNumber={waNumber} waHref={waHref} trackCta={trackCta}
+        />
       </main>
 
-      {/* ───── RODAPÉ ───── */}
-      <footer>
-        <div className="foot">
-          {(org.instagram_url || org.site_url) && (
-            <div className="social">
-              {org.instagram_url && <>Confira também nosso Instagram
-                <a href={igHref(org.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><IcIg /></a></>}
-              {org.site_url && (
-                <a href={urlHref(org.site_url)} target="_blank" rel="noopener noreferrer" aria-label="Site"><IcGlobe className="" /></a>
-              )}
-            </div>
-          )}
-          <div className="foot-sep" />
-          {org.brand_logo_url
-            ? <LazyImg src={org.brand_logo_url} alt={org.legal_name || ''} className="foot-logo-img" />
-            : <div className="logo">{org.legal_name}</div>}
-          <div className="legal">
-            {(org.terms_url || org.privacy_url) && (
-              <>
-                {org.terms_url && <a href={org.terms_url} target="_blank" rel="noopener noreferrer">Termos de serviço</a>}
-                {org.terms_url && org.privacy_url && ' · '}
-                {org.privacy_url && <a href={org.privacy_url} target="_blank" rel="noopener noreferrer">Política de privacidade</a>}
-                <br />
-              </>
-            )}
-            {[
-              org.city_state ? `Estamos em ${org.city_state}` : null,
-              org.cnpj ? `CNPJ ${org.cnpj}` : null,
-              org.cadastur ? `CADASTUR ${org.cadastur}` : null,
-              org.phone || null,
-              org.email || null,
-            ].filter(Boolean).join(' · ')}
-          </div>
-          <div className="rights">© {new Date().getFullYear()} {org.legal_name} · Todos os direitos reservados.</div>
-        </div>
-      </footer>
+      <PublicQuotationFooter org={org} />
 
       {/* ───── MODAL HOTEL ───── */}
-      {modalLodge && (() => {
-        const ta = modalLodge.tripadvisor_data!
-        const rating = ta.rating || 0
-        const filled = Math.round(rating)
-        return (
-          <div className="modal show" role="dialog" aria-modal="true">
-            <div className="modal-bg" onClick={closeHotel} />
-            <div className="modal-card">
-              <div className="modal-hero">
-                <button className="modal-close" onClick={closeHotel} aria-label="Fechar">×</button>
-                <LazyImg src={ta.photos?.[0] || modalLodge.photos?.[0]} alt={modalLodge.name || ''} />
-              </div>
-              <div className="modal-in">
-                <h3 style={{ fontSize: 24, color: 'var(--navy)' }}>{modalLodge.name}</h3>
-                {ta.address && <div style={{ color: 'var(--muted)', fontSize: 13.5, margin: '4px 0 14px' }}>{ta.address}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {rating > 0 && <span className="rating">{rating.toFixed(1)} <span style={{ fontWeight: 400, fontSize: 12 }}>/5</span></span>}
-                  {rating > 0 && <span className="stars">{'●'.repeat(filled)}{'○'.repeat(Math.max(0, 5 - filled))}</span>}
-                  {ta.reviews_count ? <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{ta.reviews_count.toLocaleString('pt-BR')} avaliações</span> : null}
-                </div>
-                {(ta.photos || []).length > 1 && (
-                  <div className="mini-gal">
-                    {(ta.photos || []).slice(1, 5).map((src, i) => <div key={i}><LazyImg src={src} alt="" /></div>)}
-                  </div>
-                )}
-                <ClampedDescription html={modalLodge.description_html} />
-                <div ref={miniMapRef} className="mini-map" />
-                <div className="ta-src">
-                  Fotos, nota e informações extraídas do TripAdvisor
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {modalLodge && (
+        <PublicQuotationHotelModal modalLodge={modalLodge} closeHotel={closeHotel} miniMapRef={miniMapRef} />
+      )}
 
       {/* ───── Lightbox das fotos ───── */}
       {lightbox && (
@@ -782,4 +344,3 @@ export default function PublicQuotationView({
     </div>
   )
 }
-
