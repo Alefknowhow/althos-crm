@@ -226,11 +226,11 @@ function SupplyDialog({ orgSlug, open, onOpenChange, editing, onSaved }: {
             </div>
             <div>
               <Label>Data de aquisição</Label>
-              <Input type="date" value={form.first_acquired_at} onChange={e => setForm(f => ({ ...f, first_acquired_at: e.target.value }))} />
+              <Input type="date" className="w-40" value={form.first_acquired_at} onChange={e => setForm(f => ({ ...f, first_acquired_at: e.target.value }))} />
             </div>
             <div>
               <Label>Última compra</Label>
-              <Input type="date" value={form.last_purchase_at} onChange={e => setForm(f => ({ ...f, last_purchase_at: e.target.value }))} />
+              <Input type="date" className="w-40" value={form.last_purchase_at} onChange={e => setForm(f => ({ ...f, last_purchase_at: e.target.value }))} />
             </div>
             <div>
               <Label>Nº NF de entrada</Label>

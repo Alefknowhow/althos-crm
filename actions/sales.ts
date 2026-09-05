@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { inngest } from '@/lib/inngest/client'
 import { getProfilesMap } from '@/lib/profiles'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
@@ -66,6 +67,12 @@ export async function createSale(orgSlug: string, input: unknown) {
   if (error) {
     console.error('createSale error:', error)
     return { ok: false, error: error.message || 'Erro ao registrar venda' }
+  }
+
+  // Fires automation trigger `sale.registered` — sem contato vinculado não
+  // dispara (toda automation_run precisa de um leadId).
+  if (v.contato_id) {
+    await inngest.send({ name: 'sale.registered', data: { orgId: org.id, leadId: v.contato_id } })
   }
 
   // Assinatura de plano recorrente (Agências de Tráfego) — gera 1 lançamento

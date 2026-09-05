@@ -214,7 +214,7 @@ export default function InsuranceQuotesView({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Válida até</label>
-                <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+                <Input type="date" className="w-40" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1">

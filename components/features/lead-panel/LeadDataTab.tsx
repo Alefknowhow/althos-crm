@@ -202,11 +202,11 @@ export default function LeadDataTab({
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-muted-foreground">CPF</label>
-            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm" placeholder="000.000.000-00" />
+            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm w-40" placeholder="000.000.000-00" />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground">Nascimento</label>
-            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm" type="date" />
+            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm w-40" type="date" />
           </div>
         </div>
 

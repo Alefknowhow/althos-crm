@@ -1,6 +1,6 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
-  Stethoscope, Building2, Shield, Smile, type LucideIcon,
+  Stethoscope, Building2, Shield, Smile, DollarSign, Plane, type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -26,11 +26,13 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'appointment.booked',  label: 'Agendamento Realizado',    desc: 'Dispara quando um agendamento é criado',              icon: Calendar,      color: '#10b981' },
   { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)', icon: Gift,   color: '#ec4899' },
   { id: 'customer.converted',  label: 'Cliente Convertido',       desc: 'Dispara quando o lead vira cliente (negócio ganho) — combine com um passo "Esperar" antes de enviar a pesquisa NPS', icon: Smile, color: '#22c55e' },
+  { id: 'sale.registered',     label: 'Venda Registrada',         desc: 'Dispara quando uma venda é registrada',               icon: DollarSign,    color: '#22c55e' },
 
   // Vertical Clínicas — sem configuração extra (igual appointment.booked).
   { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },
   { id: 'clinic.quote.approved',        label: 'Orçamento Aprovado (Clínica)',     desc: 'Dispara quando um orçamento é marcado como aprovado', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },
   { id: 'clinic.attendance.completed',  label: 'Atendimento Realizado (Clínica)',  desc: 'Dispara quando um atendimento é registrado como realizado', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },
+  { id: 'clinicas.atendimento.registered', label: 'Atendimento Registrado (Clínica)', desc: 'Dispara quando um atendimento é registrado', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },
 
   // Vertical Imobiliárias — sem configuração extra (igual appointment.booked).
   { id: 'imoveis.visit.scheduled', label: 'Visita Agendada (Imóveis)',   desc: 'Dispara quando uma visita a um imóvel é agendada',   icon: Building2, color: '#f97316', niche: 'imoveis' },
@@ -39,6 +41,10 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'imoveis.visit.completed', label: 'Visita Realizada (Imóveis)',  desc: 'Dispara quando a visita é marcada como realizada',   icon: Building2, color: '#f97316', niche: 'imoveis' },
   { id: 'imoveis.proposal.sent',   label: 'Proposta Enviada (Imóveis)',  desc: 'Dispara quando uma proposta de imóvel é marcada como enviada', icon: Building2, color: '#f97316', niche: 'imoveis' },
   { id: 'imoveis.deal.closed',     label: 'Negócio Fechado (Imóveis)',   desc: 'Dispara quando uma venda ou locação é registrada',   icon: Building2, color: '#f97316', niche: 'imoveis' },
+
+  // Vertical Agências de Viagem — reserva/embarque criados (travel_sales).
+  { id: 'viagens.reserva.created',    label: 'Reserva Criada (Viagens)',      desc: 'Dispara quando uma reserva é criada',                          icon: Plane, color: '#0ea5e9', niche: 'viagens' },
+  { id: 'viagens.embarque.scheduled', label: 'Embarque Registrado (Viagens)', desc: 'Dispara quando uma reserva com data de embarque é registrada', icon: Plane, color: '#0ea5e9', niche: 'viagens' },
 
   // Vertical Seguros.
   { id: 'seguros.policy.issued',      label: 'Apólice Emitida (Seguros)',    desc: 'Dispara quando uma apólice é emitida',                icon: Shield, color: '#6366f1', niche: 'seguros' },

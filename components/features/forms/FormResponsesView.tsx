@@ -152,6 +152,7 @@ export default function FormResponsesView({
             <Label className="text-xs">De</Label>
             <Input
               type="date"
+              className="w-40"
               value={draft.from}
               onChange={e => setDraft({ ...draft, from: e.target.value })}
             />
@@ -160,6 +161,7 @@ export default function FormResponsesView({
             <Label className="text-xs">Até</Label>
             <Input
               type="date"
+              className="w-40"
               value={draft.to}
               onChange={e => setDraft({ ...draft, to: e.target.value })}
             />

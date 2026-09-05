@@ -189,6 +189,10 @@ export async function setClinicAppointmentStatus(
             name: 'clinic.attendance.completed',
             data: { orgId: org.id, leadId: appt.lead_id, attendanceId: attendance.id },
           })
+          await inngest.send({
+            name: 'clinicas.atendimento.registered',
+            data: { orgId: org.id, leadId: appt.lead_id, attendanceId: attendance.id },
+          })
         }
       }
     }

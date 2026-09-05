@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
-import { NpsSection } from '@/components/features/contatos/NpsSection'
 import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
@@ -16,7 +15,7 @@ import { DealCard } from './ContatosViewDetailHelpers'
 
 export function OverviewTab({
   orgSlug, selected, c, isTravel, isRealEstate, properties, members,
-  dadosEditRequested, deals, credits, onShowAllDeals, whatsappTemplates,
+  dadosEditRequested, deals, credits, onShowAllDeals,
 }: {
   orgSlug:            string
   selected:           NonNullable<Selected>
@@ -29,7 +28,6 @@ export function OverviewTab({
   deals:              ContatoDeal[]
   credits:            TravelCreditRow[]
   onShowAllDeals:     () => void
-  whatsappTemplates?: import('@/actions/whatsapp-templates').WaTemplate[]
 }) {
   return (
     <>
@@ -42,18 +40,6 @@ export function OverviewTab({
         initialDocuments={selected.documents}
         initialEditMode={dadosEditRequested}
       />
-
-      {/* NPS — só faz sentido pós-venda */}
-      {c.status === 'cliente' && (
-        <NpsSection
-          orgSlug={orgSlug}
-          leadId={c.id}
-          phone={c.phone}
-          npsScore={c.nps_score ?? null}
-          npsUpdatedAt={c.nps_updated_at ?? null}
-          whatsappTemplates={whatsappTemplates}
-        />
-      )}
 
       {/* Parentesco */}
       <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />

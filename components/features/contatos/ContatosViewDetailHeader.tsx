@@ -20,6 +20,7 @@ import SendEmailDialog from '@/components/features/SendEmailDialog'
 import { fmtCurrency, fmtDate, onlyDigits, STATUS_VALUES, type Selected } from './ContatosViewShared'
 import { AvatarUploader } from './ContatosViewWidgets'
 import { Field } from './ContatosViewDetailHelpers'
+import { NpsCard } from './NpsSection'
 
 export function DetailHeader({
   orgSlug, selected, c, onBack, isTravel, savingStatus, onChangeStatus,
@@ -110,7 +111,12 @@ export function DetailHeader({
       </div>
 
       {/* Cards de resumo — compactos, logo abaixo das tags */}
-      <div className={cn('grid grid-cols-2 gap-2', isTravel ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
+      <div className={cn(
+        'grid grid-cols-2 gap-2',
+        isTravel && c.status === 'cliente' ? 'lg:grid-cols-6'
+          : (isTravel || c.status === 'cliente') ? 'lg:grid-cols-5'
+          : 'lg:grid-cols-4'
+      )}>
         <Field icon={Wallet} label="Total comprado" dense>
           <span className="text-base font-bold text-primary">{fmtCurrency(totalPurchased)}</span>
         </Field>
@@ -131,6 +137,9 @@ export function DetailHeader({
           <Field icon={Coins} label="Créditos de cancelamento" dense>
             <span className="text-base font-bold text-primary">{creditBalance > 0 ? fmtCurrency(creditBalance) : '—'}</span>
           </Field>
+        )}
+        {c.status === 'cliente' && (
+          <NpsCard orgSlug={orgSlug} leadId={c.id} npsScore={c.nps_score ?? null} npsUpdatedAt={c.nps_updated_at ?? null} />
         )}
       </div>
 

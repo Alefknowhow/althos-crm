@@ -246,14 +246,14 @@ export default function PropertyEditor({
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <F label="Endereço" className="col-span-2"><Input value={p.address_street || ''} onChange={e => set('address_street', e.target.value)} /></F>
-            <F label="Número"><Input value={p.address_number || ''} onChange={e => set('address_number', e.target.value)} /></F>
+            <F label="Número"><Input className="w-20" value={p.address_number || ''} onChange={e => set('address_number', e.target.value)} /></F>
             <F label="Complemento"><Input value={p.address_complement || ''} onChange={e => set('address_complement', e.target.value)} /></F>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <F label="Bairro"><Input value={p.neighborhood || ''} onChange={e => set('neighborhood', e.target.value)} /></F>
             <F label="Cidade"><Input value={p.city || ''} onChange={e => set('city', e.target.value)} /></F>
-            <F label="Estado (UF)"><Input maxLength={2} value={p.state || ''} onChange={e => set('state', e.target.value.toUpperCase())} /></F>
-            <F label="CEP"><Input value={p.zip || ''} onChange={e => set('zip', e.target.value)} /></F>
+            <F label="Estado (UF)"><Input maxLength={2} className="w-16" value={p.state || ''} onChange={e => set('state', e.target.value.toUpperCase())} /></F>
+            <F label="CEP"><Input className="w-32" value={p.zip || ''} onChange={e => set('zip', e.target.value)} /></F>
           </div>
         </CardContent>
       </Card>

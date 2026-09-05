@@ -162,11 +162,11 @@ export function FiltersSheet({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Criado de</Label>
-              <Input type="date" value={draft.created_from || ''} onChange={e => set('created_from', e.target.value)} />
+              <Input type="date" className="w-40" value={draft.created_from || ''} onChange={e => set('created_from', e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Criado até</Label>
-              <Input type="date" value={draft.created_to || ''} onChange={e => set('created_to', e.target.value)} />
+              <Input type="date" className="w-40" value={draft.created_to || ''} onChange={e => set('created_to', e.target.value)} />
             </div>
           </div>
 

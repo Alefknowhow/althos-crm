@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { inngest } from '@/lib/inngest/client'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 
@@ -124,6 +125,20 @@ export async function createManualAppointment(orgSlug: string, raw: unknown) {
         manual: true,
       },
       created_by: user.id,
+    })
+
+    // Fires automation trigger `appointment.booked` — o fluxo público
+    // (actions/appointments-public.ts) já dispara isso; o agendamento manual
+    // feito pela equipe (usado por Clínicas) não disparava até então.
+    await inngest.send({
+      name: 'appointment.booked',
+      data: {
+        orgId: org.id,
+        leadId,
+        appointmentId: appt.id,
+        eventTypeId: eventType.id,
+        startTime: parsed.data.startTime,
+      },
     })
 
     // Nicho Clínicas: um retorno é só um agendamento pendente de ser

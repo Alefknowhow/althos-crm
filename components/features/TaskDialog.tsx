@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -297,14 +298,14 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending ? 'Salvando…' : 'Criar tarefa'}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </Form>
         </DialogContent>

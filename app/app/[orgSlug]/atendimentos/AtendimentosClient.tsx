@@ -189,7 +189,7 @@ export default function AtendimentosClient({
                 </div>
                 <div className="space-y-2">
                   <Label>Próximo retorno sugerido</Label>
-                  <Input type="date" value={draft.next_return_date || ''} onChange={e => setDraft({ ...draft, next_return_date: e.target.value || null })} />
+                  <Input type="date" className="w-40" value={draft.next_return_date || ''} onChange={e => setDraft({ ...draft, next_return_date: e.target.value || null })} />
                 </div>
               </div>
 

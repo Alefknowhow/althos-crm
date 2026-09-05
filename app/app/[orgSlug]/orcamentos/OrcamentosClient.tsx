@@ -174,7 +174,7 @@ export default function OrcamentosClient({
                 </div>
                 <div className="space-y-2">
                   <Label>Válido até</Label>
-                  <Input type="date" value={draft.valid_until || ''} onChange={e => setDraft({ ...draft, valid_until: e.target.value || null })} />
+                  <Input type="date" className="w-40" value={draft.valid_until || ''} onChange={e => setDraft({ ...draft, valid_until: e.target.value || null })} />
                 </div>
               </div>
 

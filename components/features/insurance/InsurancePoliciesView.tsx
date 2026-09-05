@@ -271,11 +271,11 @@ export default function InsurancePoliciesView({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Início da vigência</label>
-                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <Input type="date" className="w-40" value={startDate} onChange={e => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Fim da vigência</label>
-                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                <Input type="date" className="w-40" value={endDate} onChange={e => setEndDate(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

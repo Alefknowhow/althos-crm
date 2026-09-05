@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Upload, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { parseCsv, parseMoney, parseDate, detectColumn } from '@/lib/csv'
 import { bulkCreateFinancialEntries } from '@/actions/financial'
@@ -209,12 +209,12 @@ export default function FinancialCsvImporter({
                 </table>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <DialogFooter>
                 <Button variant="outline" onClick={reset}>Trocar arquivo</Button>
                 <Button onClick={confirm} disabled={importing || valid.length === 0}>
                   {importing ? 'Importando...' : `Importar ${valid.length} lançamento(s)`}
                 </Button>
-              </div>
+              </DialogFooter>
             </CardContent>
           </Card>
         )}

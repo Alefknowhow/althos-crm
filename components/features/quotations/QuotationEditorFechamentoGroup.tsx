@@ -164,7 +164,7 @@ export default function QuotationEditorFechamentoGroup({
             </div>
             <F label="Endereço"><Input value={q.footer_address} onChange={e => setQ(s => ({ ...s, footer_address: e.target.value }))} placeholder="Ex.: Florianópolis / SC" /></F>
             <div className="grid grid-cols-2 gap-3">
-              <F label="CNPJ"><Input value={q.footer_cnpj} onChange={e => setQ(s => ({ ...s, footer_cnpj: e.target.value }))} /></F>
+              <F label="CNPJ"><Input className="w-48" value={q.footer_cnpj} onChange={e => setQ(s => ({ ...s, footer_cnpj: e.target.value }))} /></F>
               <F label="CADASTUR"><Input value={q.footer_cadastur} onChange={e => setQ(s => ({ ...s, footer_cadastur: e.target.value }))} /></F>
             </div>
             <div className="grid grid-cols-2 gap-3">

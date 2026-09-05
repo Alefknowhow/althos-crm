@@ -106,10 +106,10 @@ export function BlockDialog({
             <Input value={form.destino} onChange={e => set('destino', e.target.value.toUpperCase())} placeholder="FOR" maxLength={5} />
           </Field>
           <Field label={<>Data de ida <span className="text-destructive">*</span></>}>
-            <Input type="date" value={form.data_ida} onChange={e => set('data_ida', e.target.value)} />
+            <Input type="date" className="w-40" value={form.data_ida} onChange={e => set('data_ida', e.target.value)} />
           </Field>
           <Field label="Data de volta">
-            <Input type="date" value={form.data_volta} onChange={e => set('data_volta', e.target.value)} />
+            <Input type="date" className="w-40" value={form.data_volta} onChange={e => set('data_volta', e.target.value)} />
           </Field>
           <Field label="Voo ida">
             <Input value={form.voo_ida} onChange={e => set('voo_ida', e.target.value)} placeholder="4185/2932" />
@@ -130,7 +130,7 @@ export function BlockDialog({
             <Input type="number" min="0" value={form.assentos_disponiveis} onChange={e => set('assentos_disponiveis', e.target.value)} placeholder="10" />
           </Field>
           <Field label="Prazo (release)">
-            <Input type="date" value={form.prazo} onChange={e => set('prazo', e.target.value)} />
+            <Input type="date" className="w-40" value={form.prazo} onChange={e => set('prazo', e.target.value)} />
           </Field>
         </div>
         <Field label="Observações">

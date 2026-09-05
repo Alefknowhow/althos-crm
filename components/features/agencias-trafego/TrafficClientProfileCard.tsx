@@ -155,7 +155,7 @@ export default function TrafficClientProfileCard({
               <Input value={region} onChange={e => setRegion(e.target.value)} placeholder="Cidade/estado" />
             </Field>
             <Field label="Início do contrato">
-              <Input type="date" value={contractStart || ''} onChange={e => setContractStart(e.target.value)} />
+              <Input type="date" className="w-40" value={contractStart || ''} onChange={e => setContractStart(e.target.value)} />
             </Field>
             <Field label="Site">
               <Input value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://…" />

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { isTravelNiche } from '@/lib/niche'
+import { inngest } from '@/lib/inngest/client'
 import { revalidatePath } from 'next/cache'
 import { mapProposalToSaleFields } from '@/lib/travel-sales/map-proposal-fields'
 
@@ -45,14 +46,24 @@ export async function maybeCreateTravelSaleOnWon(
       .maybeSingle()
     if (existing) return
 
-    await supabase.from('travel_sales').insert({
+    const saleFields = mapProposalToSaleFields(proposal)
+    const { data: created } = await supabase.from('travel_sales').insert({
       organization_id: org.id,
       contato_id: leadId,
       proposal_id: proposal.id,
       created_by: userId,
       status: 'open',
-      ...mapProposalToSaleFields(proposal),
-    })
+      ...saleFields,
+    }).select('id').single()
+
+    if (created) {
+      // Fires automation triggers `viagens.reserva.created` (sempre) e
+      // `viagens.embarque.scheduled` (só quando já vem com data de embarque).
+      await inngest.send({ name: 'viagens.reserva.created', data: { orgId: org.id, leadId, saleId: created.id } })
+      if ((saleFields as any).departure_date) {
+        await inngest.send({ name: 'viagens.embarque.scheduled', data: { orgId: org.id, leadId, saleId: created.id } })
+      }
+    }
   } catch (err: any) {
     console.error('[maybeCreateTravelSaleOnWon] error:', err?.message)
   }

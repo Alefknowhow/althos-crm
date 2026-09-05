@@ -189,7 +189,6 @@ export function DetailPanel({
             deals={deals}
             credits={credits}
             onShowAllDeals={() => setActiveTab('negociacoes')}
-            whatsappTemplates={whatsappTemplates}
           />
         </TabsContent>
 

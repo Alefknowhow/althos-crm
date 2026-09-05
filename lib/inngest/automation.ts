@@ -122,6 +122,23 @@ export const processAutomationEventVerticals = inngest.createFunction(
   handleAutomationEvent,
 )
 
+export const processAutomationEventVerticals2 = inngest.createFunction(
+  {
+    id: 'automation-process-verticals-2',
+    concurrency: { key: 'event.data.orgId', limit: 5 },
+    triggers: [
+      // Genérico (venda) + Agências de Viagem (reserva/embarque) + Clínicas
+      // (atendimento registrado) — cabem aqui só porque as outras 2 functions
+      // já estão no teto de 10 triggers do Inngest, não por afinidade entre si.
+      { event: 'sale.registered' },
+      { event: 'viagens.reserva.created' },
+      { event: 'viagens.embarque.scheduled' },
+      { event: 'clinicas.atendimento.registered' },
+    ]
+  },
+  handleAutomationEvent,
+)
+
 export const executeAutomationRun = inngest.createFunction(
   {
     id: 'automation-run-execute',

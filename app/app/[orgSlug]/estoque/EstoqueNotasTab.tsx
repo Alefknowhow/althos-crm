@@ -189,7 +189,7 @@ function ImportInvoiceDialog({ orgSlug, open, onOpenChange, supplies, onSaved }:
               </div>
               <div>
                 <Label>Data emissão</Label>
-                <Input type="date" value={manual.issued_at} onChange={e => setManual(m => ({ ...m, issued_at: e.target.value }))} />
+                <Input type="date" className="w-40" value={manual.issued_at} onChange={e => setManual(m => ({ ...m, issued_at: e.target.value }))} />
               </div>
             </div>
 

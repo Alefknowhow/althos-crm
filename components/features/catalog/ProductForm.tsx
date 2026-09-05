@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { productInputSchema } from '@/lib/validators/product'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -302,11 +303,11 @@ export default function ProductForm({ orgSlug, initialData, onSuccess, categorie
           )}
         />
 
-        <div className="flex justify-end gap-2">
+        <DialogFooter>
           <Button type="submit" disabled={loading}>
             {loading ? 'Salvando...' : 'Salvar Item'}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </Form>
   )

@@ -176,6 +176,7 @@ export default function FilterSheet({
               <Label>Criado de</Label>
               <Input
                 type="date"
+                className="w-40"
                 value={draft.created_from}
                 onChange={e => setDraft({ ...draft, created_from: e.target.value })}
               />
@@ -184,6 +185,7 @@ export default function FilterSheet({
               <Label>Até</Label>
               <Input
                 type="date"
+                className="w-40"
                 value={draft.created_to}
                 onChange={e => setDraft({ ...draft, created_to: e.target.value })}
               />

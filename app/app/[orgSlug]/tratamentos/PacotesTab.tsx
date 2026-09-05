@@ -163,7 +163,7 @@ export function PacotesTab({
                 </div>
                 <div className="space-y-2">
                   <Label>Válido até</Label>
-                  <Input type="date" value={pDraft.valid_until || ''} onChange={e => setPDraft({ ...pDraft, valid_until: e.target.value || null })} />
+                  <Input type="date" className="w-40" value={pDraft.valid_until || ''} onChange={e => setPDraft({ ...pDraft, valid_until: e.target.value || null })} />
                 </div>
               </div>
               {!pEditingId && (

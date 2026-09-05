@@ -8,6 +8,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { inngest } from '@/lib/inngest/client'
 import { revalidatePath } from 'next/cache'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
@@ -93,6 +94,13 @@ export async function createTravelSale(
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
+
+  // Fires automation triggers `viagens.reserva.created` (sempre) e
+  // `viagens.embarque.scheduled` (só quando já vem com data de embarque).
+  await inngest.send({ name: 'viagens.reserva.created', data: { orgId: org.id, leadId: contato.id, saleId: (data as TravelSaleRow).id } })
+  if ((data as TravelSaleRow).departure_date) {
+    await inngest.send({ name: 'viagens.embarque.scheduled', data: { orgId: org.id, leadId: contato.id, saleId: (data as TravelSaleRow).id } })
+  }
 
   if (extracted) {
     const { bulkCreateSaleProductsFromExtraction } = await import('@/actions/sale-products')

@@ -168,7 +168,7 @@ export default function InsurersView({ orgSlug, insurers }: { orgSlug: string; i
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">CNPJ</label>
-                <Input value={cnpj} onChange={e => setCnpj(e.target.value)} />
+                <Input className="w-48" value={cnpj} onChange={e => setCnpj(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -156,11 +156,11 @@ export default function ListaEsperaClient({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Período de — até</Label>
-                  <Input type="date" value={draft.preferred_from || ''} onChange={e => setDraft({ ...draft, preferred_from: e.target.value || null })} />
+                  <Input type="date" className="w-40" value={draft.preferred_from || ''} onChange={e => setDraft({ ...draft, preferred_from: e.target.value || null })} />
                 </div>
                 <div className="space-y-2">
                   <Label>&nbsp;</Label>
-                  <Input type="date" value={draft.preferred_until || ''} onChange={e => setDraft({ ...draft, preferred_until: e.target.value || null })} />
+                  <Input type="date" className="w-40" value={draft.preferred_until || ''} onChange={e => setDraft({ ...draft, preferred_until: e.target.value || null })} />
                 </div>
               </div>
 
