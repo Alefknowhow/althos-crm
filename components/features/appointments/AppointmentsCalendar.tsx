@@ -2,26 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ChevronLeft, ChevronRight, X, Check, MapPin, Mail, Phone, ExternalLink, CalendarPlus, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
-import type { ClinicAppointmentContext } from '@/actions/clinic'
-import { CLINIC_STATUS_LABEL, type ClinicStatus } from '@/lib/clinic-constants'
 import { Calendar as MiniCalendar } from '@/components/ui/calendar'
-import type { CalendarAppointment, ClinicOption, Availability } from './AppointmentsCalendarShared'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import type { ClinicAppointmentContext } from '@/actions/clinic'
+import type { ClinicStatus } from '@/lib/clinic-constants'
+import type { CalendarAppointment, ClinicOption, Availability, ClinicFinalizePayment } from './AppointmentsCalendarShared'
 import {
-  pickFirst,
-  DAY_NAMES_LONG,
   MONTH_NAMES,
+  DAY_NAMES_LONG,
   startOfWeek,
   addDays,
   computeHourRange,
@@ -30,8 +18,10 @@ import {
 import { WeekView } from './AppointmentsCalendarWeekView'
 import { DayProfessionalView } from './AppointmentsCalendarDayView'
 import { MonthView } from './AppointmentsCalendarMonthView'
+import { AppointmentsCalendarDetailDialog } from './AppointmentsCalendarDetailDialog'
+import { AppointmentsCalendarFinalizeDialog, type FinalizeForm } from './AppointmentsCalendarFinalizeDialog'
 
-export type { CalendarAppointment }
+export type { CalendarAppointment, ClinicFinalizePayment }
 
 type Mode = 'week' | 'month' | 'day'
 
@@ -62,40 +52,6 @@ type Props = {
   isClinic?: boolean
   onClinicStatusChange?: (a: CalendarAppointment, status: ClinicStatus, payment?: ClinicFinalizePayment) => void
   onScheduleReturn?: (a: CalendarAppointment) => void
-}
-
-/** Valor/forma de pagamento/parcelas capturados no momento de finalizar o
- *  atendimento (avançar pra 'realizado') — sobrescreve o preço de tabela
- *  do procedimento quando informado. */
-export type ClinicFinalizePayment = {
-  total_cents?: number | null
-  discount_cents?: number
-  payment_method?: string | null
-  installments?: number | null
-}
-
-// Progressão padrão de status usada por plataformas de agenda consolidadas
-// (Doctoralia, Boulevard etc.): um botão primário "próximo passo" por
-// status, em vez de expor a máquina de estados inteira de uma vez.
-const NEXT_CLINIC_STATUS: Partial<Record<ClinicStatus, ClinicStatus>> = {
-  aguardando_confirmacao: 'confirmado',
-  agendado: 'confirmado',
-  confirmado: 'em_atendimento',
-  em_atendimento: 'realizado',
-}
-
-// Rótulo do botão de "próximo passo" — mais concreto que o nome cru do
-// status (ex.: "Paciente chegou" em vez de "Em atendimento"), pedido
-// explicitamente pra refletir o check-in/check-out do dia a dia.
-const NEXT_ACTION_LABEL: Partial<Record<ClinicStatus, string>> = {
-  confirmado: 'Confirmar',
-  em_atendimento: 'Paciente chegou',
-  realizado: 'Finalizar atendimento',
-}
-
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  pix: 'PIX', credito: 'Cartão de Crédito', debito: 'Cartão de Débito',
-  dinheiro: 'Dinheiro', boleto: 'Boleto', transferencia: 'Transferência',
 }
 
 /* -------- Main calendar shell with navigation + detail dialog -------- */
@@ -148,7 +104,7 @@ export default function AppointmentsCalendar({
   // parcelas antes de avançar o status pra 'realizado', em vez de sempre
   // cair no preço de tabela do procedimento.
   const [finalizeTarget, setFinalizeTarget] = useState<CalendarAppointment | null>(null)
-  const [finalizeForm, setFinalizeForm] = useState({ total: '', discount: '', paymentMethod: '', installments: '' })
+  const [finalizeForm, setFinalizeForm] = useState<FinalizeForm>({ total: '', discount: '', paymentMethod: '', installments: '' })
 
   function openFinalizeDialog(appt: CalendarAppointment) {
     setFinalizeTarget(appt)
@@ -218,9 +174,6 @@ export default function AppointmentsCalendar({
     }
     return `${MONTH_NAMES[range.start.getMonth()]} ${range.start.getFullYear()}`
   }, [range, mode])
-
-  const selectedEt = selected ? pickFirst(selected.event_types) : null
-  const selectedLead = selected ? pickFirst(selected.leads) : null
 
   return (
     <div className="space-y-3">
@@ -299,260 +252,26 @@ export default function AppointmentsCalendar({
         <MonthView monthStart={range.start} appointments={filteredAppointments} onSelect={setSelected} availableDays={availableDays} />
       )}
 
-      <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>
-        <DialogContent className="max-w-md">
-          {selected && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: selectedEt?.color || '#3b82f6' }}
-                  />
-                  {selectedEt?.name || 'Agendamento'}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground">Quando</div>
-                  <div className="font-medium">
-                    {new Date(selected.start_time).toLocaleString('pt-BR', {
-                      weekday: 'long',
-                      day: '2-digit',
-                      month: 'long',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {' · '}
-                    {selectedEt?.duration_minutes} min
-                  </div>
-                </div>
+      <AppointmentsCalendarDetailDialog
+        orgSlug={orgSlug}
+        selected={selected}
+        setSelected={setSelected}
+        clinicContexts={clinicContexts}
+        isClinic={isClinic}
+        onCancel={onCancel}
+        onComplete={onComplete}
+        onClinicStatusChange={onClinicStatusChange}
+        onScheduleReturn={onScheduleReturn}
+        openFinalizeDialog={openFinalizeDialog}
+      />
 
-                <div>
-                  <div className="text-xs text-muted-foreground">Cliente</div>
-                  <div className="font-medium">{selected.guest_name}</div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <Mail className="w-3 h-3" /> {selected.guest_email}
-                  </div>
-                  {selected.guest_phone && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <Phone className="w-3 h-3" /> {selected.guest_phone}
-                    </div>
-                  )}
-                </div>
-
-                {selected.location && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">Local</div>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-muted-foreground" />
-                      <span className="break-words">{selected.location}</span>
-                    </div>
-                  </div>
-                )}
-
-                {selected.notes && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">Notas do cliente</div>
-                    <div className="italic">&quot;{selected.notes}&quot;</div>
-                  </div>
-                )}
-
-                <div>
-                  <Badge
-                    className={
-                      selected.status === 'scheduled'
-                        ? 'bg-blue-100 text-blue-700 border-blue-200'
-                        : selected.status === 'completed'
-                          ? 'bg-green-100 text-green-700 border-green-200'
-                          : 'bg-red-100 text-red-700 border-red-200'
-                    }
-                  >
-                    {selected.status === 'scheduled'
-                      ? 'Agendado'
-                      : selected.status === 'completed'
-                        ? 'Concluído'
-                        : 'Cancelado'}
-                  </Badge>
-                  {selected.canceled_reason && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {selected.canceled_reason}
-                    </div>
-                  )}
-                </div>
-
-                {isClinic && (() => {
-                  const ctx = clinicContexts[selected.id]
-                  const clinicStatus = ctx?.clinic_status as ClinicStatus | undefined
-                  const nextStatus = clinicStatus ? NEXT_CLINIC_STATUS[clinicStatus] : undefined
-                  const isTerminal = clinicStatus === 'cancelado' || clinicStatus === 'no_show' || clinicStatus === 'reagendado'
-                  return (
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1.5">Status clínico</div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline">{CLINIC_STATUS_LABEL[clinicStatus || 'agendado']}</Badge>
-                        {nextStatus && onClinicStatusChange && (
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              if (nextStatus === 'realizado') {
-                                openFinalizeDialog(selected)
-                              } else {
-                                onClinicStatusChange(selected, nextStatus)
-                              }
-                            }}
-                          >
-                            {NEXT_ACTION_LABEL[nextStatus] || CLINIC_STATUS_LABEL[nextStatus]} <ArrowRight className="w-3 h-3 ml-1" />
-                          </Button>
-                        )}
-                        {!isTerminal && clinicStatus !== 'realizado' && onClinicStatusChange && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs text-muted-foreground"
-                            onClick={() => onClinicStatusChange(selected, 'no_show')}
-                          >
-                            Não compareceu
-                          </Button>
-                        )}
-                      </div>
-                      {(ctx?.checked_in_at || ctx?.finished_at) && (
-                        <div className="mt-1.5 text-[11px] text-muted-foreground space-x-3">
-                          {ctx.checked_in_at && <span>Chegou às {new Date(ctx.checked_in_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
-                          {ctx.finished_at && <span>Finalizou às {new Date(ctx.finished_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-
-                {selectedLead?.id && (
-                  <Link
-                    href={`/app/${orgSlug}/contatos/${selectedLead.id}`}
-                    className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-                  >
-                    Abrir lead ({selectedLead.name}) <ExternalLink className="w-3 h-3" />
-                  </Link>
-                )}
-              </div>
-
-              {(selected.status === 'scheduled' || (isClinic && onScheduleReturn)) && (
-                <DialogFooter className="flex sm:justify-between gap-2 flex-wrap">
-                  <div className="flex gap-2">
-                    {selected.status === 'scheduled' && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          onCancel(selected)
-                          setSelected(null)
-                        }}
-                        className="text-destructive"
-                      >
-                        <X className="w-4 h-4 mr-1" /> Cancelar
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {isClinic && onScheduleReturn && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          onScheduleReturn(selected)
-                          setSelected(null)
-                        }}
-                      >
-                        <CalendarPlus className="w-4 h-4 mr-1" /> Agendar retorno
-                      </Button>
-                    )}
-                    {/* Nicho Clínicas usa só a progressão de status clínico (acima) —
-                        ela já termina em "Realizado" e dispara o Atendimento +
-                        lançamento em Financeiro. O botão genérico "Marcar
-                        concluído" ficava como um segundo caminho que marcava
-                        completed sem passar por esse fluxo. */}
-                    {selected.status === 'scheduled' && !isClinic && (
-                      <Button
-                        onClick={() => {
-                          onComplete(selected)
-                          setSelected(null)
-                        }}
-                      >
-                        <Check className="w-4 h-4 mr-1" /> Marcar concluído
-                      </Button>
-                    )}
-                  </div>
-                </DialogFooter>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!finalizeTarget} onOpenChange={o => !o && setFinalizeTarget(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Finalizar atendimento</DialogTitle>
-          </DialogHeader>
-          {finalizeTarget && (
-            <form onSubmit={submitFinalize} className="space-y-4">
-              <p className="text-xs text-muted-foreground">
-                {finalizeTarget.guest_name} — deixe em branco pra usar o preço de tabela do procedimento.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Valor cobrado (R$)</Label>
-                  <Input
-                    type="number" min={0} step="0.01"
-                    value={finalizeForm.total}
-                    onChange={e => setFinalizeForm(f => ({ ...f, total: e.target.value }))}
-                    placeholder="Preço de tabela"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Desconto (R$)</Label>
-                  <Input
-                    type="number" min={0} step="0.01"
-                    value={finalizeForm.discount}
-                    onChange={e => setFinalizeForm(f => ({ ...f, discount: e.target.value }))}
-                    placeholder="0,00"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Forma de pagamento</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-input/25 px-3 text-sm"
-                    value={finalizeForm.paymentMethod}
-                    onChange={e => setFinalizeForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                  >
-                    <option value="">(Não informado)</option>
-                    {Object.entries(PAYMENT_METHOD_LABEL).map(([k, l]) => (
-                      <option key={k} value={k}>{l}</option>
-                    ))}
-                  </select>
-                </div>
-                {finalizeForm.paymentMethod === 'credito' && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Parcelas</Label>
-                    <Input
-                      type="number" min={1} max={24} step={1}
-                      value={finalizeForm.installments}
-                      onChange={e => setFinalizeForm(f => ({ ...f, installments: e.target.value }))}
-                      placeholder="1"
-                    />
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button type="submit">
-                  <Check className="w-4 h-4 mr-1" /> Finalizar
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AppointmentsCalendarFinalizeDialog
+        finalizeTarget={finalizeTarget}
+        setFinalizeTarget={setFinalizeTarget}
+        finalizeForm={finalizeForm}
+        setFinalizeForm={setFinalizeForm}
+        submitFinalize={submitFinalize}
+      />
     </div>
   )
 }

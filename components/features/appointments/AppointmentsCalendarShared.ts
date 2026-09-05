@@ -18,6 +18,16 @@ export type CalendarAppointment = {
   leads: { id: string; name: string } | { id: string; name: string }[] | null
 }
 
+/** Valor/forma de pagamento/parcelas capturados no momento de finalizar o
+ *  atendimento (avançar pra 'realizado') — sobrescreve o preço de tabela
+ *  do procedimento quando informado. */
+export type ClinicFinalizePayment = {
+  total_cents?: number | null
+  discount_cents?: number
+  payment_method?: string | null
+  installments?: number | null
+}
+
 export type ClinicOption = {
   id: string
   name: string
