@@ -76,10 +76,11 @@ export default defineConfig([
         { max: 150, skipBlankLines: true, skipComments: true },
       ],
       "max-nested-callbacks": ["warn", 3],
-      // baseline: 90 files over budget -- too many for the `ignore` escape
-      // hatch to mean anything, so it starts at "warn" like every other
-      // measured rule. See docs/eslint-baseline.md for the full file list.
-      "quality/max-lines": ["warn", { max: 350 }],
+      // Promoted to "error": the file-splitting burndown brought the
+      // codebase to 0 files over 350 lines (2026-09-05). Any new file that
+      // crosses the budget now fails scripts/verify.sh / CI instead of
+      // just warning -- keep it split as you go, don't let it re-accrue.
+      "quality/max-lines": ["error", { max: 350 }],
       "quality/no-direct-console": [
         "warn", // baseline: 184
         { logger: "the project logging helper" },
@@ -96,17 +97,17 @@ export default defineConfig([
     },
   },
   {
-    // The same file budget for test files, at "warn". Placed after the
-    // "error" block above for ordering reasons: for a file matched by both,
-    // flat config applies the later block's rules last, so a "warn" placed
-    // earlier would be silently overridden by the "error" that follows it.
+    // The same file budget for test files, now also "error" (baseline hit
+    // 0 for these too on 2026-09-05). Placed after the main "error" block
+    // for ordering reasons: for a file matched by both, flat config applies
+    // the later block's rules last.
     files: [
       "**/*.test.{ts,tsx}",
       "**/{__tests__,__mocks__,fixtures,mocks}/**/*.{ts,tsx}",
     ],
     plugins: { quality },
     rules: {
-      "quality/max-lines": ["warn", { max: 350, includeTests: true }],
+      "quality/max-lines": ["error", { max: 350, includeTests: true }],
     },
   },
   {
