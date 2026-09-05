@@ -1,23 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import {
   sendManualMessage,
-  sendManualImageMessage,
-  sendManualAudioMessage,
-  uploadSocialMedia,
   toggleAutomationPause,
   markConversationRead,
-  setSocialConversationArchived,
-  setSocialConversationMuted,
-  setSocialConversationPinned,
-  setSocialConversationFavorite,
   setSocialConversationBlocked,
   markSocialConversationAsUnread,
   clearSocialConversationMessages,
@@ -26,13 +16,13 @@ import {
   type SocialMessageRow,
 } from '@/actions/social-inbox'
 import SocialLeadDetailPanel from '@/components/features/social/SocialLeadDetailPanel'
-import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban } from 'lucide-react'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
-import { EMOJIS, WAVEFORM_BARS, Avatar, ConversationTicks, renderInstagramMedia } from './SocialInboxHelpers'
 import { ConfirmActionDialog, ImageComposerDialog, LightboxDialog } from './SocialInboxDialogs'
 import { SocialInboxSidebar } from './SocialInboxSidebar'
+import { SocialInboxHeader } from './SocialInboxHeader'
+import { SocialInboxMessagesPane } from './SocialInboxMessagesPane'
+import { SocialInboxComposer } from './SocialInboxComposer'
+import { useSocialInboxMediaState } from './useSocialInboxMediaState'
+import { useSocialInboxRealtime } from './useSocialInboxRealtime'
 
 type Props = {
   orgSlug: string
@@ -64,22 +54,10 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
   const [showEmoji, setShowEmoji] = useState(false)
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const composerFileInputRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
-  // Envio de imagem (fila/composer) / gravação de áudio — mesmo padrão do
-  // WhatsappChat.tsx.
-  const [uploadingMedia, setUploadingMedia] = useState(false)
-  const [recording, setRecording] = useState(false)
-  const [recordingPaused, setRecordingPaused] = useState(false)
-  const [recordingSeconds, setRecordingSeconds] = useState(0)
-  const opusRecorderRef = useRef<any>(null)
+  const media = useSocialInboxMediaState({ orgSlug, selectedConversation, router })
   const [draggingFile, setDraggingFile] = useState(false)
-  const [pendingImages, setPendingImages] = useState<{ file: File; caption: string; previewUrl: string }[]>([])
-  const [composerIndex, setComposerIndex] = useState(0)
-  const [sendingQueue, setSendingQueue] = useState(false)
-  const [editingImage, setEditingImage] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   // Menu de opções da conversa (arquivar, silenciar, fixar, bloquear etc.)
@@ -124,61 +102,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages, selectedConversation?.id])
 
-  useEffect(() => {
-    const conversationId = selectedConversation?.id
-    if (!conversationId) return
-    const channel = supabase
-      .channel(`social_inbox_${conversationId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'social_messages', filter: `conversation_id=eq.${conversationId}` },
-        payload => {
-          setMessages(prev => [...prev, payload.new as SocialMessageRow])
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-          markConversationRead(orgSlug, conversationId)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'social_messages', filter: `conversation_id=eq.${conversationId}` },
-        payload => {
-          setMessages(prev => prev.map(m => m.id === (payload.new as any).id ? (payload.new as SocialMessageRow) : m))
-        },
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [selectedConversation?.id, orgSlug, supabase])
-
-  // Lista de conversas ao vivo — mesmo padrão do WhatsappChat: qualquer
-  // mensagem toca social_conversations no servidor, então escutando essa
-  // tabela a lista reordena e mostra não-lido sem F5. Conversa nova entra
-  // direto no estado a partir do próprio payload (a linha já vem completa,
-  // sem join pendente) — nada de router.refresh() aqui, que é uma
-  // ida-e-volta ao servidor e quebra a expectativa de "tempo real".
-  useEffect(() => {
-    if (!orgId) return
-    const channel = supabase.channel(`social_conv_list_${orgId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'social_conversations', filter: `organization_id=eq.${orgId}` }, (payload) => {
-        setConversations(prev => {
-          const idx = prev.findIndex(c => c.id === (payload.new as any).id)
-          if (idx === -1) return prev
-          const next = [...prev]
-          next[idx] = { ...next[idx], ...(payload.new as any) }
-          next.sort((a, b) => new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime())
-          return next
-        })
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'social_conversations', filter: `organization_id=eq.${orgId}` }, (payload) => {
-        setConversations(prev => {
-          if (prev.some(c => c.id === (payload.new as any).id)) return prev
-          const next = [payload.new as SocialConversationRow, ...prev]
-          next.sort((a, b) => new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime())
-          return next
-        })
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [orgId, supabase])
+  useSocialInboxRealtime({ supabase, orgId, orgSlug, selectedConversation, messagesEndRef, setMessages, setConversations })
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -196,176 +120,6 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
     setSending(false)
     inputRef.current?.focus()
   }
-
-  async function uploadAndSend(file: File, caption?: string) {
-    if (!selectedConversation) return
-    setUploadingMedia(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const uploaded = await uploadSocialMedia(orgSlug, fd)
-      if (!uploaded.ok) { toast.error('Não foi possível enviar', { description: uploaded.error }); return }
-      const res = uploaded.kind === 'audio'
-        ? await sendManualAudioMessage(orgSlug, selectedConversation.id, uploaded.url)
-        : await sendManualImageMessage(orgSlug, selectedConversation.id, uploaded.url, caption)
-      if (!res.ok) toast.error('Não foi possível enviar', { description: res.error })
-      else router.refresh()
-    } finally {
-      setUploadingMedia(false)
-    }
-  }
-
-  // Áudio vai direto (sem revisão); só imagem abre a janela de
-  // pré-visualização, igual o WhatsApp normal.
-  function queueImages(files: File[]) {
-    const valid = files.filter(f => {
-      if (f.size > 20 * 1024 * 1024) { toast.error(`"${f.name}" é muito grande (máx 20MB).`); return false }
-      return true
-    })
-    if (valid.length === 0) return
-    setPendingImages(prev => {
-      const added = valid.map(file => ({ file, caption: '', previewUrl: URL.createObjectURL(file) }))
-      const next = [...prev, ...added]
-      setComposerIndex(next.length - added.length)
-      return next
-    })
-  }
-
-  function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || [])
-    e.target.value = ''
-    queueImages(files)
-  }
-
-  function handleComposerAddMore(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || [])
-    e.target.value = ''
-    queueImages(files)
-  }
-
-  function removePendingImage(index: number) {
-    setPendingImages(prev => {
-      URL.revokeObjectURL(prev[index].previewUrl)
-      const next = prev.filter((_, i) => i !== index)
-      setComposerIndex(i => Math.min(i, Math.max(0, next.length - 1)))
-      return next
-    })
-  }
-
-  function closeImageComposer() {
-    pendingImages.forEach(p => URL.revokeObjectURL(p.previewUrl))
-    setPendingImages([])
-    setComposerIndex(0)
-    setEditingImage(false)
-  }
-
-  function handleApplyEditedImage(edited: File) {
-    setPendingImages(prev => {
-      const old = prev[composerIndex]
-      if (old) URL.revokeObjectURL(old.previewUrl)
-      const next = [...prev]
-      next[composerIndex] = { ...old, file: edited, previewUrl: URL.createObjectURL(edited) }
-      return next
-    })
-    setEditingImage(false)
-  }
-
-  async function handleSendImageQueue() {
-    if (pendingImages.length === 0) return
-    setSendingQueue(true)
-    try {
-      for (const p of pendingImages) {
-        await uploadAndSend(p.file, p.caption)
-      }
-    } finally {
-      setSendingQueue(false)
-      closeImageComposer()
-    }
-  }
-
-  // Grava em Ogg Opus (opus-recorder, WASM) — mesmo formato usado no
-  // WhatsApp; ainda não confirmado empiricamente se a Send API do Instagram
-  // aceita, mas é o único formato viável gravável no navegador.
-  async function handleMicClick() {
-    if (recording) return
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error('Gravação de áudio não é suportada neste navegador.')
-      return
-    }
-    try {
-      const { default: Recorder } = await import('opus-recorder')
-      const rec = new Recorder({ encoderPath: '/encoderWorker.min.js', numberOfChannels: 1, streamPages: false })
-      rec.ondataavailable = (arrayBuffer: ArrayBuffer) => {
-        const blob = new Blob([arrayBuffer], { type: 'audio/ogg' })
-        if (blob.size > 0) {
-          const file = new File([blob], `audio-${Date.now()}.ogg`, { type: 'audio/ogg' })
-          uploadAndSend(file)
-        }
-      }
-      await rec.start()
-      opusRecorderRef.current = rec
-      setRecording(true)
-      setRecordingPaused(false)
-      setRecordingSeconds(0)
-    } catch (e: any) {
-      console.error('[gravação de áudio]', e)
-      const isPermission = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
-      toast.error(
-        isPermission
-          ? 'Não foi possível acessar o microfone. Verifique a permissão do navegador.'
-          : `Não foi possível iniciar a gravação: ${e?.message || e?.name || 'erro desconhecido'}`,
-      )
-    }
-  }
-
-  function handleRecordingPauseToggle() {
-    const rec = opusRecorderRef.current
-    if (!rec) return
-    if (recordingPaused) { rec.resume(); setRecordingPaused(false) }
-    else { rec.pause(); setRecordingPaused(true) }
-  }
-
-  function handleCancelRecording() {
-    const rec = opusRecorderRef.current
-    if (!rec) return
-    rec.ondataavailable = () => {}
-    rec.stop()
-    opusRecorderRef.current = null
-    setRecording(false)
-    setRecordingPaused(false)
-  }
-
-  function handleSendRecording() {
-    const rec = opusRecorderRef.current
-    if (!rec) return
-    rec.stop()
-    opusRecorderRef.current = null
-    setRecording(false)
-    setRecordingPaused(false)
-  }
-
-  useEffect(() => {
-    if (!recording || recordingPaused) return
-    const id = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
-    return () => clearInterval(id)
-  }, [recording, recordingPaused])
-
-  // Colar imagem (Ctrl+V) direto na conversa aberta.
-  useEffect(() => {
-    if (!selectedConversation) return
-    function onPaste(e: ClipboardEvent) {
-      const files = Array.from(e.clipboardData?.items || [])
-        .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
-        .map(item => item.getAsFile())
-        .filter((f): f is File => !!f)
-      if (files.length === 0) return
-      e.preventDefault()
-      queueImages(files)
-    }
-    window.addEventListener('paste', onPaste)
-    return () => window.removeEventListener('paste', onPaste)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedConversation?.id])
 
   async function handleToggleFlag(
     action: (orgSlug: string, id: string, value: boolean) => Promise<{ ok: boolean; error?: string }>,
@@ -449,7 +203,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
           if (!selectedConversation) return
           const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'))
           if (files.length === 0) { toast.error('Solte um arquivo de imagem (JPG, PNG ou WEBP).'); return }
-          queueImages(files)
+          media.queueImages(files)
         }}
       >
         {selectedConversation && draggingFile && (
@@ -459,250 +213,42 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
         )}
         {selectedConversation ? (
           <>
-            <div className="px-4 md:px-6 py-3 border-b border-[#efefef] dark:border-[#262626] bg-white dark:bg-black flex justify-between items-center gap-2 h-[72px] shrink-0 z-10">
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/app/${orgSlug}/social/inbox`)}
-                  className="md:hidden shrink-0 -ml-1 p-1 rounded-md hover:bg-muted text-muted-foreground"
-                  aria-label="Voltar para a lista"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <Avatar name={selectedConversation.sender_name} username={selectedConversation.sender_username} avatarUrl={selectedConversation.sender_avatar_url} />
-                <div className="min-w-0">
-                  <span className="font-semibold text-sm truncate block">
-                    {selectedConversation.sender_name || (selectedConversation.sender_username ? `@${selectedConversation.sender_username}` : 'Instagram')}
-                  </span>
-                  {selectedConversation.sender_username && selectedConversation.sender_name && (
-                    <span className="text-xs text-[#8e8e8e] truncate block">@{selectedConversation.sender_username}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-muted-foreground hidden sm:inline">
-                  {selectedConversation.automation_paused ? 'Atendimento manual' : 'Automação ativa'}
-                </span>
-                <Switch
-                  checked={!selectedConversation.automation_paused}
-                  onCheckedChange={v => handleTogglePause(!v)}
-                  disabled={pausing}
-                  title={selectedConversation.automation_paused ? 'Devolver para o bot' : 'Pausar automação'}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground"
-                      title="Mais opções"
-                      aria-label="Mais opções"
-                    >
-                      <MoreVertical className="w-[18px] h-[18px]" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => handleToggleFlag(setSocialConversationArchived, 'archived', !selectedConversation.archived, selectedConversation.archived ? 'Conversa desarquivada.' : 'Conversa arquivada.')}>
-                      <Archive className="w-4 h-4 mr-2" /> {selectedConversation.archived ? 'Desarquivar conversa' : 'Arquivar conversa'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleToggleFlag(setSocialConversationMuted, 'muted', !selectedConversation.muted, selectedConversation.muted ? 'Notificações reativadas.' : 'Notificações silenciadas.')}>
-                      {selectedConversation.muted ? <Bell className="w-4 h-4 mr-2" /> : <BellOff className="w-4 h-4 mr-2" />}
-                      {selectedConversation.muted ? 'Reativar notificações' : 'Silenciar notificações'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleToggleFlag(setSocialConversationPinned, 'pinned', !selectedConversation.pinned, selectedConversation.pinned ? 'Conversa desafixada.' : 'Conversa fixada.')}>
-                      {selectedConversation.pinned ? <PinOff className="w-4 h-4 mr-2" /> : <Pin className="w-4 h-4 mr-2" />}
-                      {selectedConversation.pinned ? 'Desafixar conversa' : 'Fixar conversa'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleMarkUnread}>
-                      <MailQuestion className="w-4 h-4 mr-2" /> Marcar como não lida
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleToggleFlag(setSocialConversationFavorite, 'favorite', !selectedConversation.favorite, selectedConversation.favorite ? 'Removida dos favoritos.' : 'Adicionada aos favoritos.')}>
-                      <Star className="w-4 h-4 mr-2" /> {selectedConversation.favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setConfirmAction('block')} className={selectedConversation.blocked ? '' : 'text-destructive focus:text-destructive'}>
-                      <Ban className="w-4 h-4 mr-2" /> {selectedConversation.blocked ? 'Desbloquear contato' : 'Bloquear'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setConfirmAction('clear')} className="text-destructive focus:text-destructive">
-                      <Eraser className="w-4 h-4 mr-2" /> Limpar conversa
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setConfirmAction('delete')} className="text-destructive focus:text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" /> Apagar conversa
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
+            <SocialInboxHeader
+              orgSlug={orgSlug}
+              router={router}
+              selectedConversation={selectedConversation}
+              pausing={pausing}
+              handleTogglePause={handleTogglePause}
+              handleToggleFlag={handleToggleFlag}
+              handleMarkUnread={handleMarkUnread}
+              setConfirmAction={setConfirmAction}
+            />
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {messages.map(m => {
-                const isInbound = m.direction === 'inbound'
-                const media = renderInstagramMedia(m, setLightboxUrl)
-                return (
-                  <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                    <div className={`max-w-[65%] rounded-[22px] px-4 py-2 ${isInbound ? 'bg-[#efefef] dark:bg-[#262626] text-black dark:text-white' : 'bg-[#3797f0] text-white'}`}>
-                      {media}
-                      {m.message_text && <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text}</div>}
-                      {m.buttons && m.buttons.length > 0 && (
-                        <div className="flex flex-col gap-1 mt-2">
-                          {m.buttons.map((b, k) => (
-                            b.type === 'link' ? (
-                              <a key={k} href={b.value} target="_blank" rel="noopener noreferrer"
-                                className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 hover:bg-white/10 truncate">
-                                {b.label}
-                              </a>
-                            ) : (
-                              <span key={k}
-                                className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 truncate">
-                                {b.label}
-                              </span>
-                            )
-                          ))}
-                        </div>
-                      )}
-                      <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isInbound ? 'text-[#8e8e8e]' : 'text-white/70'}`}>
-                        {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        {!isInbound && m.sent_by === 'agent' && m.sent_by_name && ` · ${m.sent_by_name}`}
-                        {!isInbound && m.sent_by !== 'agent' && ` · ${m.sent_by === 'funnel' ? 'funil' : 'automação'}`}
-                        {!isInbound && <ConversationTicks status={m.status} />}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-              <div ref={messagesEndRef} className="h-1" />
-            </div>
+            <SocialInboxMessagesPane
+              messages={messages}
+              setLightboxUrl={setLightboxUrl}
+              messagesEndRef={messagesEndRef}
+            />
 
-            <form onSubmit={handleSend} className="p-4 bg-white dark:bg-black border-t border-[#efefef] dark:border-[#262626] flex gap-2 items-center shrink-0 relative">
-              {recording ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleCancelRecording}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-destructive shrink-0"
-                    title="Descartar gravação"
-                    aria-label="Descartar gravação"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-
-                  <div className="flex-1 flex items-center gap-2 min-w-0 bg-[#efefef] dark:bg-[#262626] rounded-full px-4 min-h-[44px]">
-                    {!recordingPaused && <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />}
-                    <span className="tabular-nums text-sm font-medium text-red-500 shrink-0">
-                      {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')}
-                    </span>
-                    <div className="flex-1 flex items-center gap-[3px] overflow-hidden">
-                      {WAVEFORM_BARS.map((h, i) => (
-                        <span
-                          key={i}
-                          className={`w-[3px] rounded-full shrink-0 ${recordingPaused ? 'bg-muted-foreground/30' : 'bg-[#3797f0]/50'}`}
-                          style={{ height: `${h}px` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleRecordingPauseToggle}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0"
-                    title={recordingPaused ? 'Continuar' : 'Pausar'}
-                    aria-label={recordingPaused ? 'Continuar gravação' : 'Pausar gravação'}
-                  >
-                    {recordingPaused ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSendRecording}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-[#3797f0] text-white hover:opacity-90 shrink-0"
-                    title="Enviar áudio"
-                    aria-label="Enviar áudio"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                  </button>
-                </>
-              ) : (
-              <>
-              {/* Emojis */}
-              <div className="relative shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowEmoji(v => !v)}
-                  className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${showEmoji ? 'bg-muted text-[#3797f0]' : ''}`}
-                  title="Emojis"
-                  aria-label="Emojis"
-                >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                </button>
-                {showEmoji && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-                    <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-2xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
-                      {EMOJIS.map(e => (
-                        <button
-                          key={e}
-                          type="button"
-                          onClick={() => { setInput(prev => prev + e); setShowEmoji(false) }}
-                          className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-lg leading-none"
-                        >
-                          {e}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Imagem / anexo */}
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImageSelected} />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingMedia}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground shrink-0 disabled:opacity-50"
-                title="Inserir imagem"
-                aria-label="Inserir imagem"
-              >
-                {uploadingMedia ? (
-                  <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" opacity="0.25"/><path d="M21 12a9 9 0 0 0-9-9" /></svg>
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-                )}
-              </button>
-
-              <Input
-                ref={inputRef}
-                className="flex-1 bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-full px-5 min-h-[44px] focus-visible:ring-0"
-                placeholder="Mensagem..."
-                value={input}
-                onChange={e => setInput(e.target.value)}
-              />
-
-              {input.trim() ? (
-                <Button type="submit" disabled={sending} variant="ghost" className="rounded-full min-h-[44px] min-w-[44px] px-0 text-[#3797f0] hover:bg-[#efefef] dark:hover:bg-[#262626]" title="Enviar">
-                  {sending ? '...' : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
-                  )}
-                </Button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleMicClick}
-                  disabled={uploadingMedia}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-[#3797f0] text-white hover:opacity-90 shrink-0 disabled:opacity-50"
-                  title="Gravar áudio"
-                  aria-label="Gravar áudio"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                </button>
-              )}
-              </>
-              )}
-            </form>
+            <SocialInboxComposer
+              handleSend={handleSend}
+              recording={media.recording}
+              recordingPaused={media.recordingPaused}
+              recordingSeconds={media.recordingSeconds}
+              handleCancelRecording={media.handleCancelRecording}
+              handleRecordingPauseToggle={media.handleRecordingPauseToggle}
+              handleSendRecording={media.handleSendRecording}
+              showEmoji={showEmoji}
+              setShowEmoji={setShowEmoji}
+              input={input}
+              setInput={setInput}
+              inputRef={inputRef}
+              fileInputRef={media.fileInputRef}
+              handleImageSelected={media.handleImageSelected}
+              uploadingMedia={media.uploadingMedia}
+              sending={sending}
+              handleMicClick={media.handleMicClick}
+            />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-white dark:bg-black">
@@ -727,19 +273,19 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
 
       {/* Revisão de imagem(ns) antes de enviar — igual ao WhatsApp normal. */}
       <ImageComposerDialog
-        pendingImages={pendingImages}
-        setPendingImages={setPendingImages}
-        composerIndex={composerIndex}
-        setComposerIndex={setComposerIndex}
-        editingImage={editingImage}
-        setEditingImage={setEditingImage}
-        closeImageComposer={closeImageComposer}
-        handleApplyEditedImage={handleApplyEditedImage}
-        removePendingImage={removePendingImage}
-        composerFileInputRef={composerFileInputRef}
-        handleComposerAddMore={handleComposerAddMore}
-        sendingQueue={sendingQueue}
-        handleSendImageQueue={handleSendImageQueue}
+        pendingImages={media.pendingImages}
+        setPendingImages={media.setPendingImages}
+        composerIndex={media.composerIndex}
+        setComposerIndex={media.setComposerIndex}
+        editingImage={media.editingImage}
+        setEditingImage={media.setEditingImage}
+        closeImageComposer={media.closeImageComposer}
+        handleApplyEditedImage={media.handleApplyEditedImage}
+        removePendingImage={media.removePendingImage}
+        composerFileInputRef={media.composerFileInputRef}
+        handleComposerAddMore={media.handleComposerAddMore}
+        sendingQueue={media.sendingQueue}
+        handleSendImageQueue={media.handleSendImageQueue}
       />
 
       {/* Ampliar imagem recebida/enviada — popup em vez de nova aba. */}
