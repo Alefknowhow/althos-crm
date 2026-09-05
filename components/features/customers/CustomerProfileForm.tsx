@@ -7,104 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Search, Save, Loader2, Plus, X, Mail, Phone, Pencil, Upload, FileText, FileImage, AtSign, ExternalLink } from 'lucide-react'
+import { Save, Loader2 } from 'lucide-react'
 import {
   upsertCustomerProfile, updateContatoPrimaryContact, addContatoContactPoint,
-  removeContatoContactPoint, getDocumentSignedUrl, type ContatoContactPoint,
+  removeContatoContactPoint, type ContatoContactPoint,
 } from '@/actions/contatos'
 import CopyButton from '@/components/ui/copy-button'
 import CustomerDocuments, { type CustomerDoc } from '@/components/features/customers/CustomerDocuments'
-import { formatPhoneDisplay } from '@/lib/utils'
-
-const DOC_KIND_LABEL: Record<string, string> = {
-  cpf: 'CPF',
-  rg_front: 'RG (frente)',
-  rg_back: 'RG (verso)',
-  cnh: 'CNH',
-  passport: 'Passaporte',
-  visa: 'Visto',
-  address_proof: 'Comprovante de endereço',
-  contract: 'Contrato',
-  other: 'Outro',
-}
-
-/** Tira horizontal, compacta, só pra visualizar o que já foi anexado —
- *  clicar num arquivo abre ele num popup; a gestão (enviar/excluir/trocar
- *  tipo) mora no popup "Gestão de documentos". */
-function DocumentsStrip({ orgSlug, documents, onManage }: { orgSlug: string; documents: CustomerDoc[]; onManage: () => void }) {
-  const [openingId, setOpeningId] = useState<string | null>(null)
-  const [preview, setPreview] = useState<{ doc: CustomerDoc; url: string } | null>(null)
-
-  async function openDoc(doc: CustomerDoc) {
-    setOpeningId(doc.id)
-    const res = await getDocumentSignedUrl(orgSlug, doc.id)
-    setOpeningId(null)
-    if (!res.ok) { toast.error((res as any).error || 'Não foi possível abrir'); return }
-    setPreview({ doc, url: res.url })
-  }
-
-  const isImagePreview = preview ? (preview.doc.mime_type || '').startsWith('image/') : false
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {documents.length === 0 ? (
-        <span className="text-xs text-muted-foreground">Nenhum documento anexado.</span>
-      ) : (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {documents.map(doc => {
-            const isImage = (doc.mime_type || '').startsWith('image/')
-            return (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => openDoc(doc)}
-                disabled={openingId === doc.id}
-                title={`Abrir ${DOC_KIND_LABEL[doc.kind] || doc.kind}`}
-                className="shrink-0 w-14 h-14 rounded-md border bg-muted flex flex-col items-center justify-center gap-0.5 hover:border-primary/50 hover:bg-muted/70 transition-colors disabled:opacity-50"
-              >
-                {openingId === doc.id ? (
-                  <Loader2 className="w-5 h-5 text-muted-foreground/60 animate-spin" />
-                ) : isImage ? (
-                  <FileImage className="w-5 h-5 text-muted-foreground/60" />
-                ) : (
-                  <FileText className="w-5 h-5 text-muted-foreground/60" />
-                )}
-                <span className="text-[8px] font-medium text-muted-foreground/80 truncate max-w-[52px]">
-                  {DOC_KIND_LABEL[doc.kind] || doc.kind}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-      <Button type="button" size="sm" variant="outline" onClick={onManage}>
-        <Upload className="w-3.5 h-3.5 mr-1.5" /> Gestão de documentos
-      </Button>
-
-      <Dialog open={!!preview} onOpenChange={op => { if (!op) setPreview(null) }}>
-        <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{preview ? DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind : ''}</DialogTitle>
-          </DialogHeader>
-          {preview && (
-            <div className="flex-1 min-h-0 overflow-hidden rounded-md border bg-muted/20">
-              {isImagePreview ? (
-                <img src={preview.url} alt={DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind} className="h-full w-full object-contain" />
-              ) : (
-                <iframe src={preview.url} title={DOC_KIND_LABEL[preview.doc.kind] || preview.doc.kind} className="h-full w-full" />
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+import { CustomerProfileFormReadView } from './CustomerProfileFormReadView'
+import { CustomerProfileFormAddressSection } from './CustomerProfileFormAddressSection'
+import { CustomerProfileFormContactSection, CONTACT_LABEL_PRESETS } from './CustomerProfileFormContactSection'
+import { CustomerProfileFormDocumentsSection } from './CustomerProfileFormDocumentsSection'
 
 // Campos de digitação desta tela ganham um fundo mais escuro no dark mode
 // pra destacar visualmente a área preenchível dentro dos blocos com borda.
@@ -133,28 +47,12 @@ type Profile = {
   created_at?: string | null
 } | null
 
-function maskCpf(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11)
-  let out = d
-  if (d.length > 9) out = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
-  else if (d.length > 6) out = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
-  else if (d.length > 3) out = `${d.slice(0, 3)}.${d.slice(3)}`
-  return out
-}
-
-function maskCep(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 8)
-  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
-}
-
 /** Rótulo com altura fixa — evita que um CopyButton condicional (só aparece
  * com valor preenchido) empurre o input de uma coluna pra baixo em relação
  * às colunas vizinhas sem o botão. */
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <div className="h-5 flex items-center gap-1.5">{children}</div>
 }
-
-const CONTACT_LABEL_PRESETS = ['Trabalho', 'Pessoal', 'Outro']
 
 export default function CustomerProfileForm({
   orgSlug,
@@ -295,72 +193,16 @@ export default function CustomerProfileForm({
   )
 
   if (!editing) {
-    const rows: { label: string; value: string }[] = [
-      { label: 'Nome completo', value: form.name || '—' },
-      { label: 'Nascimento', value: form.date_of_birth || '—' },
-      { label: 'E-mail', value: form.email || '—' },
-      { label: 'Telefone', value: form.phone ? formatPhoneDisplay(form.phone) : '—' },
-      { label: 'CPF', value: form.cpf || '—' },
-      { label: 'RG', value: form.rg || '—' },
-      { label: 'Nº do passaporte', value: form.passport_number || '—' },
-      { label: 'Validade passaporte', value: form.passport_expiry || '—' },
-      { label: 'Visto americano', value: form.has_us_visa ? 'Possui' : 'Não possui' },
-      {
-        label: 'Endereço',
-        value: [form.street, form.number, form.complement, form.district, form.city, form.state, form.postal_code]
-          .filter(Boolean).join(', ') || '—',
-      },
-      { label: 'Observações internas', value: form.address_notes || '—' },
-    ]
     return (
       <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Cadastro do Cliente</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-            <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-            {rows.map(r => (
-              <div key={r.label} className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{r.label}</div>
-                <div className="text-sm truncate">{r.value}</div>
-              </div>
-            ))}
-          </div>
-          {form.instagram_username && (
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Instagram</div>
-              <a
-                href={`https://instagram.com/${form.instagram_username}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-              >
-                <AtSign className="w-3.5 h-3.5" /> {form.instagram_username} <ExternalLink className="w-3 h-3 opacity-60" />
-              </a>
-            </div>
-          )}
-          {points.length > 0 && (
-            <div className="space-y-1.5 pt-2 border-t">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Outros contatos</div>
-              {points.map(p => (
-                <div key={p.id} className="flex items-center gap-2 text-sm">
-                  {p.kind === 'email' ? <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                  {p.label && <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{p.label}</span>}
-                  <span className="truncate">{p.kind === 'phone' ? formatPhoneDisplay(p.value) : p.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="pt-2 border-t space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Documentos</div>
-            <DocumentsStrip orgSlug={orgSlug} documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
-          </div>
-        </CardContent>
-      </Card>
+      <CustomerProfileFormReadView
+        orgSlug={orgSlug}
+        form={form}
+        points={points}
+        initialDocuments={initialDocuments}
+        onEdit={() => setEditing(true)}
+        onManageDocs={() => setDocsDialogOpen(true)}
+      />
       {docsDialog}
       </>
     )
@@ -404,291 +246,35 @@ export default function CustomerProfileForm({
           </div>
         </div>
 
-        {/* Contato */}
-        <div className="rounded-lg border border-border/80 p-3.5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Contato
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="space-y-1.5 w-64">
-              <FieldLabel>
-                <Label className="text-xs">E-mail</Label>
-                <CopyButton value={form.email} label="E-mail" />
-              </FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                type="email"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="cliente@email.com"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <FieldLabel>
-                <Label className="text-xs">Telefone</Label>
-                <CopyButton value={form.phone} label="Telefone" />
-              </FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
-                placeholder="(00) 00000-0000"
-              />
-            </div>
-            <div className="space-y-1.5 w-48">
-              <FieldLabel>
-                <Label className="text-xs">Instagram</Label>
-                {form.instagram_username && (
-                  <a
-                    href={`https://instagram.com/${form.instagram_username.replace(/^@/, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Abrir perfil no Instagram"
-                    className="text-muted-foreground/60 hover:text-primary"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </FieldLabel>
-              <div className="relative">
-                <AtSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-                <Input
-                  className={`pl-8 ${DARK_FIELD}`}
-                  value={form.instagram_username}
-                  onChange={e => setForm({ ...form, instagram_username: e.target.value })}
-                  placeholder="usuario"
-                />
-              </div>
-            </div>
-          </div>
+        <CustomerProfileFormContactSection
+          form={{ email: form.email, phone: form.phone, instagram_username: form.instagram_username }}
+          setForm={updater => setForm(f => ({ ...f, ...updater(f) }))}
+          points={points}
+          onRemovePoint={handleRemovePoint}
+          newKind={newKind}
+          setNewKind={setNewKind}
+          newLabel={newLabel}
+          setNewLabel={setNewLabel}
+          newValue={newValue}
+          setNewValue={setNewValue}
+          addingPoint={addingPoint}
+          onAddPoint={handleAddPoint}
+        />
 
-          {points.length > 0 && (
-            <div className="space-y-1.5 mt-3">
-              {points.map(p => (
-                <div key={p.id} className="flex items-center gap-2 text-sm rounded-md border px-2.5 py-1.5">
-                  {p.kind === 'email' ? <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                  {p.label && <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{p.label}</span>}
-                  <span className="flex-1 min-w-0 truncate">{p.value}</span>
-                  <CopyButton value={p.value} label={p.label || (p.kind === 'email' ? 'E-mail' : 'Telefone')} />
-                  <button type="button" onClick={() => handleRemovePoint(p.id)} className="shrink-0 text-muted-foreground/60 hover:text-destructive" aria-label="Remover">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        <CustomerProfileFormDocumentsSection
+          orgSlug={orgSlug}
+          form={{ cpf: form.cpf, rg: form.rg, passport_number: form.passport_number, passport_expiry: form.passport_expiry, has_us_visa: form.has_us_visa }}
+          setForm={updater => setForm(f => ({ ...f, ...updater(f) }))}
+          initialDocuments={initialDocuments}
+          onManageDocs={() => setDocsDialogOpen(true)}
+        />
 
-          <div className="flex flex-wrap items-end gap-2 mt-3">
-            <div className="space-y-1.5 w-28">
-              <FieldLabel><Label className="text-xs">Tipo</Label></FieldLabel>
-              <Select value={newKind} onValueChange={v => setNewKind(v as 'email' | 'phone')}>
-                <SelectTrigger className={`h-9 ${DARK_FIELD}`}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="phone">Telefone</SelectItem>
-                  <SelectItem value="email">E-mail</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 w-32">
-              <FieldLabel><Label className="text-xs">Rótulo</Label></FieldLabel>
-              <Select value={newLabel} onValueChange={setNewLabel}>
-                <SelectTrigger className={`h-9 ${DARK_FIELD}`}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CONTACT_LABEL_PRESETS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5 w-56">
-              <FieldLabel><Label className="text-xs">Outro e-mail/telefone</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={newValue}
-                onChange={e => setNewValue(e.target.value)}
-                placeholder={newKind === 'email' ? 'outro@email.com' : '(00) 00000-0000'}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddPoint() } }}
-              />
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={handleAddPoint} disabled={addingPoint}>
-              {addingPoint ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Documentos: CPF/RG/Passaporte/Visto + arquivos anexados */}
-        <div className="rounded-lg border border-border/80 p-3.5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Documentos
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="space-y-1.5 w-40">
-              <FieldLabel>
-                <Label className="text-xs">CPF</Label>
-                <CopyButton value={form.cpf} label="CPF" />
-              </FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.cpf}
-                onChange={e => setForm({ ...form, cpf: maskCpf(e.target.value) })}
-                placeholder="000.000.000-00"
-                inputMode="numeric"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <FieldLabel><Label className="text-xs">RG</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.rg}
-                onChange={e => setForm({ ...form, rg: e.target.value })}
-                placeholder="00.000.000-0"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <FieldLabel><Label className="text-xs">Nº do passaporte</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.passport_number}
-                onChange={e => setForm({ ...form, passport_number: e.target.value.toUpperCase() })}
-                placeholder="AB123456"
-              />
-            </div>
-            <div className="space-y-1.5 w-40">
-              <FieldLabel><Label className="text-xs">Validade passaporte</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                type="date"
-                value={form.passport_expiry}
-                onChange={e => setForm({ ...form, passport_expiry: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel><Label className="text-xs">Visto americano</Label></FieldLabel>
-              <label className={`flex items-center gap-2 h-10 px-3 rounded-md border border-input cursor-pointer ${DARK_FIELD}`}>
-                <input
-                  type="checkbox"
-                  className="accent-primary w-4 h-4"
-                  checked={form.has_us_visa}
-                  onChange={e => setForm({ ...form, has_us_visa: e.target.checked })}
-                />
-                <span className="text-sm">{form.has_us_visa ? 'Possui' : 'Não possui'}</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-border/60">
-            <DocumentsStrip orgSlug={orgSlug} documents={initialDocuments} onManage={() => setDocsDialogOpen(true)} />
-          </div>
-        </div>
-
-        {/* Endereço */}
-        <div className="rounded-lg border border-border/80 p-3.5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Endereço
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="space-y-1.5 w-36">
-              <FieldLabel><Label className="text-xs">CEP</Label></FieldLabel>
-              <div className="flex gap-1">
-                <Input
-                  className={DARK_FIELD}
-                  value={form.postal_code}
-                  onChange={e => setForm({ ...form, postal_code: maskCep(e.target.value) })}
-                  placeholder="00000-000"
-                  inputMode="numeric"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={lookupCep}
-                  disabled={cepLoading}
-                  title="Buscar endereço pelo CEP"
-                  className="shrink-0 px-2"
-                >
-                  {cepLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-1.5 flex-1 min-w-[220px]">
-              <FieldLabel><Label className="text-xs">Rua / Logradouro</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.street}
-                onChange={e => setForm({ ...form, street: e.target.value })}
-                placeholder="Rua das Acácias"
-              />
-            </div>
-            <div className="space-y-1.5 w-20">
-              <FieldLabel><Label className="text-xs">Número</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.number}
-                onChange={e => setForm({ ...form, number: e.target.value })}
-                placeholder="123"
-              />
-            </div>
-            <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <FieldLabel><Label className="text-xs">Complemento</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.complement}
-                onChange={e => setForm({ ...form, complement: e.target.value })}
-                placeholder="Apto 502, Bloco B"
-              />
-            </div>
-            <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <FieldLabel><Label className="text-xs">Bairro</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.district}
-                onChange={e => setForm({ ...form, district: e.target.value })}
-                placeholder="Centro"
-              />
-            </div>
-            <div className="space-y-1.5 flex-1 min-w-[160px]">
-              <FieldLabel><Label className="text-xs">Cidade</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.city}
-                onChange={e => setForm({ ...form, city: e.target.value })}
-                placeholder="Itajaí"
-              />
-            </div>
-            <div className="space-y-1.5 w-16">
-              <FieldLabel><Label className="text-xs">UF</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.state}
-                onChange={e => setForm({ ...form, state: e.target.value.toUpperCase().slice(0, 2) })}
-                placeholder="SC"
-                maxLength={2}
-              />
-            </div>
-            <div className="space-y-1.5 w-20">
-              <FieldLabel><Label className="text-xs">País</Label></FieldLabel>
-              <Input
-                className={DARK_FIELD}
-                value={form.country}
-                onChange={e => setForm({ ...form, country: e.target.value.toUpperCase().slice(0, 2) })}
-                placeholder="BR"
-                maxLength={2}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Observações */}
-        <div className="rounded-lg border border-border/80 p-3.5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5">
-            Observações internas
-          </div>
-          <Textarea
-            className={DARK_FIELD}
-            rows={3}
-            value={form.address_notes}
-            onChange={e => setForm({ ...form, address_notes: e.target.value })}
-            placeholder="Preferências, restrições, contexto pra futuro contato..."
-          />
-        </div>
+        <CustomerProfileFormAddressSection
+          form={form}
+          setForm={updater => setForm(f => ({ ...f, ...updater(f) }))}
+          cepLoading={cepLoading}
+          onLookupCep={lookupCep}
+        />
 
         {/* Data de registro — automática, somente leitura. Não é um campo do
             form (não faz parte de `form`/`save`), só exibe initial.created_at. */}
