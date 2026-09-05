@@ -190,14 +190,18 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
  *  NPS (Net Promoter Score)
  * ========================================================= */
 
-/** Disparo manual da pesquisa NPS (0-10) por WhatsApp — o mesmo botão que a
- *  automação "Enviar pesquisa NPS" aciona automaticamente (ver
- *  lib/nps/send-survey.ts, reaproveitado nos dois casos). */
-export async function triggerNpsSurvey(orgSlug: string, leadId: string) {
+/** Disparo manual da pesquisa NPS (0-10) por WhatsApp, sempre por template
+ *  aprovado (a Meta rejeita texto livre fora da janela de 24h — o mesmo
+ *  motivo pelo qual o passo de automação "Pesquisa NPS" exige template). */
+export async function triggerNpsSurvey(
+  orgSlug: string, leadId: string,
+  template: { name: string; variables?: string[]; language?: string },
+) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkContatoPermission(org.id, user.id)
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  if (!template?.name) return { ok: false as const, error: 'Selecione um template de WhatsApp aprovado.' }
   const supabase = createClient()
 
   const { data: lead } = await supabase
@@ -209,17 +213,21 @@ export async function triggerNpsSurvey(orgSlug: string, leadId: string) {
   if (!lead) return { ok: false as const, error: 'Contato não encontrado.' }
 
   const { sendNpsSurveyCore } = await import('@/lib/nps/send-survey')
-  const res = await sendNpsSurveyCore(supabase, org, lead)
+  const res = await sendNpsSurveyCore(supabase, org, lead, {
+    name: template.name,
+    variables: template.variables || [],
+    language: template.language,
+  })
   if (!res.ok) return { ok: false as const, error: res.error }
 
   revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const }
 }
 
-/** Registro manual da nota (0-10) — cobre o período até a leitura automática
- *  da resposta do WhatsApp existir (pipeline de ingestão em refatoração no
- *  momento). Também funciona pra registrar uma nota vinda de outro canal
- *  (ligação, e-mail, presencial). */
+/** Registro manual da nota (0-10) — a leitura automática da resposta do
+ *  WhatsApp não existe (é uma automação separada, ainda não construída);
+ *  a nota é sempre digitada por quem lê a resposta. Também serve pra
+ *  registrar uma nota vinda de outro canal (ligação, e-mail, presencial). */
 export async function setNpsScore(orgSlug: string, leadId: string, score: number | null) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
@@ -234,8 +242,7 @@ export async function setNpsScore(orgSlug: string, leadId: string, score: number
     .from('contatos')
     .update({
       nps_score: score,
-      nps_status: score != null ? 'respondido' : 'none',
-      nps_responded_at: score != null ? new Date().toISOString() : null,
+      nps_updated_at: new Date().toISOString(),
     })
     .eq('id', leadId)
     .eq('organization_id', org.id)

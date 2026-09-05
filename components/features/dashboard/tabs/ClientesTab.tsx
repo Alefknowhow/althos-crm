@@ -51,7 +51,7 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-5 xl:grid-cols-9 gap-3">
         <KpiCard
           label="NPS"
           value={nps.responses > 0 ? String(nps.score) : '—'}
@@ -82,9 +82,6 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
           value={`${repurchase.pct}%`}
           help={`${repurchase.repeatCustomers} de ${repurchase.totalCustomers} cliente(s) compraram mais de uma vez.`}
         />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           label="LTV médio"
           value={fmtCurrency(ltv.avgLtvCents)}

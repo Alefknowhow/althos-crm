@@ -13,6 +13,7 @@ import { isTravelNiche, isRealEstateNiche } from '@/lib/niche'
 import { listProperties } from '@/actions/properties'
 import { listInterestsByContato } from '@/actions/property-interests'
 import { listVisitsByContato } from '@/actions/property-visits'
+import { getWaTemplates } from '@/actions/whatsapp-templates'
 
 const PAGE_SIZE = 50
 
@@ -108,7 +109,7 @@ export default async function ContatosPage({
 
   const realEstate = isRealEstateNiche(org.niche)
 
-  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members, properties] =
+  const [{ data: contatos, count }, { data: pipelines }, savedFilters, { data: distinctMeta }, members, properties, waTemplates] =
     await Promise.all([
       q.order('updated_at', { ascending: false }).range(from, to),
       supabase
@@ -121,7 +122,11 @@ export default async function ContatosPage({
       supabase.from('contatos').select('tags, source').eq('organization_id', org.id).limit(1000),
       listOrgMembers(params.orgSlug),
       realEstate ? listProperties(params.orgSlug) : Promise.resolve([]),
+      getWaTemplates(params.orgSlug).catch(() => []),
     ])
+  // Só templates aprovados podem ir a alguém fora da janela de 24h — o
+  // disparo de NPS (NpsSection.tsx) não deve nem oferecer os outros.
+  const approvedWaTemplates = waTemplates.filter(t => t.status === 'approved')
 
   // Distinct tags + sources for the filter UI.
   const tagSet = new Set<string>()
@@ -321,6 +326,7 @@ export default async function ContatosPage({
         properties={properties}
         members={members}
         statusTabs={statusTabs}
+        whatsappTemplates={approvedWaTemplates}
       />
       {listRows.length === 0 && !isFiltered && (
         <EmptyState

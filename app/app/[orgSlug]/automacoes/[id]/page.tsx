@@ -24,7 +24,7 @@ export default async function AutomationEditorPage({
     getPipelinesAndStages(params.orgSlug),
     getAutomationRuns(params.orgSlug, automation.id),
     getStepStats(params.orgSlug, automation.id).catch(() => ({})),
-    getWaTemplates(params.orgSlug).catch(() => []),
+    getWaTemplates(params.orgSlug).then(ts => ts.filter(t => t.status === 'approved')).catch(() => []),
     getCurrentOrganization(params.orgSlug),
   ])
 

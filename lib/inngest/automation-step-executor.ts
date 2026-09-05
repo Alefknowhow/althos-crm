@@ -13,6 +13,16 @@ import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
 import { sendPushToOrg } from '@/actions/push'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
+/** Substitui {{lead.*}} num valor de variável de template — usado tanto no
+ *  passo "Enviar WhatsApp" quanto em "Pesquisa NPS", pra permitir algo como
+ *  "{{lead.name}}" numa variável do template em vez de valor fixo. */
+function interpolateLeadVars(value: string, lead: any): string {
+  return value
+    .replace(/\{\{lead\.name\}\}/g,  lead?.name  || '')
+    .replace(/\{\{lead\.email\}\}/g, lead?.email || '')
+    .replace(/\{\{lead\.phone\}\}/g, lead?.phone || '')
+}
+
 export type StepExecutionResult = {
   status: 'success' | 'error'
   message: string | null
@@ -89,7 +99,7 @@ export async function executeAutomationStep(
             orgConfig,
             lead.phone,
             stepDef.config.templateName,
-            stepDef.config.variables || [],
+            (stepDef.config.variables || []).map((v: string) => interpolateLeadVars(v, lead)),
             stepDef.config.language || 'pt_BR',
             stepDef.config.headerType,
             headerMediaUrl,
@@ -165,10 +175,20 @@ export async function executeAutomationStep(
       case 'send_nps_survey': {
         // Mesmo núcleo do disparo manual (actions/contatos-customers.ts
         // ::triggerNpsSurvey) — aqui rodando com o client admin, sem
-        // sessão de usuário (contexto de cron/automação).
+        // sessão de usuário (contexto de cron/automação). Exige template
+        // aprovado (a Meta não aceita texto livre fora da janela de 24h).
+        if (!stepDef.config.templateName) {
+          status = 'error'
+          message = 'Selecione um template de WhatsApp aprovado no passo "Pesquisa NPS".'
+          break
+        }
         const { sendNpsSurveyCore } = await import('@/lib/nps/send-survey')
-        const res = await sendNpsSurveyCore(supabase, orgConfig, lead)
-        sent = { phone: lead.phone }
+        const res = await sendNpsSurveyCore(supabase, orgConfig, lead, {
+          name: stepDef.config.templateName,
+          variables: (stepDef.config.variables || []).map((v: string) => interpolateLeadVars(v, lead)),
+          language: stepDef.config.language || 'pt_BR',
+        })
+        sent = { phone: lead.phone, template: stepDef.config.templateName }
         if (!res.ok) { status = 'error'; message = res.error }
         break;
       }

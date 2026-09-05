@@ -16,7 +16,7 @@ import { DealCard } from './ContatosViewDetailHelpers'
 
 export function OverviewTab({
   orgSlug, selected, c, isTravel, isRealEstate, properties, members,
-  dadosEditRequested, deals, credits, onShowAllDeals,
+  dadosEditRequested, deals, credits, onShowAllDeals, whatsappTemplates,
 }: {
   orgSlug:            string
   selected:           NonNullable<Selected>
@@ -29,6 +29,7 @@ export function OverviewTab({
   deals:              ContatoDeal[]
   credits:            TravelCreditRow[]
   onShowAllDeals:     () => void
+  whatsappTemplates?: import('@/actions/whatsapp-templates').WaTemplate[]
 }) {
   return (
     <>
@@ -49,9 +50,8 @@ export function OverviewTab({
           leadId={c.id}
           phone={c.phone}
           npsScore={c.nps_score ?? null}
-          npsStatus={c.nps_status ?? null}
-          npsSentAt={c.nps_sent_at ?? null}
-          npsRespondedAt={c.nps_responded_at ?? null}
+          npsUpdatedAt={c.nps_updated_at ?? null}
+          whatsappTemplates={whatsappTemplates}
         />
       )}
 

@@ -76,6 +76,11 @@ export interface Props {
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode
   orgName: string
+  /** Templates de WhatsApp aprovados — alimenta o seletor de template do
+   *  disparo manual de NPS (ver NpsSection.tsx). Filtrado a status='approved'
+   *  já na página server-side; a Meta rejeita texto livre fora da janela de
+   *  24h, então só faz sentido oferecer templates já aprovados aqui. */
+  whatsappTemplates?: import('@/actions/whatsapp-templates').WaTemplate[]
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

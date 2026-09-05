@@ -49,6 +49,7 @@ export default function ContatosView({
   members,
   statusTabs,
   orgName,
+  whatsappTemplates,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -274,6 +275,7 @@ export default function ContatosView({
               isRealEstate={isRealEstate}
               properties={properties}
               orgName={orgName}
+              whatsappTemplates={whatsappTemplates}
             />
           ) : (
             <div className="h-full grid place-items-center p-10 text-center">

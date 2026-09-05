@@ -22,7 +22,7 @@ import { ActivitiesTab } from './ContatosViewDetailActivitiesTab'
 import { NegociacoesTab, ComprasTab } from './ContatosViewDetailHistoryTabs'
 
 export function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName,
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName, whatsappTemplates,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -32,6 +32,7 @@ export function DetailPanel({
   isRealEstate?: boolean
   properties?: { id: string; title: string; code: string | null }[]
   orgName: string
+  whatsappTemplates?: import('@/actions/whatsapp-templates').WaTemplate[]
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -188,6 +189,7 @@ export function DetailPanel({
             deals={deals}
             credits={credits}
             onShowAllDeals={() => setActiveTab('negociacoes')}
+            whatsappTemplates={whatsappTemplates}
           />
         </TabsContent>
 
