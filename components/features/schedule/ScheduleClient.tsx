@@ -3,35 +3,24 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import EmptyState from '@/components/ui/empty-state'
-import { cn, formatCurrency } from '@/lib/utils'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
-import {
-  CalendarClock, ChevronLeft, ChevronRight, MapPin, Plane, Hotel, MessageCircle,
-  ExternalLink, CheckSquare, Loader2, CalendarDays, ListChecks, Ticket, Building2, ArrowUpRight,
-  UserRound,
-} from 'lucide-react'
+import { CalendarClock, CalendarDays, ListChecks } from 'lucide-react'
+import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
+import { TripDetail } from './ScheduleTripDetail'
+import { ScheduleListView } from './ScheduleListView'
 
 const DAY = 86400000
-// Largura mínima de cada coluna de dia, em px — abaixo disso a área rola
-// horizontalmente em vez de espremer os dias até ficarem ilegíveis.
-const DAY_PX = 22
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
   const d = new Date(s + 'T12:00:00')
   return isNaN(d.getTime()) ? null : d
-}
-function fmtDate(s?: string | null) {
-  const d = parseDate(s)
-  return d ? d.toLocaleDateString('pt-BR') : '—'
 }
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
@@ -43,7 +32,6 @@ function firstOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 
 const TODAY_COLUMN = 4
 const NAV_STEP_DAYS = 30
 
-type TripState = 'upcoming' | 'ongoing' | 'past'
 function tripState(t: ScheduledTrip, today: Date): TripState {
   const dep = parseDate(t.departure_date)
   const ret = parseDate(t.return_date) || dep
@@ -52,31 +40,6 @@ function tripState(t: ScheduledTrip, today: Date): TripState {
   if (end < today) return 'past'
   if (dep <= today && today <= end) return 'ongoing'
   return 'upcoming'
-}
-
-const STATE_META: Record<TripState, { label: string; bar: string; dot: string; badge: string; row: string }> = {
-  upcoming: { label: 'Próxima', bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', row: 'bg-indigo-500/[0.06]' },
-  ongoing: { label: 'Em andamento', bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', row: 'bg-emerald-500/[0.06]' },
-  past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', row: 'bg-slate-400/[0.06]' },
-}
-
-/** Rótulo da etiqueta de estado — para "Próxima" mostra a contagem
- *  regressiva ("Faltam N dias") em vez do texto fixo, mais útil pra
- *  priorizar o que precisa de atenção primeiro. */
-function stateLabel(state: TripState, dep: Date | null, today: Date): string {
-  if (state !== 'upcoming' || !dep) return STATE_META[state].label
-  const days = Math.round((dep.getTime() - today.getTime()) / DAY)
-  if (days <= 0) return 'Embarca hoje'
-  if (days === 1) return 'Falta 1 dia'
-  return `Faltam ${days} dias`
-}
-
-function whatsappLink(phone?: string | null): string | null {
-  if (!phone) return null
-  let digits = phone.replace(/\D/g, '')
-  if (!digits) return null
-  if (digits.length === 10 || digits.length === 11) digits = '55' + digits
-  return `https://wa.me/${digits}`
 }
 
 export default function ScheduleClient({
@@ -280,209 +243,32 @@ export default function ScheduleClient({
 
         {/* ── Gantt ───────────────────────────────────────────── */}
         <TabsContent value="gantt" className="mt-4">
-          <div ref={ganttRef} className="rounded-none border bg-card overflow-hidden">
-            {/* nav header */}
-            <div className="flex items-center justify-between gap-2 p-3 border-b">
-              <Button variant="outline" size="sm" onClick={() => setDayOffset(o => o - NAV_STEP_DAYS)}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-sm font-medium">
-                {months[0]?.label} — {months[months.length - 1]?.label}
-              </span>
-              <div className="flex items-center gap-2">
-                {dayOffset !== 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setDayOffset(0)}>Hoje</Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => setDayOffset(o => o + NAV_STEP_DAYS)}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* colunas ganham uma largura mínima em px — se isso passar da
-                largura do painel, a área inteira (cabeçalhos + linhas) rola
-                horizontalmente junto, em vez de espremer os dias. */}
-            <div className="overflow-x-auto">
-              <div style={{ width: `max(100%, ${totalDays * DAY_PX}px)` }}>
-                {/* month columns header */}
-                <div className="relative h-7 border-b bg-muted/30">
-                  {months.map((m, i) => (
-                    <div key={i}
-                      className="absolute top-0 h-full flex items-center justify-center text-[11px] font-medium text-muted-foreground border-l first:border-l-0"
-                      style={{ left: `${m.leftPct}%`, width: `${m.widthPct}%` }}>
-                      {m.label}
-                    </div>
-                  ))}
-                </div>
-
-                {/* dia do mês — linha bem discreta, fundo diferenciado pra
-                    separar visualmente do resto da grade */}
-                <div className="relative h-4 border-b bg-muted/60">
-                  {dayNumbers.map((d, i) => (
-                    <div key={i}
-                      className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70"
-                      style={{ left: `${d.leftPct}%`, width: `${dayWidthPct}%` }}>
-                      {d.day}
-                    </div>
-                  ))}
-                </div>
-
-                {/* rows — altura mínima padrão, preenche até o fim da tela;
-                    além disso rola verticalmente em vez de esticar a página.
-                    Linhas de grade horizontais a cada 48px (altura de uma linha
-                    de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
-                <div
-                  className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto"
-                  style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
-                >
-                  {/* linhas verticais marcando cada dia */}
-                  {dayLines.map((pct, i) => (
-                    <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
-                  ))}
-                  {/* coluna do dia de hoje, pintada */}
-                  {todayPct !== null && (
-                    <div className="absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30 z-10 pointer-events-none"
-                      style={{ left: `${todayPct}%`, width: `${dayWidthPct}%` }}>
-                      <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-medium text-primary bg-card px-1 whitespace-nowrap">Hoje</span>
-                    </div>
-                  )}
-                  {ganttTrips.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      Nenhuma viagem nesse período. Use as setas para navegar.
-                    </div>
-                  ) : ganttTrips.map(({ trip, left, width, state }) => {
-                const meta = STATE_META[state]
-                return (
-                  <div key={trip.id} className={cn('relative h-12 border-b last:border-b-0', meta.row)}>
-                    <button
-                      type="button"
-                      onClick={() => openTrip(trip)}
-                      title={`${trip.client_name || trip.lead_name || 'Viagem'} — ${trip.destination || ''}`}
-                      className={cn(
-                        'absolute top-1/2 -translate-y-1/2 h-10 rounded-md px-2 flex items-center text-[11px] font-medium text-white   hover:brightness-95 transition-all overflow-hidden',
-                        meta.bar,
-                      )}
-                      style={{ left: `${left}%`, width: `${width}%`, minWidth: 60 }}
-                    >
-                      <span className="truncate">
-                        {trip.client_name || trip.lead_name || 'Viagem'}
-                        {trip.destination ? ` · ${trip.destination}` : ''}
-                      </span>
-                    </button>
-                  </div>
-                )
-              })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* legenda */}
-          <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
-            {(['upcoming', 'ongoing', 'past'] as TripState[]).map(s => (
-              <span key={s} className="flex items-center gap-1.5">
-                <span className={cn('w-3 h-3 rounded-sm', STATE_META[s].bar)} /> {STATE_META[s].label}
-              </span>
-            ))}
-          </div>
+          <ScheduleGanttView
+            ganttRef={ganttRef}
+            months={months}
+            dayNumbers={dayNumbers}
+            dayLines={dayLines}
+            todayPct={todayPct}
+            dayWidthPct={dayWidthPct}
+            totalDays={totalDays}
+            ganttTrips={ganttTrips}
+            dayOffset={dayOffset}
+            setDayOffset={setDayOffset}
+            navStepDays={NAV_STEP_DAYS}
+            onOpenTrip={openTrip}
+          />
         </TabsContent>
 
         {/* ── Lista ───────────────────────────────────────────── */}
         <TabsContent value="list" className="mt-4">
-          <div className="rounded-none border bg-card divide-y">
-            {filtered.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma viagem com esse filtro.</div>
-            ) : filtered.map(t => {
-              const state = tripState(t, today)
-              const meta = STATE_META[state]
-              const dep = parseDate(t.departure_date)
-              const wa = whatsappLink(t.lead_phone)
-              const locator = t.package_locator || t.air_locator
-              const seller = members.find(m => m.user_id === t.created_by)?.name
-
-              return (
-                <div key={t.id} className="p-3 hover:bg-muted/40 transition-colors space-y-1.5">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openTrip(t)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    >
-                      <div className="flex flex-col items-center justify-center w-11 h-11 shrink-0 rounded-lg bg-primary/10 text-primary">
-                        <span className="text-[10px] leading-none uppercase font-medium">
-                          {dep ? MONTHS_PT[dep.getMonth()] : ''}
-                        </span>
-                        <span className="text-sm leading-tight font-semibold">
-                          {dep ? dep.getDate() : '—'}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
-                          <span className="font-medium truncate">{t.client_name || t.lead_name || 'Viagem'}</span>
-                          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
-                          {t.destination && (
-                            <span className="inline-flex items-center gap-1 truncate">
-                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{t.destination}</span>
-                            </span>
-                          )}
-                          <span className="inline-flex items-center gap-1 shrink-0">
-                            <CalendarDays className="w-3 h-3" /> {fmtDate(t.departure_date)} – {fmtDate(t.return_date)}
-                          </span>
-                          {seller && (
-                            <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
-                              <UserRound className="w-3 h-3 shrink-0" /> <span className="truncate">{seller}</span>
-                            </span>
-                          )}
-                          {t.hotel_name && (
-                            <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
-                              <Hotel className="w-3 h-3 shrink-0" /> {t.hotel_name}
-                            </span>
-                          )}
-                          {(t.airline || t.operator) && (
-                            <span className="inline-flex items-center gap-1 truncate max-w-[180px]">
-                              <Plane className="w-3 h-3 shrink-0" /> {t.airline || t.operator}
-                            </span>
-                          )}
-                          {locator && (
-                            <span className="inline-flex items-center gap-1 shrink-0">
-                              <Ticket className="w-3 h-3" /> {locator}
-                            </span>
-                          )}
-                          <span className="font-medium text-foreground/80 shrink-0">
-                            {formatCurrency(t.total_cents || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {wa && (
-                        <a
-                          href={wa}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
-                          aria-label="Abrir WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                      )}
-                      <Link
-                        href={`/app/${orgSlug}/reservas?sale=${t.id}`}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                        aria-label="Abrir reserva"
-                        title="Abrir reserva"
-                      >
-                        <ArrowUpRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <ScheduleListView
+            orgSlug={orgSlug}
+            filtered={filtered}
+            today={today}
+            tripState={tripState}
+            members={members}
+            onOpenTrip={openTrip}
+          />
         </TabsContent>
       </Tabs>
 
@@ -503,127 +289,5 @@ export default function ScheduleClient({
         </DialogContent>
       </Dialog>
     </>
-  )
-}
-
-function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, state, today, sellerName,
-}: {
-  orgSlug: string
-  trip: ScheduledTrip
-  tasks: TripTask[]
-  loadingTasks: boolean
-  state: TripState
-  today: Date
-  sellerName?: string
-}) {
-  const meta = STATE_META[state]
-  const wa = whatsappLink(trip.lead_phone)
-  const dep = parseDate(trip.departure_date)
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 pr-6">
-          <span className="truncate">{trip.client_name || trip.lead_name || 'Viagem'}</span>
-          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
-        </DialogTitle>
-      </DialogHeader>
-
-      <div className="space-y-4">
-        {/* período */}
-        <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm flex-wrap">
-            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="font-medium">{fmtDate(trip.departure_date)}</span>
-            <span className="text-muted-foreground">→</span>
-            <span className="font-medium">{fmtDate(trip.return_date)}</span>
-          </div>
-          <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(trip.total_cents || 0)}</span>
-        </div>
-
-        {/* infos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {sellerName && <Info icon={UserRound} label="Agente de viagem" value={sellerName} />}
-          {trip.destination && <Info icon={MapPin} label="Destino" value={trip.destination} />}
-          {trip.hotel_name && <Info icon={Hotel} label="Hospedagem" value={trip.hotel_name} />}
-          {trip.airline && <Info icon={Plane} label="Cia aérea" value={trip.airline} />}
-          {trip.operator && <Info icon={Building2} label="Operadora" value={trip.operator} />}
-          {trip.package_locator && <Info icon={Ticket} label="Localizador pacote" value={trip.package_locator} />}
-          {trip.air_locator && <Info icon={Ticket} label="Localizador aéreo" value={trip.air_locator} />}
-        </div>
-
-        {/* ações */}
-        <div className="flex flex-wrap gap-2">
-          {wa ? (
-            <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700">
-              <a href={wa} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp do cliente
-              </a>
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled title="Lead sem telefone cadastrado">
-              <MessageCircle className="w-4 h-4 mr-1.5" /> Sem telefone
-            </Button>
-          )}
-          {trip.airline_checkin_url && (
-            <Button size="sm" variant="outline" asChild>
-              <a href={trip.airline_checkin_url} target="_blank" rel="noopener noreferrer">
-                <Plane className="w-4 h-4 mr-1.5" /> Check-in
-              </a>
-            </Button>
-          )}
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/app/${orgSlug}/reservas?sale=${trip.id}`}>
-              <ExternalLink className="w-4 h-4 mr-1.5" /> Abrir reserva
-            </Link>
-          </Button>
-        </div>
-
-        {/* tarefas */}
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
-            <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
-            {loadingTasks && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-          </div>
-          {!trip.contato_id ? (
-            <p className="text-sm text-muted-foreground">Viagem sem lead vinculado — sem tarefas.</p>
-          ) : !loadingTasks && tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa para este cliente.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {tasks.map(t => {
-                const done = t.status === 'done' || t.status === 'completed'
-                return (
-                  <li key={t.id} className="flex items-start gap-2 rounded-lg border p-2.5 text-sm">
-                    <CheckSquare className={cn('w-4 h-4 mt-0.5 shrink-0', done ? 'text-emerald-600' : 'text-muted-foreground')} />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn('truncate', done && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
-                      {t.due_date && (
-                        <p className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</p>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          <Button size="sm" variant="ghost" className="mt-2" asChild>
-            <Link href={`/app/${orgSlug}/tarefas`}>Ver todas as tarefas</Link>
-          </Button>
-        </div>
-      </div>
-    </>
-  )
-}
-
-function Info({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-      <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="font-medium break-words">{value}</p>
-      </div>
-    </div>
   )
 }
