@@ -15,8 +15,6 @@ import {
 } from '@/lib/financial/recurrence'
 import { withEffectiveStatus, type FinancialEntryRow } from './financial-shared'
 
-export { suggestCategoryForEntry } from './financial-entries-ai'
-
 /** Quantas ocorrências futuras gerar quando a recorrência não informa
  *  frequência explícita (retrocompatibilidade com o antigo checkbox binário
  *  "todo mês, 12x"). */

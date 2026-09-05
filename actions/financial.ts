@@ -17,6 +17,9 @@
 export type { FinancialEntryRow } from './financial-shared'
 export * from './financial-sales-sync'
 export * from './financial-entries'
+// financial-entries.ts can't re-export this itself (it has its own 'use
+// server' for its local actions -- see the note above the other barrels).
+export { suggestCategoryForEntry } from './financial-entries-ai'
 export * from './financial-attachments'
 export * from './financial-summary'
 export * from './financial-reports'

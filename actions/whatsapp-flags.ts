@@ -24,14 +24,14 @@ async function toggleConversationFlag(orgSlug: string, conversationId: string, f
   return { ok: true as const }
 }
 
-export const setConversationArchived = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'archived', value)
-export const setConversationMuted    = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'muted', value)
-export const setConversationPinned   = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'pinned', value)
-export const setConversationFavorite = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'favorite', value)
+export const setConversationArchived = async (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'archived', value)
+export const setConversationMuted    = async (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'muted', value)
+export const setConversationPinned   = async (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'pinned', value)
+export const setConversationFavorite = async (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'favorite', value)
 /** Liga/desliga o Agente IA só nesta conversa (a IA continua ativa nas
  * demais). Usado pelo toggle no cabeçalho do chat e, automaticamente,
  * sempre que o atendente manda uma mensagem manual. */
-export const setConversationAutomationPaused = (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'automation_paused', value)
+export const setConversationAutomationPaused = async (orgSlug: string, id: string, value: boolean) => toggleConversationFlag(orgSlug, id, 'automation_paused', value)
 
 export async function markConversationAsUnread(orgSlug: string, conversationId: string) {
   await requireAuth()

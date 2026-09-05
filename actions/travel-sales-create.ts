@@ -11,50 +11,9 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
+import { mapProposalToSaleFields } from '@/lib/travel-sales/map-proposal-fields'
 import type { TravelSaleRow } from './travel-sales-shared'
 import { listSaleOperatorOptions } from './travel-sales-crud'
-
-
-// ── helpers ─────────────────────────────────────────────────────────────────
-
-/**
- * Map a proposal row into the pre-fillable fields of a travel sale.
- * Shared by the auto-creation-on-won path and the manual "Nova venda" flow.
- */
-export function mapProposalToSaleFields(proposal: any): Record<string, any> {
-  const destination = (proposal.destinations || [])
-    .map((d: any) => d?.name).filter(Boolean).join(', ') || null
-  const hotelName = (proposal.hotels || [])
-    .map((h: any) => h?.name).filter(Boolean).join(', ') || null
-  const airlines = Array.from(new Set((proposal.flights || [])
-    .map((f: any) => f?.airline).filter(Boolean)))
-  const airline = airlines.length ? airlines.join(', ') : null
-  const services = Object.entries(proposal.services || {})
-    .filter(([, v]: any) => v?.enabled)
-    .map(([k]) => k)
-  const methods: string[] = proposal.payment?.methods || []
-
-  let negotiationDays: number | null = null
-  if (proposal.created_at) {
-    const ms = Date.now() - new Date(proposal.created_at).getTime()
-    negotiationDays = Math.max(0, Math.round(ms / 86400000))
-  }
-
-  return {
-    client_name: proposal.client_name,
-    destination,
-    departure_date: proposal.start_date,
-    return_date: proposal.end_date,
-    negotiation_days: negotiationDays,
-    total_cents: proposal.total_cents || 0,
-    hotel_name: hotelName,
-    airline,
-    services,
-    payment_method: methods.join(', ') || null,
-    travelers: Array.isArray(proposal.travelers) ? proposal.travelers : [],
-    travelers_note: proposal.travelers_note ?? null,
-  }
-}
 
 /**
  * Manually create a travel sale, optionally pre-filled from a proposal.

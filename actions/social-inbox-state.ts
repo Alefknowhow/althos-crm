@@ -88,10 +88,10 @@ async function toggleSocialFlag(orgSlug: string, conversationId: string, field: 
   return { ok: true as const }
 }
 
-export const setSocialConversationArchived = (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'archived', value)
-export const setSocialConversationMuted    = (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'muted', value)
-export const setSocialConversationPinned   = (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'pinned', value)
-export const setSocialConversationFavorite = (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'favorite', value)
+export const setSocialConversationArchived = async (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'archived', value)
+export const setSocialConversationMuted    = async (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'muted', value)
+export const setSocialConversationPinned   = async (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'pinned', value)
+export const setSocialConversationFavorite = async (orgSlug: string, id: string, value: boolean) => toggleSocialFlag(orgSlug, id, 'favorite', value)
 
 export async function markSocialConversationAsUnread(orgSlug: string, conversationId: string) {
   const g = await guard(orgSlug)

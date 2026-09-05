@@ -9,7 +9,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { COMPANY_FIELDS, type OrgCompanyData } from './organization-general'
+import { COMPANY_FIELDS, type OrgCompanyData } from '@/lib/organization/company-fields'
 
 // ─── Account-level organization management ───────────────────────────────────
 

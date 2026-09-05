@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
-import { checkContatoPermission } from '@/actions/contatos'
+import { checkContatoPermission } from '@/actions/contatos-shared'
 import { revalidatePath } from 'next/cache'
 
 export type ProposalRow = {

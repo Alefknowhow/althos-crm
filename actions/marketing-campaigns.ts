@@ -10,7 +10,7 @@ import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supa
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { periodStart, type MarketingPeriod } from './marketing-overview'
+import { periodStart, type MarketingPeriod } from '@/lib/marketing/period'
 
 const campaignInput = z.object({
   ad_account_id: z.string().uuid(),

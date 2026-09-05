@@ -5,7 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { isTravelNiche } from '@/lib/niche'
 import { revalidatePath } from 'next/cache'
-import { mapProposalToSaleFields } from './travel-sales-create'
+import { mapProposalToSaleFields } from '@/lib/travel-sales/map-proposal-fields'
 
 
 /**

@@ -5,7 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { RELATIONSHIP_KINDS, type RelationshipRow } from '@/lib/relationships'
-import { checkContatoPermission } from '@/actions/contatos'
+import { checkContatoPermission } from '@/actions/contatos-shared'
 
 // =====================================================================
 // Parentesco / vínculos entre contatos (contato_relationships).

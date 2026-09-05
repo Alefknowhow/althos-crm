@@ -8,6 +8,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
+import { COMPANY_FIELDS, type OrgCompanyData } from '@/lib/organization/company-fields'
+
+export type { OrgCompanyData }
 
 
 // ─── General (name + niche) ──────────────────────────────────────────────────
@@ -116,13 +119,6 @@ export async function updateOrgBrandAccent(orgSlug: string, color: string | null
 }
 
 // ─── Company data (shown in proposal header/footer) ──────────────────────────
-
-export const COMPANY_FIELDS = [
-  'cnpj', 'cadastur', 'contact_phone', 'contact_email', 'instagram', 'website',
-  'address_street', 'address_city', 'address_state', 'address_zip',
-] as const
-
-export type OrgCompanyData = Record<(typeof COMPANY_FIELDS)[number], string>
 
 export async function getOrgCompany(orgSlug: string): Promise<OrgCompanyData> {
   await requireAuth()

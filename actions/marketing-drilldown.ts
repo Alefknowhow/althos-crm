@@ -9,9 +9,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
-import { periodStart, type MarketingPeriod, type DrillDownError, type DrillDownRow } from './marketing-overview'
+import { periodStart, type MarketingPeriod } from '@/lib/marketing/period'
+import { type DrillDownError, type DrillDownRow } from './marketing-overview'
 
-export function summarizeInsights(rows: Array<{ impressions: number; clicks: number; spend_cents: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_purchases: number; meta_purchase_value_cents: number }>) {
+function summarizeInsights(rows: Array<{ impressions: number; clicks: number; spend_cents: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_purchases: number; meta_purchase_value_cents: number }>) {
   const agg = rows.reduce(
     (acc, r) => {
       acc.spend += r.spend_cents
@@ -41,7 +42,7 @@ export function summarizeInsights(rows: Array<{ impressions: number; clicks: num
   }
 }
 
-export function classifyMetaError(e: any): DrillDownError {
+function classifyMetaError(e: any): DrillDownError {
   const msg = String(e?.message || '').toLowerCase()
   if (msg.includes('190') || msg.includes('expired') || msg.includes('token')) return 'token_expired'
   if (msg.includes('rate limit') || msg.includes('too many calls') || msg.includes('613')) return 'rate_limited'
