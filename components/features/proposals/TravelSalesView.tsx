@@ -279,7 +279,7 @@ export default function TravelSalesView({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto h-full',
+          'rounded-none border bg-card overflow-hidden h-full',
           !selected && 'hidden md:flex',
         )}>
           {selected

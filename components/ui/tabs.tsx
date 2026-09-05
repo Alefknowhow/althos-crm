@@ -47,7 +47,7 @@ const TabsTrigger = React.forwardRef<
       {...props}
     >
       <TabsIndicator listId={listId} />
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 inline-flex items-center">{children}</span>
     </TabsPrimitive.Trigger>
   )
 })

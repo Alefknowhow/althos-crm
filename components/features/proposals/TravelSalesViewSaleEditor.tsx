@@ -15,7 +15,7 @@ import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import { TabsContent } from '@/components/ui/tabs'
 import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
-import { Upload, Package, ListTodo } from 'lucide-react'
+import { Upload, Package, ListTodo, FileText } from 'lucide-react'
 import { type LeadOption, type Voucher } from './TravelSalesViewShared'
 import TravelSalesViewSaleEditorHeader from './TravelSalesViewSaleEditorHeader'
 import TravelSalesViewSaleEditorDadosTab from './TravelSalesViewSaleEditorDadosTab'
@@ -170,48 +170,56 @@ export default function SaleEditor({
     : null
 
   return (
-    <div className="flex flex-col w-full">
-      <TravelSalesViewSaleEditorHeader
-        orgSlug={orgSlug} s={s} sellerName={sellerName} saving={saving} period={period}
-        onBack={onBack} onDelete={onDelete} handleSaveClick={handleSaveClick}
-        setCreditOpen={setCreditOpen} contractOpen={contractOpen} setContractOpen={setContractOpen}
-        setCancelOpen={setCancelOpen}
-      />
-
-      {/* Dados da Reserva / Produtos / Tarefas / Vouchers / Contratos — abas no topo, cada uma gerida de forma isolada. */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="dados">Dados da Reserva</TabsTrigger>
-          <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
-          <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
-          <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-        </TabsList>
-
-        <TravelSalesViewSaleEditorDadosTab
-          orgSlug={orgSlug} s={s} set={set} services={services} included={included}
-          toggleIncluded={toggleIncluded} travelers={travelers} leads={leads}
-          operatorOptions={operatorOptions} onExtracted={handleVoucherExtracted}
+    <div className="flex flex-col w-full h-full min-h-0">
+      {/* Cabeçalho + abas ficam fixos (fora da área de rolagem) — só o
+          conteúdo de cada aba rola, com fundo sólido pra letras não se
+          sobreporem ao passar por baixo. */}
+      <div className="shrink-0 bg-card">
+        <TravelSalesViewSaleEditorHeader
+          orgSlug={orgSlug} s={s} sellerName={sellerName} saving={saving} period={period}
+          onBack={onBack} onDelete={onDelete} handleSaveClick={handleSaveClick}
+          setCreditOpen={setCreditOpen} contractOpen={contractOpen} setContractOpen={setContractOpen}
+          setCancelOpen={setCancelOpen}
         />
 
-        {/* ── Produtos ────────────────────────────────────────── */}
-        <TabsContent value="produtos" className="pt-4">
-          <SaleProductsTab orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} />
-        </TabsContent>
+        {/* Dados da Reserva / Produtos / Tarefas / Vouchers / Contratos — abas no topo, cada uma gerida de forma isolada. */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="dados"><FileText className="w-3.5 h-3.5 mr-1.5" /> Dados da Reserva</TabsTrigger>
+            <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
+            <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
+            <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
-        {/* ── Tarefas ─────────────────────────────────────────── */}
-        <TabsContent value="tarefas" className="pt-4">
-          <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
-        </TabsContent>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
+          <TravelSalesViewSaleEditorDadosTab
+            orgSlug={orgSlug} s={s} set={set} services={services} included={included}
+            toggleIncluded={toggleIncluded} travelers={travelers} leads={leads}
+            operatorOptions={operatorOptions} onExtracted={handleVoucherExtracted}
+          />
 
-        <TravelSalesViewSaleEditorVouchersTab
-          orgSlug={orgSlug} s={s} setS={setS} set={set} vouchers={vouchers}
-          extractingUrl={extractingUrl} handleExtractFromUrl={handleExtractFromUrl}
-          extractSource={extractSource} extractOpen={extractOpen} setExtractOpen={setExtractOpen}
-          extractLabel={extractLabel} mergeExtractedFields={mergeExtractedFields}
-          setProductsRefreshKey={setProductsRefreshKey}
-        />
+          {/* ── Produtos ────────────────────────────────────────── */}
+          <TabsContent value="produtos" className="pt-4">
+            <SaleProductsTab orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} />
+          </TabsContent>
 
-      </Tabs>
+          {/* ── Tarefas ─────────────────────────────────────────── */}
+          <TabsContent value="tarefas" className="pt-4">
+            <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
+          </TabsContent>
+
+          <TravelSalesViewSaleEditorVouchersTab
+            orgSlug={orgSlug} s={s} setS={setS} set={set} vouchers={vouchers}
+            extractingUrl={extractingUrl} handleExtractFromUrl={handleExtractFromUrl}
+            extractSource={extractSource} extractOpen={extractOpen} setExtractOpen={setExtractOpen}
+            extractLabel={extractLabel} mergeExtractedFields={mergeExtractedFields}
+            setProductsRefreshKey={setProductsRefreshKey}
+          />
+        </Tabs>
+      </div>
 
       <CancelTravelSaleDialog
         open={cancelOpen}
