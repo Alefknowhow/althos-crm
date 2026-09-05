@@ -15,15 +15,13 @@ import { toast } from 'sonner'
 import { cityFromAirportCode } from '@/lib/airports'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import {
   ArrowLeft, Plus, Trash2, Loader2, Copy, ExternalLink,
   CheckCircle2, Link2, Image as ImageIcon,
-  MapPin, Route, AlertTriangle, Wallet,
-  Sparkles, FileText, Map as MapIcon, MessageCircle, LocateFixed,
-  UserRound, Building2, Save,
+  MapPin, Route, AlertTriangle,
+  Sparkles, FileText, Map as MapIcon, LocateFixed,
 } from 'lucide-react'
 
 import {
@@ -31,7 +29,6 @@ import {
   listFooterProfiles, createFooterProfile, deleteFooterProfile, type FooterProfileRow,
 } from '@/actions/quotations'
 import { geocodePlace } from '@/actions/travel-proposals'
-import { getUserProfile } from '@/actions/profile'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
 import DocumentExtractDialog from '@/components/features/ai/DocumentExtractDialog'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
@@ -41,8 +38,8 @@ import CruiseOcrDialog from './CruiseOcrDialog'
 import type { ExtractedCruise } from '@/lib/ai/cruise-ocr-extract'
 import {
   PAYMENT_METHODS, INCLUDED_SUGGESTIONS, NOT_INCLUDED_SUGGESTIONS,
-  nk, withKeys, centsToStr, strToCents, computeFlightDuration, hasHtml,
-  ToggleRichField, CoverUpload, SignaturePhotoUpload,
+  nk, withKeys, computeFlightDuration, hasHtml,
+  ToggleRichField, CoverUpload,
   F, EditBlock, type GroupId, GroupNavMobile, GroupNavSidebar, GroupSection,
   StringList,
 } from './QuotationEditorFields'
@@ -52,6 +49,8 @@ import type {
   Lodging, Flight, Pin, Cruise, Transfer, Insurance, Tour, Rental,
 } from './QuotationEditorTypes'
 import QuotationEditorProductsGroup from './QuotationEditorProductsGroup'
+import QuotationEditorInvestimentoGroup from './QuotationEditorInvestimentoGroup'
+import QuotationEditorFechamentoGroup from './QuotationEditorFechamentoGroup'
 
 export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer = false }: {
   orgSlug: string; initial: QuotationFull; leads?: { id: string; name: string; phone?: string | null }[]; isOffer?: boolean
@@ -789,232 +788,19 @@ export default function QuotationEditor({ orgSlug, initial, leads = [], isOffer 
       </EditBlock>
       </GroupSection>
 
-      <GroupSection id="investimento" active={activeGroup}>
-      {/* INVESTIMENTO */}
-      <EditBlock id="blk-investimento" icon={Wallet} title="Investimento">
-        {productBreakdown.length > 0 && (
-          <div className="rounded-lg border bg-muted/20 p-2.5 space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Produtos da viagem</p>
-            {productBreakdown.map((p, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground truncate">{p.icon} {p.label}</span>
-                <span className="tabular-nums shrink-0">{p.price_cents != null ? centsToStr(p.price_cents).replace(/^/, 'R$ ') : '—'}</span>
-              </div>
-            ))}
-            <p className="text-[10px] text-muted-foreground pt-1 border-t">O total abaixo continua sendo o valor comercial final — pode diferir da soma dos produtos (descontos, arredondamento, etc.).</p>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          <F label="Total (R$)">
-            <Input inputMode="decimal" placeholder="17.800,00" defaultValue={centsToStr(q.total_cents)}
-              onChange={e => setQ(s => ({ ...s, total_cents: strToCents(e.target.value) || 0 }))} />
-          </F>
-          <F label={`Valor por pessoa${paxTotal ? ` · ${paxTotal} pessoas` : ''}`} hint="calculado automaticamente">
-            <Input inputMode="decimal" value={centsToStr(q.price_per_person_cents)} disabled />
-          </F>
-        </div>
-        {lodgings.some(l => l.is_alternative_option) && (
-          <F label="Opções de hospedagem alternativa" hint="preço de cada opção — aparece na Vitrine como cards separados">
-            <div className="space-y-2">
-              {lodgings.filter(l => l.is_alternative_option).map((l, i) => (
-                <div key={l._key} className="rounded-lg border p-2.5 grid grid-cols-[1fr_1fr_1fr] gap-2 items-end">
-                  <span className="text-xs font-medium text-muted-foreground truncate col-span-3 sm:col-span-1">
-                    Opção {i + 1} · {l.name || 'sem nome'}
-                  </span>
-                  <F label="Por pessoa">
-                    <Input placeholder="0,00" value={centsToStr(l.option_price_per_person_cents)}
-                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_price_per_person_cents: strToCents(e.target.value) } : x))} />
-                  </F>
-                  <F label="Total">
-                    <Input placeholder="0,00" value={centsToStr(l.option_total_cents)}
-                      onChange={e => setLodgings(ls => ls.map(x => x._key === l._key ? { ...x, option_total_cents: strToCents(e.target.value) } : x))} />
-                  </F>
-                </div>
-              ))}
-            </div>
-          </F>
-        )}
-        <F label="Formas de pagamento">
-          <div className="space-y-1.5">
-            {PAYMENT_METHODS.map(m => {
-              const active = q.payment_conditions.some(p => p.label === m.label)
-              const cond = q.payment_conditions.find(p => p.label === m.label)
-              const Icon = m.icon
-              return (
-                <div key={m.label} className="flex items-center gap-2">
-                  <button type="button"
-                    onClick={() => setQ(s => ({
-                      ...s,
-                      payment_conditions: active
-                        ? s.payment_conditions.filter(p => p.label !== m.label)
-                        : [...s.payment_conditions, { label: m.label, value: '' }],
-                    }))}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm transition-colors w-40 shrink-0 ${
-                      active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                    }`}>
-                    <Icon className="w-4 h-4" /> {m.label}
-                  </button>
-                  {active && (
-                    <Input className="flex-1" placeholder={m.placeholder} value={cond?.value || ''}
-                      onChange={e => setQ(s => ({
-                        ...s,
-                        payment_conditions: s.payment_conditions.map(p => p.label === m.label ? { ...p, value: e.target.value } : p),
-                      }))} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </F>
-        <F label="Disclaimer"><Textarea rows={2} placeholder="Preços sujeitos a alteração sem aviso prévio…" value={q.price_disclaimer}
-          onChange={e => setQ(s => ({ ...s, price_disclaimer: e.target.value }))} /></F>
-        <div className="grid grid-cols-2 gap-3 border-t pt-3">
-          <F label="Operadora (interno)"><Input value={q.operadora} onChange={e => setQ(s => ({ ...s, operadora: e.target.value }))} placeholder="Não aparece na proposta" /></F>
-          <F label="Comissão total (interno)"><Input inputMode="decimal" defaultValue={centsToStr(q.commission_total_cents)}
-            onChange={e => setQ(s => ({ ...s, commission_total_cents: strToCents(e.target.value) }))} /></F>
-        </div>
-      </EditBlock>
-      </GroupSection>
+      <QuotationEditorInvestimentoGroup
+        activeGroup={activeGroup} q={q} setQ={setQ} paxTotal={paxTotal}
+        lodgings={lodgings} setLodgings={setLodgings}
+        productBreakdown={productBreakdown}
+      />
 
-      <GroupSection id="fechamento" active={activeGroup}>
-      {/* FECHAMENTO */}
-      <EditBlock id="blk-fechamento" icon={MessageCircle} title="Fechamento">
-        <ItineraryEditor orgSlug={orgSlug} value={q.closing_html} onChange={html => setQ(s => ({ ...s, closing_html: html }))} />
-        <p className="text-[11px] text-muted-foreground">
-          Os botões de WhatsApp usam o número configurado da agência
-          {initial.org_settings?.whatsapp_number ? ` (${initial.org_settings.whatsapp_number})` : ' — nenhum configurado'}.
-          {' '}Rodapé e white-label vêm das{' '}
-          <Link href={`/app/${orgSlug}/configuracoes/organizacoes`} className="underline">configurações da agência</Link>.
-        </p>
-      </EditBlock>
-
-      {/* ASSINATURA — bloco destacado abaixo do fechamento, no link público */}
-      <EditBlock id="blk-assinatura" icon={UserRound} title="Assinatura"
-        action={
-          <label className="flex items-center gap-2 text-xs font-medium">
-            <Switch checked={q.signature_enabled} onCheckedChange={async v => {
-              setQ(s => ({ ...s, signature_enabled: v }))
-              if (v && !q.signature_name && !q.signature_photo_url) {
-                const profile = await getUserProfile(orgSlug)
-                if (profile) setQ(s => ({
-                  ...s,
-                  signature_name: s.signature_name || profile.name,
-                  signature_photo_url: s.signature_photo_url || profile.avatar_url,
-                }))
-              }
-            }} />
-            {q.signature_enabled ? 'Ativada' : 'Desativada'}
-          </label>
-        }>
-        {q.signature_enabled && (
-          <>
-            <p className="text-[11px] text-muted-foreground">
-              Aparece destacada logo abaixo da mensagem de encerramento, no link público.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Nome"><Input value={q.signature_name} onChange={e => setQ(s => ({ ...s, signature_name: e.target.value }))} placeholder="Ex.: Ana Souza" /></F>
-              <F label="Foto"><SignaturePhotoUpload orgSlug={orgSlug} url={q.signature_photo_url} onChange={u => setQ(s => ({ ...s, signature_photo_url: u }))} /></F>
-            </div>
-            <F label="Mensagem"><Textarea rows={2} value={q.signature_message} onChange={e => setQ(s => ({ ...s, signature_message: e.target.value }))} placeholder="Ex.: Qualquer dúvida, estou à disposição! 😊" /></F>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Cor de fundo">
-                <div className="flex items-center gap-2">
-                  <input type="color" value={q.signature_bg_color} onChange={e => setQ(s => ({ ...s, signature_bg_color: e.target.value }))}
-                    className="w-9 h-9 rounded border cursor-pointer shrink-0" />
-                  <Input value={q.signature_bg_color} onChange={e => setQ(s => ({ ...s, signature_bg_color: e.target.value }))} />
-                </div>
-              </F>
-              <F label="Cor da letra">
-                <div className="flex items-center gap-2">
-                  <input type="color" value={q.signature_text_color} onChange={e => setQ(s => ({ ...s, signature_text_color: e.target.value }))}
-                    className="w-9 h-9 rounded border cursor-pointer shrink-0" />
-                  <Input value={q.signature_text_color} onChange={e => setQ(s => ({ ...s, signature_text_color: e.target.value }))} />
-                </div>
-              </F>
-            </div>
-            <div className="rounded-lg p-4 flex items-center gap-3" style={{ background: q.signature_bg_color, color: q.signature_text_color }}>
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-white/20 shrink-0 flex items-center justify-center">
-                {q.signature_photo_url
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={q.signature_photo_url} alt="" className="w-full h-full object-cover" />
-                  : <UserRound className="w-5 h-5 opacity-70" />}
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold truncate">{q.signature_name || 'Seu nome'}</div>
-                <div className="text-xs opacity-90 truncate">{q.signature_message || 'Sua mensagem aparece aqui'}</div>
-              </div>
-            </div>
-          </>
-        )}
-      </EditBlock>
-
-      {/* RODAPÉ / IDENTIDADE DA AGÊNCIA — por padrão usa os dados da
-          organização; quando ativado, usa dados só desta cotação. */}
-      <EditBlock id="blk-rodape" icon={Building2} title="Rodapé e informações da agência"
-        action={
-          <label className="flex items-center gap-2 text-xs font-medium">
-            <Switch checked={q.footer_override} onCheckedChange={v => setQ(s => ({ ...s, footer_override: v }))} />
-            {q.footer_override ? 'Personalizado' : 'Padrão da agência'}
-          </label>
-        }>
-        {!q.footer_override ? (
-          <p className="text-[11px] text-muted-foreground">
-            Usa logo, nome, endereço, CNPJ, CADASTUR, Instagram, site, WhatsApp, telefone e e-mail das{' '}
-            <Link href={`/app/${orgSlug}/configuracoes/organizacoes`} className="underline">configurações da agência</Link>.
-            Ative para usar outras informações só nesta cotação.
-          </p>
-        ) : (
-          <>
-            <p className="text-[11px] text-muted-foreground">Vale só para esta cotação — não altera as configurações da agência.</p>
-            <div className="flex items-end gap-2">
-              <F label="Usar marca salva">
-                <Select value="" onValueChange={v => { const p = footerProfiles.find(x => x.id === v); if (p) applyFooterProfile(p) }}>
-                  <SelectTrigger className="w-56"><SelectValue placeholder={footerProfiles.length ? 'Selecionar…' : 'Nenhuma marca salva ainda'} /></SelectTrigger>
-                  <SelectContent>
-                    {footerProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </F>
-              <Button type="button" size="sm" variant="outline" onClick={saveFooterProfile} disabled={footerProfileBusy}>
-                {footerProfileBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
-                Salvar dados
-              </Button>
-            </div>
-            {footerProfiles.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {footerProfiles.map(p => (
-                  <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full border bg-muted/30 px-2.5 py-1 text-xs">
-                    {p.name}
-                    <button type="button" className="text-muted-foreground hover:text-destructive" aria-label={`Remover marca ${p.name}`}
-                      onClick={() => removeFooterProfile(p.id)}>
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              <F label="Nome/razão social"><Input value={q.footer_legal_name} onChange={e => setQ(s => ({ ...s, footer_legal_name: e.target.value }))} /></F>
-              <F label="Logo"><SignaturePhotoUpload orgSlug={orgSlug} url={q.footer_logo_url} onChange={u => setQ(s => ({ ...s, footer_logo_url: u }))} /></F>
-            </div>
-            <F label="Endereço"><Input value={q.footer_address} onChange={e => setQ(s => ({ ...s, footer_address: e.target.value }))} placeholder="Ex.: Florianópolis / SC" /></F>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="CNPJ"><Input value={q.footer_cnpj} onChange={e => setQ(s => ({ ...s, footer_cnpj: e.target.value }))} /></F>
-              <F label="CADASTUR"><Input value={q.footer_cadastur} onChange={e => setQ(s => ({ ...s, footer_cadastur: e.target.value }))} /></F>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Instagram"><Input value={q.footer_instagram_url} onChange={e => setQ(s => ({ ...s, footer_instagram_url: e.target.value }))} placeholder="https://instagram.com/..." /></F>
-              <F label="Site"><Input value={q.footer_site_url} onChange={e => setQ(s => ({ ...s, footer_site_url: e.target.value }))} placeholder="https://..." /></F>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <F label="WhatsApp" hint="usado nos botões de contato"><Input value={q.footer_whatsapp_number} onChange={e => setQ(s => ({ ...s, footer_whatsapp_number: e.target.value }))} placeholder="55DDNNNNNNNNN" /></F>
-              <F label="Telefone"><Input value={q.footer_phone} onChange={e => setQ(s => ({ ...s, footer_phone: e.target.value }))} /></F>
-              <F label="E-mail"><Input type="email" value={q.footer_email} onChange={e => setQ(s => ({ ...s, footer_email: e.target.value }))} /></F>
-            </div>
-          </>
-        )}
-      </EditBlock>
-      </GroupSection>
+      <QuotationEditorFechamentoGroup
+        orgSlug={orgSlug} activeGroup={activeGroup} q={q} setQ={setQ}
+        whatsappNumber={initial.org_settings?.whatsapp_number}
+        footerProfiles={footerProfiles} footerProfileBusy={footerProfileBusy}
+        applyFooterProfile={applyFooterProfile} saveFooterProfile={saveFooterProfile}
+        removeFooterProfile={removeFooterProfile}
+      />
     </div>
   )
 
