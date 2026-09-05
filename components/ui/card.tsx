@@ -9,9 +9,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      // Carbon card: flat corners, hairline border, no shadow — elevation
-      // comes from the border, not from a drop shadow.
-      "rounded-md border border-border bg-card text-card-foreground",
+      // Cantos macios + sombra ambiente suave — a borda quase some, a luz
+      // é que sustenta a leitura de "isso está por cima" (em vez de linha dura).
+      "rounded-2xl border border-border/60 bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,.04),0_16px_32px_-20px_rgba(0,0,0,.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_16px_32px_-20px_rgba(0,0,0,.5)]",
       className
     )}
     {...props}

@@ -101,7 +101,7 @@ export default async function OrgLayout({
   return (
     <QueryProvider>
     <CopilotProvider>
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-plex print:static print:h-auto print:overflow-visible print:block">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-sans print:static print:h-auto print:overflow-visible print:block">
       <div className="print:hidden">
         {isFrozen ? (
           <FrozenBanner orgSlug={params.orgSlug} />

@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    --primary: 219 99% 53%;             /* #0f62fe — o único azul de destaque */
+    --primary: 210 100% 52%;            /* #0a84ff — Apple system blue, igual em claro/escuro */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;              /* #f4f4f4 surface-1 */
@@ -26,23 +26,24 @@
     --accent: 0 0% 88%;                 /* #e0e0e0 surface-2 */
     --accent-foreground: 0 0% 9%;
 
-    --destructive: 357 76% 49%;         /* #da1e28 Carbon error */
+    --destructive: 3 100% 45%;          /* hue Apple #ff3b30, lightness reduzida (era 59%) pra AA como texto puro sobre tint */
     --destructive-foreground: 0 0% 100%;
 
     /* Semantic status tokens — text-on-tint colors (used by Badge soft style
-       and any success/warning/info state). */
-    --success: 137 63% 33%;             /* #24a148 Carbon success (darkened for AA on /15 tint) */
+       and any success/warning/info state). Hue vem da paleta Apple, lightness
+       mantida baixa (como já era) pra continuar acessível como texto sobre /15. */
+    --success: 135 63% 33%;             /* hue Apple #34c759, mesma lightness que já passava AA */
     --success-foreground: 0 0% 100%;
-    --warning: 42 88% 38%;              /* darkened #f1c21b for AA on /15 tint */
+    --warning: 36 88% 38%;              /* hue Apple #ff9500, mesma lightness que já passava AA */
     --warning-foreground: 0 0% 100%;
-    --info: 220 100% 40%;               /* #0043ce Carbon info */
+    --info: 210 100% 40%;               /* mesmo hue do primary, mais escuro pra texto sobre tint */
     --info-foreground: 0 0% 100%;
 
     --border: 0 0% 88%;                 /* #e0e0e0 hairline */
     --input: 0 0% 88%;
-    --ring: 219 99% 53%;                /* mesmo azul do primary */
+    --ring: 210 100% 52%;               /* mesmo azul do primary */
 
-    --radius: 8px;                      /* leve arredondamento (Apple HIG) — era 0px "Carbon" antes do redesign */
+    --radius: 14px;                     /* era 8px — cantos mais macios, padrão "SaaS premium" */
 
     /* Sidebar (used by app shell) */
     --sidebar: 0 0% 100%;
@@ -60,7 +61,7 @@
     --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
-    --primary: 219 99% 53%;
+    --primary: 210 100% 52%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 9%;
@@ -68,17 +69,17 @@
     --muted-foreground: 0 0% 32%;
     --accent: 0 0% 88%;
     --accent-foreground: 0 0% 9%;
-    --destructive: 357 76% 49%;
+    --destructive: 3 100% 45%;
     --destructive-foreground: 0 0% 100%;
-    --success: 137 63% 33%;
+    --success: 135 63% 33%;
     --success-foreground: 0 0% 100%;
-    --warning: 42 88% 38%;
+    --warning: 36 88% 38%;
     --warning-foreground: 0 0% 100%;
-    --info: 220 100% 40%;
+    --info: 210 100% 40%;
     --info-foreground: 0 0% 100%;
     --border: 0 0% 88%;
     --input: 0 0% 88%;
-    --ring: 219 99% 53%;
+    --ring: 210 100% 52%;
     color-scheme: light;
     /* Break dark-mode color inheritance from body */
     color: hsl(0 0% 9%);
@@ -96,8 +97,8 @@
     --popover: 0 0% 15%;
     --popover-foreground: 0 0% 96%;
 
-    --primary: 216 100% 66%;            /* #4589ff Carbon blue dark-theme */
-    --primary-foreground: 0 0% 10%;
+    --primary: 210 100% 52%;            /* #0a84ff — mesmo azul Apple do light, sem trocar de tom */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 96%;
@@ -108,20 +109,20 @@
     --accent: 0 0% 22%;
     --accent-foreground: 0 0% 96%;
 
-    --destructive: 356 100% 74%;        /* #fa4d56 Carbon error dark-theme */
+    --destructive: 3 100% 61%;          /* #ff453a Apple, dark-theme */
     --destructive-foreground: 0 0% 10%;
 
-    /* Lighter status hues for legibility on dark tints. */
-    --success: 140 60% 60%;             /* #42be65 Carbon success dark-theme */
+    /* Lighter status hues for legibility on dark tints — hue Apple, mesma lightness que já legível. */
+    --success: 135 64% 50%;             /* #30d158 Apple, dark-theme */
     --success-foreground: 0 0% 10%;
-    --warning: 40 100% 60%;             /* #f1c21b readable on dark */
+    --warning: 37 100% 52%;             /* #ff9f0a Apple, dark-theme */
     --warning-foreground: 0 0% 10%;
-    --info: 216 100% 66%;               /* #4589ff */
+    --info: 210 100% 52%;               /* #0a84ff */
     --info-foreground: 0 0% 10%;
 
     --border: 0 0% 22%;                 /* #383838 */
     --input: 0 0% 22%;
-    --ring: 216 100% 66%;
+    --ring: 210 100% 52%;
 
     --sidebar: 0 0% 10%;
     --sidebar-foreground: 0 0% 96%;
