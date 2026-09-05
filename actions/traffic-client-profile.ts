@@ -30,6 +30,10 @@ export type TrafficClientProfile = {
   targetLeads?: number | null
   targetRevenueCents?: number | null
   targetCpaCents?: number | null
+  /** Meta de conversão lead → venda (%) — quantos dos leads gerados devem
+   *  virar cliente. Complementa targetCpl/targetCpaCents/targetRoas, que
+   *  falam de custo/retorno mas não da taxa de conversão em si. */
+  targetLeadToSalePct?: number | null
   // Empresa
   website?: string | null
   instagram?: string | null
@@ -65,6 +69,7 @@ const ProfileSchema = z.object({
   targetLeads: z.number().int().min(0).nullable().optional(),
   targetRevenueCents: z.number().int().min(0).nullable().optional(),
   targetCpaCents: z.number().int().min(0).nullable().optional(),
+  targetLeadToSalePct: z.number().min(0).max(100).nullable().optional(),
   website: z.string().max(300).nullable().optional(),
   instagram: z.string().max(150).nullable().optional(),
   region: z.string().max(200).nullable().optional(),

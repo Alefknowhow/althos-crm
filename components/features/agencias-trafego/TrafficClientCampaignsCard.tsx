@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Megaphone, Loader2, Plus } from 'lucide-react'
 import { createAdAccount } from '@/actions/marketing'
@@ -19,13 +18,7 @@ type CampaignRow = {
   objective: string | null
   status: string
   ad_accounts: { name: string; provider: string } | null
-  metrics: { impressions: number; clicks: number; spend_cents: number; leads?: number }
-}
-
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  active: { label: 'Ativa', className: 'bg-green-100 text-green-800 border-green-200' },
-  paused: { label: 'Pausada', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  archived: { label: 'Arquivada', className: 'bg-muted text-muted-foreground' },
+  metrics: { impressions: number; clicks: number; spend_cents: number; leads: number }
 }
 
 export default function TrafficClientCampaignsCard({
@@ -54,7 +47,7 @@ export default function TrafficClientCampaignsCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-sm flex items-center gap-2"><Megaphone className="w-4 h-4" /> Campanhas do cliente</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><Megaphone className="w-4 h-4" /> Contas de anúncio</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setShowForm(v => !v)}>
           <Plus className="w-3.5 h-3.5 mr-1" /> Conta de anúncio
         </Button>
@@ -87,34 +80,9 @@ export default function TrafficClientCampaignsCard({
         {accounts.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma conta de anúncio vinculada a este cliente ainda.</p>
         ) : (
-          <>
-            <div className="text-xs text-muted-foreground">
-              {accounts.length} conta{accounts.length !== 1 ? 's' : ''} · gasto (30d): <span className="font-medium text-foreground">{formatCurrency(totalSpend)}</span>
-            </div>
-            {campaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma campanha registrada ainda.</p>
-            ) : (
-              <div className="space-y-2">
-                {campaigns.map(c => {
-                  const status = STATUS_LABEL[c.status] || STATUS_LABEL.active
-                  return (
-                    <div key={c.id} className="flex items-center justify-between text-sm border rounded-md p-2.5">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{c.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {c.ad_accounts?.name || '—'} · {c.metrics.impressions.toLocaleString('pt-BR')} impr. · {c.metrics.clicks.toLocaleString('pt-BR')} cliques
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="tabular-nums font-medium">{formatCurrency(c.metrics.spend_cents)}</span>
-                        <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </>
+          <div className="text-xs text-muted-foreground">
+            {accounts.length} conta{accounts.length !== 1 ? 's' : ''} · gasto (30d): <span className="font-medium text-foreground">{formatCurrency(totalSpend)}</span>
+          </div>
         )}
       </CardContent>
     </Card>

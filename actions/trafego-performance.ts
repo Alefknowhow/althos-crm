@@ -133,8 +133,17 @@ export async function getClientPerformanceComparison(
   return { current, previous }
 }
 
-/** Série diária de investimento/leads/CPL/ROAS de um cliente — alimenta o gráfico da Visão Geral. */
-export type ClientDailyPoint = { date: string; investmentCents: number; leads: number; salesRevenueCents: number }
+/** Série diária de investimento/leads/impressões/cliques/receita de um
+ *  cliente — alimenta o gráfico da Visão Geral e o painel da aba
+ *  Performance (CTR/CPL/CPM são derivados a partir daqui, não guardados). */
+export type ClientDailyPoint = {
+  date: string
+  investmentCents: number
+  leads: number
+  salesRevenueCents: number
+  impressions: number
+  clicks: number
+}
 
 export async function getClientDailySeries(
   orgSlug: string,
@@ -152,7 +161,7 @@ export async function getClientDailySeries(
   const byDate = new Map<string, ClientDailyPoint>()
   const ensure = (d: string) => {
     let p = byDate.get(d)
-    if (!p) { p = { date: d, investmentCents: 0, leads: 0, salesRevenueCents: 0 }; byDate.set(d, p) }
+    if (!p) { p = { date: d, investmentCents: 0, leads: 0, salesRevenueCents: 0, impressions: 0, clicks: 0 }; byDate.set(d, p) }
     return p
   }
 
@@ -162,7 +171,7 @@ export async function getClientDailySeries(
     if (campaignIds.length > 0) {
       const { data: metrics } = await supabase
         .from('campaign_metrics_daily')
-        .select('date, spend_cents, meta_leads')
+        .select('date, spend_cents, meta_leads, impressions, clicks')
         .eq('organization_id', org.id)
         .in('campaign_id', campaignIds)
         .gte('date', fromStr)
@@ -171,6 +180,8 @@ export async function getClientDailySeries(
         const p = ensure(m.date)
         p.investmentCents += m.spend_cents || 0
         p.leads += (m as any).meta_leads || 0
+        p.impressions += m.impressions || 0
+        p.clicks += m.clicks || 0
       }
     }
   }

@@ -9,8 +9,10 @@ import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/T
 import ClientCampaignsTable from '@/components/features/agencias-trafego/ClientCampaignsTable'
 import ClientSyncPanel from '@/components/features/agencias-trafego/ClientSyncPanel'
 import ClientOverviewTab from '@/components/features/agencias-trafego/ClientOverviewTab'
+import ClientPerformanceChart from '@/components/features/agencias-trafego/ClientPerformanceChart'
 import ClientIntelligenceTab from '@/components/features/agencias-trafego/ClientIntelligenceTab'
 import ClientTrackingTab from '@/components/features/agencias-trafego/ClientTrackingTab'
+import ClientFunnelCard from '@/components/features/agencias-trafego/ClientFunnelCard'
 import CampaignCreativesSection from '@/components/features/agencias-trafego/CampaignCreativesSection'
 import ClientHistorySection from '@/components/features/agencias-trafego/ClientHistorySection'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
@@ -83,7 +85,6 @@ export default function ClientDetailShell({
           <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
           <TabsTrigger value="estrategia">Estratégia</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="campanhas">Campanhas</TabsTrigger>
           <TabsTrigger value="criativos">Criativos</TabsTrigger>
           <TabsTrigger value="tracking">Tracking</TabsTrigger>
           <TabsTrigger value="inteligencia">Inteligência</TabsTrigger>
@@ -104,11 +105,17 @@ export default function ClientDetailShell({
           />
         </TabsContent>
 
-        <TabsContent value="estrategia">
+        <TabsContent value="estrategia" className="space-y-4">
           <TrafficClientProfileCard orgSlug={orgSlug} contatoId={clientId} initial={profile} />
+          <ClientFunnelCard
+            funnel={trackingFunnel}
+            hasData={trackingFunnel.clicks > 0 || trackingLinks.length > 0}
+            title="Funil (30 dias)"
+          />
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
+          <ClientPerformanceChart current={performanceCurrent} previous={performancePrevious} series={performanceSeries} />
           <ClientSyncPanel
             orgSlug={orgSlug}
             clientId={clientId}
@@ -119,9 +126,6 @@ export default function ClientDetailShell({
             assignedElsewhere={assignedElsewhere}
           />
           <TrafficClientCampaignsCard orgSlug={orgSlug} contatoId={clientId} accounts={accounts} campaigns={campaigns} />
-        </TabsContent>
-
-        <TabsContent value="campanhas">
           <ClientCampaignsTable campaigns={campaigns} />
         </TabsContent>
 

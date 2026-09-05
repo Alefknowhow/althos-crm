@@ -18,12 +18,27 @@ import MetricChart from '@/components/features/dashboard/MetricChart'
 
 type Period = 'hoje' | '7d' | '30d'
 
+const DAY_MS = 86_400_000
+
+/**
+ * O período é calculado aqui no navegador (fuso local do usuário), mas o
+ * servidor lê a data com `range.from.toISOString().slice(0, 10)` — que
+ * sempre converte pra UTC antes de cortar a data. Um `Date` construído com
+ * `new Date()`/`setHours(0,0,0,0)` carrega o relógio LOCAL, então essa
+ * conversão pra UTC podia empurrar o dia pra frente ou pra trás dependendo
+ * da hora e do fuso do navegador (ex.: à noite no Brasil, UTC já é o dia
+ * seguinte) — o gráfico mostrava um intervalo deslocado do que o usuário
+ * via "Hoje"/"7 dias"/"30 dias". Âncora no dia civil local (Y-M-D) e
+ * constrói o `Date` já em meia-noite UTC desse mesmo Y-M-D, garantindo que
+ * o corte pro servidor sempre bata com o calendário que o usuário espera,
+ * não com o horário do navegador.
+ */
 function rangeFor(period: Period): { from: Date; to: Date } {
-  const to = new Date()
-  const from = new Date()
-  if (period === 'hoje') from.setHours(0, 0, 0, 0)
-  else if (period === '7d') from.setDate(from.getDate() - 6)
-  else from.setDate(from.getDate() - 29)
+  const now = new Date()
+  const todayUtcMidnight = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  const to = new Date(todayUtcMidnight.getTime() + DAY_MS - 1)
+  const daysBack = period === 'hoje' ? 0 : period === '7d' ? 6 : 29
+  const from = new Date(todayUtcMidnight.getTime() - daysBack * DAY_MS)
   return { from, to }
 }
 
@@ -104,8 +119,18 @@ export default function ClientOverviewTab({
     targetRoas: profile?.targetRoas ?? null,
   })
 
+  // MetricChart espera valor em reais quando format='currency' (mesmo
+  // contrato de getMetricTimeSeries/dashboard-timeseries.ts) — os campos
+  // daqui vêm em centavos (ver ClientDailyPoint), por isso a divisão só
+  // pras métricas de moeda. Sem isso o gráfico mostrava 100x o valor real.
   const chartPoints = useMemo(
-    () => series.map(p => ({ date: new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), value: p[metric.key] })),
+    () => series.map(p => {
+      const raw = p[metric.key]
+      return {
+        date: new Date(p.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        value: metric.format === 'currency' ? raw / 100 : raw,
+      }
+    }),
     [series, metric],
   )
 

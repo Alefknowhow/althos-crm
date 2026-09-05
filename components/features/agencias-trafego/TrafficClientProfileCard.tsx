@@ -65,6 +65,7 @@ export default function TrafficClientProfileCard({
   const [targetCpa, setTargetCpa] = useState(centsToStr(initial?.targetCpaCents))
   const [targetLeads, setTargetLeads] = useState(initial?.targetLeads != null ? String(initial.targetLeads) : '')
   const [targetRevenue, setTargetRevenue] = useState(centsToStr(initial?.targetRevenueCents))
+  const [targetLeadToSalePct, setTargetLeadToSalePct] = useState(initial?.targetLeadToSalePct != null ? String(initial.targetLeadToSalePct) : '')
 
   // Público
   const [targetAudience, setTargetAudience] = useState(initial?.targetAudience || '')
@@ -104,6 +105,7 @@ export default function TrafficClientProfileCard({
     const leads = parseInt(targetLeads, 10)
     const cplCents = strToCents(targetCpl)
     const margin = parseFloat(marginPct.replace(',', '.'))
+    const leadToSale = parseFloat(targetLeadToSalePct.replace(',', '.'))
     const res = await saveTrafficClientProfile(orgSlug, contatoId, {
       niche: niche || null,
       objective,
@@ -117,6 +119,7 @@ export default function TrafficClientProfileCard({
       targetCpaCents: strToCents(targetCpa),
       targetLeads: Number.isFinite(leads) && leads > 0 ? leads : null,
       targetRevenueCents: strToCents(targetRevenue),
+      targetLeadToSalePct: Number.isFinite(leadToSale) && leadToSale > 0 ? leadToSale : null,
       targetAudience: targetAudience || null,
       audienceAgeRange: audienceAgeRange || null,
       audienceProfile: audienceProfile || null,
@@ -192,6 +195,9 @@ export default function TrafficClientProfileCard({
             </Field>
             <Field label="Faturamento esperado/mês (R$)">
               <Input inputMode="decimal" placeholder="0,00" value={targetRevenue} onChange={e => setTargetRevenue(e.target.value)} />
+            </Field>
+            <Field label="Taxa de conversão lead → venda (%)">
+              <Input inputMode="decimal" placeholder="Ex.: 15" value={targetLeadToSalePct} onChange={e => setTargetLeadToSalePct(e.target.value)} />
             </Field>
           </div>
         </Section>
