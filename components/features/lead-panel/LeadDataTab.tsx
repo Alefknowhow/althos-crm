@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -42,7 +43,8 @@ export default function LeadDataTab({
   const [cpf, setCpf] = useState(lead?.cpf ?? '')
   const [dateOfBirth, setDateOfBirth] = useState(lead?.date_of_birth ?? '')
   const [value, setValue] = useState(lead?.value_cents ? formatCurrency(lead.value_cents) : '')
-  const [tags, setTags] = useState((lead?.tags ?? []).join(', '))
+  const [tags, setTags] = useState<string[]>(lead?.tags ?? [])
+  const [tagDraft, setTagDraft] = useState('')
   const [savingContact, setSavingContact] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(lead?.avatar_url ?? null)
   const [note, setNote] = useState('')
@@ -63,7 +65,8 @@ export default function LeadDataTab({
     setCpf(lead?.cpf ?? '')
     setDateOfBirth(lead?.date_of_birth ?? '')
     setValue(lead?.value_cents ? formatCurrency(lead.value_cents) : '')
-    setTags((lead?.tags ?? []).join(', '))
+    setTags(lead?.tags ?? [])
+    setTagDraft('')
     setAvatarUrl(lead?.avatar_url ?? null)
   }, [lead?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -127,12 +130,22 @@ export default function LeadDataTab({
     commitStageChange(stageId)
   }
 
-  async function handleSaveTags() {
-    const arr = tags ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
-    const res = await updateLeadTags(orgSlug, lead.id, arr)
+  async function saveTags(next: string[]) {
+    setTags(next)
+    const res = await updateLeadTags(orgSlug, lead.id, next)
     if ((res as any)?.ok === false) toast.error('Não foi possível salvar as tags', { description: (res as any).error })
-    else toast.success('Tags atualizadas')
     router.refresh()
+  }
+
+  function handleAddTag() {
+    const t = tagDraft.trim()
+    if (!t) return
+    if (!tags.includes(t)) saveTags([...tags, t])
+    setTagDraft('')
+  }
+
+  function handleRemoveTag(t: string) {
+    saveTags(tags.filter(x => x !== t))
   }
 
   async function handleAssignLeadOwner(userId: string | null) {
@@ -239,10 +252,29 @@ export default function LeadDataTab({
       {/* Linha 5 — Tags */}
       <section className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h4>
-        <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="vip, retorno, orçamento" className="h-8 text-sm" onBlur={handleSaveTags} />
-        {(lead?.tags ?? []).length > 0 && (
+        <Input
+          value={tagDraft}
+          onChange={e => setTagDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
+          onBlur={handleAddTag}
+          placeholder="Nova tag…"
+          className="h-8 text-sm w-32"
+        />
+        {tags.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1">
-            {(lead.tags as string[]).map(t => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
+            {tags.map(t => (
+              <Badge key={t} variant="secondary" className="text-[10px] gap-1 pr-1">
+                {t}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(t)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label={`Remover ${t}`}
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </Badge>
+            ))}
           </div>
         )}
       </section>
