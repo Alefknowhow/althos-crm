@@ -113,7 +113,7 @@ export default function WhatsappChatSidebar({
 
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.map((c: any) => (
-          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex justify-between items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
+          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
             {c.contatos?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.contatos.avatar_url} alt="" className="h-9 w-9 rounded-full shrink-0 object-cover" />
@@ -122,38 +122,40 @@ export default function WhatsappChatSidebar({
                 {memberInitials(c.contact_name, c.contact_phone)}
               </div>
             )}
-            <div className="overflow-hidden flex-1 pr-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-medium text-sm truncate block min-w-0">{c.contact_name || c.contact_phone}</span>
-                {aiEnabledGlobally && c.automation_paused && (
-                  <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200" title="Atendimento manual — IA pausada nesta conversa">
-                    manual
-                  </span>
-                )}
-                {c.ai_handoff_summary && (
-                  <Sparkles className="w-3 h-3 text-primary shrink-0" aria-label="Tem resumo da IA" />
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1 truncate flex items-center gap-1">
-                <span className="truncate">{c.last_message_preview || c.contact_phone}</span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <span className="flex items-center gap-1">
-                {c.last_message_direction === 'outbound' && <ConversationTicks status={c.last_message_status} />}
-                <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>{formatInboxTime(c.last_message_at)}</span>
-              </span>
-
-              {/* Janela de 24h isolada — vendedor + etapa saem daqui e viram
-                  a linha de baixo, lado a lado, pra ficar fácil de bater o
-                  olho em quem é responsável e onde o lead está no funil. */}
-              <div className="flex items-center gap-1">
-                <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
+            <div className="overflow-hidden flex-1 min-w-0 space-y-1">
+              {/* Linha 1 — nome, etiqueta manual/IA, janela de 24h, data/hora */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
+                  {aiEnabledGlobally && c.automation_paused && (
+                    <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200" title="Atendimento manual — IA pausada nesta conversa">
+                      manual
+                    </span>
+                  )}
+                  <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
+                  {c.ai_handoff_summary && (
+                    <Sparkles className="w-3 h-3 text-primary shrink-0" aria-label="Tem resumo da IA" />
+                  )}
+                </div>
+                <span className={`shrink-0 text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  {formatInboxTime(c.last_message_at)}
+                </span>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
-                {c.contatos?.id && (
+              {/* Linha 2 — última mensagem + status de envio/leitura */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground truncate flex items-center gap-1 min-w-0 flex-1">
+                  {c.last_message_direction === 'outbound' && <ConversationTicks status={c.last_message_status} />}
+                  <span className="truncate">{c.last_message_preview || c.contact_phone}</span>
+                </div>
+                {c.unread_count > 0 && <Badge variant="destructive" className="h-5 w-5 shrink-0 rounded-full flex items-center justify-center p-0 text-[10px]">{c.unread_count}</Badge>}
+              </div>
+
+              {/* Linha 3 — responsável (esquerda) / etapa (direita), em
+                  posições fixas: cada etiqueta sempre ancorada na sua ponta,
+                  independente do tamanho do texto. */}
+              <div className="flex items-center justify-between gap-2">
+                {c.contatos?.id ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -181,8 +183,8 @@ export default function WhatsappChatSidebar({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
-                {c.contatos?.id && (
+                ) : <span />}
+                {c.contatos?.id ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       {(() => {
@@ -191,11 +193,10 @@ export default function WhatsappChatSidebar({
                           <button
                             type="button"
                             onClick={e => e.stopPropagation()}
-                            className="shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-pill border max-w-[90px] transition-colors"
-                            style={{ backgroundColor: `${stageColor}26`, color: stageColor, borderColor: `${stageColor}40` }}
+                            className="shrink-0 inline-flex items-center text-[11px] font-medium px-1.5 py-0.5 rounded-pill max-w-[110px] transition-colors text-white"
+                            style={{ backgroundColor: stageColor }}
                             title={c.contatos?.pipeline_stages?.name ? `Etapa: ${c.contatos.pipeline_stages.name} — clique para mudar` : 'Definir etapa'}
                           >
-                            <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: stageColor }} />
                             <span className="truncate">{c.contatos?.pipeline_stages?.name || 'Sem etapa'}</span>
                           </button>
                         )
@@ -211,7 +212,7 @@ export default function WhatsappChatSidebar({
                         ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
+                ) : <span />}
               </div>
             </div>
           </div>
