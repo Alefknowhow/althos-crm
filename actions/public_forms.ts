@@ -191,7 +191,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
     // Push: notify opted-in members of the new inbound lead (best-effort).
     // Honours each member's 'new_lead' notification preference.
     try {
-      const { sendPushToOrg } = await import('@/actions/push')
+      const { sendPushToOrg } = await import('@/lib/push/send')
       const { createNotification } = await import('@/actions/notifications')
       const { data: orgRow } = await supabaseAdmin
         .from('organizations')

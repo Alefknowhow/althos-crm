@@ -174,6 +174,7 @@ export async function submitWaTemplateToMeta(orgSlug: string, id: string): Promi
       rejected_reason: null,
     })
     .eq('id', id)
+    .eq('organization_id', orgId)
     .select()
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -205,6 +206,7 @@ export async function refreshWaTemplateStatus(orgSlug: string, id: string): Prom
       rejected_reason: meta.rejected_reason || null,
     })
     .eq('id', id)
+    .eq('organization_id', orgId)
     .select()
     .maybeSingle()
   if (error) throw new Error(error.message)

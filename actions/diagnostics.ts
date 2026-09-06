@@ -11,7 +11,7 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
-import { sendPushToUser } from '@/actions/push'
+import { sendPushToUser } from '@/lib/push/send'
 
 // ── E-mail ──────────────────────────────────────────────────────────────────
 

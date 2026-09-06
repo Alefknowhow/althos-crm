@@ -1,9 +1,15 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { Clock, MapPin, CalendarDays, ChevronRight } from 'lucide-react'
 import { resolvePublicOrgEventTypes } from '@/actions/appointments'
 
 export const dynamic = 'force-dynamic'
+
+// Ver comentário em [eventSlug]/page.tsx — mesmo reforço de noindex.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 function durationLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} min`

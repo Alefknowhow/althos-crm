@@ -1,9 +1,16 @@
+import type { Metadata } from 'next'
 import { validateInvite } from '@/actions/invites'
 import { getPlan } from '@/lib/billing/plans'
 import { Button } from '@/components/ui/button'
 import { LogoMark } from '@/components/brand/Logo'
 import Link from 'next/link'
 import { CheckCircle2, XCircle } from 'lucide-react'
+
+// Link de convite de plataforma (super-admin) — acessível por link, sem
+// valor de indexação.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function InvitePage({
   params,

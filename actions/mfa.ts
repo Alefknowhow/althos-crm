@@ -2,6 +2,7 @@
 
 import { createHash, randomBytes } from 'crypto'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { checkAndRecordRateLimit } from '@/lib/security/antispam'
 
 /** Number of single-use recovery codes generated per batch. */
 const RECOVERY_CODE_COUNT = 8
@@ -95,6 +96,13 @@ export async function redeemRecoveryCode(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Não autenticado.' }
+
+  // Código de recuperação tem só 40 bits (10 hex) — sem limite de tentativas,
+  // um atacante com a senha (mas sem o dispositivo 2FA) poderia varrer o
+  // espaço de códigos em loop. Mais apertado que o default (10/60min) porque
+  // aqui cada tentativa já é, por natureza, uma tentativa de adivinhação.
+  const rl = await checkAndRecordRateLimit('mfa-recovery-redeem', { maxPerWindow: 5, windowMinutes: 15 })
+  if (!rl.ok) return { ok: false, error: 'Muitas tentativas. Tente novamente mais tarde.' }
 
   const normalized = normalizeCode(rawCode)
   if (!normalized) return { ok: false, error: 'Código inválido.' }

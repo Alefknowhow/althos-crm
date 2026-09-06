@@ -10,7 +10,7 @@
 import { inngest } from './client'
 import type { createAdminClient } from '../supabase/server'
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
-import { sendPushToOrg } from '@/actions/push'
+import { sendPushToOrg } from '@/lib/push/send'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
 
 /** Substitui {{lead.*}} num valor de variável de template — usado tanto no

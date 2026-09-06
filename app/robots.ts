@@ -1,20 +1,39 @@
 import type { MetadataRoute } from 'next'
 import { BRAND } from '@/lib/constants/brand'
 
+/**
+ * robots.txt não é mecanismo de segurança — é só um sinal de rastreamento
+ * pra crawlers bem-comportados. As rotas privadas listadas aqui já são
+ * protegidas de verdade no servidor (auth/RLS/permissão); isso aqui só evita
+ * que apareçam em buscadores. Padrão: prefixo com barra (`/x/`) bloqueia a
+ * rota e todas as subrotas; `/x$`/`/x?` cobre a própria rota exata (sem
+ * subrotas) sem bloquear páginas públicas com nome parecido (ex.: `/planos`
+ * não é afetado por um `Disallow: /p/`).
+ */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
       disallow: [
-        '/app/', // CRM autenticado — nada aqui é público
+        // CRM autenticado (app/app/[orgSlug]/...) — sem página nesse prefixo
+        // exato, mas cobre tudo por baixo.
+        '/app/',
         '/api/',
         '/super-admin/',
-        '/onboarding',
-        '/mfa',
+        // Páginas únicas, sem subrota — âncora exata evita bloquear por
+        // engano algo como "/onboarding-alguma-coisa" no futuro.
+        '/onboarding$', '/onboarding?',
+        '/mfa$', '/mfa?',
         '/auth/',
-        '/convite/', '/invite/', // convites são específicos de uma pessoa
-        '/p/', '/v/', '/f/', '/book/', // páginas públicas token-based, sem valor de descoberta
+        // Convites — específicos de uma pessoa, sem valor de descoberta.
+        '/convite/', '/convite$', '/convite?',
+        '/invite/', '/invite$', '/invite?',
+        // Páginas públicas token-based — a própria página já marca
+        // noindex/nofollow via <meta name="robots">, isso aqui é reforço.
+        '/p/', '/p$', '/p?',
+        '/v/', '/v$', '/v?',
+        '/f/', '/f$', '/f?',
+        '/book/', '/book$', '/book?',
       ],
     },
     sitemap: `${BRAND.domain}/sitemap.xml`,

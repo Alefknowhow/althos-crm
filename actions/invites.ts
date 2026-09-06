@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, isSuperAdmin } from '@/lib/supabase/types'
+import { checkAndRecordRateLimit } from '@/lib/security/antispam'
 import { randomBytes } from 'crypto'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -87,6 +88,12 @@ export async function revokeInvite(inviteId: string) {
 // Called from the invite landing page — no auth required.
 
 export async function validateInvite(token: string) {
+  // Token é aleatório o bastante (192 bits) pra brute-force ser inviável, mas
+  // sem limite de tentativas nada impede varrer o endpoint em loop — mesmo
+  // rate limit por IP já usado nos formulários públicos.
+  const rl = await checkAndRecordRateLimit('invite-validate')
+  if (!rl.ok) return { ok: false as const, error: 'Muitas tentativas. Tente novamente mais tarde.' }
+
   const admin = createAdminClient()
 
   const { data: invite } = await admin
@@ -107,6 +114,9 @@ export async function validateInvite(token: string) {
 // ── Signup: redeem an invite after org creation ───────────────────────────────
 
 export async function redeemInvite(token: string, orgId: string) {
+  const rl = await checkAndRecordRateLimit('invite-redeem')
+  if (!rl.ok) return { ok: false as const }
+
   const admin = createAdminClient()
 
   const { data: invite } = await admin

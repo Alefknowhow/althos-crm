@@ -102,7 +102,7 @@ export async function createSale(orgSlug: string, input: unknown) {
   // Push: notify opted-in members of the new sale (best-effort, honours the
   // 'new_sale' notification preference per member).
   try {
-    const { sendPushToOrg } = await import('@/actions/push')
+    const { sendPushToOrg } = await import('@/lib/push/send')
     const { createNotification } = await import('@/actions/notifications')
     const value = ((v.amount_cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     const url = `/app/${orgSlug}/vendas`

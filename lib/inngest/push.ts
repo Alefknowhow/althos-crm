@@ -10,7 +10,7 @@
 
 import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
-import { sendPushToUser, sendPushToOrg } from '@/actions/push'
+import { sendPushToUser, sendPushToOrg } from '@/lib/push/send'
 import { createNotification } from '@/actions/notifications'
 
 // ---------------------------------------------------------------------------

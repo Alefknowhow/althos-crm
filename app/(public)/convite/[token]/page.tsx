@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { getInvitationInfo, getInviteeAccountStatus } from '@/actions/team'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -6,6 +7,11 @@ import { Building2, CheckCircle2, AlertTriangle, LogIn, XCircle } from 'lucide-r
 import AcceptButton from './AcceptButton'
 import InviteeSignupForm from './InviteeSignupForm'
 import SwitchAccountButton from './SwitchAccountButton'
+
+// Link de convite pessoal — acessível por link, sem valor de indexação.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function ConvitePage({
   params,

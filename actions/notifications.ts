@@ -180,14 +180,19 @@ export async function markNotificationRead(
   orgSlug: string,
   id: string,
 ): Promise<{ ok: boolean }> {
-  await requireAuth()
-  await getCurrentOrganization(orgSlug)
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
+  // Mesmo escopo de markAllNotificationsRead — sem isso, o `id` sozinho
+  // permitiria marcar como lida uma notificação de qualquer org/usuário
+  // (a RLS pode até bloquear, mas não é pra depender só dela aqui).
   await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('organization_id', org.id)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
     .is('read_at', null)
 
   return { ok: true }
