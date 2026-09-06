@@ -27,7 +27,7 @@ export type ScheduledRow = {
 }
 
 /** Render a template body for the inbox preview by substituting {{1}}, {{2}}… */
-function renderTemplateBody(bodyText: string, variables: string[]): string {
+export function renderTemplateBody(bodyText: string, variables: string[]): string {
   let out = bodyText || ''
   variables.forEach((v, i) => {
     out = out.replaceAll(`{{${i + 1}}}`, v)

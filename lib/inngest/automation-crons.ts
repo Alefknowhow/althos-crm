@@ -234,3 +234,63 @@ export const automationCustomerBirthdayFn = inngest.createFunction(
     return { fired: totalFired }
   }
 )
+
+// ---------------------------------------------------------------------------
+// 4. Embarque scheduled — daily at 07:00
+//    Fires `viagens.embarque.scheduled` for every travel_sales row whose
+//    departure_date is today, in orgs that have an active automation for
+//    this trigger — ligado à data de embarque em si, não ao momento em que a
+//    reserva foi criada (mesma reserva pode ser criada meses antes de embarcar).
+// ---------------------------------------------------------------------------
+
+export const automationEmbarqueScheduledFn = inngest.createFunction(
+  {
+    id:      'automation-embarque-scheduled',
+    name:    'Automação: embarque agendado',
+    retries: 1,
+    triggers: [{ cron: '0 7 * * *' }],
+  },
+  async ({ step }: { step: any }) => {
+    const admin = createAdminClient()
+
+    const orgIds: string[] = await step.run('fetch-orgs-with-embarque-automations', async () => {
+      const { data } = await admin
+        .from('automations')
+        .select('organization_id')
+        .eq('trigger_type', 'viagens.embarque.scheduled')
+        .eq('is_active', true)
+      if (!data) return []
+      return Array.from(new Set(data.map((r: any) => r.organization_id)))
+    })
+
+    if (orgIds.length === 0) return { fired: 0 }
+
+    // Data de hoje em São Paulo, no formato 'YYYY-MM-DD' igual departure_date.
+    const todayISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+
+    const sales: Array<{ id: string; organization_id: string; contato_id: string | null }> =
+      await step.run('fetch-sales-embarking-today', async () => {
+        const { data } = await admin
+          .from('travel_sales')
+          .select('id, organization_id, contato_id')
+          .in('organization_id', orgIds)
+          .eq('departure_date', todayISO)
+          .neq('status', 'cancelled')
+          .limit(5000)
+        return (data || []).filter((s: any) => s.contato_id)
+      })
+
+    let totalFired = 0
+    for (const sale of sales) {
+      await step.run(`fire-embarque-${sale.id}`, async () => {
+        await inngest.send({
+          name: 'viagens.embarque.scheduled',
+          data: { orgId: sale.organization_id, leadId: sale.contato_id, saleId: sale.id },
+        })
+        totalFired++
+      })
+    }
+
+    return { fired: totalFired }
+  }
+)

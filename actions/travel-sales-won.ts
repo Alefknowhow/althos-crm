@@ -57,12 +57,10 @@ export async function maybeCreateTravelSaleOnWon(
     }).select('id').single()
 
     if (created) {
-      // Fires automation triggers `viagens.reserva.created` (sempre) e
-      // `viagens.embarque.scheduled` (só quando já vem com data de embarque).
+      // Fires automation trigger `viagens.reserva.created`. `viagens.embarque.scheduled`
+      // não dispara aqui — é ligado à data de embarque em si (ver
+      // lib/inngest/automation-crons.ts::automationEmbarqueScheduledFn).
       await inngest.send({ name: 'viagens.reserva.created', data: { orgId: org.id, leadId, saleId: created.id } })
-      if ((saleFields as any).departure_date) {
-        await inngest.send({ name: 'viagens.embarque.scheduled', data: { orgId: org.id, leadId, saleId: created.id } })
-      }
     }
   } catch (err: any) {
     console.error('[maybeCreateTravelSaleOnWon] error:', err?.message)

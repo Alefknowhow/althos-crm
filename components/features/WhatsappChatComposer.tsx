@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Trash2, Sparkles, Loader2 } from 'lucide-react'
 import ScheduleMessageButton from '@/components/features/ScheduleMessageButton'
+import SendTemplateButton from '@/components/features/SendTemplateButton'
 import { WAVEFORM_BARS, EMOJIS } from './WhatsappChatWidgets'
 
 export default function WhatsappChatComposer({
@@ -154,6 +155,14 @@ export default function WhatsappChatComposer({
           <svg className="w-[19px] h-[19px] sm:w-[22px] sm:h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
         )}
       </button>
+
+      {/* Enviar template aprovado agora */}
+      <SendTemplateButton
+        orgSlug={orgSlug}
+        conversationId={selectedConversation.id}
+        templates={templates}
+        onSent={() => {}}
+      />
 
       {/* Agendar envio */}
       <ScheduleMessageButton

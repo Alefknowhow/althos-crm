@@ -44,7 +44,7 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
 
   // Vertical Agências de Viagem — reserva/embarque criados (travel_sales).
   { id: 'viagens.reserva.created',    label: 'Reserva Criada (Viagens)',      desc: 'Dispara quando uma reserva é criada',                          icon: Plane, color: '#0ea5e9', niche: 'viagens' },
-  { id: 'viagens.embarque.scheduled', label: 'Embarque Registrado (Viagens)', desc: 'Dispara quando uma reserva com data de embarque é registrada', icon: Plane, color: '#0ea5e9', niche: 'viagens' },
+  { id: 'viagens.embarque.scheduled', label: 'Embarque (Viagens)', desc: 'Dispara no dia da data de embarque da reserva', icon: Plane, color: '#0ea5e9', niche: 'viagens' },
 
   // Vertical Seguros.
   { id: 'seguros.policy.issued',      label: 'Apólice Emitida (Seguros)',    desc: 'Dispara quando uma apólice é emitida',                icon: Shield, color: '#6366f1', niche: 'seguros' },

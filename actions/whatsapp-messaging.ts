@@ -8,7 +8,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { sendTextMessage, sendMediaMessage } from '@/lib/whatsapp/meta-client'
+import { sendTextMessage, sendMediaMessage, sendTemplateMessage } from '@/lib/whatsapp/meta-client'
+import { renderTemplateBody } from '@/lib/whatsapp/scheduled-delivery'
+import { resolveSystemSignedUrl } from '@/lib/storage/system'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { getProfilesMap } from '@/lib/profiles'
 import { uploadFile, getObjectSignedUrl } from '@/actions/storage'
@@ -76,6 +78,93 @@ export async function sendWhatsappMessage(orgSlug: string, conversationId: strin
     await supabase.from('whatsapp_messages').update({
       status: 'failed',
       content: { body: content, error: e.message }
+    }).eq('id', msg.id)
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'failed' }).eq('id', conv.id)
+    return { ok: false, error: e.message }
+  }
+}
+
+/**
+ * Manda um template aprovado agora mesmo — jeito manual e direto de reabrir
+ * uma conversa fora da janela de 24h, sem precisar passar pelo agendamento
+ * (ScheduleMessageButton), que exige texto livre + data/hora.
+ */
+export async function sendWhatsappTemplateNow(
+  orgSlug: string, conversationId: string, templateId: string, variables: string[],
+) {
+  if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'whatsapp'))) {
+    return { ok: false, error: WHATSAPP_UPGRADE_ERROR }
+  }
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+
+  const { data: conv } = await supabase.from('whatsapp_conversations').select('*').eq('id', conversationId).eq('organization_id', org.id).maybeSingle()
+  if (!conv) return { ok: false, error: 'Conversa não encontrada' }
+
+  const { data: template } = await supabase
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('id', templateId)
+    .eq('organization_id', org.id)
+    .eq('status', 'approved')
+    .maybeSingle()
+  if (!template) return { ok: false, error: 'Template não encontrado ou não aprovado' }
+
+  const previewBody = renderTemplateBody(template.body_text, variables)
+  const agentName = (await getProfilesMap([user.id])).get(user.id)?.full_name || null
+
+  const { data: msg, error: insertError } = await supabase.from('whatsapp_messages').insert({
+    conversation_id: conv.id,
+    organization_id: org.id,
+    direction: 'outbound',
+    type: 'template',
+    content: { body: previewBody },
+    status: 'sending',
+    sent_by_name: agentName,
+  }).select().single()
+
+  if (insertError) return { ok: false, error: insertError.message }
+
+  await supabase.from('whatsapp_conversations').update({
+    last_message_at:        new Date().toISOString(),
+    last_message_preview:   previewBody,
+    last_message_direction: 'outbound',
+    last_message_status:    'sending',
+    automation_paused:      true,
+  }).eq('id', conv.id).eq('organization_id', org.id)
+
+  try {
+    const headerMediaUrl = template.header_storage_object_id
+      ? (await resolveSystemSignedUrl(template.header_storage_object_id)) ?? undefined
+      : template.header_media_url || undefined
+
+    const metaRes = await sendTemplateMessage(
+      org, conv.contact_phone, template.name, variables,
+      template.language || 'pt_BR', template.header_type, headerMediaUrl,
+    )
+
+    await supabase.from('whatsapp_messages').update({
+      meta_message_id: metaRes.messages[0].id,
+      status: 'sent'
+    }).eq('id', msg.id)
+    await supabase.from('whatsapp_conversations').update({ last_message_status: 'sent' }).eq('id', conv.id)
+
+    if (conv.contato_id) {
+      await supabase.from('contato_activities').insert({
+        contato_id: conv.contato_id,
+        organization_id: org.id,
+        type: 'whatsapp_sent',
+        payload: { body: previewBody, via: 'template' }
+      })
+    }
+
+    revalidatePath(`/app/${orgSlug}/conversas`)
+    return { ok: true, message: msg }
+  } catch (e: any) {
+    await supabase.from('whatsapp_messages').update({
+      status: 'failed',
+      content: { body: previewBody, error: e.message }
     }).eq('id', msg.id)
     await supabase.from('whatsapp_conversations').update({ last_message_status: 'failed' }).eq('id', conv.id)
     return { ok: false, error: e.message }

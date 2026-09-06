@@ -95,12 +95,11 @@ export async function createTravelSale(
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao criar venda' }
 
-  // Fires automation triggers `viagens.reserva.created` (sempre) e
-  // `viagens.embarque.scheduled` (só quando já vem com data de embarque).
+  // Fires automation trigger `viagens.reserva.created`. `viagens.embarque.scheduled`
+  // não dispara aqui — é ligado à data de embarque em si (ver
+  // lib/inngest/automation-crons.ts::automationEmbarqueScheduledFn), não ao
+  // momento em que a reserva foi criada.
   await inngest.send({ name: 'viagens.reserva.created', data: { orgId: org.id, leadId: contato.id, saleId: (data as TravelSaleRow).id } })
-  if ((data as TravelSaleRow).departure_date) {
-    await inngest.send({ name: 'viagens.embarque.scheduled', data: { orgId: org.id, leadId: contato.id, saleId: (data as TravelSaleRow).id } })
-  }
 
   if (extracted) {
     const { bulkCreateSaleProductsFromExtraction } = await import('@/actions/sale-products')
