@@ -113,7 +113,15 @@ export default function WhatsappChatSidebar({
 
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.map((c: any) => (
-          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`p-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
+          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`relative pl-4 pr-3 py-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
+            {/* Listra de status — azul quando a IA está atendendo, verde
+                quando é atendimento manual (IA pausada nesta conversa). */}
+            {aiEnabledGlobally && (
+              <span
+                className={`absolute left-0 top-0 bottom-0 w-1 ${c.automation_paused ? 'bg-green-500' : 'bg-blue-500'}`}
+                title={c.automation_paused ? 'Atendimento manual — IA pausada nesta conversa' : 'IA atendendo'}
+              />
+            )}
             {c.contatos?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.contatos.avatar_url} alt="" className="h-9 w-9 rounded-full shrink-0 object-cover" />
@@ -123,23 +131,20 @@ export default function WhatsappChatSidebar({
               </div>
             )}
             <div className="overflow-hidden flex-1 min-w-0 space-y-1">
-              {/* Linha 1 — nome, etiqueta manual/IA, janela de 24h, data/hora */}
+              {/* Linha 1 — nome à esquerda; janela de 24h + hora à direita */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <span className="font-medium text-sm truncate">{c.contact_name || c.contact_phone}</span>
-                  {aiEnabledGlobally && c.automation_paused && (
-                    <span className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200" title="Atendimento manual — IA pausada nesta conversa">
-                      manual
-                    </span>
-                  )}
-                  <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
                   {c.ai_handoff_summary && (
                     <Sparkles className="w-3 h-3 text-primary shrink-0" aria-label="Tem resumo da IA" />
                   )}
                 </div>
-                <span className={`shrink-0 text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                  {formatInboxTime(c.last_message_at)}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <WindowBadge lastInboundAt={c.last_inbound_at} now={now} />
+                  <span className={`text-[10px] font-medium ${c.unread_count > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                    {formatInboxTime(c.last_message_at)}
+                  </span>
+                </div>
               </div>
 
               {/* Linha 2 — última mensagem + status de envio/leitura */}
