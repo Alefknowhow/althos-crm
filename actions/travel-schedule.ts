@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/supabase/types'
+import { buildFlightDesignator } from '@/actions/flight-lookup'
 
 export type ScheduledTrip = {
   id: string
@@ -22,6 +23,11 @@ export type ScheduledTrip = {
   lead_name: string | null
   lead_phone: string | null
   created_by: string | null
+  /** Saúde da reserva por tarefas pendentes — ver listScheduledTrips. */
+  health: 'green' | 'yellow' | 'red'
+  flight_status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
+  delay_minutes: number | null
+  revised_departure: string | null
 }
 
 export type TripTask = {
@@ -63,12 +69,90 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
     }
   }
 
+  const saleIds = rows.map(r => r.id)
+
+  // Saúde da reserva: verde = todas as tarefas concluídas, vermelho = alguma
+  // pendente de alta prioridade, amarelo = pendente sem ser alta prioridade.
+  const healthBySale = new Map<string, 'green' | 'yellow' | 'red'>()
+  if (saleIds.length > 0) {
+    const { data: allTasks } = await supabase
+      .from('tasks')
+      .select('sale_id, status, priority')
+      .eq('organization_id', org.id)
+      .in('sale_id', saleIds)
+    const bySale = new Map<string, { status: string; priority: string | null }[]>()
+    for (const t of (allTasks as any[]) ?? []) {
+      if (!t.sale_id) continue
+      if (!bySale.has(t.sale_id)) bySale.set(t.sale_id, [])
+      bySale.get(t.sale_id)!.push({ status: t.status, priority: t.priority })
+    }
+    Array.from(bySale.entries()).forEach(([saleId, tasks]) => {
+      const openTasks = tasks.filter((t: any) => t.status !== 'done')
+      if (openTasks.length === 0) healthBySale.set(saleId, 'green')
+      else if (openTasks.some((t: any) => t.priority === 'high')) healthBySale.set(saleId, 'red')
+      else healthBySale.set(saleId, 'yellow')
+    })
+  }
+
+  // Status de voo: casa cada reserva com o(s) produto(s) aéreo(s) dela e
+  // busca o status já monitorado pelo cron (lib/inngest/flight-status-cron.ts)
+  // — aqui só lê o que já foi gravado, não chama a AeroDataBox.
+  const flightBySale = new Map<string, { status: ScheduledTrip['flight_status']; delay_minutes: number; revised_departure: string | null }>()
+  if (saleIds.length > 0) {
+    const { data: products } = await supabase
+      .from('sale_products')
+      .select('sale_id, data')
+      .eq('organization_id', org.id)
+      .eq('kind', 'aereo')
+      .in('sale_id', saleIds)
+
+    const designatorsBySale = new Map<string, { designator: string; flightDate: string }[]>()
+    for (const p of (products as any[]) ?? []) {
+      const flightDate = String(p.data?.data || '')
+      const designator = await buildFlightDesignator(p.data?.companhia || '', p.data?.numero_voo || '')
+      if (!designator || !/^\d{4}-\d{2}-\d{2}$/.test(flightDate)) continue
+      if (!designatorsBySale.has(p.sale_id)) designatorsBySale.set(p.sale_id, [])
+      designatorsBySale.get(p.sale_id)!.push({ designator, flightDate })
+    }
+
+    const allDesignators = Array.from(designatorsBySale.values()).flat()
+    if (allDesignators.length > 0) {
+      const { data: statuses } = await supabase
+        .from('sale_flight_status')
+        .select('flight_designator, flight_date, status, delay_minutes, revised_departure')
+        .eq('organization_id', org.id)
+        .in('flight_designator', Array.from(new Set(allDesignators.map(d => d.designator))))
+      const statusByKey = new Map((statuses as any[] ?? []).map(s => [`${s.flight_designator}|${s.flight_date}`, s]))
+
+      Array.from(designatorsBySale.entries()).forEach(([saleId, ds]) => {
+        // Reserva pode ter ida+volta — usa o voo mais próximo de hoje com
+        // status registrado (o primeiro que casar já serve pro badge da lista).
+        for (const d of ds) {
+          const found = statusByKey.get(`${d.designator}|${d.flightDate}`)
+          if (found) {
+            flightBySale.set(saleId, {
+              status: found.status,
+              delay_minutes: found.delay_minutes,
+              revised_departure: found.revised_departure,
+            })
+            break
+          }
+        }
+      })
+    }
+  }
+
   return rows.map(r => {
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
+    const flight = flightBySale.get(r.id)
     return {
       ...r,
       lead_name: lead?.name ?? null,
       lead_phone: lead?.phone ?? null,
+      health: healthBySale.get(r.id) ?? 'green',
+      flight_status: flight?.status ?? null,
+      delay_minutes: flight?.delay_minutes ?? null,
+      revised_departure: flight?.revised_departure ?? null,
     } as ScheduledTrip
   })
 }

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { checkContatoPermission } from './contatos-shared'
+import { checkContatoPermission, checkContatoDuplicate } from './contatos-shared'
 
 /* =========================================================
  *  Cliente-style operations (status = 'cliente')
@@ -172,6 +172,11 @@ export async function upsertCustomerProfile(orgSlug: string, leadId: string, raw
   const data: Record<string, any> = { ...parsed.data }
   for (const k of Object.keys(data)) {
     if (data[k] === '') data[k] = null
+  }
+
+  if ('cpf' in data) {
+    const dup = await checkContatoDuplicate(supabase, org.id, { cpf: data.cpf }, leadId)
+    if (dup) return { ok: false as const, error: dup }
   }
 
   const { error } = await supabase

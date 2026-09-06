@@ -29,8 +29,10 @@ export default function SidebarSupportLink({ orgSlug }: { orgSlug: string }) {
           : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/40',
       )}
     >
-      <HelpCircle className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-      <span>Central de ajuda</span>
+      <span className="flex items-center gap-2.5">
+        <HelpCircle className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+        <span>Central de ajuda</span>
+      </span>
     </Link>
   )
 }

@@ -17,6 +17,27 @@ import { stateLabel, whatsappLink } from './ScheduleTripDetail'
 
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
+const HEALTH_META: Record<string, { dot: string; title: string }> = {
+  green: { dot: 'bg-emerald-500', title: 'Saúde da reserva: em dia — todas as tarefas concluídas' },
+  yellow: { dot: 'bg-amber-500', title: 'Saúde da reserva: atenção — tarefa(s) pendente(s)' },
+  red: { dot: 'bg-red-500', title: 'Saúde da reserva: pendência importante — tarefa de alta prioridade em aberto' },
+}
+
+const FLIGHT_STATUS_META: Record<string, { label: string; badge: string }> = {
+  scheduled: { label: 'Previsto', badge: 'border-muted-foreground/30 text-muted-foreground' },
+  active: { label: 'Em curso', badge: 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' },
+  landed: { label: 'Pousado', badge: 'border-emerald-300 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400' },
+  cancelled: { label: 'Cancelado', badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400' },
+  diverted: { label: 'Desviado', badge: 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400' },
+  unknown: { label: 'Sem dados', badge: 'border-muted-foreground/30 text-muted-foreground' },
+}
+
+function fmtTime(iso?: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
   const d = new Date(s + 'T12:00:00')
@@ -68,8 +89,22 @@ export function ScheduleListView({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
+                    <span
+                      className={cn('w-2 h-2 rounded-full shrink-0', HEALTH_META[t.health]?.dot)}
+                      title={HEALTH_META[t.health]?.title}
+                    />
                     <span className="font-medium truncate">{t.client_name || t.lead_name || 'Viagem'}</span>
                     <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
+                    {t.flight_status && (
+                      <Badge
+                        variant="outline"
+                        className={cn('shrink-0 text-[10px]', FLIGHT_STATUS_META[t.flight_status]?.badge)}
+                        title={t.revised_departure ? `Novo horário: ${fmtTime(t.revised_departure)}` : undefined}
+                      >
+                        {FLIGHT_STATUS_META[t.flight_status]?.label}
+                        {t.delay_minutes ? ` · +${t.delay_minutes}min` : ''}
+                      </Badge>
+                    )}
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
                     {t.destination && (

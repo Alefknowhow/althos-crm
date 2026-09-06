@@ -173,6 +173,99 @@ async function fetchOneFlight(
   return { ok: true, flight, depUtc, arrUtc }
 }
 
+export type FlightStatusResult = {
+  designator: string
+  /** Status normalizado da AeroDataBox — ver mapeamento em fetchFlightStatus. */
+  status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown'
+  scheduled_departure: string | null // ISO UTC
+  revised_departure: string | null   // ISO UTC — actualTime ou revisedTime, o que vier
+  delay_minutes: number
+}
+
+/** AeroDataBox devolve status em inglês livre ("Expected"/"EnRoute"/"Arrived"/
+ *  "Canceled"/"Diverted"/"Unknown"...) — normaliza pro enum interno. */
+function normalizeStatus(raw: string | undefined): FlightStatusResult['status'] {
+  const s = (raw || '').toLowerCase()
+  if (s.includes('cancel')) return 'cancelled'
+  if (s.includes('divert')) return 'diverted'
+  if (s.includes('arriv') || s.includes('land')) return 'landed'
+  if (s.includes('en-route') || s.includes('enroute') || s.includes('active') || s.includes('depart')) return 'active'
+  if (s.includes('expect') || s.includes('sched')) return 'scheduled'
+  return 'unknown'
+}
+
+/**
+ * Consulta o status ATUAL de um voo (usado pelo cron de embarques, não pela
+ * cotação) — mesma chamada de fetchOneFlight, mas lendo os campos de status/
+ * horário revisado que a busca de cotação ignora de propósito (lá só importa
+ * o horário previsto pra montar o roteiro).
+ */
+export async function fetchFlightStatus(
+  designator: string,
+  date: string,
+  key: string,
+): Promise<{ ok: true; result: FlightStatusResult } | { ok: false; error: string }> {
+  if (!/^[A-Z0-9]{2}\d{1,4}$/.test(designator)) {
+    return { ok: false, error: `Número de voo inválido: "${designator}".` }
+  }
+
+  const url =
+    `https://${RAPIDAPI_HOST}/flights/number/${encodeURIComponent(designator)}/${date}` +
+    `?withAircraftImage=false&withLocation=false`
+
+  let data: any
+  try {
+    const res = await fetch(url, {
+      headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': key },
+      cache: 'no-store',
+    })
+    if (res.status === 404) return { ok: false, error: `Voo ${designator} não encontrado para ${date}.` }
+    if (res.status === 429) return { ok: false, error: 'Limite de requisições atingido.' }
+    if (!res.ok) return { ok: false, error: `Falha ao consultar ${designator} (HTTP ${res.status}).` }
+    data = await res.json()
+  } catch {
+    return { ok: false, error: 'Não foi possível consultar a malha aérea agora.' }
+  }
+
+  if (data && !Array.isArray(data) && data.message) {
+    return { ok: false, error: 'Limite da API atingido.' }
+  }
+  const arr: any[] = Array.isArray(data) ? data : []
+  if (arr.length === 0) return { ok: false, error: `Voo ${designator} não encontrado para ${date}.` }
+
+  const entry = arr.find(e => (e?.departure?.scheduledTime?.local || '').startsWith(date)) || arr[0]
+  const dep = entry.departure || {}
+  const scheduledUtc = parseUtc(dep.scheduledTime?.utc)
+  // actualTime só existe depois de decolar; revisedTime é o novo previsto
+  // (atraso anunciado antes de decolar) — nessa ordem de preferência.
+  const revisedUtc = parseUtc(dep.actualTime?.utc) || parseUtc(dep.revisedTime?.utc)
+  const delay_minutes = scheduledUtc && revisedUtc
+    ? Math.max(0, Math.round((revisedUtc.getTime() - scheduledUtc.getTime()) / 60000))
+    : 0
+
+  return {
+    ok: true,
+    result: {
+      designator,
+      status: normalizeStatus(entry.status),
+      scheduled_departure: scheduledUtc?.toISOString() || null,
+      revised_departure: revisedUtc?.toISOString() || null,
+      delay_minutes,
+    },
+  }
+}
+
+/** Monta o designador (ex.: "LA" + "8084" = "LA8084") a partir de companhia
+ *  (nome livre ou código) + número — mesma lógica usada por lookupFlight,
+ *  extraída pra ser reaproveitada pelo cron de status (actions não podem
+ *  importar de outra 'use server' function sem chamada de rede/auth junto). */
+export async function buildFlightDesignator(airline: string, number: string): Promise<string | null> {
+  const code = toIata(airline)
+  const num = (number || '').toUpperCase().replace(/\s+/g, '')
+  const designator = num.startsWith(code) ? num : `${code}${num.replace(/[^0-9]/g, '')}`
+  return /^[A-Z0-9]{2}\d{1,4}$/.test(designator) ? designator : null
+}
+
 export async function lookupFlight(
   orgSlug: string,
   airline: string,
@@ -197,12 +290,8 @@ export async function lookupFlight(
     return { ok: false, error: 'Data inválida.' }
   }
 
-  // Monta o designador (ex.: "LA" + "8084" = "LA8084").
-  const code = toIata(airline)
-  const num = (number || '').toUpperCase().replace(/\s+/g, '')
-  const designator = num.startsWith(code) ? num : `${code}${num.replace(/[^0-9]/g, '')}`
-
-  if (!/^[A-Z0-9]{2}\d{1,4}$/.test(designator)) {
+  const designator = await buildFlightDesignator(airline, number)
+  if (!designator) {
     return { ok: false, error: 'Não consegui montar o número do voo. Confira a companhia e o número.' }
   }
 

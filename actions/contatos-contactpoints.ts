@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { CONTATO_STATUSES } from '@/lib/contatos'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
-import { checkContatoPermission, FROZEN_ERROR } from './contatos-shared'
+import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
 
 /* =========================================================
  *  Contact points (email/phone), customer creation, contato panel
@@ -202,6 +202,10 @@ export async function createContato(orgSlug: string, raw: unknown) {
   const { name, email, phone, status, source } = parsed.data
 
   const supabase = createClient()
+
+  const dup = await checkContatoDuplicate(supabase, org.id, { phone })
+  if (dup) return { ok: false as const, error: dup }
+
   const { data: contato, error } = await supabase
     .from('contatos')
     .insert({

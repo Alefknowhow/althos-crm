@@ -6,7 +6,7 @@ import { leadSchema } from '@/lib/validators/lead'
 import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
-import { checkContatoPermission, FROZEN_ERROR } from './contatos-shared'
+import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
 
 /* =========================================================
  *  Lead CRUD (create/update/delete/notes)
@@ -51,6 +51,9 @@ export async function createLead(orgSlug: string, formData: FormData) {
   if (!stage_id) {
     return { ok: false, error: 'Configure um pipeline com pelo menos um estágio antes de criar contatos.' }
   }
+
+  const dup = await checkContatoDuplicate(supabase, org.id, { phone })
+  if (dup) return { ok: false, error: dup }
 
   const { data: stageInfo } = await supabase
     .from('pipeline_stages')
@@ -161,6 +164,10 @@ export async function updateLead(orgSlug: string, leadId: string, formData: Form
   if (phone !== null) updates.phone = phone || null
   const cpf = formData.get('cpf') as string
   if (cpf !== null) updates.cpf = cpf || null
+
+  const dup = await checkContatoDuplicate(supabase, org.id, { phone: updates.phone, cpf: updates.cpf }, leadId)
+  if (dup) return { ok: false, error: dup }
+
   const date_of_birth = formData.get('date_of_birth') as string
   if (date_of_birth !== null) updates.date_of_birth = date_of_birth || null
 
