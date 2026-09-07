@@ -147,9 +147,18 @@ export interface PlanMeta {
  * junho/2026 (migration 0064). Semestral −10% · Anual −18% (totais pagos
  * por ciclo, já com desconto).
  *
- * Créditos de IA mensais recalculados como 5% do valor do plano, ao custo
- * real do crédito (R$0,01215 — ver tabela ai_credit_pricing_settings),
- * arredondado: Starter 700 · Pro 1650 · Business 2900.
+ * Créditos de IA mensais = 10% do valor do plano, ao custo real do
+ * crédito (R$0,054/crédito — ver ai_credit_pricing_settings), arredondado:
+ * Starter 310 · Pro 740 · Business 1.290.
+ *
+ * Esse custo foi recalibrado na migration 0156 depois de uma primeira
+ * rodada errada: a estimativa por tokens (1500in/150out, Haiku) dava
+ * US$0,00225/resposta, mas o custo real observado em produção é
+ * ~US$0,01/resposta (~4,4x maior — iterações de tool-use e contexto
+ * maior que o assumido não entravam na conta). Os créditos da migration
+ * 0155 (700/1650/2900, calculados a 5% com o custo errado) foram
+ * corrigidos e o volume-alvo também subiu de 5% para 10% do valor do
+ * plano nessa mesma migration 0156.
  */
 export const PLAN_META: Record<PlanId, PlanMeta> = {
   free: {
@@ -166,7 +175,7 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceMonthlyCents: 16700,
     priceSemestralCents: 90180,
     priceAnnualCents: 164328,
-    aiCreditsMonthly: 700,
+    aiCreditsMonthly: 310,
   },
   pro: {
     id: 'pro',
@@ -174,7 +183,7 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceMonthlyCents: 39700,
     priceSemestralCents: 214380,
     priceAnnualCents: 390648,
-    aiCreditsMonthly: 1650,
+    aiCreditsMonthly: 740,
   },
   business: {
     id: 'business',
@@ -182,7 +191,7 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceMonthlyCents: 69700,
     priceSemestralCents: 376380,
     priceAnnualCents: 685848,
-    aiCreditsMonthly: 2900,
+    aiCreditsMonthly: 1290,
   },
 }
 

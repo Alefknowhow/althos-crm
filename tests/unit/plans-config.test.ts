@@ -82,7 +82,7 @@ describe('modelCreditMultiplier', () => {
 
 describe('getPlanMeta', () => {
   it('resolves metadata and defaults to free', () => {
-    expect(getPlanMeta('starter').aiCreditsMonthly).toBe(700)
+    expect(getPlanMeta('starter').aiCreditsMonthly).toBe(310)
     expect(getPlanMeta('garbage').id).toBe('free')
   })
 })

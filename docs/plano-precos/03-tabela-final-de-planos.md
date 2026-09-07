@@ -16,15 +16,15 @@
 
 ## 2. Créditos de IA
 
-Metodologia: **5% do valor do plano, convertido em créditos ao custo real do token** (R$0,01215/crédito — câmbio R$5,40, sem margem, fonte `ai_credit_pricing_settings`), arredondado.
+Metodologia: **10% do valor do plano, convertido em créditos ao custo real do token**, arredondado. Custo real recalibrado (migration 0156) com o valor observado em produção: **R$0,054/crédito** (US$0,01/resposta do Atendente IA, câmbio R$5,40 — a estimativa original por tokens, US$0,00225, ficava ~4,4x abaixo do real porque não considerava iterações de tool-use). Fonte: `ai_credit_pricing_settings`.
 
-| Plano | 5% do valor | Créditos/mês | Custo real desses créditos |
+| Plano | 10% do valor | Créditos/mês | Custo real desses créditos |
 |---|---:|---:|---:|
-| Starter | R$8,35 | **700** | ~R$8,51/mês |
-| Pro | R$19,85 | **1.650** | ~R$20,05/mês |
-| Business | R$34,85 | **2.900** | ~R$35,24/mês |
+| Starter | R$16,70 | **310** | ~R$16,74/mês |
+| Pro | R$39,70 | **740** | ~R$39,96/mês |
+| Business | R$69,70 | **1.290** | ~R$69,66/mês |
 
-O Atendente IA (WhatsApp) consome 1 crédito por resposta automática — na prática: Starter aguenta ~700 respostas automáticas/mês, Pro ~1.650, Business ~2.900, antes de precisar de pacote avulso.
+O Atendente IA (WhatsApp) consome 1 crédito por resposta automática — na prática: Starter aguenta ~310 respostas automáticas/mês, Pro ~740, Business ~1.290, antes de precisar de pacote avulso.
 
 ---
 
@@ -67,7 +67,7 @@ A reformulação eliminou a lógica antiga de "recurso ligado/desligado por plan
 | Formulários de captação ativos | **10** | **20** | ilimitado |
 | **Storage de mídia** (uploads, vouchers, mídia de WhatsApp/Instagram) | **2GB** | **5GB** | **15GB** |
 | **Disparos de e-mail marketing/mês** (1 e-mail = 1 disparo) | **300** | **1.000** | **5.000** |
-| Créditos de IA/mês | 700 | 1.650 | 2.900 |
+| Créditos de IA/mês | 310 | 740 | 1.290 |
 
 **Negrito** = limites novos ou recalculados nesta reformulação.
 
@@ -76,7 +76,7 @@ A reformulação eliminou a lógica antiga de "recurso ligado/desligado por plan
 ## 5. O que mudou de fato (resumo executivo)
 
 1. **Starter subiu de R$137 → R$167**, mas deixou de ser "CRM sem canal real" — WhatsApp, Instagram e e-mail marketing entram habilitados, com teto de uso em vez de bloqueio total. Antes disso, o Atendente IA já vinha incluso no Starter mas sem WhatsApp habilitado pra usá-lo — inconsistência corrigida.
-2. **Créditos de IA quase triplicaram no Starter** (300→700) e cresceram ~40% no Pro (1.200→1.650); Business teve um pequeno ajuste pra baixo (3.000→2.900) pra bater com a metodologia de 5% aplicada de forma consistente aos 3 planos.
+2. **Créditos de IA recalculados pra 10% do valor do plano** ao custo real do crédito (R$0,054 — recalibrado depois que o custo estimado por tokens se mostrou ~4,4x abaixo do observado em produção): Starter 300→310, Pro 1.200→740, Business 3.000→1.290. O Pro e o Business caem em volume bruto porque o custo real por crédito é maior do que o presumido inicialmente — mas o gasto em IA como % da receita fica consistente (~10%) nos três planos, o que não acontecia antes.
 3. **Fim do teto de clientes cadastrados** — substituído por teto de storage de mídia, que é o custo elástico real (clientes cadastrados não custam nada de infraestrutura; mídia enviada, sim).
 4. **Formulários deixam de ser ilimitados em todo plano** — vira 10/20/ilimitado, diferenciação nova.
 5. **Dois limites novos:** storage de mídia e disparos de e-mail marketing (a funcionalidade de e-mail em massa já existia via Campanhas de Envio — só não tinha teto).
