@@ -4,9 +4,9 @@
  *
  * plan column in organizations (NEW taxonomy — free/starter/pro/business):
  *   'free'       – Gratuito para sempre, recursos básicos, sem cartão
- *   'starter'    – R$ 137/mo, leads ilimitados, 1 user, catálogo (sem WhatsApp/Instagram)
- *   'pro'        – R$ 297/mo, IA (atendente/score) + agendamentos + Meta Ads, até 5 users
- *   'business'   – R$ 397/mo, tudo (insights IA, white-label, multi-tenant, API), users ilimitados
+ *   'starter'    – R$ 167/mo, leads ilimitados, 1 user, IA + WhatsApp + Instagram com teto de uso
+ *   'pro'        – R$ 397/mo, IA (atendente/score) + agendamentos + Meta Ads, até 6 users
+ *   'business'   – R$ 697/mo, tudo (insights IA, multi-tenant, API), até 20 users
  *   'agency'     – invite-only, unlimited, all features, billing_managed_externally
  *   'internal'   – Althos own accounts
  *
@@ -127,19 +127,19 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Starter',
     tagline:           'Ideal para começar',
     description:       'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
-    priceCents:         13700,
-    priceCentsSemestral:73980,   // R$ 739,80/semestre (−10% vs 6×137)
-    priceCentsAnnual:   134808,  // R$ 1.348,08/ano (−18% vs 12×137)
+    priceCents:         16700,
+    priceCentsSemestral:90180,   // R$ 901,80/semestre (−10% vs 6×167)
+    priceCentsAnnual:   164328,  // R$ 1.643,28/ano (−18% vs 12×167)
     maxLeads:           null,    // unlimited
     maxUsers:           1,
-    hasAI:             false,
+    hasAI:             true,
     hasAdvancedAI:     false,
-    hasAutomations:    false,
+    hasAutomations:    true,
     hasAdvancedAuto:   false,
-    hasWhatsApp:       false,   // removido da oferta: só Pro/Business
-    hasInstagram:      false,   // removido da oferta: só Pro/Business
-    hasMetaAds:        false,
-    hasEmailMarketing: false,
+    hasWhatsApp:       true,    // com teto de uso (ver lib/plans/config.ts PLAN_LIMITS)
+    hasInstagram:      true,    // com teto de uso
+    hasMetaAds:        true,
+    hasEmailMarketing: true,    // com teto de uso
     hasAPI:            false,
     hasDedicatedManager: false,
     isPublicPlan:      true,
@@ -177,7 +177,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     priceCentsSemestral:376380,  // R$ 3.763,80/semestre (−10% vs 6×697)
     priceCentsAnnual:   685848,  // R$ 6.858,48/ano (−18% vs 12×697)
     maxLeads:           null,
-    maxUsers:           null,    // unlimited
+    maxUsers:           20,       // acima disso: plano sob medida ou usuário extra avulso
     hasAI:             true,
     hasAdvancedAI:     true,
     hasAutomations:    true,

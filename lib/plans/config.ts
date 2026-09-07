@@ -71,14 +71,19 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     instagram_automation: false,
     bulk_campaigns: false,
   },
-  // Starter/Pro/Business compartilham praticamente as MESMAS funcionalidades;
-  // a diferença está na QUANTIDADE de uso (ver PLAN_LIMITS) e em dois recursos
-  // premium (ai_insights + export_reports) reservados a Pro/Business.
+  // Starter/Pro/Business têm as MESMAS funcionalidades desde a reprecificação
+  // de set/2026 (docs/plano-precos/) — a diferença é QUANTIDADE de uso (ver
+  // PLAN_LIMITS: usuários, orgs, disparos de automação/social/e-mail,
+  // storage, créditos de IA) e dois recursos premium (ai_insights +
+  // export_reports) reservados a Pro/Business. Antes disso, Starter também
+  // tinha WhatsApp/Instagram/campanhas desligados por completo — mudou pra
+  // "ligado com teto de uso" pra que o Atendente IA (que já era incluso)
+  // tivesse um canal de verdade pra operar.
   // white_label foi removido da oferta (false em todos os planos).
   starter: {
     tasks: true,
     catalogo: true,
-    whatsapp: false,           // removido da oferta: só Pro/Business
+    whatsapp: true,
     capi_pixel: true,
     ai_insights: false,        // premium: só Pro/Business
     white_label: false,        // removido da oferta
@@ -88,8 +93,8 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     multi_tenant: false,       // 1 org (ver PLAN_LIMITS.orgs)
     export_reports: false,     // premium: só Pro/Business
     meta_ads_panel: true,
-    instagram_automation: false, // removido da oferta: só Pro/Business
-    bulk_campaigns: false,       // premium: só Pro/Business
+    instagram_automation: true,
+    bulk_campaigns: true,
   },
   pro: {
     tasks: true,
@@ -136,9 +141,15 @@ export interface PlanMeta {
 
 /**
  * Static plan metadata — mirror of the `plans` price/credit columns.
- * Prices reflect the junho/2026 revamp (migration 0064):
- *   Starter R$137 · Pro R$397 · Business R$697 (mensal).
- *   Semestral −10% · Anual −18% (totais pagos por ciclo, já com desconto).
+ * Prices reflect a repricing de set/2026 (migration 0155,
+ * docs/plano-precos/): Starter subiu de R$137 pra R$167 (ganhou canais reais
+ * com teto de uso); Pro e Business mantiveram o preço da revamp de
+ * junho/2026 (migration 0064). Semestral −10% · Anual −18% (totais pagos
+ * por ciclo, já com desconto).
+ *
+ * Créditos de IA mensais recalculados como 5% do valor do plano, ao custo
+ * real do crédito (R$0,01215 — ver tabela ai_credit_pricing_settings),
+ * arredondado: Starter 700 · Pro 1650 · Business 2900.
  */
 export const PLAN_META: Record<PlanId, PlanMeta> = {
   free: {
@@ -152,10 +163,10 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    priceMonthlyCents: 13700,
-    priceSemestralCents: 73980,
-    priceAnnualCents: 134808,
-    aiCreditsMonthly: 300,
+    priceMonthlyCents: 16700,
+    priceSemestralCents: 90180,
+    priceAnnualCents: 164328,
+    aiCreditsMonthly: 700,
   },
   pro: {
     id: 'pro',
@@ -163,7 +174,7 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceMonthlyCents: 39700,
     priceSemestralCents: 214380,
     priceAnnualCents: 390648,
-    aiCreditsMonthly: 1200,
+    aiCreditsMonthly: 1650,
   },
   business: {
     id: 'business',
@@ -171,7 +182,7 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceMonthlyCents: 69700,
     priceSemestralCents: 376380,
     priceAnnualCents: 685848,
-    aiCreditsMonthly: 3000,
+    aiCreditsMonthly: 2900,
   },
 }
 
@@ -185,18 +196,24 @@ export interface PlanLimits {
   automationRuns: number   // disparos de automação por mês
   socialAccounts: number   // contas de Social/DM conectadas
   socialMessages: number   // DMs/disparos de social por mês
-  customers: number        // registros de clientes
+  customers: number        // registros de clientes (-1 desde a repricing — sem teto, ver storageMb)
   users: number
   leads: number            // leads no pipeline (-1 = ilimitado)
   orgs: number             // empresas/organizações por conta (multi-tenant)
   forms: number            // formulários de captação ativos
+  storageMb: number        // storage de mídia (uploads, vouchers, mídia de WhatsApp/Instagram) em MB
+  emailSends: number       // disparos de e-mail marketing por mês (1 e-mail = 1 disparo)
 }
 
+// Valores atualizados na repricing de set/2026 (migration 0155,
+// docs/plano-precos/03-*). customers deixou de ter teto (era 500/2000 —
+// vira storageMb, que é o custo elástico real). forms, socialMessages,
+// storageMb e emailSends são novos/recalculados nessa mesma leva.
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  free:     { pipelines: 1,  automations: 0,  automationRuns: 0,     socialAccounts: 0,  socialMessages: 0,    customers: 50,   users: 1,  leads: 100, orgs: 1,  forms: 1  },
-  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: 500,  users: 1,  leads: -1,  orgs: 1,  forms: -1 },
-  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 5000, customers: 2000, users: 6,  leads: -1,  orgs: 5,  forms: -1 },
-  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1,   users: -1, leads: -1,  orgs: -1, forms: -1 },
+  free:     { pipelines: 1,  automations: 0,  automationRuns: 0,     socialAccounts: 0,  socialMessages: 0,    customers: 50, users: 1,  leads: 100, orgs: 1, forms: 1,   storageMb: 0,     emailSends: 0    },
+  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: -1, users: 1,  leads: -1,  orgs: 1, forms: 10,  storageMb: 2048,  emailSends: 300  },
+  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 1000, customers: -1, users: 6,  leads: -1,  orgs: 5, forms: 20,  storageMb: 5120,  emailSends: 1000 },
+  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1, users: 20, leads: -1,  orgs: -1, forms: -1, storageMb: 15360, emailSends: 5000 },
 }
 
 /** Limite de um plano para um recurso (Infinity quando ilimitado). */
