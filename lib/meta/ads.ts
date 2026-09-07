@@ -2,9 +2,12 @@
  * Meta Marketing API (read-only) — puxa campanhas e métricas diárias de uma
  * conta de anúncios pra alimentar campaigns/campaign_metrics_daily.
  *
- * Usa o mesmo System User token já salvo em organizations.meta_access_token
- * (o mesmo configurado pro CAPI/Pixel) — ele já tem escopo ads_management,
- * que cobre leitura (ads_read). Sem token novo, sem tela nova de config.
+ * Usa organizations.meta_ads_access_token — token obtido via OAuth
+ * interativo por org (Facebook Login, escopo ads_read; ver
+ * lib/meta/ads-oauth.ts + app/api/meta-ads/connect e /callback), não um
+ * System User token. Não confundir com organizations.meta_access_token
+ * (singular, sem "_ads_"), que é o token manual do CAPI/Pixel de WhatsApp
+ * (actions/organization-meta.ts) — fluxo totalmente separado.
  *
  * Docs: https://developers.facebook.com/docs/marketing-api/insights
  */
