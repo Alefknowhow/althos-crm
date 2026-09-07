@@ -305,7 +305,17 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
       <section className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</h4>
-          <Input value={value} onChange={e => setValue(e.target.value)} placeholder="R$ 0,00" className="h-8 text-sm" onBlur={handleSaveValue} />
+          <Input
+            value={value}
+            inputMode="numeric"
+            onChange={e => {
+              const cents = parseCurrency(e.target.value)
+              setValue(cents > 0 ? formatCurrency(cents) : '')
+            }}
+            placeholder="R$ 0,00"
+            className="h-8 text-sm"
+            onBlur={handleSaveValue}
+          />
         </div>
         <div className="space-y-1">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Estágio</h4>
