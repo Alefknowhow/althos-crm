@@ -32,6 +32,15 @@ const FLIGHT_STATUS_META: Record<string, { label: string; badge: string }> = {
   unknown: { label: 'Sem dados', badge: 'border-muted-foreground/30 text-muted-foreground' },
 }
 
+// Cor do ícone de calendário — carrega o sinal que antes era a bolinha
+// roxa removida (já tínhamos a etiqueta de contagem, era redundante).
+const DATE_ICON_COLOR: Record<'cancelled' | TripState, string> = {
+  cancelled: 'text-red-500',
+  upcoming: 'text-indigo-500',
+  ongoing: 'text-emerald-600',
+  past: 'text-slate-400',
+}
+
 function fmtTime(iso?: string | null) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -46,6 +55,18 @@ function parseDate(s?: string | null): Date | null {
 function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
+}
+
+/** Rótulo/cor da etiqueta principal — sobrepõe o rótulo de data (upcoming/
+ *  ongoing/past) com o status real da venda (cancelada) ou uma redação mais
+ *  natural para viagem em curso/já realizada. */
+function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, today: Date) {
+  if (t.status === 'cancelled') {
+    return { key: 'cancelled' as const, label: 'Cancelada', badge: 'border-red-300 text-red-700 bg-red-50 dark:border-red-900 dark:text-red-400 dark:bg-red-950/30' }
+  }
+  if (state === 'ongoing') return { key: state, label: 'Em viagem', badge: STATE_META.ongoing.badge }
+  if (state === 'past') return { key: state, label: 'Já realizada', badge: STATE_META.past.badge }
+  return { key: state, label: stateLabel(state, dep, today), badge: STATE_META.upcoming.badge }
 }
 
 export function ScheduleListView({
@@ -64,11 +85,11 @@ export function ScheduleListView({
         <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma viagem com esse filtro.</div>
       ) : filtered.map(t => {
         const state = tripState(t, today)
-        const meta = STATE_META[state]
         const dep = parseDate(t.departure_date)
         const wa = whatsappLink(t.lead_phone)
         const locator = t.package_locator || t.air_locator
         const seller = members.find(m => m.user_id === t.created_by)?.name
+        const status = rowStatus(t, state, dep, today)
 
         return (
           <div key={t.id} className="p-3 hover:bg-muted/40 transition-colors space-y-1.5">
@@ -88,23 +109,12 @@ export function ScheduleListView({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className={cn('w-2 h-2 rounded-full shrink-0', meta.dot)} />
                     <span
-                      className={cn('w-2 h-2 rounded-full shrink-0', HEALTH_META[t.health]?.dot)}
+                      className={cn('w-3 h-3 rounded-full shrink-0', HEALTH_META[t.health]?.dot)}
                       title={HEALTH_META[t.health]?.title}
                     />
                     <span className="font-medium truncate">{t.client_name || t.lead_name || 'Viagem'}</span>
-                    <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
-                    {t.flight_status && (
-                      <Badge
-                        variant="outline"
-                        className={cn('shrink-0 text-[10px]', FLIGHT_STATUS_META[t.flight_status]?.badge)}
-                        title={t.revised_departure ? `Novo horário: ${fmtTime(t.revised_departure)}` : undefined}
-                      >
-                        {FLIGHT_STATUS_META[t.flight_status]?.label}
-                        {t.delay_minutes ? ` · +${t.delay_minutes}min` : ''}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className={cn('shrink-0 text-[10px]', status.badge)}>{status.label}</Badge>
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
                     {t.destination && (
@@ -113,7 +123,8 @@ export function ScheduleListView({
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 shrink-0">
-                      <CalendarDays className="w-3 h-3" /> {fmtDate(t.departure_date)} – {fmtDate(t.return_date)}
+                      <CalendarDays className={cn('w-3 h-3 shrink-0', DATE_ICON_COLOR[status.key])} />
+                      {fmtDate(t.departure_date)} – {fmtDate(t.return_date)}
                     </span>
                     {seller && (
                       <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
@@ -139,6 +150,29 @@ export function ScheduleListView({
                       {formatCurrency(t.total_cents || 0)}
                     </span>
                   </div>
+                  {t.flights.length > 0 && (
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {t.flights.map((f, i) => {
+                        const meta = FLIGHT_STATUS_META[f.status || 'scheduled']
+                        return (
+                          <span key={i} className="inline-flex items-center gap-1 shrink-0">
+                            <Plane className="w-3 h-3 shrink-0" />
+                            <span className="font-medium text-foreground/70">{f.sentido === 'volta' ? 'Volta' : 'Ida'}</span>
+                            {f.numero_voo && <span>{f.numero_voo}</span>}
+                            {(f.origem || f.destino) && <span>{f.origem}→{f.destino}</span>}
+                            {f.horario && <span>{f.horario}</span>}
+                            <Badge
+                              variant="outline"
+                              className={cn('text-[9px] px-1 py-0', meta?.badge)}
+                              title={f.revised_departure ? `Novo horário: ${fmtTime(f.revised_departure)}` : undefined}
+                            >
+                              {meta?.label}{f.delay_minutes ? ` +${f.delay_minutes}min` : ''}
+                            </Badge>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </button>
               <div className="flex items-center gap-1.5 shrink-0">

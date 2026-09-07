@@ -25,7 +25,18 @@ export type ScheduledTrip = {
   created_by: string | null
   /** Saúde da reserva por tarefas pendentes — ver listScheduledTrips. */
   health: 'green' | 'yellow' | 'red'
-  flight_status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
+  flights: FlightLegInfo[]
+}
+
+export type FlightLegInfo = {
+  sentido: string | null
+  companhia: string | null
+  numero_voo: string | null
+  origem: string | null
+  destino: string | null
+  horario: string | null
+  data: string | null
+  status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
   revised_departure: string | null
 }
@@ -94,10 +105,11 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
     })
   }
 
-  // Status de voo: casa cada reserva com o(s) produto(s) aéreo(s) dela e
-  // busca o status já monitorado pelo cron (lib/inngest/flight-status-cron.ts)
+  // Voos da reserva (ida/volta): dados factuais vêm direto de sale_products
+  // (sempre disponíveis, independente do cron já ter rodado); o status
+  // ao vivo (atraso/cancelamento) vem de sale_flight_status quando existir
   // — aqui só lê o que já foi gravado, não chama a AeroDataBox.
-  const flightBySale = new Map<string, { status: ScheduledTrip['flight_status']; delay_minutes: number; revised_departure: string | null }>()
+  const legsBySale = new Map<string, FlightLegInfo[]>()
   if (saleIds.length > 0) {
     const { data: products } = await supabase
       .from('sale_products')
@@ -106,53 +118,64 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       .eq('kind', 'aereo')
       .in('sale_id', saleIds)
 
-    const designatorsBySale = new Map<string, { designator: string; flightDate: string }[]>()
+    type PendingLeg = FlightLegInfo & { sale_id: string; designator: string | null }
+    const pending: PendingLeg[] = []
     for (const p of (products as any[]) ?? []) {
       const flightDate = String(p.data?.data || '')
-      const designator = await buildFlightDesignator(p.data?.companhia || '', p.data?.numero_voo || '')
-      if (!designator || !/^\d{4}-\d{2}-\d{2}$/.test(flightDate)) continue
-      if (!designatorsBySale.has(p.sale_id)) designatorsBySale.set(p.sale_id, [])
-      designatorsBySale.get(p.sale_id)!.push({ designator, flightDate })
+      const designator = /^\d{4}-\d{2}-\d{2}$/.test(flightDate)
+        ? await buildFlightDesignator(p.data?.companhia || '', p.data?.numero_voo || '')
+        : null
+      pending.push({
+        sale_id: p.sale_id,
+        designator,
+        sentido: p.data?.sentido ?? null,
+        companhia: p.data?.companhia ?? null,
+        numero_voo: p.data?.numero_voo ?? null,
+        origem: p.data?.origem ?? null,
+        destino: p.data?.destino ?? null,
+        horario: p.data?.horario ?? null,
+        data: p.data?.data ?? null,
+        status: null,
+        delay_minutes: null,
+        revised_departure: null,
+      })
     }
 
-    const allDesignators = Array.from(designatorsBySale.values()).flat()
-    if (allDesignators.length > 0) {
+    const designators = Array.from(new Set(pending.map(l => l.designator).filter(Boolean))) as string[]
+    if (designators.length > 0) {
       const { data: statuses } = await supabase
         .from('sale_flight_status')
         .select('flight_designator, flight_date, status, delay_minutes, revised_departure')
         .eq('organization_id', org.id)
-        .in('flight_designator', Array.from(new Set(allDesignators.map(d => d.designator))))
+        .in('flight_designator', designators)
       const statusByKey = new Map((statuses as any[] ?? []).map(s => [`${s.flight_designator}|${s.flight_date}`, s]))
 
-      Array.from(designatorsBySale.entries()).forEach(([saleId, ds]) => {
-        // Reserva pode ter ida+volta — usa o voo mais próximo de hoje com
-        // status registrado (o primeiro que casar já serve pro badge da lista).
-        for (const d of ds) {
-          const found = statusByKey.get(`${d.designator}|${d.flightDate}`)
-          if (found) {
-            flightBySale.set(saleId, {
-              status: found.status,
-              delay_minutes: found.delay_minutes,
-              revised_departure: found.revised_departure,
-            })
-            break
-          }
+      for (const leg of pending) {
+        if (!leg.designator || !leg.data) continue
+        const found = statusByKey.get(`${leg.designator}|${leg.data}`)
+        if (found) {
+          leg.status = found.status
+          leg.delay_minutes = found.delay_minutes
+          leg.revised_departure = found.revised_departure
         }
-      })
+      }
+    }
+
+    for (const leg of pending) {
+      if (!legsBySale.has(leg.sale_id)) legsBySale.set(leg.sale_id, [])
+      const { sale_id, designator, ...rest } = leg
+      legsBySale.get(sale_id)!.push(rest)
     }
   }
 
   return rows.map(r => {
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
-    const flight = flightBySale.get(r.id)
     return {
       ...r,
       lead_name: lead?.name ?? null,
       lead_phone: lead?.phone ?? null,
       health: healthBySale.get(r.id) ?? 'green',
-      flight_status: flight?.status ?? null,
-      delay_minutes: flight?.delay_minutes ?? null,
-      revised_departure: flight?.revised_departure ?? null,
+      flights: legsBySale.get(r.id) ?? [],
     } as ScheduledTrip
   })
 }
