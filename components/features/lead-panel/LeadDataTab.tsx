@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { X } from 'lucide-react'
+import { X, Plus, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,22 +12,33 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage,
-  resolveContatoAvatars, addLeadNote,
+  resolveContatoAvatars, addLeadNote, addNegotiationAction, deleteContatoActivity,
 } from '@/actions/contatos'
 import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
 import { LeadAvatarUploader } from './LeadAvatarUploader'
 
 export type Member = { user_id: string; name: string; email: string }
 export type Stage = { id: string; name: string; is_won?: boolean; is_lost?: boolean }
+export type ActivityItem = {
+  id: string
+  type: string
+  payload: { text?: string; next_return_date?: string | null }
+  created_at: string
+  created_by: string | null
+  created_by_name?: string | null
+}
+export type LeadDataTabHandle = { save: () => void }
 
-export default function LeadDataTab({
-  orgSlug,
-  lead,
-  fallbackPhone,
-  stages,
-  members,
-  leadHref,
-}: {
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+function fmtDate(s: string): string {
+  const d = new Date(s + 'T12:00:00')
+  return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR')
+}
+
+const LeadDataTab = forwardRef<LeadDataTabHandle, {
   orgSlug: string
   lead: any
   fallbackPhone?: string | null
@@ -35,7 +46,20 @@ export default function LeadDataTab({
   members: Member[]
   /** Link opcional pra "Abrir lead" — quando omitido, o link não aparece. */
   leadHref?: string
-}) {
+  /** Quando passadas (só o popup da Pipeline passa), trocam a caixa simples
+   *  de observação por uma lista de cards + adiciona o bloco de Ações. Sem
+   *  elas, o componente se comporta exatamente como antes (WhatsApp/Instagram). */
+  notes?: ActivityItem[]
+  onNotesChange?: (next: ActivityItem[]) => void
+  negotiationActions?: ActivityItem[]
+  onActionsChange?: (next: ActivityItem[]) => void
+  /** Esconde o botão "Salvar contato" daqui — usado quando o botão já vive
+   *  no topo do popup (ver LeadDetailDrawer), acionado via ref. */
+  hideInlineSaveButton?: boolean
+}>(function LeadDataTab({
+  orgSlug, lead, fallbackPhone, stages, members, leadHref,
+  notes, onNotesChange, negotiationActions, onActionsChange, hideInlineSaveButton,
+}, ref) {
   const router = useRouter()
   const [name, setName] = useState(lead?.name ?? '')
   const [email, setEmail] = useState(lead?.email ?? '')
@@ -49,6 +73,9 @@ export default function LeadDataTab({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(lead?.avatar_url ?? null)
   const [note, setNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [actionText, setActionText] = useState('')
+  const [actionReturnDate, setActionReturnDate] = useState('')
+  const [savingAction, setSavingAction] = useState(false)
 
   // Popups ao mover pra etapa is_won/is_lost/"Negociação" — mesma regra do
   // Kanban (ver components/features/pipeline/StageMoveDialogs.tsx), só que
@@ -82,8 +109,6 @@ export default function LeadDataTab({
     return () => { active = false }
   }, [orgSlug, lead?.id, lead?.avatar_storage_object_id, lead?.avatar_url])
 
-  if (!lead) return null
-
   async function handleSaveContact() {
     setSavingContact(true)
     const fd = new FormData()
@@ -98,6 +123,10 @@ export default function LeadDataTab({
     setSavingContact(false)
     router.refresh()
   }
+
+  useImperativeHandle(ref, () => ({ save: handleSaveContact }))
+
+  if (!lead) return null
 
   async function handleSaveValue() {
     const cents = parseCurrency(value)
@@ -155,9 +184,10 @@ export default function LeadDataTab({
     router.refresh()
   }
 
-  // Anotação rápida sem sair da aba Dados — grava no mesmo lugar da aba
-  // Anotações (contato_activities type='note'), só não lista o histórico
-  // aqui (isso já existe na aba dedicada).
+  // Anotação rápida — quando `notes` é passado (popup da Pipeline), vira
+  // uma lista de cards em vez de só uma caixa de escrever; nas outras telas
+  // (WhatsApp/Instagram, notes===undefined) fica como sempre foi.
+  const showRichNotes = notes !== undefined
   async function handleAddNote() {
     const v = note.trim()
     if (!v) return
@@ -169,6 +199,32 @@ export default function LeadDataTab({
     if ((res as any)?.ok === false) { toast.error('Não foi possível salvar a anotação', { description: (res as any).error }); return }
     setNote('')
     toast.success('Anotação adicionada')
+    if (showRichNotes && onNotesChange && (res as any).activity) {
+      onNotesChange([{ ...(res as any).activity, created_by_name: null }, ...notes!])
+    }
+  }
+
+  const showActions = negotiationActions !== undefined
+  async function handleAddAction() {
+    const v = actionText.trim()
+    if (!v) return
+    setSavingAction(true)
+    const res = await addNegotiationAction(orgSlug, lead.id, v, actionReturnDate || null)
+    setSavingAction(false)
+    if (!res.ok) { toast.error('Não foi possível registrar a ação', { description: res.error }); return }
+    setActionText('')
+    setActionReturnDate('')
+    toast.success('Ação registrada')
+    if (onActionsChange && res.activity) {
+      onActionsChange([{ ...res.activity, created_by_name: null }, ...negotiationActions!])
+    }
+  }
+
+  async function handleDeleteActivity(id: string, list: 'notes' | 'actions') {
+    const res = await deleteContatoActivity(orgSlug, id)
+    if (!res.ok) { toast.error('Não foi possível excluir', { description: res.error }); return }
+    if (list === 'notes' && onNotesChange && notes) onNotesChange(notes.filter(n => n.id !== id))
+    if (list === 'actions' && onActionsChange && negotiationActions) onActionsChange(negotiationActions.filter(a => a.id !== id))
   }
 
   return (
@@ -183,40 +239,112 @@ export default function LeadDataTab({
 
       <section className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de contato</h4>
-        <label className="block text-xs text-muted-foreground">Nome</label>
-        <Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" />
 
-        {/* Linha 1 — E-mail / Telefone */}
+        {/* Linha 1 — Nome / E-mail */}
         <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs text-muted-foreground">Nome</label>
+            <Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" />
+          </div>
           <div>
             <label className="block text-xs text-muted-foreground">E-mail</label>
             <Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 text-sm" type="email" />
           </div>
+        </div>
+
+        {/* Linha 2 — Telefone / CPF / Nascimento */}
+        <div className="grid grid-cols-3 gap-2">
           <div>
             <label className="block text-xs text-muted-foreground">Telefone</label>
             <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-8 text-sm" />
           </div>
-        </div>
-
-        {/* Linha 2 — CPF / Nascimento */}
-        <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-muted-foreground">CPF</label>
-            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm w-40" placeholder="000.000.000-00" />
+            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm" placeholder="000.000.000-00" />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground">Nascimento</label>
-            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm w-40" type="date" />
+            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm" type="date" />
           </div>
         </div>
 
-        {/* Linha 3 — Salvar */}
-        <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="w-full mt-1">
-          {savingContact ? 'Salvando...' : 'Salvar contato'}
+        {!hideInlineSaveButton && (
+          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="w-full mt-1">
+            {savingContact ? 'Salvando...' : 'Salvar contato'}
+          </Button>
+        )}
+      </section>
+
+      {/* Linha 3 — Observações */}
+      <section className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</h4>
+
+        {showRichNotes && notes!.length > 0 && (
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {notes!.map(n => (
+              <div key={n.id} className="rounded-lg border bg-muted/40 p-2 text-sm group">
+                <p className="whitespace-pre-wrap">{n.payload?.text}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-muted-foreground">
+                    {n.created_by_name ? `${n.created_by_name} · ` : ''}{fmtDateTime(n.created_at)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteActivity(n.id, 'notes')}
+                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Excluir observação"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Escreva uma observação sobre este lead..."
+          rows={2}
+          className="text-sm"
+        />
+        <Button type="button" size="sm" variant="outline" onClick={handleAddNote} disabled={savingNote || !note.trim()} className="w-full">
+          {savingNote ? 'Salvando...' : 'Adicionar observação'}
         </Button>
       </section>
 
-      {/* Linha 4 — Valor / Estágio / Responsável lado a lado */}
+      {/* Linha 4 — Tags */}
+      <section className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h4>
+        <Input
+          value={tagDraft}
+          onChange={e => setTagDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
+          onBlur={handleAddTag}
+          placeholder="Nova tag…"
+          className="h-8 text-sm w-32"
+        />
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {tags.map(t => (
+              <Badge key={t} variant="secondary" className="text-[10px] gap-1 pr-1">
+                {t}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(t)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label={`Remover ${t}`}
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Valor / Estágio / Responsável lado a lado */}
       <section className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</h4>
@@ -249,50 +377,64 @@ export default function LeadDataTab({
         </div>
       </section>
 
-      {/* Linha 5 — Tags */}
-      <section className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h4>
-        <Input
-          value={tagDraft}
-          onChange={e => setTagDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-          onBlur={handleAddTag}
-          placeholder="Nova tag…"
-          className="h-8 text-sm w-32"
-        />
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
-            {tags.map(t => (
-              <Badge key={t} variant="secondary" className="text-[10px] gap-1 pr-1">
-                {t}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTag(t)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={`Remover ${t}`}
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Ações — timeline de tentativas/follow-ups da negociação, só no popup da Pipeline */}
+      {showActions && (
+        <section className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações</h4>
 
-      {/* Linha 6 — Anotação rápida (histórico completo mora na aba Anotações) */}
-      <section className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</h4>
-        <Textarea
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          placeholder="Escreva uma observação sobre este lead..."
-          rows={2}
-          className="text-sm"
-        />
-        <Button type="button" size="sm" variant="outline" onClick={handleAddNote} disabled={savingNote || !note.trim()} className="w-full">
-          {savingNote ? 'Salvando...' : 'Adicionar observação'}
-        </Button>
-      </section>
+          {negotiationActions!.length > 0 && (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {negotiationActions!.map(a => (
+                <div key={a.id} className="rounded-lg border bg-muted/40 p-2 text-sm group">
+                  <p className="whitespace-pre-wrap">{a.payload?.text}</p>
+                  {a.payload?.next_return_date && (
+                    <p className="text-[11px] text-primary font-medium mt-0.5">
+                      Retorno em: {fmtDate(a.payload.next_return_date)}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {a.created_by_name ? `${a.created_by_name} · ` : ''}{fmtDateTime(a.created_at)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteActivity(a.id, 'actions')}
+                      className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Excluir ação"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 items-start">
+            <Input
+              value={actionText}
+              onChange={e => setActionText(e.target.value)}
+              placeholder="Ex.: Liguei, sem resposta. Tentar de novo amanhã."
+              className="h-8 text-sm flex-1"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddAction() } }}
+            />
+            <Input
+              type="date"
+              value={actionReturnDate}
+              onChange={e => setActionReturnDate(e.target.value)}
+              className="h-8 text-sm w-40"
+              title="Data de retorno (opcional)"
+            />
+            <Button
+              type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
+              onClick={handleAddAction} disabled={savingAction || !actionText.trim()}
+              aria-label="Adicionar ação"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </section>
+      )}
 
       <LostMoveDialog
         open={!!lostPrompt}
@@ -322,4 +464,6 @@ export default function LeadDataTab({
       />
     </div>
   )
-}
+})
+
+export default LeadDataTab

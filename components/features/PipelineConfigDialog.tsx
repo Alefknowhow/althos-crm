@@ -38,6 +38,27 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
     }
   }
 
+  function setLocalName(stageId: string, name: string) {
+    setLocalStages(prev => prev.map(s => (s.id === stageId ? { ...s, name } : s)))
+  }
+
+  async function persistName(stageId: string, name: string) {
+    const trimmed = name.trim()
+    const original = stages.find((s: any) => s.id === stageId)?.name ?? ''
+    if (!trimmed) {
+      setLocalStages(prev => prev.map(s => (s.id === stageId ? { ...s, name: original } : s))) // sem nome vazio
+      return
+    }
+    if (trimmed === original) return
+    const res = await updateStage(orgSlug, stageId, { name: trimmed })
+    if (!res.ok) {
+      toast.error(traduzirErro(res.error, 'Não foi possível renomear o estágio'))
+      setLocalStages(prev => prev.map(s => (s.id === stageId ? { ...s, name: original } : s))) // revert
+    } else {
+      setLocalStages(prev => prev.map(s => (s.id === stageId ? { ...s, name: trimmed } : s)))
+    }
+  }
+
   async function toggleFlag(stageId: string, flag: 'is_won' | 'is_lost', current: boolean) {
     const next = !current
     setLoading(`${stageId}-${flag}`)
@@ -90,8 +111,15 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   />
                 </label>
 
-                {/* name */}
-                <span className="flex-1 text-sm font-medium truncate">{s.name}</span>
+                {/* name — clique pra editar */}
+                <Input
+                  value={s.name}
+                  onChange={e => setLocalName(s.id, e.target.value)}
+                  onBlur={e => persistName(s.id, e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  className="flex-1 h-7 text-sm font-medium border-transparent bg-transparent px-1.5 hover:border-input focus-visible:border-b-primary"
+                  aria-label="Nome do estágio"
+                />
 
                 {/* Ganho toggle */}
                 <button

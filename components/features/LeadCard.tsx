@@ -228,8 +228,14 @@ export default function LeadCard({
               <StagePicker lead={lead} stages={stages} onPick={onStageChange} />
             </div>
           ) : null}
-          <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2">
+          <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2 flex items-center gap-1.5 flex-wrap">
             {lead.name}
+            {lead.status === 'cliente' && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 shrink-0">
+                <UserCheck className="h-2.5 w-2.5" />
+                Cliente
+              </span>
+            )}
           </p>
           <div className="shrink-0 pt-0.5">
             <ValueEditor lead={lead} orgSlug={orgSlug} />
@@ -248,18 +254,12 @@ export default function LeadCard({
       </div>
 
       {/* Badges + tags row */}
-      {(tier || lead.status === 'cliente' || tags.length > 0 || !isOverlay) && (
+      {(tier || tags.length > 0 || !isOverlay) && (
         <div className="relative flex flex-wrap items-center gap-1 px-2.5 pb-1.5">
           {tier && (
             <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold', tier.cls)}>
               <Sparkles className="h-2.5 w-2.5" />
               {tier.label}
-            </span>
-          )}
-          {lead.status === 'cliente' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <UserCheck className="h-2.5 w-2.5" />
-              Cliente
             </span>
           )}
           {visibleTags.map(t => (
@@ -294,7 +294,7 @@ export default function LeadCard({
         <p className={cn('text-[10px]', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="flex items-center gap-0.5">
           {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && (

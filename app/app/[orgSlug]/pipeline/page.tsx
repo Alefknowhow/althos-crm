@@ -5,6 +5,7 @@ import { getProfilesMap } from '@/lib/profiles'
 import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
 import PipelineConfigDialog from '@/components/features/PipelineConfigDialog'
+import PipelineDistributionDialog from '@/components/features/pipeline/PipelineDistributionDialog'
 import PipelineSwitcher from '@/components/features/pipeline/PipelineSwitcher'
 
 export default async function PipelinePage({
@@ -121,6 +122,10 @@ export default async function PipelinePage({
                 orgSlug={params.orgSlug}
                 pipeline={pipeline}
                 stages={stages || []}
+              />
+              <PipelineDistributionDialog
+                orgSlug={params.orgSlug}
+                pipelineId={pipeline.id}
               />
             </div>
           }

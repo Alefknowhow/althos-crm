@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/server'
 import { buildFormSchema } from '@/lib/validators/form'
 import { runAntispamGauntlet } from '@/lib/security/antispam'
+import { pickNextDistributionMember } from './pipeline-distribution'
 
 import { inngest } from '@/lib/inngest/client'
 
@@ -77,6 +78,13 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   }
 
   if (!leadId) {
+    // Fila de distribuição automática, quando ativada pro pipeline do
+    // formulário — sem ela, lead de formulário público continua sem
+    // responsável (comportamento de sempre).
+    const distributedTo = form.pipeline_id
+      ? await pickNextDistributionMember(supabaseAdmin, form.organization_id, form.pipeline_id)
+      : null
+
     const { data: newLead } = await supabaseAdmin.from('contatos').insert({
       organization_id: form.organization_id,
       pipeline_id: form.pipeline_id,
@@ -88,7 +96,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
       utm: utms,
       meta_fbc: fbc,
       meta_fbp: fbp,
-      custom_fields: validData
+      custom_fields: validData,
+      assigned_to: distributedTo || undefined,
     }).select('id').single()
     if (newLead) leadId = newLead.id
   }

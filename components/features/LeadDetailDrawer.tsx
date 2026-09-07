@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button'
 import { getLead } from '@/actions/contatos'
 import { deleteLead } from '@/actions/contatos'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ExternalLink, Trash2 } from 'lucide-react'
-import LeadDataTab, { type Member as LeadDataMember, type Stage as LeadDataStage } from './lead-panel/LeadDataTab'
+import { ExternalLink, Trash2, Save } from 'lucide-react'
+import LeadDataTab, {
+  type Member as LeadDataMember, type Stage as LeadDataStage, type ActivityItem, type LeadDataTabHandle,
+} from './lead-panel/LeadDataTab'
 
 type Member = { id: string; name: string; email: string }
 
@@ -31,6 +33,7 @@ export default function LeadDetailDrawer({
   const [error, setError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const leadDataRef = useRef<LeadDataTabHandle>(null)
 
   // limpa estado ao trocar lead
   useEffect(() => {
@@ -108,6 +111,9 @@ export default function LeadDetailDrawer({
               </DialogHeader>
 
               <div className="flex items-center gap-2 -mt-2">
+                <Button size="sm" onClick={() => leadDataRef.current?.save()}>
+                  <Save className="w-3.5 h-3.5 mr-1.5" /> Salvar contato
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/app/${orgSlug}/contatos?sel=${lead.id}`}>
                     <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir na aba de Contatos
@@ -119,10 +125,22 @@ export default function LeadDetailDrawer({
               </div>
 
               <LeadDataTab
+                ref={leadDataRef}
                 orgSlug={orgSlug}
                 lead={lead}
                 stages={stages}
                 members={leadDataMembers}
+                hideInlineSaveButton
+                notes={activities.filter(a => a.type === 'note')}
+                onNotesChange={next => setActivities(prev => [
+                  ...next,
+                  ...prev.filter(a => a.type !== 'note'),
+                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))}
+                negotiationActions={activities.filter(a => a.type === 'negotiation_action')}
+                onActionsChange={next => setActivities(prev => [
+                  ...next,
+                  ...prev.filter(a => a.type !== 'negotiation_action'),
+                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))}
               />
 
               <Tabs defaultValue="timeline" className="w-full border-t pt-4">
@@ -146,7 +164,9 @@ export default function LeadDetailDrawer({
                               ? 'Movido'
                               : act.type === 'note'
                                 ? 'Nota'
-                                : act.type}
+                                : act.type === 'negotiation_action'
+                                  ? 'Ação de negociação'
+                                  : act.type}
                           {act.created_by_name && (
                             <span className="text-xs font-normal text-muted-foreground">por {act.created_by_name}</span>
                           )}
@@ -155,6 +175,17 @@ export default function LeadDetailDrawer({
                         {act.type === 'note' && (
                           <div className="text-muted-foreground mt-1 whitespace-pre-wrap bg-muted p-2 rounded">
                             {act.payload.text}
+                          </div>
+                        )}
+
+                        {act.type === 'negotiation_action' && (
+                          <div className="text-muted-foreground mt-1 whitespace-pre-wrap bg-muted p-2 rounded">
+                            {act.payload.text}
+                            {act.payload.next_return_date && (
+                              <div className="text-primary font-medium mt-1">
+                                Retorno em: {new Date(act.payload.next_return_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                              </div>
+                            )}
                           </div>
                         )}
 

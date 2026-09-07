@@ -52,21 +52,24 @@ export function SellerPicker({
     e.stopPropagation()
   }
 
+  const currentName = current ? (current.name || current.email) : ''
+  const currentLabel = currentName.length > 20 ? `${currentName.slice(0, 20)}…` : currentName
+
   return (
-    <div ref={rootRef} className="relative" onPointerDown={stop} onClick={stop}>
+    <div ref={rootRef} className="relative shrink-0" onPointerDown={stop} onClick={stop}>
       <button
         type="button"
-        title={current ? `Vendedor: ${current.name || current.email}` : 'Atribuir vendedor'}
+        title={current ? `Vendedor: ${currentName}` : 'Atribuir vendedor'}
         onClick={() => setOpen(o => !o)}
         className={cn(
-          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors',
+          'flex h-6 max-w-[124px] shrink-0 items-center justify-center gap-1 rounded-pill px-2 text-[10px] font-semibold transition-colors',
           current
             ? 'bg-brand-100 text-brand-700 hover:ring-2 hover:ring-brand-200'
-            : 'border border-dashed border-border text-muted-foreground/60 hover:text-foreground hover:border-foreground/40',
+            : 'w-6 border border-dashed border-border text-muted-foreground/60 hover:text-foreground hover:border-foreground/40',
           saving && 'opacity-50',
         )}
       >
-        {current ? initials(current.name, current.email) : <UserPlus className="h-3 w-3" />}
+        {current ? <span className="truncate">{currentLabel}</span> : <UserPlus className="h-3 w-3" />}
       </button>
 
       {open && (

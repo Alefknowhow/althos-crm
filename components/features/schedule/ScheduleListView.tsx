@@ -12,34 +12,12 @@ import {
   MapPin, Plane, Hotel, MessageCircle, CalendarDays, Ticket, ArrowUpRight, UserRound,
 } from 'lucide-react'
 import type { ScheduledTrip } from '@/actions/travel-schedule'
-import { STATE_META, type TripState } from './ScheduleGanttView'
-import { stateLabel, whatsappLink } from './ScheduleTripDetail'
+import { type TripState } from './ScheduleGanttView'
+import {
+  whatsappLink, rowStatus, HEALTH_META, FLIGHT_STATUS_META, DATE_ICON_COLOR,
+} from './ScheduleTripDetail'
 
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-
-const HEALTH_META: Record<string, { dot: string; title: string }> = {
-  green: { dot: 'bg-emerald-500', title: 'Saúde da reserva: em dia — todas as tarefas concluídas' },
-  yellow: { dot: 'bg-amber-500', title: 'Saúde da reserva: atenção — tarefa(s) pendente(s)' },
-  red: { dot: 'bg-red-500', title: 'Saúde da reserva: pendência importante — tarefa de alta prioridade em aberto' },
-}
-
-const FLIGHT_STATUS_META: Record<string, { label: string; badge: string }> = {
-  scheduled: { label: 'Previsto', badge: 'border-muted-foreground/30 text-muted-foreground' },
-  active: { label: 'Em curso', badge: 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' },
-  landed: { label: 'Pousado', badge: 'border-emerald-300 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400' },
-  cancelled: { label: 'Cancelado', badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400' },
-  diverted: { label: 'Desviado', badge: 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400' },
-  unknown: { label: 'Sem dados', badge: 'border-muted-foreground/30 text-muted-foreground' },
-}
-
-// Cor do ícone de calendário — carrega o sinal que antes era a bolinha
-// roxa removida (já tínhamos a etiqueta de contagem, era redundante).
-const DATE_ICON_COLOR: Record<'cancelled' | TripState, string> = {
-  cancelled: 'text-red-500',
-  upcoming: 'text-indigo-500',
-  ongoing: 'text-emerald-600',
-  past: 'text-slate-400',
-}
 
 function fmtTime(iso?: string | null) {
   if (!iso) return ''
@@ -55,18 +33,6 @@ function parseDate(s?: string | null): Date | null {
 function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
-}
-
-/** Rótulo/cor da etiqueta principal — sobrepõe o rótulo de data (upcoming/
- *  ongoing/past) com o status real da venda (cancelada) ou uma redação mais
- *  natural para viagem em curso/já realizada. */
-function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, today: Date) {
-  if (t.status === 'cancelled') {
-    return { key: 'cancelled' as const, label: 'Cancelada', badge: 'border-red-300 text-red-700 bg-red-50 dark:border-red-900 dark:text-red-400 dark:bg-red-950/30' }
-  }
-  if (state === 'ongoing') return { key: state, label: 'Em viagem', badge: STATE_META.ongoing.badge }
-  if (state === 'past') return { key: state, label: 'Já realizada', badge: STATE_META.past.badge }
-  return { key: state, label: stateLabel(state, dep, today), badge: STATE_META.upcoming.badge }
 }
 
 export function ScheduleListView({

@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
+import { pickNextDistributionMember } from './pipeline-distribution'
 
 /* =========================================================
  *  Lead CRUD (create/update/delete/notes)
@@ -61,6 +62,13 @@ export async function createLead(orgSlug: string, formData: FormData) {
     .eq('id', stage_id)
     .maybeSingle()
 
+  // Fila de distribuição automática, quando ativada pro pipeline — cai pro
+  // criador do lead (comportamento de sempre) quando desligada ou sem
+  // membro elegível.
+  const distributedTo = stageInfo?.pipeline_id
+    ? await pickNextDistributionMember(supabase, org.id, stageInfo.pipeline_id)
+    : null
+
   const { data: lead, error } = await supabase.from('contatos').insert({
     organization_id: org.id,
     pipeline_id: stageInfo?.pipeline_id,
@@ -71,7 +79,7 @@ export async function createLead(orgSlug: string, formData: FormData) {
     value_cents,
     tags,
     source,
-    assigned_to: user.id
+    assigned_to: distributedTo || user.id
   }).select().single()
 
   if (error || !lead) {
@@ -111,18 +119,68 @@ export async function addLeadNote(orgSlug: string, leadId: string, formData: For
   const text = formData.get('text') as string
   if (!text || text.trim() === '') return { ok: false, error: 'Nota vazia' }
 
-  const { error } = await supabase.from('contato_activities').insert({
+  const { data, error } = await supabase.from('contato_activities').insert({
     contato_id: leadId,
     organization_id: org.id,
     type: 'note',
     payload: { text },
     created_by: user.id
-  })
+  }).select('id, type, payload, created_at, created_by').single()
 
   if (error) return { ok: false, error: error.message }
 
   revalidatePath(`/app/${orgSlug}/contatos/${leadId}`)
-  return { ok: true }
+  return { ok: true, activity: data }
+}
+
+/** Registra uma ação de negociação (tentativa de contato, follow-up etc.)
+ *  na timeline do lead — igual a addLeadNote, com o campo extra opcional de
+ *  data de retorno prevista. */
+export async function addNegotiationAction(
+  orgSlug: string, leadId: string, text: string, nextReturnDate?: string | null,
+) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const trimmed = text.trim()
+  if (!trimmed) return { ok: false as const, error: 'Ação vazia' }
+
+  const { data, error } = await supabase.from('contato_activities').insert({
+    contato_id: leadId,
+    organization_id: org.id,
+    type: 'negotiation_action',
+    payload: { text: trimmed, next_return_date: nextReturnDate || null },
+    created_by: user.id,
+  }).select('id, type, payload, created_at, created_by').single()
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/contatos/${leadId}`)
+  return { ok: true as const, activity: data }
+}
+
+/** Exclui uma anotação ou ação de negociação criada manualmente — o filtro
+ *  de `type` é de propósito: nunca deleta entradas geradas pelo sistema
+ *  (stage_changed, whatsapp_sent etc.), só o que o usuário criou aqui. */
+export async function deleteContatoActivity(orgSlug: string, activityId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkContatoPermission(org.id, user.id)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('contato_activities')
+    .delete()
+    .eq('id', activityId)
+    .eq('organization_id', org.id)
+    .in('type', ['note', 'negotiation_action'])
+
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
 }
 
 /** Lista só as anotações (contato_activities type='note') de um lead — usado

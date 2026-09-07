@@ -21,6 +21,7 @@ import { imoveisPipelineAdvanceFn } from '@/lib/inngest/imoveis-pipeline-advance
 import { insuranceRenewalReminderCronFn } from '@/lib/inngest/insurance-crons'
 import { dailyOwnerDigestFn } from '@/lib/inngest/daily-digest-cron'
 import { flightStatusCronFn } from '@/lib/inngest/flight-status-cron'
+import { pipelineDistributionCronFn } from '@/lib/inngest/pipeline-distribution-cron'
 
 // Sem isso, a function serverless usa o teto padrão do plano da Vercel
 // (bem menor que isso) — o backup de storage varre 12 buckets legados
@@ -68,5 +69,6 @@ export const { GET, POST, PUT } = serve({
     insuranceRenewalReminderCronFn,
     dailyOwnerDigestFn,
     flightStatusCronFn,
+    pipelineDistributionCronFn,
   ]
 })

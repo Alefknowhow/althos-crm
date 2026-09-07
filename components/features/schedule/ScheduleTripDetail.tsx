@@ -26,7 +26,49 @@ function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
 }
+function fmtTime(iso?: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
 const DAY = 86400000
+
+export const HEALTH_META: Record<string, { dot: string; title: string }> = {
+  green: { dot: 'bg-emerald-500', title: 'Saúde da reserva: em dia — todas as tarefas concluídas' },
+  yellow: { dot: 'bg-amber-500', title: 'Saúde da reserva: atenção — tarefa(s) pendente(s)' },
+  red: { dot: 'bg-red-500', title: 'Saúde da reserva: pendência importante — tarefa de alta prioridade em aberto' },
+}
+
+export const FLIGHT_STATUS_META: Record<string, { label: string; badge: string }> = {
+  scheduled: { label: 'Previsto', badge: 'border-muted-foreground/30 text-muted-foreground' },
+  active: { label: 'Em curso', badge: 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' },
+  landed: { label: 'Pousado', badge: 'border-emerald-300 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400' },
+  cancelled: { label: 'Cancelado', badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400' },
+  diverted: { label: 'Desviado', badge: 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400' },
+  unknown: { label: 'Sem dados', badge: 'border-muted-foreground/30 text-muted-foreground' },
+}
+
+/** Cor do ícone de calendário/indicador de status — usada tanto na lista
+ *  quanto no popup de detalhe. */
+export const DATE_ICON_COLOR: Record<'cancelled' | TripState, string> = {
+  cancelled: 'text-red-500',
+  upcoming: 'text-indigo-500',
+  ongoing: 'text-emerald-600',
+  past: 'text-slate-400',
+}
+
+/** Rótulo/cor da etiqueta principal — sobrepõe o rótulo de data (upcoming/
+ *  ongoing/past) com o status real da venda (cancelada) ou uma redação mais
+ *  natural para viagem em curso/já realizada. Compartilhado entre a lista e
+ *  o popup de detalhe. */
+export function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, today: Date) {
+  if (t.status === 'cancelled') {
+    return { key: 'cancelled' as const, label: 'Cancelada', badge: 'border-red-300 text-red-700 bg-red-50 dark:border-red-900 dark:text-red-400 dark:bg-red-950/30' }
+  }
+  if (state === 'ongoing') return { key: state, label: 'Em viagem', badge: STATE_META.ongoing.badge }
+  if (state === 'past') return { key: state, label: 'Já realizada', badge: STATE_META.past.badge }
+  return { key: state, label: stateLabel(state, dep, today), badge: STATE_META.upcoming.badge }
+}
 
 /** Rótulo da etiqueta de estado — para "Próxima" mostra a contagem
  *  regressiva ("Faltam N dias") em vez do texto fixo, mais útil pra
@@ -61,12 +103,17 @@ export function TripDetail({
   const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
   const dep = parseDate(trip.departure_date)
+  const status = rowStatus(trip, state, dep, today)
   return (
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 pr-6">
+          <span
+            className={cn('w-3 h-3 rounded-full shrink-0', HEALTH_META[trip.health]?.dot)}
+            title={HEALTH_META[trip.health]?.title}
+          />
           <span className="truncate">{trip.client_name || trip.lead_name || 'Viagem'}</span>
-          <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.badge)}>{stateLabel(state, dep, today)}</Badge>
+          <Badge variant="outline" className={cn('shrink-0 text-[10px]', status.badge)}>{status.label}</Badge>
         </DialogTitle>
       </DialogHeader>
 
@@ -74,7 +121,7 @@ export function TripDetail({
         {/* período */}
         <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-sm flex-wrap">
-            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+            <CalendarDays className={cn('w-4 h-4 shrink-0', DATE_ICON_COLOR[status.key])} />
             <span className="font-medium">{fmtDate(trip.departure_date)}</span>
             <span className="text-muted-foreground">→</span>
             <span className="font-medium">{fmtDate(trip.return_date)}</span>
@@ -92,6 +139,38 @@ export function TripDetail({
           {trip.package_locator && <Info icon={Ticket} label="Localizador pacote" value={trip.package_locator} />}
           {trip.air_locator && <Info icon={Ticket} label="Localizador aéreo" value={trip.air_locator} />}
         </div>
+
+        {/* voos */}
+        {trip.flights.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Plane className="w-4 h-4 text-primary" /> Voos
+            </div>
+            <div className="space-y-1.5">
+              {trip.flights.map((f, i) => {
+                const fmeta = FLIGHT_STATUS_META[f.status || 'scheduled']
+                return (
+                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="font-medium text-foreground/80">{f.sentido === 'volta' ? 'Volta' : 'Ida'}</span>
+                      {f.numero_voo && <span className="text-muted-foreground">{f.numero_voo}</span>}
+                      {(f.origem || f.destino) && <span className="text-muted-foreground">{f.origem}→{f.destino}</span>}
+                      {f.horario && <span className="text-muted-foreground">{f.horario}</span>}
+                      {f.data && <span className="text-muted-foreground">{fmtDate(f.data)}</span>}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn('text-[10px] shrink-0', fmeta?.badge)}
+                      title={f.revised_departure ? `Novo horário: ${fmtTime(f.revised_departure)}` : undefined}
+                    >
+                      {fmeta?.label}{f.delay_minutes ? ` +${f.delay_minutes}min` : ''}
+                    </Badge>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ações */}
         <div className="flex flex-wrap gap-2">
