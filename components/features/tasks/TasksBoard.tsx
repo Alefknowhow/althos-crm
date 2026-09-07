@@ -1,11 +1,14 @@
 'use client'
 
 /**
- * TasksBoard — Calendário (60%) + Lista agrupada (40%), lado a lado no
- * desktop, sincronizados (mesmo array de tarefas filtrado alimenta os dois).
- * Substitui a versão anterior (só lista em 3 grupos) por pedido explícito do
- * usuário de trazer de volta um calendário operacional, inspirado no Google
- * Agenda mas usando só os tokens/componentes já existentes no Althos.
+ * TasksBoard — duas disposições de tela, alternadas pelo switch Mês/Semana
+ * do toolbar:
+ *  - Mês: mini calendário compacto (só data, sem info de tarefa — ver
+ *    TasksBoardMiniCalendar.tsx) à esquerda + lista agrupada à direita.
+ *  - Semana: timeline por hora em tela cheia (TasksBoardCalendarPanel.tsx),
+ *    sem a lista ao lado — precisa do espaço todo pra não espremer as 7
+ *    colunas do dia.
+ * As duas leituras usam o mesmo array de tarefas filtrado.
  *
  * Persistência de data/hora segue a mesma âncora UTC do resto do módulo
  * (dueDateOnly/fmtDate tratam devido_date como UTC pra nunca "pular" de dia
@@ -26,6 +29,7 @@ import { EditSheet } from './TasksBoardTaskViews'
 import { TasksBoardToolbar } from './TasksBoardToolbar'
 import { TasksBoardListPanel } from './TasksBoardListPanel'
 import { TasksBoardCalendarPanel } from './TasksBoardCalendarPanel'
+import { TasksBoardMiniCalendar } from './TasksBoardMiniCalendar'
 import { useTasksBoardMutations } from './useTasksBoardMutations'
 
 export default function TasksBoard({
@@ -67,7 +71,7 @@ export default function TasksBoard({
     dragOverKey, setDragOverKey,
     handleToggleDone, handleSetPriority, handleDelete,
     onChipDragStart, onChipDragEnd,
-    handleDropOnDay, handleDropOnSlot, handleDropOnAllDay,
+    handleDropOnSlot, handleDropOnAllDay,
   } = useTasksBoardMutations({ orgSlug, tasks, setTasks, setEditing, setOpenPopoverId })
 
   useEffect(() => { setTasks(initialTasks) }, [initialTasks])
@@ -244,12 +248,11 @@ export default function TasksBoard({
         setTodayOnly={setTodayOnly}
       />
 
-      {/* Corpo: calendário 35% à esquerda + lista 65% à direita */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
+      {/* Corpo: Semana ocupa a tela inteira (timeline por hora precisa do
+          espaço); Mês mostra o mini calendário (só seletor de data, sem
+          informação de tarefa) ao lado da lista. */}
+      {calView === 'week' ? (
         <TasksBoardCalendarPanel
-          calView={calView}
-          monthDays={monthDays}
-          calMonth={calMonth}
           weekDays={weekDays}
           hours={hours}
           todayYmd={todayYmd}
@@ -260,42 +263,49 @@ export default function TasksBoard({
           setOpenPopoverId={setOpenPopoverId}
           dragOverKey={dragOverKey}
           setDragOverKey={setDragOverKey}
-          selectedDay={selectedDay}
           orgSlug={orgSlug}
-          onDayClick={d => { setSelectedDay(prev => prev === d ? null : d); setTodayOnly(false) }}
-          onDropDay={handleDropOnDay}
           onDropAllDay={handleDropOnAllDay}
           onDropSlot={handleDropOnSlot}
           onChipDragStart={onChipDragStart}
           onChipDragEnd={onChipDragEnd}
-          onQuickAddDay={d => setQuickAdd({ date: d })}
           onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
           onToggleDone={handleToggleDone}
           onSetPriority={handleSetPriority}
           onEdit={setEditing}
           onDelete={handleDelete}
         />
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          <div className="w-full lg:w-64 shrink-0 lg:order-1">
+            <TasksBoardMiniCalendar
+              days={monthDays}
+              calMonth={calMonth}
+              todayYmd={todayYmd}
+              selectedDay={selectedDay}
+              onDayClick={d => { setSelectedDay(prev => prev === d ? null : d); setTodayOnly(false) }}
+            />
+          </div>
 
-        {/* Lista — 65%, sempre escopada ao período visível no calendário */}
-        <TasksBoardListPanel
-          orgSlug={orgSlug}
-          members={members}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-          todayOnly={todayOnly}
-          calView={calView}
-          calMonth={calMonth}
-          weekAnchor={weekAnchor}
-          grouped={grouped}
-          expanded={expanded}
-          toggleGroup={toggleGroup}
-          highlightId={highlightId}
-          onOpenFromList={openFromList}
-          onToggleDone={handleToggleDone}
-          onSetPriority={handleSetPriority}
-          onDelete={handleDelete}
-        />
-      </div>
+          <TasksBoardListPanel
+            orgSlug={orgSlug}
+            members={members}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            todayOnly={todayOnly}
+            calView={calView}
+            calMonth={calMonth}
+            weekAnchor={weekAnchor}
+            grouped={grouped}
+            expanded={expanded}
+            toggleGroup={toggleGroup}
+            highlightId={highlightId}
+            onOpenFromList={openFromList}
+            onToggleDone={handleToggleDone}
+            onSetPriority={handleSetPriority}
+            onDelete={handleDelete}
+          />
+        </div>
+      )}
 
       <EditSheet
         task={editing}

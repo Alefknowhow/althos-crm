@@ -2,7 +2,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { updateTask, deleteTask, toggleTaskStatus, setTaskPriority } from '@/actions/tasks'
-import { dueTimeOnly, combineDueDate, ROW_H, type Task } from './TasksBoardShared'
+import { combineDueDate, ROW_H, type Task } from './TasksBoardShared'
 
 /**
  * Optimistic mutations + drag-and-drop handlers for TasksBoard. Split
@@ -84,16 +84,6 @@ export function useTasksBoardMutations({
   function dropTaskId(e: React.DragEvent): string | null {
     return dragId || e.dataTransfer.getData('text/plain') || null
   }
-  /** Mês: solta num dia → troca a data, preserva o horário se já tinha. */
-  function handleDropOnDay(e: React.DragEvent, dayYmd: string) {
-    e.preventDefault()
-    const id = dropTaskId(e)
-    setDragId(null); setDragOverKey(null)
-    const task = tasks.find(t => t.id === id)
-    if (!task) return
-    const time = dueTimeOnly(task.due_date)
-    handleSetDueDate(task, combineDueDate(dayYmd, time || ''))
-  }
   /** Semana: solta num slot de hora → troca data E horário. */
   function handleDropOnSlot(e: React.DragEvent, dayYmd: string, hour: number) {
     e.preventDefault()
@@ -120,6 +110,6 @@ export function useTasksBoardMutations({
     dragOverKey, setDragOverKey,
     handleToggleDone, handleSetPriority, handleSetDueDate, handleDelete,
     onChipDragStart, onChipDragEnd,
-    handleDropOnDay, handleDropOnSlot, handleDropOnAllDay,
+    handleDropOnSlot, handleDropOnAllDay,
   }
 }
