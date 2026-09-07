@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   updateLead, updateLeadValue, updateLeadTags, assignLead, moveLeadToStage,
-  resolveContatoAvatars, addLeadNote, addNegotiationAction, deleteContatoActivity,
+  resolveContatoAvatars, addNegotiationAction,
 } from '@/actions/contatos'
 import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
 import { LeadAvatarUploader } from './LeadAvatarUploader'
@@ -29,15 +29,6 @@ export type ActivityItem = {
 }
 export type LeadDataTabHandle = { save: () => void }
 
-function fmtDateTime(iso: string): string {
-  const d = new Date(iso)
-  return isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-function fmtDate(s: string): string {
-  const d = new Date(s + 'T12:00:00')
-  return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR')
-}
-
 const LeadDataTab = forwardRef<LeadDataTabHandle, {
   orgSlug: string
   lead: any
@@ -46,19 +37,18 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
   members: Member[]
   /** Link opcional pra "Abrir lead" — quando omitido, o link não aparece. */
   leadHref?: string
-  /** Quando passadas (só o popup da Pipeline passa), trocam a caixa simples
-   *  de observação por uma lista de cards + adiciona o bloco de Ações. Sem
-   *  elas, o componente se comporta exatamente como antes (WhatsApp/Instagram). */
-  notes?: ActivityItem[]
-  onNotesChange?: (next: ActivityItem[]) => void
-  negotiationActions?: ActivityItem[]
-  onActionsChange?: (next: ActivityItem[]) => void
+  /** Mostra o bloco de Ações (registro de tentativas/follow-up) — só o
+   *  popup da Pipeline passa true, porque só ele tem a aba Timeline pra
+   *  mostrar o histórico depois. `onActionAdded` deixa quem chamou (o
+   *  Drawer) atualizar a lista local da Timeline sem esperar um refresh. */
+  enableActions?: boolean
+  onActionAdded?: (activity: ActivityItem) => void
   /** Esconde o botão "Salvar contato" daqui — usado quando o botão já vive
    *  no topo do popup (ver LeadDetailDrawer), acionado via ref. */
   hideInlineSaveButton?: boolean
 }>(function LeadDataTab({
   orgSlug, lead, fallbackPhone, stages, members, leadHref,
-  notes, onNotesChange, negotiationActions, onActionsChange, hideInlineSaveButton,
+  enableActions, onActionAdded, hideInlineSaveButton,
 }, ref) {
   const router = useRouter()
   const [name, setName] = useState(lead?.name ?? '')
@@ -71,8 +61,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
   const [tagDraft, setTagDraft] = useState('')
   const [savingContact, setSavingContact] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(lead?.avatar_url ?? null)
-  const [note, setNote] = useState('')
-  const [savingNote, setSavingNote] = useState(false)
+  const [internalNotes, setInternalNotes] = useState(lead?.internal_notes ?? '')
+  const [savingNotes, setSavingNotes] = useState(false)
   const [actionText, setActionText] = useState('')
   const [actionReturnDate, setActionReturnDate] = useState('')
   const [savingAction, setSavingAction] = useState(false)
@@ -95,6 +85,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     setTags(lead?.tags ?? [])
     setTagDraft('')
     setAvatarUrl(lead?.avatar_url ?? null)
+    setInternalNotes(lead?.internal_notes ?? '')
   }, [lead?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve avatar_storage_object_id -> signed URL do R2, quando aplicável
@@ -184,27 +175,19 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     router.refresh()
   }
 
-  // Anotação rápida — quando `notes` é passado (popup da Pipeline), vira
-  // uma lista de cards em vez de só uma caixa de escrever; nas outras telas
-  // (WhatsApp/Instagram, notes===undefined) fica como sempre foi.
-  const showRichNotes = notes !== undefined
-  async function handleAddNote() {
-    const v = note.trim()
-    if (!v) return
-    setSavingNote(true)
+  // Observação — campo único editável em contatos.internal_notes (não é
+  // mais uma lista de entradas em contato_activities: um só lugar pra
+  // olhar e decidir, a timeline de Ações cobre o histórico de tentativas).
+  async function handleSaveNotes() {
+    setSavingNotes(true)
     const fd = new FormData()
-    fd.set('text', v)
-    const res = await addLeadNote(orgSlug, lead.id, fd)
-    setSavingNote(false)
-    if ((res as any)?.ok === false) { toast.error('Não foi possível salvar a anotação', { description: (res as any).error }); return }
-    setNote('')
-    toast.success('Anotação adicionada')
-    if (showRichNotes && onNotesChange && (res as any).activity) {
-      onNotesChange([{ ...(res as any).activity, created_by_name: null }, ...notes!])
-    }
+    fd.set('internal_notes', internalNotes)
+    const res = await updateLead(orgSlug, lead.id, fd)
+    setSavingNotes(false)
+    if ((res as any)?.ok === false) { toast.error('Não foi possível salvar a observação', { description: (res as any).error }); return }
+    toast.success('Observação salva')
   }
 
-  const showActions = negotiationActions !== undefined
   async function handleAddAction() {
     const v = actionText.trim()
     if (!v) return
@@ -214,17 +197,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     if (!res.ok) { toast.error('Não foi possível registrar a ação', { description: res.error }); return }
     setActionText('')
     setActionReturnDate('')
-    toast.success('Ação registrada')
-    if (onActionsChange && res.activity) {
-      onActionsChange([{ ...res.activity, created_by_name: null }, ...negotiationActions!])
-    }
-  }
-
-  async function handleDeleteActivity(id: string, list: 'notes' | 'actions') {
-    const res = await deleteContatoActivity(orgSlug, id)
-    if (!res.ok) { toast.error('Não foi possível excluir', { description: res.error }); return }
-    if (list === 'notes' && onNotesChange && notes) onNotesChange(notes.filter(n => n.id !== id))
-    if (list === 'actions' && onActionsChange && negotiationActions) onActionsChange(negotiationActions.filter(a => a.id !== id))
+    toast.success('Ação registrada — veja na Timeline')
+    if (onActionAdded && res.activity) onActionAdded({ ...res.activity, created_by_name: null } as ActivityItem)
   }
 
   return (
@@ -275,43 +249,26 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         )}
       </section>
 
-      {/* Linha 3 — Observações */}
-      <section className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</h4>
-
-        {showRichNotes && notes!.length > 0 && (
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {notes!.map(n => (
-              <div key={n.id} className="rounded-lg border bg-muted/40 p-2 text-sm group">
-                <p className="whitespace-pre-wrap">{n.payload?.text}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-muted-foreground">
-                    {n.created_by_name ? `${n.created_by_name} · ` : ''}{fmtDateTime(n.created_at)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteActivity(n.id, 'notes')}
-                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Excluir observação"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
+      {/* Linha 3 — Observações (campo único, editável) */}
+      <section className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</h4>
+          <button
+            type="button"
+            onClick={handleSaveNotes}
+            disabled={savingNotes || internalNotes === (lead?.internal_notes ?? '')}
+            className="text-[11px] font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-default"
+          >
+            {savingNotes ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
         <Textarea
-          value={note}
-          onChange={e => setNote(e.target.value)}
+          value={internalNotes}
+          onChange={e => setInternalNotes(e.target.value)}
           placeholder="Escreva uma observação sobre este lead..."
-          rows={2}
+          rows={3}
           className="text-sm"
         />
-        <Button type="button" size="sm" variant="outline" onClick={handleAddNote} disabled={savingNote || !note.trim()} className="w-full">
-          {savingNote ? 'Salvando...' : 'Adicionar observação'}
-        </Button>
       </section>
 
       {/* Linha 4 — Tags */}
@@ -377,54 +334,35 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         </div>
       </section>
 
-      {/* Ações — timeline de tentativas/follow-ups da negociação, só no popup da Pipeline */}
-      {showActions && (
-        <section className="space-y-2">
+      {/* Ações — registro de tentativas/follow-up; o histórico completo (com
+          autor e data) fica só na aba Timeline logo abaixo, pra não duplicar
+          a mesma informação em dois lugares. */}
+      {enableActions && (
+        <section className="space-y-1.5">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações</h4>
-
-          {negotiationActions!.length > 0 && (
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {negotiationActions!.map(a => (
-                <div key={a.id} className="rounded-lg border bg-muted/40 p-2 text-sm group">
-                  <p className="whitespace-pre-wrap">{a.payload?.text}</p>
-                  {a.payload?.next_return_date && (
-                    <p className="text-[11px] text-primary font-medium mt-0.5">
-                      Retorno em: {fmtDate(a.payload.next_return_date)}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-muted-foreground">
-                      {a.created_by_name ? `${a.created_by_name} · ` : ''}{fmtDateTime(a.created_at)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteActivity(a.id, 'actions')}
-                      className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Excluir ação"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+          <p className="text-[11px] text-muted-foreground -mt-1">
+            Registre o que foi feito — fica salvo na Timeline, com data e responsável.
+          </p>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 space-y-1">
+              <label className="block text-[10px] text-muted-foreground">Ação realizada</label>
+              <Input
+                value={actionText}
+                onChange={e => setActionText(e.target.value)}
+                placeholder="Ex.: Liguei, sem resposta. Tentar de novo amanhã."
+                className="h-8 text-sm"
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddAction() } }}
+              />
             </div>
-          )}
-
-          <div className="flex gap-2 items-start">
-            <Input
-              value={actionText}
-              onChange={e => setActionText(e.target.value)}
-              placeholder="Ex.: Liguei, sem resposta. Tentar de novo amanhã."
-              className="h-8 text-sm flex-1"
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddAction() } }}
-            />
-            <Input
-              type="date"
-              value={actionReturnDate}
-              onChange={e => setActionReturnDate(e.target.value)}
-              className="h-8 text-sm w-40"
-              title="Data de retorno (opcional)"
-            />
+            <div className="space-y-1">
+              <label className="block text-[10px] text-muted-foreground">Próximo retorno</label>
+              <Input
+                type="date"
+                value={actionReturnDate}
+                onChange={e => setActionReturnDate(e.target.value)}
+                className="h-8 text-sm w-36"
+              />
+            </div>
             <Button
               type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
               onClick={handleAddAction} disabled={savingAction || !actionText.trim()}

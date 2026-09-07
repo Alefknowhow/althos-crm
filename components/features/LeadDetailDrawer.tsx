@@ -131,16 +131,8 @@ export default function LeadDetailDrawer({
                 stages={stages}
                 members={leadDataMembers}
                 hideInlineSaveButton
-                notes={activities.filter(a => a.type === 'note')}
-                onNotesChange={next => setActivities(prev => [
-                  ...next,
-                  ...prev.filter(a => a.type !== 'note'),
-                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))}
-                negotiationActions={activities.filter(a => a.type === 'negotiation_action')}
-                onActionsChange={next => setActivities(prev => [
-                  ...next,
-                  ...prev.filter(a => a.type !== 'negotiation_action'),
-                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))}
+                enableActions
+                onActionAdded={activity => setActivities(prev => [activity, ...prev])}
               />
 
               <Tabs defaultValue="timeline" className="w-full border-t pt-4">

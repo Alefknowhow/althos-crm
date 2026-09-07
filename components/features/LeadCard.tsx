@@ -240,16 +240,6 @@ export default function LeadCard({
           <div className="shrink-0 pt-0.5">
             <ValueEditor lead={lead} orgSlug={orgSlug} />
           </div>
-          {members && !isOverlay ? (
-            <SellerPicker lead={lead} orgSlug={orgSlug} members={members} />
-          ) : owner ? (
-            <span
-              title={owner.name || owner.email}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
-            >
-              {initials(owner.name, owner.email)}
-            </span>
-          ) : null}
         </div>
       </div>
 
@@ -291,10 +281,20 @@ export default function LeadCard({
 
       {/* Footer: timestamp + quick actions */}
       <div className="flex items-center justify-between border-t border-border/60 px-2.5 py-1">
-        <p className={cn('text-[10px]', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
+        <p className={cn('text-[10px] truncate', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1 shrink-0">
+          {members && !isOverlay ? (
+            <SellerPicker lead={lead} orgSlug={orgSlug} members={members} />
+          ) : owner ? (
+            <span
+              title={owner.name || owner.email}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
+            >
+              {initials(owner.name, owner.email)}
+            </span>
+          ) : null}
           {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && (
