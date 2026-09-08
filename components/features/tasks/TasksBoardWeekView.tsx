@@ -6,6 +6,7 @@
  * TasksBoard's local state directly.
  */
 
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { WEEKDAYS_PT, ROW_H, ymd, dueTimeOnly, type Task, type Member } from './TasksBoardShared'
 import { CalendarTaskChip } from './TasksBoardCalendarViews'
@@ -32,6 +33,17 @@ export function WeekTimeline({
   onQuickAdd: (d: string, t?: string) => void
   renderPopover: (task: Task, close: () => void) => React.ReactNode
 }) {
+  // Linha vermelha da hora atual — atualiza a cada minuto, não a cada
+  // render, pra não precisar de um relógio "vivo" custando re-render
+  // constante no resto do painel.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  const nowInHourRange = now.getHours() >= hours[0] && now.getHours() <= hours[hours.length - 1]
+  const nowTop = (now.getHours() - hours[0]) * ROW_H + (now.getMinutes() / 60) * ROW_H
+
   return (
     <div className="rounded-[8px] border bg-card overflow-hidden">
       {/* Cabeçalho dos dias — colunas de largura fixa (minmax(0,1fr)): texto
@@ -119,6 +131,17 @@ export function WeekTimeline({
                   />
                 )
               })}
+
+              {/* Linha vermelha da hora atual — só na coluna de hoje */}
+              {key === todayYmd && nowInHourRange && (
+                <div
+                  className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+                  style={{ top: nowTop }}
+                >
+                  <span className="w-2 h-2 -ml-1 rounded-full bg-red-500 shrink-0" />
+                  <div className="h-px flex-1 bg-red-500" />
+                </div>
+              )}
 
               {/* Tarefas com horário, posicionadas proporcionalmente */}
               {timed.map((t, _idx) => {

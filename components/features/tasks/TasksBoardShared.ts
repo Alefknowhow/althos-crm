@@ -48,7 +48,7 @@ export const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 ]
 
 export const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-export const ROW_H = 40 // px por hora, na visão Semana
+export const ROW_H = 64 // px por hora, na visão Semana
 
 export function todayISO() {
   const d = new Date()
