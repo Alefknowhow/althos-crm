@@ -163,7 +163,7 @@ export function DetailHeader({
           </Button>
         )}
         {c.phone && (
-          <Button size="sm" variant="outline" asChild>
+          <Button size="sm" variant="outline" asChild className="hidden md:inline-flex">
             <a href={`tel:${onlyDigits(c.phone)}`}>
               <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
             </a>
@@ -172,11 +172,11 @@ export function DetailHeader({
         {c.email && (
           <SendEmailDialog orgSlug={orgSlug} lead={c} templates={selected.templates} org={{ name: orgName }} />
         )}
-        <Button size="sm" variant="outline" onClick={onNewTask}>
+        <Button size="sm" variant="outline" onClick={onNewTask} className="hidden md:inline-flex">
           <Plus className="w-4 h-4 mr-1.5" /> Atividade
         </Button>
         {c.status === 'cliente' && (
-          <Button size="sm" variant="outline" onClick={onReopen} disabled={reopening}>
+          <Button size="sm" variant="outline" onClick={onReopen} disabled={reopening} className="hidden md:inline-flex">
             <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
           </Button>
         )}
@@ -187,6 +187,23 @@ export function DetailHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {/* Só no mobile — no desktop essas ações já aparecem como botão solto acima. */}
+            {c.phone && (
+              <DropdownMenuItem asChild className="md:hidden">
+                <a href={`tel:${onlyDigits(c.phone)}`}>
+                  <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
+                </a>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={onNewTask} className="md:hidden">
+              <Plus className="w-3.5 h-3.5 mr-2" /> Atividade
+            </DropdownMenuItem>
+            {c.status === 'cliente' && (
+              <DropdownMenuItem onClick={onReopen} disabled={reopening} className="md:hidden">
+                <RefreshCw className="w-3.5 h-3.5 mr-2" /> Nova negociação
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator className="md:hidden" />
             <RequalifyButton orgSlug={orgSlug} leadId={c.id} asMenuItem />
             <DropdownMenuItem onClick={onEditDados}>
               <Pencil className="w-3.5 h-3.5 mr-2" /> Editar dados

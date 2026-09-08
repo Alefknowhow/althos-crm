@@ -138,7 +138,7 @@ export function DetailPanel({
 
 
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
       <DetailHeader
         orgSlug={orgSlug}
         selected={selected}
@@ -168,11 +168,11 @@ export function DetailPanel({
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-          <TabsTrigger value="atividades">Atividades</TabsTrigger>
-          <TabsTrigger value="negociacoes">Negociações</TabsTrigger>
-          <TabsTrigger value="compras">Compras</TabsTrigger>
+        <TabsList className="flex-nowrap overflow-x-auto hide-scrollbar justify-start md:justify-center h-auto w-full md:w-fit">
+          <TabsTrigger value="visao-geral" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Visão geral</TabsTrigger>
+          <TabsTrigger value="atividades" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Atividades</TabsTrigger>
+          <TabsTrigger value="negociacoes" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Negociações</TabsTrigger>
+          <TabsTrigger value="compras" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Compras</TabsTrigger>
         </TabsList>
 
         {/* ── Visão geral ─────────────────────────────────────────── */}

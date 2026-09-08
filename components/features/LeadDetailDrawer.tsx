@@ -6,10 +6,11 @@ import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { getLead } from '@/actions/contatos'
 import { deleteLead } from '@/actions/contatos'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ExternalLink, Trash2, Save } from 'lucide-react'
+import { ExternalLink, Trash2, Save, MoreVertical } from 'lucide-react'
 import LeadDataTab, {
   type Member as LeadDataMember, type Stage as LeadDataStage, type ActivityItem, type LeadDataTabHandle,
 } from './lead-panel/LeadDataTab'
@@ -92,7 +93,7 @@ export default function LeadDetailDrawer({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto">
+        <DialogContent size="lg" className="max-h-[85vh] overflow-y-auto w-[96vw] max-w-[96vw] sm:w-auto sm:max-w-2xl">
           {!lead && !error && (
             <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           )}
@@ -114,14 +115,32 @@ export default function LeadDetailDrawer({
                 <Button size="sm" onClick={() => leadDataRef.current?.save()}>
                   <Save className="w-3.5 h-3.5 mr-1.5" /> Salvar contato
                 </Button>
-                <Button variant="outline" size="sm" asChild>
+                {/* Desktop: ações secundárias soltas. Mobile: viram itens do ⋯. */}
+                <Button variant="outline" size="sm" asChild className="hidden md:inline-flex">
                   <Link href={`/app/${orgSlug}/contatos?sel=${lead.id}`}>
                     <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Abrir na aba de Contatos
                   </Link>
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="hidden md:inline-flex">
                   <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Excluir
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="md:hidden h-8 w-8 shrink-0" aria-label="Mais ações">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/app/${orgSlug}/contatos?sel=${lead.id}`}>
+                        <ExternalLink className="w-3.5 h-3.5 mr-2" /> Abrir na aba de Contatos
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
+                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <LeadDataTab

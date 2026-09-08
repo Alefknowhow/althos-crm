@@ -151,7 +151,7 @@ export default function ContatosView({
       </div>
 
       {/* ── Master-detail ───────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 md:min-h-[480px]">
+      <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-h-0 md:min-h-[480px]">
         {/* Master */}
         <div
           className={cn(
