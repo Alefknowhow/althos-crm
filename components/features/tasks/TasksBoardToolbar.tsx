@@ -157,6 +157,13 @@ export function TasksBoardToolbar({
           ))}
         </div>
 
+        {selectedDay && (
+          <FilterChip
+            label={`Dia: ${new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })}`}
+            onClear={() => setSelectedDay(null)}
+          />
+        )}
+
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {members.length > 0 && (
             <ResponsiveSelect
@@ -203,12 +210,10 @@ export function TasksBoardToolbar({
         </div>
       </div>
 
-      {/* Chips de filtros ativos — cada × zera só aquele filtro */}
-      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all' || onlyMine || todayOnly || selectedDay) && (
+      {/* Chips de filtros ativos — cada × zera só aquele filtro (o de Dia
+          fica junto do switch Mês/Semana, no header do calendário acima) */}
+      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all' || onlyMine || todayOnly) && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {selectedDay && (
-            <FilterChip label={`Dia: ${new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })}`} onClear={() => setSelectedDay(null)} />
-          )}
           {todayOnly && <FilterChip label="Hoje" onClear={() => setTodayOnly(false)} />}
           {onlyMine && <FilterChip label="Minhas" onClear={() => setOnlyMine(() => false)} />}
           {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
