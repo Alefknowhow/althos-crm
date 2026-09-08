@@ -53,10 +53,12 @@ export function EditSheet({
       relatedType === 'contato' ? { contato_id: relatedOption?.id || '' }
       : relatedType === 'reserva' ? { sale_id: relatedOption?.id || '' }
       : { related_entity_type: (relatedOption ? relatedType : '') as any, related_entity_id: relatedOption?.id || '' }
+    const durationRaw = fd.get('duration_minutes') as string
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
       due_date:    combineDueDate(dueDateRaw, dueTimeRaw) || '',
+      duration_minutes: durationRaw && durationRaw !== 'none' ? parseInt(durationRaw, 10) : null,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       assigned_to: ((fd.get('assigned_to') as string) === '__unassigned__' ? '' : fd.get('assigned_to') as string),
       ...relationPayload,
@@ -103,16 +105,34 @@ export function EditSheet({
                 <Input type="time" name="due_time" defaultValue={defaultTime} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select name="priority" defaultValue={task.priority}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Baixa</SelectItem>
-                  <SelectItem value="normal">Média</SelectItem>
-                  <SelectItem value="high">Alta</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select name="priority" defaultValue={task.priority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Baixa</SelectItem>
+                    <SelectItem value="normal">Média</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Duração <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Select name="duration_minutes" defaultValue={task.duration_minutes ? String(task.duration_minutes) : 'none'}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem duração</SelectItem>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="60">1 hora</SelectItem>
+                    <SelectItem value="90">1h30</SelectItem>
+                    <SelectItem value="120">2 horas</SelectItem>
+                    <SelectItem value="180">3 horas</SelectItem>
+                    <SelectItem value="240">4 horas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Relacionado a <span className="text-muted-foreground font-normal">(opcional)</span></Label>

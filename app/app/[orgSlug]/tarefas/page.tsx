@@ -25,7 +25,7 @@ export default async function TasksPage({ params }: { params: { orgSlug: string 
   const [{ data: tasks }, members] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, title, description, status, priority, due_date, completed_at, created_at, assigned_to, column_id, sale_id, related_entity_type, related_entity_id, leads:contatos(id, name)')
+      .select('id, title, description, status, priority, due_date, duration_minutes, completed_at, created_at, assigned_to, column_id, sale_id, related_entity_type, related_entity_id, leads:contatos(id, name)')
       .eq('organization_id', org.id)
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })

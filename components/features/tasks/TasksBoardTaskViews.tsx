@@ -18,7 +18,7 @@ import { RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-
 import UserAvatar from '@/components/features/UserAvatar'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, Circle, Trash2, MoreVertical, Pencil } from 'lucide-react'
-import { PRIORITY_META, fmtDate, dueTimeOnly, isOverdue, memberLabelColor, FOCUS_RING, type Task, type Member } from './TasksBoardShared'
+import { PRIORITY_META, fmtDate, dueTimeOnly, fmtDuration, isOverdue, memberLabelColor, FOCUS_RING, type Task, type Member } from './TasksBoardShared'
 
 export { EditSheet } from './TasksBoardEditSheet'
 
@@ -35,6 +35,7 @@ export function TaskPopoverContent({
 }) {
   const date = fmtDate(task.due_date)
   const time = dueTimeOnly(task.due_date)
+  const duration = fmtDuration(task.duration_minutes)
   const done = task.status === 'done'
   const member = members.find(m => m.user_id === task.assigned_to)
 
@@ -58,7 +59,7 @@ export function TaskPopoverContent({
         </DropdownMenu>
       </div>
 
-      {date && <p className="text-xs text-muted-foreground">{date}{time && ` · ${time}`}</p>}
+      {date && <p className="text-xs text-muted-foreground">{date}{time && ` · ${time}`}{duration && ` · ${duration}`}</p>}
       {member && (
         <div className="flex items-center gap-1.5">
           <UserAvatar name={member.name} email={member.email} size={20} />

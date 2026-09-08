@@ -13,6 +13,9 @@ export type Task = {
   status: 'open' | 'doing' | 'done'
   priority: 'low' | 'normal' | 'high'
   due_date?: string | null
+  /** Duração opcional em minutos — usada só na visão Semana pra desenhar o
+   *  bloco da tarefa com a altura proporcional (funciona como agenda). */
+  duration_minutes?: number | null
   completed_at?: string | null
   created_at?: string | null
   assigned_to?: string | null
@@ -77,6 +80,15 @@ export function dueTimeOnly(iso?: string | null): string | null {
   if (!iso) return null
   const t = iso.split('T')[1]?.slice(0, 5)
   return t && t !== '00:00' ? t : null
+}
+
+export function fmtDuration(minutes?: number | null): string | null {
+  if (!minutes) return null
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h${String(m).padStart(2, '0')}`
 }
 
 export function combineDueDate(date: string, time: string): string | null {

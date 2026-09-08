@@ -66,6 +66,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     title:       v.title,
     description: v.description || null,
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
+    duration_minutes: v.duration_minutes || null,
     priority:    v.priority || 'normal',
     assigned_to: v.assigned_to || user.id,
     status: 'open',
@@ -129,6 +130,7 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.title       !== undefined) updates.title       = input.title
   if (input.description !== undefined) updates.description = input.description || null
   if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null
+  if (input.duration_minutes !== undefined) updates.duration_minutes = input.duration_minutes || null
   if (input.priority    !== undefined) updates.priority    = input.priority
   if (input.assigned_to !== undefined) updates.assigned_to = input.assigned_to || null
   // "Relacionado a" só é reescrito quando o form manda algum dos três campos —

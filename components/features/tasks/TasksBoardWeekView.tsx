@@ -143,29 +143,35 @@ export function WeekTimeline({
                 </div>
               )}
 
-              {/* Tarefas com horário, posicionadas proporcionalmente */}
+              {/* Tarefas com horário, posicionadas proporcionalmente — com
+                  duração, o bloco ocupa a altura correspondente (funciona
+                  como agenda); sem duração, cai numa linha só (altura do
+                  chip, sem esticar). */}
               {timed.map((t, _idx) => {
                 const time = dueTimeOnly(t.due_date)!
                 const [hh, mm] = time.split(':').map(Number)
                 const top = (hh - hours[0]) * ROW_H + (mm / 60) * ROW_H
+                const height = t.duration_minutes ? (t.duration_minutes / 60) * ROW_H : undefined
                 const overlap = timed.filter(o => dueTimeOnly(o.due_date) === time).length
                 const overlapIdx = timed.filter(o => dueTimeOnly(o.due_date) === time).indexOf(t)
                 return (
                   <div
                     key={t.id}
-                    style={{ top, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
+                    style={{ top, height, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
                     className="absolute px-0.5 z-10"
                   >
-                    <CalendarTaskChip
-                      task={t}
-                      members={members}
-                      highlighted={highlightId === t.id}
-                      open={openPopoverId === t.id}
-                      onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
-                      onDragStart={e => onChipDragStart(e, t.id)}
-                      onDragEnd={onChipDragEnd}
-                      renderPopover={close => renderPopover(t, close)}
-                    />
+                    <div className={cn('h-full', height != null && 'rounded-md bg-primary/5 ring-1 ring-inset ring-primary/15')}>
+                      <CalendarTaskChip
+                        task={t}
+                        members={members}
+                        highlighted={highlightId === t.id}
+                        open={openPopoverId === t.id}
+                        onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
+                        onDragStart={e => onChipDragStart(e, t.id)}
+                        onDragEnd={onChipDragEnd}
+                        renderPopover={close => renderPopover(t, close)}
+                      />
+                    </div>
                   </div>
                 )
               })}

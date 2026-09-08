@@ -82,6 +82,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
   const setOpen = onOpenChange ?? setOpenState
   const [isPending, startTrans] = useTransition()
   const [dueTime, setDueTime]   = useState(defaultTime || '')
+  const [duration, setDuration] = useState('')
   const [relatedType, setRelatedType] = useState<RelatedTypeValue>(defaultLead ? 'contato' : 'contato')
   const [relatedOption, setRelatedOption] = useState<RelatedOption | null>(defaultLead ? { id: defaultLead.id, label: defaultLead.name } : null)
 
@@ -111,6 +112,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         contato_id: defaultLead?.id || '', assigned_to: '',
       })
       setDueTime(defaultTime || '')
+      setDuration('')
       setRelatedType('contato')
       setRelatedOption(defaultLead ? { id: defaultLead.id, label: defaultLead.name } : null)
     }
@@ -127,6 +129,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         ...values,
         ...relationPayload,
         due_date: combineDueDate(values.due_date || '', dueTime),
+        duration_minutes: duration ? parseInt(duration, 10) : null,
         ...(saleId ? { sale_id: saleId } : {}),
       }
       const res = await createTask(orgSlug, payload as TaskInput)
@@ -139,6 +142,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         title: '', description: '', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
       })
       setDueTime('')
+      setDuration('')
       setRelatedType('contato')
       setRelatedOption(null)
       setOpen(false)
@@ -245,6 +249,27 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                     </FormItem>
                   )}
                 />
+
+                {/* Duração (opcional) — mesmo motivo do horário: não é campo
+                    do react-hook-form, fica em state local (duration). Usada
+                    só na visão Semana pra desenhar o bloco com altura
+                    proporcional, funcionando como agenda. */}
+                <div className="space-y-2">
+                  <Label>Duração <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Select value={duration || 'none'} onValueChange={v => setDuration(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem duração</SelectItem>
+                      <SelectItem value="15">15 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="60">1 hora</SelectItem>
+                      <SelectItem value="90">1h30</SelectItem>
+                      <SelectItem value="120">2 horas</SelectItem>
+                      <SelectItem value="180">3 horas</SelectItem>
+                      <SelectItem value="240">4 horas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Responsável */}
