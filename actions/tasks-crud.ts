@@ -110,12 +110,13 @@ export async function listTasksForSale(orgSlug: string, saleId: string): Promise
 export async function listTasksForContato(orgSlug: string, contatoId: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tasks')
     .select('*')
     .eq('organization_id', org.id)
     .eq('contato_id', contatoId)
     .order('due_date', { ascending: true })
+  if (error) throw new Error('Não foi possível carregar as tarefas do lead')
   return data ?? []
 }
 

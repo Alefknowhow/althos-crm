@@ -11,6 +11,7 @@ import SendEmailDialog from '@/components/features/SendEmailDialog'
 import LeadDataTab, { type Member, type Stage } from '@/components/features/lead-panel/LeadDataTab'
 import LeadDealsTab from '@/components/features/lead-panel/LeadDealsTab'
 import LeadFlowsTab from '@/components/features/lead-panel/LeadFlowsTab'
+import LeadTimelineTab from '@/components/features/lead-panel/LeadTimelineTab'
 import LeadTasksTab from '@/components/features/lead-panel/LeadTasksTab'
 
 // 8 deterministic agent colors, indexed by a hash of the user id so the same
@@ -186,12 +187,13 @@ export default function ConversationDetailPanel({
             </Button>
           </section>
         ) : (
-          <Tabs defaultValue="dados">
-            <TabsList className="grid grid-cols-4 h-auto">
+          <Tabs key={lead.id} defaultValue="dados">
+            <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
               <TabsTrigger value="dados" className="text-[11px] px-1 py-1.5">Dados</TabsTrigger>
               <TabsTrigger value="negociacoes" className="text-[11px] px-1 py-1.5">Negociações</TabsTrigger>
               <TabsTrigger value="anotacoes" className="text-[11px] px-1 py-1.5">Fluxos</TabsTrigger>
-              <TabsTrigger value="atividades" className="text-[11px] px-1 py-1.5">Atividades</TabsTrigger>
+              <TabsTrigger value="atividades" className="text-[11px] px-1 py-1.5">Tarefas</TabsTrigger>
+              <TabsTrigger value="timeline" className="text-[11px] px-1 py-1.5">Timeline</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dados" className="pt-4">
@@ -213,8 +215,12 @@ export default function ConversationDetailPanel({
               <LeadFlowsTab orgSlug={orgSlug} leadId={lead.id} />
             </TabsContent>
 
+            <TabsContent value="timeline" className="pt-4">
+              <LeadTimelineTab orgSlug={orgSlug} leadId={lead.id} stages={stages} />
+            </TabsContent>
+
             <TabsContent value="atividades" className="pt-4">
-              <LeadTasksTab orgSlug={orgSlug} leadId={lead.id} leadName={lead.name} />
+              <LeadTasksTab orgSlug={orgSlug} leadId={lead.id} leadName={lead.name} members={members} />
             </TabsContent>
           </Tabs>
         )}

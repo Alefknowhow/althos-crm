@@ -1,3 +1,4 @@
+import { matchesInboxView, type InboxView } from '@/lib/whatsapp/inbox-view'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -12,6 +13,7 @@ export function useWhatsappChatFiltersState({
   orgSlug, conversations, members, pipelineStages, selectedConversation,
 }: any) {
   const router = useRouter()
+  const [inboxView, setInboxView] = useState<InboxView>('all')
   const [query, setQuery] = useState('')
   const [filterSeller, setFilterSeller] = useState('')
   const [filterStage, setFilterStage] = useState('')
@@ -91,7 +93,7 @@ export function useWhatsappChatFiltersState({
       .filter((c: any) => {
         // Arquivadas somem da lista principal — exceto a que está aberta
         // agora, senão ela desaparece debaixo do usuário ao arquivar.
-        if (c.archived && c.id !== selectedConversation?.id) return false
+        if (!matchesInboxView(c, inboxView, selectedConversation?.id)) return false
         if (q) {
           const hay = `${c.contact_name || ''} ${c.contact_phone || ''} ${c.last_message_preview || ''}`.toLowerCase()
           if (!hay.includes(q)) return false
@@ -106,10 +108,10 @@ export function useWhatsappChatFiltersState({
         return true
       })
       .sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-  }, [conversations, query, filterSeller, filterStage, selectedConversation])
+  }, [conversations, query, filterSeller, filterStage, selectedConversation, inboxView])
 
   return {
-    query, setQuery, filterSeller, setFilterSeller, filterStage, setFilterStage, showFilters, setShowFilters,
+    inboxView, setInboxView, query, setQuery, filterSeller, setFilterSeller, filterStage, setFilterStage, showFilters, setShowFilters,
     quickStagePrompt, setQuickStagePrompt, commitQuickStageChange, handleQuickStageChange, handleQuickAssign,
     memberById, stageOptions, sellerOptions, activeFilters, filteredConversations,
   }

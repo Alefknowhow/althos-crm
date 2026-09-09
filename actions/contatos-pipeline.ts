@@ -198,7 +198,7 @@ export async function getLead(orgSlug: string, leadId: string) {
   if (!perm.allowed) return { lead: null, activities: [], automation_runs: [] }
   const supabase = createClient()
 
-  const { data: lead } = await supabase.from('contatos').select('*, pipeline_stages(name)').eq('id', leadId).eq('organization_id', org.id).maybeSingle()
+  const { data: lead } = await supabase.from('contatos').select('*, pipeline_stages(name), origin_campaign:campaigns!meta_resolved_campaign_id(name), origin_tracking:tracking_links!tracking_link_id(label, campaign:campaigns!campaign_id(name))').eq('id', leadId).eq('organization_id', org.id).maybeSingle()
   const { data: activitiesRaw } = await supabase.from('contato_activities').select('*').eq('contato_id', leadId).order('created_at', { ascending: false })
   const { data: automation_runs } = await supabase.from('automation_runs').select('*, automations(name)').eq('contato_id', leadId).order('started_at', { ascending: false })
 
