@@ -12,7 +12,7 @@ import { agentColor, memberInitials, memberShortLabel } from '@/components/featu
 import { ConversationTicks, WindowBadge, formatInboxTime } from './WhatsappChatWidgets'
 
 export default function WhatsappChatSidebar({
-  orgSlug, isMock, seeding, handleSeed,
+  inboxView = 'all', orgSlug, isMock, seeding, handleSeed,
   query, setQuery, showFilters, setShowFilters, activeFilters,
   filterSeller, setFilterSeller, filterStage, setFilterStage,
   sellerOptions, stageOptions, filteredConversations, conversations,
@@ -20,9 +20,10 @@ export default function WhatsappChatSidebar({
   memberById, handleQuickAssign, handleQuickStageChange, now,
 }: any) {
   return (
-    <div className={`w-full md:w-1/3 md:max-w-[350px] border-r border-[#e9edef] dark:border-[#2a3942] flex-col bg-white dark:bg-[#111b21] ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+    <div className={`min-w-0 flex-1 md:flex-none md:w-1/3 md:max-w-[350px] border-r border-[#e9edef] dark:border-[#2a3942] flex-col bg-white dark:bg-[#111b21] ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
       {/* Busca + filtros do inbox */}
       <div className="px-3 pt-3 pb-2 border-b bg-background shrink-0 space-y-2">
+        <h2 className="text-lg font-semibold">{{ all: 'Conversas', unread: 'Não lidas', pinned: 'Fixadas', archived: 'Arquivadas' }[inboxView as string]}</h2>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>

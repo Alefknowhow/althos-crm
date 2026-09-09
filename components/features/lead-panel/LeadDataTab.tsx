@@ -15,6 +15,7 @@ import {
   resolveContatoAvatars, addNegotiationAction,
 } from '@/actions/contatos'
 import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
+import LeadOriginBadge from './LeadOriginBadge'
 import { LeadAvatarUploader } from './LeadAvatarUploader'
 
 export type Member = { user_id: string; name: string; email: string }
@@ -64,7 +65,6 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
   const [internalNotes, setInternalNotes] = useState(lead?.internal_notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [actionText, setActionText] = useState('')
-  const [actionReturnDate, setActionReturnDate] = useState('')
   const [savingAction, setSavingAction] = useState(false)
 
   // Popups ao mover pra etapa is_won/is_lost/"Negociação" — mesma regra do
@@ -192,11 +192,10 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     const v = actionText.trim()
     if (!v) return
     setSavingAction(true)
-    const res = await addNegotiationAction(orgSlug, lead.id, v, actionReturnDate || null)
+    const res = await addNegotiationAction(orgSlug, lead.id, v)
     setSavingAction(false)
     if (!res.ok) { toast.error('Não foi possível registrar a ação', { description: res.error }); return }
     setActionText('')
-    setActionReturnDate('')
     toast.success('Ação registrada — veja na Timeline')
     if (onActionAdded && res.activity) onActionAdded({ ...res.activity, created_by_name: null } as ActivityItem)
   }
@@ -210,6 +209,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
           {leadHref && <Link href={leadHref} className="text-[11px] text-primary hover:underline">Abrir lead</Link>}
         </div>
       </section>
+
+      <LeadOriginBadge lead={lead} />
 
       <section className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de contato</h4>
@@ -351,7 +352,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         <section className="space-y-1.5">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações</h4>
           <p className="text-[11px] text-muted-foreground -mt-1">
-            Registre o que foi feito — fica salvo na Timeline, com data e responsável.
+            Registre o que foi feito na Timeline. Planeje as próximas ações na aba Tarefas.
           </p>
           <div className="flex gap-2 items-end">
             <div className="flex-1 space-y-1">
@@ -359,18 +360,9 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
               <Input
                 value={actionText}
                 onChange={e => setActionText(e.target.value)}
-                placeholder="Ex.: Liguei, sem resposta. Tentar de novo amanhã."
+                placeholder="Ex.: Liguei para apresentar a proposta."
                 className="h-8 text-sm"
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddAction() } }}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-[10px] text-muted-foreground">Próximo retorno</label>
-              <Input
-                type="date"
-                value={actionReturnDate}
-                onChange={e => setActionReturnDate(e.target.value)}
-                className="h-8 text-sm w-36"
               />
             </div>
             <Button

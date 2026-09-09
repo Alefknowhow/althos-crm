@@ -13,7 +13,7 @@ import Link from 'next/link'
 import LeadCombobox from '@/components/features/LeadCombobox'
 import { toast } from 'sonner'
 
-export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string }) {
+export default function TaskCard({ task, orgSlug, onChanged }: { task: any, orgSlug: string, onChanged?: () => void }) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState(task.status)
@@ -26,6 +26,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       setOptimisticStatus(task.status) // reverte otimista
       toast.error('Erro ao atualizar tarefa')
     }
+    onChanged?.()
     router.refresh()
   }
 
@@ -46,6 +47,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
     }
     toast.success('Tarefa atualizada!')
     setSheetOpen(false)
+    onChanged?.()
     router.refresh()
   }
 
@@ -56,6 +58,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       return
     }
     toast.success('Tarefa excluída')
+    onChanged?.()
     router.refresh()
   }
 

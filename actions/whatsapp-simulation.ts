@@ -182,7 +182,7 @@ export async function getConversationContext(orgSlug: string, conversationId: st
   if (conversation?.contato_id) {
     const { data } = await supabase
       .from('contatos')
-      .select('*, pipeline_stages(id, name)')
+      .select('*, pipeline_stages(id, name), origin_campaign:campaigns!meta_resolved_campaign_id(name), origin_tracking:tracking_links!tracking_link_id(label, campaign:campaigns!campaign_id(name))')
       .eq('id', conversation.contato_id)
       .eq('organization_id', org.id)
       .maybeSingle()
