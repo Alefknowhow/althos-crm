@@ -204,10 +204,15 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     <div className="space-y-6">
       <section className="flex items-center gap-3">
         <LeadAvatarUploader orgSlug={orgSlug} contatoId={lead.id} name={lead.name || name} url={avatarUrl} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-sm truncate">{lead.name || name || 'Sem nome'}</div>
           {leadHref && <Link href={leadHref} className="text-[11px] text-primary hover:underline">Abrir lead</Link>}
         </div>
+        {!hideInlineSaveButton && (
+          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="shrink-0 h-8 px-3 text-xs">
+            {savingContact ? 'Salvando...' : 'Salvar'}
+          </Button>
+        )}
       </section>
 
       <LeadOriginBadge lead={lead} />
@@ -215,39 +220,30 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
       <section className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de contato</h4>
 
-        {/* Linha 1 — Nome / E-mail */}
+        <div className="space-y-1 min-w-0">
+          <label className="block text-xs text-muted-foreground">Nome</label>
+          <Input value={name} onChange={e => setName(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" title={name} />
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs text-muted-foreground">Nome</label>
-            <Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" />
-          </div>
-          <div>
+          <div className="space-y-1 min-w-0">
             <label className="block text-xs text-muted-foreground">E-mail</label>
-            <Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 text-sm" type="email" />
+            <Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="email" title={email} />
           </div>
-        </div>
-
-        {/* Linha 2 — Telefone / CPF / Nascimento */}
-        <div className="grid grid-cols-3 gap-2">
-          <div>
+          <div className="space-y-1 min-w-0">
             <label className="block text-xs text-muted-foreground">Telefone</label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">CPF</label>
-            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm" placeholder="000.000.000-00" />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">Nascimento</label>
-            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm" type="date" />
+            <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="tel" title={phone} />
           </div>
         </div>
-
-        {!hideInlineSaveButton && (
-          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="w-full mt-1">
-            {savingContact ? 'Salvando...' : 'Salvar contato'}
-          </Button>
-        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1 min-w-0">
+            <label className="block text-xs text-muted-foreground">CPF</label>
+            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" placeholder="000.000.000-00" title={cpf} />
+          </div>
+          <div className="space-y-1 min-w-0">
+            <label className="block text-xs text-muted-foreground">Nascimento</label>
+            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="date" />
+          </div>
+        </div>
       </section>
 
       {/* Linha 3 — Observações (campo único, editável) */}
@@ -302,8 +298,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         )}
       </section>
 
-      {/* Valor / Estágio / Responsável lado a lado */}
-      <section className="grid grid-cols-3 gap-2">
+      {/* Valor e estágio juntos; responsável com a largura inteira. */}
+      <section className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</h4>
           <Input
@@ -314,7 +310,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
               setValue(cents > 0 ? formatCurrency(cents) : '')
             }}
             placeholder="R$ 0,00"
-            className="h-8 text-sm"
+            className="h-8 min-w-0 px-2 text-xs md:text-xs"
             onBlur={handleSaveValue}
           />
         </div>
@@ -330,7 +326,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
             ))}
           </select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0 col-span-2">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Responsável</h4>
           <select
             className="w-full h-8 rounded-md border border-input bg-input/25 px-1.5 text-xs"
