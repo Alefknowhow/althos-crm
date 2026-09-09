@@ -65,6 +65,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     organization_id: org.id,
     title:       v.title,
     description: v.description || null,
+    color:       v.color ?? 'blue',
     due_date:    v.due_date ? new Date(v.due_date).toISOString() : null,
     duration_minutes: v.duration_minutes || null,
     priority:    v.priority || 'normal',
@@ -127,7 +128,10 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const supabase = createClient()
 
+  const colorValidation = taskSchema.shape.color.safeParse(input.color)
+  if (!colorValidation.success) return { ok: false as const, error: 'Cor de tarefa inválida' }
   const updates: Record<string, unknown> = {}
+  if (input.color !== undefined) updates.color = colorValidation.data
   if (input.title       !== undefined) updates.title       = input.title
   if (input.description !== undefined) updates.description = input.description || null
   if (input.due_date    !== undefined) updates.due_date    = input.due_date ? new Date(input.due_date).toISOString() : null

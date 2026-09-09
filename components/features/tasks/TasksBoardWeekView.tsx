@@ -160,8 +160,9 @@ export function WeekTimeline({
                     style={{ top, height, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
                     className="absolute px-0.5 z-10"
                   >
-                    <div className={cn('h-full', height != null && 'rounded-md bg-primary/5 ring-1 ring-inset ring-primary/15')}>
+                    <div className="h-full">
                       <CalendarTaskChip
+                        expanded={height != null}
                         task={t}
                         members={members}
                         highlighted={highlightId === t.id}
