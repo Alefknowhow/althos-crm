@@ -188,12 +188,12 @@ export default function ConversationDetailPanel({
           </section>
         ) : (
           <Tabs key={lead.id} defaultValue="dados">
-            <TabsList className="flex flex-wrap h-auto gap-1 justify-start">
-              <TabsTrigger value="dados" className="text-[11px] px-1 py-1.5">Dados</TabsTrigger>
-              <TabsTrigger value="negociacoes" className="text-[11px] px-1 py-1.5">Negociações</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-[11px] px-1 py-1.5">Fluxos</TabsTrigger>
-              <TabsTrigger value="atividades" className="text-[11px] px-1 py-1.5">Tarefas</TabsTrigger>
-              <TabsTrigger value="timeline" className="text-[11px] px-1 py-1.5">Timeline</TabsTrigger>
+            <TabsList className="flex w-full h-auto gap-0.5">
+              <TabsTrigger value="dados" className="min-w-0 flex-auto text-[11px] px-1 py-1.5">Dados</TabsTrigger>
+              <TabsTrigger value="negociacoes" className="min-w-0 flex-auto text-[11px] px-1 py-1.5">Negociações</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="min-w-0 flex-auto text-[11px] px-1 py-1.5">Fluxos</TabsTrigger>
+              <TabsTrigger value="atividades" className="min-w-0 flex-auto text-[11px] px-1 py-1.5">Tarefas</TabsTrigger>
+              <TabsTrigger value="timeline" className="min-w-0 flex-auto text-[11px] px-1 py-1.5">Timeline</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dados" className="pt-4">

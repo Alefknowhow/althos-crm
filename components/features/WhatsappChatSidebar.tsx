@@ -3,8 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import Link from 'next/link'
-import { FileText, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -51,14 +50,6 @@ export default function WhatsappChatSidebar({
               <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{activeFilters}</span>
             )}
           </button>
-          <Link
-            href={`/app/${orgSlug}/whatsapp-templates`}
-            className="h-9 w-9 shrink-0 flex items-center justify-center rounded-full border text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Templates de mensagem do WhatsApp"
-            aria-label="Templates de mensagem do WhatsApp"
-          >
-            <FileText className="w-4 h-4" />
-          </Link>
           {isMock && (
             <Button
               type="button"
