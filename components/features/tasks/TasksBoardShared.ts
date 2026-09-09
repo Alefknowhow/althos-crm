@@ -10,6 +10,7 @@ export type Task = {
   id: string
   title: string
   description?: string | null
+  color?: string | null
   status: 'open' | 'doing' | 'done'
   priority: 'low' | 'normal' | 'high'
   due_date?: string | null

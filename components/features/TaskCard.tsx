@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toggleTaskStatus, updateTask, deleteTask } from '@/actions/tasks'
 import Link from 'next/link'
 import LeadCombobox from '@/components/features/LeadCombobox'
+import TaskColorPicker from './tasks/TaskColorPicker'
+import type { TaskColor } from '@/lib/tasks/colors'
 import { toast } from 'sonner'
 
 export default function TaskCard({ task, orgSlug, onChanged }: { task: any, orgSlug: string, onChanged?: () => void }) {
@@ -36,6 +38,7 @@ export default function TaskCard({ task, orgSlug, onChanged }: { task: any, orgS
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
+      color: fd.get('color') as TaskColor,
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       contato_id:     fd.get('contato_id')     as string,
@@ -112,6 +115,7 @@ export default function TaskCard({ task, orgSlug, onChanged }: { task: any, orgS
               <Label>Descrição</Label>
               <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm" defaultValue={task.description || ''} />
             </div>
+            <TaskColorPicker defaultValue={task.color} />
             <div className="space-y-2">
               <Label>Data de Vencimento</Label>
               <Input type="date" name="due_date" defaultValue={defaultDate} />

@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
-import { PRIORITY_META, isOverdue, stateDotClass, dueTimeOnly, type Task, type Member } from './TasksBoardShared'
+import { taskColor } from '@/lib/tasks/colors'
+import { stateDotClass, dueTimeOnly, type Task, type Member } from './TasksBoardShared'
 
 export { WeekTimeline } from './TasksBoardWeekView'
 
@@ -42,12 +43,12 @@ export function weekRangeLabel(days: Date[]) {
   return `${fmt(start, !sameMonth)} – ${fmt(end, true)}`
 }
 
-/** Linha compacta de tarefa dentro da célula do mês — texto, não badge.
- *  Hover mostra um preview leve; clique abre o popover completo. */
+/** Bloco da timeline; duração controla a altura e o clique abre os detalhes. */
 export function CalendarTaskChip({
-  task, members, highlighted, open, onOpenChange, onDragStart, onDragEnd, renderPopover,
+  task, members, expanded = false, highlighted, open, onOpenChange, onDragStart, onDragEnd, renderPopover,
 }: {
   task: Task
+  expanded?: boolean
   members: Member[]
   highlighted: boolean
   open: boolean
@@ -68,27 +69,30 @@ export function CalendarTaskChip({
           onDragStart={e => { e.stopPropagation(); onDragStart(e) }}
           onDragEnd={onDragEnd}
           onClick={e => e.stopPropagation()}
-          title={member ? `${task.title} · ${member.name}` : task.title}
+          role="button"
+          tabIndex={0}
+          aria-label={[task.title, task.description].filter(Boolean).join(' — ')}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenChange(!open) } }}
+          title={[task.title, task.description, member?.name].filter(Boolean).join(' · ')}
           className={cn(
-            'group/chip relative flex items-center gap-1 text-[11px] leading-tight px-1 py-0.5 rounded cursor-grab active:cursor-grabbing min-w-0 max-w-full overflow-hidden',
-            'hover:bg-muted/60',
-            highlighted && 'ring-1 ring-primary/50 bg-primary/5',
+            'relative flex flex-col text-[11px] leading-tight px-1.5 py-1 rounded-md cursor-grab active:cursor-grabbing min-w-0 max-w-full overflow-hidden',
+            taskColor(task.color).className,
+            expanded && 'h-full',
+            highlighted && 'ring-2 ring-foreground ring-offset-1',
           )}
         >
-          <span className={cn('w-2 h-2 rounded-[3px] shrink-0', stateDotClass(task))} />
-          <span className={cn('min-w-0 flex-1 truncate [overflow-wrap:anywhere]', done && 'line-through text-muted-foreground')}>
-            {time && <span className="text-muted-foreground/70 mr-1 tabular-nums">{time}</span>}
-            {task.title}
-          </span>
-
-          {/* Hover preview — sem precisar clicar */}
-          <div className="hidden group-hover/chip:block absolute left-0 top-full z-20 mt-1 w-56 rounded-md border bg-popover text-popover-foreground shadow-md p-2.5 space-y-1">
-            <p className="text-xs font-semibold leading-tight">{task.title}</p>
-            {time && <p className="text-[11px] text-muted-foreground">{time}</p>}
-            {member && <p className="text-[11px] text-muted-foreground">{member.name}</p>}
-            <p className="text-[11px] text-muted-foreground">Prioridade: {PRIORITY_META[task.priority].label}</p>
-            <p className="text-[11px] text-muted-foreground">Status: {done ? 'Concluída' : isOverdue(task) ? 'Atrasada' : 'Pendente'}</p>
+          <div className="flex items-center gap-1 min-w-0 shrink-0">
+            <span className={cn('w-2 h-2 rounded-[3px] ring-1 ring-white/70 shrink-0', stateDotClass(task))} />
+            <span className={cn('min-w-0 flex-1 truncate font-medium', done && 'line-through')}>
+              {time && <span className="opacity-80 mr-1 tabular-nums">{time}</span>}
+              {task.title}
+            </span>
           </div>
+          {task.description?.trim() && (
+            <p className={cn('mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]', expanded ? 'min-h-0 overflow-y-auto' : 'line-clamp-2')}>
+              {task.description}
+            </p>
+          )}
         </div>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-0" onClick={e => e.stopPropagation()}>
