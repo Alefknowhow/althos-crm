@@ -25,24 +25,29 @@ export type SegmentMetric = {
 }
 
 /** Renderiza o valor BRUTO (não o normalizado usado pra dimensionar a barra)
- *  como um badge discreto centralizado no segmento — recharts passa x/y/
- *  width/height calculados a partir do valor normalizado, então a posição
- *  já reflete o tamanho visual do segmento; só o texto usa o dado real. */
+ *  como um badge discreto no segmento — recharts passa x/y/width/height
+ *  calculados a partir do valor normalizado, então a posição já reflete o
+ *  tamanho visual do segmento; só o texto usa o dado real. Segmentos
+ *  estreitos demais pro texto caber dentro (comum quando sharedScale deixa
+ *  o menor indicador bem pequeno) mostram o número logo à direita, em vez
+ *  de escondê-lo — o pedido é que todo valor fique sempre visível. */
 function makeSegmentLabel(rawKey: string, formatShort: (v: number) => string) {
   return (props: any) => {
     const { x, y, width, height, payload } = props
     const raw = payload?.[rawKey]
-    if (!raw || width < 20) return null
+    if (raw == null) return null
+    const text = formatShort(raw)
+    const fitsInside = width >= text.length * 6 + 8
     return (
       <text
-        x={x + width / 2}
+        x={fitsInside ? x + width / 2 : x + width + 3}
         y={y + height / 2}
-        textAnchor="middle"
+        textAnchor={fitsInside ? 'middle' : 'start'}
         dominantBaseline="central"
-        className="fill-white"
+        className={fitsInside ? 'fill-white' : 'fill-foreground'}
         style={{ fontSize: 9, fontWeight: 600 }}
       >
-        {formatShort(raw)}
+        {text}
       </text>
     )
   }
@@ -59,12 +64,21 @@ export default function AdSegmentedBarChart({
   nameOf,
   campaignOf,
   emptyLabel = 'Nenhum dado no período.',
+  sharedScale = false,
 }: {
   rows: any[]
   metrics: [SegmentMetric, SegmentMetric, SegmentMetric]
   nameOf: (row: any) => string
   campaignOf?: (row: any) => string | undefined
   emptyLabel?: string
+  /** Quando true, os 3 segmentos são normalizados contra um único máximo
+   *  compartilhado (o maior valor entre as 3 métricas), então o tamanho de
+   *  cada segmento reflete a magnitude real entre eles — útil quando as 3
+   *  métricas já estão na mesma unidade (ex.: reais) e uma ordem
+   *  maior→menor faz sentido visualmente. Default false preserva o
+   *  comportamento original (cada métrica normalizada contra seu próprio
+   *  máximo, pra comparar anúncios dentro de cada indicador). */
+  sharedScale?: boolean
 }) {
   // Ordena pelo total bruto do 1º indicador (o "principal" — conversões ou
   // valor investido, dependendo do gráfico) e pega os top 6.
@@ -81,7 +95,9 @@ export default function AdSegmentedBarChart({
     )
   }
 
-  const maxByMetric = metrics.map(m => Math.max(1, ...ranked.map(r => m.extract(r))))
+  const maxByMetric = sharedScale
+    ? metrics.map(() => Math.max(1, ...metrics.flatMap(m => ranked.map(r => m.extract(r)))))
+    : metrics.map(m => Math.max(1, ...ranked.map(r => m.extract(r))))
 
   const data = ranked.map(r => {
     const raw: Record<string, number> = {}
@@ -95,7 +111,7 @@ export default function AdSegmentedBarChart({
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(160, data.length * 34)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }} barCategoryGap={10}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 36, bottom: 4, left: 4 }} barCategoryGap={10}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
         <XAxis type="number" hide />
         <YAxis

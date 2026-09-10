@@ -99,6 +99,7 @@ export default function AdSpendCpmChart({
           nameOf={(r: AdConversionRow) => r.name}
           campaignOf={(r: AdConversionRow) => r.campaign_name}
           emptyLabel="Nenhum dado de investimento no período."
+          sharedScale
         />
       )}
     </div>

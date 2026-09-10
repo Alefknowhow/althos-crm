@@ -5,6 +5,7 @@ import {
   ComposedChart,
   Line,
   Area,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -118,7 +119,9 @@ export default function MetricsChart({ data, visible }: Props) {
                   stroke={m.color}
                   fill={`url(#grad-${k})`}
                   strokeWidth={2}
-                />
+                >
+                  <LabelList dataKey={k} position="top" fontSize={9} fill={m.color} formatter={(v: any) => m.format(Number(v) || 0)} />
+                </Area>
               )
             }
             return (
@@ -130,8 +133,10 @@ export default function MetricsChart({ data, visible }: Props) {
                 name={k}
                 stroke={m.color}
                 strokeWidth={2}
-                dot={false}
-              />
+                dot={{ r: 2.5 }}
+              >
+                <LabelList dataKey={k} position="top" fontSize={9} fill={m.color} formatter={(v: any) => m.format(Number(v) || 0)} />
+              </Line>
             )
           })}
         </ComposedChart>

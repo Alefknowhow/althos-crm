@@ -30,6 +30,9 @@ export default function MarketingOverviewObjectiveChart({
                   innerRadius={45}
                   outerRadius={70}
                   paddingAngle={2}
+                  label={({ value }: { value: number }) => fmtCurrency(value)}
+                  labelLine={false}
+                  fontSize={9}
                 >
                   {byObjectiveData.map((_, i) => (
                     <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />

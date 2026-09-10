@@ -4,6 +4,7 @@ import {
   ComposedChart,
   Bar,
   Line,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -50,8 +51,17 @@ export default function ImpressionsCpmChart({ data }: { data: Point[] }) {
           }
         />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => (v === 'cpm' ? 'CPM' : 'Impressões')} />
-        <Bar yAxisId="left" dataKey="impressions" name="impressions" fill="#a855f7" radius={[3, 3, 0, 0]} />
-        <Line yAxisId="right" type="monotone" dataKey="cpm" name="cpm" stroke="#eab308" strokeWidth={2} dot={false} />
+        <Bar yAxisId="left" dataKey="impressions" name="impressions" fill="#a855f7" radius={[3, 3, 0, 0]}>
+          <LabelList
+            dataKey="impressions"
+            position="top"
+            fontSize={9}
+            formatter={(v: any) => (Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(1)}k` : `${v}`)}
+          />
+        </Bar>
+        <Line yAxisId="right" type="monotone" dataKey="cpm" name="cpm" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }}>
+          <LabelList dataKey="cpm" position="top" fontSize={9} fill="#a16207" formatter={(v: any) => currency(Number(v) || 0)} />
+        </Line>
       </ComposedChart>
     </ResponsiveContainer>
   )
