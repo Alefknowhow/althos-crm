@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -178,7 +178,7 @@ export function EditSheet({
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir
               </Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" pending={saving}>Salvar</Button>
             </DialogFooter>
           </form>
         )}

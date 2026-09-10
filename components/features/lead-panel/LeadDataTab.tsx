@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { X, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
@@ -209,8 +209,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
           {leadHref && <Link href={leadHref} className="text-[11px] text-primary hover:underline">Abrir lead</Link>}
         </div>
         {!hideInlineSaveButton && (
-          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="shrink-0 h-8 px-3 text-xs">
-            {savingContact ? 'Salvando...' : 'Salvar'}
+          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} pending={savingContact} className="shrink-0 h-8 px-3 text-xs">
+            Salvar
           </Button>
         )}
       </section>

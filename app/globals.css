@@ -16,6 +16,9 @@
 
     --primary: 210 100% 52%;            /* #0a84ff — Apple system blue, igual em claro/escuro */
     --primary-foreground: 0 0% 100%;
+    --action-primary: 210 100% 42%;
+    --action-primary-hover: 210 100% 38%;
+    --action-primary-active: 210 100% 33%;
 
     --secondary: 0 0% 96%;              /* #f4f4f4 surface-1 */
     --secondary-foreground: 0 0% 9%;
@@ -63,6 +66,9 @@
     --popover-foreground: 0 0% 9%;
     --primary: 210 100% 52%;
     --primary-foreground: 0 0% 100%;
+    --action-primary: 210 100% 42%;
+    --action-primary-hover: 210 100% 38%;
+    --action-primary-active: 210 100% 33%;
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96%;
@@ -99,6 +105,9 @@
 
     --primary: 210 100% 52%;            /* #0a84ff — mesmo azul Apple do light, sem trocar de tom */
     --primary-foreground: 0 0% 100%;
+    --action-primary: 210 100% 42%;
+    --action-primary-hover: 210 100% 38%;
+    --action-primary-active: 210 100% 33%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 96%;

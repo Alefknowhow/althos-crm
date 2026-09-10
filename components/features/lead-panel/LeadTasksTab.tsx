@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import TaskCard from '@/components/features/TaskCard'
 import TaskDialog from '@/components/features/TaskDialog'
 import { listTasksForContato } from '@/actions/tasks'
