@@ -9,6 +9,7 @@
  */
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -40,6 +41,20 @@ export default function QuotationEditorFechamentoGroup({
   saveFooterProfile: () => void
   removeFooterProfile: (id: string) => void
 }) {
+  // Assinatura sempre reflete o usuário logado — nome e foto vêm do perfil
+  // real (mesmos dados do avatar no canto superior direito do CRM), nunca
+  // um valor digitado à mão que pode ficar desatualizado ou divergir de
+  // quem está de fato editando a cotação.
+  useEffect(() => {
+    let cancelled = false
+    getUserProfile(orgSlug).then(profile => {
+      if (cancelled || !profile) return
+      setQ(s => ({ ...s, signature_name: profile.name, signature_photo_url: profile.avatar_url }))
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgSlug])
+
   return (
     <GroupSection id="fechamento" active={activeGroup}>
       {/* FECHAMENTO */}
@@ -57,29 +72,26 @@ export default function QuotationEditorFechamentoGroup({
       <EditBlock id="blk-assinatura" icon={UserRound} title="Assinatura"
         action={
           <label className="flex items-center gap-2 text-xs font-medium">
-            <Switch checked={q.signature_enabled} onCheckedChange={async v => {
-              setQ(s => ({ ...s, signature_enabled: v }))
-              if (v && !q.signature_name && !q.signature_photo_url) {
-                const profile = await getUserProfile(orgSlug)
-                if (profile) setQ(s => ({
-                  ...s,
-                  signature_name: s.signature_name || profile.name,
-                  signature_photo_url: s.signature_photo_url || profile.avatar_url,
-                }))
-              }
-            }} />
+            <Switch checked={q.signature_enabled} onCheckedChange={v => setQ(s => ({ ...s, signature_enabled: v }))} />
             {q.signature_enabled ? 'Ativada' : 'Desativada'}
           </label>
         }>
         {q.signature_enabled && (
           <>
             <p className="text-[11px] text-muted-foreground">
-              Aparece destacada logo abaixo da mensagem de encerramento, no link público.
+              Aparece destacada logo abaixo da mensagem de encerramento, no link público. Nome e foto são os do seu perfil (mesmos do canto superior direito do CRM) e não podem ser editados aqui.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <F label="Nome"><Input value={q.signature_name} onChange={e => setQ(s => ({ ...s, signature_name: e.target.value }))} placeholder="Ex.: Ana Souza" /></F>
-              <F label="Foto"><SignaturePhotoUpload orgSlug={orgSlug} url={q.signature_photo_url} onChange={u => setQ(s => ({ ...s, signature_photo_url: u }))} /></F>
-            </div>
+            <F label="Assinante">
+              <div className="flex items-center gap-2.5 rounded-md border bg-muted/30 px-3 py-2">
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                  {q.signature_photo_url
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={q.signature_photo_url} alt="" className="w-full h-full object-cover" />
+                    : <UserRound className="w-4 h-4 text-muted-foreground" />}
+                </div>
+                <span className="text-sm font-medium truncate">{q.signature_name || 'Carregando…'}</span>
+              </div>
+            </F>
             <F label="Mensagem"><Textarea rows={2} value={q.signature_message} onChange={e => setQ(s => ({ ...s, signature_message: e.target.value }))} placeholder="Ex.: Qualquer dúvida, estou à disposição! 😊" /></F>
             <div className="grid grid-cols-2 gap-3">
               <F label="Cor de fundo">
