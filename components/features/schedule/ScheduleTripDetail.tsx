@@ -100,7 +100,6 @@ export function TripDetail({
   today: Date
   sellerName?: string
 }) {
-  const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
   const dep = parseDate(trip.departure_date)
   const status = rowStatus(trip, state, dep, today)

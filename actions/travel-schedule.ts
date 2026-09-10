@@ -163,7 +163,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
     for (const leg of pending) {
       if (!legsBySale.has(leg.sale_id)) legsBySale.set(leg.sale_id, [])
-      const { sale_id, designator, ...rest } = leg
+      const { sale_id, designator: _designator, ...rest } = leg
       legsBySale.get(sale_id)!.push(rest)
     }
   }

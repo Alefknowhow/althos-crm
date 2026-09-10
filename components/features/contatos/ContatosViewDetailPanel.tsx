@@ -22,7 +22,7 @@ import { ActivitiesTab } from './ContatosViewDetailActivitiesTab'
 import { NegociacoesTab, ComprasTab } from './ContatosViewDetailHistoryTabs'
 
 export function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName, whatsappTemplates,
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>

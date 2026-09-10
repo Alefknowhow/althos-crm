@@ -1,16 +1,19 @@
 'use server'
 
+import { getActionContext } from '@/lib/services/context'
+import { createPipelineCore,deletePipelineCore,renamePipelineCore } from '@/lib/services/pipeline-crud'
+
 /**
  * Pipeline CRUD (list/create/rename/set-default/delete) + the lightweight
  * pipelines+stages lookup used by the automations/campaigns editors.
  * Split out of actions/pipeline.ts.
  */
 
-import { createClient } from '@/lib/supabase/server'
-import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
-import { checkMemberPermission } from '@/lib/permissions.server'
-import { revalidatePath } from 'next/cache'
 import { isAccessBlocked } from '@/lib/billing/plans'
+import { checkMemberPermission } from '@/lib/permissions.server'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentOrganization,requireAuth } from '@/lib/supabase/types'
+import { revalidatePath } from 'next/cache'
 
 const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
@@ -63,69 +66,11 @@ export async function listPipelines(orgSlug: string) {
 }
 
 export async function createPipeline(orgSlug: string, name: string) {
-  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
-  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
-  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
-  const supabase = createClient()
-
-  const trimmed = (name || '').trim()
-  if (trimmed.length < 2) return { ok: false as const, error: 'Nome muito curto' }
-
-  // First pipeline of the org becomes default automatically.
-  const { count: existing } = await supabase
-    .from('pipelines')
-    .select('id', { count: 'exact', head: true })
-    .eq('organization_id', org.id)
-
-  const { data: pipeline, error } = await supabase
-    .from('pipelines')
-    .insert({
-      organization_id: org.id,
-      name: trimmed,
-      is_default: (existing || 0) === 0,
-    })
-    .select('id')
-    .maybeSingle()
-
-  if (error || !pipeline) {
-    console.error('createPipeline error:', error)
-    return { ok: false as const, error: error?.message || 'Erro ao criar pipeline' }
-  }
-
-  // Seed with 3 sensible default stages so the user can start using it immediately.
-  const seedStages = [
-    { name: 'Novo', position: 1, color: '#3b82f6' },
-    { name: 'Em contato', position: 2, color: '#f59e0b' },
-    { name: 'Ganho', position: 3, color: '#10b981' },
-  ]
-  await supabase
-    .from('pipeline_stages')
-    .insert(seedStages.map(s => ({ ...s, pipeline_id: pipeline.id })))
-
-  revalidatePath(`/app/${orgSlug}/configuracoes/pipelines`)
-  revalidatePath(`/app/${orgSlug}/pipeline`)
-  return { ok: true as const, pipelineId: pipeline.id }
+  return createPipelineCore(await getActionContext(orgSlug), name)
 }
 
 export async function renamePipeline(orgSlug: string, pipelineId: string, name: string) {
-  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
-  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
-  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
-  const supabase = createClient()
-
-  const trimmed = (name || '').trim()
-  if (trimmed.length < 2) return { ok: false as const, error: 'Nome muito curto' }
-
-  const { error } = await supabase
-    .from('pipelines')
-    .update({ name: trimmed })
-    .eq('id', pipelineId)
-    .eq('organization_id', org.id)
-
-  if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/pipelines`)
-  revalidatePath(`/app/${orgSlug}/pipeline`)
-  return { ok: true as const }
+  return renamePipelineCore(await getActionContext(orgSlug), pipelineId, name)
 }
 
 /**
@@ -159,51 +104,7 @@ export async function setDefaultPipeline(orgSlug: string, pipelineId: string) {
 }
 
 export async function deletePipeline(orgSlug: string, pipelineId: string) {
-  if (isImpersonating()) {
-    return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
-  }
-  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
-  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
-  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
-  const supabase = createClient()
-
-  // Refuse to delete the default; user must promote another pipeline first.
-  const { data: pipeline } = await supabase
-    .from('pipelines')
-    .select('id, is_default')
-    .eq('id', pipelineId)
-    .eq('organization_id', org.id)
-    .maybeSingle()
-
-  if (!pipeline) return { ok: false as const, error: 'Pipeline não encontrado' }
-  if (pipeline.is_default) {
-    return { ok: false as const, error: 'Não é possível excluir o pipeline padrão. Defina outro como padrão antes.' }
-  }
-
-  // Refuse if there are leads — user has to migrate them first to avoid silent data loss.
-  const { count } = await supabase
-    .from('contatos')
-    .select('id', { count: 'exact', head: true })
-    .eq('pipeline_id', pipelineId)
-    .eq('organization_id', org.id)
-
-  if (count && count > 0) {
-    return {
-      ok: false as const,
-      error: `Pipeline possui ${count} lead(s). Mova-os antes de excluir.`,
-    }
-  }
-
-  const { error } = await supabase
-    .from('pipelines')
-    .delete()
-    .eq('id', pipelineId)
-    .eq('organization_id', org.id)
-
-  if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/configuracoes/pipelines`)
-  revalidatePath(`/app/${orgSlug}/pipeline`)
-  return { ok: true as const }
+  return deletePipelineCore(await getActionContext(orgSlug), pipelineId)
 }
 
 // Used by the automations editor to populate stage dropdowns for

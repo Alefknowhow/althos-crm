@@ -16,12 +16,13 @@ export const runtime = 'nodejs'
  * não decide permissão nenhuma, só resolve o token e conecta o transporte.
  */
 function buildServer(ctx: AgentContext): McpServer {
-  const server = new McpServer({ name: 'althos-mcp', version: '1.0.0' })
+  const server = new McpServer({ name: 'althos-mcp', version: '1.1.0' })
 
   for (const { tool, inputShape } of TOOL_REGISTRY) {
     server.registerTool(
       tool.name,
-      { description: tool.description, inputSchema: inputShape },
+      { description: tool.description, inputSchema: inputShape,
+        annotations: { readOnlyHint: tool.riskLevel === 'READ', destructiveHint: tool.requiresApproval, openWorldHint: tool.riskLevel !== 'READ' } },
       async (args: any) => {
         const result = await executeTool(tool, ctx, args)
         if (!result.ok) {

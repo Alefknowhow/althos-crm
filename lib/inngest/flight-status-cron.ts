@@ -16,7 +16,7 @@ import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { resend, EMAIL_FROM } from '@/lib/resend'
 import { createNotification } from '@/actions/notifications'
-import { buildFlightDesignator, fetchFlightStatus, type FlightStatusResult } from '@/actions/flight-lookup'
+import { buildFlightDesignator, fetchFlightStatus } from '@/actions/flight-lookup'
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 const DELAY_ALERT_THRESHOLD_MIN = 15

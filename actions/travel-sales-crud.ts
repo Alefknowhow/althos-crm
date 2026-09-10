@@ -1,15 +1,18 @@
 'use server'
 
+import { getActionContext } from '@/lib/services/context'
+import { deleteTravelSaleCore,updateTravelSaleCore } from '@/lib/services/travel-sales-crud'
+
 /**
  * Travel sale CRUD: list/get/update/delete/cancel. Split out of
  * actions/travel-sales.ts.
  */
 
-import { createClient } from '@/lib/supabase/server'
-import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentOrganization,requireAuth } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-import { pick, type TravelSaleRow } from './travel-sales-shared'
+import { type TravelSaleRow } from './travel-sales-shared'
 
 export async function listSaleOperatorOptions(orgSlug: string): Promise<string[]> {
   const user = await requireAuth()
@@ -57,57 +60,11 @@ export async function getTravelSale(orgSlug: string, id: string): Promise<Travel
 }
 
 export async function updateTravelSale(orgSlug: string, id: string, input: Record<string, any>) {
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
-  if (!perm.allowed) return { ok: false as const, error: perm.reason }
-
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('travel_sales')
-    .update(pick(input))
-    .eq('id', id)
-    .eq('organization_id', org.id)
-    .select()
-    .single()
-
-  if (error) return { ok: false as const, error: error.message || 'Erro ao salvar venda' }
-  const s = data as TravelSaleRow
-
-  // Mesmo sync de saveTravelSaleAndGenerateTasks — precisa acontecer em
-  // QUALQUER salvamento (não só ao gerar tarefas), senão editar comissão/
-  // retenção pelo botão "Salvar" simples nunca refletia no Financeiro.
-  const { syncSaleRevenueEntry } = await import('@/actions/financial')
-  await syncSaleRevenueEntry(orgSlug, {
-    id: s.id, contato_id: s.contato_id, client_name: s.client_name,
-    operator: s.operator, commission_cents: s.commission_cents ?? null,
-    retained_commission_cents: s.retained_commission_cents ?? null,
-    created_at: s.created_at,
-  })
-
-  revalidatePath(`/app/${orgSlug}/reservas`)
-  return { ok: true as const, data: s }
+  return updateTravelSaleCore(await getActionContext(orgSlug), id, input)
 }
 
 export async function deleteTravelSale(orgSlug: string, id: string) {
-  if (isImpersonating()) {
-    return { ok: false as const, error: 'Ações destrutivas não são permitidas em modo de impersonação.' }
-  }
-  const user = await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const perm = await checkMemberPermission(org.id, user.id, 'reservas')
-  if (!perm.allowed) return { ok: false as const, error: perm.reason }
-
-  const supabase = createClient()
-  const { error } = await supabase
-    .from('travel_sales')
-    .delete()
-    .eq('id', id)
-    .eq('organization_id', org.id)
-
-  if (error) return { ok: false as const, error: error.message || 'Erro ao excluir venda' }
-  revalidatePath(`/app/${orgSlug}/reservas`)
-  return { ok: true as const }
+  return deleteTravelSaleCore(await getActionContext(orgSlug), id)
 }
 
 /**
