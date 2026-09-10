@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -143,9 +142,14 @@ export default function CampaignsTable({
             <p>Nenhuma campanha cadastrada ainda.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+          // Scroll interno só pra lista de campanhas — o cabeçalho fica fixo
+          // (sticky) enquanto rola. Usa <table> direto (não o wrapper Table
+          // de components/ui) porque aquele componente já embrulha numa div
+          // overflow-auto própria sem altura máxima, o que "prende" o
+          // sticky lá dentro e ele nunca gruda de verdade.
+          <div className="overflow-auto max-h-[560px]">
+            <table className="w-full caption-bottom text-sm">
+              <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <TableHead className="w-8" title="No gráfico">Gráf.</TableHead>
                   <TableHead>Campanha</TableHead>
@@ -311,7 +315,7 @@ export default function CampaignsTable({
                   )
                 })}
               </TableBody>
-            </Table>
+            </table>
           </div>
         )}
       </CardContent>

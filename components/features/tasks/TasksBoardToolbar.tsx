@@ -163,6 +163,8 @@ export function TasksBoardToolbar({
             onClear={() => setSelectedDay(null)}
           />
         )}
+        {todayOnly && <FilterChip label="Hoje" onClear={() => setTodayOnly(false)} />}
+        {onlyMine && <FilterChip label="Minhas" onClear={() => setOnlyMine(() => false)} />}
 
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           {members.length > 0 && (
@@ -210,12 +212,10 @@ export function TasksBoardToolbar({
         </div>
       </div>
 
-      {/* Chips de filtros ativos — cada × zera só aquele filtro (o de Dia
-          fica junto do switch Mês/Semana, no header do calendário acima) */}
-      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all' || onlyMine || todayOnly) && (
+      {/* Chips de filtros ativos — cada × zera só aquele filtro (Dia/Hoje/
+          Minhas ficam junto do switch Mês/Semana, no header do calendário acima) */}
+      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all') && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {todayOnly && <FilterChip label="Hoje" onClear={() => setTodayOnly(false)} />}
-          {onlyMine && <FilterChip label="Minhas" onClear={() => setOnlyMine(() => false)} />}
           {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
           {assignee !== 'all' && (
             <FilterChip

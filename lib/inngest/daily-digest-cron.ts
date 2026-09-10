@@ -78,6 +78,9 @@ export const dailyOwnerDigestFn = inngest.createFunction(
           try {
             const data = await buildDigestData(admin, org.id, org.niche, isManager ? null : m.user_id)
             const totalItems = data.overdueTasks.length + data.todayTasks.length + (data.todayTrips?.length ?? 0) + (data.weekTrips?.length ?? 0)
+            // Sem nenhuma tarefa e sem nenhuma viagem relacionada, o resumo
+            // ficaria vazio — não faz sentido mandar e-mail nesse caso.
+            if (totalItems === 0) return
             const subject = data.overdueTasks.length > 0
               ? `⚠️ ${data.overdueTasks.length} tarefa(s) em atraso — resumo de hoje`
               : `☀️ Seu resumo de hoje — ${totalItems} item(ns)`

@@ -26,12 +26,6 @@ export default function WhatsappChatHeader({
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-semibold text-sm truncate block min-w-0 max-w-[140px] sm:max-w-[260px]">{selectedConversation.contact_name || selectedConversation.contact_phone}</span>
-            {stageName && (
-              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {stageName}
-              </span>
-            )}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 truncate">{lastSeen || selectedConversation.contact_phone}</div>
         </div>
