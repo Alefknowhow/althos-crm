@@ -10,10 +10,11 @@ import { toast } from 'sonner'
 import { updateLeadValue, updateLeadTags } from '@/actions/contatos'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import { cn } from '@/lib/utils'
-import { Mail, UserCheck, Sparkles, X } from 'lucide-react'
+import { Mail, UserCheck, Sparkles, X, PhoneCall } from 'lucide-react'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
 import LeadProposalsButton from './LeadProposalsButton'
 import { SellerPicker, TagEditor, StagePicker } from './LeadCardPickers'
+import { useCallDialer } from './voice/CallDialerModal'
 
 export { SellerPicker, TagEditor, StagePicker }
 
@@ -197,6 +198,7 @@ export default function LeadCard({
 
   const tier = lead.ai_tier ? TIER[String(lead.ai_tier).toLowerCase() as keyof typeof TIER] : null
   const phoneDigits = onlyDigits(lead.phone)
+  const openDialer = useCallDialer()
 
   function stop(e: React.MouseEvent | React.PointerEvent) {
     e.stopPropagation()
@@ -299,6 +301,17 @@ export default function LeadCard({
           {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && (
             <OpenWabaButton orgSlug={orgSlug} leadId={lead.id} />
+          )}
+          {!isOverlay && lead.phone && (
+            <button
+              type="button"
+              onPointerDown={stop}
+              onClick={e => { stop(e); openDialer({ contatoId: lead.id, name: lead.name, phone: lead.phone! }) }}
+              title="Ligar"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+            >
+              <PhoneCall className="h-3.5 w-3.5" />
+            </button>
           )}
           {phoneDigits && (
             <a

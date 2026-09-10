@@ -5,6 +5,8 @@ const labels: Record<string, string> = {
   note: 'Nota', negotiation_action: 'Ação de negociação',
   whatsapp_sent: 'Mensagem enviada pelo WhatsApp', whatsapp_received: 'Mensagem recebida pelo WhatsApp',
   task_created: 'Tarefa criada', task_completed: 'Tarefa concluída',
+  call_made: 'Ligação realizada', call_received: 'Ligação recebida', call_missed: 'Ligação não atendida',
+  sms_sent: 'SMS enviado', sms_received: 'SMS recebido',
 }
 
 type TimelineActivity = Omit<ActivityItem, 'payload'> & {

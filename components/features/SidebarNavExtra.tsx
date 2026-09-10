@@ -6,7 +6,8 @@ import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
 import {
   FileText, Package, Zap, Settings, Megaphone, Send, FileSignature,
-  Star, Building2, ShieldAlert, Target, FileStack,
+  Star, Building2, ShieldAlert, Target, FileStack, Phone, PhoneCall,
+  Hash, Wallet, Sliders, MessageSquareText, Bot, Users2, BarChart3,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -150,6 +151,89 @@ export function SidebarNavExtra({
             </span>
           </SidebarNavLink>
         </div>
+      )}
+
+      {can('voice') && (
+        <>
+          <SectionLabel>Voice</SectionLabel>
+
+          <SidebarNavLink href={`${base}/voice`} exact>
+            <span className="flex items-center gap-2.5">
+              <Phone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Visão geral</span>
+            </span>
+          </SidebarNavLink>
+
+          <SidebarNavLink href={`${base}/voice/chamadas`}>
+            <span className="flex items-center gap-2.5">
+              <PhoneCall className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+              <span>Chamadas</span>
+            </span>
+          </SidebarNavLink>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/sms`}>
+              <span className="flex items-center gap-2.5">
+                <MessageSquareText className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>SMS</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/agentes`}>
+              <span className="flex items-center gap-2.5">
+                <Bot className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Agentes de IA</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/equipe`}>
+              <span className="flex items-center gap-2.5">
+                <Users2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Equipe</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/analytics`}>
+              <span className="flex items-center gap-2.5">
+                <BarChart3 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Analytics</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/numeros`}>
+              <span className="flex items-center gap-2.5">
+                <Hash className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Números</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/creditos`}>
+              <span className="flex items-center gap-2.5">
+                <Wallet className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Créditos</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+
+          <div className="hidden md:block">
+            <SidebarNavLink href={`${base}/voice/configuracoes`}>
+              <span className="flex items-center gap-2.5">
+                <Sliders className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Configurações</span>
+              </span>
+            </SidebarNavLink>
+          </div>
+        </>
       )}
 
       {/* ── Marketing ─────────────────────────────── */}

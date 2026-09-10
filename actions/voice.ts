@@ -1,0 +1,11 @@
+// Barrel do Althos Voice — mesmo padrão de actions/whatsapp.ts.
+export * from './voice-calls'
+export * from './voice-numbers'
+export * from './voice-credits'
+export * from './voice-token'
+export * from './voice-settings'
+export * from './voice-sms'
+export * from './voice-agents'
+export * from './voice-call-detail'
+export * from './voice-team'
+export * from './voice-analytics'

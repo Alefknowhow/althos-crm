@@ -134,6 +134,10 @@ export const processAutomationEventVerticals2 = inngest.createFunction(
       { event: 'viagens.reserva.created' },
       { event: 'viagens.embarque.scheduled' },
       { event: 'clinicas.atendimento.registered' },
+      // Althos Voice — chamada concluída/qualificada pela IA e SMS recebido.
+      { event: 'voice.call.completed' },
+      { event: 'voice.ai.qualified' },
+      { event: 'sms.received' },
     ]
   },
   handleAutomationEvent,

@@ -21,6 +21,7 @@ import { fmtCurrency, fmtDate, onlyDigits, STATUS_VALUES, type Selected } from '
 import { AvatarUploader } from './ContatosViewWidgets'
 import { Field } from './ContatosViewDetailHelpers'
 import { NpsCard } from './NpsSection'
+import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 
 export function DetailHeader({
   orgSlug, selected, c, onBack, isTravel, savingStatus, onChangeStatus,
@@ -56,6 +57,7 @@ export function DetailHeader({
   onDelete:             () => void
 }) {
   const stageName = c.pipeline_stages?.name as string | undefined
+  const openDialer = useCallDialer()
 
   return (
     <>
@@ -163,10 +165,8 @@ export function DetailHeader({
           </Button>
         )}
         {c.phone && (
-          <Button size="sm" variant="outline" asChild className="hidden md:inline-flex">
-            <a href={`tel:${onlyDigits(c.phone)}`}>
-              <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
-            </a>
+          <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
+            <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
           </Button>
         )}
         {c.email && (
@@ -189,10 +189,8 @@ export function DetailHeader({
           <DropdownMenuContent align="end">
             {/* Só no mobile — no desktop essas ações já aparecem como botão solto acima. */}
             {c.phone && (
-              <DropdownMenuItem asChild className="md:hidden">
-                <a href={`tel:${onlyDigits(c.phone)}`}>
-                  <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
-                </a>
+              <DropdownMenuItem className="md:hidden" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
+                <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={onNewTask} className="md:hidden">

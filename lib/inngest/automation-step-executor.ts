@@ -106,6 +106,41 @@ export async function executeAutomationStep(
           )
         }
         break;
+      case 'start_voice_ai': {
+        if (!stepDef.config.agentId || !lead.phone) break
+        const { data: fromNumber } = await supabase.from('voice_numbers').select('e164_number').eq('organization_id', orgId).eq('status', 'active').limit(1).maybeSingle()
+        if (!fromNumber) { status = 'error'; message = 'Nenhum número Althos Voice configurado para esta organização.'; break }
+        const context = interpolateLeadVars(stepDef.config.context || '', lead)
+        sent = { to: lead.phone, agentId: stepDef.config.agentId, context }
+        const { data: call } = await supabase.from('voice_calls').insert({
+          organization_id: orgId,
+          contato_id: lead.id,
+          direction: 'outbound',
+          human_or_ai: 'ai',
+          ai_agent_id: stepDef.config.agentId,
+          from_number: fromNumber.e164_number,
+          to_number: lead.phone,
+          status: 'queued',
+          max_attempts: Math.min(5, Math.max(1, stepDef.config.maxAttempts ?? 1)),
+          automation_context: context,
+        }).select('id').single()
+        if (call) {
+          await inngest.send({ name: 'voice/call.requested', data: { voiceCallId: call.id, organizationId: orgId } })
+        }
+        break
+      }
+      case 'send_sms': {
+        if (!stepDef.config.message || !lead.phone) break
+        const { data: fromNumber } = await supabase.from('voice_numbers').select('e164_number').eq('organization_id', orgId).eq('status', 'active').limit(1).maybeSingle()
+        if (!fromNumber) { status = 'error'; message = 'Nenhum número Althos Voice configurado para esta organização.'; break }
+        const body = interpolateLeadVars(stepDef.config.message, lead)
+        sent = { to: lead.phone, body }
+        // Reaproveita o mesmo caminho de crédito/envio da action manual —
+        // dispatch assíncrono via evento pra manter o step idempotente
+        // (a automação não deve tentar enviar de novo num replay).
+        await inngest.send({ name: 'voice/sms.requested', data: { organizationId: orgId, contatoId: lead.id, fromNumber: fromNumber.e164_number, toNumber: lead.phone, body } })
+        break
+      }
       case 'create_task':
         if (stepDef.config.title) {
           const dueDate = new Date()

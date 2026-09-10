@@ -27,6 +27,11 @@ import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { CopilotProvider } from '@/components/features/CopilotProvider'
 import { CopilotTriggerButton } from '@/components/features/CopilotTriggerButton'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
+import { checkFeatureAccess, getAccountIdForOrgSlug } from '@/lib/plans/server'
+import { CallDialerProvider } from '@/components/features/voice/CallDialerModal'
+import { SmsComposeProvider } from '@/components/features/voice/SmsComposeModal'
+import { ActiveCallProvider } from '@/components/features/voice/ActiveCallProvider'
+import { ActiveCallBar } from '@/components/features/voice/ActiveCallBar'
 
 export default async function OrgLayout({
   children,
@@ -85,6 +90,15 @@ export default async function OrgLayout({
     ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'insights')
     : false
 
+  // Althos Voice: gate igual ao do copiloto (permissão + plano) — a barra de
+  // chamada ativa e o dialer só montam (e só então emitem token Twilio) se o
+  // usuário efetivamente pode usar o módulo.
+  const hasVoicePermission = membership
+    ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'voice')
+    : false
+  const voiceAccountId = hasVoicePermission ? await getAccountIdForOrgSlug(params.orgSlug) : null
+  const canUseVoice = hasVoicePermission && voiceAccountId ? await checkFeatureAccess(voiceAccountId, 'voice') : false
+
   const userName = (user.user_metadata as any)?.full_name as string | undefined
 
   // Avatar do usuário (menu no header, canto direito) — mesmo padrão dos
@@ -101,6 +115,9 @@ export default async function OrgLayout({
   return (
     <QueryProvider>
     <CopilotProvider>
+    <ActiveCallProvider orgSlug={params.orgSlug} identity={user.id} enabled={canUseVoice}>
+    <CallDialerProvider orgSlug={params.orgSlug}>
+    <SmsComposeProvider orgSlug={params.orgSlug}>
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground font-sans print:static print:h-auto print:overflow-visible print:block">
       <div className="print:hidden">
         {isFrozen ? (
@@ -196,8 +213,12 @@ export default async function OrgLayout({
       <div className="print:hidden">
         <SupportWidget orgSlug={params.orgSlug} />
         {canUseCopilot && <CopilotDock orgSlug={params.orgSlug} />}
+        {canUseVoice && <ActiveCallBar />}
       </div>
     </div>
+    </SmsComposeProvider>
+    </CallDialerProvider>
+    </ActiveCallProvider>
     </CopilotProvider>
     </QueryProvider>
   )

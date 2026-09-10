@@ -1,6 +1,7 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
-  Stethoscope, Building2, Shield, Smile, DollarSign, Plane, type LucideIcon,
+  Stethoscope, Building2, Shield, Smile, DollarSign, Plane, PhoneCall,
+  MessageSquareText, type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -27,6 +28,11 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)', icon: Gift,   color: '#ec4899' },
   { id: 'customer.converted',  label: 'Cliente Convertido',       desc: 'Dispara quando o lead vira cliente (negócio ganho) — combine com um passo "Esperar" antes de enviar a pesquisa NPS', icon: Smile, color: '#22c55e' },
   { id: 'sale.registered',     label: 'Venda Registrada',         desc: 'Dispara quando uma venda é registrada',               icon: DollarSign,    color: '#22c55e' },
+
+  // Althos Voice
+  { id: 'voice.call.completed', label: 'Ligação Concluída (Voice)', desc: 'Dispara quando uma ligação (humana ou Voice AI) termina', icon: PhoneCall, color: '#0891b2' },
+  { id: 'voice.ai.qualified',   label: 'Lead Qualificado por Voice AI', desc: 'Dispara quando o agente de Voice AI qualifica o lead durante a ligação', icon: PhoneCall, color: '#0891b2' },
+  { id: 'sms.received',         label: 'SMS Recebido',            desc: 'Dispara quando um SMS é recebido de um contato',      icon: MessageSquareText, color: '#65a30d' },
 
   // Vertical Clínicas — sem configuração extra (igual appointment.booked).
   { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },

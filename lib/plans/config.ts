@@ -35,6 +35,7 @@ export type FeatureKey =
   | 'meta_ads_panel'
   | 'instagram_automation'
   | 'bulk_campaigns'
+  | 'voice'
 
 export const FEATURE_KEYS: FeatureKey[] = [
   'tasks',
@@ -51,6 +52,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
   'meta_ads_panel',
   'instagram_automation',
   'bulk_campaigns',
+  'voice',
 ]
 
 /** Per-plan feature flags — mirror of `plans.features`. */
@@ -70,6 +72,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: false,
     instagram_automation: false,
     bulk_campaigns: false,
+    voice: false,
   },
   // Starter/Pro/Business têm as MESMAS funcionalidades desde a reprecificação
   // de set/2026 (docs/plano-precos/) — a diferença é QUANTIDADE de uso (ver
@@ -95,6 +98,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: true,
     instagram_automation: true,
     bulk_campaigns: true,
+    voice: false,          // Althos Voice: só Pro/Business
   },
   pro: {
     tasks: true,
@@ -111,6 +115,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: true,
     instagram_automation: true,
     bulk_campaigns: true,
+    voice: true,
   },
   business: {
     tasks: true,
@@ -127,6 +132,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: true,
     instagram_automation: true,
     bulk_campaigns: true,
+    voice: true,
   },
 }
 
@@ -343,6 +349,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   meta_ads_panel: 'Painel de Meta Ads',
   instagram_automation: 'Automação de Instagram',
   bulk_campaigns: 'Campanhas de Envio',
+  voice: 'Althos Voice',
 }
 
 /** True if the given plan includes the given feature (static check). */

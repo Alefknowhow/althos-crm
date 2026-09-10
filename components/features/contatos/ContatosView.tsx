@@ -16,8 +16,10 @@ import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Search, FileCheck2, Phone, Users, MessageCircle, FileSignature, Plane,
+  Search, FileCheck2, Phone, Users, MessageCircle, FileSignature, Plane, PhoneCall, MessageSquareText,
 } from 'lucide-react'
+import { useCallDialer } from '@/components/features/voice/CallDialerModal'
+import { useSmsComposer } from '@/components/features/voice/SmsComposeModal'
 import { CONTATO_STATUS_META, type ContatoStatus } from '@/lib/contatos'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import {
@@ -83,6 +85,8 @@ export default function ContatosView({
   // (actions/whatsapp.ts::getOrCreateConversationForLead) — e leva
   // direto pro chat já pronto pra digitar, em vez de só filtrar a lista
   // de conversas por lead (que ficava vazio quando não existia thread ainda).
+  const openDialer = useCallDialer()
+  const openSms = useSmsComposer()
   const [conversationLoadingId, setConversationLoadingId] = useState<string | null>(null)
   async function handleOpenConversation(contatoId: string) {
     if (conversationLoadingId) return
@@ -207,6 +211,20 @@ export default function ContatosView({
                       icon={MessageCircle}
                       onClick={() => handleOpenConversation(c.id)}
                     />
+                    {c.phone && (
+                      <ShortcutButton
+                        label="Ligar"
+                        icon={PhoneCall}
+                        onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}
+                      />
+                    )}
+                    {c.phone && (
+                      <ShortcutButton
+                        label="SMS"
+                        icon={MessageSquareText}
+                        onClick={() => openSms({ contatoId: c.id, name: c.name, phone: c.phone! })}
+                      />
+                    )}
                     {isTravel && (
                       <>
                         <ShortcutButton

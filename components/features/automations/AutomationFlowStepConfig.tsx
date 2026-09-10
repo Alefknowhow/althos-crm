@@ -56,6 +56,53 @@ export function StepConfig({
       )
     case 'send_whatsapp':
       return <WhatsappTemplateFields step={step} patch={patch} whatsappTemplates={whatsappTemplates} labelClass={labelClass} />
+    case 'start_voice_ai':
+      return (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className={labelClass}>Agente de Voice AI</Label>
+            <Input placeholder="ID do agente (Voice → Agentes de IA)" value={step.config.agentId || ''}
+              onChange={e => patch({ agentId: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label className={labelClass}>Contexto da ligação</Label>
+            <textarea
+              placeholder="Ex.: O lead {{contact.first_name}} veio da campanha {{lead.campaign}} interessado em {{lead.interest}}. Objetivo: confirmar interesse e agendar avaliação."
+              value={step.config.context || ''}
+              onChange={e => patch({ context: e.target.value })}
+              rows={3}
+              className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">Aceita variáveis como {'{{contact.first_name}}'}, {'{{lead.source}}'}, {'{{lead.campaign}}'}.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className={labelClass}>Duração máx. (min)</Label>
+              <Input type="number" min={1} value={step.config.maxDurationMinutes ?? 5}
+                onChange={e => patch({ maxDurationMinutes: parseInt(e.target.value) || 5 })} />
+            </div>
+            <div className="space-y-2">
+              <Label className={labelClass}>Tentativas se não atender</Label>
+              <Input type="number" min={0} max={5} value={step.config.maxAttempts ?? 1}
+                onChange={e => patch({ maxAttempts: parseInt(e.target.value) || 1 })} />
+            </div>
+          </div>
+        </div>
+      )
+    case 'send_sms':
+      return (
+        <div className="space-y-2">
+          <Label className={labelClass}>Mensagem</Label>
+          <textarea
+            placeholder="Ex.: Olá {{contact.first_name}}, sua consulta está confirmada para {{appointment.date}} às {{appointment.time}}."
+            value={step.config.message || ''}
+            onChange={e => patch({ message: e.target.value })}
+            rows={3}
+            className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
+          />
+          <p className="text-xs text-muted-foreground">Aceita as mesmas variáveis do WhatsApp.</p>
+        </div>
+      )
     case 'create_task':
       return (
         <div className="space-y-3">

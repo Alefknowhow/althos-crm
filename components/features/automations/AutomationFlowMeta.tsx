@@ -9,6 +9,8 @@ import {
   Webhook,
   XCircle,
   Smile,
+  PhoneCall,
+  MessageSquareText,
 } from 'lucide-react'
 import { triggerMeta as sharedTriggerMeta } from '@/lib/automations/trigger-meta'
 
@@ -24,6 +26,8 @@ export const STEP_TYPES = [
   { id: 'send_push',     label: 'Notificação Push', icon: Bell,           color: '#0ea5e9', desc: 'Envia push notification para a equipe' },
   { id: 'send_nps_survey', label: 'Pesquisa NPS',   icon: Smile,          color: '#22c55e', desc: 'Envia a pergunta "de 0 a 10..." por WhatsApp e aguarda a nota' },
   { id: 'webhook',       label: 'Webhook Externo',  icon: Webhook,        color: '#d946ef', desc: 'Chama uma URL externa com dados do lead' },
+  { id: 'start_voice_ai', label: 'Iniciar Voice AI', icon: PhoneCall,     color: '#0891b2', desc: 'Liga para o lead usando um agente de Voice AI do Althos Voice' },
+  { id: 'send_sms',      label: 'Enviar SMS',       icon: MessageSquareText, color: '#65a30d', desc: 'Envia um SMS para o lead via Althos Voice' },
   { id: 'wait',          label: 'Aguardar',         icon: Clock,          color: '#94a3b8', desc: 'Pausa a execução por um período definido' },
 ] as const
 
