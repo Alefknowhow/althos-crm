@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { MessageSquareText } from 'lucide-react'
 import { sendWhatsappTemplateNow } from '@/actions/whatsapp'

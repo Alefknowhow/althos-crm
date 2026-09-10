@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -333,11 +333,11 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+                <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Salvando…' : 'Criar tarefa'}
+                <Button type="submit" pending={isPending}>
+                  Criar tarefa
                 </Button>
               </DialogFooter>
             </form>

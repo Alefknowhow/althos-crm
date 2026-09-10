@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getLead } from '@/actions/contatos'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Loader2 } from 'lucide-react'
 import LeadTimeline from './LeadTimeline'
 import type { ActivityItem, Stage } from './LeadDataTab'
