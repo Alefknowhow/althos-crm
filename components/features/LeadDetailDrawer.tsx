@@ -5,15 +5,18 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { getLead } from '@/actions/contatos'
 import { deleteLead } from '@/actions/contatos'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ExternalLink, Trash2, Save, MoreVertical } from 'lucide-react'
 import LeadDataTab, {
-  type Member as LeadDataMember, type Stage as LeadDataStage, type ActivityItem, type LeadDataTabHandle,
+  type Member as LeadDataMember, type Stage as LeadDataStage, type LeadDataTabHandle,
 } from './lead-panel/LeadDataTab'
+
+import LeadTimeline from './lead-panel/LeadTimeline'
+import LeadTasksTab from './lead-panel/LeadTasksTab'
 
 type Member = { id: string; name: string; email: string }
 
@@ -155,57 +158,18 @@ export default function LeadDetailDrawer({
               />
 
               <Tabs defaultValue="timeline" className="w-full border-t pt-4">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="automations">Automações</TabsTrigger>
+                  <TabsTrigger value="tasks">Tarefas</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="timeline" className="mt-4 space-y-4">
-                  {activities.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center">
-                      Nenhuma atividade ainda.
-                    </p>
-                  ) : (
-                    activities.map((act) => (
-                      <div key={act.id} className="text-sm">
-                        <div className="font-medium flex items-center gap-1.5">
-                          {act.type === 'manual_created'
-                            ? 'Criado manualmente'
-                            : act.type === 'stage_changed'
-                              ? 'Movido'
-                              : act.type === 'note'
-                                ? 'Nota'
-                                : act.type === 'negotiation_action'
-                                  ? 'Ação de negociação'
-                                  : act.type}
-                          {act.created_by_name && (
-                            <span className="text-xs font-normal text-muted-foreground">por {act.created_by_name}</span>
-                          )}
-                        </div>
+                  <LeadTimeline activities={activities} stages={stages} />
+                </TabsContent>
 
-                        {act.type === 'note' && (
-                          <div className="text-muted-foreground mt-1 whitespace-pre-wrap bg-muted p-2 rounded">
-                            {act.payload.text}
-                          </div>
-                        )}
-
-                        {act.type === 'negotiation_action' && (
-                          <div className="text-muted-foreground mt-1 whitespace-pre-wrap bg-muted p-2 rounded">
-                            {act.payload.text}
-                            {act.payload.next_return_date && (
-                              <div className="text-primary font-medium mt-1">
-                                Retorno em: {new Date(act.payload.next_return_date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {new Date(act.created_at).toLocaleString('pt-BR')}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <TabsContent value="tasks" className="mt-4">
+                  <LeadTasksTab key={lead.id} orgSlug={orgSlug} leadId={lead.id} leadName={lead.name} members={leadDataMembers} />
                 </TabsContent>
 
                 <TabsContent value="automations" className="mt-4 space-y-4">

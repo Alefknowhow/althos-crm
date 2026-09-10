@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { X, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
@@ -15,6 +15,7 @@ import {
   resolveContatoAvatars, addNegotiationAction,
 } from '@/actions/contatos'
 import { LostMoveDialog, WonValueDialog, NegotiationValueDialog, isNegotiationStage } from '@/components/features/pipeline/StageMoveDialogs'
+import LeadOriginBadge from './LeadOriginBadge'
 import { LeadAvatarUploader } from './LeadAvatarUploader'
 
 export type Member = { user_id: string; name: string; email: string }
@@ -64,7 +65,6 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
   const [internalNotes, setInternalNotes] = useState(lead?.internal_notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [actionText, setActionText] = useState('')
-  const [actionReturnDate, setActionReturnDate] = useState('')
   const [savingAction, setSavingAction] = useState(false)
 
   // Popups ao mover pra etapa is_won/is_lost/"Negociação" — mesma regra do
@@ -192,11 +192,10 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     const v = actionText.trim()
     if (!v) return
     setSavingAction(true)
-    const res = await addNegotiationAction(orgSlug, lead.id, v, actionReturnDate || null)
+    const res = await addNegotiationAction(orgSlug, lead.id, v)
     setSavingAction(false)
     if (!res.ok) { toast.error('Não foi possível registrar a ação', { description: res.error }); return }
     setActionText('')
-    setActionReturnDate('')
     toast.success('Ação registrada — veja na Timeline')
     if (onActionAdded && res.activity) onActionAdded({ ...res.activity, created_by_name: null } as ActivityItem)
   }
@@ -205,48 +204,46 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
     <div className="space-y-6">
       <section className="flex items-center gap-3">
         <LeadAvatarUploader orgSlug={orgSlug} contatoId={lead.id} name={lead.name || name} url={avatarUrl} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-sm truncate">{lead.name || name || 'Sem nome'}</div>
           {leadHref && <Link href={leadHref} className="text-[11px] text-primary hover:underline">Abrir lead</Link>}
         </div>
+        {!hideInlineSaveButton && (
+          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} pending={savingContact} className="shrink-0 h-8 px-3 text-xs">
+            Salvar
+          </Button>
+        )}
       </section>
+
+      <LeadOriginBadge lead={lead} />
 
       <section className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados de contato</h4>
 
-        {/* Linha 1 — Nome / E-mail */}
+        <div className="space-y-1 min-w-0">
+          <label className="block text-xs text-muted-foreground">Nome</label>
+          <Input value={name} onChange={e => setName(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" title={name} />
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-xs text-muted-foreground">Nome</label>
-            <Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" />
-          </div>
-          <div>
+          <div className="space-y-1 min-w-0">
             <label className="block text-xs text-muted-foreground">E-mail</label>
-            <Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 text-sm" type="email" />
+            <Input value={email} onChange={e => setEmail(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="email" title={email} />
           </div>
-        </div>
-
-        {/* Linha 2 — Telefone / CPF / Nascimento */}
-        <div className="grid grid-cols-3 gap-2">
-          <div>
+          <div className="space-y-1 min-w-0">
             <label className="block text-xs text-muted-foreground">Telefone</label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">CPF</label>
-            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 text-sm" placeholder="000.000.000-00" />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">Nascimento</label>
-            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 text-sm" type="date" />
+            <Input value={phone} onChange={e => setPhone(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="tel" title={phone} />
           </div>
         </div>
-
-        {!hideInlineSaveButton && (
-          <Button type="button" size="sm" variant="outline" onClick={handleSaveContact} disabled={savingContact} className="w-full mt-1">
-            {savingContact ? 'Salvando...' : 'Salvar contato'}
-          </Button>
-        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1 min-w-0">
+            <label className="block text-xs text-muted-foreground">CPF</label>
+            <Input value={cpf} onChange={e => setCpf(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" placeholder="000.000.000-00" title={cpf} />
+          </div>
+          <div className="space-y-1 min-w-0">
+            <label className="block text-xs text-muted-foreground">Nascimento</label>
+            <Input value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} className="h-8 min-w-0 px-2 text-xs md:text-xs" type="date" />
+          </div>
+        </div>
       </section>
 
       {/* Linha 3 — Observações (campo único, editável) */}
@@ -301,8 +298,8 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         )}
       </section>
 
-      {/* Valor / Estágio / Responsável lado a lado */}
-      <section className="grid grid-cols-3 gap-2">
+      {/* Valor e estágio juntos; responsável com a largura inteira. */}
+      <section className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</h4>
           <Input
@@ -313,7 +310,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
               setValue(cents > 0 ? formatCurrency(cents) : '')
             }}
             placeholder="R$ 0,00"
-            className="h-8 text-sm"
+            className="h-8 min-w-0 px-2 text-xs md:text-xs"
             onBlur={handleSaveValue}
           />
         </div>
@@ -329,7 +326,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
             ))}
           </select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0 col-span-2">
           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Responsável</h4>
           <select
             className="w-full h-8 rounded-md border border-input bg-input/25 px-1.5 text-xs"
@@ -351,7 +348,7 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         <section className="space-y-1.5">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações</h4>
           <p className="text-[11px] text-muted-foreground -mt-1">
-            Registre o que foi feito — fica salvo na Timeline, com data e responsável.
+            Registre o que foi feito na Timeline. Planeje as próximas ações na aba Tarefas.
           </p>
           <div className="flex gap-2 items-end">
             <div className="flex-1 space-y-1">
@@ -359,18 +356,9 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
               <Input
                 value={actionText}
                 onChange={e => setActionText(e.target.value)}
-                placeholder="Ex.: Liguei, sem resposta. Tentar de novo amanhã."
+                placeholder="Ex.: Liguei para apresentar a proposta."
                 className="h-8 text-sm"
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddAction() } }}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-[10px] text-muted-foreground">Próximo retorno</label>
-              <Input
-                type="date"
-                value={actionReturnDate}
-                onChange={e => setActionReturnDate(e.target.value)}
-                className="h-8 text-sm w-36"
               />
             </div>
             <Button

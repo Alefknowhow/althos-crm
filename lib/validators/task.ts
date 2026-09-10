@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TASK_COLOR_IDS } from '@/lib/tasks/colors'
 
 export const RELATED_ENTITY_TYPES = [
   'travel_proposal',
@@ -11,6 +12,7 @@ export const RELATED_ENTITY_TYPES = [
 export const taskSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
+  color: z.enum(TASK_COLOR_IDS).nullable().optional(),
   due_date: z.string().optional(),
   duration_minutes: z.number().int().positive().nullable().optional(),
   priority: z.enum(['low', 'normal', 'high']).optional(),

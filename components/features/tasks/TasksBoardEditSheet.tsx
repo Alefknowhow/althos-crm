@@ -6,13 +6,15 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
 import { relatedTypeOptions, type RelatedTypeValue } from '@/lib/tasks/related-types'
+import TaskColorPicker from './TaskColorPicker'
+import type { TaskColor } from '@/lib/tasks/colors'
 import { updateTask } from '@/actions/tasks'
 import { toast } from 'sonner'
 import { Trash2 } from 'lucide-react'
@@ -57,6 +59,7 @@ export function EditSheet({
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
+      color: fd.get('color') as TaskColor,
       due_date:    combineDueDate(dueDateRaw, dueTimeRaw) || '',
       duration_minutes: durationRaw && durationRaw !== 'none' ? parseInt(durationRaw, 10) : null,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
@@ -86,7 +89,7 @@ export function EditSheet({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Editar Tarefa</DialogTitle></DialogHeader>
         {task && (
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <form key={task.id} onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label>Título *</Label>
               <Input name="title" required defaultValue={task.title} />
@@ -95,6 +98,7 @@ export function EditSheet({
               <Label>Descrição</Label>
               <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm" defaultValue={task.description || ''} />
             </div>
+            <TaskColorPicker defaultValue={task.color} />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Data de Vencimento</Label>
@@ -174,7 +178,7 @@ export function EditSheet({
               <Button type="button" variant="destructive" onClick={() => onDelete(task.id)}>
                 <Trash2 className="w-4 h-4 mr-1" /> Excluir
               </Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" pending={saving}>Salvar</Button>
             </DialogFooter>
           </form>
         )}

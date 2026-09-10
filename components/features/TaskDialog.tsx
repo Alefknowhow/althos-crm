@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -39,6 +39,7 @@ import {
 import { createTask, type TaskInput } from '@/actions/tasks'
 import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
 import { relatedTypeOptions, type RelatedTypeValue } from '@/lib/tasks/related-types'
+import TaskColorPicker from '@/components/features/tasks/TaskColorPicker'
 import { taskSchema } from '@/lib/validators/task'
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
@@ -93,6 +94,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
   const form = useForm<FormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
+      color:       'blue',
       title:       '',
       description: '',
       due_date:    defaultDate || today,
@@ -108,7 +110,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
   useEffect(() => {
     if (open) {
       form.reset({
-        title: '', description: '', due_date: defaultDate || today, priority: 'normal',
+        title: '', description: '', color: 'blue', due_date: defaultDate || today, priority: 'normal',
         contato_id: defaultLead?.id || '', assigned_to: '',
       })
       setDueTime(defaultTime || '')
@@ -139,7 +141,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
       }
       toast.success('Tarefa criada!')
       form.reset({
-        title: '', description: '', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
+        title: '', description: '', color: 'blue', due_date: today, priority: 'normal', contato_id: '', assigned_to: '',
       })
       setDueTime('')
       setDuration('')
@@ -198,6 +200,13 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
                   </FormItem>
                 )}
               />
+
+              <FormField control={form.control} name="color" render={({ field }) => (
+                <FormItem>
+                  <TaskColorPicker value={field.value ?? 'blue'} onChange={field.onChange} />
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Data */}
@@ -324,11 +333,11 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+                <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Salvando…' : 'Criar tarefa'}
+                <Button type="submit" pending={isPending}>
+                  Criar tarefa
                 </Button>
               </DialogFooter>
             </form>

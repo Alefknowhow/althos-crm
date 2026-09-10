@@ -6,14 +6,16 @@ import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toggleTaskStatus, updateTask, deleteTask } from '@/actions/tasks'
 import Link from 'next/link'
 import LeadCombobox from '@/components/features/LeadCombobox'
+import TaskColorPicker from './tasks/TaskColorPicker'
+import type { TaskColor } from '@/lib/tasks/colors'
 import { toast } from 'sonner'
 
-export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string }) {
+export default function TaskCard({ task, orgSlug, onChanged }: { task: any, orgSlug: string, onChanged?: () => void }) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState(task.status)
@@ -26,6 +28,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       setOptimisticStatus(task.status) // reverte otimista
       toast.error('Erro ao atualizar tarefa')
     }
+    onChanged?.()
     router.refresh()
   }
 
@@ -35,6 +38,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
     const input = {
       title:       fd.get('title')       as string,
       description: fd.get('description') as string,
+      color: fd.get('color') as TaskColor,
       due_date:    fd.get('due_date')    as string,
       priority:    fd.get('priority')    as 'low' | 'normal' | 'high',
       contato_id:     fd.get('contato_id')     as string,
@@ -46,6 +50,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
     }
     toast.success('Tarefa atualizada!')
     setSheetOpen(false)
+    onChanged?.()
     router.refresh()
   }
 
@@ -56,6 +61,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
       return
     }
     toast.success('Tarefa excluída')
+    onChanged?.()
     router.refresh()
   }
 
@@ -109,6 +115,7 @@ export default function TaskCard({ task, orgSlug }: { task: any, orgSlug: string
               <Label>Descrição</Label>
               <textarea name="description" className="flex min-h-[80px] w-full rounded-md border border-input bg-input/25 px-3 py-2 text-sm" defaultValue={task.description || ''} />
             </div>
+            <TaskColorPicker defaultValue={task.color} />
             <div className="space-y-2">
               <Label>Data de Vencimento</Label>
               <Input type="date" name="due_date" defaultValue={defaultDate} />

@@ -5,7 +5,7 @@
  * TasksBoard. Prop-driven, split out of TasksBoard.tsx.
  */
 
-import { Button } from '@/components/ui/button'
+import { ActionButton as Button } from '@/components/features/ActionButton'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { relatedTypeOptions, RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
@@ -108,7 +108,7 @@ export function TasksBoardToolbar({
           <Calendar className="w-3.5 h-3.5" /> Hoje
         </button>
         <div className="ml-auto">
-          <Button size="sm" onClick={onNewTask} className="gap-1.5">
+          <Button onClick={onNewTask} aria-label="Nova tarefa">
             <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova tarefa</span>
           </Button>
         </div>
