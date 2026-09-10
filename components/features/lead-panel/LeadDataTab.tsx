@@ -4,10 +4,10 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { X, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { ActionButton as Button } from '@/components/features/ActionButton'
-import { Badge } from '@/components/ui/badge'
+import { LeadPipelineFields } from './LeadPipelineFields'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
@@ -268,78 +268,12 @@ const LeadDataTab = forwardRef<LeadDataTabHandle, {
         />
       </section>
 
-      {/* Linha 4 — Tags */}
-      <section className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h4>
-        <Input
-          value={tagDraft}
-          onChange={e => setTagDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-          onBlur={handleAddTag}
-          placeholder="Nova tag…"
-          className="h-8 text-sm w-32"
-        />
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
-            {tags.map(t => (
-              <Badge key={t} variant="secondary" className="text-[10px] gap-1 pr-1">
-                {t}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTag(t)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={`Remover ${t}`}
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Valor e estágio juntos; responsável com a largura inteira. */}
-      <section className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</h4>
-          <Input
-            value={value}
-            inputMode="numeric"
-            onChange={e => {
-              const cents = parseCurrency(e.target.value)
-              setValue(cents > 0 ? formatCurrency(cents) : '')
-            }}
-            placeholder="R$ 0,00"
-            className="h-8 min-w-0 px-2 text-xs md:text-xs"
-            onBlur={handleSaveValue}
-          />
-        </div>
-        <div className="space-y-1">
-          <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Estágio</h4>
-          <select
-            className="w-full h-8 rounded-md border border-input bg-input/25 px-1.5 text-xs"
-            value={lead.stage_id ?? ''}
-            onChange={e => handleChangeStage(e.target.value)}
-          >
-            {stages.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1 min-w-0 col-span-2">
-          <h4 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Responsável</h4>
-          <select
-            className="w-full h-8 rounded-md border border-input bg-input/25 px-1.5 text-xs"
-            value={lead.assigned_to ?? ''}
-            onChange={e => handleAssignLeadOwner(e.target.value || null)}
-          >
-            <option value="">Ninguém</option>
-            {members.map(m => (
-              <option key={m.user_id} value={m.user_id}>{m.name || m.email}</option>
-            ))}
-          </select>
-        </div>
-      </section>
+      <LeadPipelineFields
+        tags={tags} tagDraft={tagDraft} onTagDraftChange={setTagDraft} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag}
+        value={value} onValueChange={setValue} onSaveValue={handleSaveValue}
+        stageId={lead.stage_id} stages={stages} onChangeStage={handleChangeStage}
+        assignedTo={lead.assigned_to} members={members} onAssign={handleAssignLeadOwner}
+      />
 
       {/* Ações — registro de tentativas/follow-up; o histórico completo (com
           autor e data) fica só na aba Timeline logo abaixo, pra não duplicar
