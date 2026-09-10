@@ -12,6 +12,7 @@ import { canAccess } from '@/lib/permissions'
  */
 
 export type AgentContext = {
+  tokenId: string
   orgId: string
   orgSlug: string
   userId: string
@@ -35,7 +36,19 @@ export async function resolveAgentContext(bearerToken: string): Promise<AgentCon
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
+  return resolveTokenRow(tokenRow)
+}
+
+/** Internal approval execution revalidates revocation and membership. */
+export async function resolveAgentTokenId(id: string): Promise<AgentContext | null> {
+  const { data } = await createAdminClient().from('agent_tokens')
+    .select('id, organization_id, user_id, agent_label, revoked_at').eq('id', id).maybeSingle()
+  return resolveTokenRow(data)
+}
+
+async function resolveTokenRow(tokenRow: { id: string; organization_id: string; user_id: string; agent_label: string; revoked_at: string | null } | null): Promise<AgentContext | null> {
   if (!tokenRow || tokenRow.revoked_at) return null
+  const supabase = createAdminClient()
 
   const [{ data: org }, { data: membership }] = await Promise.all([
     supabase.from('organizations').select('id, slug').eq('id', tokenRow.organization_id).maybeSingle(),
@@ -53,6 +66,7 @@ export async function resolveAgentContext(bearerToken: string): Promise<AgentCon
   await supabase.from('agent_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', tokenRow.id)
 
   return {
+    tokenId: tokenRow.id,
     orgId: org.id,
     orgSlug: org.slug,
     userId: tokenRow.user_id,

@@ -13,6 +13,12 @@ import {
   createTaskTool, createTaskShape,
 } from '@/lib/agent/tools/tasks'
 import type { ToolDef } from '@/lib/agent/execute'
+import { contactTools } from './contacts'
+import { reservationTools } from './reservations'
+import { financeTools } from './finance'
+import { pipelineTools } from './pipelines'
+import { dashboardTools } from './dashboards'
+import { operationTools } from './operations'
 
 /**
  * Etapa 3 (Agent Layer) — Tool Registry. Cada entrada pareia o ToolDef
@@ -20,6 +26,7 @@ import type { ToolDef } from '@/lib/agent/execute'
  * server pra declarar o schema da ferramenta pro LLM).
  */
 export const TOOL_REGISTRY: { tool: ToolDef<any>; inputShape: Record<string, any> }[] = [
+  ...contactTools, ...reservationTools, ...financeTools, ...pipelineTools, ...dashboardTools, ...operationTools,
   { tool: getClientsTool, inputShape: getClientsShape },
   { tool: getClientTool, inputShape: getClientShape },
   { tool: getClientPerformanceTool, inputShape: getClientPerformanceShape },

@@ -11,8 +11,7 @@ const NO_LIMITS = {
   users: { used: 0, limit: Infinity, pct: 0 },
 }
 
-export async function getUsageStatus(orgId: string) {
-  const supabase = createClient()
+export async function getUsageStatus(orgId: string, supabase = createClient()) {
 
   const { data: org, error: orgError } = await supabase
     .from('organizations')
@@ -72,8 +71,8 @@ export async function getUsageStatus(orgId: string) {
   }
 }
 
-export async function canCreateLead(orgId: string) {
-  const status = await getUsageStatus(orgId)
+export async function canCreateLead(orgId: string, supabase = createClient()) {
+  const status = await getUsageStatus(orgId, supabase)
   return status.leads.used < status.leads.limit
 }
 
