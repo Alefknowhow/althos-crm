@@ -5,7 +5,7 @@
  * plain sync calculation with no I/O.
  */
 
-export type MarketingPeriod = '7d' | '30d' | '90d' | 'mtd' | 'max'
+export type MarketingPeriod = '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'max'
 
 // Data-teto pra "Máximo" — bem antes de qualquer conta de anúncio real, só
 // pra servir de `since` sem período final (busca tudo que existir).
@@ -17,8 +17,24 @@ export function periodStart(period: MarketingPeriod): string {
   if (period === 'mtd') {
     return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   }
+  if (period === 'last_month') {
+    return new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
+  }
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const d = new Date()
   d.setDate(d.getDate() - days)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Fim da janela — todo período é "de periodStart até hoje", exceto
+ * 'last_month', que é um mês fechado (não inclui o mês corrente).
+ */
+export function periodEnd(period: MarketingPeriod): string {
+  const now = new Date()
+  if (period === 'last_month') {
+    // Dia 0 do mês atual = último dia do mês anterior.
+    return new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10)
+  }
+  return now.toISOString().slice(0, 10)
 }

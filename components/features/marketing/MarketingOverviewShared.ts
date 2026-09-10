@@ -72,7 +72,7 @@ export type Campaign = { id: string; name: string; ad_account_id: string; utm_ca
 
 export type Props = {
   orgSlug: string
-  period: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'max' | string
+  period: 'today' | '7d' | '30d' | '90d' | 'mtd' | 'last_month' | 'max' | string
   overview: Overview
   accounts: Account[]
   campaigns: Campaign[]
@@ -89,6 +89,7 @@ export const PERIODS = [
   { value: '30d', label: '30 dias' },
   { value: '90d', label: '90 dias' },
   { value: 'mtd', label: 'Mês atual' },
+  { value: 'last_month', label: 'Mês anterior' },
   { value: 'max', label: 'Máximo' },
 ] as const
 

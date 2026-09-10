@@ -306,11 +306,13 @@ export async function buildPreviousCampaigns(
   campaigns: CampaignRow[],
   start: string,
   period: string,
+  end?: string,
 ) {
   if (period === 'max') return []
 
   const startDate = new Date(`${start}T00:00:00`)
-  const lengthMs = Date.now() - startDate.getTime()
+  const endDate = end ? new Date(`${end}T23:59:59.999`) : new Date()
+  const lengthMs = endDate.getTime() - startDate.getTime()
   const prevEndDate = new Date(startDate.getTime() - 86400000)
   const prevStartDate = new Date(prevEndDate.getTime() - lengthMs)
   const prevStart = prevStartDate.toISOString().slice(0, 10)

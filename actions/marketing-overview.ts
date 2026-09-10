@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { buildCampaignRows, finishCampaignRows, buildTimeSeries, buildPreviousCampaigns } from './marketing-overview-aggregate'
-import { periodStart, type MarketingPeriod } from '@/lib/marketing/period'
+import { periodStart, periodEnd, type MarketingPeriod } from '@/lib/marketing/period'
 
 export type { MarketingPeriod }
 
@@ -32,6 +32,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   }
   const supabase = createClient()
   const start = periodStart(period)
+  const end = periodEnd(period)
 
   // 1) Pull campaigns + their metrics in the window.
   const { data: campaigns } = await supabase
@@ -60,11 +61,13 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .in('campaign_id', campaignIds)
     .eq('organization_id', org.id)
     .gte('date', start)
+    .lte('date', end)
 
   // 2) Pull leads from this org since `start` to compute attribution.
   // Match by leads.source LIKE '%form:<...>%' OR by joining with form_submissions.utm_campaign.
   // For simplicity: query form_submissions in the window, group by utm_campaign.
   const startIso = new Date(start).toISOString()
+  const endIso = new Date(`${end}T23:59:59.999`).toISOString()
   const { data: orgForms } = await supabase.from('forms').select('id').eq('organization_id', org.id)
   const orgFormIds = (orgForms || []).map(f => f.id)
   const { data: subs } = orgFormIds.length
@@ -73,6 +76,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
         .select('utm_campaign, contato_id')
         .in('form_id', orgFormIds)
         .gte('created_at', startIso)
+        .lte('created_at', endIso)
         .not('utm_campaign', 'is', null)
     : { data: [] as { utm_campaign: string | null; contato_id: string | null }[] }
 
@@ -88,6 +92,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
     .eq('organization_id', org.id)
     .eq('deal_status', 'ganho')
     .gte('updated_at', startIso)
+    .lte('updated_at', endIso)
 
   const built = buildCampaignRows(campaigns || [], metrics || [], subs || [], trackingLinksRows || [], wonDeals || [])
 
@@ -102,6 +107,7 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
       .eq('organization_id', org.id)
       .not('tracking_link_id', 'is', null)
       .gte('created_at', startIso)
+      .lte('created_at', endIso)
     for (const lead of trackingLeads || []) {
       if (built.matchedContatoIds.has(lead.id)) continue
       const campaignId = lead.tracking_link_id ? built.linkIdToCampaignId.get(lead.tracking_link_id) : null
@@ -113,15 +119,19 @@ export async function getMarketingOverview(orgSlug: string, period: MarketingPer
   const { campaignRows, totals, byObjective, sourcesByLeads } = finishCampaignRows(campaigns || [], built, leadsByTrackingCampaignId)
 
   // Leads per day: re-fetch with created_at so we can bucket by date.
-  const { data: subsForTs } = await supabase
-    .from('form_submissions')
-    .select('utm_campaign, created_at')
-    .gte('created_at', startIso)
-    .not('utm_campaign', 'is', null)
+  const { data: subsForTs } = orgFormIds.length
+    ? await supabase
+        .from('form_submissions')
+        .select('utm_campaign, created_at')
+        .in('form_id', orgFormIds)
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+        .not('utm_campaign', 'is', null)
+    : { data: [] as { utm_campaign: string | null; created_at: string }[] }
 
   const timeSeries = buildTimeSeries(campaigns || [], metrics || [], subsForTs || [])
 
-  const previousCampaigns = await buildPreviousCampaigns(supabase, org.id, campaignIds, campaigns || [], start, period)
+  const previousCampaigns = await buildPreviousCampaigns(supabase, org.id, campaignIds, campaigns || [], start, period, end)
 
   return { totals, campaigns: campaignRows, timeSeries, sourcesByLeads, byObjective, previousCampaigns }
 }

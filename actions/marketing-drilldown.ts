@@ -9,7 +9,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
-import { periodStart, type MarketingPeriod } from '@/lib/marketing/period'
+import { periodStart, periodEnd, type MarketingPeriod } from '@/lib/marketing/period'
 import { type DrillDownError, type DrillDownRow } from './marketing-overview'
 
 function summarizeInsights(rows: Array<{ impressions: number; clicks: number; spend_cents: number; meta_leads: number; meta_messaging_started: number; meta_link_clicks: number; meta_purchases: number; meta_purchase_value_cents: number }>) {
@@ -78,7 +78,7 @@ export async function getCampaignAdSets(orgSlug: string, campaignId: string, per
   if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
 
   const { fetchMetaAdSets, fetchMetaInsights } = await import('@/lib/meta/ads')
-  const until = new Date().toISOString().slice(0, 10)
+  const until = periodEnd(period)
   const since = periodStart(period)
 
   try {
@@ -118,7 +118,7 @@ export async function getAdSetAds(orgSlug: string, adSetExternalId: string, peri
   if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
 
   const { fetchMetaAds, fetchMetaInsights } = await import('@/lib/meta/ads')
-  const until = new Date().toISOString().slice(0, 10)
+  const until = periodEnd(period)
   const since = periodStart(period)
 
   try {
@@ -187,7 +187,7 @@ export async function getAdConversionRows(
   if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
 
   const { fetchMetaAdAccountAdInsights } = await import('@/lib/meta/ads')
-  const until = new Date().toISOString().slice(0, 10)
+  const until = periodEnd(period)
   const since = periodStart(period)
 
   try {
