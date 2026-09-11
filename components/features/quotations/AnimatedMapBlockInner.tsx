@@ -5,10 +5,17 @@
  * contínuo), deixando um rastro tracejado e pintando cada país visitado com
  * a bandeira dele. Bloco independente (não interage com o mapa de pins).
  *
+ * Câmera: dá um zoom na origem antes de partir e acompanha o avião (viewBox
+ * dinâmico) durante todo o trajeto, no mesmo nível de zoom — ao terminar,
+ * fica parada na chegada por `PAUSE_FULL_LAP_MS` antes do próximo ciclo
+ * (que começa com um novo zoom, de onde a câmera estiver até a origem).
+ *
  * Posição/rotação do avião usam a API nativa `getPointAtLength`/
  * `getTotalLength` do SVG sobre um único `<path>` cobrindo a rota inteira
  * (curvas suaves entre pontos) — evita reimplementar matemática de bezier
- * pra achar posição/ângulo a cada frame. "País visitado" (pra pintar a
+ * pra achar posição/ângulo a cada frame. O ícone de avião do lucide aponta
+ * pra nordeste por padrão (~-45°), por isso a rotação aplicada soma +45°
+ * pra alinhar com a direção real de voo. "País visitado" (pra pintar a
  * bandeira) usa uma fração de tempo aproximada por distância em linha reta
  * entre os pontos — só cosmético, não precisa ser exato.
  *
@@ -36,14 +43,35 @@ const WIDTH = 800
 const HEIGHT = 420
 const SPEED_PX_PER_SEC = 140
 const PAUSE_AT_STOP_MS = 700
-const PAUSE_FULL_LAP_MS = 1400
+const PAUSE_FULL_LAP_MS = 5000
 const OCEAN_COLOR = '#0b3d5c'
 const LAND_COLOR = '#245a35'
+const PLANE_ICON_OFFSET_DEG = 45
+const ZOOM_W = 320
+const ZOOM_H = (ZOOM_W * HEIGHT) / WIDTH
+const ZOOM_DURATION_MS = 900
+
+type Rect = { x: number; y: number; w: number; h: number }
+const FULL_CAMERA: Rect = { x: 0, y: 0, w: WIDTH, h: HEIGHT }
+
+function cameraOn(cx: number, cy: number): Rect {
+  return {
+    x: Math.min(Math.max(cx - ZOOM_W / 2, 0), WIDTH - ZOOM_W),
+    y: Math.min(Math.max(cy - ZOOM_H / 2, 0), HEIGHT - ZOOM_H),
+    w: ZOOM_W,
+    h: ZOOM_H,
+  }
+}
+
+function lerpRect(a: Rect, b: Rect, t: number): Rect {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, w: a.w + (b.w - a.w) * t, h: a.h + (b.h - a.h) * t }
+}
 
 export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRoute | null }) {
   const reducedMotion = useReducedMotion()
   const pathRef = useRef<SVGPathElement>(null)
   const progress = useMotionValue(0)
+  const cameraRef = useRef<Rect>(FULL_CAMERA)
 
   const waypoints = useMemo(() => resolveRoute(route), [route])
 
@@ -99,6 +127,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
   const [visited, setVisited] = useState<Set<number>>(new Set())
   const [plane, setPlane] = useState<{ x: number; y: number; angle: number } | null>(null)
   const [dashOffset, setDashOffset] = useState(1)
+  const [camera, setCamera] = useState<Rect>(FULL_CAMERA)
 
   useEffect(() => {
     if (waypoints.length < 2 || projected.length < 2) return
@@ -108,15 +137,39 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
       setDashOffset(0)
       const last = projected[projected.length - 1]
       setPlane({ x: last[0], y: last[1], angle: 0 })
+      setCamera(FULL_CAMERA)
       return
     }
 
     let cancelled = false
+
+    function moveCamera(target: Rect, duration: number) {
+      const from = cameraRef.current
+      return animate(0, 1, {
+        duration: duration / 1000,
+        ease: 'easeInOut',
+        onUpdate: t => {
+          const rect = lerpRect(from, target, t)
+          cameraRef.current = rect
+          setCamera(rect)
+        },
+      }).finished.catch(() => {})
+    }
+
     async function run() {
       while (!cancelled && pathRef.current) {
         const totalLen = pathRef.current.getTotalLength()
         setVisited(new Set([0]))
         setDashOffset(1)
+
+        // Avião parado na origem, já apontado pro primeiro destino, enquanto a câmera dá o zoom.
+        const [ox, oy] = projected[0]
+        const [nx, ny] = projected[1]
+        setPlane({ x: ox, y: oy, angle: (Math.atan2(ny - oy, nx - ox) * 180) / Math.PI })
+
+        await moveCamera(cameraOn(ox, oy), ZOOM_DURATION_MS)
+        if (cancelled) return
+
         progress.set(0)
         await animate(progress, 1, {
           duration: Math.max(2, totalLen / SPEED_PX_PER_SEC),
@@ -130,6 +183,9 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
             const angle = (Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180) / Math.PI
             setPlane({ x: pt.x, y: pt.y, angle })
             setDashOffset(1 - t)
+            const cam = cameraOn(pt.x, pt.y)
+            cameraRef.current = cam
+            setCamera(cam)
             setVisited(prev => {
               let changed = false
               const next = new Set(prev)
@@ -162,7 +218,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
 
   return (
     <div className="w-full rounded-lg border overflow-hidden">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full h-auto block">
+      <svg viewBox={`${camera.x} ${camera.y} ${camera.w} ${camera.h}`} className="w-full h-auto block">
         <defs>
           {flagPatterns.map(p => (
             <pattern key={p.iso2} id={`animated-map-flag-${p.iso2}`} patternUnits="userSpaceOnUse" x={p.x} y={p.y} width={p.width || 1} height={p.height || 1}>
@@ -203,7 +259,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
         ))}
         {plane && (
           <foreignObject x={plane.x - 12} y={plane.y - 12} width={24} height={24} style={{ overflow: 'visible' }}>
-            <div style={{ transform: `rotate(${plane.angle}deg)`, transformOrigin: '12px 12px' }}>
+            <div style={{ transform: `rotate(${plane.angle + PLANE_ICON_OFFSET_DEG}deg)`, transformOrigin: '12px 12px' }}>
               <Plane className="w-6 h-6 drop-shadow" style={{ color: '#ff6a00' }} fill="currentColor" />
             </div>
           </foreignObject>
