@@ -61,6 +61,11 @@ const QuotationSchema = z.object({
   origin_label: z.string().max(120).nullable().optional(),
   origin_note: z.string().max(200).nullable().optional(),
   destinations: z.array(z.object({ name: z.string().max(120).default(''), country: z.string().max(120).optional() })).max(10).optional(),
+  animated_map_enabled: z.boolean().optional(),
+  animated_map_route: z.object({
+    origin: z.object({ country: z.string().max(120).default(''), city: z.string().max(120).optional() }),
+    stops: z.array(z.object({ country: z.string().max(120).default(''), city: z.string().max(120).optional() })).max(6).default([]),
+  }).nullable().optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   pax_adults: z.number().int().min(0).max(99).optional(),

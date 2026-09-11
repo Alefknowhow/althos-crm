@@ -41,6 +41,7 @@ import PublicQuotationTravelInfo from './PublicQuotationTravelInfo'
 import PublicQuotationInvestment from './PublicQuotationInvestment'
 import PublicQuotationFooter from './PublicQuotationFooter'
 import PublicQuotationHotelModal from './PublicQuotationHotelModal'
+import PublicQuotationAnimatedMap from './PublicQuotationAnimatedMap'
 import { computeQuotationBlockNumbers } from './computeQuotationBlockNumbers'
 
 export type {
@@ -293,6 +294,8 @@ export default function PublicQuotationView({
             </div>
           </div>
         </section>
+
+        <PublicQuotationAnimatedMap data={data} />
 
         {/* ───── INTRO (só quando tem conteúdo real) ───── */}
         {hasHtml(data.intro_html) && (

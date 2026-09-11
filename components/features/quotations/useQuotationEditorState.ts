@@ -38,6 +38,8 @@ export function useQuotationEditorState({ orgSlug, initial, isOffer }: {
     cover_image_url: q0.cover_image_url || null as string | null,
     origin_label: q0.origin_label || '', origin_note: q0.origin_note || '',
     destinations: (Array.isArray(q0.destinations) ? q0.destinations : []).map((x: any) => ({ name: x?.name || '', country: x?.country || '' })),
+    animated_map_enabled: !!(q0 as any).animated_map_enabled,
+    animated_map_route: ((q0 as any).animated_map_route ?? null) as { origin: { country: string; city?: string }; stops: { country: string; city?: string }[] } | null,
     start_date: q0.start_date || '', end_date: q0.end_date || '',
     pax_adults: q0.pax_adults || 0, pax_children: q0.pax_children || 0,
     children_ages: (q0.children_ages || []) as number[],

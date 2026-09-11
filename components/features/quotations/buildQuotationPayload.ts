@@ -24,6 +24,8 @@ export function buildQuotationPayload(
     cover_image_url: q.cover_image_url || null,
     origin_label: q.origin_label || null, origin_note: q.origin_note || null,
     destinations: q.destinations.filter((d: any) => d.name),
+    animated_map_enabled: !!q.animated_map_enabled,
+    animated_map_route: q.animated_map_enabled ? q.animated_map_route : null,
     start_date: q.start_date || null, end_date: q.end_date || null,
     pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
     occupancy_label: q.occupancy_label || null,

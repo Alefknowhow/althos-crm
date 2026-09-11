@@ -97,6 +97,8 @@ export type QuotationTopState = {
   cover_image_url: string | null
   origin_label: string; origin_note: string
   destinations: { name: string; country: string }[]
+  animated_map_enabled: boolean
+  animated_map_route: { origin: { country: string; city?: string }; stops: { country: string; city?: string }[] } | null
   start_date: string; end_date: string
   pax_adults: number; pax_children: number
   children_ages: number[]
