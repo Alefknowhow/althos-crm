@@ -172,7 +172,11 @@ export default function FlightOcrDialog({
                   {leg.departure_date ? `Partida ${leg.departure_date}${leg.departure_time ? ` ${leg.departure_time}` : ''}` : ''}
                   {leg.arrival_date || leg.arrival_time ? ` · Chegada ${leg.arrival_date || ''}${leg.arrival_time ? ` ${leg.arrival_time}` : ''}` : ''}
                 </p>
-                {leg.stopover_label && <p className="text-muted-foreground">{leg.stopover_label}</p>}
+                {(leg.stopover_code || leg.stopover_wait) && (
+                  <p className="text-muted-foreground">
+                    {[[leg.stopover_code, leg.stopover_city].filter(Boolean).join(' — '), leg.stopover_wait && `${leg.stopover_wait} de conexão`].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground pt-1">Revise os trechos acima — depois de aplicar, cada um vira uma linha editável em &quot;Trecho&quot;.</p>

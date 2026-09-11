@@ -108,8 +108,16 @@ export default function QuotationEditorFlightsBlock({
                 }} />
               </F>
             </div>
-            <div className="flex-1 min-w-[180px]">
-              <F label="Conexão (local + tempo de espera)"><Input placeholder="Panamá (PTY) — 2h35 de conexão" value={f.stopover_label || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_label: e.target.value } : x))} /></F>
+            <div className="w-20 shrink-0">
+              <F label="Conexão" hint={cityFromAirportCode(f.stopover_code) || (f.stopover_code ? 'sigla não reconhecida' : undefined)}>
+                <Input placeholder="PTY" maxLength={3} value={f.stopover_code || ''} onChange={e => {
+                  const code = e.target.value.toUpperCase()
+                  setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_code: code, stopover_city: cityFromAirportCode(code) || x.stopover_city } : x))
+                }} />
+              </F>
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <F label="Tempo de espera"><Input placeholder="2h35" value={f.stopover_wait || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_wait: e.target.value } : x))} /></F>
             </div>
           </div>
           <div className="flex flex-wrap items-end justify-between gap-2">

@@ -58,7 +58,8 @@ export function useQuotationExtractHandlers({
         airline: leg.airline, flight_number: leg.flight_number,
         date: leg.departure_date, departure_time: leg.departure_time,
         arrival_date: leg.arrival_date, arrival_time: leg.arrival_time,
-        duration_label: leg.duration_label, stopover_label: leg.stopover_label,
+        duration_label: leg.duration_label,
+        stopover_code: leg.stopover_code, stopover_city: leg.stopover_city, stopover_wait: leg.stopover_wait,
         baggage: leg.baggage, cabin_class: leg.cabin_class,
       })) as any,
     ])

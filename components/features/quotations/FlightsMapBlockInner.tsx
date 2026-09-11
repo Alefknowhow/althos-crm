@@ -1,64 +1,65 @@
 'use client'
 
 /**
- * Mapa de rota de voos (Cotações → aba Voos) — desenha, de uma vez só, o
- * trajeto de todos os voos já cadastrados (origem/conexão/destino), com uma
- * cor por grupo (ida/volta) e legenda no rodapé. Diferente do Mapa animado
- * de Conteúdo: aqui não há câmera se movendo nem revelação progressiva —
- * tudo já sai desenhado, enquadrado só na área onde os voos acontecem. Um
- * aviãozinho decorativo sobrevoa as rotas já desenhadas em loop, só de
- * enfeite (sem efeito no que já está pintado).
+ * Mapa de rota de voos (Cotações → aba Voos) — desenha, de uma vez só e sem
+ * animação, o trajeto de todos os voos já cadastrados (origem/conexão/
+ * destino), com uma cor por grupo (ida/volta) e legenda no rodapé.
+ * Enquadramento fixo, só na área onde os voos acontecem — sem câmera se
+ * movendo nem revelação progressiva. Pontos de conexão (quando a sigla da
+ * escala é reconhecida) ganham um marcador diferente dos aeroportos de
+ * origem/destino, pra ficar claro que ali é uma parada, não o fim da linha.
  *
  * Mesma base de terreno (textura de satélite + país pintado com bandeira
  * quando reconhecido) do Mapa animado de Conteúdo — ver comentário em
  * AnimatedMapBlockInner.tsx pros detalhes de projeção equiretangular e do
- * pattern de bandeira via bounding box real.
+ * pattern de bandeira via bounding box real. Estados do Brasil vêm de um
+ * GeoJSON próprio, simplificado (`lib/geo/brazil-states.json`) — o
+ * `world-atlas` só tem fronteira de país, e voos domésticos (ex.: FLN↔SP)
+ * ficavam sem nenhuma referência visual dentro do Brasil.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { geoEquirectangular, geoPath } from 'd3-geo'
 import { feature } from 'topojson-client'
-import { animate, useReducedMotion } from 'framer-motion'
-import { Plane } from 'lucide-react'
 import worldTopo from 'world-atlas/countries-110m.json'
+import brazilStates from '@/lib/geo/brazil-states.json'
 import { GROUP_COLORS, GROUP_LABELS, foreignCountriesInLegs, type ResolvedLeg } from '@/lib/geo/flightRoute'
 
 const WORLD_FEATURES = (feature(worldTopo as any, (worldTopo as any).objects.countries) as any).features as any[]
+const BRAZIL_STATE_FEATURES = (brazilStates as any).features as any[]
 
-// Mesma proporção do Mapa animado de Conteúdo (paisagem) — o 4:5 vertical
-// ficava desalinhado com o resto do bloco.
+// Mesma proporção do Mapa animado de Conteúdo (paisagem).
 const WIDTH = 800
 const HEIGHT = 420
 const ASPECT = WIDTH / HEIGHT
 const OCEAN_COLOR = '#0b3d5c'
 const EARTH_TEXTURE_URL = 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Land_ocean_ice_2048.jpg'
-const PLANE_ICON_OFFSET_DEG = 45
-const SPEED_PX_PER_SEC = 120
-const LOOP_PAUSE_MS = 1000
-const MIN_CAMERA_W = 220
-const PADDING_FRAC = 0.22
+// Zoom mínimo baixo pra voos curtos (ex.: FLN↔SP) ficarem com o tracejado
+// realmente visível em vez de um pontinho perdido no meio do mapa.
+const MIN_CAMERA_W = 70
+const PADDING_FRAC = 0.35
 
 export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) {
-  const reducedMotion = useReducedMotion()
-  const pathRef = useRef<SVGPathElement>(null)
-  const [plane, setPlane] = useState<{ x: number; y: number; angle: number } | null>(null)
-
   const projection = useMemo(() => geoEquirectangular().fitSize([WIDTH, HEIGHT], { type: 'Sphere' } as any), [])
   const geoPathFn = useMemo(() => geoPath(projection), [projection])
 
   const points = useMemo(
-    () => legs.flatMap(leg => [projection([leg.from.lng, leg.from.lat]), projection([leg.to.lng, leg.to.lat])]).filter((p): p is [number, number] => !!p),
+    () => legs.flatMap(leg => [
+      { p: projection([leg.from.lng, leg.from.lat]), isConnection: !!leg.isConnection },
+      { p: projection([leg.to.lng, leg.to.lat]), isConnection: !!leg.isConnection },
+    ]).filter((x): x is { p: [number, number]; isConnection: boolean } => !!x.p),
     [legs, projection],
   )
 
-  // Câmera fixa: enquadra só a área onde os voos acontecem, sempre em 4:5 (sem letterbox).
+  // Câmera fixa: enquadra só a área onde os voos acontecem, mantendo a
+  // proporção do canvas (sem letterbox).
   const camera = useMemo(() => {
     if (points.length === 0) return { x: 0, y: 0, w: WIDTH, h: HEIGHT }
-    const xs = points.map(p => p[0]), ys = points.map(p => p[1])
+    const xs = points.map(pt => pt.p[0]), ys = points.map(pt => pt.p[1])
     const minX = Math.min(...xs), maxX = Math.max(...xs)
     const minY = Math.min(...ys), maxY = Math.max(...ys)
-    const padX = Math.max((maxX - minX) * PADDING_FRAC, 24)
-    const padY = Math.max((maxY - minY) * PADDING_FRAC, 24)
+    const padX = Math.max((maxX - minX) * PADDING_FRAC, 20)
+    const padY = Math.max((maxY - minY) * PADDING_FRAC, 20)
     const boxW = maxX - minX + padX * 2
     const boxH = maxY - minY + padY * 2
     let w = Math.max(boxW, boxH * ASPECT, MIN_CAMERA_W)
@@ -103,40 +104,6 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
     }).filter((l): l is { d: string; group: 'outbound' | 'inbound' } => !!l)
   }, [legs, projection])
 
-  // Rastro único (todas as pernas concatenadas, na ordem cadastrada) só pro
-  // avião decorativo percorrer — múltiplos "M" na mesma <path> são
-  // subtrajetos válidos; getPointAtLength avança por eles em sequência.
-  const fullPathD = useMemo(() => legsD.map(l => l.d).join(' '), [legsD])
-
-  useEffect(() => {
-    if (reducedMotion || legsD.length === 0) { setPlane(null); return }
-    let cancelled = false
-    async function run() {
-      while (!cancelled && pathRef.current) {
-        const totalLen = pathRef.current.getTotalLength()
-        if (totalLen === 0) return
-        const controls = animate(0, 1, {
-          duration: Math.max(2, totalLen / SPEED_PX_PER_SEC),
-          ease: 'linear',
-          onUpdate: t => {
-            const node = pathRef.current
-            if (!node) return
-            const len = t * totalLen
-            const pt = node.getPointAtLength(len)
-            const pt2 = node.getPointAtLength(Math.min(len + 1, totalLen))
-            const angle = (Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180) / Math.PI
-            setPlane({ x: pt.x, y: pt.y, angle })
-          },
-        })
-        await controls.finished.catch(() => {})
-        if (cancelled) return
-        await new Promise(r => setTimeout(r, LOOP_PAUSE_MS))
-      }
-    }
-    run()
-    return () => { cancelled = true }
-  }, [fullPathD, legsD.length, reducedMotion])
-
   if (legsD.length === 0) {
     return (
       <div className="h-[220px] w-full flex items-center justify-center text-sm text-muted-foreground text-center px-6 rounded-lg border bg-muted/20">
@@ -173,23 +140,22 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
             )
           })}
         </g>
+        <g>
+          {BRAZIL_STATE_FEATURES.map((f, i) => (
+            <path key={i} d={geoPathFn(f) || ''} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.4} />
+          ))}
+        </g>
         {legsD.map((l, i) => (
           <path key={i} d={l.d} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={2} strokeLinecap="round" />
         ))}
         {legsD.map((l, i) => (
           <path key={i} d={l.d} fill="none" stroke={GROUP_COLORS[l.group]} strokeWidth={1} strokeLinecap="round" strokeDasharray="6 5" />
         ))}
-        <path ref={pathRef} d={fullPathD} fill="none" stroke="none" />
-        {points.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3} fill="#ffffff" stroke="rgba(0,0,0,0.45)" strokeWidth={1.2} />
+        {points.map(({ p: [x, y], isConnection }, i) => (
+          isConnection
+            ? <rect key={i} x={x - 3.2} y={y - 3.2} width={6.4} height={6.4} fill="#ffd166" stroke="rgba(0,0,0,0.5)" strokeWidth={1} transform={`rotate(45 ${x} ${y})`} />
+            : <circle key={i} cx={x} cy={y} r={3} fill="#ffffff" stroke="rgba(0,0,0,0.45)" strokeWidth={1.2} />
         ))}
-        {plane && (
-          <foreignObject x={plane.x - 11} y={plane.y - 11} width={22} height={22} style={{ overflow: 'visible' }}>
-            <div style={{ transform: `rotate(${plane.angle + PLANE_ICON_OFFSET_DEG}deg)`, transformOrigin: '11px 11px' }}>
-              <Plane className="w-[22px] h-[22px]" style={{ color: '#ffffff', filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.6))' }} fill="currentColor" />
-            </div>
-          </foreignObject>
-        )}
       </svg>
       <div className="px-3 py-2 border-t bg-background/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         {groupsPresent.map(g => (
@@ -198,6 +164,12 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
             {GROUP_LABELS[g]}
           </span>
         ))}
+        {points.some(pt => pt.isConnection) && (
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 inline-block rotate-45" style={{ backgroundColor: '#ffd166' }} />
+            Conexão
+          </span>
+        )}
       </div>
     </div>
   )

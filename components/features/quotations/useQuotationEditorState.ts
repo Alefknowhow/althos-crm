@@ -119,7 +119,8 @@ export function useQuotationEditorState({ orgSlug, initial, isOffer }: {
       to_code: f.to_code, to_city: cityFromAirportCode(f.to_code) || f.to_city, airline: f.airline, flight_number: f.flight_number,
       date: f.date, departure_time: f.departure_time,
       arrival_date: f.arrival_date, arrival_time: f.arrival_time,
-      duration_label: f.duration_label, stopover_label: f.stopover_label,
+      duration_label: f.duration_label,
+      stopover_code: f.stopover_code, stopover_city: cityFromAirportCode(f.stopover_code) || f.stopover_city, stopover_wait: f.stopover_wait,
       baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
     }
   })) as Flight[])

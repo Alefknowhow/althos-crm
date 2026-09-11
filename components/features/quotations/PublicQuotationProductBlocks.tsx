@@ -137,9 +137,13 @@ export default function PublicQuotationProductBlocks({
                     <span className="fl-airline">{[f.airline, f.flight_number].filter(Boolean).join(' · ')}</span>
                   )}
                 </div>
-                {(f.stopover_label || bags.length > 0) && (
+                {(f.stopover_code || f.stopover_wait || bags.length > 0) && (
                   <div className="fl-bags">
-                    {f.stopover_label && <span className="fl-stop">{f.stopover_label}</span>}
+                    {(f.stopover_code || f.stopover_wait) && (
+                      <span className="fl-stop">
+                        {[[f.stopover_code, f.stopover_city].filter(Boolean).join(' — '), f.stopover_wait && `${f.stopover_wait} de conexão`].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
                     {/* Linha 3: bagagem com ícone + texto reduzido */}
                     {bags.map(k => {
                       const Ic = BAGGAGE_ICONS[k]

@@ -25,7 +25,9 @@ export type ExtractedFlightLeg = {
   arrival_date: string | null
   arrival_time: string | null
   duration_label: string | null
-  stopover_label: string | null
+  stopover_code: string | null
+  stopover_city: string | null
+  stopover_wait: string | null
   cabin_class: 'economica' | 'premium' | 'executiva' | 'primeira' | null
   baggage: ('item_pessoal' | 'mao' | 'despachada')[]
 }
@@ -52,7 +54,9 @@ const RESPONSE_SCHEMA = {
           arrival_date: { type: Type.STRING, nullable: true },
           arrival_time: { type: Type.STRING, nullable: true },
           duration_label: { type: Type.STRING, nullable: true, description: 'Duração do voo, ex.: "9h35"' },
-          stopover_label: { type: Type.STRING, nullable: true, description: 'Local e tempo de conexão/escala, ex.: "Lisboa (LIS) — 2h10 de conexão"' },
+          stopover_code: { type: Type.STRING, nullable: true, description: 'Sigla IATA do aeroporto de conexão/escala, se houver, ex.: LIS' },
+          stopover_city: { type: Type.STRING, nullable: true, description: 'Cidade da conexão/escala, se houver' },
+          stopover_wait: { type: Type.STRING, nullable: true, description: 'Tempo de espera da conexão, ex.: "2h10"' },
           cabin_class: { type: Type.STRING, nullable: true, enum: ['economica', 'premium', 'executiva', 'primeira'] },
           baggage: { type: Type.ARRAY, items: { type: Type.STRING, enum: ['item_pessoal', 'mao', 'despachada'] } },
         },
@@ -107,7 +111,9 @@ function normalizeLegs(raw: any): ExtractedFlightLeg[] {
     arrival_date: /^\d{4}-\d{2}-\d{2}$/.test(v?.arrival_date) ? v.arrival_date : null,
     arrival_time: typeof v?.arrival_time === 'string' ? v.arrival_time.slice(0, 10) : null,
     duration_label: typeof v?.duration_label === 'string' ? v.duration_label.slice(0, 60) : null,
-    stopover_label: typeof v?.stopover_label === 'string' ? v.stopover_label.slice(0, 160) : null,
+    stopover_code: typeof v?.stopover_code === 'string' ? v.stopover_code.toUpperCase().slice(0, 8) : null,
+    stopover_city: typeof v?.stopover_city === 'string' ? v.stopover_city.slice(0, 120) : null,
+    stopover_wait: typeof v?.stopover_wait === 'string' ? v.stopover_wait.slice(0, 60) : null,
     cabin_class: ['economica', 'premium', 'executiva', 'primeira'].includes(v?.cabin_class) ? v.cabin_class : null,
     baggage: Array.isArray(v?.baggage) ? v.baggage.filter((b: any) => ['item_pessoal', 'mao', 'despachada'].includes(b)) : [],
   }))

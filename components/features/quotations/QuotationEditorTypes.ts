@@ -11,7 +11,9 @@ export type Flight = {
   _key: string; leg_type: string; from_code?: string | null; from_city?: string | null; to_code?: string | null; to_city?: string | null;
   airline?: string | null; flight_number?: string | null;
   date?: string | null; departure_time?: string | null; arrival_date?: string | null; arrival_time?: string | null;
-  duration_label?: string | null; stopover_label?: string | null; baggage: string[]; cabin_class?: string | null
+  duration_label?: string | null
+  stopover_code?: string | null; stopover_city?: string | null; stopover_wait?: string | null
+  baggage: string[]; cabin_class?: string | null
 }
 export type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }
 

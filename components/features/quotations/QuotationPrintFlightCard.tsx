@@ -80,10 +80,12 @@ export function FlightCard({ legs, fareConditions }: { legs: FlightLeg[]; fareCo
                   </div>
                 </div>
                 {cabin && <p className="text-[7pt] text-[#555] mt-[1mm]">{cabin}</p>}
-                {f.stopover_label && (
+                {(f.stopover_code || f.stopover_wait) && (
                   <div className="flex items-center gap-[1.5mm] bg-[#F7F7F7] border-[0.6pt] border-[#D0D0D0] rounded-[2mm] px-[3mm] py-[1.5mm] mt-[1.5mm]">
                     <Clock className="w-[3mm] h-[3mm] text-[#555] shrink-0" />
-                    <p className="text-[7pt] text-[#555]">{f.stopover_label}</p>
+                    <p className="text-[7pt] text-[#555]">
+                      {[[f.stopover_code, f.stopover_city].filter(Boolean).join(' — '), f.stopover_wait && `${f.stopover_wait} de conexão`].filter(Boolean).join(' · ')}
+                    </p>
                   </div>
                 )}
                 {bag && <p className="text-[6.5pt] text-[#777] mt-[1mm]">{bag}</p>}
