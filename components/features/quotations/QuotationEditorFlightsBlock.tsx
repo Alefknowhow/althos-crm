@@ -116,9 +116,33 @@ export default function QuotationEditorFlightsBlock({
                 }} />
               </F>
             </div>
-            <div className="flex-1 min-w-[140px]">
-              <F label="Tempo de espera"><Input placeholder="2h35" value={f.stopover_wait || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_wait: e.target.value } : x))} /></F>
+            <div className="w-20 shrink-0">
+              <F label="Tempo de espera"><Input placeholder="2h35" maxLength={5} value={f.stopover_wait || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover_wait: e.target.value } : x))} /></F>
             </div>
+            {f.stopover2_code === undefined ? (
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 mt-[22px] shrink-0" title="Adicionar segunda conexão"
+                onClick={() => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover2_code: '', stopover2_city: '', stopover2_wait: '' } : x))}>
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            ) : (
+              <>
+                <div className="w-20 shrink-0">
+                  <F label="Conexão 2" hint={cityFromAirportCode(f.stopover2_code) || (f.stopover2_code ? 'sigla não reconhecida' : undefined)}>
+                    <Input placeholder="MIA" maxLength={3} value={f.stopover2_code || ''} onChange={e => {
+                      const code = e.target.value.toUpperCase()
+                      setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover2_code: code, stopover2_city: cityFromAirportCode(code) || x.stopover2_city } : x))
+                    }} />
+                  </F>
+                </div>
+                <div className="w-20 shrink-0">
+                  <F label="Tempo de espera"><Input placeholder="1h20" maxLength={5} value={f.stopover2_wait || ''} onChange={e => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover2_wait: e.target.value } : x))} /></F>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 mt-[22px] shrink-0 text-destructive hover:bg-destructive/10" title="Remover segunda conexão"
+                  onClick={() => setFlights(fs => fs.map(x => x._key === f._key ? { ...x, stopover2_code: undefined, stopover2_city: undefined, stopover2_wait: undefined } : x))}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
           </div>
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="flex flex-wrap gap-2">

@@ -13,6 +13,7 @@ export type Flight = {
   date?: string | null; departure_time?: string | null; arrival_date?: string | null; arrival_time?: string | null;
   duration_label?: string | null
   stopover_code?: string | null; stopover_city?: string | null; stopover_wait?: string | null
+  stopover2_code?: string | null; stopover2_city?: string | null; stopover2_wait?: string | null
   baggage: string[]; cabin_class?: string | null
 }
 export type Pin = { _key: string; label: string; type: string; lat?: number | null; lng?: number | null; _query?: string }

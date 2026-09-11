@@ -121,6 +121,7 @@ export function useQuotationEditorState({ orgSlug, initial, isOffer }: {
       arrival_date: f.arrival_date, arrival_time: f.arrival_time,
       duration_label: f.duration_label,
       stopover_code: f.stopover_code, stopover_city: cityFromAirportCode(f.stopover_code) || f.stopover_city, stopover_wait: f.stopover_wait,
+      stopover2_code: f.stopover2_code, stopover2_city: cityFromAirportCode(f.stopover2_code) || f.stopover2_city, stopover2_wait: f.stopover2_wait,
       baggage: (f.baggage || []) as string[], cabin_class: f.cabin_class || null,
     }
   })) as Flight[])

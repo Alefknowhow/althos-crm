@@ -66,6 +66,9 @@ export type QuotationFlight = {
   stopover_code?: string | null
   stopover_city?: string | null
   stopover_wait?: string | null
+  stopover2_code?: string | null
+  stopover2_city?: string | null
+  stopover2_wait?: string | null
   baggage?: string[]
   cabin_class?: string | null
 }
