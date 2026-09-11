@@ -41,7 +41,7 @@ import PublicQuotationTravelInfo from './PublicQuotationTravelInfo'
 import PublicQuotationInvestment from './PublicQuotationInvestment'
 import PublicQuotationFooter from './PublicQuotationFooter'
 import PublicQuotationHotelModal from './PublicQuotationHotelModal'
-import PublicQuotationAnimatedMap, { shouldShowMapOpening } from './PublicQuotationAnimatedMap'
+import PublicQuotationAnimatedMap from './PublicQuotationAnimatedMap'
 import { computeQuotationBlockNumbers } from './computeQuotationBlockNumbers'
 
 export type {
@@ -230,13 +230,13 @@ export default function PublicQuotationView({
     ? ({ ['--gold' as any]: org.brand_accent, ['--gold-soft' as any]: org.brand_accent } as React.CSSProperties)
     : undefined
 
-  /* numeração dinâmica dos blocos visíveis, na mesma ordem do JSX abaixo. Abertura animada ativa => mapa de pins vive ali em cima, não duplicado embaixo. */
-  const pinsForLowerBlock = shouldShowMapOpening(data) ? [] : pins
-
+  /* numeração dinâmica dos blocos visíveis — calculada uma vez, na mesma
+     ordem em que os blocos aparecem no JSX abaixo (idêntico ao contador
+     `num()` incremental que existia antes da divisão em sub-componentes). */
   const num = useMemo(
-    () => computeQuotationBlockNumbers(data, { lodgings, flights, cruises, transfers, insurances, tours, rentals, pins: pinsForLowerBlock, days, included, notIncluded }),
+    () => computeQuotationBlockNumbers(data, { lodgings, flights, cruises, transfers, insurances, tours, rentals, pins, days, included, notIncluded }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lodgings.length, flights.length, cruises.length, transfers.length, insurances.length, tours.length, rentals.length, pinsForLowerBlock.length, days.length, included.length, notIncluded.length, data.flights_html, data.itinerary_html, data.tours_html, data.important_html, data.cancellation_html],
+    [lodgings.length, flights.length, cruises.length, transfers.length, insurances.length, tours.length, rentals.length, pins.length, days.length, included.length, notIncluded.length, data.flights_html, data.itinerary_html, data.tours_html, data.important_html, data.cancellation_html],
   )
 
   return (
@@ -295,7 +295,7 @@ export default function PublicQuotationView({
           </div>
         </section>
 
-        <PublicQuotationAnimatedMap data={data} pins={pins} pinTypes={pinTypes} mapRef={mapRef} initMap={initMap} />
+        <PublicQuotationAnimatedMap data={data} />
 
         {/* ───── INTRO (só quando tem conteúdo real) ───── */}
         {hasHtml(data.intro_html) && (
@@ -314,7 +314,7 @@ export default function PublicQuotationView({
           flightsHtml={data.flights_html} flights={flights}
           cruises={cruises}
           transfers={transfers} insurances={insurances} tours={tours} rentals={rentals}
-          pins={pinsForLowerBlock} pinTypes={pinTypes} mapRef={mapRef} initMap={initMap}
+          pins={pins} pinTypes={pinTypes} mapRef={mapRef} initMap={initMap}
           num={num}
         />
 

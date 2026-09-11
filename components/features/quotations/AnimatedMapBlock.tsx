@@ -10,6 +10,6 @@ const AnimatedMapBlockInner = dynamic(() => import('./AnimatedMapBlockInner'), {
   loading: () => <div className="h-[220px] w-full animate-pulse rounded-lg bg-muted/40" />,
 })
 
-export default function AnimatedMapBlock({ route, onFinished }: { route: AnimatedMapRoute | null; onFinished?: () => void }) {
-  return <AnimatedMapBlockInner route={route} onFinished={onFinished} />
+export default function AnimatedMapBlock({ route }: { route: AnimatedMapRoute | null }) {
+  return <AnimatedMapBlockInner route={route} />
 }
