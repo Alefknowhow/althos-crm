@@ -38,7 +38,7 @@ const SPEED_PX_PER_SEC = 140
 const PAUSE_AT_STOP_MS = 700
 const PAUSE_FULL_LAP_MS = 1400
 const OCEAN_COLOR = '#0b3d5c'
-const LAND_COLOR = '#1f4d2e'
+const LAND_COLOR = '#245a35'
 
 export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRoute | null }) {
   const reducedMotion = useReducedMotion()

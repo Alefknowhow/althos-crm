@@ -55,7 +55,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
       />
 
       <div
-        className={`relative flex-1 min-w-0 flex-col overflow-x-hidden bg-[#efeae2] dark:bg-[#0b141a] ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        className={`relative flex-1 min-w-0 flex-col overflow-x-hidden bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/fundo-light.jpg')] dark:bg-[url('/fundo-dark.jpg')] bg-cover bg-center bg-no-repeat ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
         onDragOver={e => { if (selectedConversation) { e.preventDefault(); s.setDraggingFile(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target) s.setDraggingFile(false) }}
         onDrop={e => {
