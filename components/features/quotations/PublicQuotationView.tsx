@@ -311,7 +311,7 @@ export default function PublicQuotationView({
           preview={preview} nights={nights}
           lodgings={lodgings} altLodgings={altLodgings} openHotel={openHotel}
           onZoomPhoto={(photos, index) => setLightbox({ photos, index })}
-          flightsHtml={data.flights_html} flights={flights}
+          flightsHtml={data.flights_html} flights={flights} flightsMapEnabled={data.flights_map_enabled}
           cruises={cruises}
           transfers={transfers} insurances={insurances} tours={tours} rentals={rentals}
           pins={pins} pinTypes={pinTypes} mapRef={mapRef} initMap={initMap}

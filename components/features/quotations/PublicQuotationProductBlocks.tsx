@@ -4,6 +4,8 @@ import {
   fmtDayMonth, nightsBetween, LEG_LABELS, CABIN_LABELS, BAGGAGE_OPTIONS, BAGGAGE_ICONS,
   PIN_COLORS, hasHtml, Rich, IcExt, IcImg, IcPlane, IcShip, LazyImg, Block,
 } from './PublicQuotationHelpers'
+import FlightsMapBlock from './FlightsMapBlock'
+import { resolveFlightLegs } from '@/lib/geo/flightRoute'
 import type { QuotationLodging, QuotationFlight, QuotationCruise, QuotationOtherProduct, QuotationPin } from './PublicQuotationTypes'
 
 /**
@@ -15,7 +17,7 @@ import type { QuotationLodging, QuotationFlight, QuotationCruise, QuotationOther
 export default function PublicQuotationProductBlocks({
   preview, nights,
   lodgings, altLodgings, openHotel, onZoomPhoto,
-  flightsHtml, flights,
+  flightsHtml, flights, flightsMapEnabled,
   cruises,
   transfers, insurances, tours, rentals,
   pins, pinTypes, mapRef, initMap,
@@ -29,6 +31,7 @@ export default function PublicQuotationProductBlocks({
   onZoomPhoto: (photos: string[], index: number) => void
   flightsHtml?: string | null
   flights: QuotationFlight[]
+  flightsMapEnabled?: boolean
   cruises: QuotationCruise[]
   transfers: QuotationOtherProduct[]
   insurances: QuotationOtherProduct[]
@@ -148,6 +151,11 @@ export default function PublicQuotationProductBlocks({
               </div>
             )
           })}
+          {flightsMapEnabled && !hasHtml(flightsHtml) && (
+            <div className="mt-3">
+              <FlightsMapBlock legs={resolveFlightLegs(flights)} />
+            </div>
+          )}
         </Block>
       )}
 

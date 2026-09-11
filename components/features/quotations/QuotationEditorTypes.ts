@@ -99,6 +99,7 @@ export type QuotationTopState = {
   destinations: { name: string; country: string }[]
   animated_map_enabled: boolean
   animated_map_route: { origin: { country: string; city?: string }; stops: { country: string; city?: string }[] } | null
+  flights_map_enabled: boolean
   start_date: string; end_date: string
   pax_adults: number; pax_children: number
   children_ages: number[]

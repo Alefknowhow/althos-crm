@@ -66,6 +66,7 @@ const QuotationSchema = z.object({
     origin: z.object({ country: z.string().max(120).default(''), city: z.string().max(120).optional() }),
     stops: z.array(z.object({ country: z.string().max(120).default(''), city: z.string().max(120).optional() })).max(6).default([]),
   }).nullable().optional(),
+  flights_map_enabled: z.boolean().optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   pax_adults: z.number().int().min(0).max(99).optional(),

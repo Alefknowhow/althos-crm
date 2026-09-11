@@ -14,6 +14,8 @@ import { Plus, Trash2, Sparkles, Plane } from 'lucide-react'
 
 import { CABIN_LABELS } from './PublicQuotationView'
 import ItineraryEditor from '@/components/features/proposals/ItineraryEditor'
+import FlightsMapBlock from './FlightsMapBlock'
+import { resolveFlightLegs } from '@/lib/geo/flightRoute'
 import {
   FARE_CONDITIONS, nk, SortableList, F, EditBlock, BaggagePicker,
 } from './QuotationEditorFields'
@@ -138,6 +140,18 @@ export default function QuotationEditorFlightsBlock({
           </div>
         </>
       )} />
+
+      <div className="mt-3 pt-3 border-t">
+        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+          <Switch checked={q.flights_map_enabled} onCheckedChange={v => setQ(s => ({ ...s, flights_map_enabled: v }))} />
+          Mostrar mapa da rota (origem/conexão/destino, cor por ida/volta) na proposta
+        </label>
+        {q.flights_map_enabled && (
+          <div className="mt-2">
+            <FlightsMapBlock legs={resolveFlightLegs(flights)} />
+          </div>
+        )}
+      </div>
 
       <div className="mt-3 pt-3 border-t">
         <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">

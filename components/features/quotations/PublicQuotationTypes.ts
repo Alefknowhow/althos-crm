@@ -128,6 +128,7 @@ export type PublicQuotation = {
   destinations?: { name?: string; country?: string }[]
   animated_map_enabled?: boolean
   animated_map_route?: { origin: { country: string; city?: string }; stops: { country: string; city?: string }[] } | null
+  flights_map_enabled?: boolean
   departure_date?: string | null
   return_date?: string | null
   pax_adults?: number

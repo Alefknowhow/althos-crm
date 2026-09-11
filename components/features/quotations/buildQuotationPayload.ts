@@ -26,6 +26,7 @@ export function buildQuotationPayload(
     destinations: q.destinations.filter((d: any) => d.name),
     animated_map_enabled: !!q.animated_map_enabled,
     animated_map_route: q.animated_map_enabled ? q.animated_map_route : null,
+    flights_map_enabled: !!q.flights_map_enabled,
     start_date: q.start_date || null, end_date: q.end_date || null,
     pax_adults: q.pax_adults, pax_children: q.pax_children, children_ages: q.children_ages,
     occupancy_label: q.occupancy_label || null,
