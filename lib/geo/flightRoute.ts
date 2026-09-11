@@ -22,7 +22,7 @@ export type FlightLegInput = {
 
 export type RouteGroup = 'outbound' | 'inbound'
 
-export const GROUP_COLORS: Record<RouteGroup, string> = { outbound: '#3fa9f5', inbound: '#f5a83f' }
+export const GROUP_COLORS: Record<RouteGroup, string> = { outbound: '#1a73e8', inbound: '#ea4335' }
 export const GROUP_LABELS: Record<RouteGroup, string> = { outbound: 'Ida', inbound: 'Volta' }
 
 export type ResolvedLegPoint = { code: string; lat: number; lng: number; country: CountryInfo | null }
@@ -60,18 +60,6 @@ export function resolveFlightLegs(flights: FlightLegInput[]): ResolvedLeg[] {
     }
   }
   return legs
-}
-
-/** Países estrangeiros (não-Brasil) presentes nas pernas — únicos, prontos
- *  pra pintar no mapa. Aeroportos brasileiros nunca entram aqui (não têm
- *  `country` cadastrado em `lib/airports.ts`). */
-export function foreignCountriesInLegs(legs: ResolvedLeg[]): CountryInfo[] {
-  const byIso2 = new Map<string, CountryInfo>()
-  for (const leg of legs) {
-    if (leg.from.country) byIso2.set(leg.from.country.iso2, leg.from.country)
-    if (leg.to.country) byIso2.set(leg.to.country.iso2, leg.to.country)
-  }
-  return Array.from(byIso2.values())
 }
 
 export function hasFlightRouteMap(flights: FlightLegInput[]): boolean {
