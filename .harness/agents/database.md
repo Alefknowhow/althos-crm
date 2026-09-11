@@ -4,7 +4,7 @@
 Responsável por PostgreSQL/Supabase: migrations, schema, índices, constraints, RLS, policies e performance de query.
 
 ## Responsibilities
-- Escrever migrations numeradas (`supabase/migrations/NNNN_descricao.sql`, próximo número = maior existente + 1 — hoje em torno de 156).
+- Escrever migrations numeradas (`supabase/migrations/NNNN_descricao.sql`, próximo número = maior existente + 1 — confira com `ls supabase/migrations | tail -1`, não hardcode um número aqui, ele muda a cada migration nova).
 - Garantir RLS habilitada e policy de isolamento por `organization_id` em toda tabela nova com dado de organização.
 - Adicionar índice em toda FK nova (o repo já teve que corrigir um lote de FKs sem índice em `0075_add_missing_fk_indexes.sql` — não repita o problema).
 - Sinalizar qualquer mudança destrutiva (drop, truncate, rename que quebra referência) antes de aplicar.

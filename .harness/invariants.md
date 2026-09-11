@@ -39,9 +39,10 @@ Regras que não podem ser violadas por uma mudança de código, refletindo a arq
 
 ## Storage
 
-- **[ENFORCED]** Uploads de arquivo passam por Server Action usando `createAdminClient()` — o client nunca escreve direto no bucket com credencial própria.
-- **[ENFORCED]** Buckets seguem o padrão: leitura pública (quando o conteúdo precisa ser servido pra fora, ex.: mídia de WhatsApp/Instagram), escrita restrita a service-role.
-- **[TARGET INVARIANT — NOT YET ENFORCED]** Não há isolamento de path por organização verificado automaticamente em todo bucket — depende de cada Server Action montar o path com `org.id` corretamente (convenção, não uma constraint do bucket).
+- **[ENFORCED]** Todo upload novo passa por `lib/storage/index.ts` (`StorageService`), que escreve no Cloudflare R2 — nenhum outro módulo importa `@aws-sdk/client-s3` ou chama `supabase.storage` diretamente. Supabase Storage sobrevive só como provider de leitura para objetos legados (`storage_objects.storage_provider = 'supabase'`).
+- **[ENFORCED]** Uploads passam por Server Action usando `createAdminClient()`/credencial de service-role do provider — o client nunca escreve direto no bucket/R2 com credencial própria.
+- **[ENFORCED]** Buckets/objetos seguem o padrão: leitura pública (quando o conteúdo precisa ser servido pra fora, ex.: mídia de WhatsApp/Instagram), escrita restrita a service-role.
+- **[TARGET INVARIANT — NOT YET ENFORCED]** Não há isolamento de path por organização verificado automaticamente em todo objeto — depende de cada Server Action montar o path com `org.id` corretamente (convenção, não uma constraint do bucket/provider).
 
 ## AI
 
@@ -69,6 +70,5 @@ Regras que não podem ser violadas por uma mudança de código, refletindo a arq
 
 ## Deployment
 
-- **[ENFORCED]** CI (`.github/workflows/ci.yml`) roda `tsc --noEmit` → `npm test` → `npm run build` em todo push/PR pra `master`. Um PR que quebra qualquer um desses três não deveria ser mergeado.
+- **[ENFORCED]** CI (`.github/workflows/ci.yml`) roda `bash scripts/verify.sh` — o mesmo script usado localmente pelo Harness, sem pipeline duplicado. Isso inclui `tsc --noEmit`, `npm run lint` (ESLint 9), `npm test` e `npm run build`, nessa ordem, em todo push/PR pra `master`. Um PR que quebra qualquer passo não deveria ser mergeado.
 - **[ENFORCED]** Deploy de produção é via Vercel, região `gru1` (São Paulo).
-- **[TARGET INVARIANT — NOT YET ENFORCED]** CI não roda o `scripts/verify.sh` do Harness — os dois evoluíram em paralelo; alinhar isso é um próximo passo natural (ver relatório final).

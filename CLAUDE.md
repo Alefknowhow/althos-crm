@@ -10,7 +10,7 @@ Este é o manual operacional principal para Claude Code (e agentes equivalentes)
 
 ## 1. Identidade do Althos
 
-Althos CRM é um CRM multi-tenant para agências (o nicho principal hoje é **agências de viagem**, com um nicho genérico "marketing/vendas" também suportado — ver `lib/niche.ts`). Uma instância serve várias organizações (`organizations`), cada usuário pertence a uma ou mais orgs via `memberships`, e o isolamento entre orgs é feito por `organization_id` + RLS no Postgres.
+Althos CRM é um CRM multi-tenant que atende várias verticais (não só agências de viagem — ver "Módulos principais" abaixo e `lib/niche.ts`). Uma instância serve várias organizações (`organizations`), cada usuário pertence a uma ou mais orgs via `memberships`, e o isolamento entre orgs é feito por `organization_id` + RLS no Postgres.
 
 ### Stack real (confirmada no código, não assumida)
 
@@ -18,25 +18,36 @@ Althos CRM é um CRM multi-tenant para agências (o nicho principal hoje é **ag
 |---|---|
 | Framework | Next.js 14 (App Router), TypeScript `strict: true` |
 | UI | Tailwind CSS + shadcn/ui (Radix primitives) |
-| Dados | Supabase (Postgres + Auth + Storage + Realtime), Row Level Security |
+| Dados | Supabase (Postgres + Auth + Realtime), Row Level Security |
+| Storage | **Cloudflare R2** (S3-compatible, via `@aws-sdk/client-s3`) é o destino de todo upload novo, sempre por trás de `lib/storage/index.ts` (`StorageService`) — nunca chamar o SDK R2 ou `supabase.storage` direto. Supabase Storage ainda existe só para objetos antigos (`storage_objects.storage_provider = 'supabase'`), leitura apenas. Ver `lib/storage/providers/{r2,supabase}.ts`. |
 | Mutations | Server Actions (`'use server'`, em `/actions`) |
 | Validação | Zod (nem todo endpoint usa — ver seção Gaps) |
-| Jobs em background | Inngest (16 functions em `lib/inngest/`) |
+| Jobs em background | Inngest (~40 functions em `lib/inngest/`, registradas em `app/api/inngest/route.ts` — não assuma um número exato, conte o array `functions: [...]`) |
 | E-mail | Resend |
 | WhatsApp | Meta WhatsApp Cloud API (oficial), API v26.0 |
 | Instagram | Instagram API with Instagram Login (`graph.instagram.com`) |
-| IA | Anthropic (`@anthropic-ai/sdk`) como motor principal, Google Gemini (`@google/genai`) como alternativa em alguns pontos (qualificação de lead, OCR) |
-| Billing | **Asaas** (`lib/asaas/`) — não é Stripe nem Pagar.me |
+| Telefonia/SMS/Voice AI | **Twilio** (`twilio` + `@twilio/voice-sdk`), abstraído via `lib/voice/provider.ts` (`VoiceProvider` interface) — nunca importar o SDK da Twilio fora de `lib/voice/providers/`. Módulo "Althos Voice", gated a Pro/Business. |
+| IA | Anthropic (`@anthropic-ai/sdk`) como motor principal, Google Gemini (`@google/genai`) como alternativa em alguns pontos (qualificação de lead, OCR, transcrição de chamada) |
+| MCP | Servidor MCP próprio em `app/api/mcp/route.ts` (`@modelcontextprotocol/sdk`) — expõe tools do CRM (`lib/agent/tools/registry.ts`) para agentes de IA externos (Claude Code, Codex) autenticados via token pessoal gerado em Configurações → Conector MCP (`app/app/[orgSlug]/configuracoes/agentes/`). |
+| Billing | **Duas taxonomias coexistindo** (reconciliação "Prompt 8" ainda não aconteceu): (1) legado por-ORG, `lib/billing/plans.ts` (`PlanKey`: trial/starter/pro/scale/agency/internal, coluna `organizations.plan`) — ainda é o que gateia limites/features na maior parte do app (`app/app/[orgSlug]/layout.tsx`, `actions/*-crud.ts`, `lib/billing/limits.ts`); (2) novo por-CONTA, `lib/plans/config.ts`/`lib/plans/server.ts` (`PlanId`: free/starter/pro/business, tabelas `plans`/`subscriptions`) — fonte de verdade para `checkFeatureAccess`/créditos de IA/Voice. Pagamento em si é **Asaas** (`lib/asaas/`) nas duas. Não assuma que uma substituiu a outra. |
 | Deploy | Vercel (região `gru1`, ver `vercel.json`) |
 | Testes | Vitest (unit, `tests/unit/`) — **sem E2E/Playwright configurado** |
+| Lint | ESLint 9 (flat config, `eslint.typed.config.mjs`) — `npm run lint`/`lint:fix`/`lint:types`, roda dentro de `scripts/verify.sh` (ver seção Deployment) |
 | Observability | **Sem Sentry configurado** — não assuma que existe |
 | Anti-spam | Cloudflare Turnstile (opcional, env-gated) + honeypot + rate limit por IP |
 
 ### Módulos principais
 
 - **CRM genérico**: pipeline (`pipelines`/`pipeline_stages`), leads/contatos (`contatos`), tarefas, formulários públicos, campanhas de marketing.
-- **Nicho de viagens** (gated por `isTravelNiche(org.niche)`): Cotações, Ofertas, Reservas (`travel_sales`), Embarques (viagens programadas), Bloqueios, Explorar Voos, Documentos, Roteirista.
+- **Verticais por nicho** (`org.niche`, gated via `lib/niche.ts` + `lib/niche-modules.ts` — 6 chaves em `NicheKey`, cada uma com módulos e permissões próprias):
+  - `viagens` (`isTravelNiche`): Cotações, Ofertas, Reservas (`travel_sales`), Embarques, Bloqueios, Explorar Voos, Documentos, Roteirista.
+  - `clinicas` (`isClinicNiche`): prontuário eletrônico (com log de acesso e retenção — dado sensível, ver migrations `0206-0208`), estoque de insumos, profissionais, atendimentos/check-in-out, tratamentos, lista de espera. Rotas em `prontuario/`, `estoque/`, `profissionais/`, `atendimentos/`, etc. Crons próprios em `lib/inngest/clinic-crons.ts`.
+  - `imoveis` (`isRealEstateNiche`): catálogo de imóveis + pipeline/visitas (`imoveis/`, `pipeline-imoveis/`, `visitas/`).
+  - `seguros` (`isInsuranceNiche`): apólices, sinistros, seguradoras, cotações/produtos de seguro. Crons em `lib/inngest/insurance-crons.ts`.
+  - `trafego` (`isTrafficNiche`): gestão de contas de anúncio de clientes de agência de tráfego (`agencias-trafego/trafego/`).
+  - `advocacia` (`isLawNiche`): existe como `NicheKey`/opção de cadastro, mas **sem rotas/actions dedicadas ainda** — trate como stub, não como vertical funcional.
 - **Comunicação**: WhatsApp (Conversas), Instagram (Social — DM/comentários/automações), e-mail.
+- **Althos Voice**: telefonia (chamadas humanas + Voice AI), SMS, gravação/transcrição/insights, automações de chamada — ver linha "Telefonia/SMS/Voice AI" acima e `lib/voice/`.
 - **Agente IA**: atendimento conversacional real no WhatsApp (`lib/ai/attendant-engine.ts` + `lib/inngest/whatsapp-inbound.ts`), qualificação automática de lead (`lib/ai/run-qualification.ts`), automação simples do Instagram (`lib/social/engine.ts`).
 - **Financeiro**: `financial_entries`, integração Asaas, relatórios.
 - **Google Business Profile**: OAuth + avaliações (puxar/responder direto do CRM).
@@ -52,16 +63,16 @@ Althos CRM é um CRM multi-tenant para agências (o nicho principal hoje é **ag
 - Toda Server Action recebe `orgSlug` e resolve a org via `getCurrentOrganization(orgSlug)` — nunca confie em um `organization_id` vindo do client sem essa resolução.
 
 ### Autorização
-- Dois níveis: **role** (`owner`/`admin`/`member`, em `memberships.role`) + **permissões granulares por módulo** (`PermissionKey` em `lib/permissions.ts` — ~28 chaves, ex.: `leads`, `reservas`, `cotacoes`, `conversations`, `financial`, `settings`). Verificação real: `checkMemberPermission(orgId, userId, key)` em `lib/permissions.server.ts`.
+- Dois níveis: **role** (`owner`/`admin`/`member`, em `memberships.role`) + **permissões granulares por módulo** (`PermissionKey` em `lib/permissions.ts` — ~37 chaves, cobrindo CRM genérico + todos os nichos + `voice`, ex.: `leads`, `reservas`, `cotacoes`, `conversations`, `financial`, `settings`, `voice`). Verificação real: `checkMemberPermission(orgId, userId, key)` em `lib/permissions.server.ts`.
 - Super-admin (`raw_user_meta_data->>is_super_admin`) bypassa a maioria das checagens — sempre em SQL/RLS, nunca só no client.
 - **Nunca confie em gate client-side sozinho.** Toda ação sensível re-verifica no servidor.
 
 ### Banco de dados
-- Toda mudança de schema é uma migration numerada em `supabase/migrations/NNNN_descricao.sql` (156 migrations até o momento). Aplicadas via MCP do Supabase (`apply_migration`) ou CLI — nunca editar uma migration já aplicada.
-- RLS habilitada em praticamente toda tabela nova (52+ migrations tocam RLS). Ao criar tabela nova: `ENABLE ROW LEVEL SECURITY` + policy de isolamento por org é o padrão, não a exceção.
+- Toda mudança de schema é uma migration numerada em `supabase/migrations/NNNN_descricao.sql` (231+ migrations até o momento — não hardcode esse número em prosa, confira `ls supabase/migrations | tail -1` pro próximo). Aplicadas via MCP do Supabase (`apply_migration`) ou CLI — nunca editar uma migration já aplicada.
+- RLS habilitada em praticamente toda tabela nova. Ao criar tabela nova: `ENABLE ROW LEVEL SECURITY` + policy de isolamento por org é o padrão, não a exceção.
 
 ### Storage
-- Buckets do Supabase Storage (14 buckets criados via migration, ex.: `whatsapp-media`, `instagram-media`). Padrão: bucket público para leitura, escrita restrita a service-role (upload feito em Server Actions via `createAdminClient()`).
+- **Todo upload novo vai pro Cloudflare R2**, sempre através de `lib/storage/index.ts` (`StorageService`) — nunca chame o SDK da AWS (`@aws-sdk/client-s3`) nem `supabase.storage` diretamente em outro módulo. Buckets antigos do Supabase Storage continuam existindo só para leitura de objetos legados (`storage_objects.storage_provider = 'supabase'`).
 - **Não altere nada de Storage sem necessidade explícita** — é uma área sensível a vazamento de dado entre orgs.
 
 ### IA
@@ -70,7 +81,7 @@ Althos CRM é um CRM multi-tenant para agências (o nicho principal hoje é **ag
 - Sempre valide `checkFeatureAccess`/créditos ANTES de chamar a API de IA — nunca depois.
 
 ### Background jobs (Inngest)
-- 16 functions registradas em `app/api/inngest/route.ts`. Padrão de nome de evento: `<domínio>/<ação>.<particípio>` (ex.: `whatsapp/inbound.received`, `instagram/inbound.received`).
+- Todas as functions registradas em `app/api/inngest/route.ts` (`functions: [...]`) — uma function não listada ali nunca roda, mesmo que o arquivo exista. Padrão de nome de evento: `<domínio>/<ação>.<particípio>` (ex.: `whatsapp/inbound.received`, `voice/call.requested`) ou `<domínio>.<ação>` pra eventos de automação (`lead.stage_changed`, `voice.call.completed`).
 - Idempotência é responsabilidade de cada function — não existe um mecanismo genérico. Padrão comum: checar se já existe registro com o mesmo ID externo (`meta_message_id`, etc.) antes de processar.
 
 ### Design System
@@ -82,8 +93,8 @@ Althos CRM é um CRM multi-tenant para agências (o nicho principal hoje é **ag
 - **Não existe suíte de integração nem E2E configurada.** Se uma tarefa pedir isso, é trabalho novo, não "rodar o que já existe".
 
 ### Deployment
-- CI (`.github/workflows/ci.yml`): typecheck (`tsc --noEmit`) → `npm test` → `npm run build`, em todo push/PR pra `master`.
-- Deploy real é via Vercel (não está no workflow do GitHub — provavelmente integração direta Vercel↔GitHub).
+- CI (`.github/workflows/ci.yml`) roda `bash scripts/verify.sh` — o MESMO script que roda localmente (Harness), sem pipeline paralelo. Ordem real: env check → integridade de deps → `tsc --noEmit` → `npm run lint` (ESLint 9) → `npm test` → integração/segurança/E2E (todos reportam `NOT CONFIGURED`, não fingir que existem) → `npm run build` → `git status`/`git diff` de sanidade.
+- Deploy real é via Vercel (não está no workflow do GitHub — integração direta Vercel↔GitHub, auto-deploy em push pra `master`).
 
 ---
 
@@ -118,15 +129,17 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 ### Camada 2 — Domínio (só quando a tarefa tocar a área)
 | Área da tarefa | Carregar |
 |---|---|
-| Storage/upload | `lib/supabase/server.ts`, o bucket relevante nas migrations |
+| Storage/upload | `lib/storage/index.ts` (`StorageService`) + o provider relevante (`lib/storage/providers/r2.ts`) |
 | Banco/schema | migrations relevantes (`supabase/migrations/`), não o histórico inteiro |
 | IA/Agente | `lib/ai/attendant-engine.ts`, `actions/ai_attendant.ts`, `lib/plans/server.ts` |
 | WhatsApp | `lib/whatsapp/meta-client.ts`, `app/api/webhooks/whatsapp/route.ts` |
 | Instagram/Social | `lib/social/*.ts`, `app/api/webhooks/instagram/route.ts` |
+| Althos Voice | `lib/voice/provider.ts`, `lib/voice/get-provider.ts`, `actions/voice*.ts` |
+| MCP (agentes externos) | `app/api/mcp/route.ts`, `lib/agent/tools/registry.ts`, `lib/agent/execute.ts` |
 | UI/Design System | `components/ui/`, o componente `features/` mais próximo do que já existe |
-| Nicho de viagens | `lib/niche.ts` + a área específica (Reservas/Cotações/Embarques) |
+| Nicho (viagens/clínicas/imóveis/seguros/tráfego) | `lib/niche.ts`, `lib/niche-modules.ts` + a área específica do nicho |
 | Permissões | `lib/permissions.ts`, `lib/permissions.server.ts` |
-| Billing | `lib/asaas/`, `lib/billing/plans.ts`, `actions/billing.ts` |
+| Billing | `lib/asaas/`, `lib/billing/plans.ts` (legado, por-org) **e** `lib/plans/config.ts`/`lib/plans/server.ts` (novo, por-conta) — confirme qual dos dois a tarefa toca antes de assumir |
 
 ### Camada 3 — Implementação
 - Arquivos diretamente relacionados à mudança.
