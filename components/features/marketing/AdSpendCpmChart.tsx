@@ -19,10 +19,14 @@ function conversions(r: AdConversionRow): number {
   return r.meta_messaging_started + r.meta_leads + r.meta_purchases
 }
 
+// Ordem das 3 etapas da barra (esquerda → direita): a menor primeiro, a
+// maior por último — com sharedScale (ver AdSegmentedBarChart), o tamanho
+// de cada segmento já reflete a magnitude real, então essa ordem também é
+// visual (barra menor → média → maior).
 const METRICS: [SegmentMetric, SegmentMetric, SegmentMetric] = [
   {
-    key: 'investido', label: 'Valor investido', color: '#f97316',
-    extract: (r: AdConversionRow) => r.spend_cents / 100,
+    key: 'valorPorConversao', label: 'Valor por conversão', color: '#6366f1',
+    extract: (r: AdConversionRow) => (conversions(r) > 0 ? r.spend_cents / conversions(r) / 100 : 0),
     format: currency, formatShort: currencyShort,
   },
   {
@@ -32,8 +36,8 @@ const METRICS: [SegmentMetric, SegmentMetric, SegmentMetric] = [
     format: currency, formatShort: currencyShort,
   },
   {
-    key: 'valorPorConversao', label: 'Valor por conversão', color: '#6366f1',
-    extract: (r: AdConversionRow) => (conversions(r) > 0 ? r.spend_cents / conversions(r) / 100 : 0),
+    key: 'investido', label: 'Valor investido', color: '#f97316',
+    extract: (r: AdConversionRow) => r.spend_cents / 100,
     format: currency, formatShort: currencyShort,
   },
 ]
