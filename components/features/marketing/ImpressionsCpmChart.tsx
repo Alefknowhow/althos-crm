@@ -4,7 +4,6 @@ import {
   ComposedChart,
   Bar,
   Line,
-  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,33 +16,6 @@ type Point = { date: string; impressions: number; spend_cents: number }
 
 const currency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 const number = (v: number) => new Intl.NumberFormat('pt-BR').format(v)
-const numberShort = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`)
-
-/** Índices de topo/fundo (máximo/mínimo local) de uma série, mais o
- *  primeiro e o último ponto — evita rotular todo dia numa série longa. */
-function peakTroughIndices(values: number[]): Set<number> {
-  const marks = new Set<number>()
-  if (values.length === 0) return marks
-  marks.add(0)
-  marks.add(values.length - 1)
-  for (let i = 1; i < values.length - 1; i++) {
-    const prev = values[i - 1], cur = values[i], next = values[i + 1]
-    if ((cur > prev && cur > next) || (cur < prev && cur < next)) marks.add(i)
-  }
-  return marks
-}
-
-function makeSparseLabel(marks: Set<number>, color: string | undefined, format: (v: number) => string) {
-  return (props: any) => {
-    const { x, y, index, value } = props
-    if (!marks.has(index)) return null
-    return (
-      <text x={x} y={y - 6} textAnchor="middle" fontSize={9} fill={color || 'currentColor'} fontWeight={600}>
-        {format(Number(value) || 0)}
-      </text>
-    )
-  }
-}
 
 export default function ImpressionsCpmChart({ data }: { data: Point[] }) {
   if (data.length === 0) {
@@ -78,12 +50,8 @@ export default function ImpressionsCpmChart({ data }: { data: Point[] }) {
           }
         />
         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v: any) => (v === 'cpm' ? 'CPM' : 'Impressões')} />
-        <Bar yAxisId="left" dataKey="impressions" name="impressions" fill="#a855f7" radius={[3, 3, 0, 0]}>
-          <LabelList dataKey="impressions" content={makeSparseLabel(peakTroughIndices(chartData.map(d => d.impressions)), '#7e22ce', numberShort)} />
-        </Bar>
-        <Line yAxisId="right" type="monotone" dataKey="cpm" name="cpm" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }}>
-          <LabelList dataKey="cpm" content={makeSparseLabel(peakTroughIndices(chartData.map(d => d.cpm)), '#a16207', currency)} />
-        </Line>
+        <Bar yAxisId="left" dataKey="impressions" name="impressions" fill="#a855f7" radius={[3, 3, 0, 0]} />
+        <Line yAxisId="right" type="monotone" dataKey="cpm" name="cpm" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }} />
       </ComposedChart>
     </ResponsiveContainer>
   )
