@@ -5,7 +5,6 @@ import { LostMoveDialog, WonValueDialog, NegotiationValueDialog } from '@/compon
 import {
   WhatsappChatConfirmDialog, WhatsappChatImageComposerDialog, WhatsappChatLightboxDialog,
 } from './WhatsappChatDialogs'
-import WhatsappChatRail from './WhatsappChatRail'
 import WhatsappChatSidebar from './WhatsappChatSidebar'
 import WhatsappChatComposer from './WhatsappChatComposer'
 import WhatsappChatHeader from './WhatsappChatHeader'
@@ -23,11 +22,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
 
   return (
     <div className="flex w-full h-full min-h-0 overflow-hidden border-t">
-      <WhatsappChatRail orgSlug={orgSlug} view={s.inboxView} onViewChange={s.setInboxView}
-        unreadCount={s.conversations.filter((c: any) => !c.archived && c.unread_count > 0).length}
-        conversationOpen={!!selectedConversation} />
       <WhatsappChatSidebar
         inboxView={s.inboxView}
+        onViewChange={s.setInboxView}
+        unreadCount={s.conversations.filter((c: any) => !c.archived && c.unread_count > 0).length}
         orgSlug={orgSlug}
         isMock={isMock}
         seeding={s.seeding}

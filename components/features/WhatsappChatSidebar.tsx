@@ -1,17 +1,37 @@
 'use client'
 
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles } from 'lucide-react'
+import {
+  Sparkles, MoreVertical, MessageCircle, MessageCircleMore, Pin, Archive,
+  Bot, SlidersHorizontal, CheckSquare, FileText, Check,
+} from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { agentColor, memberInitials, memberShortLabel } from '@/components/features/ConversationDetailPanel'
 import { ConversationTicks, WindowBadge, formatInboxTime } from './WhatsappChatWidgets'
+import type { InboxView } from '@/lib/whatsapp/inbox-view'
+
+const INBOX_VIEWS = [
+  { value: 'all', label: 'Conversas', icon: MessageCircle },
+  { value: 'unread', label: 'Não lidas', icon: MessageCircleMore },
+  { value: 'pinned', label: 'Fixadas', icon: Pin },
+  { value: 'archived', label: 'Arquivadas', icon: Archive },
+] as const
+
+const RAIL_LINKS = [
+  { href: 'configuracoes/agente-ia', label: 'Configurar agente de IA', icon: Bot },
+  { href: 'configuracoes/agente-ia?tab=qualificacao', label: 'Configurar qualificação por IA', icon: SlidersHorizontal },
+  { href: 'tarefas', label: 'Tarefas', icon: CheckSquare },
+  { href: 'whatsapp-templates', label: 'Templates de mensagem', icon: FileText },
+] as const
 
 export default function WhatsappChatSidebar({
-  inboxView = 'all', orgSlug, isMock, seeding, handleSeed,
+  inboxView = 'all', onViewChange, unreadCount = 0, orgSlug, isMock, seeding, handleSeed,
   query, setQuery, showFilters, setShowFilters, activeFilters,
   filterSeller, setFilterSeller, filterStage, setFilterStage,
   sellerOptions, stageOptions, filteredConversations, conversations,
@@ -63,6 +83,44 @@ export default function WhatsappChatSidebar({
               {seeding ? '...' : '🧪'}
             </Button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="relative h-9 w-9 shrink-0 flex items-center justify-center rounded-full border text-muted-foreground hover:bg-muted"
+                title="Mais opções"
+                aria-label="Mais opções"
+              >
+                <MoreVertical className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {INBOX_VIEWS.map(({ value, label, icon: Icon }) => (
+                <DropdownMenuItem key={value} onClick={() => onViewChange?.(value as InboxView)} className="gap-2">
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{label}</span>
+                  {value === 'unread' && unreadCount > 0 && (
+                    <Badge variant="destructive" className="h-4 min-w-4 rounded-full px-1 text-[9px]">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
+                  )}
+                  {inboxView === value && <Check className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              {RAIL_LINKS.map(({ href, label, icon: Icon }) => (
+                <DropdownMenuItem key={href} asChild className="gap-2">
+                  <Link href={`/app/${orgSlug}/${href}`}>
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {showFilters && (
