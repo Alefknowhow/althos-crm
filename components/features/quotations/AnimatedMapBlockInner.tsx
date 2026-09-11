@@ -1,10 +1,12 @@
 'use client'
 
 /**
- * Mapa animado da cotação — avião voando origem → paradas → origem (loop
- * contínuo), deixando um rastro tracejado e pintando cada país visitado com
- * a bandeira dele. Renderizado tanto no preview do editor quanto no link
- * público (mesmo componente, só a origem dos dados muda).
+ * Mapa animado da cotação — abertura de uma única passada: avião voando
+ * origem → paradas, deixando um rastro tracejado e pintando cada país
+ * visitado com a bandeira dele. Ao terminar, chama `onFinished` (o
+ * chamador decide o que fazer — ex.: no link público, faz crossfade pro
+ * mapa real de pins) e fica parado no frame final (todos os países
+ * visitados, avião no destino).
  *
  * Posição/rotação do avião usam a API nativa `getPointAtLength`/
  * `getTotalLength` do SVG sobre um único `<path>` cobrindo a rota inteira
@@ -20,29 +22,9 @@ import { feature } from 'topojson-client'
 import { animate, useMotionValue, useReducedMotion } from 'framer-motion'
 import { Plane } from 'lucide-react'
 import worldTopo from 'world-atlas/countries-110m.json'
-import { resolveCountry } from '@/lib/geo/countries'
-import { CITIES_BY_ISO2 } from '@/lib/geo/cities'
+import { resolveRoute, type AnimatedMapRoute } from '@/lib/geo/animatedMapRoute'
 
-export type AnimatedMapPoint = { country: string; city?: string | null }
-export type AnimatedMapRoute = { origin: AnimatedMapPoint; stops: AnimatedMapPoint[] }
-
-type Waypoint = { label: string; lat: number; lng: number; iso2: string; enName?: string }
-
-function resolveWaypoint(point: AnimatedMapPoint): Waypoint | null {
-  const info = resolveCountry(point.country)
-  if (!info) return null
-  const cityName = point.city?.trim()
-  const cityMatch = cityName
-    ? CITIES_BY_ISO2[info.iso2]?.find(c => c.name.toLowerCase() === cityName.toLowerCase())
-    : null
-  return {
-    label: cityName ? `${cityName}, ${info.name}` : info.name,
-    lat: cityMatch?.lat ?? info.lat,
-    lng: cityMatch?.lng ?? info.lng,
-    iso2: info.iso2,
-    enName: info.enName,
-  }
-}
+export type { AnimatedMapRoute }
 
 // Casts largos (topojson não tem tipos fortes praticados neste repo) — uso
 // único e local, não vaza pro resto do app.
@@ -52,19 +34,15 @@ const WIDTH = 800
 const HEIGHT = 420
 const SPEED_PX_PER_SEC = 140
 const PAUSE_AT_STOP_MS = 700
-const PAUSE_FULL_LAP_MS = 1400
 
-export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRoute | null }) {
+export default function AnimatedMapBlockInner({ route, onFinished }: { route: AnimatedMapRoute | null; onFinished?: () => void }) {
   const reducedMotion = useReducedMotion()
   const pathRef = useRef<SVGPathElement>(null)
   const progress = useMotionValue(0)
+  const onFinishedRef = useRef(onFinished)
+  onFinishedRef.current = onFinished
 
-  const waypoints = useMemo(() => {
-    if (!route?.origin?.country) return []
-    return [route.origin, ...(route.stops || [])]
-      .map(resolveWaypoint)
-      .filter((w): w is Waypoint => !!w)
-  }, [route])
+  const waypoints = useMemo(() => resolveRoute(route), [route])
 
   const projection = useMemo(() => geoEqualEarth().fitSize([WIDTH, HEIGHT], { type: 'Sphere' } as any), [])
   const geoPathFn = useMemo(() => geoPath(projection), [projection])
@@ -113,43 +91,46 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
       setDashOffset(0)
       const last = projected[projected.length - 1]
       setPlane({ x: last[0], y: last[1], angle: 0 })
+      onFinishedRef.current?.()
       return
     }
 
     let cancelled = false
     async function run() {
-      while (!cancelled && pathRef.current) {
-        const totalLen = pathRef.current.getTotalLength()
-        setVisited(new Set([0]))
-        setDashOffset(1)
-        progress.set(0)
-        await animate(progress, 1, {
-          duration: Math.max(2, totalLen / SPEED_PX_PER_SEC),
-          ease: 'linear',
-          onUpdate: t => {
-            const node = pathRef.current
-            if (!node) return
-            const len = t * totalLen
-            const pt = node.getPointAtLength(len)
-            const pt2 = node.getPointAtLength(Math.min(len + 1, totalLen))
-            const angle = (Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180) / Math.PI
-            setPlane({ x: pt.x, y: pt.y, angle })
-            setDashOffset(1 - t)
-            setVisited(prev => {
-              let changed = false
-              const next = new Set(prev)
-              cumulativeFrac.forEach((frac, i) => {
-                if (t >= frac - 0.001 && !next.has(i)) { next.add(i); changed = true }
-              })
-              return changed ? next : prev
+      if (!pathRef.current) return
+      const totalLen = pathRef.current.getTotalLength()
+      setVisited(new Set([0]))
+      setDashOffset(1)
+      progress.set(0)
+      await animate(progress, 1, {
+        duration: Math.max(2, totalLen / SPEED_PX_PER_SEC),
+        ease: 'linear',
+        onUpdate: t => {
+          const node = pathRef.current
+          if (!node) return
+          const len = t * totalLen
+          const pt = node.getPointAtLength(len)
+          const pt2 = node.getPointAtLength(Math.min(len + 1, totalLen))
+          const angle = (Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180) / Math.PI
+          setPlane({ x: pt.x, y: pt.y, angle })
+          setDashOffset(1 - t)
+          setVisited(prev => {
+            let changed = false
+            const next = new Set(prev)
+            // Pinta a bandeira um pouco antes da chegada exata (~4% do trajeto
+            // total antes do ponto) — dá a sensação de "chegando", não só
+            // "já chegou no pixel exato".
+            cumulativeFrac.forEach((frac, i) => {
+              if (t >= frac - 0.04 && !next.has(i)) { next.add(i); changed = true }
             })
-          },
-        }).finished.catch(() => {})
-        if (cancelled) return
-        await new Promise(r => setTimeout(r, PAUSE_AT_STOP_MS))
-        if (cancelled) return
-        await new Promise(r => setTimeout(r, PAUSE_FULL_LAP_MS))
-      }
+            return changed ? next : prev
+          })
+        },
+      }).finished.catch(() => {})
+      if (cancelled) return
+      await new Promise(r => setTimeout(r, PAUSE_AT_STOP_MS))
+      if (cancelled) return
+      onFinishedRef.current?.()
     }
     run()
     return () => { cancelled = true }
@@ -175,6 +156,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
             </pattern>
           ))}
         </defs>
+        <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="#bfe3f5" />
         <g>
           {WORLD_FEATURES.map((f, i) => {
             const match = waypoints.find(w => w.enName === f.properties?.name)
@@ -183,9 +165,9 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
               <path
                 key={i}
                 d={geoPathFn(f) || ''}
-                fill={isVisited && match ? `url(#animated-map-flag-${match.iso2})` : 'hsl(var(--muted-foreground) / 0.18)'}
-                stroke="hsl(var(--background))"
-                strokeWidth={0.5}
+                fill={isVisited && match ? `url(#animated-map-flag-${match.iso2})` : '#8fce8f'}
+                stroke="#ffffff"
+                strokeWidth={0.6}
                 style={{ transition: 'fill 0.5s ease' }}
               />
             )
@@ -195,7 +177,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
           ref={pathRef}
           d={routeD}
           fill="none"
-          stroke="hsl(var(--primary))"
+          stroke="#ff6a00"
           strokeWidth={2}
           strokeLinecap="round"
           pathLength={1}
@@ -203,12 +185,12 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
           style={{ strokeDashoffset: dashOffset }}
         />
         {projected.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3.5} fill="hsl(var(--primary))" stroke="white" strokeWidth={1} />
+          <circle key={i} cx={x} cy={y} r={3.5} fill="#ff6a00" stroke="white" strokeWidth={1} />
         ))}
         {plane && (
           <foreignObject x={plane.x - 12} y={plane.y - 12} width={24} height={24} style={{ overflow: 'visible' }}>
             <div style={{ transform: `rotate(${plane.angle}deg)`, transformOrigin: '12px 12px' }}>
-              <Plane className="w-6 h-6 text-primary drop-shadow" fill="currentColor" />
+              <Plane className="w-6 h-6 drop-shadow" style={{ color: '#ff6a00' }} fill="currentColor" />
             </div>
           </foreignObject>
         )}
