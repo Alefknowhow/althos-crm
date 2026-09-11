@@ -7,7 +7,7 @@ import type { ResolvedLeg } from '@/lib/geo/flightRoute'
 
 const FlightsMapBlockInner = dynamic(() => import('./FlightsMapBlockInner'), {
   ssr: false,
-  loading: () => <div className="aspect-[4/5] w-full max-w-[320px] mx-auto animate-pulse rounded-lg bg-muted/40" />,
+  loading: () => <div className="h-[220px] w-full animate-pulse rounded-lg bg-muted/40" />,
 })
 
 export default function FlightsMapBlock({ legs }: { legs: ResolvedLeg[] }) {

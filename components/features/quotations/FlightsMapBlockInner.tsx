@@ -5,9 +5,9 @@
  * trajeto de todos os voos já cadastrados (origem/conexão/destino), com uma
  * cor por grupo (ida/volta) e legenda no rodapé. Diferente do Mapa animado
  * de Conteúdo: aqui não há câmera se movendo nem revelação progressiva —
- * tudo já sai desenhado, enquadrado (4:5) só na área onde os voos
- * acontecem. Um aviãozinho decorativo sobrevoa as rotas já desenhadas em
- * loop, só de enfeite (sem efeito no que já está pintado).
+ * tudo já sai desenhado, enquadrado só na área onde os voos acontecem. Um
+ * aviãozinho decorativo sobrevoa as rotas já desenhadas em loop, só de
+ * enfeite (sem efeito no que já está pintado).
  *
  * Mesma base de terreno (textura de satélite + país pintado com bandeira
  * quando reconhecido) do Mapa animado de Conteúdo — ver comentário em
@@ -25,16 +25,17 @@ import { GROUP_COLORS, GROUP_LABELS, foreignCountriesInLegs, type ResolvedLeg } 
 
 const WORLD_FEATURES = (feature(worldTopo as any, (worldTopo as any).objects.countries) as any).features as any[]
 
-// 4:5 — um pouco mais vertical, conforme pedido.
-const WIDTH = 480
-const HEIGHT = 600
+// Mesma proporção do Mapa animado de Conteúdo (paisagem) — o 4:5 vertical
+// ficava desalinhado com o resto do bloco.
+const WIDTH = 800
+const HEIGHT = 420
 const ASPECT = WIDTH / HEIGHT
 const OCEAN_COLOR = '#0b3d5c'
 const EARTH_TEXTURE_URL = 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Land_ocean_ice_2048.jpg'
 const PLANE_ICON_OFFSET_DEG = 45
 const SPEED_PX_PER_SEC = 120
 const LOOP_PAUSE_MS = 1000
-const MIN_CAMERA_W = 140
+const MIN_CAMERA_W = 220
 const PADDING_FRAC = 0.22
 
 export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) {
@@ -138,7 +139,7 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
 
   if (legsD.length === 0) {
     return (
-      <div className="aspect-[4/5] w-full max-w-[320px] mx-auto flex items-center justify-center text-sm text-muted-foreground text-center px-6 rounded-lg border bg-muted/20">
+      <div className="h-[220px] w-full flex items-center justify-center text-sm text-muted-foreground text-center px-6 rounded-lg border bg-muted/20">
         Cadastre ao menos um voo com sigla de aeroporto reconhecida pra ver o mapa da rota.
       </div>
     )
@@ -147,7 +148,7 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
   const groupsPresent = Array.from(new Set(legs.map(l => l.group)))
 
   return (
-    <div className="w-full max-w-[320px] mx-auto rounded-lg border overflow-hidden">
+    <div className="w-full rounded-lg border overflow-hidden">
       <svg viewBox={`${camera.x} ${camera.y} ${camera.w} ${camera.h}`} className="w-full h-auto block">
         <defs>
           {flagPatterns.map(p => (
@@ -173,10 +174,10 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
           })}
         </g>
         {legsD.map((l, i) => (
-          <path key={i} d={l.d} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={3.5} strokeLinecap="round" />
+          <path key={i} d={l.d} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={2} strokeLinecap="round" />
         ))}
         {legsD.map((l, i) => (
-          <path key={i} d={l.d} fill="none" stroke={GROUP_COLORS[l.group]} strokeWidth={2} strokeLinecap="round" strokeDasharray="6 5" />
+          <path key={i} d={l.d} fill="none" stroke={GROUP_COLORS[l.group]} strokeWidth={1} strokeLinecap="round" strokeDasharray="6 5" />
         ))}
         <path ref={pathRef} d={fullPathD} fill="none" stroke="none" />
         {points.map(([x, y], i) => (
