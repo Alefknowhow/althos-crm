@@ -71,9 +71,10 @@ const ContentSecurityPolicy = [
   // tiles/icons (mapa interativo da proposta pública) + TripAdvisor photo CDN
   // (fotos de hospedagem puxadas via Terra API em Cotações) + Unsplash
   // photo CDN (busca de foto de capa em Cotações) + Instagram CDN (foto de
-  // perfil do contato no inbox de DM) + flagcdn.com (bandeiras do Mapa
-  // animado de Cotações).
-  `img-src 'self' data: blob: https://${supabaseHostname} https://*.googleapis.com https://*.gstatic.com https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com https://flagcdn.com${r2Hostname ? ` https://${r2Hostname}` : ''}`,
+  // perfil do contato no inbox de DM) + flagcdn.com (bandeiras) e
+  // upload.wikimedia.org (textura de satélite Blue Marble/NASA, domínio
+  // público) do Mapa animado de Cotações.
+  `img-src 'self' data: blob: https://${supabaseHostname} https://*.googleapis.com https://*.gstatic.com https://dynamic-media.tacdn.com https://images.unsplash.com https://*.cdninstagram.com https://flagcdn.com https://upload.wikimedia.org${r2Hostname ? ` https://${r2Hostname}` : ''}`,
 
   // Áudio/vídeo (elementos <audio>/<video>) — mídia recebida via WhatsApp,
   // baixada e salva no Storage (bucket whatsapp-media, mesmo host acima —

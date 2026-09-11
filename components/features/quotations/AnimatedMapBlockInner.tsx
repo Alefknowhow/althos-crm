@@ -23,10 +23,18 @@
  * país (via `geoPathFn.bounds`) — `objectBoundingBox` + `<image>` é um
  * combo historicamente inconsistente entre navegadores (a imagem some
  * silenciosamente em vários casos), então evitamos essa combinação.
+ *
+ * Terreno: usa a projeção equiretangular (não Equal Earth) de propósito —
+ * é uma projeção "reta" (lat/lng → x/y linear), o que permite sobrepor uma
+ * textura de satélite real (NASA Blue Marble, domínio público, via
+ * Wikimedia Commons) alinhada pixel a pixel, sem precisar reprojetar a
+ * imagem. Os países não-visitados ficam com fill transparente (a textura
+ * aparece por baixo, mostrando deserto/gelo/floresta reais); ao visitar,
+ * o país ganha a bandeira por cima, igual antes.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { geoEqualEarth, geoPath } from 'd3-geo'
+import { geoEquirectangular, geoPath } from 'd3-geo'
 import { feature } from 'topojson-client'
 import { animate, useMotionValue, useReducedMotion } from 'framer-motion'
 import { Plane } from 'lucide-react'
@@ -45,7 +53,7 @@ const SPEED_PX_PER_SEC = 140
 const PAUSE_AT_STOP_MS = 700
 const PAUSE_FULL_LAP_MS = 5000
 const OCEAN_COLOR = '#0b3d5c'
-const LAND_COLOR = '#245a35'
+const EARTH_TEXTURE_URL = 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Land_ocean_ice_2048.jpg'
 const PLANE_ICON_OFFSET_DEG = 45
 const ZOOM_W = 320
 const ZOOM_H = (ZOOM_W * HEIGHT) / WIDTH
@@ -75,7 +83,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
 
   const waypoints = useMemo(() => resolveRoute(route), [route])
 
-  const projection = useMemo(() => geoEqualEarth().fitSize([WIDTH, HEIGHT], { type: 'Sphere' } as any), [])
+  const projection = useMemo(() => geoEquirectangular().fitSize([WIDTH, HEIGHT], { type: 'Sphere' } as any), [])
   const geoPathFn = useMemo(() => geoPath(projection), [projection])
 
   const projected = useMemo(
@@ -132,15 +140,11 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
   useEffect(() => {
     if (waypoints.length < 2 || projected.length < 2) return
 
-    if (reducedMotion) {
-      setVisited(new Set(waypoints.map((_, i) => i)))
-      setDashOffset(0)
-      const last = projected[projected.length - 1]
-      setPlane({ x: last[0], y: last[1], angle: 0 })
-      setCamera(FULL_CAMERA)
-      return
-    }
-
+    // "Reduzir movimento" (ativado por padrão em vários celulares, às vezes
+    // sem o usuário saber) só desliga o zoom/acompanhamento de câmera — o
+    // avião, o rastro e a bandeira continuam animando normalmente. Desligar
+    // a animação inteira faria o bloco parecer quebrado (mapa estático) pra
+    // quem tem essa opção do SO ligada sem ter pedido "sem animação nenhuma".
     let cancelled = false
 
     function moveCamera(target: Rect, duration: number) {
@@ -167,7 +171,8 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
         const [nx, ny] = projected[1]
         setPlane({ x: ox, y: oy, angle: (Math.atan2(ny - oy, nx - ox) * 180) / Math.PI })
 
-        await moveCamera(cameraOn(ox, oy), ZOOM_DURATION_MS)
+        if (reducedMotion) { cameraRef.current = FULL_CAMERA; setCamera(FULL_CAMERA) }
+        else await moveCamera(cameraOn(ox, oy), ZOOM_DURATION_MS)
         if (cancelled) return
 
         progress.set(0)
@@ -183,9 +188,11 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
             const angle = (Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180) / Math.PI
             setPlane({ x: pt.x, y: pt.y, angle })
             setDashOffset(1 - t)
-            const cam = cameraOn(pt.x, pt.y)
-            cameraRef.current = cam
-            setCamera(cam)
+            if (!reducedMotion) {
+              const cam = cameraOn(pt.x, pt.y)
+              cameraRef.current = cam
+              setCamera(cam)
+            }
             setVisited(prev => {
               let changed = false
               const next = new Set(prev)
@@ -227,6 +234,7 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
           ))}
         </defs>
         <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill={OCEAN_COLOR} />
+        <image href={EARTH_TEXTURE_URL} x={0} y={0} width={WIDTH} height={HEIGHT} preserveAspectRatio="none" />
         <g>
           {WORLD_FEATURES.map((f, i) => {
             const match = waypoints.find(w => w.enName === f.properties?.name)
@@ -235,19 +243,30 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
               <path
                 key={i}
                 d={geoPathFn(f) || ''}
-                fill={isVisited && match ? `url(#animated-map-flag-${match.iso2})` : LAND_COLOR}
-                stroke={OCEAN_COLOR}
-                strokeWidth={0.6}
+                fill={isVisited && match ? `url(#animated-map-flag-${match.iso2})` : 'transparent'}
+                stroke="rgba(255,255,255,0.25)"
+                strokeWidth={0.5}
                 style={{ transition: 'fill 0.5s ease' }}
               />
             )
           })}
         </g>
+        {/* halo escuro por baixo do rastro branco — mantém legível sobre gelo/deserto claros; acompanha o mesmo dashOffset pra não "vazar" à frente do avião */}
+        <path
+          d={routeD}
+          fill="none"
+          stroke="rgba(0,0,0,0.45)"
+          strokeWidth={3.5}
+          strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray="0.02 0.014"
+          style={{ strokeDashoffset: dashOffset }}
+        />
         <path
           ref={pathRef}
           d={routeD}
           fill="none"
-          stroke="#ff6a00"
+          stroke="#ffffff"
           strokeWidth={2}
           strokeLinecap="round"
           pathLength={1}
@@ -255,12 +274,12 @@ export default function AnimatedMapBlockInner({ route }: { route: AnimatedMapRou
           style={{ strokeDashoffset: dashOffset }}
         />
         {projected.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3.5} fill="#ff6a00" stroke="white" strokeWidth={1} />
+          <circle key={i} cx={x} cy={y} r={3.5} fill="#ffffff" stroke="rgba(0,0,0,0.45)" strokeWidth={1.5} />
         ))}
         {plane && (
           <foreignObject x={plane.x - 12} y={plane.y - 12} width={24} height={24} style={{ overflow: 'visible' }}>
             <div style={{ transform: `rotate(${plane.angle + PLANE_ICON_OFFSET_DEG}deg)`, transformOrigin: '12px 12px' }}>
-              <Plane className="w-6 h-6 drop-shadow" style={{ color: '#ff6a00' }} fill="currentColor" />
+              <Plane className="w-6 h-6" style={{ color: '#ffffff', filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.6))' }} fill="currentColor" />
             </div>
           </foreignObject>
         )}
