@@ -114,6 +114,18 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
 
   const groupsPresent = Array.from(new Set(legs.map(l => l.group)))
 
+  // Marcadores/linha ficariam enormes quando a câmera dá zoom (viewBox
+  // menor, mesmo tamanho em unidades SVG = muito maior na tela). Escala
+  // tudo pelo nível de zoom atual pra manter o tamanho aparente constante,
+  // igual um mapa de verdade (o pino não "cresce" quando você dá zoom).
+  const scale = camera.w / WIDTH
+  const markerR = 2.5 * scale
+  const markerStroke = 1 * scale
+  const connHalf = 2.6 * scale
+  const connStroke = 0.8 * scale
+  const lineStroke = 1 * scale
+  const dashArray = `${4 * scale} ${3 * scale}`
+
   return (
     <div className="w-full rounded-lg border overflow-hidden">
       <svg viewBox={`${camera.x} ${camera.y} ${camera.w} ${camera.h}`} className="w-full h-auto block">
@@ -135,26 +147,23 @@ export default function FlightsMapBlockInner({ legs }: { legs: ResolvedLeg[] }) 
                 d={geoPathFn(f) || ''}
                 fill={match ? `url(#flights-map-flag-${match.iso2})` : 'transparent'}
                 stroke="rgba(255,255,255,0.25)"
-                strokeWidth={0.5}
+                strokeWidth={0.5 * scale}
               />
             )
           })}
         </g>
         <g>
           {BRAZIL_STATE_FEATURES.map((f, i) => (
-            <path key={i} d={geoPathFn(f) || ''} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.4} />
+            <path key={i} d={geoPathFn(f) || ''} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.4 * scale} />
           ))}
         </g>
         {legsD.map((l, i) => (
-          <path key={i} d={l.d} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={2} strokeLinecap="round" />
-        ))}
-        {legsD.map((l, i) => (
-          <path key={i} d={l.d} fill="none" stroke={GROUP_COLORS[l.group]} strokeWidth={1} strokeLinecap="round" strokeDasharray="6 5" />
+          <path key={i} d={l.d} fill="none" stroke={GROUP_COLORS[l.group]} strokeWidth={lineStroke} strokeLinecap="round" strokeDasharray={dashArray} />
         ))}
         {points.map(({ p: [x, y], isConnection }, i) => (
           isConnection
-            ? <rect key={i} x={x - 3.2} y={y - 3.2} width={6.4} height={6.4} fill="#ffd166" stroke="rgba(0,0,0,0.5)" strokeWidth={1} transform={`rotate(45 ${x} ${y})`} />
-            : <circle key={i} cx={x} cy={y} r={3} fill="#ffffff" stroke="rgba(0,0,0,0.45)" strokeWidth={1.2} />
+            ? <rect key={i} x={x - connHalf} y={y - connHalf} width={connHalf * 2} height={connHalf * 2} fill="#ffd166" stroke="rgba(0,0,0,0.5)" strokeWidth={connStroke} transform={`rotate(45 ${x} ${y})`} />
+            : <circle key={i} cx={x} cy={y} r={markerR} fill="#ffffff" stroke="rgba(0,0,0,0.45)" strokeWidth={markerStroke} />
         ))}
       </svg>
       <div className="px-3 py-2 border-t bg-background/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
