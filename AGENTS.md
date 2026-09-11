@@ -2,7 +2,43 @@
 
 Este arquivo é **independente de modelo**. Vale para Claude Code, Codex, e qualquer outro agente automatizado que trabalhe neste repositório. Onde este documento fala de "agente", leia "qualquer IA operando sobre este código".
 
-Para instruções específicas de Claude Code (context engineering, workflow detalhado), ver [CLAUDE.md](./CLAUDE.md). Para regras invioláveis de arquitetura, ver [.harness/invariants.md](./.harness/invariants.md).
+Para instruções específicas de Claude Code (context engineering, workflow detalhado), ver [CLAUDE.md](./CLAUDE.md). Para regras invioláveis de arquitetura, ver [.harness/invariants.md](./.harness/invariants.md). Para o protocolo de continuidade entre agentes/sessões, ver a § 0 abaixo e [.ai/](./.ai/).
+
+---
+
+## 0. Handoff Protocol (obrigatório, antes de qualquer tarefa relevante)
+
+O diretório [`.ai/`](./.ai/) existe pra que um agente consiga continuar exatamente de onde outro parou — Claude Code, Codex, ou qualquer outro — **sem depender do histórico da conversa**. Tarefas triviais (1 arquivo, comportamento óbvio, sem estado a preservar) não precisam do ritual completo; use julgamento.
+
+### Antes de começar uma tarefa relevante
+
+1. Leia este arquivo (`AGENTS.md`).
+2. Leia [`.ai/PROJECT_CONTEXT.md`](./.ai/PROJECT_CONTEXT.md) (contexto rápido e permanente do projeto).
+3. Leia [`.ai/CURRENT_TASK.md`](./.ai/CURRENT_TASK.md) (o que está em andamento agora, se algo estiver).
+4. Leia [`.ai/HANDOFF.md`](./.ai/HANDOFF.md) (estado deixado pelo agente anterior).
+5. Rode `git status` e confira a branch atual (`git branch --show-current`).
+6. Entenda qualquer alteração não commitada antes de editar arquivos — não presuma que o working tree está limpo.
+7. **Concorrência**: se `CURRENT_TASK.md` tiver `Owner`/`Branch`/`Started At` preenchidos com uma tarefa diferente da sua, ou o `git status` mostrar mudanças que você não reconhece, pare e avalie o estado existente antes de editar — não sobrescreva trabalho de outro agente/pessoa em andamento. Se for claramente uma tarefa distinta e não conflitante, registre a sua própria entrada em vez de apagar a anterior.
+
+### Antes de finalizar ou transferir uma tarefa
+
+1. Revise as próprias mudanças (`git diff`).
+2. Rode as validações apropriadas (ver § 4/5 abaixo — `npx tsc --noEmit`, `npm test`, `bash scripts/verify.sh` quando o ambiente permitir).
+3. Atualize [`.ai/CURRENT_TASK.md`](./.ai/CURRENT_TASK.md) com o estado real (Status, Completed, In Progress, Pending).
+4. Atualize [`.ai/HANDOFF.md`](./.ai/HANDOFF.md) § Agent Context (Summary, Completed, Pending, Recommended Next Steps, Continuation Instructions — a lista completa de campos está no próprio arquivo).
+5. Se houve decisão arquitetural relevante (provider novo, mudança de schema importante, nova abstração, decisão de segurança/multi-tenancy), registre em [`.ai/DECISIONS.md`](./.ai/DECISIONS.md). Não registre decisões triviais.
+6. Se sobrou um problema técnico real e não-trivial, registre em [`.ai/KNOWN_ISSUES.md`](./.ai/KNOWN_ISSUES.md).
+7. Rode `npm run handoff` (`scripts/generate-handoff.mjs`) — atualiza automaticamente a seção "Automatic Context" de `HANDOFF.md` (branch, commits, git status, diff --stat). Nunca edite essa seção à mão; ela é sobrescrita a cada execução.
+8. Deixe instruções claras pro próximo agente na seção "Continuation Instructions" de `HANDOFF.md`.
+
+### Regras do handoff
+
+- **Nunca** inclua no handoff: API keys, service role keys, tokens, senhas, credenciais, secrets de provider, ou qualquer valor de `.env`. Se um arquivo sensível (`.env*`, `credenciais*`, `*secret*`, `*.key`, `*.pem`, `*token*`) aparecer no `git status`/diff, registre só que existe alteração ali — nunca copie o conteúdo.
+- Não copie diffs completos nem arquivos gigantes pro handoff — resumo (`git diff --stat`) é suficiente; o próximo agente lê o diff real quando precisar.
+- Não sobrescreva trabalho não relacionado nem apague contexto útil deixado por outro agente — `HANDOFF.md`/`CURRENT_TASK.md` são atualizados, não recriados do zero, a menos que a tarefa anterior esteja genuinamente concluída.
+- `scripts/generate-handoff.mjs` nunca faz `git add`/`commit`/`push` — commit e push seguem as mesmas regras de confirmação humana já estabelecidas no resto deste documento (§ 8).
+- **Manutenção do contexto persistente**: se a tarefa alterou algo estruturalmente (novo módulo, nova integração/provider, nova tabela central, mudança de stack, novo padrão global, mudança relevante em auth/multi-tenancy), atualize [`.ai/PROJECT_CONTEXT.md`](./.ai/PROJECT_CONTEXT.md) de acordo. Para bugs e features pequenas, não mexa no contexto global.
+- Para tarefas grandes o suficiente pra justificar plano formal (múltiplos módulos, schema, autorização), use o sistema já existente em [`.harness/tasks/`](./.harness/tasks/README.md) — `.ai/CURRENT_TASK.md` é o ponteiro rápido do "agora"; `.harness/tasks/active/<slug>.md` é o plano detalhado quando ele existir.
 
 ---
 

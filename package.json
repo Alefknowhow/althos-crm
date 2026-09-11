@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "lint:types": "eslint --config eslint.typed.config.mjs .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "handoff": "node scripts/generate-handoff.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

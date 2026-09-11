@@ -5,6 +5,7 @@ Este é o manual operacional principal para Claude Code (e agentes equivalentes)
 > Contrato multi-modelo (Claude, Codex, outros agentes): ver [AGENTS.md](./AGENTS.md).
 > Regras invioláveis de segurança/arquitetura: ver [.harness/invariants.md](./.harness/invariants.md).
 > Perfis de agente especializados: ver [.harness/agents/](./.harness/agents/).
+> Protocolo de handoff entre agentes/sessões (obrigatório antes de tarefa relevante): ver [AGENTS.md § 0](./AGENTS.md) e [.ai/](./.ai/).
 
 ---
 
@@ -123,8 +124,9 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 
 ### Camada 1 — Global (sempre)
 - Este arquivo (`CLAUDE.md`)
-- `AGENTS.md`
+- `AGENTS.md` (inclui o protocolo de handoff, § 0)
 - `.harness/invariants.md`
+- `.ai/CURRENT_TASK.md` e `.ai/HANDOFF.md` (estado da tarefa em andamento, se houver)
 
 ### Camada 2 — Domínio (só quando a tarefa tocar a área)
 | Área da tarefa | Carregar |
