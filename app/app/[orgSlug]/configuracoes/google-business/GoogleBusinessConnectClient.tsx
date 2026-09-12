@@ -116,7 +116,7 @@ export default function GoogleBusinessConnectClient({
                       <Check className="w-3 h-3 mr-1" /> Ativo
                     </Badge>
                     <Button
-                      variant="ghost" size="icon" className="w-8 h-8 shrink-0"
+                      variant="ghost" size="icon" className="w-11 h-11 md:w-8 md:h-8 shrink-0"
                       disabled={syncingId === conn.id}
                       onClick={() => handleSync(conn.id)}
                       title="Sincronizar unidades"
@@ -124,7 +124,7 @@ export default function GoogleBusinessConnectClient({
                       <RefreshCw className={`w-4 h-4 ${syncingId === conn.id ? 'animate-spin' : ''}`} />
                     </Button>
                     <Button
-                      variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-destructive shrink-0"
+                      variant="ghost" size="icon" className="w-11 h-11 md:w-8 md:h-8 text-muted-foreground hover:text-destructive shrink-0"
                       onClick={() => setDeleteId(conn.id)} disabled={pending}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -268,7 +268,7 @@ function CopyRow({ value, onCopy }: { value: string; onCopy: (v: string) => void
   return (
     <div className="mt-1.5 flex items-center gap-2">
       <code className="flex-1 text-xs bg-muted rounded px-2 py-1 truncate">{value}</code>
-      <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0" onClick={() => onCopy(value)}>
+      <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 shrink-0" onClick={() => onCopy(value)}>
         <Copy className="w-3.5 h-3.5" />
       </Button>
     </div>

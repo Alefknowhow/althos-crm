@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Building, UsersRound, Share2, Bell, ShieldCheck, Bot, Palette, KeyRound } from 'lucide-react'
+import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
 
 /**
  * Shared tab navigation for the settings hub. Each tab is its own route so the
@@ -27,6 +28,7 @@ const TABS = [
 ] as const
 
 export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
+  const router = useRouter()
   const pathname = usePathname() ?? ''
   const base = `/app/${orgSlug}/configuracoes`
 
@@ -34,9 +36,18 @@ export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\//, '') : ''
   const activeSeg = rest.split('/')[0] // '' for Geral
 
+  const sections: MobileSection[] = TABS.map(t => ({ key: t.seg, label: t.label }))
+
   return (
     <div className="border-b border-border">
-      <nav className="-mb-px flex flex-wrap gap-1">
+      <div className="sm:hidden py-1">
+        <MobileSectionPicker
+          sections={sections}
+          activeKey={activeSeg}
+          onChange={seg => router.push(seg ? `${base}/${seg}` : base)}
+        />
+      </div>
+      <nav className="hidden sm:flex -mb-px flex-wrap gap-1">
         {TABS.map(t => {
           const href = t.seg ? `${base}/${t.seg}` : base
           const active = activeSeg === t.seg

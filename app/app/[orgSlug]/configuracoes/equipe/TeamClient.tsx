@@ -231,7 +231,7 @@ export default function TeamClient({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0"
+                            className="h-11 w-11 md:h-7 md:w-7 p-0"
                             onClick={() => setExpandedUser(expanded ? null : m.user_id)}
                             title="Visibilidade por organização"
                           >
@@ -242,7 +242,7 @@ export default function TeamClient({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0"
+                            className="h-11 w-11 md:h-7 md:w-7 p-0"
                             onClick={() => setEditMember(m)}
                             title="Editar permissões (esta organização)"
                           >
@@ -253,7 +253,7 @@ export default function TeamClient({
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-11 w-11 md:h-7 md:w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => setMemberToRemove(m)}
                             disabled={removingId === m.user_id}
                             title="Remover da conta"
@@ -306,7 +306,7 @@ export default function TeamClient({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      className="h-11 w-11 md:h-7 md:w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                       onClick={() => handleCancelInvite(inv)}
                       disabled={cancelingId === inv.id}
                       title="Cancelar convite"
