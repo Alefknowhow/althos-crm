@@ -58,14 +58,18 @@ export default function AppointmentsAdminTabs(props: Props) {
     <Tabs defaultValue="appointments" className="space-y-4">
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 -mt-2 bg-background border-b">
         <div className="h-14 flex items-center justify-between gap-3">
-          <TabsList>
-            <TabsTrigger value="appointments" className="gap-2">
+          {/* overflow-x-auto: em vez de espremer/cortar "Horários
+              disponíveis" em telas estreitas, a barra rola horizontalmente
+              — nome sempre legível por extenso (spec mobile, nunca truncar
+              sem acesso ao texto completo). */}
+          <TabsList className="overflow-x-auto max-w-full justify-start">
+            <TabsTrigger value="appointments" className="gap-2 shrink-0">
               <List className="w-4 h-4" /> Agendamentos
             </TabsTrigger>
-            <TabsTrigger value="event-types" className="gap-2">
+            <TabsTrigger value="event-types" className="gap-2 shrink-0">
               <Calendar className="w-4 h-4" /> {props.isClinic ? 'Procedimentos' : 'Tipos de evento'}
             </TabsTrigger>
-            <TabsTrigger value="availability" className="gap-2">
+            <TabsTrigger value="availability" className="gap-2 shrink-0">
               <Clock className="w-4 h-4" /> Horários disponíveis
             </TabsTrigger>
           </TabsList>
