@@ -8,6 +8,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { previousRange } from '@/lib/utils/period-range'
 import { requireFinancialAccess } from './financial-shared'
+import { buildKpi, computeCashFlowSeries, groupSum, computeRevenueBreakdown, computeExpenseBreakdown, type KpiValue, type RevenueBreakdown, type ExpenseBreakdown } from '@/lib/financial/reports-calc'
 
 // ── Agregações do dashboard ──────────────────────────────────────────────────
 
@@ -34,18 +35,7 @@ export async function getFinancialSummary(
   return { receitas_cents, despesas_cents, saldo_cents: receitas_cents - despesas_cents }
 }
 
-export type KpiValue = { value_cents: number; delta_pct: number | null; trend: 'up' | 'down' | 'neutral' }
-
-function pctDelta(current: number, previous: number): number | null {
-  if (previous === 0) return current === 0 ? null : null // sem base de comparação — não inventa %
-  return ((current - previous) / Math.abs(previous)) * 100
-}
-
-function trendOf(delta: number | null, higherIsBetter: boolean): 'up' | 'down' | 'neutral' {
-  if (delta === null || Math.abs(delta) < 0.5) return 'neutral'
-  const up = delta > 0
-  return (higherIsBetter ? up : !up) ? 'up' : 'down'
-}
+export type { KpiValue }
 
 /**
  * Os 8 indicadores do "Resumo Financeiro" (topo da dashboard), cada um com
@@ -119,10 +109,7 @@ export async function getFinancialKpis(orgSlug: string, range: { from: string; t
     .lte('vencimento', range.to)
   const fluxoPrevisto = (pendingInRange || []).reduce((a, r) => a + (r.tipo === 'receita' ? r.valor_cents : -r.valor_cents), 0)
 
-  function kpi(current: number, previous: number, higherIsBetter = true): KpiValue {
-    const delta = pctDelta(current, previous)
-    return { value_cents: current, delta_pct: delta, trend: trendOf(delta, higherIsBetter) }
-  }
+  const kpi = buildKpi
 
   return {
     saldoEmCaixa: kpi(saldoCaixa, saldoCaixaPrev),
@@ -155,28 +142,7 @@ export async function getCashFlowSeries(
     .gte('competencia', fromStr)
     .neq('status', 'cancelado')
 
-  const buckets = new Map<string, { receitas_cents: number; despesas_cents: number }>()
-  for (let i = 0; i < months; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    buckets.set(key, { receitas_cents: 0, despesas_cents: 0 })
-  }
-
-  for (const row of data || []) {
-    const key = row.competencia.slice(0, 7)
-    const bucket = buckets.get(key)
-    if (!bucket) continue
-    if (row.tipo === 'receita') bucket.receitas_cents += row.valor_cents
-    else bucket.despesas_cents += row.valor_cents
-  }
-
-  // Saldo acumulado mês a mês (receita - despesa, corrido dentro da janela
-  // exibida) — mesma lógica de linha corrida usada no fluxo de caixa diário.
-  let running = 0
-  return Array.from(buckets.entries()).map(([month, v]) => {
-    running += v.receitas_cents - v.despesas_cents
-    return { month, ...v, saldo_cents: running }
-  })
+  return computeCashFlowSeries(data || [], months, now)
 }
 
 export async function getExpensesByCategory(
@@ -194,33 +160,11 @@ export async function getExpensesByCategory(
     .gte('competencia', range.from)
     .lte('competencia', range.to)
 
-  const byCategory = new Map<string, number>()
-  for (const row of data || []) {
-    byCategory.set(row.categoria, (byCategory.get(row.categoria) || 0) + row.valor_cents)
-  }
-  return Array.from(byCategory.entries())
-    .map(([categoria, valor_cents]) => ({ categoria, valor_cents }))
-    .sort((a, b) => b.valor_cents - a.valor_cents)
+  return groupSum((data || []).map(r => ({ label: r.categoria, valor_cents: r.valor_cents })))
+    .map(({ label, valor_cents }) => ({ categoria: label, valor_cents }))
 }
 
-export type RevenueBreakdown = {
-  porCategoria: { label: string; valor_cents: number }[]
-  porFormaPagamento: { label: string; valor_cents: number }[]
-  porOperadora: { label: string; valor_cents: number }[]
-  porCliente: { label: string; valor_cents: number }[]
-  ticketMedioCents: number
-  receitaRecorrenteCents: number
-  receitaTotalCents: number
-}
-
-function groupSum(rows: { label: string | null; valor_cents: number }[]): { label: string; valor_cents: number }[] {
-  const map = new Map<string, number>()
-  for (const r of rows) {
-    const key = r.label || 'Não informado'
-    map.set(key, (map.get(key) || 0) + r.valor_cents)
-  }
-  return Array.from(map.entries()).map(([label, valor_cents]) => ({ label, valor_cents })).sort((a, b) => b.valor_cents - a.valor_cents)
-}
+export type { RevenueBreakdown }
 
 /**
  * Receita segmentada por produto/categoria, forma de pagamento, operadora
@@ -249,28 +193,10 @@ export async function getRevenueBreakdown(orgSlug: string, range: { from: string
     for (const c of contatos || []) contatoNames.set(c.id, c.name)
   }
 
-  const receitaTotalCents = rows.reduce((a, r) => a + r.valor_cents, 0)
-  const receitaRecorrenteCents = rows.filter(r => r.is_recurring).reduce((a, r) => a + r.valor_cents, 0)
-  const ticketMedioCents = rows.length > 0 ? Math.round(receitaTotalCents / rows.length) : 0
-
-  return {
-    porCategoria: groupSum(rows.map(r => ({ label: r.categoria, valor_cents: r.valor_cents }))),
-    porFormaPagamento: groupSum(rows.map(r => ({ label: r.forma_pagamento, valor_cents: r.valor_cents }))),
-    porOperadora: groupSum(rows.map(r => ({ label: r.operadora, valor_cents: r.valor_cents }))),
-    porCliente: groupSum(rows.map(r => ({ label: r.contato_id ? contatoNames.get(r.contato_id) || 'Cliente removido' : null, valor_cents: r.valor_cents }))),
-    ticketMedioCents,
-    receitaRecorrenteCents,
-    receitaTotalCents,
-  }
+  return computeRevenueBreakdown(rows, contatoNames)
 }
 
-export type ExpenseBreakdown = {
-  porSubcategoria: { label: string; valor_cents: number }[]
-  porCentroCusto: { label: string; valor_cents: number }[]
-  fixasCents: number
-  variaveisCents: number
-  despesaTotalCents: number
-}
+export type { ExpenseBreakdown }
 
 /**
  * Despesas por subcategoria e centro de custo, e separação fixas
@@ -288,15 +214,5 @@ export async function getExpenseBreakdown(orgSlug: string, range: { from: string
     .gte('competencia', range.from)
     .lte('competencia', range.to)
 
-  const rows = data || []
-  const despesaTotalCents = rows.reduce((a, r) => a + r.valor_cents, 0)
-  const fixasCents = rows.filter(r => r.is_recurring).reduce((a, r) => a + r.valor_cents, 0)
-
-  return {
-    porSubcategoria: groupSum(rows.map(r => ({ label: r.subcategoria, valor_cents: r.valor_cents }))),
-    porCentroCusto: groupSum(rows.map(r => ({ label: r.centro_custo, valor_cents: r.valor_cents }))),
-    fixasCents,
-    variaveisCents: despesaTotalCents - fixasCents,
-    despesaTotalCents,
-  }
+  return computeExpenseBreakdown(data || [])
 }
