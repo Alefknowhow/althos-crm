@@ -33,12 +33,15 @@ export async function getPlatformAccounts(): Promise<AdminAccountRow[]> {
 
   const orgs = (orgsRes.data ?? []) as any[]
 
-  // Lead counts per org (small N — handful of orgs).
+  // 1 RPC agregada em vez de 1 count por org (achado 1.3 da auditoria de
+  // performance) — não escala mais linearmente com o nº de contas na frota.
   const leadCountByOrg = new Map<string, number>()
-  await Promise.all(orgs.map(async (o) => {
-    const { count } = await admin.from('contatos').select('id', { count: 'exact', head: true }).eq('organization_id', o.id)
-    leadCountByOrg.set(o.id, count ?? 0)
-  }))
+  if (orgs.length > 0) {
+    const { data: counts } = await admin.rpc('fleet_lead_and_member_counts', {
+      p_org_ids: orgs.map(o => o.id),
+    }) as { data: { organization_id: string; lead_count: number }[] | null }
+    for (const c of counts ?? []) leadCountByOrg.set(c.organization_id, c.lead_count)
+  }
 
   const orgToAccount = new Map<string, string>()
   const orgsByAccount = new Map<string, any[]>()

@@ -66,6 +66,7 @@ export async function getRecompraRanking(orgId: string, limit = 200): Promise<Re
     .eq('organization_id', orgId)
     .eq('status', 'cliente')
     .in('id', Array.from(lastSaleByContato.keys()))
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const now = Date.now()
   const rows: RecompraRow[] = []

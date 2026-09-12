@@ -69,6 +69,7 @@ export async function getSourcePerformance(
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
     .gte('created_at', start.toISOString())
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   if (!leads || leads.length === 0) return []
 

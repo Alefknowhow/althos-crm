@@ -61,6 +61,7 @@ export async function getNpsScore(orgId: string): Promise<NpsResult> {
     .select('nps_score')
     .eq('organization_id', orgId)
     .not('nps_score', 'is', null)
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const scores = (data || []).map((r: any) => r.nps_score as number)
   const responses = scores.length

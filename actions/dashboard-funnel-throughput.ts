@@ -64,6 +64,7 @@ export async function getStageThroughput(
     .select('id, stage_id, created_at')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
   if (!leads || leads.length === 0) return emptyResult()
 
   const leadIds = leads.map(l => l.id)

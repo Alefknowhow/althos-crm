@@ -66,12 +66,23 @@ export const generateSystemAlertsFn = inngest.createFunction(
     const candidates: AlertInsert[] = await step.run('scan-fleet', async () => {
       const out: AlertInsert[] = []
 
-      const { data: orgs } = await admin
-        .from('organizations')
-        .select('id, name, account_id, subscription_status, trial_ends_at')
-        .limit(2000)
+      // Paginado em vez de um único .limit(2000) — acima de 2000 orgs, o cap
+      // fixo truncava silenciosamente o scan (orgs além do offset nunca
+      // eram avaliadas pra alerta de churn/trial — achado de cobertura
+      // incompleta da auditoria de performance, seção 4).
+      const orgs: any[] = []
+      const PAGE_SIZE = 1000
+      for (let page = 0; ; page++) {
+        const { data: batch } = await admin
+          .from('organizations')
+          .select('id, name, account_id, subscription_status, trial_ends_at')
+          .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+        if (!batch || batch.length === 0) break
+        orgs.push(...batch)
+        if (batch.length < PAGE_SIZE) break
+      }
 
-      for (const o of (orgs ?? []) as any[]) {
+      for (const o of orgs as any[]) {
         const status = o.subscription_status
 
         if (status === 'past_due') {

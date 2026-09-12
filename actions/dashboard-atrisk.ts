@@ -83,6 +83,7 @@ export async function getAtRiskLeads(
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
     .not('stage_id', 'is', null)
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   if (!openLeads || openLeads.length === 0) return []
 
@@ -207,6 +208,7 @@ export async function getAverageTimePerStage(
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
     .gte('created_at', start.toISOString())
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   if (!leads || leads.length === 0) return []
   const leadIds = leads.map(l => l.id)

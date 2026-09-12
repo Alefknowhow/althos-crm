@@ -26,6 +26,7 @@ export async function getSellerConversionRates(orgId: string, windowDays = 30): 
     .eq('organization_id', orgId)
     .not('assigned_to', 'is', null)
     .gte('created_at', since.toISOString())
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const bySeller = new Map<string, { leads: number; won: number }>()
   for (const r of data || []) {
@@ -51,6 +52,7 @@ export async function getSellerOpenDeals(orgId: string): Promise<SellerOpenDeals
     .eq('organization_id', orgId)
     .eq('deal_status', 'aberto')
     .not('assigned_to', 'is', null)
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const bySeller = new Map<string, number>()
   for (const r of data || []) {

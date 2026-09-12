@@ -75,6 +75,7 @@ export async function getMetricTimeSeries(
       .select('created_at')
       .eq('organization_id', orgId)
       .gte('created_at', start.toISOString())
+      .limit(20000) // teto de leitura — achado 2 da auditoria de performance
     if (pipelineId) q = q.eq('pipeline_id', pipelineId)
     if (sellerId) q = q.eq('assigned_to', sellerId)
     const { data } = await q

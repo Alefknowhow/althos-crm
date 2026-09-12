@@ -36,6 +36,7 @@ export async function getCustomersByCity(orgId: string, limit = 8): Promise<City
     .eq('organization_id', orgId)
     .eq('status', 'cliente')
     .not('city', 'is', null)
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const cityByContato = new Map<string, string>()
   const byCity = new Map<string, CityRow>()
@@ -114,6 +115,7 @@ export async function getAtRiskCustomers(orgId: string, thresholdDays = 90, limi
     .eq('organization_id', orgId)
     .eq('status', 'cliente')
     .in('id', Array.from(lastSaleByCustomer.keys()))
+    .limit(20000) // teto de leitura — achado 2 da auditoria de performance
 
   const now = Date.now()
   const atRisk: AtRiskCustomerRow[] = []

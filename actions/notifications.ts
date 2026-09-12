@@ -109,6 +109,39 @@ export async function isNotificationEnabled(
 }
 
 /**
+ * Versão em lote de isNotificationEnabled — 1 query pra N orgs em vez de 1
+ * por org (achado 1.6 da auditoria de performance: lib/push/send.ts fazia
+ * 1 query por org à qual o usuário pertence). Retorna o subconjunto de
+ * orgIds onde a categoria está habilitada.
+ */
+export async function isNotificationEnabledBatch(
+  userId: string,
+  orgIds: string[],
+  category: NotificationCategory,
+): Promise<Set<string>> {
+  if (orgIds.length === 0) return new Set()
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('notification_prefs')
+      .select('organization_id, prefs')
+      .eq('user_id', userId)
+      .in('organization_id', orgIds)
+
+    const prefsByOrg = new Map((data ?? []).map(r => [r.organization_id as string, r.prefs as NotificationPrefs]))
+    const enabled = new Set<string>()
+    for (const orgId of orgIds) {
+      if (isCategoryEnabled(prefsByOrg.get(orgId) ?? null, category)) enabled.add(orgId)
+    }
+    return enabled
+  } catch {
+    // Falha aberta — mesma política de isNotificationEnabled (não silenciar
+    // notificação por causa de uma falha na checagem de preferência).
+    return new Set(orgIds)
+  }
+}
+
+/**
  * Filter a list of user-ids down to those opted-in to `category` in `orgId`.
  * One query for the whole set. Fails OPEN (returns the input) on error.
  */

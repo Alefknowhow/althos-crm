@@ -31,20 +31,18 @@ export async function getAllOrganizations(): Promise<SuperAdminOrg[]> {
 
   if (!orgs) return []
 
-  // Fetch lead counts + member counts in parallel per org
-  const withStats = await Promise.all(orgs.map(async (org) => {
-    const [leadsRes, membersRes] = await Promise.all([
-      admin.from('contatos').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
-      admin.from('memberships').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
-    ])
-    return {
-      ...org,
-      leadCount:   leadsRes.count ?? 0,
-      memberCount: membersRes.count ?? 0,
-    }
-  }))
+  // 1 RPC agregada em vez de 2×N queries de count (achado 1.2 da auditoria
+  // de performance) — mesmo resultado, 1 round-trip em vez de até 400.
+  const { data: counts } = await admin.rpc('fleet_lead_and_member_counts', {
+    p_org_ids: orgs.map(o => o.id),
+  }) as { data: { organization_id: string; lead_count: number; member_count: number }[] | null }
+  const countsByOrg = new Map((counts ?? []).map(c => [c.organization_id, c]))
 
-  return withStats
+  return orgs.map(org => ({
+    ...org,
+    leadCount:   countsByOrg.get(org.id)?.lead_count ?? 0,
+    memberCount: countsByOrg.get(org.id)?.member_count ?? 0,
+  }))
 }
 
 // ---------------------------------------------------------------------------

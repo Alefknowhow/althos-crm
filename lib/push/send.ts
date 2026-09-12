@@ -17,7 +17,7 @@
 
 import webpush from 'web-push'
 import { createAdminClient } from '@/lib/supabase/server'
-import { isNotificationEnabled, filterUsersByCategory } from '@/actions/notifications'
+import { isNotificationEnabledBatch, filterUsersByCategory } from '@/actions/notifications'
 import type { NotificationCategory } from '@/lib/notifications/categories'
 
 // Configure VAPID once — Node modules are cached so this runs once per
@@ -84,12 +84,7 @@ export async function sendPushToUser(
   let subs = allSubs
   if (payload.category) {
     const orgIds = Array.from(new Set(allSubs.map(s => s.organization_id as string)))
-    const enabledOrgs = new Set<string>()
-    await Promise.all(
-      orgIds.map(async orgId => {
-        if (await isNotificationEnabled(userId, orgId, payload.category!)) enabledOrgs.add(orgId)
-      }),
-    )
+    const enabledOrgs = await isNotificationEnabledBatch(userId, orgIds, payload.category)
     subs = allSubs.filter(s => enabledOrgs.has(s.organization_id as string))
     if (subs.length === 0) return { sent: 0, failed: 0 }
   }
