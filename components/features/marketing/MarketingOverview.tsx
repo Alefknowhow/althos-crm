@@ -230,8 +230,13 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
           >
             {cardMetricKeys.map(k => {
               const def = METRIC_REGISTRY[k]
+              // Essa seção só renderiza com conta+campanha conectadas (ver
+              // guard acima), então raw=0 é um zero REAL (ex.: 0 cliques no
+              // período) — extract() sempre devolve number, nunca null.
+              // "raw > 0 ? ... : '—'" tratava zero de verdade igual a "sem
+              // dado", achado 4.8 do documento de reformulação mobile.
               const raw = def.extract(filteredTotals)
-              const value = raw > 0 ? def.format(raw) : '—'
+              const value = def.format(raw)
               const sublabel =
                 k === 'clicks' ? `CTR: ${METRIC_REGISTRY.ctr.extract(filteredTotals).toFixed(2)}%`
                 : k === 'cac' ? `${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`
