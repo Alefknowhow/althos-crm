@@ -28,8 +28,9 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
         <NewTemplateButton orgSlug={params.orgSlug} />
       </div>
 
-      <div className="bg-card border rounded-none overflow-hidden  ">
+      <div className="bg-card border rounded-none overflow-hidden">
         {templates && templates.length > 0 ? (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -69,6 +70,7 @@ export default async function EmailTemplatesPage({ params }: { params: { orgSlug
               ))}
             </TableBody>
           </Table>
+          </div>
         ) : (
           <div className="p-12 text-center text-muted-foreground bg-muted/10 border-dashed border-2 m-4 rounded-lg">Nenhum template de e-mail criado.</div>
         )}

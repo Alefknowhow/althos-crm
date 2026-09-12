@@ -27,6 +27,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
 
       <div className="bg-card border rounded-none overflow-hidden">
         {forms && forms.length > 0 ? (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -82,6 +83,7 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
               })}
             </TableBody>
           </Table>
+          </div>
         ) : (
           <div className="p-12 text-center text-muted-foreground bg-muted/10">
             Nenhum formulário criado. Comece criando o seu primeiro para captar leads.

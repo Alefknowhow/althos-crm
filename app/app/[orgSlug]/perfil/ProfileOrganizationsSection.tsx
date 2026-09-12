@@ -102,7 +102,7 @@ export function ProfileOrganizationsSection({
                     type="button"
                     title="Excluir organização"
                     onClick={() => setOrgToDelete({ slug: org.slug, name: org.name })}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    className="flex h-11 w-11 md:h-7 md:w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

@@ -141,11 +141,11 @@ export function WaTemplatesClient({ orgSlug, initialTemplates }: {
                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setPreviewing(t)}>
                   <Eye className="w-3.5 h-3.5" /> Ver mensagem
                 </Button>
-                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-muted-foreground hover:text-foreground"
                   onClick={() => openEdit(t)} disabled={t.status !== 'local'} title={t.status !== 'local' ? 'Templates já enviados não podem ser editados' : 'Editar'}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-muted-foreground hover:text-destructive"
                   onClick={() => setTemplateToDelete(t.id)} disabled={deletingId === t.id}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

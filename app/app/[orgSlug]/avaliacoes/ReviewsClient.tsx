@@ -81,7 +81,7 @@ function ReviewCard({ orgSlug, review }: { orgSlug: string; review: GoogleBusine
             <p className="text-xs font-semibold text-muted-foreground">Sua resposta</p>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditing(true)}>Editar</Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={handleDelete} disabled={deleting}>
+              <Button variant="ghost" size="icon" className="h-11 w-11 md:h-7 md:w-7 text-muted-foreground hover:text-destructive" onClick={handleDelete} disabled={deleting}>
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
