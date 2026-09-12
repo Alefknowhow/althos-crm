@@ -82,7 +82,7 @@ export default function PropertyMatchSuggestions({ orgSlug, contatoId }: { orgSl
                 {s.reason && <p className="text-xs text-muted-foreground mt-1">{s.reason}</p>}
               </div>
               <Button
-                size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+                size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7 shrink-0"
                 disabled={markedIds.has(s.propertyId)}
                 onClick={() => handleMarkInterest(s.propertyId)}
                 title="Marcar interesse"

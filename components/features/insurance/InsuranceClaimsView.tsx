@@ -217,7 +217,7 @@ export default function InsuranceClaimsView({
             {docsClaim?.documents.map(d => (
               <div key={d.id} className="flex items-center gap-2 border rounded-md p-2">
                 <a href={d.storageKey} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-sm hover:underline">{d.label || 'Documento'}</a>
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRemoveDoc(d.id)}>
+                <Button size="icon" variant="ghost" className="h-11 w-11 md:h-6 md:w-6" onClick={() => handleRemoveDoc(d.id)}>
                   <X className="w-3.5 h-3.5 text-destructive" />
                 </Button>
               </div>

@@ -108,10 +108,10 @@ export default function PropertyInterestsSection({
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busyId === it.id} onClick={() => handleToggleFavorite(it.id, it.is_favorite)}>
+                  <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" disabled={busyId === it.id} onClick={() => handleToggleFavorite(it.id, it.is_favorite)}>
                     <Star className={`w-4 h-4 ${it.is_favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'}`} />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busyId === it.id} onClick={() => handleRemove(it.id)}>
+                  <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" disabled={busyId === it.id} onClick={() => handleRemove(it.id)}>
                     {busyId === it.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 text-destructive" />}
                   </Button>
                 </div>

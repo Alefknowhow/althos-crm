@@ -218,7 +218,7 @@ export default function PropertyProposalsView({
                 </TableCell>
                 <TableCell>
                   <Button
-                    size="icon" variant="ghost" className="h-7 w-7"
+                    size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7"
                     title={p.public_token ? 'Copiar link público' : 'Gerar link público'}
                     disabled={linkBusyId === p.id}
                     onClick={() => handleLink(p.id, !!p.public_token)}

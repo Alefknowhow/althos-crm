@@ -152,7 +152,7 @@ export default function PropertyDealsView({
                 </TableCell>
                 <TableCell>
                   {d.status === 'aberto' && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busyId === d.id} onClick={() => handleCancel(d.id)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" disabled={busyId === d.id} onClick={() => handleCancel(d.id)}>
                       {busyId === d.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 text-destructive" />}
                     </Button>
                   )}
