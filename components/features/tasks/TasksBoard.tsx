@@ -276,7 +276,10 @@ export default function TasksBoard({
         />
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 items-start">
-          <div className="w-full lg:w-64 shrink-0 lg:order-1">
+          {/* Mobile: lista vem PRIMEIRO (order-2 no calendário) — spec M06,
+              "calendário não é o protagonista, lista é". Desktop mantém a
+              ordem original (calendário à esquerda via lg:order-1). */}
+          <div className="w-full lg:w-64 shrink-0 order-2 lg:order-1">
             <TasksBoardMiniCalendar
               days={monthDays}
               calMonth={calMonth}
@@ -286,6 +289,10 @@ export default function TasksBoard({
             />
           </div>
 
+          {/* Sem override de order: fica order:0 (padrão) sempre — abaixo de
+              lg isso já a coloca antes do calendário (order-2 acima);
+              em lg+ mantém exatamente o comportamento original (calendário
+              order-1 > lista order-0, lista à esquerda). */}
           <TasksBoardListPanel
             orgSlug={orgSlug}
             members={members}
