@@ -114,7 +114,9 @@ function MobileLeadCard({
         <p className={cn('text-[10px]', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
-        <div className="flex items-center gap-0.5" onClick={stop}>
+        {/* Alvo de toque 44px (era 24x24 — achado 2.4 do documento de
+            reformulação mobile), ícone continua discreto (3.5). */}
+        <div className="flex items-center" onClick={stop}>
           <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />
           {phoneDigits && (
             <a
@@ -122,7 +124,7 @@ function MobileLeadCard({
               target="_blank"
               rel="noopener noreferrer"
               title="Conversa no WhatsApp"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
             >
               <MessageCircle className="h-3.5 w-3.5" />
             </a>
@@ -131,7 +133,7 @@ function MobileLeadCard({
             <a
               href={`mailto:${lead.email}`}
               title="Enviar e-mail"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-sky-600 hover:bg-sky-50"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-sky-600 hover:bg-sky-50"
             >
               <Mail className="h-3.5 w-3.5" />
             </a>

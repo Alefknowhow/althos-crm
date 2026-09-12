@@ -238,7 +238,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
             <div className="flex-1 flex flex-col min-w-0">
               <div className="h-16 shrink-0 border-b px-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setSidebarOpen(v => !v)} title="Mostrar/ocultar histórico">
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={() => setSidebarOpen(v => !v)} title="Mostrar/ocultar histórico">
                     <PanelLeft className="w-4 h-4" />
                   </Button>
                   <LogoMark v2 className="h-8 w-8 shrink-0" />
@@ -250,10 +250,10 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={handleNewConversation} title="Nova conversa" aria-label="Nova conversa">
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={handleNewConversation} title="Nova conversa" aria-label="Nova conversa">
                     <Plus className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={() => setOpen(false)} aria-label="Fechar copiloto">
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
