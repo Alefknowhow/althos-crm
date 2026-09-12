@@ -13,6 +13,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { getEmailCreditsStatusByOrgSlug, currentEmailPeriodMonth } from '@/lib/email/credits'
 import { asaas } from '@/lib/asaas/client'
 import { EMAIL_CREDIT_PACKS } from '@/lib/email/credit-packs'
+import { MIN_CUSTOM_EMAIL_REAIS } from '@/lib/billing/credit-minimums'
 
 export async function getEmailCreditsStatusAction(orgSlug: string) {
   await requireAuth()
@@ -58,9 +59,6 @@ export async function purchaseEmailCredits(orgSlug: string, packId: typeof EMAIL
 
   return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
 }
-
-/** Mínimo pra compra de Email Credits em quantidade personalizada. */
-export const MIN_CUSTOM_EMAIL_REAIS = 20
 
 /** Mesmo fluxo de purchaseEmailCredits, mas com valor escolhido pelo usuário. */
 export async function purchaseEmailCreditsCustom(orgSlug: string, valueReais: number) {

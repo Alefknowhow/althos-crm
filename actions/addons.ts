@@ -8,6 +8,7 @@ import { CREDIT_PACKS, ADDON_CREDIT_PRICE_CENTS } from '@/lib/plans/config'
 import { asaas } from '@/lib/asaas/client'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
 import { isAccessBlocked } from '@/lib/billing/plans'
+import { MIN_CUSTOM_AI_CREDITS } from '@/lib/billing/credit-minimums'
 import { revalidatePath } from 'next/cache'
 
 /**
@@ -57,11 +58,6 @@ export async function purchaseCreditPack(orgSlug: string, packIndex: number) {
     return { ok: false as const, error: err.message || 'Erro ao iniciar a compra.' }
   }
 }
-
-/** Mínimo pra compra avulsa de quantidade personalizada de créditos de IA —
- *  abaixo disso a fatura ficaria menor que o custo operacional de processar
- *  o pagamento. */
-export const MIN_CUSTOM_AI_CREDITS = 100
 
 /**
  * Mesmo fluxo de purchaseCreditPack, mas com quantidade escolhida pelo

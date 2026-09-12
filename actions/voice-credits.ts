@@ -13,6 +13,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { getVoiceCreditsStatusByOrgSlug, currentPeriodMonth } from '@/lib/voice/credits'
 import { asaas } from '@/lib/asaas/client'
 import { VOICE_CREDIT_PACKS } from '@/lib/voice/credit-packs'
+import { MIN_CUSTOM_VOICE_REAIS } from '@/lib/billing/credit-minimums'
 
 export async function getVoiceCreditsStatusAction(orgSlug: string) {
   const allowed = await checkFeatureAccessByOrgSlug(orgSlug, 'voice')
@@ -62,9 +63,6 @@ export async function purchaseVoiceCredits(orgSlug: string, packId: typeof VOICE
 
   return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
 }
-
-/** Mínimo pra compra de Voice Credits em quantidade personalizada. */
-export const MIN_CUSTOM_VOICE_REAIS = 20
 
 /** Mesmo fluxo de purchaseVoiceCredits, mas com valor escolhido pelo
  *  usuário em vez de um pacote fixo. */
