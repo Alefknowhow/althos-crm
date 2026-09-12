@@ -6,6 +6,7 @@ import { getTicketMedio } from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
+import { MobileKpiGrid } from '@/components/features/mobile/MobileKpiGrid'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
@@ -36,7 +37,23 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      {/* Mobile (spec M01): 4 KPIs prioritários em 2x2 (Receita/Conversão/
+          Vendas/Pipeline aberto — os que respondem "como está o negócio"
+          mais rápido), "Todos os indicadores" revela Ticket médio/Meta.
+          Desktop mantém a grade de 6 colunas original, inalterada. */}
+      <div className="sm:hidden">
+        <MobileKpiGrid
+          items={[
+            { label: 'Receita', value: fmtCurrency(metrics.revenue.value * 100) },
+            { label: 'Conversão', value: `${conversionPct.toFixed(1)}%` },
+            { label: 'Vendas', value: String(ticket.sales_count) },
+            { label: 'Pipeline aberto', value: fmtCurrency(pipelineValueCents) },
+            { label: 'Ticket médio', value: fmtCurrency(ticket.avg_cents) },
+            { label: 'Meta do mês', value: monthlyGoalCents ? fmtCurrency(monthlyGoalCents) : '—' },
+          ]}
+        />
+      </div>
+      <div className="hidden sm:grid sm:grid-cols-6 gap-3">
         <KpiCard
           label="Receita"
           value={fmtCurrency(metrics.revenue.value * 100)}

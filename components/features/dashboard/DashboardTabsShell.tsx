@@ -1,7 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
 
 export default function DashboardTabsShell({
   stickyHeader,
@@ -48,29 +49,49 @@ export default function DashboardTabsShell({
   const extraTabs = (clinica && !isClinic ? 1 : 0) + (imoveis ? 1 : 0) + (trafego ? 1 : 0) + (whatsapp ? 1 : 0)
   const tabCount = 5 + extraTabs
   const gridColsClass = tabCount === 9 ? 'grid-cols-9' : tabCount === 8 ? 'grid-cols-8' : tabCount === 7 ? 'grid-cols-7' : tabCount === 6 ? 'grid-cols-6' : 'grid-cols-5'
-  const validTabs = ['visao-geral', 'pipeline', ...(isClinic ? [] : ['vendas']), 'clientes', 'equipe', ...(clinica ? ['clinica'] : []), ...(imoveis ? ['imoveis'] : []), ...(trafego ? ['trafego'] : []), ...(whatsapp ? ['whatsapp'] : [])]
+
+  const sections: MobileSection[] = [
+    { key: 'visao-geral', label: 'Visão Geral' },
+    { key: 'pipeline', label: 'Pipeline' },
+    ...(!isClinic ? [{ key: 'vendas', label: 'Vendas' }] : []),
+    { key: 'clientes', label: isClinic ? 'Pacientes' : 'Clientes' },
+    { key: 'equipe', label: 'Equipe' },
+    ...(clinica ? [{ key: 'clinica', label: isClinic ? 'Atendimentos' : 'Clínica' }] : []),
+    ...(imoveis ? [{ key: 'imoveis', label: 'Imobiliária' }] : []),
+    ...(trafego ? [{ key: 'trafego', label: 'Tráfego' }] : []),
+    ...(whatsapp ? [{ key: 'whatsapp', label: 'WhatsApp' }] : []),
+  ]
+  const validTabs = sections.map(s => s.key)
   const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
+  // Tabs vira controlado (era defaultValue não-controlado) só pra o seletor
+  // mobile (MobileSectionPicker, G3) conseguir mudar a aba ativa também —
+  // desktop continua clicando direto no TabsTrigger, mesmo comportamento.
+  const [active, setActive] = useState(initialTab)
+
   return (
-    <Tabs defaultValue={initialTab} className="space-y-4">
+    <Tabs value={active} onValueChange={setActive} className="space-y-4">
       {/* <main> não tem mais pt-* (removido globalmente em
           app/[orgSlug]/layout.tsx), então esse painel já nasce colado — sem
           precisar de margin-top negativo, de -top-3 nem de pt-* próprio (ver
           .harness/agents/ux.md). */}
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-2 space-y-2 bg-background">
         {stickyHeader}
-        {/* Mobile: grid de N colunas iguais numa linha só (célula do grid dá
-            a mesma largura pra todas, independente do tamanho do texto) —
-            texto trunca com "…" se não couber. Desktop mantém o auto-width. */}
-        <TabsList className={`grid gap-1 h-auto w-full sm:inline-flex sm:w-auto sm:gap-0 ${gridColsClass}`}>
-          <TabsTrigger value="visao-geral" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Visão Geral</TabsTrigger>
-          <TabsTrigger value="pipeline" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Pipeline</TabsTrigger>
-          {!isClinic && <TabsTrigger value="vendas" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Vendas</TabsTrigger>}
-          <TabsTrigger value="clientes" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">{isClinic ? 'Pacientes' : 'Clientes'}</TabsTrigger>
-          <TabsTrigger value="equipe" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Equipe</TabsTrigger>
-          {clinica && <TabsTrigger value="clinica" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">{isClinic ? 'Atendimentos' : 'Clínica'}</TabsTrigger>}
-          {imoveis && <TabsTrigger value="imoveis" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Imobiliária</TabsTrigger>}
-          {trafego && <TabsTrigger value="trafego" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">Tráfego</TabsTrigger>}
-          {whatsapp && <TabsTrigger value="whatsapp" className="px-1.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1 truncate">WhatsApp</TabsTrigger>}
+        {/* Abaixo de sm: seletor de seção (bottom sheet, G3) em vez da
+            grade de abas espremidas em fonte 11px — nome da seção sempre
+            por extenso. sm+ mantém o TabsList original, inalterado. */}
+        <div className="sm:hidden">
+          <MobileSectionPicker sections={sections} activeKey={active} onChange={setActive} />
+        </div>
+        <TabsList className={`hidden sm:inline-flex sm:w-auto sm:gap-0 ${gridColsClass}`}>
+          <TabsTrigger value="visao-geral" className="text-sm px-3 py-1 truncate">Visão Geral</TabsTrigger>
+          <TabsTrigger value="pipeline" className="text-sm px-3 py-1 truncate">Pipeline</TabsTrigger>
+          {!isClinic && <TabsTrigger value="vendas" className="text-sm px-3 py-1 truncate">Vendas</TabsTrigger>}
+          <TabsTrigger value="clientes" className="text-sm px-3 py-1 truncate">{isClinic ? 'Pacientes' : 'Clientes'}</TabsTrigger>
+          <TabsTrigger value="equipe" className="text-sm px-3 py-1 truncate">Equipe</TabsTrigger>
+          {clinica && <TabsTrigger value="clinica" className="text-sm px-3 py-1 truncate">{isClinic ? 'Atendimentos' : 'Clínica'}</TabsTrigger>}
+          {imoveis && <TabsTrigger value="imoveis" className="text-sm px-3 py-1 truncate">Imobiliária</TabsTrigger>}
+          {trafego && <TabsTrigger value="trafego" className="text-sm px-3 py-1 truncate">Tráfego</TabsTrigger>}
+          {whatsapp && <TabsTrigger value="whatsapp" className="text-sm px-3 py-1 truncate">WhatsApp</TabsTrigger>}
         </TabsList>
       </div>
       <TabsContent value="visao-geral" className="space-y-4">
