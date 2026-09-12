@@ -264,8 +264,8 @@ export default function ProntuarioClient({ orgSlug, professionals }: { orgSlug: 
                     {r.professional_name ? ` · ${r.professional_name}` : ''}
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(r)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(r)}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">

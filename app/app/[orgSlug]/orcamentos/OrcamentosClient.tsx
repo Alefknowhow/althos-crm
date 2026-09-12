@@ -273,8 +273,8 @@ export default function OrcamentosClient({
               >
                 {CLINIC_QUOTE_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
               </select>
-              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(q)}><Pencil className="w-3.5 h-3.5" /></Button>
-              <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(q)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7" onClick={() => openEdit(q)}><Pencil className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(q)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
           ))}
         </div>

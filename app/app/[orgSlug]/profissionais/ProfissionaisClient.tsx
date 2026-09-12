@@ -210,8 +210,8 @@ function ProfessionalsPanel({
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{specialtyName(p.specialty_id)}{p.registration_no ? ` · ${p.registration_no}` : ''}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0" onClick={() => openEdit(p)}><Pencil className="w-3.5 h-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(p)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 shrink-0" onClick={() => openEdit(p)}><Pencil className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(p)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
             ))}
           </div>
@@ -322,7 +322,7 @@ function SimpleCatalogPanel<T extends SimpleItem>({
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => handleToggle(item, !item.active)}>
                   {item.active ? 'Pausar' : 'Ativar'}
                 </Button>
-                <Button variant="ghost" size="icon" className="w-7 h-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(item)}>
+                <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(item)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>

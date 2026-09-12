@@ -297,8 +297,8 @@ export default function AtendimentosClient({
                   )}
                 </div>
               )}
-              <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(a)}><Pencil className="w-3.5 h-3.5" /></Button>
-              <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(a)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7" onClick={() => openEdit(a)}><Pencil className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-destructive hover:bg-destructive/10" onClick={() => setToDelete(a)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </div>
           ))}
         </div>
