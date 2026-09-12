@@ -24,7 +24,7 @@ export default async function PipelinePage({
   // List all org pipelines so the switcher knows what to offer.
   const { data: pipelinesRaw } = await supabase
     .from('pipelines')
-    .select('id, name, is_default, meta_pixel_id, meta_access_token')
+    .select('id, name, is_default, meta_pixel_id, meta_access_token, google_ads_id, google_ads_conversion_label')
     .eq('organization_id', org.id)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })

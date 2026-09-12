@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createStage, updateStage, deleteStage, savePipelineMetaConfig } from '@/actions/pipeline'
+import { createStage, updateStage, deleteStage, savePipelineMetaConfig, savePipelineGoogleConfig } from '@/actions/pipeline'
 import { Trophy, ThumbsDown, Trash2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -36,6 +36,28 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
     if (res.ok) {
       toast.success('Pixel/CAPI deste pipeline salvo!')
       setAccessToken('')
+    } else {
+      toast.error(traduzirErro(res.error, 'Erro ao salvar'))
+    }
+  }
+
+  const [googleAdsId, setGoogleAdsId] = useState(pipeline.google_ads_id || '')
+  const [googleConversionLabel, setGoogleConversionLabel] = useState(pipeline.google_ads_conversion_label || '')
+  const [savingGoogle, setSavingGoogle] = useState(false)
+  useEffect(() => {
+    setGoogleAdsId(pipeline.google_ads_id || '')
+    setGoogleConversionLabel(pipeline.google_ads_conversion_label || '')
+  }, [pipeline.google_ads_id, pipeline.google_ads_conversion_label])
+
+  async function handleSaveGoogle() {
+    setSavingGoogle(true)
+    const res = await savePipelineGoogleConfig(orgSlug, pipeline.id, {
+      google_ads_id: googleAdsId.trim(),
+      google_ads_conversion_label: googleConversionLabel.trim(),
+    })
+    setSavingGoogle(false)
+    if (res.ok) {
+      toast.success('Google Ads deste pipeline salvo!')
     } else {
       toast.error(traduzirErro(res.error, 'Erro ao salvar'))
     }
@@ -103,7 +125,7 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>Configurar Pipeline</Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Estágios do Pipeline</DialogTitle>
           </DialogHeader>
@@ -240,6 +262,37 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
             </div>
             <Button size="sm" onClick={handleSaveMeta} disabled={savingMeta}>
               {savingMeta ? 'Salvando...' : 'Salvar Pixel/CAPI'}
+            </Button>
+          </div>
+
+          <div className="border-t pt-3 space-y-3">
+            <p className="text-sm font-medium">Google Ads deste pipeline</p>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Dispara o evento de conversão (Lead) no navegador quando o formulário público desse pipeline é enviado.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Google Ads Tag ID</Label>
+              <Input
+                value={googleAdsId}
+                onChange={e => setGoogleAdsId(e.target.value)}
+                placeholder="Ex: AW-123456789"
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Rótulo de conversão</Label>
+              <Input
+                value={googleConversionLabel}
+                onChange={e => setGoogleConversionLabel(e.target.value)}
+                placeholder="Ex: AbC-D_efG-h12_34-567"
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Encontre em <strong>Google Ads → Metas → Conversões → sua ação de conversão</strong>, no trecho "send_to".
+              </p>
+            </div>
+            <Button size="sm" onClick={handleSaveGoogle} disabled={savingGoogle}>
+              {savingGoogle ? 'Salvando...' : 'Salvar Google Ads'}
             </Button>
           </div>
         </DialogContent>

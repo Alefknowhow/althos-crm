@@ -96,6 +96,16 @@ export default function PublicFormClient({
           }
         } catch {}
       }
+      // Fire client-side Google Ads conversion (dispara junto do gtag.js
+      // já carregado na página — ver app/(public)/f/[slug]/page.tsx).
+      if (result.googleAdsId && result.googleAdsConversionLabel) {
+        try {
+          const gtag = (window as any).gtag
+          if (typeof gtag === 'function') {
+            gtag('event', 'conversion', { send_to: `${result.googleAdsId}/${result.googleAdsConversionLabel}` })
+          }
+        } catch {}
+      }
       setSuccess(true)
     } else {
       setError(result.error || 'Erro ao enviar formulário')

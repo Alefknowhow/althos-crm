@@ -239,13 +239,15 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   const { data: pipelineMeta } = form.pipeline_id
     ? await supabaseAdmin
       .from('pipelines')
-      .select('meta_pixel_id, meta_access_token')
+      .select('meta_pixel_id, meta_access_token, google_ads_id, google_ads_conversion_label')
       .eq('id', form.pipeline_id)
       .maybeSingle()
     : { data: null }
 
   const pixelId = pipelineMeta?.meta_pixel_id || null
   const accessToken = pipelineMeta?.meta_access_token || null
+  const googleAdsId = pipelineMeta?.google_ads_id || null
+  const googleAdsConversionLabel = pipelineMeta?.google_ads_conversion_label || null
 
   if (pixelId && accessToken) {
     try {
@@ -275,5 +277,9 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
     // Return pixel_id so PublicFormClient can fire client-side fbq in sync
     metaPixelId: pixelId,
     leadEventId: leadId,
+    // Idem pro Google Ads — só dispara a conversão client-side se os dois
+    // campos estiverem configurados nesse pipeline.
+    googleAdsId: googleAdsId && googleAdsConversionLabel ? googleAdsId : null,
+    googleAdsConversionLabel,
   }
 }

@@ -36,7 +36,7 @@ export async function listPipelines(orgSlug: string) {
 
   const { data: pipelines } = await supabase
     .from('pipelines')
-    .select('id, name, is_default, created_at, meta_pixel_id, meta_access_token')
+    .select('id, name, is_default, created_at, meta_pixel_id, meta_access_token, google_ads_id, google_ads_conversion_label')
     .eq('organization_id', org.id)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })
@@ -151,6 +151,35 @@ export async function savePipelineMetaConfig(
   const { error } = await supabase
     .from('pipelines')
     .update(updates)
+    .eq('id', pipelineId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/pipeline`)
+  return { ok: true as const }
+}
+
+/**
+ * Salva o rastreamento do Google (Google Ads Tag ID + rótulo de conversão)
+ * de um pipeline específico — client-side apenas (gtag.js na página do
+ * formulário público), sem Google Ads API/OAuth server-side.
+ */
+export async function savePipelineGoogleConfig(
+  orgSlug: string,
+  pipelineId: string,
+  { google_ads_id, google_ads_conversion_label }: { google_ads_id: string; google_ads_conversion_label: string },
+) {
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('pipelines')
+    .update({
+      google_ads_id: google_ads_id.trim() || null,
+      google_ads_conversion_label: google_ads_conversion_label.trim() || null,
+    })
     .eq('id', pipelineId)
     .eq('organization_id', org.id)
 

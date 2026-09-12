@@ -57,7 +57,7 @@ const ContentSecurityPolicy = [
   // de um Worker, e sem essa permissão o navegador bloqueia silenciosamente
   // (aparecia como "não foi possível acessar o microfone" mesmo com a
   // permissão concedida — o erro real nunca chegava a ser sobre permissão).
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net https://maps.googleapis.com`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${isDev ? "'unsafe-eval'" : ''} https://challenges.cloudflare.com https://connect.facebook.net https://maps.googleapis.com https://www.googletagmanager.com`,
 
   // Styles: same-origin + inline (Tailwind / shadcn inject style tags).
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
@@ -106,6 +106,12 @@ const ContentSecurityPolicy = [
     // visualmente, mas nada chega na página.
     `https://*.facebook.com`,
     `https://connect.facebook.net`,
+    // Google Ads/gtag.js — Pixel/CAPI equivalente do Google (Pipeline >
+    // Configurar Pipeline), envia o evento de conversão via beacon/XHR
+    // pra esses domínios depois do script inicial carregar.
+    `https://www.googletagmanager.com`,
+    `https://www.google-analytics.com`,
+    `https://googleads.g.doubleclick.net`,
     // Cloudflare R2 — upload direto do navegador via presigned URL (bypassa
     // o servidor Vercel pro payload do arquivo).
     r2Hostname ? `https://${r2Hostname}` : '',

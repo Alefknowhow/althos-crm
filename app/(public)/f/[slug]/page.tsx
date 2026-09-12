@@ -35,7 +35,7 @@ export default async function PublicFormPage({ params, searchParams }: { params:
   const [{ data: org }, { data: pipeline }] = await Promise.all([
     supabase.from('organizations').select('slug').eq('id', form.organization_id).maybeSingle(),
     form.pipeline_id
-      ? supabase.from('pipelines').select('meta_pixel_id').eq('id', form.pipeline_id).maybeSingle()
+      ? supabase.from('pipelines').select('meta_pixel_id, google_ads_id').eq('id', form.pipeline_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ])
 
@@ -52,6 +52,7 @@ export default async function PublicFormPage({ params, searchParams }: { params:
   const hideHeader = !!form.schema?.welcome?.enabled || form.schema?.mode === 'one_question'
 
   const metaPixelId = pipeline?.meta_pixel_id || null
+  const googleAdsId = pipeline?.google_ads_id || null
   const background = resolveFormBackground(form.schema?.style?.backgroundPreset)
   const fontFamily = resolveFormFontStack(form.schema?.style?.fontFamily)
 
@@ -77,6 +78,21 @@ export default async function PublicFormPage({ params, searchParams }: { params:
               src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
             />
           </noscript>
+        </>
+      )}
+
+      {/* Google Ads Tag base code — só o gtag.js carregado; o evento de
+          conversão em si é disparado no submit (PublicFormClient.tsx), só
+          quando essa mesma tag já estiver carregada aqui. */}
+      {googleAdsId && (
+        <>
+          <Script id="google-tag-base" strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`} />
+          <Script id="google-tag-config" strategy="afterInteractive">{`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${googleAdsId}');
+          `}</Script>
         </>
       )}
 
