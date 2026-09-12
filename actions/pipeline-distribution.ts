@@ -11,8 +11,9 @@
  * módulo de configurações sensíveis do app.
  */
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { isOrgManager } from '@/lib/permissions.server'
 import { getProfilesMap } from '@/lib/profiles'
 import { revalidatePath } from 'next/cache'
 
@@ -28,12 +29,6 @@ export type DistributionMember = {
 export type DistributionSettings = {
   enabled: boolean
   first_stage_timeout_minutes: number | null
-}
-
-async function requireManagerRole(orgId: string, userId: string) {
-  const supabase = createClient()
-  const { data } = await supabase.from('memberships').select('role').eq('organization_id', orgId).eq('user_id', userId).maybeSingle()
-  return data?.role === 'owner' || data?.role === 'admin'
 }
 
 /** Config completa (settings + membros com peso/pausa) pro popup de configuração. */
@@ -72,7 +67,7 @@ export async function getDistributionConfig(orgSlug: string, pipelineId: string)
     first_stage_timeout_minutes: settingsRow?.first_stage_timeout_minutes ?? null,
   }
 
-  const canManage = await requireManagerRole(org.id, user.id)
+  const canManage = await isOrgManager(org.id, user.id)
   return { ok: true as const, settings, members, canManage }
 }
 
@@ -81,7 +76,7 @@ export async function updateDistributionSettings(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  if (!(await requireManagerRole(org.id, user.id))) return { ok: false as const, error: 'Só o dono ou administradores podem configurar a distribuição.' }
+  if (!(await isOrgManager(org.id, user.id))) return { ok: false as const, error: 'Só o dono ou administradores podem configurar a distribuição.' }
   const admin = createAdminClient()
 
   const { data: pipeline } = await admin.from('pipelines').select('id').eq('id', pipelineId).eq('organization_id', org.id).maybeSingle()
@@ -105,7 +100,7 @@ export async function upsertDistributionMember(
 ) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
-  if (!(await requireManagerRole(org.id, user.id))) return { ok: false as const, error: 'Só o dono ou administradores podem configurar a distribuição.' }
+  if (!(await isOrgManager(org.id, user.id))) return { ok: false as const, error: 'Só o dono ou administradores podem configurar a distribuição.' }
   const admin = createAdminClient()
 
   const { data: pipeline } = await admin.from('pipelines').select('id').eq('id', pipelineId).eq('organization_id', org.id).maybeSingle()

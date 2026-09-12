@@ -32,14 +32,26 @@ export async function POST(req: NextRequest) {
 
   const adminSupabase = createAdminClient()
 
-  // Persist raw event first (idempotent audit trail).
+  // Idempotência: Asaas reenvia o mesmo evento se o handler não responder 2xx
+  // a tempo (timeout). Sem uma chave de dedup, isso credita pacotes avulsos
+  // de IA em dobro (achado 1.2 da auditoria de segurança) na reentrega.
+  // dedupe_key = event_type + id do payment/subscription do payload — o
+  // mesmo evento de verdade sempre carrega o mesmo id.
+  const dedupeKey = `${payload.event}:${payload.payment?.id || payload.subscription?.id || 'no-ref'}`
+
+  // Persist raw event first (idempotent audit trail). Conflito de unique
+  // index em dedupe_key = já processamos esse evento exato antes.
   const { data: event, error: insertErr } = await adminSupabase
     .from('billing_events')
-    .insert({ event_type: payload.event, payload })
+    .insert({ event_type: payload.event, payload, dedupe_key: dedupeKey })
     .select()
     .single()
 
   if (insertErr) {
+    if (insertErr.code === '23505') {
+      console.warn('[asaas webhook] evento duplicado (retry), ignorando:', dedupeKey)
+      return NextResponse.json({ ok: true, duplicate: true })
+    }
     console.error('[asaas webhook] failed to persist event:', insertErr.message)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }

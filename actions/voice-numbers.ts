@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
-import { checkMemberPermission } from '@/lib/permissions.server'
+import { checkMemberPermission, isOrgManager } from '@/lib/permissions.server'
 import { getVoiceProvider } from '@/lib/voice/get-provider'
 
 async function guardVoiceAdmin(orgSlug: string) {
@@ -15,8 +15,7 @@ async function guardVoiceAdmin(orgSlug: string) {
   const check = await checkMemberPermission(org.id, user.id, 'voice')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   // Compra/liberação de número é sensível — só owner/admin.
-  const { data: membership } = await createClient().from('memberships').select('role').eq('organization_id', org.id).eq('user_id', user.id).maybeSingle()
-  if (membership?.role === 'member') return { ok: false as const, error: 'Apenas administradores podem gerenciar números.' }
+  if (!(await isOrgManager(org.id, user.id))) return { ok: false as const, error: 'Apenas administradores podem gerenciar números.' }
   return { ok: true as const, user, org }
 }
 

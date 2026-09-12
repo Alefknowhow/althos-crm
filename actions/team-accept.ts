@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { findAuthUserByEmail } from '@/lib/auth/find-user-by-email'
+import { checkAndRecordRateLimit } from '@/lib/security/antispam'
 import { fanOutInvitation } from './team-remove'
 
 // ── Accept invitation (called from /convite/[token]) ──────────────────────────
@@ -42,6 +44,13 @@ export async function acceptInvitation(token: string) {
 export async function getInviteeAccountStatus(
   token: string,
 ): Promise<{ ok: false } | { ok: true; email: string; hasAccount: boolean }> {
+  // Rate limit por IP: essa action vaza (por design, é o propósito dela)
+  // se um e-mail já tem conta — combinado com iteração de tokens de convite,
+  // poderia ser usada pra enumerar contas em volume (achado 1.6 da
+  // auditoria). Um convite legítimo é consultado poucas vezes, não em rajada.
+  const rateLimit = await checkAndRecordRateLimit('invite-account-status', { maxPerWindow: 20, windowMinutes: 60 })
+  if (!rateLimit.ok) return { ok: false }
+
   const admin = createAdminClient()
   const { data: inv } = await admin
     .from('invitations')
@@ -52,10 +61,7 @@ export async function getInviteeAccountStatus(
     .maybeSingle()
   if (!inv) return { ok: false }
 
-  const { data: list } = await admin.auth.admin.listUsers()
-  const hasAccount = !!list?.users?.some(
-    u => (u.email ?? '').toLowerCase() === inv.email.toLowerCase(),
-  )
+  const hasAccount = !!(await findAuthUserByEmail(admin, inv.email))
   return { ok: true, email: inv.email, hasAccount }
 }
 
@@ -99,10 +105,7 @@ export async function acceptInviteAsNewUser(
   if (!inv) return { ok: false as const, error: 'Convite inválido ou expirado.' }
 
   // Refuse if an account already exists for this e-mail — they must log in.
-  const { data: list } = await admin.auth.admin.listUsers()
-  const existing = list?.users?.find(
-    u => (u.email ?? '').toLowerCase() === inv.email.toLowerCase(),
-  )
+  const existing = await findAuthUserByEmail(admin, inv.email)
   if (existing) {
     return {
       ok: false as const,

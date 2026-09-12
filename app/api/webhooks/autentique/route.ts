@@ -1,13 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
+import { verifyStaticToken } from '@/lib/security/webhook'
 
 // Webhook global da Autentique — cada organização registra essa mesma URL no
 // próprio painel (Configurações de Desenvolvedor > Webhooks) usando sua conta.
 // O payload não carrega nosso organization_id, então o roteamento é feito
 // casando event.data.document (id do documento na Autentique) com a coluna
 // autentique_document_id salva em sale_contracts na hora do envio.
+//
+// A Autentique não tem HMAC de payload — só permite cadastrar uma URL. Por
+// isso o segredo compartilhado vai como query string (?token=...), mesmo
+// mecanismo do Asaas (verifyStaticToken), só que via URL em vez de header
+// (AutentiqueConfigForm.tsx gera a URL já com o token). Sem isso, qualquer
+// requisição externa com um documentId adivinhado/enumerado conseguia forçar
+// a consulta de status e a atualização de sale_contracts/travel_sales.
 export async function POST(req: Request) {
+  const url = new URL(req.url)
+  const verification = verifyStaticToken(url.searchParams.get('token'), 'AUTENTIQUE_WEBHOOK_TOKEN')
+  if (!verification.ok) {
+    console.warn('[autentique webhook] rejected:', verification.reason)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ ok: true })
 

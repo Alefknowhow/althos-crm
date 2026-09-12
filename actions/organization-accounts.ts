@@ -10,29 +10,9 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { COMPANY_FIELDS, type OrgCompanyData } from '@/lib/organization/company-fields'
+import { isAccountManager } from './team-shared'
 
 // ─── Account-level organization management ───────────────────────────────────
-
-/** True if `userId` is the account owner or an account admin. */
-async function isAccountManager(
-  admin: ReturnType<typeof createAdminClient>,
-  accountId: string,
-  userId: string,
-): Promise<boolean> {
-  const { data: acc } = await admin
-    .from('accounts')
-    .select('owner_user_id')
-    .eq('id', accountId)
-    .maybeSingle()
-  if (acc?.owner_user_id === userId) return true
-  const { data: am } = await admin
-    .from('account_members')
-    .select('role')
-    .eq('account_id', accountId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  return am?.role === 'admin'
-}
 
 export type ManagedOrganization = {
   id:      string

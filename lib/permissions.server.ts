@@ -40,3 +40,21 @@ export async function checkMemberPermission(
 
   return { allowed: true }
 }
+
+/**
+ * True se `userId` é owner ou admin da ORGANIZAÇÃO (memberships.role) — não
+ * confundir com isAccountManager (actions/team-shared.ts), que checa
+ * account_members/accounts.owner_user_id, uma entidade diferente (conta de
+ * cobrança, que pode ter várias orgs). Usar aqui quando a ação é "só
+ * owner/admin desta org", sem uma PermissionKey granular correspondente.
+ */
+export async function isOrgManager(orgId: string, userId: string): Promise<boolean> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('organization_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data?.role === 'owner' || data?.role === 'admin'
+}

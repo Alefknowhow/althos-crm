@@ -6,6 +6,9 @@ export default async function AutentiqueConfigPage({ params }: { params: { orgSl
   await requireAuth()
   await getCurrentOrganization(params.orgSlug)
   const config = await getOrgAutentiqueConfig(params.orgSlug)
+  // Lido só no servidor — nunca passa no bundle client como constante, só
+  // como valor de prop já resolvido (ver .harness/invariants.md sobre secrets).
+  const webhookToken = process.env.AUTENTIQUE_WEBHOOK_TOKEN || null
 
   return (
     <div className="space-y-6">
@@ -16,7 +19,7 @@ export default async function AutentiqueConfigPage({ params }: { params: { orgSl
           para assinatura digital direto do CRM.
         </p>
       </div>
-      <AutentiqueConfigForm orgSlug={params.orgSlug} initial={config} />
+      <AutentiqueConfigForm orgSlug={params.orgSlug} initial={config} webhookToken={webhookToken} />
     </div>
   )
 }
