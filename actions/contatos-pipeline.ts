@@ -38,7 +38,7 @@ export async function moveLeadToStage(
   const [{ data: stage }, { data: lead }] = await Promise.all([
     supabase
       .from('pipeline_stages')
-      .select('is_won, is_lost')
+      .select('is_won, is_lost, pipeline_id')
       .eq('id', newStageId)
       .maybeSingle(),
     supabase
@@ -157,17 +157,19 @@ export async function moveLeadToStage(
   // ── Meta CAPI: Purchase (won) or NotQualified (lost) ──────────────────────
   if (stage && (stage.is_won || stage.is_lost) && lead) {
     try {
-      const { data: orgMeta } = await supabase
-        .from('organizations')
-        .select('meta_pixel_id, meta_access_token')
-        .eq('id', org.id)
-        .maybeSingle()
+      const { data: pipelineMeta } = stage.pipeline_id
+        ? await supabase
+          .from('pipelines')
+          .select('meta_pixel_id, meta_access_token')
+          .eq('id', stage.pipeline_id)
+          .maybeSingle()
+        : { data: null }
 
-      if (orgMeta?.meta_pixel_id && orgMeta?.meta_access_token) {
+      if (pipelineMeta?.meta_pixel_id && pipelineMeta?.meta_access_token) {
         const { sendCapiEvent } = await import('@/lib/meta/capi')
         await sendCapiEvent({
-          pixelId:     orgMeta.meta_pixel_id,
-          accessToken: orgMeta.meta_access_token,
+          pixelId:     pipelineMeta.meta_pixel_id,
+          accessToken: pipelineMeta.meta_access_token,
           eventName:   stage.is_won ? 'Purchase' : 'NotQualified',
           eventId:     `${leadId}-${stage.is_won ? 'won' : 'lost'}`,
           email:       lead.email,

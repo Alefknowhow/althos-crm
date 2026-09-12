@@ -30,12 +30,14 @@ export default async function PublicFormPage({ params, searchParams }: { params:
     notFound()
   }
 
-  // Resolve the org slug + meta pixel config
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('slug, meta_pixel_id')
-    .eq('id', form.organization_id)
-    .maybeSingle()
+  // Resolve the org slug + this form's pipeline pixel config (Pixel/CAPI é
+  // por pipeline, não por conta — ver Pipeline > Configurar Pipeline).
+  const [{ data: org }, { data: pipeline }] = await Promise.all([
+    supabase.from('organizations').select('slug').eq('id', form.organization_id).maybeSingle(),
+    form.pipeline_id
+      ? supabase.from('pipelines').select('meta_pixel_id').eq('id', form.pipeline_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   const utms = {
     source: searchParams.utm_source,
@@ -49,7 +51,7 @@ export default async function PublicFormPage({ params, searchParams }: { params:
 
   const hideHeader = !!form.schema?.welcome?.enabled || form.schema?.mode === 'one_question'
 
-  const metaPixelId = org?.meta_pixel_id || null
+  const metaPixelId = pipeline?.meta_pixel_id || null
   const background = resolveFormBackground(form.schema?.style?.backgroundPreset)
   const fontFamily = resolveFormFontStack(form.schema?.style?.fontFamily)
 

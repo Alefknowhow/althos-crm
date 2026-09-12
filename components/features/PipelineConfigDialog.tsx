@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createStage, updateStage, deleteStage } from '@/actions/pipeline'
-import { Trophy, ThumbsDown, Trash2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { createStage, updateStage, deleteStage, savePipelineMetaConfig } from '@/actions/pipeline'
+import { Trophy, ThumbsDown, Trash2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
@@ -18,6 +19,27 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
   // with the server-revalidated props.
   const [localStages, setLocalStages] = useState<any[]>(stages)
   useEffect(() => { setLocalStages(stages) }, [stages])
+
+  const [pixelId, setPixelId] = useState(pipeline.meta_pixel_id || '')
+  const [accessToken, setAccessToken] = useState('')
+  const [showToken, setShowToken] = useState(false)
+  const [savingMeta, setSavingMeta] = useState(false)
+  useEffect(() => { setPixelId(pipeline.meta_pixel_id || '') }, [pipeline.meta_pixel_id])
+
+  async function handleSaveMeta() {
+    setSavingMeta(true)
+    const res = await savePipelineMetaConfig(orgSlug, pipeline.id, {
+      meta_pixel_id: pixelId.trim(),
+      meta_access_token: accessToken.trim() || undefined,
+    })
+    setSavingMeta(false)
+    if (res.ok) {
+      toast.success('Pixel/CAPI deste pipeline salvo!')
+      setAccessToken('')
+    } else {
+      toast.error(traduzirErro(res.error, 'Erro ao salvar'))
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -179,6 +201,47 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
             />
             <Button type="submit">Adicionar</Button>
           </form>
+
+          <div className="border-t pt-3 space-y-3">
+            <p className="text-sm font-medium">Pixel/CAPI (Meta) deste pipeline</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Facebook Pixel ID</Label>
+              <Input
+                value={pixelId}
+                onChange={e => setPixelId(e.target.value)}
+                placeholder="Ex: 123456789012345"
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-1.5">
+              {pipeline.has_meta_access_token && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Token configurado. Cole um novo abaixo para atualizar.
+                </div>
+              )}
+              <Label className="text-xs">{pipeline.has_meta_access_token ? 'Novo token (deixe vazio para manter)' : 'Access Token (CAPI)'}</Label>
+              <div className="relative">
+                <Input
+                  type={showToken ? 'text' : 'password'}
+                  value={accessToken}
+                  onChange={e => setAccessToken(e.target.value)}
+                  placeholder={pipeline.has_meta_access_token ? '••••••••••••••' : 'EAAxxxxx...'}
+                  className="pr-10 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowToken(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <Button size="sm" onClick={handleSaveMeta} disabled={savingMeta}>
+              {savingMeta ? 'Salvando...' : 'Salvar Pixel/CAPI'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

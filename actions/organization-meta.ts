@@ -1,58 +1,14 @@
 'use server'
 
 /**
- * Meta/Facebook integration config and org deletion. Split out of
- * actions/organization.ts.
+ * Org deletion. Split out of actions/organization.ts. (Meta/Facebook
+ * Pixel/CAPI config used to live here too — moved to per-pipeline config,
+ * see actions/pipeline-crud.ts::savePipelineMetaConfig.)
  */
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
-
-// ─── Meta / Facebook integration ─────────────────────────────────────────────
-
-export async function getOrgMetaConfig(orgSlug: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const { data } = await supabase
-    .from('organizations')
-    .select('meta_pixel_id, meta_access_token')
-    .eq('id', org.id)
-    .maybeSingle()
-
-  return {
-    meta_pixel_id:     data?.meta_pixel_id     ?? '',
-    // Never expose the token to the client — return only whether it's set
-    has_access_token:  !!data?.meta_access_token,
-  }
-}
-
-export async function saveOrgMetaConfig(
-  orgSlug: string,
-  values: { meta_pixel_id: string; meta_access_token?: string },
-) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const update: any = { meta_pixel_id: values.meta_pixel_id || null }
-  // Only overwrite the token if a new value was supplied (empty = keep existing)
-  if (values.meta_access_token !== undefined && values.meta_access_token !== '') {
-    update.meta_access_token = values.meta_access_token
-  }
-
-  const { error } = await supabase
-    .from('organizations')
-    .update(update)
-    .eq('id', org.id)
-
-  if (error) return { ok: false as const, error: error.message }
-
-  revalidatePath(`/app/${orgSlug}/configuracoes/meta`)
-  return { ok: true as const }
-}
 
 /**
  * Permanently delete an organization and all its data (cascades via FK).

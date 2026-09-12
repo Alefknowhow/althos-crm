@@ -7,7 +7,7 @@
  *     monthly revenue goal
  *   - organization-accounts.ts: account-level org management (list/rename/
  *     update company by org id)
- *   - organization-meta.ts: Meta/Facebook integration config, org deletion
+ *   - organization-meta.ts: org deletion
  */
 
 export * from './organization-setup'

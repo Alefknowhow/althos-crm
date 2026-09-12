@@ -80,7 +80,7 @@ export async function runLeadQualification(
   // 2) Lead
   const { data: lead } = await supabase
     .from('contatos')
-    .select('id, name, email, phone, source, tags, value_cents, custom_fields, organization_id')
+    .select('id, name, email, phone, source, tags, value_cents, custom_fields, organization_id, pipeline_id')
     .eq('id', leadId)
     .eq('organization_id', orgId)
     .maybeSingle()
@@ -183,17 +183,19 @@ export async function runLeadQualification(
   // ── Meta CAPI: NotQualified when AI tier is cold ───────────────────────────
   if (result.tier === 'cold') {
     try {
-      const { data: orgMeta } = await supabase
-        .from('organizations')
-        .select('meta_pixel_id, meta_access_token')
-        .eq('id', orgId)
-        .maybeSingle()
+      const { data: pipelineMeta } = lead.pipeline_id
+        ? await supabase
+          .from('pipelines')
+          .select('meta_pixel_id, meta_access_token')
+          .eq('id', lead.pipeline_id)
+          .maybeSingle()
+        : { data: null }
 
-      if (orgMeta?.meta_pixel_id && orgMeta?.meta_access_token) {
+      if (pipelineMeta?.meta_pixel_id && pipelineMeta?.meta_access_token) {
         const { sendCapiEvent } = await import('@/lib/meta/capi')
         await sendCapiEvent({
-          pixelId:     orgMeta.meta_pixel_id,
-          accessToken: orgMeta.meta_access_token,
+          pixelId:     pipelineMeta.meta_pixel_id,
+          accessToken: pipelineMeta.meta_access_token,
           eventName:   'NotQualified',
           eventId:     `${leadId}-cold`,
           email:       lead.email,

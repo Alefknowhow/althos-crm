@@ -232,15 +232,20 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
   }
 
   // ── Meta CAPI — fire Lead event server-side ─────────────────────────────
-  // Pull pixel config from the org (token is never sent to the browser).
-  const { data: orgMeta } = await supabaseAdmin
-    .from('organizations')
-    .select('meta_pixel_id, meta_access_token')
-    .eq('id', form.organization_id)
-    .maybeSingle()
+  // Pull pixel config from the form's pipeline (token is never sent to the
+  // browser) — cada pipeline tem seu próprio Pixel/CAPI, configurado em
+  // Pipeline > Configurar Pipeline. Formulário sem pipeline associado não
+  // dispara (mesmo efeito de "sem config").
+  const { data: pipelineMeta } = form.pipeline_id
+    ? await supabaseAdmin
+      .from('pipelines')
+      .select('meta_pixel_id, meta_access_token')
+      .eq('id', form.pipeline_id)
+      .maybeSingle()
+    : { data: null }
 
-  const pixelId = orgMeta?.meta_pixel_id || null
-  const accessToken = orgMeta?.meta_access_token || null
+  const pixelId = pipelineMeta?.meta_pixel_id || null
+  const accessToken = pipelineMeta?.meta_access_token || null
 
   if (pixelId && accessToken) {
     try {

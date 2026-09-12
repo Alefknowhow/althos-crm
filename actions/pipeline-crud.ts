@@ -36,7 +36,7 @@ export async function listPipelines(orgSlug: string) {
 
   const { data: pipelines } = await supabase
     .from('pipelines')
-    .select('id, name, is_default, created_at')
+    .select('id, name, is_default, created_at, meta_pixel_id, meta_access_token')
     .eq('organization_id', org.id)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })
@@ -55,8 +55,9 @@ export async function listPipelines(orgSlug: string) {
   const leadMap = new Map<string, number>()
   for (const r of leadCounts || []) leadMap.set(r.pipeline_id, (leadMap.get(r.pipeline_id) || 0) + 1)
 
-  return (pipelines || []).map(p => ({
+  return (pipelines || []).map(({ meta_access_token, ...p }) => ({
     ...p,
+    has_meta_access_token: !!meta_access_token,
     stage_count: stageMap.get(p.id) || 0,
     lead_count: leadMap.get(p.id) || 0,
   }))
@@ -124,6 +125,36 @@ export async function renamePipeline(orgSlug: string, pipelineId: string, name: 
 
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/configuracoes/pipelines`)
+  revalidatePath(`/app/${orgSlug}/pipeline`)
+  return { ok: true as const }
+}
+
+/**
+ * Salva o Pixel/CAPI da Meta de um pipeline específico — cada pipeline tem
+ * seu próprio (substituiu a config única por conta, ver
+ * migration 0240_pipeline_meta_capi.sql). Token vazio/omitido mantém o
+ * valor atual, mesma regra que a antiga saveOrgMetaConfig já usava.
+ */
+export async function savePipelineMetaConfig(
+  orgSlug: string,
+  pipelineId: string,
+  { meta_pixel_id, meta_access_token }: { meta_pixel_id: string; meta_access_token?: string },
+) {
+  const { org, allowed, reason } = await requirePipelineAccess(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason || 'Sem permissão' }
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
+  const supabase = createClient()
+
+  const updates: Record<string, any> = { meta_pixel_id: meta_pixel_id.trim() || null }
+  if (meta_access_token) updates.meta_access_token = meta_access_token.trim()
+
+  const { error } = await supabase
+    .from('pipelines')
+    .update(updates)
+    .eq('id', pipelineId)
+    .eq('organization_id', org.id)
+
+  if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/pipeline`)
   return { ok: true as const }
 }

@@ -22,12 +22,18 @@ export default async function PipelinePage({
   const supabase = createClient()
 
   // List all org pipelines so the switcher knows what to offer.
-  const { data: pipelines } = await supabase
+  const { data: pipelinesRaw } = await supabase
     .from('pipelines')
-    .select('id, name, is_default')
+    .select('id, name, is_default, meta_pixel_id, meta_access_token')
     .eq('organization_id', org.id)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true })
+
+  // Nunca manda o token cru pro client — só um boolean indicando se já tem um salvo.
+  const pipelines = (pipelinesRaw || []).map(({ meta_access_token, ...p }) => ({
+    ...p,
+    has_meta_access_token: !!meta_access_token,
+  }))
 
   if (!pipelines || pipelines.length === 0) {
     return (
