@@ -7,7 +7,6 @@ import { revalidatePath } from 'next/cache'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
-import { pickNextDistributionMember } from './pipeline-distribution'
 
 /* =========================================================
  *  Lead CRUD (create/update/delete/notes)
@@ -62,13 +61,12 @@ export async function createLead(orgSlug: string, formData: FormData) {
     .eq('id', stage_id)
     .maybeSingle()
 
-  // Fila de distribuição automática, quando ativada pro pipeline — cai pro
-  // criador do lead (comportamento de sempre) quando desligada ou sem
-  // membro elegível.
-  const distributedTo = stageInfo?.pipeline_id
-    ? await pickNextDistributionMember(supabase, org.id, stageInfo.pipeline_id)
-    : null
-
+  // Regra: todo lead criado manualmente no CRM fica com quem o criou — a
+  // fila de distribuição automática só se aplica a leads que entram sozinhos
+  // (formulário público, WhatsApp/Instagram, anúncios), nunca a uma criação
+  // manual feita por um usuário logado. Ver actions/public_forms.ts,
+  // lib/inngest/whatsapp-ingest.ts e lib/social/engine.ts pros pontos reais
+  // de entrada automática.
   const { data: lead, error } = await supabase.from('contatos').insert({
     organization_id: org.id,
     pipeline_id: stageInfo?.pipeline_id,
@@ -79,7 +77,7 @@ export async function createLead(orgSlug: string, formData: FormData) {
     value_cents,
     tags,
     source,
-    assigned_to: distributedTo || user.id
+    assigned_to: user.id,
   }).select().single()
 
   if (error || !lead) {

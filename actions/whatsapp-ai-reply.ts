@@ -131,7 +131,7 @@ export async function dismissHandoffSummary(orgSlug: string, conversationId: str
 }
 
 export async function createLeadFromConversation(orgSlug: string, conversationId: string) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
@@ -170,6 +170,7 @@ export async function createLeadFromConversation(orgSlug: string, conversationId
       name:            conv.contact_name || conv.contact_phone,
       phone:           conv.contact_phone,
       source:          'whatsapp',
+      assigned_to:     user.id, // botão manual — sempre fica com quem criou
     })
     .select('id')
     .single()

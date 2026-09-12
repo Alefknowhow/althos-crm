@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getInstagramUserProfile } from '@/lib/social/instagram'
 import { uploadSystemFile } from '@/lib/storage/system'
 import type { InboundKind } from '@/lib/social/ai'
+import { pickNextDistributionMember } from '@/actions/pipeline-distribution'
 
 export type InboundInteraction = {
   igAccountId: string        // Instagram business account id (= social_connections.page_id)
@@ -109,6 +110,13 @@ export async function maybeCreateLead(
         .maybeSingle()
     : { data: null }
 
+  // Entrada automática (mensagem chegou sozinha) — passa pela fila de
+  // distribuição quando ativada; criação manual no CRM sempre fica com quem
+  // criou (ver actions/contatos-leads.ts).
+  const distributedTo = defaultStage?.pipeline_id
+    ? await pickNextDistributionMember(supabase, orgId, defaultStage.pipeline_id)
+    : null
+
   const { data: lead } = await supabase
     .from('contatos')
     .insert({
@@ -119,6 +127,7 @@ export async function maybeCreateLead(
       source: `instagram:${externalRef}`,
       instagram_username: inbound.senderUsername || null,
       avatar_url: avatarUrl,
+      assigned_to: distributedTo,
     })
     .select('id')
     .single()

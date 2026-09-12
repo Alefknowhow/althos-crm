@@ -13,6 +13,7 @@ import { inngest } from './client'
 import { createAdminClient } from '@/lib/supabase/server'
 import { resolveAdCampaignExternalId } from '@/lib/meta/ads'
 import { uploadSystemFile } from '@/lib/storage/system'
+import { pickNextDistributionMember } from '@/actions/pipeline-distribution'
 
 export type WhatsappRawMessageEvent = {
   orgId: string
@@ -147,6 +148,13 @@ export const ingestWhatsappMessageFn = inngest.createFunction(
           }
         }
 
+        // Entrada automática (mensagem chegou sozinha) — passa pela fila de
+        // distribuição quando ativada pro pipeline padrão, ao contrário de
+        // uma criação manual no CRM (essa sempre fica com quem criou).
+        const distributedTo = defaultPipeline?.id
+          ? await pickNextDistributionMember(admin, orgId, defaultPipeline.id)
+          : null
+
         const { data: newLead } = await admin.from('contatos').insert({
           organization_id: orgId,
           name: contactName,
@@ -154,6 +162,7 @@ export const ingestWhatsappMessageFn = inngest.createFunction(
           source: 'whatsapp',
           pipeline_id: defaultPipeline?.id,
           stage_id: stageId,
+          assigned_to: distributedTo,
           meta_ctwa_clid: ctwaClid,
           meta_ad_id: adId,
           meta_resolved_campaign_id: resolvedCampaignId,

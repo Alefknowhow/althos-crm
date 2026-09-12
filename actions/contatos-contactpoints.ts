@@ -8,7 +8,6 @@ import { CONTATO_STATUSES } from '@/lib/contatos'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
-import { pickNextDistributionMember } from './pipeline-distribution'
 
 /* =========================================================
  *  Contact points (email/phone), customer creation, contato panel
@@ -149,8 +148,8 @@ export async function createCustomer(orgSlug: string, raw: unknown) {
   }
   if (!stage_id) return { ok: false as const, error: 'Configure um pipeline com pelo menos um estágio antes de criar contatos.' }
 
-  const distributedTo = pipeline_id ? await pickNextDistributionMember(supabase, org.id, pipeline_id) : null
-
+  // Criação manual — sempre fica com quem criou (mesma regra de createLead
+  // em actions/contatos-leads.ts).
   const { data: lead, error } = await supabase
     .from('contatos')
     .insert({
@@ -160,7 +159,7 @@ export async function createCustomer(orgSlug: string, raw: unknown) {
       name,
       email: email || null,
       phone: phone || null,
-      assigned_to: distributedTo || user.id,
+      assigned_to: user.id,
       status: 'cliente',
       became_customer_at: new Date().toISOString(),
     })

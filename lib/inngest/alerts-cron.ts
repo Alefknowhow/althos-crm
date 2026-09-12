@@ -113,37 +113,35 @@ export const generateSystemAlertsFn = inngest.createFunction(
         }
       }
 
-      // Churn risk: active orgs with no recent lead activity. Cada org faz 2
-      // counts independentes — paralelizar em vez de 1-por-1 evita o tempo do
-      // cron crescer linearmente com o nº de orgs ativas na frota.
+      // Churn risk: active orgs with no recent lead activity. Antes eram 2
+      // counts por org ativa (N×2 requests) — agora 1 única query agregada
+      // via RPC (fleet_churn_scan, migration 0226), independente do nº de
+      // orgs ativas na frota.
       const activeOrgs = (orgs ?? []).filter((o: any) => o.subscription_status === 'active')
-      const churnResults = await Promise.all((activeOrgs as any[]).map(async (o): Promise<AlertInsert | null> => {
-        const { count: recent } = await admin
-          .from('contatos')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', o.id)
-          .gte('last_activity_at', churnCutoff)
+      if (activeOrgs.length > 0) {
+        const { data: churnRows } = await admin.rpc('fleet_churn_scan', {
+          p_org_ids: activeOrgs.map((o: any) => o.id),
+          p_cutoff: churnCutoff,
+        }) as { data: { organization_id: string; total_leads: number; recent_leads: number }[] | null }
+        const byOrg = new Map((churnRows ?? []).map(r => [r.organization_id, r]))
+        for (const o of activeOrgs as any[]) {
+          const row = byOrg.get(o.id)
+          // Sem linha nenhuma em contatos = org vazia, nunca teve lead — não
+          // é churn, é conta nova/sem uso ainda. Só alerta quem TEM lead mas
+          // nenhum com atividade recente.
+          if (!row || Number(row.total_leads) === 0 || Number(row.recent_leads) > 0) continue
 
-        if ((recent ?? 0) !== 0) return null
-
-        // Only flag orgs that actually have leads (skip brand-new empty orgs).
-        const { count: total } = await admin
-          .from('contatos')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', o.id)
-        if ((total ?? 0) === 0) return null
-
-        return {
-          severity: 'warning' as const,
-          type: 'churn_risk',
-          title: `Risco de churn: ${o.name}`,
-          message: `Sem atividade em leads há mais de ${thresholds.churn_inactive_days} dias.`,
-          target_organization_id: o.id,
-          target_account_id: o.account_id ?? null,
-          dedupe_key: `churn_risk:${o.id}`,
+          out.push({
+            severity: 'warning',
+            type: 'churn_risk',
+            title: `Risco de churn: ${o.name}`,
+            message: `Sem atividade em leads há mais de ${thresholds.churn_inactive_days} dias.`,
+            target_organization_id: o.id,
+            target_account_id: o.account_id ?? null,
+            dedupe_key: `churn_risk:${o.id}`,
+          })
         }
-      }))
-      out.push(...churnResults.filter((r): r is AlertInsert => r !== null))
+      }
 
       return out
     })

@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Users, PauseCircle, PlayCircle } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Users, PauseCircle, PlayCircle, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 import {
-  getDistributionConfig, updateDistributionSettings, upsertDistributionMember,
-  type DistributionMember, type DistributionSettings,
+  getDistributionConfig, updateDistributionSettings, updateReassignmentEnabled,
+  upsertReassignmentRule, removeReassignmentRule, upsertDistributionMember,
+  type DistributionMember, type DistributionSettings, type ReassignmentRule, type PipelineStageOption,
 } from '@/actions/pipeline-distribution'
 
 export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { orgSlug: string; pipelineId: string }) {
@@ -17,8 +20,13 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [canManage, setCanManage] = useState(true)
-  const [settings, setSettings] = useState<DistributionSettings>({ enabled: false, first_stage_timeout_minutes: null })
+  const [settings, setSettings] = useState<DistributionSettings>({ enabled: false, reassignment_enabled: false })
   const [members, setMembers] = useState<DistributionMember[]>([])
+  const [stages, setStages] = useState<PipelineStageOption[]>([])
+  const [rules, setRules] = useState<ReassignmentRule[]>([])
+  const [newRuleStage, setNewRuleStage] = useState('')
+  const [newRuleMinutes, setNewRuleMinutes] = useState('')
+  const [addingRule, setAddingRule] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -28,6 +36,9 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
     setSettings(res.settings)
     setMembers(res.members)
     setCanManage(res.canManage)
+    setStages(res.stages)
+    setRules(res.reassignmentRules)
+    setNewRuleStage(res.stages[0]?.id ?? '')
   }
 
   function handleOpenChange(next: boolean) {
@@ -35,15 +46,44 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
     if (next) load()
   }
 
-  async function persistSettings(next: DistributionSettings) {
-    setSettings(next)
+  async function toggleEnabled(next: boolean) {
+    setSettings(s => ({ ...s, enabled: next }))
     setSaving(true)
-    const res = await updateDistributionSettings(orgSlug, pipelineId, {
-      enabled: next.enabled,
-      firstStageTimeoutMinutes: next.first_stage_timeout_minutes,
-    })
+    const res = await updateDistributionSettings(orgSlug, pipelineId, { enabled: next })
     setSaving(false)
-    if (!res.ok) toast.error(traduzirErro(res.error, 'Não foi possível salvar'))
+    if (!res.ok) {
+      toast.error(traduzirErro(res.error, 'Não foi possível salvar'))
+      setSettings(s => ({ ...s, enabled: !next }))
+    }
+  }
+
+  async function toggleReassignment(next: boolean) {
+    setSettings(s => ({ ...s, reassignment_enabled: next }))
+    setSaving(true)
+    const res = await updateReassignmentEnabled(orgSlug, pipelineId, next)
+    setSaving(false)
+    if (!res.ok) {
+      toast.error(traduzirErro(res.error, 'Não foi possível salvar'))
+      setSettings(s => ({ ...s, reassignment_enabled: !next }))
+    }
+  }
+
+  async function handleAddRule() {
+    const minutes = Number(newRuleMinutes)
+    if (!newRuleStage) { toast.error('Escolha um estágio.'); return }
+    if (!minutes || minutes <= 0) { toast.error('Informe um tempo maior que zero.'); return }
+    setAddingRule(true)
+    const res = await upsertReassignmentRule(orgSlug, pipelineId, newRuleStage, minutes)
+    setAddingRule(false)
+    if (!res.ok) { toast.error(traduzirErro(res.error, 'Não foi possível salvar')); return }
+    setNewRuleMinutes('')
+    load()
+  }
+
+  async function handleRemoveRule(ruleId: string) {
+    setRules(prev => prev.filter(r => r.id !== ruleId))
+    const res = await removeReassignmentRule(orgSlug, ruleId)
+    if (!res.ok) { toast.error(traduzirErro(res.error, 'Não foi possível remover')); load() }
   }
 
   function setLocalMember(userId: string, patch: Partial<DistributionMember>) {
@@ -58,6 +98,9 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
     }
   }
 
+  const usedStageIds = new Set(rules.map(r => r.stage_id))
+  const availableStages = stages.filter(s => !usedStageIds.has(s.id))
+
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => handleOpenChange(true)}>
@@ -65,7 +108,7 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Distribuição automática de leads</DialogTitle>
           </DialogHeader>
@@ -75,37 +118,64 @@ export default function PipelineDistributionDialog({ orgSlug, pipelineId }: { or
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <p className="text-sm font-medium">Ativar distribuição automática</p>
+                <div className="pr-3">
+                  <p className="text-sm font-medium">Ativar fila de distribuição</p>
                   <p className="text-xs text-muted-foreground">
-                    Novos leads deste pipeline são atribuídos por peso relativo entre os membros abaixo, em vez de ficarem com quem os criou.
+                    Leads que entram automaticamente neste pipeline (formulário, WhatsApp, anúncios) são atribuídos por peso
+                    relativo entre os membros abaixo. Leads criados manualmente sempre ficam com quem os criou.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={!canManage || saving}
-                  onClick={() => persistSettings({ ...settings, enabled: !settings.enabled })}
-                  className={`shrink-0 ml-3 h-6 w-11 rounded-full transition-colors relative ${settings.enabled ? 'bg-primary' : 'bg-muted'}`}
-                  aria-label="Ativar distribuição automática"
-                >
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${settings.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
+                <Switch checked={settings.enabled} onCheckedChange={toggleEnabled} disabled={!canManage || saving} />
               </div>
 
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Reatribuir se ficar sem resposta no 1º estágio (minutos)
-                </p>
-                <Input
-                  type="number"
-                  min={0}
-                  disabled={!canManage}
-                  value={settings.first_stage_timeout_minutes ?? ''}
-                  onChange={e => setSettings(s => ({ ...s, first_stage_timeout_minutes: e.target.value ? Number(e.target.value) : null }))}
-                  onBlur={() => persistSettings(settings)}
-                  placeholder="Ex.: 30 — deixe vazio pra desligar"
-                  className="h-9 w-48"
-                />
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="pr-3">
+                    <p className="text-sm font-medium">Reatribuir se ficar sem resposta</p>
+                    <p className="text-xs text-muted-foreground">
+                      Desligado por padrão. Ideal quando o 1º estágio é tratado pela IA e só cai pro humano depois — configure
+                      abaixo, por estágio, quanto tempo sem interação até o lead voltar pra fila.
+                    </p>
+                  </div>
+                  <Switch checked={settings.reassignment_enabled} onCheckedChange={toggleReassignment} disabled={!canManage || saving} />
+                </div>
+
+                {settings.reassignment_enabled && (
+                  <div className="space-y-2 pt-1 border-t">
+                    {rules.map(r => (
+                      <div key={r.id} className="flex items-center gap-2 text-sm rounded-md border px-2.5 py-1.5">
+                        <span className="flex-1 min-w-0 truncate">{r.stage_name}</span>
+                        <span className="text-muted-foreground shrink-0">{r.timeout_minutes} min</span>
+                        <button type="button" disabled={!canManage} onClick={() => handleRemoveRule(r.id)} className="shrink-0 text-muted-foreground/60 hover:text-destructive" aria-label="Remover regra">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {canManage && availableStages.length > 0 && (
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1 min-w-0">
+                          <Select value={newRuleStage} onValueChange={setNewRuleStage}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Estágio" /></SelectTrigger>
+                            <SelectContent>
+                              {availableStages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Input
+                          type="number" min={1} placeholder="Minutos" value={newRuleMinutes}
+                          onChange={e => setNewRuleMinutes(e.target.value)}
+                          className="h-9 w-24"
+                        />
+                        <Button type="button" size="sm" variant="outline" onClick={handleAddRule} disabled={addingRule}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    {rules.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">Nenhuma regra configurada ainda.</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

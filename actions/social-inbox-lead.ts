@@ -128,6 +128,7 @@ export async function createLeadFromSocialConversation(orgSlug: string, conversa
       source:          'instagram',
       instagram_username: conv.sender_username || null,
       avatar_url:      conv.sender_avatar_url || null,
+      assigned_to:     g.user.id, // botão manual — sempre fica com quem criou
     })
     .select('id')
     .single()

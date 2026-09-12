@@ -86,10 +86,14 @@ export const marketingSyncCronFn = inngest.createFunction(
               .maybeSingle()
             if (!localCampaign) return
 
+            // Um upsert em lote por campanha (até 30 linhas de insight) em
+            // vez de 1 request HTTP por linha — achado 1.5 da auditoria de
+            // performance (até 1200 upserts individuais numa conta com 40
+            // campanhas × 30 dias, agora 1 request por campanha).
             const insights = await fetchMetaCampaignDailyInsights(mc.id, token, since, until)
-            await Promise.all(insights.map(row =>
-              admin.from('campaign_metrics_daily').upsert(
-                {
+            if (insights.length > 0) {
+              await admin.from('campaign_metrics_daily').upsert(
+                insights.map(row => ({
                   organization_id: account.organization_id,
                   campaign_id: localCampaign.id,
                   date: row.date,
@@ -97,10 +101,10 @@ export const marketingSyncCronFn = inngest.createFunction(
                   clicks: row.clicks,
                   spend_cents: row.spend_cents,
                   source: 'api',
-                },
+                })),
                 { onConflict: 'campaign_id,date,source' },
-              ),
-            ))
+              )
+            }
           }))
         } catch (e: any) {
           console.error(`[marketing-sync] account ${account.id} failed:`, e?.message)
