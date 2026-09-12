@@ -50,7 +50,7 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
   }
 
   return (
-    <div className="rounded-md border bg-background">
+    <div className="rounded-md border bg-background overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>

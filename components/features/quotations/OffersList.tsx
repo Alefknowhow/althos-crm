@@ -90,7 +90,7 @@ export default function OffersList({
                   disabled={deletingId === o.id}
                   title="Excluir oferta"
                   aria-label="Excluir oferta"
-                  className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground hover:text-destructive hover:bg-background transition-colors"
+                  className="absolute top-2 right-2 inline-flex h-11 w-11 md:h-7 md:w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground hover:text-destructive hover:bg-background transition-colors"
                 >
                   {deletingId === o.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 </button>

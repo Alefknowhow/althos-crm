@@ -147,7 +147,7 @@ export function ScheduleListView({
                     href={wa}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                    className="inline-flex items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
                     aria-label="Abrir WhatsApp"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -155,7 +155,7 @@ export function ScheduleListView({
                 )}
                 <Link
                   href={`/app/${orgSlug}/reservas?sale=${t.id}`}
-                  className="inline-flex items-center justify-center w-7 h-7 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                  className="inline-flex items-center justify-center w-11 h-11 md:w-7 md:h-7 rounded-md text-primary hover:bg-primary/10 transition-colors"
                   aria-label="Abrir reserva"
                   title="Abrir reserva"
                 >
