@@ -70,7 +70,7 @@ export async function createCheckoutSession(
       subscription.invoiceUrl ||
       `https://asaas.com` // ultimate fallback
 
-    revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+    revalidatePath(`/app/${orgSlug}/assinatura`)
     return { ok: true, checkoutUrl }
   } catch (err: any) {
     console.error('[createCheckoutSession]', err?.message)
@@ -145,7 +145,7 @@ export async function cancelSubscription(
     .update({ subscription_status: 'canceled' })
     .eq('id', org.id)
 
-  revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+  revalidatePath(`/app/${orgSlug}/assinatura`)
   return { ok: true }
 }
 

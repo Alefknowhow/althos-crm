@@ -136,7 +136,7 @@ export async function redeemCoupon(orgSlug: string, code: string) {
   const result = data as any
   if (!result?.success) return { ok: false as const, error: messageFor(result?.error) }
 
-  revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+  revalidatePath(`/app/${orgSlug}/assinatura`)
   return {
     ok: true as const,
     code: result.code as string,
@@ -163,6 +163,6 @@ export async function redeemReferral(orgSlug: string, code: string) {
   const result = data as any
   if (!result?.success) return { ok: false as const, error: messageFor(result?.error) }
 
-  revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+  revalidatePath(`/app/${orgSlug}/assinatura`)
   return { ok: true as const }
 }

@@ -48,6 +48,32 @@ export function parseEmailCreditsRef(externalRef: string | null | undefined): { 
   return { orgId, packId }
 }
 
+/**
+ * externalReference de uma compra de Voice Credits: "voice_credits:<orgId>:
+ * <packId>:<timestamp>" (pacote fixo) ou "voice_credits:<orgId>:custom-<cents>:
+ * <timestamp>" (quantidade personalizada — ver actions/voice-credits.ts).
+ */
+export function parseVoiceCreditsRef(externalRef: string | null | undefined): { orgId: string; packId: string } | null {
+  if (!externalRef?.startsWith('voice_credits:')) return null
+  const [, orgId, packId] = externalRef.split(':')
+  if (!orgId || !packId) return null
+  return { orgId, packId }
+}
+
+/**
+ * Resolve o valor em centavos de um packId — ou de um pacote fixo (lookup na
+ * lista de packs, valueReais * 100) ou de uma compra personalizada
+ * ("custom-<cents>", valor já em centavos, extraído direto do id).
+ */
+export function resolvePackCents(packId: string, packs: readonly { id: string; valueReais: number }[]): number | null {
+  if (packId.startsWith('custom-')) {
+    const cents = parseInt(packId.slice('custom-'.length), 10)
+    return Number.isFinite(cents) && cents > 0 ? cents : null
+  }
+  const pack = packs.find(p => p.id === packId)
+  return pack ? Math.round(pack.valueReais * 100) : null
+}
+
 /** Chave de idempotência do evento Asaas — mesmo evento real sempre gera a mesma chave. */
 export function buildAsaasDedupeKey(payload: { event?: string; payment?: { id?: string }; subscription?: { id?: string } }): string {
   return `${payload.event}:${payload.payment?.id || payload.subscription?.id || 'no-ref'}`

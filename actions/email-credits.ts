@@ -59,6 +59,31 @@ export async function purchaseEmailCredits(orgSlug: string, packId: typeof EMAIL
   return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
 }
 
+/** Mínimo pra compra de Email Credits em quantidade personalizada. */
+export const MIN_CUSTOM_EMAIL_REAIS = 20
+
+/** Mesmo fluxo de purchaseEmailCredits, mas com valor escolhido pelo usuário. */
+export async function purchaseEmailCreditsCustom(orgSlug: string, valueReais: number) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug) as any
+  const check = await checkMemberPermission(org.id, user.id, 'settings')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
+  if (!Number.isFinite(valueReais) || valueReais < MIN_CUSTOM_EMAIL_REAIS) {
+    return { ok: false as const, error: `Valor mínimo: R$ ${MIN_CUSTOM_EMAIL_REAIS}.` }
+  }
+  if (!org.asaas_customer_id) return { ok: false as const, error: 'Cadastro de cobrança não encontrado — acesse Financeiro primeiro.' }
+
+  const payment = await asaas.createPayment(
+    org.asaas_customer_id,
+    valueReais,
+    `Althos CRM — Email Credits R$ ${valueReais.toFixed(2)} (avulso)`,
+    `email_credits:${org.id}:custom-${Math.round(valueReais * 100)}:${Date.now()}`,
+    'PIX',
+  )
+
+  return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
+}
+
 /**
  * Aplica a compra confirmada (chamado pelo webhook do Asaas quando o
  * pagamento é confirmado). Insere no ledger como 'purchased', nunca só

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyStaticToken } from '@/lib/security/webhook'
-import { parseCreditPackRef, parseEmailCreditsRef, resolvePlanKeyFromOrg, buildAsaasDedupeKey } from '@/lib/asaas/webhook-helpers'
+import { parseCreditPackRef, parseEmailCreditsRef, parseVoiceCreditsRef, resolvePackCents, resolvePlanKeyFromOrg, buildAsaasDedupeKey } from '@/lib/asaas/webhook-helpers'
 import { EMAIL_CREDIT_PACKS } from '@/lib/email/credit-packs'
+import { VOICE_CREDIT_PACKS } from '@/lib/voice/credit-packs'
 
 export async function POST(req: NextRequest) {
   // Timing-safe token comparison — guards against timing attacks that could
@@ -130,17 +131,44 @@ export async function POST(req: NextRequest) {
     if (emailCreditsRef) {
       const ev: string = payload.event
       if (ev === 'PAYMENT_RECEIVED' || ev === 'PAYMENT_CONFIRMED') {
-        const pack = EMAIL_CREDIT_PACKS.find(p => p.id === emailCreditsRef.packId)
+        const cents = resolvePackCents(emailCreditsRef.packId, EMAIL_CREDIT_PACKS)
         const { data: org } = await adminSupabase
           .from('organizations')
           .select('account_id')
           .eq('id', emailCreditsRef.orgId)
           .maybeSingle()
-        if (pack && org?.account_id) {
+        if (cents && org?.account_id) {
           const { applyEmailCreditsPurchase } = await import('@/actions/email-credits')
-          await applyEmailCreditsPurchase(org.account_id, pack.valueReais * 100, { packId: pack.id })
+          await applyEmailCreditsPurchase(org.account_id, cents, { packId: emailCreditsRef.packId })
         } else {
           console.error('[asaas webhook] email_credits: pacote ou org/account_id não encontrado', emailCreditsRef)
+        }
+      }
+
+      await adminSupabase
+        .from('billing_events')
+        .update({ processed_at: new Date().toISOString() })
+        .eq('id', event.id)
+
+      return NextResponse.json({ ok: true })
+    }
+
+    // ── Compra avulsa de Voice Credits ─────────────────────────────────────
+    const voiceCreditsRef = !subscriptionId ? parseVoiceCreditsRef(externalRef) : null
+    if (voiceCreditsRef) {
+      const ev: string = payload.event
+      if (ev === 'PAYMENT_RECEIVED' || ev === 'PAYMENT_CONFIRMED') {
+        const cents = resolvePackCents(voiceCreditsRef.packId, VOICE_CREDIT_PACKS)
+        const { data: org } = await adminSupabase
+          .from('organizations')
+          .select('account_id')
+          .eq('id', voiceCreditsRef.orgId)
+          .maybeSingle()
+        if (cents && org?.account_id) {
+          const { applyVoiceCreditsPurchase } = await import('@/actions/voice-credits')
+          await applyVoiceCreditsPurchase(org.account_id, cents, { packId: voiceCreditsRef.packId })
+        } else {
+          console.error('[asaas webhook] voice_credits: pacote ou org/account_id não encontrado', voiceCreditsRef)
         }
       }
 

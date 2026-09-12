@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { getAccountIdForOrgSlug } from '@/lib/plans/server'
-import { CREDIT_PACKS } from '@/lib/plans/config'
+import { CREDIT_PACKS, ADDON_CREDIT_PRICE_CENTS } from '@/lib/plans/config'
 import { asaas } from '@/lib/asaas/client'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
 import { isAccessBlocked } from '@/lib/billing/plans'
@@ -58,6 +58,56 @@ export async function purchaseCreditPack(orgSlug: string, packIndex: number) {
   }
 }
 
+/** Mínimo pra compra avulsa de quantidade personalizada de créditos de IA —
+ *  abaixo disso a fatura ficaria menor que o custo operacional de processar
+ *  o pagamento. */
+export const MIN_CUSTOM_AI_CREDITS = 100
+
+/**
+ * Mesmo fluxo de purchaseCreditPack, mas com quantidade escolhida pelo
+ * usuário em vez de um pacote fixo — preço à taxa cheia (sem desconto de
+ * volume dos pacotes prontos), ADDON_CREDIT_PRICE_CENTS/crédito.
+ */
+export async function purchaseCustomCreditPack(orgSlug: string, credits: number) {
+  await requireAuth()
+  const org = await getCurrentOrganization(orgSlug) as any
+  if (isAccessBlocked(org)) {
+    return { ok: false as const, error: 'Conta em modo somente leitura. Assine um plano para comprar créditos.' }
+  }
+  if (!Number.isFinite(credits) || credits < MIN_CUSTOM_AI_CREDITS) {
+    return { ok: false as const, error: `Quantidade mínima: ${MIN_CUSTOM_AI_CREDITS} créditos.` }
+  }
+
+  const accountId = await getAccountIdForOrgSlug(orgSlug)
+  if (!accountId) return { ok: false as const, error: 'Conta não encontrada.' }
+
+  const supabase = createClient()
+  const priceCents = Math.round(credits * ADDON_CREDIT_PRICE_CENTS)
+
+  try {
+    let customerId = org.asaas_customer_id as string | null | undefined
+    if (!customerId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      const customer = await asaas.createCustomer({ name: org.name, email: user?.email || '', externalReference: org.id })
+      customerId = customer.id as string
+      await supabase.from('organizations').update({ asaas_customer_id: customerId }).eq('id', org.id)
+    }
+
+    const payment = await asaas.createPayment(
+      customerId,
+      priceCents / 100,
+      `Althos CRM — ${credits} créditos de IA (avulso)`,
+      `credit_pack:${accountId}:${credits}`,
+    )
+
+    const checkoutUrl: string = payment?.invoiceUrl || payment?.bankSlipUrl || 'https://asaas.com'
+    return { ok: true as const, checkoutUrl }
+  } catch (err: any) {
+    console.error('[purchaseCustomCreditPack]', err?.message)
+    return { ok: false as const, error: err.message || 'Erro ao iniciar a compra.' }
+  }
+}
+
 const RequestSchema = z.object({
   kind: z.enum(['extra_users', 'extra_orgs', 'niche_module']),
   details: z.record(z.string(), z.any()),
@@ -106,7 +156,7 @@ export async function requestAddonChange(orgSlug: string, raw: unknown) {
     console.error('requestAddonChange: falha ao notificar por e-mail', e)
   }
 
-  revalidatePath(`/app/${orgSlug}/configuracoes/assinatura`)
+  revalidatePath(`/app/${orgSlug}/assinatura`)
   return { ok: true as const }
 }
 

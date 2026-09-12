@@ -10,7 +10,7 @@ import OnboardingTour from '@/components/features/OnboardingTour'
 import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
-import { isAccessBlocked } from '@/lib/billing/plans'
+import { isAccessBlocked, getPlan } from '@/lib/billing/plans'
 import FrozenBanner from '@/components/features/billing/FrozenBanner'
 import { SidebarCollapseProvider } from '@/components/features/SidebarCollapseContext'
 import { HeaderMobileMenu } from '@/components/features/HeaderMobileMenu'
@@ -193,7 +193,7 @@ export default async function OrgLayout({
               </div>
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
-                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} />
+                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
               </div>
               <HeaderMobileMenu orgSlug={params.orgSlug} />
             </div>

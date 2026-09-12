@@ -11,10 +11,9 @@ import { Building, UsersRound, Share2, Bell, ShieldCheck, Bot, Palette, KeyRound
  * active tab from the current pathname. Include it at the top of each settings
  * hub page (NOT on detail sub-pages like /whatsapp or /meta).
  *
- * "Assinatura" saiu daqui — mora agora só no menu do usuário (Meu perfil),
+ * "Assinatura" saiu daqui — virou janela independente (/app/[orgSlug]/assinatura,
+ * fora de /configuracoes), acessível só pelo menu do usuário (Meu perfil),
  * visível apenas pro owner da org (ver HeaderUserMenu.tsx/SidebarUserMenu.tsx).
- * A rota /configuracoes/assinatura continua existindo, só não tem mais aba
- * própria neste nav compartilhado.
  */
 const TABS = [
   { key: 'geral',        label: 'Geral',        icon: Building,    seg: '' },

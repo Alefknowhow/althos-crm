@@ -178,7 +178,7 @@ export default async function UpgradePage({ params }: { params: { orgSlug: strin
           Pagamento via PIX ou Cartão de Crédito · Renovação mensal automática · Sem fidelidade
         </p>
         <Link
-          href={`/app/${params.orgSlug}/configuracoes/assinatura`}
+          href={`/app/${params.orgSlug}/assinatura`}
           className="text-xs text-primary hover:underline inline-flex items-center gap-1"
         >
           Ver detalhes da assinatura atual →

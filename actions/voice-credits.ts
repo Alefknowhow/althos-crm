@@ -63,6 +63,34 @@ export async function purchaseVoiceCredits(orgSlug: string, packId: typeof VOICE
   return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
 }
 
+/** Mínimo pra compra de Voice Credits em quantidade personalizada. */
+export const MIN_CUSTOM_VOICE_REAIS = 20
+
+/** Mesmo fluxo de purchaseVoiceCredits, mas com valor escolhido pelo
+ *  usuário em vez de um pacote fixo. */
+export async function purchaseVoiceCreditsCustom(orgSlug: string, valueReais: number) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug) as any
+  const allowed = await checkFeatureAccessByOrgSlug(orgSlug, 'voice')
+  if (!allowed) return { ok: false as const, error: 'Althos Voice não está disponível no plano atual.' }
+  const check = await checkMemberPermission(org.id, user.id, 'voice')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
+  if (!Number.isFinite(valueReais) || valueReais < MIN_CUSTOM_VOICE_REAIS) {
+    return { ok: false as const, error: `Valor mínimo: R$ ${MIN_CUSTOM_VOICE_REAIS}.` }
+  }
+  if (!org.asaas_customer_id) return { ok: false as const, error: 'Cadastro de cobrança não encontrado — acesse Financeiro primeiro.' }
+
+  const payment = await asaas.createPayment(
+    org.asaas_customer_id,
+    valueReais,
+    `Althos Voice Credits — R$ ${valueReais.toFixed(2)} (avulso)`,
+    `voice_credits:${org.id}:custom-${Math.round(valueReais * 100)}:${Date.now()}`,
+    'PIX',
+  )
+
+  return { ok: true as const, paymentUrl: (payment as any)?.invoiceUrl as string | undefined }
+}
+
 /**
  * Aplica a compra confirmada (chamado pelo webhook do Asaas quando o
  * pagamento é confirmado — mesmo padrão de activatePlanFromWebhook em

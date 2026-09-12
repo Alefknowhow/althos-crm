@@ -33,7 +33,7 @@ export default function SidebarUserMenu({ name, email, avatarUrl, isOwner }: Pro
   }, [])
 
   const profileHref = orgSlug ? `/app/${orgSlug}/perfil` : '#'
-  const subscriptionHref = orgSlug ? `/app/${orgSlug}/configuracoes/assinatura` : '#'
+  const subscriptionHref = orgSlug ? `/app/${orgSlug}/assinatura` : '#'
 
   return (
     <div ref={ref} data-usermenu className="relative">
