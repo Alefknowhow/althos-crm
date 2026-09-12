@@ -134,7 +134,7 @@ export default function CommandPalette({ orgSlug }: { orgSlug: string }) {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Buscar lead, cliente ou ir para..."
+        placeholder="Pesquisar qualquer coisa: lead, cliente, módulo ou ação..."
         value={query}
         onValueChange={setQuery}
       />
