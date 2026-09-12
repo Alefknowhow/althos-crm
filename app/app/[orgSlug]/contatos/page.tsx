@@ -169,7 +169,7 @@ export default async function ContatosPage({
       await Promise.all([
         supabase
           .from('contatos')
-          .select('*, pipeline_stages(name)')
+          .select('*, pipeline_stages(name), referred_by:contatos!referred_by_contato_id(id, name)')
           .eq('id', selId)
           .eq('organization_id', org.id)
           .maybeSingle(),

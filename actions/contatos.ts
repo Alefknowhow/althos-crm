@@ -5,7 +5,7 @@
  *
  * This file is a barrel: the actions themselves live in the
  * actions/contatos-{leads,pipeline,bulk,customers,contactpoints,avatar,deals,
- * documents}.ts modules (split out because this file had grown past the
+ * documents,source}.ts modules (split out because this file had grown past the
  * project's per-file size budget). No 'use server' directive is needed
  * here — it only re-exports async functions defined in files that each
  * carry their own 'use server'.
@@ -26,3 +26,4 @@ export * from './contatos-contactpoints'
 export * from './contatos-avatar'
 export * from './contatos-deals'
 export * from './contatos-documents'
+export * from './contatos-source'

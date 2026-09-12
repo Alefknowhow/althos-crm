@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import {
-  setContatoStatus, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead, type ContatoDeal,
+  setContatoStatus, setContatoSource, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead, type ContatoDeal,
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import TaskDialog from '@/components/features/TaskDialog'
@@ -38,6 +38,7 @@ export function DetailPanel({
   const c = selected.contato
   const sellerName = c.assigned_to ? members.find(m => m.id === c.assigned_to)?.name : null
   const [savingStatus, startStatus] = useTransition()
+  const [savingSource, startSource] = useTransition()
   const [reopening, startReopen] = useTransition()
   const [deleting, startDelete] = useTransition()
   const [deals, setDeals] = useState<ContatoDeal[]>([])
@@ -99,6 +100,15 @@ export function DetailPanel({
     })
   }
 
+  function changeSource(value: { source: string; referred_by_contato_id?: string | null; referred_by_name?: string | null }) {
+    startSource(async () => {
+      const res = await setContatoSource(orgSlug, c.id, value)
+      if (!res.ok) { toast.error(res.error); return }
+      toast.success('Origem atualizada.')
+      router.refresh()
+    })
+  }
+
   function handleDelete() {
     if (!window.confirm('Excluir este contato? Essa ação não pode ser desfeita — o contato e todas as suas atividades serão perdidos.')) return
     startDelete(async () => {
@@ -147,6 +157,8 @@ export function DetailPanel({
         isTravel={isTravel}
         savingStatus={savingStatus}
         onChangeStatus={changeStatus}
+        savingSource={savingSource}
+        onChangeSource={changeSource}
         tags={tags}
         tagInput={tagInput}
         setTagInput={setTagInput}

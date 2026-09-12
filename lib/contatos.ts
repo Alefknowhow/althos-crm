@@ -53,7 +53,19 @@ export const CONTATO_SOURCE_LABELS: Record<string, string> = {
   meta_ads: 'Meta Ads',
   pipeline: 'Pipeline',
   api: 'API',
+  indicacao: 'Indicação',
 }
+
+/** Opções editáveis de origem (Select do cabeçalho do contato) — subconjunto
+ *  de CONTATO_SOURCE_LABELS que faz sentido escolher manualmente (fica de
+ *  fora "pipeline"/"api", que são só rótulos de origens automáticas). */
+export const CONTATO_SOURCE_EDIT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'manual', label: 'Cadastro manual' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'meta_ads', label: 'Meta Ads' },
+  { value: 'indicacao', label: 'Indicação' },
+]
 
 export function contatoSourceLabel(source: string | null | undefined): string {
   if (!source) return 'Sem origem'

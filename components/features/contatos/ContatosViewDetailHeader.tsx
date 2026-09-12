@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { WhatsAppGlyph } from '@/components/features/LeadCard'
 import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -13,18 +14,90 @@ import {
   Plus, ChevronLeft, Wallet, CalendarClock, Trash2, X, RefreshCw, UserCircle2, Sparkles,
   Tag as TagIcon, Coins, PhoneCall, MoreVertical, Pencil,
 } from 'lucide-react'
-import { CONTATO_STATUS_META, contatoSourceLabel } from '@/lib/contatos'
+import { CONTATO_STATUS_META, CONTATO_SOURCE_EDIT_OPTIONS, contatoSourceLabel } from '@/lib/contatos'
 import AIScoreBadge from '@/components/features/ai/AIScoreBadge'
 import RequalifyButton from '@/components/features/ai/RequalifyButton'
 import SendEmailDialog from '@/components/features/SendEmailDialog'
+import LeadCombobox from '@/components/features/LeadCombobox'
 import { fmtCurrency, fmtDate, onlyDigits, STATUS_VALUES, type Selected } from './ContatosViewShared'
 import { AvatarUploader } from './ContatosViewWidgets'
 import { Field } from './ContatosViewDetailHelpers'
 import { NpsCard } from './NpsSection'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 
+/** Origem editável + "Indicado por" quando a origem é Indicação. Some as
+ *  opções de origem já conhecidas cobrem a maioria dos casos; se o valor
+ *  atual for algo antigo/livre (ex.: "form:Nome do Form"), ele aparece como
+ *  uma opção extra no topo pra não sumir do Select ao abrir a tela. */
+function OriginEditor({
+  orgSlug, source, referredBy, referredByName, saving, onChange,
+}: {
+  orgSlug: string
+  source: string | null
+  referredBy: { id: string; name: string } | null
+  referredByName: string | null
+  saving: boolean
+  onChange: (v: { source: string; referred_by_contato_id?: string | null; referred_by_name?: string | null }) => void
+}) {
+  const current = source || 'manual'
+  const isKnown = CONTATO_SOURCE_EDIT_OPTIONS.some(o => o.value === current)
+  const [usingFreeText, setUsingFreeText] = useState(!referredBy && !!referredByName)
+
+  return (
+    <div className="space-y-1.5 w-64">
+      <Select
+        value={current}
+        onValueChange={v => onChange({ source: v, referred_by_contato_id: referredBy?.id ?? null, referred_by_name: referredByName })}
+        disabled={saving}
+      >
+        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {!isKnown && <SelectItem value={current}>{contatoSourceLabel(current)}</SelectItem>}
+          {CONTATO_SOURCE_EDIT_OPTIONS.map(o => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {current === 'indicacao' && (
+        <div className="space-y-1">
+          {usingFreeText ? (
+            <div className="flex gap-1">
+              <Input
+                className="h-8 text-xs"
+                placeholder="Nome de quem indicou"
+                defaultValue={referredByName || ''}
+                onBlur={e => onChange({ source: current, referred_by_contato_id: null, referred_by_name: e.target.value })}
+              />
+              <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-[11px]" onClick={() => setUsingFreeText(false)}>
+                Buscar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-1 items-center">
+              <div className="flex-1">
+                <LeadCombobox
+                  name="referred_by_contato_id"
+                  orgSlug={orgSlug}
+                  defaultLead={referredBy}
+                  placeholder="Quem indicou?"
+                  onChange={lead => onChange({ source: current, referred_by_contato_id: lead?.id ?? null, referred_by_name: null })}
+                />
+              </div>
+              <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-[11px] shrink-0" onClick={() => setUsingFreeText(true)}>
+                Não cadastrado
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DetailHeader({
   orgSlug, selected, c, onBack, isTravel, savingStatus, onChangeStatus,
+  savingSource, onChangeSource,
   tags, tagInput, setTagInput, onAddTag, onRemoveTag,
   totalPurchased, lastPurchase, sellerName, creditBalance,
   openingConversation, onOpenConversation, orgName,
@@ -37,6 +110,8 @@ export function DetailHeader({
   isTravel:             boolean
   savingStatus:         boolean
   onChangeStatus:       (v: string) => void
+  savingSource:         boolean
+  onChangeSource:       (v: { source: string; referred_by_contato_id?: string | null; referred_by_name?: string | null }) => void
   tags:                 string[]
   tagInput:             string
   setTagInput:          (v: string) => void
@@ -72,21 +147,29 @@ export function DetailHeader({
           <p className="text-xs text-muted-foreground mt-0.5">
             {c.phone && <span>{formatPhoneDisplay(c.phone)}</span>}
             {c.email && <span>{c.phone ? ' · ' : ''}{c.email}</span>}
-            {(c.phone || c.email) && ' · '}
-            Origem: {contatoSourceLabel(c.source)}
-            {stageName ? ` · Funil: ${stageName}` : ''}
+            {stageName ? `${(c.phone || c.email) ? ' · ' : ''}Funil: ${stageName}` : ''}
           </p>
-          <div className="mt-2 w-44">
-            <Select value={(c.status as string) || 'lead'} onValueChange={onChangeStatus} disabled={savingStatus}>
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_VALUES.map(s => (
-                  <SelectItem key={s} value={s}>{CONTATO_STATUS_META[s].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <div className="w-44">
+              <Select value={(c.status as string) || 'lead'} onValueChange={onChangeStatus} disabled={savingStatus}>
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_VALUES.map(s => (
+                    <SelectItem key={s} value={s}>{CONTATO_STATUS_META[s].label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <OriginEditor
+              orgSlug={orgSlug}
+              source={c.source ?? null}
+              referredBy={c.referred_by ?? null}
+              referredByName={c.referred_by_name ?? null}
+              saving={savingSource}
+              onChange={onChangeSource}
+            />
           </div>
         </div>
       </div>
