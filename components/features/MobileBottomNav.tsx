@@ -42,16 +42,23 @@ export function MobileBottomNav({ orgSlug, canUseCopilot }: { orgSlug: string; c
   items.push({ key: 'modulos', label: 'Módulos', icon: Menu, active: false, onClick: () => setMobileOpen(true) })
 
   return (
+    // NÃO é fixed/overlay de propósito: fica como item real do flex column
+    // do shell (ver app/[orgSlug]/layout.tsx), na mesma altura que sidebar+
+    // main já dividem — assim QUALQUER tela com scroll interno próprio
+    // (Contatos, Tarefas etc.) automaticamente ganha menos altura em vez de
+    // ficar coberta por uma barra flutuante por cima (bug relatado). Altura
+    // reduzida (64px) e safe-area somada como padding próprio, não em cada
+    // página — pedido explícito: menos altura/peso visual no rodapé.
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 h-20 pb-[env(safe-area-inset-bottom)] bg-background border-t border-border flex items-stretch print:hidden"
+      className="md:hidden shrink-0 h-16 pb-[env(safe-area-inset-bottom)] bg-background border-t border-border flex items-stretch print:hidden"
       aria-label="Navegação principal"
     >
       {items.map(item => {
         const Icon = item.icon
         const content = (
           <>
-            <Icon className={cn('w-6 h-6', item.active ? 'text-primary' : 'text-muted-foreground')} />
-            <span className={cn('text-xs font-medium', item.active ? 'text-primary' : 'text-muted-foreground')}>{item.label}</span>
+            <Icon className={cn('w-5 h-5', item.active ? 'text-primary' : 'text-muted-foreground')} />
+            <span className={cn('text-[11px] font-medium', item.active ? 'text-primary' : 'text-muted-foreground')}>{item.label}</span>
           </>
         )
         const className = 'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[48px]'

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import KpiCard from '@/components/features/dashboard/KpiCard'
 import CashFlowChart from './CashFlowChart'
 import DailyCashFlowChart from './DailyCashFlowChart'
@@ -59,19 +59,20 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 py-2 -mt-2 flex justify-end flex-wrap gap-1.5 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
-        {PERIOD_OPTIONS.map(p => (
-          <Button
-            key={p.id}
-            type="button"
-            size="sm"
-            variant={period === p.id ? 'default' : 'outline'}
-            className="h-8 text-xs"
-            onClick={() => setPeriod(p.id)}
-          >
-            {p.label}
-          </Button>
-        ))}
+      {/* Era uma linha de até 7 botões (1 por período) — pedido explícito:
+          trocar por um único seletor discreto ("drill drop"), igual ao
+          padrão já usado no filtro do heatmap de WhatsApp. */}
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 py-2 -mt-2 flex justify-end bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
+        <Select value={period} onValueChange={v => setPeriod(v as PeriodId)}>
+          <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_OPTIONS.map(p => (
+              <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading || !data ? (
@@ -80,7 +81,9 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* grid-cols-2 já na base (não só sm+): pedido explícito — mínimo
+              2 cards por linha mesmo no menor mobile, nunca 1 card cheio. */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <KpiCard
               label="Saldo em caixa"
               value={fmtCurrency(data.kpis.saldoEmCaixa.value_cents)}

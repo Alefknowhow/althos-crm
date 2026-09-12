@@ -5,6 +5,7 @@
  * TasksBoard. Prop-driven, split out of TasksBoard.tsx.
  */
 
+import { useState } from 'react'
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { relatedTypeOptions, RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
@@ -16,6 +17,7 @@ import {
   GROUPS, STATUS_OPTIONS, PRIORITY_META, FOCUS_RING,
 } from './TasksBoardShared'
 import { FilterChip, weekRangeLabel } from './TasksBoardCalendarViews'
+import { MobileFilterSheet, MobileFilterTrigger } from '@/components/features/mobile/MobileFilterSheet'
 
 export function TasksBoardToolbar({
   search, setSearch, currentUserId, onlyMine, setOnlyMine, todayOnly, onClickToday, onNewTask,
@@ -52,8 +54,136 @@ export function TasksBoardToolbar({
   setSelectedDay: (v: string | null) => void
   setTodayOnly: (v: boolean) => void
 }) {
+  const activeFilterCount = [priority !== 'all', assignee !== 'all', statusFilter !== 'all', relatedFilter !== 'all'].filter(Boolean).length
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  function clearAllFilters() {
+    setAssignee('all'); setPriority('all'); setStatusFilter('all'); setRelatedFilter('all')
+  }
+
   return (
     <>
+      {/* ── Mobile (abaixo de md): 2 linhas fixas, resto vira sheet ──────
+          Pedido explícito: a barra inteira (busca+chips+nav de calendário+
+          4 selects) ocupava metade da tela em telas estreitas. Calendário
+          nem existe mais no mobile (ver TasksBoard.tsx), então a navegação
+          de mês/semana também some — só busca, ações rápidas e 1 botão de
+          filtros (sheet) restam. */}
+      <div className="md:hidden space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar tarefa..."
+            className={cn('h-10 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-sm placeholder:text-muted-foreground', FOCUS_RING)}
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {currentUserId && (
+            <button
+              type="button"
+              onClick={() => setOnlyMine(v => !v)}
+              className={cn('inline-flex items-center gap-1 px-2.5 h-9 rounded-full border text-xs font-medium shrink-0', FOCUS_RING, onlyMine ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border')}
+            >
+              <User2 className="w-3.5 h-3.5" /> Minhas
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClickToday}
+            className={cn('inline-flex items-center gap-1 px-2.5 h-9 rounded-pill border text-xs font-medium shrink-0', FOCUS_RING, todayOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border')}
+          >
+            <Calendar className="w-3.5 h-3.5" /> Hoje
+          </button>
+          <MobileFilterTrigger activeCount={activeFilterCount} onClick={() => setMobileFiltersOpen(true)} />
+          <div className="ml-auto">
+            <button
+              type="button"
+              onClick={onNewTask}
+              aria-label="Nova tarefa"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary text-primary-foreground"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Chips de filtro ativo — Dia/Hoje/Minhas já têm toggle próprio
+            acima, aqui só os 4 filtros do sheet (evita duplicar "Hoje"). */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
+            {assignee !== 'all' && (
+              <FilterChip label={`Responsável: ${assignee === 'none' ? 'Sem responsável' : (members.find(m => m.user_id === assignee)?.name ?? '—')}`} onClear={() => setAssignee('all')} />
+            )}
+            {statusFilter !== 'all' && <FilterChip label={`Status: ${GROUPS.find(g => g.id === statusFilter)?.label ?? statusFilter}`} onClear={() => setStatusFilter('all')} />}
+            {relatedFilter !== 'all' && (
+              <FilterChip label={`Relacionado a: ${RELATED_TYPE_LABELS[relatedFilter as RelatedTypeValue] ?? relatedFilter}`} onClear={() => setRelatedFilter('all')} />
+            )}
+          </div>
+        )}
+
+        <MobileFilterSheet
+          open={mobileFiltersOpen}
+          onOpenChange={setMobileFiltersOpen}
+          activeCount={activeFilterCount}
+          onApply={() => {}}
+          onClear={clearAllFilters}
+        >
+          {members.length > 0 && (
+            <ResponsiveSelect
+              className="h-11 w-full text-sm"
+              aria-label="Filtrar por responsável"
+              value={assignee}
+              onValueChange={v => setAssignee(v as AssigneeFilter)}
+              options={[
+                { value: 'all', label: 'Responsável: Todos' },
+                { value: 'none', label: 'Responsável: Sem responsável' },
+                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name}` })),
+              ]}
+            />
+          )}
+          <ResponsiveSelect
+            className="h-11 w-full text-sm"
+            aria-label="Filtrar por prioridade"
+            value={priority}
+            onValueChange={v => setPriority(v as PriorityFilter)}
+            options={[
+              { value: 'all', label: 'Prioridade: Todas' },
+              { value: 'high', label: `Prioridade: ${PRIORITY_META.high.label}` },
+              { value: 'normal', label: `Prioridade: ${PRIORITY_META.normal.label}` },
+              { value: 'low', label: `Prioridade: ${PRIORITY_META.low.label}` },
+            ]}
+          />
+          <ResponsiveSelect
+            className="h-11 w-full text-sm"
+            aria-label="Filtrar por status"
+            value={statusFilter}
+            onValueChange={v => setStatusFilter(v as StatusFilter)}
+            options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.value === 'all' ? 'Status: Todos' : `Status: ${o.label}` }))}
+          />
+          <ResponsiveSelect
+            className="h-11 w-full text-sm"
+            aria-label="Filtrar por relacionado a"
+            value={relatedFilter}
+            onValueChange={v => setRelatedFilter(v as RelatedFilter)}
+            options={[
+              { value: 'all', label: 'Relacionado a: Todos' },
+              ...relatedTypeOptions(niche).map(o => ({ value: o.value, label: `Relacionado a: ${o.label}` })),
+            ]}
+          />
+        </MobileFilterSheet>
+      </div>
+
+      {/* ── Desktop (md+): layout original, inalterado ────────────────── */}
+      <div className="hidden md:block space-y-2">
       {/* Busca + chip "Minhas" + Nova tarefa */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
@@ -232,6 +362,7 @@ export function TasksBoardToolbar({
           )}
         </div>
       )}
+      </div>
     </>
   )
 }

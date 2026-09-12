@@ -250,36 +250,63 @@ export default function TasksBoard({
 
       {/* Corpo: Semana ocupa a tela inteira (timeline por hora precisa do
           espaço); Mês mostra o mini calendário (só seletor de data, sem
-          informação de tarefa) ao lado da lista. */}
+          informação de tarefa) ao lado da lista. Calendário (mês OU semana)
+          nunca aparece abaixo de lg — pedido explícito, mobile só vê lista,
+          mesmo que calView já esteja em 'week' (ex.: estado persistido). */}
       {calView === 'week' ? (
-        <TasksBoardCalendarPanel
-          weekDays={weekDays}
-          hours={hours}
-          todayYmd={todayYmd}
-          tasksByDate={tasksByDate}
-          members={members}
-          highlightId={highlightId}
-          openPopoverId={openPopoverId}
-          setOpenPopoverId={setOpenPopoverId}
-          dragOverKey={dragOverKey}
-          setDragOverKey={setDragOverKey}
-          orgSlug={orgSlug}
-          onDropAllDay={handleDropOnAllDay}
-          onDropSlot={handleDropOnSlot}
-          onChipDragStart={onChipDragStart}
-          onChipDragEnd={onChipDragEnd}
-          onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
-          onToggleDone={handleToggleDone}
-          onSetPriority={handleSetPriority}
-          onEdit={setEditing}
-          onDelete={handleDelete}
-        />
+        <>
+          <div className="hidden lg:block">
+            <TasksBoardCalendarPanel
+              weekDays={weekDays}
+              hours={hours}
+              todayYmd={todayYmd}
+              tasksByDate={tasksByDate}
+              members={members}
+              highlightId={highlightId}
+              openPopoverId={openPopoverId}
+              setOpenPopoverId={setOpenPopoverId}
+              dragOverKey={dragOverKey}
+              setDragOverKey={setDragOverKey}
+              orgSlug={orgSlug}
+              onDropAllDay={handleDropOnAllDay}
+              onDropSlot={handleDropOnSlot}
+              onChipDragStart={onChipDragStart}
+              onChipDragEnd={onChipDragEnd}
+              onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
+              onToggleDone={handleToggleDone}
+              onSetPriority={handleSetPriority}
+              onEdit={setEditing}
+              onDelete={handleDelete}
+            />
+          </div>
+          <div className="lg:hidden">
+            <TasksBoardListPanel
+              orgSlug={orgSlug}
+              members={members}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+              todayOnly={todayOnly}
+              calView={calView}
+              calMonth={calMonth}
+              weekAnchor={weekAnchor}
+              grouped={grouped}
+              expanded={expanded}
+              toggleGroup={toggleGroup}
+              highlightId={highlightId}
+              onOpenFromList={openFromList}
+              onToggleDone={handleToggleDone}
+              onSetPriority={handleSetPriority}
+              onDelete={handleDelete}
+            />
+          </div>
+        </>
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 items-start">
-          {/* Mobile: lista vem PRIMEIRO (order-2 no calendário) — spec M06,
-              "calendário não é o protagonista, lista é". Desktop mantém a
-              ordem original (calendário à esquerda via lg:order-1). */}
-          <div className="w-full lg:w-64 shrink-0 order-2 lg:order-1">
+          {/* Calendário mensal removido do mobile por completo (pedido
+              explícito: "remove o calendário do mobile, manter apenas lista
+              de tarefas") — não é só reordenado, nem existe no DOM abaixo
+              de lg. Desktop inalterado. */}
+          <div className="hidden lg:block lg:w-64 shrink-0">
             <TasksBoardMiniCalendar
               days={monthDays}
               calMonth={calMonth}
@@ -289,10 +316,6 @@ export default function TasksBoard({
             />
           </div>
 
-          {/* Sem override de order: fica order:0 (padrão) sempre — abaixo de
-              lg isso já a coloca antes do calendário (order-2 acima);
-              em lg+ mantém exatamente o comportamento original (calendário
-              order-1 > lista order-0, lista à esquerda). */}
           <TasksBoardListPanel
             orgSlug={orgSlug}
             members={members}

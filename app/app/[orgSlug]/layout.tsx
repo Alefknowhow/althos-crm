@@ -19,7 +19,7 @@ import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 import { HeaderModuleTitle } from '@/components/features/HeaderModuleTitle'
 import { GlobalBackButton } from '@/components/features/GlobalBackButton'
 import QueryProvider from '@/components/providers/QueryProvider'
-import CommandPalette, { CommandPaletteTrigger } from '@/components/features/CommandPalette'
+import CommandPalette from '@/components/features/CommandPalette'
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
@@ -171,13 +171,11 @@ export default async function OrgLayout({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Mobile/tablet (<md): botão compacto (inalterado). Desktop
-                  (md+): barra de pesquisa global — ambos abrem o mesmo
-                  command palette, nunca os dois ao mesmo tempo. */}
-              <div className="md:hidden">
-                <CommandPaletteTrigger orgSlug={params.orgSlug} />
-              </div>
-              {canUseCopilot && <CopilotTriggerButton />}
+              {/* Busca e Copiloto no header viram exclusivos do desktop —
+                  no mobile os dois já têm entrada própria na barra inferior
+                  (Consultar/Assistente), manter os dois no header também
+                  duplicava a ação (pedido explícito: remover a duplicidade). */}
+              {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
               <HeaderSearchBar />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
@@ -201,9 +199,7 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          {/* pb-[...] reserva os 80px da barra inferior mobile + safe area
-              (só abaixo de md — a partir de md a barra some e volta a pb-5). */}
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-0 pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-0 pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>
@@ -212,8 +208,9 @@ export default async function OrgLayout({
       </div>
 
       {/* Barra inferior mobile (Resumo/Consultar/Assistente/Módulos) —
-          reformulação mobile G2. `<main>` acima já reserva 80px + safe area
-          via padding-bottom inline pra não esconder conteúdo atrás dela. */}
+          item real do flex column (não fixed/overlay) — ver comentário em
+          MobileBottomNav.tsx sobre por que isso evita cobrir conteúdo com
+          scroll interno próprio (achado: menu cobrindo Contatos/Tarefas). */}
       <div className="print:hidden">
         <MobileBottomNav orgSlug={params.orgSlug} canUseCopilot={canUseCopilot} />
       </div>
