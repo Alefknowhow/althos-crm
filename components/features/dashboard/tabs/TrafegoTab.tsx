@@ -44,7 +44,9 @@ export default async function TrafegoTab({ orgSlug }: { orgSlug: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+      {/* grid-cols-2 já na base — regra replicada (mínimo 2 cards de KPI
+          por linha, mesmo no menor mobile), era grid-cols-1 abaixo de sm. */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         <KpiCard
           label="MRR"
           value="—"
