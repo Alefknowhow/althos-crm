@@ -32,9 +32,14 @@ export function ShortcutButton({
   /** Only used when asChild — should be the navigation element (e.g. a <Link>). */
   children?: React.ReactNode
 }) {
-  // Plain clickable icon: no label, no border, no background.
+  // Plain clickable icon: no label, no border, no background. Alvo de
+  // toque ~40px abaixo de md (era 24x24 — achado 2.4 do documento de
+  // reformulação mobile; não deu pra chegar a 48px cheio porque até 5
+  // desses ficam lado a lado numa linha de ~270px em viewport de 320px),
+  // volta ao tamanho compacto original em md+ (só usado aqui em Contatos,
+  // sem outro call site pra quebrar).
   const cls =
-    'inline-flex items-center justify-center p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md'
+    'inline-flex items-center justify-center p-3 md:p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary rounded-md'
   if (asChild) {
     // The child is the link wrapper; render only the icon inside it.
     return (

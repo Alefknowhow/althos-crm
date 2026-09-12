@@ -124,7 +124,10 @@ export default function ContatosView({
     <div className="flex flex-col flex-1 min-h-0 gap-4">
       {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div className={cn('flex flex-wrap items-center gap-2 shrink-0', mobileDetail && 'hidden md:flex')}>
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+        {/* basis-full no mobile: a busca ocupa a linha inteira sozinha em
+            vez de disputar espaço com abas/filtro/novo contato na mesma
+            linha estreita (achado 2.8 do documento de reformulação mobile). */}
+        <div className="relative flex-1 basis-full sm:basis-auto min-w-0 sm:min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar nome, e-mail ou telefone..."
