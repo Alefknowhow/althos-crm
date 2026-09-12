@@ -191,10 +191,10 @@ export default function BlocksView({
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => setEditing(b)} aria-label="Editar" title="Editar bloqueio">
+                      <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7" onClick={() => setEditing(b)} aria-label="Editar" title="Editar bloqueio">
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleteId(b.id)} aria-label="Excluir" title="Excluir bloqueio">
+                      <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-muted-foreground hover:text-destructive" onClick={() => setDeleteId(b.id)} aria-label="Excluir" title="Excluir bloqueio">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>

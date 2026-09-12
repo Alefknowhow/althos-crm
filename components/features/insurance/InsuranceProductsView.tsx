@@ -69,7 +69,7 @@ export default function InsuranceProductsView({ orgSlug, products }: { orgSlug: 
       />
       <p className="text-sm text-muted-foreground">{products.length} produto{products.length === 1 ? '' : 's'}</p>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -94,11 +94,11 @@ export default function InsuranceProductsView({ orgSlug, products }: { orgSlug: 
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => openEdit(p)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Editar" onClick={() => openEdit(p)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     {p.is_active && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Arquivar" disabled={busyId === p.id} onClick={() => handleArchive(p.id)}>
+                      <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Arquivar" disabled={busyId === p.id} onClick={() => handleArchive(p.id)}>
                         <Archive className="w-3.5 h-3.5 text-destructive" />
                       </Button>
                     )}

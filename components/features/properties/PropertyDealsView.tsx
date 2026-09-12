@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Loader2, X } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
 import { closeDeal, cancelDeal, type PropertyDealRow } from '@/actions/property-deals'
 import type { PropertyProposalRow } from '@/actions/property-proposals'
@@ -117,7 +117,7 @@ export default function PropertyDealsView({
         )}
       </div>
 
-      <div className={fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card'}>
+      <div className={cn(fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card', 'overflow-x-auto')}>
         <Table>
           <TableHeader>
             <TableRow>

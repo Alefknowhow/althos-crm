@@ -91,7 +91,7 @@ export default function InsurersView({ orgSlug, insurers }: { orgSlug: string; i
       />
       <p className="text-sm text-muted-foreground">{insurers.length} seguradora{insurers.length === 1 ? '' : 's'}</p>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -128,11 +128,11 @@ export default function InsurersView({ orgSlug, insurers }: { orgSlug: string; i
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => openEdit(i)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Editar" onClick={() => openEdit(i)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     {i.is_active && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Arquivar" disabled={busyId === i.id} onClick={() => handleArchive(i.id)}>
+                      <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Arquivar" disabled={busyId === i.id} onClick={() => handleArchive(i.id)}>
                         <Archive className="w-3.5 h-3.5 text-destructive" />
                       </Button>
                     )}

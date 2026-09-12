@@ -126,7 +126,7 @@ export default function InsuranceQuotesView({
       />
       <p className="text-sm text-muted-foreground">{quotes.length} cotaç{quotes.length === 1 ? 'ão' : 'ões'}</p>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

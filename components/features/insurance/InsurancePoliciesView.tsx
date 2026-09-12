@@ -156,7 +156,7 @@ export default function InsurancePoliciesView({
       />
       <p className="text-sm text-muted-foreground">{policies.length} apólice{policies.length === 1 ? '' : 's'}</p>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -187,7 +187,7 @@ export default function InsurancePoliciesView({
                 </TableCell>
                 <TableCell>
                   {p.status !== 'cancelada' && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busyId === p.id} onClick={() => handleCancel(p.id)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" disabled={busyId === p.id} onClick={() => handleCancel(p.id)}>
                       {busyId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 text-destructive" />}
                     </Button>
                   )}

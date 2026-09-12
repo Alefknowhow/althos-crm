@@ -71,10 +71,10 @@ export default function RetornosClient({ orgSlug, initialReturns }: { orgSlug: s
             <Button variant="outline" size="sm" disabled={busyId === row.attendance_id} onClick={() => handleCreateTask(row)}>
               <CheckSquare className="w-3.5 h-3.5 mr-1" /> Criar tarefa
             </Button>
-            <Button variant="ghost" size="icon" className="w-7 h-7" title="Já agendado" disabled={busyId === row.attendance_id} onClick={() => handleStatus(row, 'agendado')}>
+            <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7" title="Já agendado" disabled={busyId === row.attendance_id} onClick={() => handleStatus(row, 'agendado')}>
               <CalendarCheck2 className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:bg-destructive/10" title="Dispensar" disabled={busyId === row.attendance_id} onClick={() => handleStatus(row, 'dispensado')}>
+            <Button variant="ghost" size="icon" className="w-11 h-11 md:w-7 md:h-7 text-destructive hover:bg-destructive/10" title="Dispensar" disabled={busyId === row.attendance_id} onClick={() => handleStatus(row, 'dispensado')}>
               <Ban className="w-3.5 h-3.5" />
             </Button>
           </>

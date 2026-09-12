@@ -153,7 +153,7 @@ export default function VisitsView({
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -186,17 +186,17 @@ export default function VisitsView({
                   {(v.status === 'agendada' || v.status === 'confirmada') && (
                     <div className="flex flex-wrap gap-1 justify-end">
                       {v.status === 'agendada' && (
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Confirmar" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'confirmada')}>
+                        <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Confirmar" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'confirmada')}>
                           <Check className="w-3.5 h-3.5" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Marcar realizada" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'realizada')}>
+                      <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Marcar realizada" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'realizada')}>
                         <Check className="w-3.5 h-3.5 text-violet-600" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Não compareceu" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'nao_compareceu')}>
+                      <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Não compareceu" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'nao_compareceu')}>
                         <UserX className="w-3.5 h-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Cancelar" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'cancelada')}>
+                      <Button size="icon" variant="ghost" className="h-11 w-11 md:h-7 md:w-7" title="Cancelar" disabled={busyId === v.id} onClick={() => handleStatus(v.id, 'cancelada')}>
                         <X className="w-3.5 h-3.5 text-destructive" />
                       </Button>
                     </div>

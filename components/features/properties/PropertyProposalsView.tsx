@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Loader2, Link2, Copy } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
 import {
   createProposal, setProposalStatus, generatePropertyProposalLink,
@@ -174,7 +174,7 @@ export default function PropertyProposalsView({
         )}
       </div>
 
-      <div className={fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card'}>
+      <div className={cn(fixedPropertyId ? 'border rounded-lg' : 'rounded-lg border bg-card', 'overflow-x-auto')}>
         <Table>
           <TableHeader>
             <TableRow>
