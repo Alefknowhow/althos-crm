@@ -23,12 +23,16 @@ interface Props {
   defaultLead?: Lead | null
   placeholder?: string
   onChange?: (lead: Lead | null) => void
+  /** Sobrepõe o estilo padrão (botão "outline" azul) — usado quando o
+   *  combobox precisa combinar visualmente com Selects ao lado (mesma
+   *  altura/fonte/neutralidade), ex.: ContatosViewDetailHeader.tsx. */
+  triggerClassName?: string
 }
 
 // Searchable combobox backed by a server action so we don't load every lead
 // upfront. Exposes the selected id via a hidden input named `name` so the
 // existing <form> + FormData flow keeps working unchanged.
-export default function LeadCombobox({ name, orgSlug, defaultLead, placeholder = 'Selecionar lead...', onChange }: Props) {
+export default function LeadCombobox({ name, orgSlug, defaultLead, placeholder = 'Selecionar lead...', onChange, triggerClassName }: Props) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<Lead | null>(defaultLead || null)
   const [query, setQuery] = useState('')
@@ -62,7 +66,7 @@ export default function LeadCombobox({ name, orgSlug, defaultLead, placeholder =
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between font-normal"
+            className={cn('w-full justify-between font-normal', triggerClassName)}
           >
             <span className={cn('truncate', !selected && 'text-muted-foreground')}>
               {selected ? selected.name : placeholder}
@@ -70,7 +74,7 @@ export default function LeadCombobox({ name, orgSlug, defaultLead, placeholder =
             <span className="flex items-center gap-1 shrink-0">
               {selected && (
                 <X
-                  className="w-4 h-4 opacity-60 hover:opacity-100"
+                  className="w-3.5 h-3.5 opacity-60 hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelected(null)
@@ -78,7 +82,7 @@ export default function LeadCombobox({ name, orgSlug, defaultLead, placeholder =
                   }}
                 />
               )}
-              <ChevronsUpDown className="w-4 h-4 opacity-50" />
+              <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
             </span>
           </Button>
         </PopoverTrigger>
