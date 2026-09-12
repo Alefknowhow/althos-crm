@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
 import { useSidebarCollapse } from './SidebarCollapseContext'
 
 export default function SidebarShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen]   = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { collapsed } = useSidebarCollapse()
+  // Estado do drawer mobile vem do contexto compartilhado (não mais
+  // useState local) — permite a barra inferior "Módulos" (MobileBottomNav,
+  // reformulação mobile G2) abrir este mesmo drawer.
+  const { collapsed, mobileOpen: open, setMobileOpen: setOpen } = useSidebarCollapse()
   const pathname          = usePathname()
   const closeRef          = useRef<HTMLButtonElement>(null)
 
@@ -46,18 +48,11 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
         {children}
       </aside>
 
-      {/* Mobile hamburger — only after hydration to avoid flash */}
-      {mounted && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Abrir menu"
-          aria-expanded={open}
-          className="md:hidden fixed top-2.5 left-2.5 z-40 w-10 h-10 inline-flex items-center justify-center rounded-none bg-background border border-border text-foreground"
-        >
-          <Menu className="w-5 h-5" strokeWidth={1.75} />
-        </button>
-      )}
+      {/* O antigo hamburger fixo (top-2.5 left-2.5) foi removido na
+          reformulação mobile (G2) — colidia com banners (diagnóstico 2.2) e
+          duplicava a entrada "Módulos" da nova barra inferior
+          (MobileBottomNav), que agora é o único jeito de abrir este drawer
+          no mobile. `setOpen`/`open` seguem vindo do contexto compartilhado. */}
 
       {/* Mobile drawer — always in the DOM after mount, visibility toggled via CSS.
           This avoids unmount/remount crashes on iOS Safari with server-action children. */}

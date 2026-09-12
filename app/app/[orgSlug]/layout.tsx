@@ -32,6 +32,7 @@ import { CallDialerProvider } from '@/components/features/voice/CallDialerModal'
 import { SmsComposeProvider } from '@/components/features/voice/SmsComposeModal'
 import { ActiveCallProvider } from '@/components/features/voice/ActiveCallProvider'
 import { ActiveCallBar } from '@/components/features/voice/ActiveCallBar'
+import { MobileBottomNav } from '@/components/features/MobileBottomNav'
 
 export default async function OrgLayout({
   children,
@@ -146,7 +147,7 @@ export default async function OrgLayout({
               desktop aside occupies its own column. Hidden entirely on
               print so only the page's own content (ex.: DocumentPrintView)
               shows up — nunca a chrome do CRM. */}
-          <header className="print:hidden h-14 border-b border-border bg-background flex items-center pl-14 pr-4 md:px-5 gap-2 justify-between sticky top-0 z-30">
+          <header className="print:hidden h-14 border-b border-border bg-background flex items-center px-3 md:px-5 gap-2 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
               <GlobalBackButton orgSlug={params.orgSlug} />
               {/* Mobile: título compacto (inalterado). Desktop: ícone +
@@ -200,13 +201,23 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-0 pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+          {/* pb-[...] reserva os 80px da barra inferior mobile + safe area
+              (só abaixo de md — a partir de md a barra some e volta a pb-5). */}
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-0 pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-5 overflow-y-auto overflow-x-hidden bg-secondary/40 print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>
           </main>
         </div>
       </div>
+
+      {/* Barra inferior mobile (Resumo/Consultar/Assistente/Módulos) —
+          reformulação mobile G2. `<main>` acima já reserva 80px + safe area
+          via padding-bottom inline pra não esconder conteúdo atrás dela. */}
+      <div className="print:hidden">
+        <MobileBottomNav orgSlug={params.orgSlug} canUseCopilot={canUseCopilot} />
+      </div>
+
       </PageHintProvider>
       </SidebarCollapseProvider>
 

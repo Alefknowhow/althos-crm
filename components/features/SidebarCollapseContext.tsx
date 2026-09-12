@@ -2,7 +2,18 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 
-const Ctx = createContext<{ collapsed: boolean; toggle: () => void } | null>(null)
+type Ctx = {
+  collapsed: boolean
+  toggle: () => void
+  // Estado do drawer mobile ("Módulos" na barra inferior — reformulação
+  // mobile, G2). Vivia só como useState local dentro de SidebarShell antes;
+  // subiu pro contexto pra um gatilho externo (MobileBottomNav) poder abrir
+  // o mesmo drawer sem duplicar a lista de módulos em outro componente.
+  mobileOpen: boolean
+  setMobileOpen: (open: boolean) => void
+}
+
+const Ctx = createContext<Ctx | null>(null)
 
 /**
  * Estado de colapso da sidebar, compartilhado entre o botão (agora na barra
@@ -11,6 +22,7 @@ const Ctx = createContext<{ collapsed: boolean; toggle: () => void } | null>(nul
  */
 export function SidebarCollapseProvider({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     try { setCollapsed(localStorage.getItem('sidebar-collapsed') === '1') } catch {}
@@ -24,7 +36,7 @@ export function SidebarCollapseProvider({ children }: { children: React.ReactNod
     })
   }
 
-  return <Ctx.Provider value={{ collapsed, toggle }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ collapsed, toggle, mobileOpen, setMobileOpen }}>{children}</Ctx.Provider>
 }
 
 export function useSidebarCollapse() {

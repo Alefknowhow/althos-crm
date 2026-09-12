@@ -203,6 +203,50 @@
   }
 }
 
+/* ── Camada mobile Material 3 (reformulação mobile, G1) ───────────────────
+   Papéis tonais escopados via [data-mobile-shell] — nunca sobrescreve os
+   tokens shadcn globais (--background/--card/etc), que continuam
+   governando desktop e qualquer tela fora da camada mobile. Contraste
+   checado: on-surface/on-surface-variant sobre surface >= 4.5:1 (texto),
+   on-primary-container sobre primary-container >= 4.5:1. Erro/sucesso/aviso
+   reaproveitam --destructive/--success/--warning (já validados no arquivo). */
+[data-mobile-shell] {
+  --m3-surface: 0 0% 98%;
+  --m3-surface-container-low: 0 0% 100%;
+  --m3-surface-container: 210 25% 95%;
+  --m3-on-surface: 0 0% 9%;
+  --m3-on-surface-variant: 0 0% 32%;
+  --m3-primary: 210 100% 42%;
+  --m3-on-primary: 0 0% 100%;
+  --m3-primary-container: 210 100% 94%;
+  --m3-on-primary-container: 210 100% 22%;
+  --m3-outline-variant: 0 0% 88%;
+}
+
+[data-mobile-shell].dark,
+.dark [data-mobile-shell] {
+  --m3-surface: 0 0% 10%;
+  --m3-surface-container-low: 0 0% 13%;
+  --m3-surface-container: 0 0% 17%;
+  --m3-on-surface: 0 0% 96%;
+  --m3-on-surface-variant: 0 0% 70%;
+  --m3-primary: 210 100% 65%;
+  --m3-on-primary: 0 0% 10%;
+  --m3-primary-container: 210 55% 24%;
+  --m3-on-primary-container: 210 100% 90%;
+  --m3-outline-variant: 0 0% 24%;
+}
+
+/* Zera as decorações "SaaS premium" (glow, tracking negativo) só dentro da
+   camada mobile — pedido explícito do documento de reformulação: cantos
+   macios/sombra ficam, glow/gradiente/tracking apertado saem. */
+[data-mobile-shell] {
+  letter-spacing: normal;
+}
+[data-mobile-shell] button {
+  box-shadow: none;
+}
+
 /* ── Collapsed desktop sidebar (icons only) ──────────────────────────────── */
 /* Driven by the `.sidebar-collapsed` class toggled on the desktop <aside> in
    SidebarShell. Hides text labels/badges and centers the icons so the rail

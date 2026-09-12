@@ -107,6 +107,23 @@ const config = {
         'apple-border-dark': '#2a2a2c',
         'apple-muted-dark': '#6e6e73',
         'apple-text-dark': '#a1a1a6',
+
+        // Camada mobile Material 3 (reformulação mobile, G1) — papéis
+        // tonais escopados via [data-mobile-shell] (ver app/globals.css).
+        // Nunca usados fora da camada mobile — o resto do app continua com
+        // os tokens shadcn (background/card/muted/etc) de sempre.
+        m3: {
+          surface: 'hsl(var(--m3-surface))',
+          'surface-container-low': 'hsl(var(--m3-surface-container-low))',
+          'surface-container': 'hsl(var(--m3-surface-container))',
+          'on-surface': 'hsl(var(--m3-on-surface))',
+          'on-surface-variant': 'hsl(var(--m3-on-surface-variant))',
+          primary: 'hsl(var(--m3-primary))',
+          'on-primary': 'hsl(var(--m3-on-primary))',
+          'primary-container': 'hsl(var(--m3-primary-container))',
+          'on-primary-container': 'hsl(var(--m3-on-primary-container))',
+          'outline-variant': 'hsl(var(--m3-outline-variant))',
+        },
       },
       fontFamily: {
         sans: [
@@ -124,6 +141,14 @@ const config = {
         plex: [
           'var(--font-plex)',
           'IBM Plex Sans',
+          'system-ui',
+          'sans-serif',
+        ],
+        // Camada mobile Material 3 (reformulação mobile, G1) — Roboto,
+        // aplicada só dentro de [data-mobile-shell] via a classe `font-mobile`.
+        mobile: [
+          'var(--font-roboto)',
+          'Roboto',
           'system-ui',
           'sans-serif',
         ],
@@ -146,6 +171,10 @@ const config = {
         md: 'var(--radius)',
         sm: 'var(--radius)',
         pill: '5px',
+        // Camada mobile M3 (G1) — card 12px, campo 4px, topo de sheet 28px.
+        mcard: '12px',
+        mfield: '4px',
+        msheet: '28px',
       },
       keyframes: {
         'accordion-down': {

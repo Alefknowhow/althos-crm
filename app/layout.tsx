@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, IBM_Plex_Sans } from "next/font/google";
+import { Inter, IBM_Plex_Sans, Roboto } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,6 +20,16 @@ const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "600"],
   variable: "--font-plex",
+  display: "swap",
+});
+
+// Camada mobile Material 3 (ver docs de reformulação mobile, G1) — escopada
+// via [data-mobile-shell] / classe `font-mobile`, nunca aplicada globalmente.
+// Só os pesos usados pela especificação (400/500/700).
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -62,7 +72,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${plexSans.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${plexSans.variable} ${roboto.variable}`}>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
