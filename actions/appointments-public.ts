@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { inngest } from '@/lib/inngest/client'
 import { runAntispamGauntlet } from '@/lib/security/antispam'
+import { computeAvailableSlots } from '@/lib/appointments/slots-calc'
 
 /* -------- Public: slot computation + booking -------- */
 
@@ -131,24 +132,8 @@ export async function getAvailableSlots(
 
   const duration = eventType.duration_minutes
   const buffer = (eventType.buffer_before_minutes || 0) + (eventType.buffer_after_minutes || 0)
-  const step = duration + buffer
-  const now = Date.now()
-  const slots: string[] = []
 
-  for (const w of windows) {
-    const wStart = new Date(`${dateStr}T${w.start_time}-03:00`).getTime()
-    const wEnd = new Date(`${dateStr}T${w.end_time}-03:00`).getTime()
-    if (!Number.isFinite(wStart) || !Number.isFinite(wEnd)) continue
-
-    for (let t = wStart; t + duration * 60_000 <= wEnd; t += step * 60_000) {
-      const slotStart = t
-      const slotEnd = t + duration * 60_000
-      if (slotStart <= now) continue
-      const overlaps = busy.some(b => !(slotEnd <= b.start || slotStart >= b.end))
-      if (overlaps) continue
-      slots.push(new Date(slotStart).toISOString())
-    }
-  }
+  const slots = computeAvailableSlots({ dateStr, windows, busy, durationMinutes: duration, bufferMinutes: buffer })
 
   return { slots, durationMinutes: duration, eventTypeId: eventType.id }
 }
