@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { getPlanMeta, modelCreditMultiplier, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
+import { getPlanMeta, modelCreditMultiplier, computeCreditCost, currentPeriodMonth, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
 import { resolveActionCreditCost } from '@/lib/plans/pricing'
 
 export interface AccountSubscription {
@@ -129,7 +129,7 @@ export async function consumeAiCredits(opts: {
   const { accountId, action, model = null, leadId = null, metadata = {} } = opts
   const baseCost = opts.credits ?? (await resolveActionCreditCost(action))
   const multiplier = modelCreditMultiplier(model)
-  const cost = Math.max(1, Math.ceil(baseCost * multiplier))
+  const cost = computeCreditCost(baseCost, multiplier)
 
   const supabase = createClient()
   const { data, error } = await supabase.rpc('consume_ai_credits', {
@@ -201,9 +201,8 @@ export async function getAiCreditsStatus(accountId: string): Promise<AiCreditsSt
   }
 }
 
-/** Period key used by the ai_credits table: 'YYYY-MM' (UTC). */
-export function currentPeriodMonth(d = new Date()): string {
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${y}-${m}`
-}
+// currentPeriodMonth foi movida pra lib/plans/config.ts (é pura, sem I/O —
+// morava aqui só por histórico) e reexportada por compatibilidade dos
+// importadores existentes que fazem `import { currentPeriodMonth } from
+// '@/lib/plans/server'` (app/api/webhooks/asaas/route.ts, lib/voice/credits.ts).
+export { currentPeriodMonth }

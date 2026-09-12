@@ -5,6 +5,8 @@ import {
   minimumPlanFor,
   getCyclePriceCents,
   modelCreditMultiplier,
+  computeCreditCost,
+  currentPeriodMonth,
   getPlanMeta,
   formatPlanPrice,
 } from '@/lib/plans/config'
@@ -93,5 +95,39 @@ describe('formatPlanPrice', () => {
     expect(s).toContain('R$')
     expect(s).toContain('137')
     expect(s).toContain('00')
+  })
+})
+
+describe('computeCreditCost', () => {
+  it('multiplies base cost by the model multiplier', () => {
+    expect(computeCreditCost(1, 1)).toBe(1)
+    expect(computeCreditCost(1, 3)).toBe(3)
+    expect(computeCreditCost(9, 5)).toBe(45)
+  })
+
+  it('rounds fractional costs UP, never down (never undercharges)', () => {
+    expect(computeCreditCost(1, 1.5)).toBe(2) // 1.5 -> 2, not 1
+    expect(computeCreditCost(2, 1.1)).toBe(3) // 2.2 -> 3
+  })
+
+  it('never returns less than 1 credit, even for a zero/negative base cost', () => {
+    expect(computeCreditCost(0, 3)).toBe(1)
+    expect(computeCreditCost(-5, 1)).toBe(1)
+  })
+})
+
+describe('currentPeriodMonth', () => {
+  it('formats as YYYY-MM in UTC', () => {
+    expect(currentPeriodMonth(new Date('2026-03-15T12:00:00Z'))).toBe('2026-03')
+  })
+
+  it('pads single-digit months', () => {
+    expect(currentPeriodMonth(new Date('2026-01-05T00:00:00Z'))).toBe('2026-01')
+  })
+
+  it('uses UTC, not local time — a date near midnight does not shift month', () => {
+    // 23:30 UTC on the 31st stays in the same UTC month even if local tz
+    // would already be past midnight into the next month.
+    expect(currentPeriodMonth(new Date('2026-01-31T23:30:00Z'))).toBe('2026-01')
   })
 })

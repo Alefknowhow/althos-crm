@@ -297,6 +297,27 @@ export function modelCreditMultiplier(model: string | null | undefined): number 
   return MODEL_CREDIT_MULTIPLIER[model ?? ''] ?? 1
 }
 
+/**
+ * Custo final em créditos (inteiro, sempre >= 1) — extraído de
+ * consumeAiCredits (lib/plans/server.ts) pra ser testável sem mockar
+ * Supabase. Fracionário arredonda pra CIMA (a tabela ai_credits é inteira;
+ * arredondar pra baixo subcobraria sistematicamente).
+ */
+export function computeCreditCost(baseCost: number, multiplier: number): number {
+  return Math.max(1, Math.ceil(baseCost * multiplier))
+}
+
+/**
+ * Period key used by the ai_credits table: 'YYYY-MM' (UTC). Movida de
+ * lib/plans/server.ts pra cá — é pura (sem I/O), mas morava num arquivo com
+ * import de next/headers no topo, o que a deixava intestável isoladamente.
+ */
+export function currentPeriodMonth(d = new Date()): string {
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
 /** Preço de venda do crédito avulso (add-on), em centavos. */
 export const ADDON_CREDIT_PRICE_CENTS = 15
 

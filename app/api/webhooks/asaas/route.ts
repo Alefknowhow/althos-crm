@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyStaticToken } from '@/lib/security/webhook'
+import { parseCreditPackRef, resolvePlanKeyFromOrg, buildAsaasDedupeKey } from '@/lib/asaas/webhook-helpers'
 
 export async function POST(req: NextRequest) {
   // Timing-safe token comparison — guards against timing attacks that could
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   // de IA em dobro (achado 1.2 da auditoria de segurança) na reentrega.
   // dedupe_key = event_type + id do payment/subscription do payload — o
   // mesmo evento de verdade sempre carrega o mesmo id.
-  const dedupeKey = `${payload.event}:${payload.payment?.id || payload.subscription?.id || 'no-ref'}`
+  const dedupeKey = buildAsaasDedupeKey(payload)
 
   // Persist raw event first (idempotent audit trail). Conflito de unique
   // index em dedupe_key = já processamos esse evento exato antes.
@@ -63,36 +64,34 @@ export async function POST(req: NextRequest) {
 
     // ── One-off add-on purchases (no subscription attached) ──────────────
     // Créditos de IA avulsos: externalReference = "credit_pack:<accountId>:<credits>"
-    if (!subscriptionId && externalRef?.startsWith('credit_pack:')) {
+    const creditPack = !subscriptionId ? parseCreditPackRef(externalRef) : null
+    if (creditPack) {
       const ev: string = payload.event
       if (ev === 'PAYMENT_RECEIVED' || ev === 'PAYMENT_CONFIRMED') {
-        const [, accountId, creditsStr] = externalRef.split(':')
-        const credits = parseInt(creditsStr, 10)
-        if (accountId && Number.isFinite(credits)) {
-          const { currentPeriodMonth } = await import('@/lib/plans/server')
-          const periodMonth = currentPeriodMonth()
+        const { accountId, credits } = creditPack
+        const { currentPeriodMonth } = await import('@/lib/plans/server')
+        const periodMonth = currentPeriodMonth()
 
-          const { data: existing } = await adminSupabase
+        const { data: existing } = await adminSupabase
+          .from('ai_credits')
+          .select('id, credits_purchased')
+          .eq('account_id', accountId)
+          .eq('period_month', periodMonth)
+          .maybeSingle()
+
+        if (existing) {
+          await adminSupabase
             .from('ai_credits')
-            .select('id, credits_purchased')
-            .eq('account_id', accountId)
-            .eq('period_month', periodMonth)
-            .maybeSingle()
-
-          if (existing) {
-            await adminSupabase
-              .from('ai_credits')
-              .update({ credits_purchased: (existing.credits_purchased ?? 0) + credits })
-              .eq('id', existing.id)
-          } else {
-            await adminSupabase.from('ai_credits').insert({
-              account_id: accountId,
-              period_month: periodMonth,
-              credits_included: 0,
-              credits_purchased: credits,
-              credits_used: 0,
-            })
-          }
+            .update({ credits_purchased: (existing.credits_purchased ?? 0) + credits })
+            .eq('id', existing.id)
+        } else {
+          await adminSupabase.from('ai_credits').insert({
+            account_id: accountId,
+            period_month: periodMonth,
+            credits_included: 0,
+            credits_purchased: credits,
+            credits_used: 0,
+          })
         }
       }
 
@@ -122,9 +121,7 @@ export async function POST(req: NextRequest) {
 
           // Derive the plan key from the org's current plan column
           // (set when checkout was initiated in createCheckoutSession)
-          const planKey = (['starter', 'pro', 'business', 'scale'] as const).includes(org.plan)
-            ? (org.plan as 'starter' | 'pro' | 'business' | 'scale')
-            : 'starter'
+          const planKey = resolvePlanKeyFromOrg(org.plan)
           const { activatePlanFromWebhook } = await import('@/actions/billing')
           await activatePlanFromWebhook(subscriptionId, planKey)
         } else if (ev === 'PAYMENT_OVERDUE') {
