@@ -42,8 +42,8 @@ export default async function VoiceCreditosPage({ params }: { params: { orgSlug:
           <CardTitle className="text-sm">Saldo</CardTitle>
           <VoiceBuyCreditsButton orgSlug={params.orgSlug} />
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
+        <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="col-span-2 sm:col-span-1">
             <div className="text-xs text-muted-foreground">Saldo disponível</div>
             <div className="text-2xl font-semibold">{formatCents(status?.availableCents ?? 0)}</div>
           </div>
