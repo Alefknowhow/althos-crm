@@ -137,7 +137,7 @@ export default function ImportLeadsPage({ params }: { params: { orgSlug: string 
               <CardTitle>Preview (Primeiras 5 linhas)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

@@ -38,7 +38,7 @@ export default function SellerBarChartWithTable({ rows, hasCommission }: { rows:
             <div className="h-[160px] shrink-0">
               <SellerBarChart data={rows} />
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

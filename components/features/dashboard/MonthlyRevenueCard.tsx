@@ -33,7 +33,7 @@ export default function MonthlyRevenueCard({ rows, hasCommission }: { rows: Comb
             <div className="h-[160px] shrink-0">
               <ComboBarLineChart data={rows} hasCommission={hasCommission} />
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

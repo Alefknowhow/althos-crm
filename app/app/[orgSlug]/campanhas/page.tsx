@@ -45,6 +45,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
 
       <div className="bg-card border rounded-none overflow-hidden">
         {campaigns.length > 0 ? (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -85,6 +86,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
               })}
             </TableBody>
           </Table>
+          </div>
         ) : (
           <div className="p-12 text-center text-muted-foreground bg-muted/10">
             Nenhuma campanha criada ainda. Crie a primeira pra disparar uma mensagem em massa pro seu público.
