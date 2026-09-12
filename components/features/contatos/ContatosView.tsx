@@ -12,11 +12,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { cn, formatPhoneDisplay } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Search, FileCheck2, Phone, Users, MessageCircle, FileSignature, Plane, PhoneCall, MessageSquareText,
+  Search, FileCheck2, Users, MessageCircle, FileSignature, Plane, PhoneCall, MessageSquareText,
 } from 'lucide-react'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 import { useSmsComposer } from '@/components/features/voice/SmsComposeModal'
@@ -24,7 +24,6 @@ import { CONTATO_STATUS_META, type ContatoStatus } from '@/lib/contatos'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import {
   type ListRow, type Props,
-  relativeTime,
 } from './ContatosViewShared'
 import { ShortcutButton, LinkedRecordsDialog, ListAvatar, NewContatoDialog } from './ContatosViewWidgets'
 import { DetailPanel } from './ContatosViewDetailPanel'
@@ -190,21 +189,12 @@ export default function ContatosView({
                           <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                        <Phone className="w-3 h-3 shrink-0" />
-                        {c.phone ? formatPhoneDisplay(c.phone) : 'Sem telefone'}
-                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      {meta && (
-                        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', meta.badgeClass)}>
-                          {meta.label}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-muted-foreground">
-                        {relativeTime(c.last_activity_at || c.updated_at)}
+                    {meta && (
+                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium shrink-0', meta.badgeClass)}>
+                        {meta.label}
                       </span>
-                    </div>
+                    )}
                   </button>
 
                   {/* Atalhos: conversas, cotações enviadas, reservas */}
