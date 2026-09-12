@@ -174,7 +174,7 @@ export default function AccountsTable({ accounts, plans }: Props) {
                           size="sm"
                           variant="ghost"
                           onClick={() => setEditAccount(a)}
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
+                          className="h-11 w-11 md:h-7 md:w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
                           title="Editar plano e limites"
                         >
                           <Settings2 className="w-3.5 h-3.5" />

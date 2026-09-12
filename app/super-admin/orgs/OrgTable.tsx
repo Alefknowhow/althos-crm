@@ -146,7 +146,7 @@ export default function OrgTable({ orgs }: Props) {
                         size="sm"
                         variant="ghost"
                         onClick={() => setUsageOrg(org)}
-                        className="h-7 w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
+                        className="h-11 w-11 md:h-7 md:w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
                         title="Ver uso e créditos"
                       >
                         <BarChart3 className="w-3.5 h-3.5" />
@@ -155,7 +155,7 @@ export default function OrgTable({ orgs }: Props) {
                         size="sm"
                         variant="ghost"
                         onClick={() => setEditOrg(org)}
-                        className="h-7 w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
+                        className="h-11 w-11 md:h-7 md:w-7 p-0 text-slate-500 hover:text-white hover:bg-white/10"
                         title="Editar limites"
                       >
                         <Settings2 className="w-3.5 h-3.5" />
