@@ -4,6 +4,7 @@ import { getCampaignDetail } from '@/actions/send-campaigns'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import CampaignDetailActions, { ResendRecipient } from '@/components/features/campaigns/CampaignDetailActions'
+import { MobileListItem } from '@/components/features/mobile/MobileListItem'
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   draft:     { label: 'Rascunho',  className: 'bg-muted text-muted-foreground border-muted-foreground/20' },
@@ -61,39 +62,66 @@ export default async function CampanhaDetailPage({ params }: { params: { orgSlug
 
       <div className="bg-card border rounded-none overflow-hidden">
         {recipients.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Contato</TableHead>
-                <TableHead>Destino</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Detalhe</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile: lista de cards em vez da tabela de 4 colunas sem
+                scroll contido (mesma regra aplicada em Financeiro > M08). */}
+            <div className="sm:hidden divide-y">
               {recipients.map(r => {
                 const rStatus = RECIPIENT_STATUS_LABEL[r.status] || RECIPIENT_STATUS_LABEL.pending
+                const destino = campaign.channel === 'whatsapp' ? (r.contact_phone || '—') : (r.contact_email || '—')
                 return (
-                  <TableRow key={r.id}>
-                    <TableCell>{r.contact_name || '—'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {campaign.channel === 'whatsapp' ? (r.contact_phone || '—') : (r.contact_email || '—')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={rStatus.className} variant="outline">{rStatus.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {r.status === 'skipped' && 'Sem contato para o canal'}
-                      {r.status === 'failed' && (r.error || 'Erro no envio')}
-                      {r.status === 'failed' && (
-                        <ResendRecipient orgSlug={params.orgSlug} recipientId={r.id} />
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <MobileListItem
+                    key={r.id}
+                    title={r.contact_name || '—'}
+                    subtitle={destino}
+                    trailing={
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge className={rStatus.className + ' text-[10px]'} variant="outline">{rStatus.label}</Badge>
+                        {r.status === 'failed' && <ResendRecipient orgSlug={params.orgSlug} recipientId={r.id} />}
+                      </div>
+                    }
+                  />
                 )
               })}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop: tabela original, com scroll contido a mais. */}
+            <div className="hidden sm:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contato</TableHead>
+                  <TableHead>Destino</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Detalhe</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recipients.map(r => {
+                  const rStatus = RECIPIENT_STATUS_LABEL[r.status] || RECIPIENT_STATUS_LABEL.pending
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell>{r.contact_name || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {campaign.channel === 'whatsapp' ? (r.contact_phone || '—') : (r.contact_email || '—')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={rStatus.className} variant="outline">{rStatus.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.status === 'skipped' && 'Sem contato para o canal'}
+                        {r.status === 'failed' && (r.error || 'Erro no envio')}
+                        {r.status === 'failed' && (
+                          <ResendRecipient orgSlug={params.orgSlug} recipientId={r.id} />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            </div>
+          </>
         ) : (
           <div className="p-12 text-center text-muted-foreground bg-muted/10">
             Nenhum destinatário ainda.
