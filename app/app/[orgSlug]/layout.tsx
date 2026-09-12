@@ -195,7 +195,7 @@ export default async function OrgLayout({
               </div>
               <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
-                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} />
+                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} />
               </div>
               <HeaderMobileMenu orgSlug={params.orgSlug} />
             </div>

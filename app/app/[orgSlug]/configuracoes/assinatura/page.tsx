@@ -1,12 +1,15 @@
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { getCurrentOrganization, requireAuth } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/server'
 import { getPlan, formatPrice } from '@/lib/billing/plans'
 import { getUsageStatus, getTrialDaysRemaining } from '@/lib/billing/limits'
 import { asaas } from '@/lib/asaas/client'
 import SubscriptionActions from './SubscriptionActions'
 import AddonsSection from './AddonsSection'
+import CreditsOverviewSection from './CreditsOverviewSection'
 import ReferralCouponsSection from '@/components/features/billing/ReferralCouponsSection'
 import { getReferralOverview, getAppliedCoupons } from '@/actions/referrals'
 import { getSubscriptionByOrgSlug } from '@/lib/plans/server'
+import { getCreditsOverview } from '@/actions/billing-credits-overview'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
@@ -24,9 +27,21 @@ function statusLabel(status: string | null) {
 }
 
 export default async function SubscriptionPage({ params }: { params: { orgSlug: string } }) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug) as any
 
   if (org.account_type === 'internal') redirect(`/app/${params.orgSlug}`)
+
+  // Painel de billing/planos — só o dono da org (quem paga) vê isso.
+  // Membros da equipe (mesmo admin) são redirecionados de volta pro app.
+  const supabase = createClient()
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('organization_id', org.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (membership?.role !== 'owner') redirect(`/app/${params.orgSlug}`)
 
   const plan        = getPlan(org.plan)
   const usage       = await getUsageStatus(org.id)
@@ -54,12 +69,36 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
     } catch { /* offline or no key */ }
   }
 
-  // Referrals + coupons (new per-account system).
-  const [referralOverview, appliedCoupons, subscription] = await Promise.all([
+  // Referrals + coupons (new per-account system) + créditos (IA/Voice/Email).
+  const [referralOverview, appliedCoupons, subscription, creditsRes] = await Promise.all([
     getReferralOverview(params.orgSlug),
     getAppliedCoupons(params.orgSlug),
     getSubscriptionByOrgSlug(params.orgSlug),
+    getCreditsOverview(params.orgSlug),
   ])
+  const credits = creditsRes.ok ? creditsRes.overview : null
+
+  // Histórico unificado: faturas da assinatura (Asaas) + compras avulsas de
+  // cada tipo de crédito (ai/voice/email_credit_transactions, type='purchased')
+  // — uma única lista cronológica, conforme pedido ("histórico de faturas no
+  // app, tudo em uma lista").
+  type HistoryItem = { id: string; date: string; label: string; amountLabel: string; statusLabel: string; statusVariant: 'default' | 'secondary' | 'destructive' | 'outline'; url?: string }
+  const creditHistory: HistoryItem[] = credits
+    ? [
+        ...credits.ai.transactions.filter(t => t.type === 'purchased').map(t => ({
+          id: `ai-${t.id}`, date: t.createdAt, label: `Créditos de IA — ${t.amount} créditos`,
+          amountLabel: '', statusLabel: 'Pago', statusVariant: 'default' as const,
+        })),
+        ...credits.voice.transactions.filter(t => t.type === 'purchased').map(t => ({
+          id: `voice-${t.id}`, date: t.createdAt, label: 'Voice Credits — compra de pacote',
+          amountLabel: (t.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), statusLabel: 'Pago', statusVariant: 'default' as const,
+        })),
+        ...credits.email.transactions.filter(t => t.type === 'purchased').map(t => ({
+          id: `email-${t.id}`, date: t.createdAt, label: 'Email Credits — compra de pacote',
+          amountLabel: (t.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), statusLabel: 'Pago', statusVariant: 'default' as const,
+        })),
+      ]
+    : []
 
   // Referral program is paid-only: free-plan accounts can redeem coupons but
   // cannot generate/share their own referral link. A customer counts as paying
@@ -139,6 +178,9 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         )}
       </div>
 
+      {/* ── Créditos de uso (IA / Voice / Email) ────────────────────────────── */}
+      {credits && <CreditsOverviewSection orgSlug={params.orgSlug} overview={credits} />}
+
       {/* ── Complementos (add-ons) ──────────────────────────────────────────── */}
       {!isManaged && <AddonsSection orgSlug={params.orgSlug} />}
 
@@ -184,55 +226,58 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
         canRefer={canRefer}
       />
 
-      {/* ── Invoice history ───────────────────────────────────────────────── */}
-      {!isManaged && (
-        <div className="rounded-none border bg-card overflow-hidden">
-          <div className="px-6 py-4 border-b">
-            <h2 className="font-semibold text-sm">Histórico de faturas</h2>
+      {/* ── Histórico de faturas (assinatura + compras de crédito) ─────────── */}
+      {!isManaged && (() => {
+        const invoiceHistory: HistoryItem[] = invoices.map((inv: any) => ({
+          id: `inv-${inv.id}`,
+          date: inv.dueDate,
+          label: `Assinatura — ${new Date(inv.dueDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+          amountLabel: Number(inv.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          statusLabel: inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'Pago'
+            : inv.status === 'OVERDUE' ? 'Vencido'
+            : inv.status === 'PENDING' ? 'Pendente'
+            : inv.status,
+          statusVariant: inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'default'
+            : inv.status === 'OVERDUE' ? 'destructive'
+            : 'secondary',
+          url: inv.invoiceUrl,
+        }))
+        const allHistory = [...invoiceHistory, ...creditHistory].sort((a, b) => (a.date < b.date ? 1 : -1))
+
+        return (
+          <div className="rounded-none border bg-card overflow-hidden">
+            <div className="px-6 py-4 border-b">
+              <h2 className="font-semibold text-sm">Histórico de faturas</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Assinatura e compras avulsas de créditos (IA, Voice, Email) juntos.</p>
+            </div>
+            {allHistory.length === 0 ? (
+              <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+                Nenhuma fatura encontrada.
+              </div>
+            ) : (
+              <div className="divide-y">
+                {allHistory.slice(0, 30).map(item => (
+                  <div key={item.id} className="flex items-center justify-between px-6 py-3 text-sm">
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="font-medium truncate">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {item.amountLabel && <span className="font-semibold">{item.amountLabel}</span>}
+                      <Badge variant={item.statusVariant} className="text-[10px]">{item.statusLabel}</Badge>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                          Ver
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {invoices.length === 0 ? (
-            <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-              Nenhuma fatura encontrada.
-            </div>
-          ) : (
-            <div className="divide-y">
-              {invoices.slice(0, 12).map((inv: any) => (
-                <div key={inv.id} className="flex items-center justify-between px-6 py-3 text-sm">
-                  <div className="space-y-0.5">
-                    <p className="font-medium">
-                      {new Date(inv.dueDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                    </p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {inv.billingType?.toLowerCase()} · vence {new Date(inv.dueDate).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold">
-                      {Number(inv.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                    <Badge variant={inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'default' : inv.status === 'OVERDUE' ? 'destructive' : 'secondary'} className="text-[10px]">
-                      {inv.status === 'RECEIVED' || inv.status === 'CONFIRMED' ? 'Pago'
-                        : inv.status === 'OVERDUE'  ? 'Vencido'
-                        : inv.status === 'PENDING'  ? 'Pendente'
-                        : inv.status}
-                    </Badge>
-                    {inv.invoiceUrl && (
-                      <a
-                        href={inv.invoiceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Ver
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        )
+      })()}
       </div>
   )
 }

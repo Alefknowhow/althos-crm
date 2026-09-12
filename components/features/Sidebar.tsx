@@ -185,7 +185,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           drawer mobile por SidebarShell.tsx, então essa é a forma de
           escondê-lo só num dos dois). */}
       <div className="p-3 border-t border-sidebar-border md:hidden">
-        <SidebarUserMenu name={userName} email={userEmail} avatarUrl={userAvatarUrl} />
+        <SidebarUserMenu name={userName} email={userEmail} avatarUrl={userAvatarUrl} isOwner={userRole === 'owner'} />
       </div>
     </SidebarShell>
   )

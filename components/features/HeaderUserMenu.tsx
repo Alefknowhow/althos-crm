@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, User, ChevronDown } from 'lucide-react'
+import Link from 'next/link'
+import { LogOut, User, ChevronDown, CreditCard } from 'lucide-react'
 import { logout } from '@/actions/auth'
 import UserAvatar from './UserAvatar'
 import ProfileSheet from './ProfileSheet'
@@ -11,13 +12,14 @@ interface Props {
   name: string
   email: string
   avatarUrl: string | null
+  isOwner?: boolean
 }
 
 /** Menu do usuário logado — canto direito do header (desktop). Mesma
  *  ação de SidebarUserMenu.tsx (que continua existindo só pro drawer
  *  mobile, via md:hidden em Sidebar.tsx — esse aqui é a versão
  *  desktop, "por enquanto", conforme pedido). */
-export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl }: Props) {
+export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl, isOwner }: Props) {
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -55,6 +57,17 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl }: Prop
             <User className="w-4 h-4 text-muted-foreground" />
             Meu perfil
           </button>
+
+          {isOwner && (
+            <Link
+              href={`/app/${orgSlug}/configuracoes/assinatura`}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+            >
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              Assinatura
+            </Link>
+          )}
 
           <form action={logout}>
             <button

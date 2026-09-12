@@ -80,18 +80,39 @@ export async function POST(req: NextRequest) {
           .eq('period_month', periodMonth)
           .maybeSingle()
 
+        // ai_credits_id da linha afetada — usado no insert de purchased
+        // logo abaixo, pra manter o ledger com a mesma fonte de verdade que
+        // consume_ai_credits (os 'consumed') já usa.
+        let aiCreditsId: string | null = null
+
         if (existing) {
           await adminSupabase
             .from('ai_credits')
             .update({ credits_purchased: (existing.credits_purchased ?? 0) + credits })
             .eq('id', existing.id)
+          aiCreditsId = existing.id
         } else {
-          await adminSupabase.from('ai_credits').insert({
+          const { data: inserted } = await adminSupabase.from('ai_credits').insert({
             account_id: accountId,
             period_month: periodMonth,
             credits_included: 0,
             credits_purchased: credits,
             credits_used: 0,
+          }).select('id').single()
+          aiCreditsId = inserted?.id ?? null
+        }
+
+        // Ledger — antes a compra só atualizava o saldo direto, sem deixar
+        // rastro em ai_credit_transactions (histórico de faturas não via
+        // essas compras). Mesmo padrão de purchased usado em Voice/Email Credits.
+        if (aiCreditsId) {
+          await adminSupabase.from('ai_credit_transactions').insert({
+            account_id: accountId,
+            ai_credits_id: aiCreditsId,
+            type: 'purchased',
+            action: 'credit_pack_purchase',
+            credits_delta: credits,
+            metadata: { externalRef },
           })
         }
       }

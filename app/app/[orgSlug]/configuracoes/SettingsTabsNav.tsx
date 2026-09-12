@@ -3,19 +3,23 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Building, UsersRound, CreditCard, Share2, Bell, ShieldCheck, Bot, Palette, KeyRound } from 'lucide-react'
+import { Building, UsersRound, Share2, Bell, ShieldCheck, Bot, Palette, KeyRound } from 'lucide-react'
 
 /**
  * Shared tab navigation for the settings hub. Each tab is its own route so the
- * existing server pages (Equipe, Assinatura, …) are reused as-is. Highlights the
+ * existing server pages (Equipe, …) are reused as-is. Highlights the
  * active tab from the current pathname. Include it at the top of each settings
  * hub page (NOT on detail sub-pages like /whatsapp or /meta).
+ *
+ * "Assinatura" saiu daqui — mora agora só no menu do usuário (Meu perfil),
+ * visível apenas pro owner da org (ver HeaderUserMenu.tsx/SidebarUserMenu.tsx).
+ * A rota /configuracoes/assinatura continua existindo, só não tem mais aba
+ * própria neste nav compartilhado.
  */
 const TABS = [
   { key: 'geral',        label: 'Geral',        icon: Building,    seg: '' },
   { key: 'agente-ia',    label: 'Agente IA',    icon: Bot,         seg: 'agente-ia' },
   { key: 'equipe',       label: 'Equipe',       icon: UsersRound,  seg: 'equipe' },
-  { key: 'assinatura',   label: 'Assinatura',   icon: CreditCard,  seg: 'assinatura' },
   { key: 'notificacoes', label: 'Notificações', icon: Bell,        seg: 'notificacoes' },
   { key: 'aparencia',    label: 'Aparência',    icon: Palette,     seg: 'aparencia' },
   { key: 'seguranca',    label: 'Segurança',    icon: ShieldCheck, seg: 'seguranca' },

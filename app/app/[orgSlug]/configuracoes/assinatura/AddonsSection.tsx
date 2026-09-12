@@ -7,9 +7,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Users, Store, Layers, Zap, CheckCircle2 } from 'lucide-react'
-import { purchaseCreditPack, requestAddonChange } from '@/actions/addons'
-import { CREDIT_PACKS } from '@/lib/plans/config'
+import { Loader2, Users, Store, Layers, CheckCircle2 } from 'lucide-react'
+import { requestAddonChange } from '@/actions/addons'
 import { EXTRA_USER_CENTS, EXTRA_ORG_CENTS, NICHE_MODULE_CENTS, FINANCEIRO_ONLY_CENTS, NICHE_MODULE_OPTIONS } from '@/lib/billing/addons'
 import { formatPrice } from '@/lib/billing/plans'
 
@@ -129,43 +128,6 @@ function NicheModuleCard({ orgSlug }: { orgSlug: string }) {
   )
 }
 
-function CreditPacksCard({ orgSlug }: { orgSlug: string }) {
-  const [loadingIdx, setLoadingIdx] = useState<number | null>(null)
-
-  async function buy(idx: number) {
-    setLoadingIdx(idx)
-    const res = await purchaseCreditPack(orgSlug, idx)
-    setLoadingIdx(null)
-    if (!res.ok) return toast.error(res.error)
-    window.location.href = res.checkoutUrl
-  }
-
-  return (
-    <div className="rounded-none border bg-card p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <Zap className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-sm">Créditos de IA</h3>
-      </div>
-      <p className="text-xs text-muted-foreground">Pacotes avulsos além dos créditos mensais do seu plano.</p>
-      <div className="flex flex-wrap gap-2">
-        {CREDIT_PACKS.map((pack, i) => (
-          <Button
-            key={pack.credits}
-            variant="outline"
-            size="sm"
-            onClick={() => buy(i)}
-            disabled={loadingIdx !== null}
-            className="gap-1.5"
-          >
-            {loadingIdx === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-            {pack.credits.toLocaleString('pt-BR')} créditos — {formatPrice(pack.priceCents)}
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function AddonsSection({ orgSlug }: Props) {
   return (
     <div className="rounded-none border bg-card p-6 space-y-4">
@@ -177,7 +139,6 @@ export default function AddonsSection({ orgSlug }: Props) {
         <ExtraUsersCard orgSlug={orgSlug} />
         <ExtraOrgsCard orgSlug={orgSlug} />
         <NicheModuleCard orgSlug={orgSlug} />
-        <CreditPacksCard orgSlug={orgSlug} />
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { LogOut, User, ChevronUp } from 'lucide-react'
+import { LogOut, User, ChevronUp, CreditCard } from 'lucide-react'
 import { logout } from '@/actions/auth'
 import UserAvatar from './UserAvatar'
 
@@ -11,9 +11,10 @@ interface Props {
   name: string
   email: string
   avatarUrl?: string | null
+  isOwner?: boolean
 }
 
-export default function SidebarUserMenu({ name, email, avatarUrl }: Props) {
+export default function SidebarUserMenu({ name, email, avatarUrl, isOwner }: Props) {
   const params = useParams()
   const orgSlug = params?.orgSlug as string | undefined
 
@@ -32,6 +33,7 @@ export default function SidebarUserMenu({ name, email, avatarUrl }: Props) {
   }, [])
 
   const profileHref = orgSlug ? `/app/${orgSlug}/perfil` : '#'
+  const subscriptionHref = orgSlug ? `/app/${orgSlug}/configuracoes/assinatura` : '#'
 
   return (
     <div ref={ref} data-usermenu className="relative">
@@ -51,6 +53,17 @@ export default function SidebarUserMenu({ name, email, avatarUrl }: Props) {
             <User className="w-4 h-4 text-muted-foreground" />
             Meu perfil
           </Link>
+
+          {isOwner && (
+            <Link
+              href={subscriptionHref}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+            >
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              Assinatura
+            </Link>
+          )}
 
           <form action={logout}>
             <button
