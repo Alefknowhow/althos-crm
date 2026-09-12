@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization, isImpersonating } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
+import { toDigits } from '@/lib/phone'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
 
@@ -45,7 +46,7 @@ export async function getOrCreateConversationForLead(orgSlug: string, contatoId:
     .insert({
       organization_id: org.id,
       contato_id: contato.id,
-      contact_phone: contato.phone.replace(/\D/g, ''),
+      contact_phone: toDigits(contato.phone),
       contact_name: contato.name,
     })
     .select('id')

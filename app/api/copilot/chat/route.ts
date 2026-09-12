@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { sanitizeChatHistory } from '@/lib/ai/chat-history'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
@@ -122,10 +123,7 @@ export async function POST(req: NextRequest) {
   })
 
   const history = [
-    ...((prior || []).filter(m => m.role === 'user' || m.role === 'assistant') as Array<{
-      role: 'user' | 'assistant'
-      content: string
-    }>),
+    ...sanitizeChatHistory(prior),
     { role: 'user' as const, content: userMessage },
   ]
 

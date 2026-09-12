@@ -17,6 +17,7 @@
  */
 
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
+import { toDigits } from '@/lib/phone'
 
 export type NpsSendResult = { ok: true } | { ok: false; error: string }
 
@@ -35,7 +36,7 @@ export async function sendNpsSurveyCore(
   if (!lead.phone) return { ok: false, error: 'Esse contato não tem telefone cadastrado.' }
   if (!template.name) return { ok: false, error: 'Selecione um template de WhatsApp aprovado.' }
   const orgId = orgConfig.id
-  const phone = lead.phone.replace(/\D/g, '')
+  const phone = toDigits(lead.phone)
 
   // Confere que o template existe e está aprovado na Meta — evita mandar
   // (e falhar do lado de lá) um template ainda pendente/rejeitado/local.

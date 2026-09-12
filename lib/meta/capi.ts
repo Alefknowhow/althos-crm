@@ -6,20 +6,12 @@
  */
 
 import { createHash } from 'crypto'
+import { normalizePhoneE164BR } from '@/lib/phone'
 
 // SHA-256 hash a normalised string (Meta requires lowercase + trimmed for PII)
 function hashField(value: string | null | undefined): string | undefined {
   if (!value) return undefined
   return createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
-}
-
-// Normalise phone: keep only digits, ensure country code prefix if BRN
-function normalisePhone(phone: string | null | undefined): string | undefined {
-  if (!phone) return undefined
-  const digits = phone.replace(/\D/g, '')
-  // Brazil: if 10-11 digits without country code, prefix with 55
-  if (digits.length <= 11) return `55${digits}`
-  return digits
 }
 
 export type CapiEventPayload = {
@@ -59,7 +51,7 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
 
   const userData: Record<string, string> = {}
   const hashedEmail = hashField(email)
-  const hashedPhone = hashField(normalisePhone(phone))
+  const hashedPhone = hashField(normalizePhoneE164BR(phone))
   const hashedFn = hashField(firstName)
   if (hashedEmail) userData.em = hashedEmail
   if (hashedPhone) userData.ph = hashedPhone
