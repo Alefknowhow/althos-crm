@@ -239,7 +239,7 @@ export default function TrafegoCommandCenter({ orgSlug, clients }: { orgSlug: st
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="h-6 w-6 grid place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            className="h-11 w-11 md:h-6 md:w-6 grid place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
                             aria-label="Mais opções"
                           >
                             <MoreVertical className="w-3.5 h-3.5" />

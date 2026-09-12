@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
 import TrafficClientProfileCard from '@/components/features/agencias-trafego/TrafficClientProfileCard'
 import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/TrafficClientCampaignsCard'
 import ClientCampaignsTable from '@/components/features/agencias-trafego/ClientCampaignsTable'
@@ -69,6 +71,17 @@ export default function ClientDetailShell({
   trackingLinks: TrackingLink[]
   trackingLinkPerformance: LinkPerformance[]
 }) {
+  const [tab, setTab] = useState('visao-geral')
+  const sections: MobileSection[] = [
+    { key: 'visao-geral', label: 'Visão geral' },
+    { key: 'estrategia', label: 'Estratégia' },
+    { key: 'performance', label: 'Performance' },
+    { key: 'criativos', label: 'Criativos' },
+    { key: 'tracking', label: 'Tracking' },
+    { key: 'inteligencia', label: 'Inteligência' },
+    { key: 'historico', label: 'Histórico' },
+  ]
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-3">
@@ -80,8 +93,11 @@ export default function ClientDetailShell({
         <h1 className="text-xl font-bold tracking-tight">{clientName}</h1>
       </div>
 
-      <Tabs defaultValue="visao-geral" className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <div className="sm:hidden">
+          <MobileSectionPicker sections={sections} activeKey={tab} onChange={setTab} />
+        </div>
+        <TabsList className="hidden sm:flex flex-wrap h-auto">
           <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
           <TabsTrigger value="estrategia">Estratégia</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
