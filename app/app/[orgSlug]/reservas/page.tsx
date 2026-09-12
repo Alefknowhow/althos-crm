@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listTravelSales } from '@/actions/travel-sales'
 import { listProposals, listLeadsForPicker } from '@/actions/travel-proposals'
 import { listOrgMembers } from '@/actions/team'
@@ -9,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { FileSignature } from 'lucide-react'
 import Link from 'next/link'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 // Autopreenchimento de voucher via IA (extractTravelDocument) pode levar
@@ -21,7 +20,7 @@ export default async function TravelSalesPage({
 }: { params: { orgSlug: string }; searchParams: { sale?: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'reservas')
 
   const [sales, proposals, members, leads] = await Promise.all([
     listTravelSales(params.orgSlug),

@@ -1,12 +1,11 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listRoteiros, listRoteiristaKnowledge } from '@/actions/roteirista'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import RoteiristaView from '@/components/features/roteirista/RoteiristaView'
 import { PageHeader } from '@/components/ui/page-header'
 import EmptyState from '@/components/ui/empty-state'
 import { Sparkles } from 'lucide-react'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,9 +13,7 @@ export default async function RoteiristaPage({ params }: { params: { orgSlug: st
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
 
-  if (!isTravelNiche(org.niche)) {
-    redirect(`/app/${params.orgSlug}`)
-  }
+  await requireModuleEnabled(org.niche, 'roteirista')
 
   if (!TRAVEL_PLANNER_ENABLED) {
     return (

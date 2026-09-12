@@ -1,11 +1,10 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isRealEstateNiche } from '@/lib/niche'
 import { listVisits } from '@/actions/property-visits'
 import { listProperties } from '@/actions/properties'
 import { listLeadsForPicker } from '@/actions/travel-proposals'
 import { listOrgMembers } from '@/actions/team'
 import VisitsView from '@/components/features/properties/VisitsView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +13,7 @@ export default async function VisitsPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isRealEstateNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'imoveis')
 
   const [visits, properties, contatos, members] = await Promise.all([
     listVisits(params.orgSlug),

@@ -1,8 +1,7 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isInsuranceNiche } from '@/lib/niche'
 import { listInsurers } from '@/actions/insurers'
 import InsurersView from '@/components/features/insurance/InsurersView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +10,7 @@ export default async function InsurersPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isInsuranceNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'seguros')
 
   const insurers = await listInsurers(params.orgSlug)
 

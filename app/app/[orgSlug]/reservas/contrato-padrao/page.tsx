@@ -1,16 +1,15 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getOrgContractTemplate, getDefaultContractBody } from '@/actions/document-templates'
 import ContractTemplateEditor from '@/components/features/reservas/ContractTemplateEditor'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ContractTemplatePage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'reservas')
 
   const [template, defaultBody] = await Promise.all([
     getOrgContractTemplate(params.orgSlug),

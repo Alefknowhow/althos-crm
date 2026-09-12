@@ -1,14 +1,13 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
 import { listClinicProfessionals, listClinicSpecialties, listClinicRooms } from '@/actions/clinic'
 import ProfissionaisClient from './ProfissionaisClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export default async function ProfissionaisPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'profissionais')
 
   const [professionals, specialties, rooms] = await Promise.all([
     listClinicProfessionals(params.orgSlug),

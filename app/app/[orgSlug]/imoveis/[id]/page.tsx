@@ -1,6 +1,5 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isRealEstateNiche } from '@/lib/niche'
 import { getProperty } from '@/actions/properties'
 import { listLeadsForPicker } from '@/actions/travel-proposals'
 import { listOrgMembers } from '@/actions/team'
@@ -8,6 +7,7 @@ import { listInterestsByProperty } from '@/actions/property-interests'
 import { listVisitsByProperty } from '@/actions/property-visits'
 import { listProposals } from '@/actions/property-proposals'
 import PropertyEditor from '@/components/features/properties/PropertyEditor'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +16,7 @@ export default async function PropertyEditorPage({
 }: { params: { orgSlug: string; id: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isRealEstateNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'imoveis')
 
   const [full, contatos, members, interests, visits, proposals] = await Promise.all([
     getProperty(params.orgSlug, params.id),

@@ -1,8 +1,8 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getGeneratedDocument } from '@/actions/generated-documents'
 import DocumentPrintView from '@/components/features/documents/DocumentPrintView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +11,7 @@ export default async function GeneratedDocumentPrintPage({
 }: { params: { orgSlug: string; id: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'documentos_viagem')
 
   const doc = await getGeneratedDocument(params.orgSlug, params.id)
   if (!doc) notFound()

@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isRealEstateNiche } from '@/lib/niche'
 import { createProperty } from '@/actions/properties'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +12,7 @@ export default async function NewPropertyPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isRealEstateNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'imoveis')
 
   const res = await createProperty(params.orgSlug, {})
   if (!res.ok) notFound()

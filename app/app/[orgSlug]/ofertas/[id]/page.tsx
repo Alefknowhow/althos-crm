@@ -1,8 +1,8 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getQuotationFull } from '@/actions/quotations'
 import QuotationEditor from '@/components/features/quotations/QuotationEditor'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 // Ver cotacoes/[id]/page.tsx — mesmo editor, mesmo motivo.
@@ -15,7 +15,7 @@ export default async function OfferEditorPage({
 }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'ofertas')
 
   const full = await getQuotationFull(params.orgSlug, params.id)
   if (!full || !full.quotation?.is_offer) notFound()

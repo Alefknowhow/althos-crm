@@ -1,14 +1,13 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
 import { listClinicReturns } from '@/actions/clinic-returns'
 import RetornosClient from './RetornosClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export default async function RetornosPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'retornos_clinica')
 
   const returns = await listClinicReturns(params.orgSlug)
 

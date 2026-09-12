@@ -1,9 +1,9 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getQuotationFull } from '@/actions/quotations'
 import { listOrgMembers } from '@/actions/team'
 import QuotationPrintView from '@/components/features/quotations/QuotationPrintView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +12,7 @@ export default async function QuotationPrintPage({
 }: { params: { orgSlug: string; id: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'cotacoes')
 
   const full = await getQuotationFull(params.orgSlug, params.id)
   if (!full) notFound()

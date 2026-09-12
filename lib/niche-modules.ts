@@ -8,7 +8,7 @@
 // uma lista XXX_ONLY aqui, sem tocar nos componentes que chamam
 // isModuleEnabled().
 
-import { isTravelNiche, isClinicNiche, isRealEstateNiche, isInsuranceNiche, isTrafficNiche } from './niche'
+import { isTravelNiche, isClinicNiche, isRealEstateNiche, isInsuranceNiche, isTrafficNiche, type NicheKey } from './niche'
 
 export type ModuleKey =
   // Módulos específicos da vertical de Viagens.
@@ -29,14 +29,14 @@ export type ModuleKey =
 
 const TRAVEL_ONLY: ModuleKey[] = ['cotacoes', 'roteirista', 'ofertas', 'embarques', 'bloqueios', 'reservas', 'documentos_viagem']
 const CLINIC_ONLY: ModuleKey[] = ['profissionais', 'orcamentos_clinica', 'atendimentos_clinica', 'tratamentos_clinica', 'lista_espera_clinica', 'comissoes_clinica', 'retornos_clinica', 'prontuario_clinica', 'estoque_clinica']
-// Prontuário existe no banco/código mas fica com visibilidade travada em
-// false até uma decisão de compliance — ver docs/audit/clinicas-lgpd.md.
-// O log de acesso (clinic_data_access_log) já foi implementado (item 1 da
+// Prontuário existe no banco/código mas fica com visibilidade travada até
+// uma decisão de compliance — ver docs/audit/clinicas-lgpd.md. O log de
+// acesso (clinic_data_access_log) já foi implementado (item 1 da
 // recomendação da auditoria); os itens 2-5 (aviso de conteúdo, retenção,
-// consentimento, revisão jurídica dos termos) ainda estão em aberto.
-// Pra habilitar: trocar PRONTUARIO_ENABLED pra true depois de decidir
-// isso — não precisa mexer em mais nada, o módulo já está pronto.
-const PRONTUARIO_ENABLED = false
+// consentimento, revisão jurídica dos termos) ainda estão em aberto. Isso
+// hoje é controlado via /super-admin/modulos (lib/module-flags.ts) —
+// default mantido desligado na migration 0239, sem precisar de deploy pra
+// religar depois de decidir.
 const REAL_ESTATE_ONLY: ModuleKey[] = ['imoveis']
 const INSURANCE_ONLY: ModuleKey[] = ['seguros']
 const TRAFFIC_ONLY: ModuleKey[] = ['trafego']
@@ -62,13 +62,13 @@ const NOT_CLINIC: ModuleKey[] = ['vendas', 'catalogo']
  *  nenhuma lista aqui). Seguros (Fase 1) ainda não exclui nada de
  *  GENERIC_ONLY — o CRM genérico continua em uso até cotações/apólices
  *  existirem nas próximas fases. */
-export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey): boolean {
+export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey, disabledForNiche?: ModuleKey[]): boolean {
+  if (disabledForNiche?.includes(key)) return false
   const travel = isTravelNiche(niche)
   const clinic = isClinicNiche(niche)
   const realEstate = isRealEstateNiche(niche)
   const insurance = isInsuranceNiche(niche)
   const traffic = isTrafficNiche(niche)
-  if (key === 'prontuario_clinica') return clinic && PRONTUARIO_ENABLED
   if (TRAVEL_ONLY.includes(key)) return travel
   if (CLINIC_ONLY.includes(key)) return clinic
   if (REAL_ESTATE_ONLY.includes(key)) return realEstate
@@ -80,4 +80,41 @@ export function isModuleEnabled(niche: string | null | undefined, key: ModuleKey
       && !(clinic && NOT_CLINIC.includes(key))
   }
   return true
+}
+
+/** Só usado pela UI de /super-admin/modulos — rótulo em português de cada
+ *  módulo, agrupado por nicho. Nichos com permissão única pra vertical
+ *  inteira (Imóveis/Seguros/Tráfego) ganham 1 entrada só, refletindo a
+ *  granularidade real que já existe hoje. */
+export const NICHE_MODULE_GROUPS: Record<NicheKey, { key: ModuleKey; label: string }[]> = {
+  viagens: [
+    { key: 'cotacoes', label: 'Cotações' },
+    { key: 'roteirista', label: 'Roteirista' },
+    { key: 'ofertas', label: 'Ofertas' },
+    { key: 'embarques', label: 'Embarques' },
+    { key: 'bloqueios', label: 'Bloqueios' },
+    { key: 'reservas', label: 'Reservas' },
+    { key: 'documentos_viagem', label: 'Documentos' },
+  ],
+  clinicas: [
+    { key: 'profissionais', label: 'Profissionais' },
+    { key: 'orcamentos_clinica', label: 'Orçamentos' },
+    { key: 'atendimentos_clinica', label: 'Atendimentos' },
+    { key: 'tratamentos_clinica', label: 'Tratamentos' },
+    { key: 'lista_espera_clinica', label: 'Lista de espera' },
+    { key: 'comissoes_clinica', label: 'Comissões' },
+    { key: 'retornos_clinica', label: 'Retornos' },
+    { key: 'prontuario_clinica', label: 'Prontuário eletrônico' },
+    { key: 'estoque_clinica', label: 'Estoque' },
+  ],
+  imoveis: [
+    { key: 'imoveis', label: 'Imóveis (módulo completo)' },
+  ],
+  seguros: [
+    { key: 'seguros', label: 'Seguros (módulo completo)' },
+  ],
+  trafego: [
+    { key: 'trafego', label: 'Agências de Tráfego (módulo completo)' },
+  ],
+  advocacia: [],
 }

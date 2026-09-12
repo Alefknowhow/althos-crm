@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listProposals, listLeadsForPicker } from '@/actions/travel-proposals'
 import { listOrgMembers } from '@/actions/team'
 import ProposalsList from '@/components/features/proposals/ProposalsList'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +12,7 @@ export default async function ProposalsPage({ params }: { params: { orgSlug: str
   const org = await getCurrentOrganization(params.orgSlug)
 
   // Niche-gated feature.
-  if (!isTravelNiche(org.niche)) {
-    redirect(`/app/${params.orgSlug}`)
-  }
+  await requireModuleEnabled(org.niche, 'cotacoes')
 
   const [proposals, members, contatos] = await Promise.all([
     listProposals(params.orgSlug),

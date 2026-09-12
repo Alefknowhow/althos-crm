@@ -1,17 +1,16 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listOffers } from '@/actions/quotations'
 import { getVitrineToken } from '@/actions/travel-showcase'
 import OffersList from '@/components/features/quotations/OffersList'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
 export default async function OffersPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'ofertas')
 
   const [offers, vitrineToken] = await Promise.all([
     listOffers(params.orgSlug),

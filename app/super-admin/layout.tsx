@@ -17,6 +17,7 @@ import {
   Settings,
   DatabaseBackup,
   ServerCog,
+  ToggleLeft,
 } from 'lucide-react'
 
 const NAV = [
@@ -30,6 +31,7 @@ const NAV = [
   { href: '/super-admin/backups',    label: 'Backups',        icon: DatabaseBackup },
   { href: '/super-admin/convites',   label: 'Convites',       icon: Link2 },
   { href: '/super-admin/audit',      label: 'Auditoria',      icon: ScrollText },
+  { href: '/super-admin/modulos',    label: 'Módulos',        icon: ToggleLeft },
   { href: '/super-admin/settings',   label: 'Configurações',  icon: Settings },
   { href: '/super-admin/activate',   label: 'Novo Cliente',   icon: UserPlus },
 ]

@@ -1,9 +1,8 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isRealEstateNiche } from '@/lib/niche'
 import { listProperties } from '@/actions/properties'
 import { listOrgMembers } from '@/actions/team'
 import PropertyList from '@/components/features/properties/PropertyList'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +11,7 @@ export default async function PropertiesPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isRealEstateNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'imoveis')
 
   const [properties, members] = await Promise.all([
     listProperties(params.orgSlug),

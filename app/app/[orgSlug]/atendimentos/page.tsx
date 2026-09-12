@@ -1,16 +1,15 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
 import { listClinicAttendances } from '@/actions/clinic-attendances'
 import { listClinicProfessionals } from '@/actions/clinic'
 import { listEventTypes } from '@/actions/appointments'
 import AtendimentosClient from './AtendimentosClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export default async function AtendimentosPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'atendimentos_clinica')
 
   const [attendances, professionals, eventTypes] = await Promise.all([
     listClinicAttendances(params.orgSlug),

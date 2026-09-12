@@ -3,6 +3,7 @@ import SidebarNavLink from './SidebarNavLink'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
+import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import { isTrafficNiche } from '@/lib/niche'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import {
@@ -14,7 +15,7 @@ import {
 
 /** "Vendas" section nav items — a big flat list gated by permission +
  * niche-module flags. Split out of Sidebar.tsx. */
-export function SidebarNavVendas({
+export async function SidebarNavVendas({
   base, niche, userRole, userPermissions, overdueCount,
 }: {
   base: string
@@ -26,12 +27,13 @@ export function SidebarNavVendas({
   function can(key: Parameters<typeof canAccess>[2]) {
     return canAccess(userRole, userPermissions, key)
   }
+  const disabledModules = await getDisabledModulesForNiche(niche)
 
   return (
     <>
       {can('pipeline') && (
         <SidebarNavLink
-          href={isModuleEnabled(niche, 'imoveis') ? `${base}/pipeline-imoveis` : `${base}/pipeline`}
+          href={isModuleEnabled(niche, 'imoveis', disabledModules) ? `${base}/pipeline-imoveis` : `${base}/pipeline`}
           dataTour="pipeline"
         >
           <span className="flex items-center gap-2.5">
@@ -64,7 +66,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('ofertas') && isModuleEnabled(niche, 'ofertas') && (
+      {can('ofertas') && isModuleEnabled(niche, 'ofertas', disabledModules) && (
         <div className="hidden md:block">
           <SidebarNavLink href={`${base}/ofertas`}>
             <span className="flex items-center gap-2.5">
@@ -75,7 +77,7 @@ export function SidebarNavVendas({
         </div>
       )}
 
-      {can('bloqueios') && isModuleEnabled(niche, 'bloqueios') && (
+      {can('bloqueios') && isModuleEnabled(niche, 'bloqueios', disabledModules) && (
         <SidebarNavLink href={`${base}/bloqueios`}>
           <span className="flex items-center gap-2.5">
             <Armchair className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -84,7 +86,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('documentos') && isModuleEnabled(niche, 'documentos_viagem') && (
+      {can('documentos') && isModuleEnabled(niche, 'documentos_viagem', disabledModules) && (
         <div className="hidden md:block">
           <SidebarNavLink href={`${base}/documentos`}>
             <span className="flex items-center gap-2.5">
@@ -95,7 +97,7 @@ export function SidebarNavVendas({
         </div>
       )}
 
-      {can('cotacoes') && isModuleEnabled(niche, 'cotacoes') && (
+      {can('cotacoes') && isModuleEnabled(niche, 'cotacoes', disabledModules) && (
         <SidebarNavLink href={`${base}/cotacoes`}>
           <span className="flex items-center gap-2.5">
             <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -106,7 +108,7 @@ export function SidebarNavVendas({
 
       {/* Ocultos no mobile: ferramentas de construção/configuração, sem
           uso real "na rua" — continuam disponíveis no desktop. */}
-      {TRAVEL_PLANNER_ENABLED && can('roteirista') && isModuleEnabled(niche, 'roteirista') && (
+      {TRAVEL_PLANNER_ENABLED && can('roteirista') && isModuleEnabled(niche, 'roteirista', disabledModules) && (
         <div className="hidden md:block">
           <SidebarNavLink href={`${base}/roteirista`}>
             <span className="flex items-center gap-2.5">
@@ -117,7 +119,7 @@ export function SidebarNavVendas({
         </div>
       )}
 
-      {can('reservas') && isModuleEnabled(niche, 'reservas') && (
+      {can('reservas') && isModuleEnabled(niche, 'reservas', disabledModules) && (
         <SidebarNavLink href={`${base}/reservas`}>
           <span className="flex items-center gap-2.5">
             <PlaneTakeoff className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -126,7 +128,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('embarques') && isModuleEnabled(niche, 'embarques') && (
+      {can('embarques') && isModuleEnabled(niche, 'embarques', disabledModules) && (
         <SidebarNavLink href={`${base}/embarques`}>
           <span className="flex items-center gap-2.5">
             <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -135,7 +137,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('catalog') && isModuleEnabled(niche, 'catalogo') && (
+      {can('catalog') && isModuleEnabled(niche, 'catalogo', disabledModules) && (
         <div className="hidden md:block">
           <SidebarNavLink href={`${base}/catalogo`}>
             <span className="flex items-center gap-2.5">
@@ -146,7 +148,7 @@ export function SidebarNavVendas({
         </div>
       )}
 
-      {can('sales') && isModuleEnabled(niche, 'vendas') && (
+      {can('sales') && isModuleEnabled(niche, 'vendas', disabledModules) && (
         <SidebarNavLink href={`${base}/vendas`}>
           <span className="flex items-center gap-2.5">
             <ShoppingCart className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -155,7 +157,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('calendar') && isModuleEnabled(niche, 'agendamentos') && (
+      {can('calendar') && isModuleEnabled(niche, 'agendamentos', disabledModules) && (
         <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
           <span className="flex items-center gap-2.5">
             <Calendar className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -164,7 +166,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('profissionais') && isModuleEnabled(niche, 'profissionais') && (
+      {can('profissionais') && isModuleEnabled(niche, 'profissionais', disabledModules) && (
         <SidebarNavLink href={`${base}/profissionais`}>
           <span className="flex items-center gap-2.5">
             <Stethoscope className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -173,7 +175,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('orcamentos_clinica') && isModuleEnabled(niche, 'orcamentos_clinica') && (
+      {can('orcamentos_clinica') && isModuleEnabled(niche, 'orcamentos_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/orcamentos`}>
           <span className="flex items-center gap-2.5">
             <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -182,7 +184,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('atendimentos_clinica') && isModuleEnabled(niche, 'atendimentos_clinica') && (
+      {can('atendimentos_clinica') && isModuleEnabled(niche, 'atendimentos_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/atendimentos`}>
           <span className="flex items-center gap-2.5">
             <ClipboardList className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -191,7 +193,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('atendimentos_clinica') && isModuleEnabled(niche, 'retornos_clinica') && (
+      {can('atendimentos_clinica') && isModuleEnabled(niche, 'retornos_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/retornos`}>
           <span className="flex items-center gap-2.5">
             <CalendarCheck2 className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -200,7 +202,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('prontuario_clinica') && isModuleEnabled(niche, 'prontuario_clinica') && (
+      {can('prontuario_clinica') && isModuleEnabled(niche, 'prontuario_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/prontuario`}>
           <span className="flex items-center gap-2.5">
             <HeartPulse className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -209,7 +211,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('estoque_clinica') && isModuleEnabled(niche, 'estoque_clinica') && (
+      {can('estoque_clinica') && isModuleEnabled(niche, 'estoque_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/estoque`}>
           <span className="flex items-center gap-2.5">
             <Boxes className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -218,7 +220,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('tratamentos_clinica') && isModuleEnabled(niche, 'tratamentos_clinica') && (
+      {can('tratamentos_clinica') && isModuleEnabled(niche, 'tratamentos_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/tratamentos`}>
           <span className="flex items-center gap-2.5">
             <ListChecks className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -227,7 +229,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('lista_espera_clinica') && isModuleEnabled(niche, 'lista_espera_clinica') && (
+      {can('lista_espera_clinica') && isModuleEnabled(niche, 'lista_espera_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/lista-espera`}>
           <span className="flex items-center gap-2.5">
             <Hourglass className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -236,7 +238,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('comissoes_clinica') && isModuleEnabled(niche, 'comissoes_clinica') && (
+      {can('comissoes_clinica') && isModuleEnabled(niche, 'comissoes_clinica', disabledModules) && (
         <SidebarNavLink href={`${base}/comissoes`}>
           <span className="flex items-center gap-2.5">
             <Percent className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -245,7 +247,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('imoveis') && isModuleEnabled(niche, 'imoveis') && (
+      {can('imoveis') && isModuleEnabled(niche, 'imoveis', disabledModules) && (
         <SidebarNavLink href={`${base}/imoveis`}>
           <span className="flex items-center gap-2.5">
             <Home className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -254,7 +256,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('imoveis') && isModuleEnabled(niche, 'imoveis') && (
+      {can('imoveis') && isModuleEnabled(niche, 'imoveis', disabledModules) && (
         <SidebarNavLink href={`${base}/visitas`}>
           <span className="flex items-center gap-2.5">
             <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -263,7 +265,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('imoveis') && isModuleEnabled(niche, 'imoveis') && (
+      {can('imoveis') && isModuleEnabled(niche, 'imoveis', disabledModules) && (
         <SidebarNavLink href={`${base}/propostas`}>
           <span className="flex items-center gap-2.5">
             <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
@@ -272,7 +274,7 @@ export function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('imoveis') && isModuleEnabled(niche, 'imoveis') && (
+      {can('imoveis') && isModuleEnabled(niche, 'imoveis', disabledModules) && (
         <SidebarNavLink href={`${base}/negociacoes`}>
           <span className="flex items-center gap-2.5">
             <Handshake className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />

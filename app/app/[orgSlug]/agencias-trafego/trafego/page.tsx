@@ -1,10 +1,10 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
-import { isTrafficNiche } from '@/lib/niche'
 import EmptyState from '@/components/ui/empty-state'
 import { Megaphone } from 'lucide-react'
 import TrafegoCommandCenter, { type ClientCardData } from '@/components/features/agencias-trafego/TrafegoCommandCenter'
 import { computeClientHealthStatus } from '@/lib/trafego/health-status'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,10 +19,7 @@ export default async function AgenciaTrafegoTrafegoPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTrafficNiche(org.niche)) {
-    const { redirect } = await import('next/navigation')
-    redirect(`/app/${params.orgSlug}`)
-  }
+  await requireModuleEnabled(org.niche, 'trafego')
 
   const supabase = createClient()
   const now = new Date()

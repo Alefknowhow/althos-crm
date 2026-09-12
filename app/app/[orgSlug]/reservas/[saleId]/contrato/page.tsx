@@ -1,11 +1,11 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getTravelSale, markContractGenerated } from '@/actions/travel-sales'
 import { getOrgContractTemplate } from '@/actions/document-templates'
 import { renderTemplate } from '@/lib/inngest/functions'
 import ContractPrintView from '@/components/features/reservas/ContractPrintView'
 import ContractTemplatePrintView from '@/components/features/reservas/ContractTemplatePrintView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +21,7 @@ export default async function ContractPrintPage({
 }: { params: { orgSlug: string; saleId: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'reservas')
 
   const sale = await getTravelSale(params.orgSlug, params.saleId)
   if (!sale) notFound()

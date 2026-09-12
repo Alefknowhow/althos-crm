@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { listScheduledTrips } from '@/actions/travel-schedule'
 import { listOrgMembers } from '@/actions/team'
 import ScheduleClient from '@/components/features/schedule/ScheduleClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +12,7 @@ export default async function ViagensProgramadasPage({ params }: { params: { org
   const org = await getCurrentOrganization(params.orgSlug)
 
   // Niche-gated feature.
-  if (!isTravelNiche(org.niche)) {
-    redirect(`/app/${params.orgSlug}`)
-  }
+  await requireModuleEnabled(org.niche, 'embarques')
 
   const [trips, members] = await Promise.all([
     listScheduledTrips(params.orgSlug),

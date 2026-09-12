@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
-import { isTrafficNiche } from '@/lib/niche'
 import { getTrafficClientProfile } from '@/actions/traffic-client-profile'
 import { listAdAccountsByClient, listCampaignsByClient } from '@/actions/marketing'
 import { listCreatives } from '@/actions/campaign-creatives'
@@ -14,6 +13,7 @@ import { listTrackingLinksByClient } from '@/actions/tracking-links'
 import { getClientTrackingFunnel, listClientConvertedJourneys, listLinkPerformance } from '@/actions/trafego-tracking'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +22,7 @@ export default async function TrafficClientDetailPage({
 }: { params: { orgSlug: string; id: string }; searchParams: { meta_step?: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTrafficNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'trafego')
 
   const supabase = createClient()
   const { data: client } = await supabase

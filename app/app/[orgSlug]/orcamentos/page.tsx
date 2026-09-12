@@ -1,16 +1,15 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
 import { listClinicQuotes } from '@/actions/clinic-quotes'
 import { listClinicProfessionals } from '@/actions/clinic'
 import { listEventTypes } from '@/actions/appointments'
 import OrcamentosClient from './OrcamentosClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export default async function OrcamentosPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'orcamentos_clinica')
 
   const [quotes, professionals, eventTypes] = await Promise.all([
     listClinicQuotes(params.orgSlug),

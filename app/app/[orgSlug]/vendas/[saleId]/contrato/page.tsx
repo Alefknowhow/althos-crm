@@ -1,8 +1,8 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTrafficNiche } from '@/lib/niche'
 import { getPlanContractRenderData } from '@/actions/plan-contracts'
 import PlanContractPrintView from '@/components/features/agencias-trafego/PlanContractPrintView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +16,7 @@ export default async function PlanoContractPrintPage({
 }: { params: { orgSlug: string; saleId: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTrafficNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'trafego')
 
   const data = await getPlanContractRenderData(params.orgSlug, params.saleId)
   if (!data.ok) notFound()

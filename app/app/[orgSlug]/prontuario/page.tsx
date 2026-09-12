@@ -1,16 +1,15 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
+import { requireModuleEnabled } from '@/lib/module-flags'
 import { listClinicProfessionals } from '@/actions/clinic'
 import ProntuarioClient from './ProntuarioClient'
 import { PageHeader } from '@/components/ui/page-header'
 
-// Módulo oculto (lib/niche-modules.ts, PRONTUARIO_ENABLED=false) — a rota
-// continua existindo pra permitir teste interno antes de habilitar o menu.
+// Módulo oculto por padrão (ver /super-admin/modulos, lib/module-flags.ts)
+// até uma decisão de compliance — docs/audit/clinicas-lgpd.md.
 export default async function ProntuarioPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'prontuario_clinica')
 
   const professionals = await listClinicProfessionals(params.orgSlug)
 

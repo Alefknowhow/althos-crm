@@ -9,6 +9,7 @@
  *   - super-admin-users.ts: platform user listing, super-admin toggle
  *   - super-admin-accounts.ts: platform accounts overview + plan updates
  *   - super-admin-referrals.ts: referral program, system config
+ *   - module-flags.ts: kill-switch global de módulos por nicho
  */
 
 export * from './super-admin-metrics'
@@ -19,3 +20,4 @@ export * from './super-admin-managed-org'
 export * from './super-admin-users'
 export * from './super-admin-accounts'
 export * from './super-admin-referrals'
+export * from './module-flags'

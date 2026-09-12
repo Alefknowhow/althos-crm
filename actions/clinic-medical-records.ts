@@ -8,8 +8,8 @@ import { revalidatePath } from 'next/cache'
 /**
  * Vertical Clínicas — Prontuário. Timeline de evoluções clínicas (formato
  * SOAP) por paciente, separada de clinic_attendances (operacional/
- * comercial). MÓDULO OCULTO por padrão — ver lib/niche-modules.ts
- * (PRONTUARIO_ENABLED) e docs/audit/clinicas-lgpd.md.
+ * comercial). MÓDULO OCULTO por padrão — ver /super-admin/modulos
+ * (lib/module-flags.ts) e docs/audit/clinicas-lgpd.md.
  *
  * Toda operação grava em clinic_data_access_log — pré-requisito de
  * compliance (item 1 da recomendação da auditoria) antes desse tipo de

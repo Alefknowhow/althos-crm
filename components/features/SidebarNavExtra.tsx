@@ -4,6 +4,7 @@ import SidebarSupportLink from './SidebarSupportLink'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
+import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
   FileText, Package, Zap, Settings, Megaphone, Send, FileSignature,
   Star, Building2, ShieldAlert, Target, FileStack, Phone,
@@ -39,7 +40,7 @@ function WhatsAppIcon() {
 /** Seguros / Agências de Tráfego niche sections, plus Comunicação,
  * Marketing, Operações, Configurações and Suporte. Split out of
  * Sidebar.tsx. */
-export function SidebarNavExtra({
+export async function SidebarNavExtra({
   base, orgSlug, orgId, niche, userRole, userPermissions,
   planWhatsapp, planInstagram, planBulkCampaigns,
   unreadWhatsapp, unreadInstagram,
@@ -59,10 +60,11 @@ export function SidebarNavExtra({
   function can(key: Parameters<typeof canAccess>[2]) {
     return canAccess(userRole, userPermissions, key)
   }
+  const disabledModules = await getDisabledModulesForNiche(niche)
 
   return (
     <>
-      {isModuleEnabled(niche, 'seguros') && can('seguros') && (
+      {isModuleEnabled(niche, 'seguros', disabledModules) && can('seguros') && (
         <>
           {/* ── Seguros ───────────────────────────── */}
           <SectionLabel>Seguros</SectionLabel>
@@ -104,7 +106,7 @@ export function SidebarNavExtra({
         </>
       )}
 
-      {isModuleEnabled(niche, 'trafego') && can('trafego') && (
+      {isModuleEnabled(niche, 'trafego', disabledModules) && can('trafego') && (
         <>
           {/* ── Agências de Tráfego ───────────────────── */}
           <SectionLabel>Agências de Tráfego</SectionLabel>

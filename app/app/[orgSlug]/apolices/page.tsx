@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isInsuranceNiche } from '@/lib/niche'
 import { listPolicies } from '@/actions/insurance-policies'
 import { listQuotes } from '@/actions/insurance-quotes'
 import { listInsuranceProducts } from '@/actions/insurance-products'
@@ -8,6 +6,7 @@ import { listInsurers } from '@/actions/insurers'
 import { listLeadsForPicker } from '@/actions/travel-proposals'
 import { getInsuranceRenewalSettings } from '@/actions/insurance-settings'
 import InsurancePoliciesView from '@/components/features/insurance/InsurancePoliciesView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +15,7 @@ export default async function InsurancePoliciesPage({
 }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isInsuranceNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'seguros')
 
   const [policies, quotes, products, insurers, contatos, renewalReminderDays] = await Promise.all([
     listPolicies(params.orgSlug),

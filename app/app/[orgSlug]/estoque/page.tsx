@@ -1,15 +1,14 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isClinicNiche } from '@/lib/niche'
-import { notFound } from 'next/navigation'
 import { listClinicSupplies, listClinicSupplyConsumption, listClinicSupplyInvoices, getClinicEstoqueKpis } from '@/actions/clinic-estoque'
 import { listClinicProfessionals } from '@/actions/clinic'
 import EstoqueClient from './EstoqueClient'
 import { PageHeader } from '@/components/ui/page-header'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export default async function EstoquePage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isClinicNiche((org as any).niche)) notFound()
+  await requireModuleEnabled((org as any).niche, 'estoque_clinica')
 
   const [supplies, consumption, invoices, kpis, professionals] = await Promise.all([
     listClinicSupplies(params.orgSlug),

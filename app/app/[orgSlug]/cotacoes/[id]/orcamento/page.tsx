@@ -1,8 +1,8 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
-import { isTravelNiche } from '@/lib/niche'
 import { getBudgetDocument } from '@/actions/budget-documents'
 import BudgetDocumentPrintView from '@/components/features/quotations/BudgetDocumentPrintView'
+import { requireModuleEnabled } from '@/lib/module-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +11,7 @@ export default async function BudgetDocumentPrintPage({
 }: { params: { orgSlug: string; id: string } }) {
   await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
-  if (!isTravelNiche(org.niche)) redirect(`/app/${params.orgSlug}`)
+  await requireModuleEnabled(org.niche, 'cotacoes')
 
   const doc = await getBudgetDocument(params.orgSlug, params.id)
   if (!doc) notFound()
