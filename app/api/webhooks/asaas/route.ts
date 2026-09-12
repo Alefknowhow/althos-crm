@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyStaticToken } from '@/lib/security/webhook'
-import { parseCreditPackRef, resolvePlanKeyFromOrg, buildAsaasDedupeKey } from '@/lib/asaas/webhook-helpers'
+import { parseCreditPackRef, parseEmailCreditsRef, resolvePlanKeyFromOrg, buildAsaasDedupeKey } from '@/lib/asaas/webhook-helpers'
+import { EMAIL_CREDIT_PACKS } from '@/lib/email/credit-packs'
 
 export async function POST(req: NextRequest) {
   // Timing-safe token comparison — guards against timing attacks that could
@@ -92,6 +93,33 @@ export async function POST(req: NextRequest) {
             credits_purchased: credits,
             credits_used: 0,
           })
+        }
+      }
+
+      await adminSupabase
+        .from('billing_events')
+        .update({ processed_at: new Date().toISOString() })
+        .eq('id', event.id)
+
+      return NextResponse.json({ ok: true })
+    }
+
+    // ── Compra avulsa de Email Credits ────────────────────────────────────
+    const emailCreditsRef = !subscriptionId ? parseEmailCreditsRef(externalRef) : null
+    if (emailCreditsRef) {
+      const ev: string = payload.event
+      if (ev === 'PAYMENT_RECEIVED' || ev === 'PAYMENT_CONFIRMED') {
+        const pack = EMAIL_CREDIT_PACKS.find(p => p.id === emailCreditsRef.packId)
+        const { data: org } = await adminSupabase
+          .from('organizations')
+          .select('account_id')
+          .eq('id', emailCreditsRef.orgId)
+          .maybeSingle()
+        if (pack && org?.account_id) {
+          const { applyEmailCreditsPurchase } = await import('@/actions/email-credits')
+          await applyEmailCreditsPurchase(org.account_id, pack.valueReais * 100, { packId: pack.id })
+        } else {
+          console.error('[asaas webhook] email_credits: pacote ou org/account_id não encontrado', emailCreditsRef)
         }
       }
 

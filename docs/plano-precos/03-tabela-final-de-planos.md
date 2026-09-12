@@ -66,7 +66,7 @@ A reformulação eliminou a lógica antiga de "recurso ligado/desligado por plan
 | Leads no pipeline | ilimitado | ilimitado | ilimitado |
 | Formulários de captação ativos | **10** | **20** | ilimitado |
 | **Storage de mídia** (uploads, vouchers, mídia de WhatsApp/Instagram) | **2GB** | **5GB** | **15GB** |
-| **Disparos de e-mail marketing/mês** (1 e-mail = 1 disparo) | **300** | **1.000** | **5.000** |
+| Disparos de e-mail marketing | ~~300/mês~~ **metered — ver seção 7 (Email Credits)** | ~~1.000/mês~~ **idem** | ~~5.000/mês~~ **idem** |
 | Créditos de IA/mês | 310 | 740 | 1.290 |
 
 **Negrito** = limites novos ou recalculados nesta reformulação.
@@ -88,5 +88,25 @@ A reformulação eliminou a lógica antiga de "recurso ligado/desligado por plan
 ## 6. Pendências pra próxima etapa
 
 - **Fluxo de compra de usuário/organização adicional avulso** (Starter acima de 1 usuário, Business acima de 20) — ainda não existe, mencionado como decisão em aberto desde a etapa 2.
-- **Enforcement real dos novos limites** — `storageMb` e `emailSends` foram adicionados à configuração (`lib/plans/config.ts`), mas ainda não há checagem server-side ativa gastando/bloqueando quando o teto é atingido (mesmo estado em que `socialMessages` e `automationRuns` já estavam antes: definidos, não aplicados). Vale priorizar pelo menos storage e e-mail, que têm custo real de terceiro (Supabase Storage, Resend).
+- **Enforcement real do limite de storage** — `storageMb` foi adicionado à configuração (`lib/plans/config.ts`), mas ainda não há checagem server-side ativa bloqueando quando o teto é atingido (mesmo estado em que `socialMessages` e `automationRuns` já estavam antes: definidos, não aplicados). `emailSends` deixou de precisar de enforcement de teto — virou Email Credits (seção 7), que já bloqueia envio por saldo insuficiente via `consume_email_credits`.
 - **Comunicação da mudança pra base de clientes já ativa** (quem já paga R$137 — grandfathering, aviso de reajuste, ou aplicação só pra novos clientes) — decisão de negócio, não técnica.
+
+---
+
+## 7. Email Credits (2026-09 — substitui o cap fixo de "disparos de e-mail/mês" da seção 4)
+
+**Mudança de modelo**: "disparos de e-mail marketing/mês" deixou de ser um teto incluso fixo (300/1.000/5.000) e virou **cobrança por unidade**, mesmo padrão de Voice Credits e Créditos de IA — o usuário compra um pacote de créditos e cada e-mail disparado pelo pipeline de envio (`lib/inngest/functions.ts::sendEmail`, usado tanto por automações quanto por futuras campanhas em massa) debita o saldo. Ledger separado (`email_credits`/`email_credit_transactions`), nunca compartilha saldo com créditos de IA/Voice.
+
+Metodologia: **25% de margem sobre o custo real do Resend** (pedido explícito do produto), não os 10%-do-plano usado nos créditos de IA — cobrado por e-mail, não por resposta de IA.
+
+| Item | Valor |
+|---|---:|
+| Custo Resend (overage, plano Pro) | US$0,90 / 1.000 e-mails |
+| Câmbio de referência | R$5,40 |
+| Custo real por e-mail | ~R$0,0049 |
+| Preço de venda (25% de margem) | ~R$0,0061/e-mail |
+| Pacotes à venda | R$50 / R$150 / R$500 (via PIX, Asaas) |
+
+Config editável só por super-admin em `email_pricing_config` (custo do provider + câmbio + margem) — nunca hardcodear no código, mesma regra de `voice_pricing_config`/`ai_credit_pricing_settings`.
+
+**Pendência explícita**: hoje não existe um construtor de campanha de e-mail em massa no produto — a cobrança por crédito está conectada no pipeline de envio que já existe (`queueEmailForLead`/`sendEmail`, usado por automações e envio avulso pelo CRM). Quando/se um construtor de campanha em lote for construído, ele reusa esse mesmo pipeline e portanto já sai cobrado corretamente, sem trabalho adicional de billing.

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { Activity, Share2, Sparkles, AtSign, Target, MapPin, FileSignature } from 'lucide-react'
+import { Activity, Share2, Sparkles, AtSign, Target, MapPin, FileSignature, Mail } from 'lucide-react'
 
 type IntegrationItem = {
   title: string
@@ -79,6 +79,15 @@ export default function IntegracoesPage({ params }: { params: { orgSlug: string 
       iconClass: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
       actionLabel: 'Configurar',
       href: `${base}/autentique`,
+    },
+    {
+      title: 'Email Credits',
+      description: 'Saldo e compra de créditos de disparo de e-mail.',
+      detail: 'Cada e-mail disparado (campanhas, automações) consome 1 crédito — cobrado por unidade, com markup sobre o custo real do provedor.',
+      icon: Mail,
+      iconClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+      actionLabel: 'Ver saldo e comprar',
+      href: `${base}/email-creditos`,
     },
     {
       title: 'Google Meu Negócio',

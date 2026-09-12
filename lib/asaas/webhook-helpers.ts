@@ -35,6 +35,19 @@ export function resolvePlanKeyFromOrg(orgPlan: string | null | undefined): Known
     : 'starter'
 }
 
+/**
+ * externalReference de uma compra de Email Credits tem o formato
+ * "email_credits:<orgId>:<packId>:<timestamp>" (ver actions/email-credits.ts
+ * ::purchaseEmailCredits — o timestamp existe só pra permitir comprar o
+ * mesmo pacote 2x sem colidir external reference no Asaas, não é usado aqui).
+ */
+export function parseEmailCreditsRef(externalRef: string | null | undefined): { orgId: string; packId: string } | null {
+  if (!externalRef?.startsWith('email_credits:')) return null
+  const [, orgId, packId] = externalRef.split(':')
+  if (!orgId || !packId) return null
+  return { orgId, packId }
+}
+
 /** Chave de idempotência do evento Asaas — mesmo evento real sempre gera a mesma chave. */
 export function buildAsaasDedupeKey(payload: { event?: string; payment?: { id?: string }; subscription?: { id?: string } }): string {
   return `${payload.event}:${payload.payment?.id || payload.subscription?.id || 'no-ref'}`

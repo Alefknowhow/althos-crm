@@ -1,6 +1,7 @@
 import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
 import { resend, clientEmailFrom } from '../resend'
+import { consumeEmailCredits } from '../email/credits'
 
 export function renderTemplate(templateStr: string, variables: any) {
   if (!templateStr) return ''
@@ -48,6 +49,27 @@ export const sendEmail = inngest.createFunction(
     // NOME da organização como remetente (não o e-mail do cliente, que não
     // está verificado no Resend). Garante entregabilidade e marca branca.
     const fromEmail = clientEmailFrom(lead.organizations?.name)
+
+    // Gate de créditos ANTES da chamada real ao provider (mesmo princípio de
+    // créditos de IA — nunca debitar depois). Cobrança por unidade de
+    // e-mail disparado, markup sobre o custo real do Resend (ver
+    // lib/email/credits.ts). Sem account_id (org standalone sem conta de
+    // billing) segue sem cobrar, pra não quebrar envio de contas legadas.
+    const accountId = (lead.organizations as any)?.account_id as string | null | undefined
+    if (accountId) {
+      const credit = await consumeEmailCredits({ accountId, emailSendId, metadata: { orgId: lead.organization_id } })
+      if (!credit.success) {
+        await supabase
+          .from('email_sends')
+          .update({ status: 'failed' })
+          .eq('id', emailSendId)
+        throw new Error(
+          credit.error === 'insufficient_credits'
+            ? 'Créditos de e-mail insuficientes para este envio.'
+            : `Falha ao debitar créditos de e-mail: ${credit.error}`,
+        )
+      }
+    }
 
     try {
       const { data: resendResponse, error } = await resend.emails.send({
