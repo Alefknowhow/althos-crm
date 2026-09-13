@@ -12,6 +12,8 @@ import ReferralCouponsSection from '@/components/features/billing/ReferralCoupon
 import { getReferralOverview, getAppliedCoupons } from '@/actions/referrals'
 import { getSubscriptionByOrgSlug } from '@/lib/plans/server'
 import { getCreditsOverview } from '@/actions/billing-credits-overview'
+import { getCreditPackagesCatalog } from '@/lib/credits/engine'
+import { getPlanMeta, computeSeatCost } from '@/lib/plans/config'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
@@ -75,13 +77,37 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
   }
 
   // Referrals + coupons (new per-account system) + créditos (IA/Voice/Email).
-  const [referralOverview, appliedCoupons, subscription, creditsRes] = await Promise.all([
+  const [referralOverview, appliedCoupons, subscription, creditsRes, aiPacks] = await Promise.all([
     getReferralOverview(params.orgSlug),
     getAppliedCoupons(params.orgSlug),
     getSubscriptionByOrgSlug(params.orgSlug),
     getCreditsOverview(params.orgSlug),
+    getCreditPackagesCatalog(),
   ])
   const credits = creditsRes.ok ? creditsRes.overview : null
+
+  // Usuários incluídos/adicionais (seção 10 do pedido de repricing) — a
+  // franquia e o preço de assento extra vivem só no plano NOVO por-conta
+  // (lib/plans/config.ts), não no legado org.plan. Se a conta ainda não
+  // migrou pro novo sistema (subscription null), não mostra o bloco — não
+  // há franquia/preço de assento confiável pra calcular.
+  const seatCost = subscription ? computeSeatCost(subscription.planId, usage.users.used) : null
+  const newPlanMeta = subscription ? getPlanMeta(subscription.planId) : null
+
+  // Próxima fatura estimada = preço-base do plano NOVO (se a conta já
+  // migrou) + usuários adicionais. Voice/SMS/créditos extras são consumo
+  // sob demanda, não uma previsão confiável — mostrados à parte, não
+  // somados aqui (evita prometer um número que a cobrança real não bate).
+  const estimatedInvoiceCents = newPlanMeta && seatCost
+    ? newPlanMeta.priceMonthlyCents + seatCost.extraCostCents
+    : null
+
+  // O preço-base exibido no card "Plano contratado" tem que bater com o
+  // usado em "Próxima fatura estimada" logo abaixo — se a conta já migrou
+  // pra taxonomia nova (subscriptions), usa o preço repricado (149/299/599)
+  // em vez do legado (plan.priceCents, ainda 167/397/697) para não mostrar
+  // dois valores diferentes pro mesmo plano na mesma tela.
+  const displayPriceCents = newPlanMeta ? newPlanMeta.priceMonthlyCents : plan.priceCents
 
   // Histórico de faturas: assinatura (Asaas) + compras avulsas de cada tipo
   // de crédito (ai/voice/email_credit_transactions, type='purchased') numa
@@ -146,9 +172,9 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
             <p className="text-sm text-muted-foreground">{plan.description}</p>
           </div>
 
-          {plan.priceCents !== null && (
+          {displayPriceCents !== null && (
             <div className="text-right shrink-0">
-              <div className="text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap">{formatPrice(plan.priceCents)}</div>
+              <div className="text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap">{formatPrice(displayPriceCents)}</div>
               <div className="text-xs text-muted-foreground">/mês</div>
             </div>
           )}
@@ -180,6 +206,38 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
           </div>
         )}
 
+        {seatCost && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 p-3 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Users className="w-4 h-4 shrink-0" />
+              <span>
+                {seatCost.extraUsers === 0 ? (
+                  <>{seatCost.totalUsers} de {seatCost.includedUsers} usuários incluídos</>
+                ) : (
+                  <>{seatCost.totalUsers} usuários — {seatCost.includedUsers} incluídos + {seatCost.extraUsers} adicional{seatCost.extraUsers > 1 ? 'is' : ''}</>
+                )}
+              </span>
+            </div>
+            {seatCost.extraCostCents > 0 && (
+              <span className="font-medium tabular-nums shrink-0">
+                {seatCost.extraUsers} × {formatPrice(seatCost.extraUserPriceCents)} = {formatPrice(seatCost.extraCostCents)}/mês
+              </span>
+            )}
+          </div>
+        )}
+
+        {estimatedInvoiceCents !== null && (
+          <div className="flex items-center justify-between gap-3 border-t pt-3 text-sm">
+            <span className="text-muted-foreground">Próxima fatura estimada (plano + usuários adicionais)</span>
+            <strong className="tabular-nums">{formatPrice(estimatedInvoiceCents)}</strong>
+          </div>
+        )}
+        {estimatedInvoiceCents !== null && (
+          <p className="text-[11px] text-muted-foreground">
+            Não inclui Althos Credits, Voice ou SMS comprados sob demanda — esses aparecem no histórico de faturas abaixo, no mês em que forem usados.
+          </p>
+        )}
+
         {isManaged && (
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -197,7 +255,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
       </div>
 
       {/* ── 2. Créditos de uso — bloco de compra (separado do consumo) ─────── */}
-      {credits && <CreditsPurchaseSection orgSlug={params.orgSlug} overview={credits} />}
+      {credits && <CreditsPurchaseSection orgSlug={params.orgSlug} overview={credits} aiPacks={aiPacks} />}
 
       {/* ── 3. Histórico de consumo — bloco próprio, scroll independente ───── */}
       {credits && <CreditsHistorySection overview={credits} />}

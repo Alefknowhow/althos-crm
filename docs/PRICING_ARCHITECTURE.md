@@ -68,6 +68,14 @@ Tabela `credit_packages` (migration `0244`) — catálogo editável sem deploy, 
 
 Decisão de negócio confirmada nesta sessão: **migrar todas as contas para o novo preço/franquia imediatamente** (não há opção de grandfathering habilitada). Para permitir auditoria/rollback de decisão comercial sem tocar em schema, `subscriptions` ganhou `legacy_plan_id` (snapshot do `plan_id` no momento da migration) e `repriced_at`. Isto NÃO é um mecanismo de grandfathering ativo — é só rastro de auditoria. Se o negócio decidir reverter para os preços antigos para uma conta específica, os dados para isso existem, mas a lógica de "aplicar plano legado" não foi construída (pendência).
 
+## Risco real e ativo encontrado durante a Fase 5 (não corrigido — precisa de decisão antes de tocar)
+
+`app/app/[orgSlug]/upgrade/page.tsx` (a "página de planos" dentro do app, onde o cliente clica pra assinar/fazer upgrade) lê `PUBLIC_PLANS`/`formatPrice(plan.priceCents)` de **`lib/billing/plans.ts` — a taxonomia LEGADA**, que ainda mostra os preços antigos (R$167/397/697), não os repricados (R$149/299/599). O `UpgradeCheckoutButton` dessa página provavelmente cria a cobrança Asaas usando esse mesmo valor legado.
+
+Isso significa que, HOJE, um cliente pode ver R$299/mês no painel de Assinatura (Billing Center, já corrigido na Fase 5) e R$397/mês na página de upgrade/checkout para o MESMO plano Pro — inconsistência visível e ativa.
+
+**Por que não foi corrigido nesta leva**: mudar o preço exibido em `/upgrade` sem entender exatamente como `UpgradeCheckoutButton` monta a cobrança Asaas arrisca cobrar um valor e mostrar outro (pior que a inconsistência atual). Essa é exatamente a reconciliação de taxonomias que a Fase 2/3 já sinalizou como "alto risco, não fazer de afogadilho". Precisa ser a PRIMEIRA coisa da próxima sessão de Fase 6, antes de qualquer outra coisa — é um bug visível ao cliente pagante agora.
+
 ## Pendências (próxima etapa)
 
 - Reconciliar a taxonomia legada (`organizations.plan`) com a nova — hoje há dois lugares onde "o plano da conta" pode, em teoria, divergir.

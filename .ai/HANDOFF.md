@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T03:28:55.885Z
+**Generated At**: 2026-09-13T03:50:45.543Z
 **Branch**: `master`
-**Last Commit**: ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits) (Alef Trentin, 14 minutes ago)
+**Last Commit**: 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine (Alef Trentin, 21 minutes ago)
 
 **Recent Commits**:
+- 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
 - ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
 - 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
 - 3ae5a70 feat(ia): switch central Claude/DeepSeek via super-admin + remove seletor por org
@@ -32,25 +33,23 @@ Duas partes:
 - d761178 feat(pipeline): Pixel/CAPI da Meta vira config por pipeline, nao por conta
 - 72068f8 fix(contatos): simplifica card da lista — remove telefone e data de última atividade
 - 95ca1db feat(mobile): varredura final 2 — tabelas sem scroll contido
-- 9b9b230 feat(mobile): M22-M24 (Ofertas, Catálogo, Embarques) — scroll e toque
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (8):
+**Unstaged Changes** (9):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M app/api/webhooks/voice/twilio/status/route.ts
+- M actions/addons.ts
+- M app/app/[orgSlug]/assinatura/CreditsHistorySection.tsx
+- M app/app/[orgSlug]/assinatura/CreditsPurchaseSection.tsx
+- M app/app/[orgSlug]/assinatura/page.tsx
 - M docs/BILLING.md
-- M lib/inngest/voice-calls.ts
-- M lib/inngest/voice-sms.ts
-- M lib/voice/credits.ts
+- M docs/PRICING_ARCHITECTURE.md
 
-**Untracked Files** (3):
+**Untracked Files** (1):
 - .claude/
-- supabase/migrations/0245_voice_credits_idempotency.sql
-- tests/unit/voice-credits.test.ts
 
 **Staged Diff Summary**:
 ```
@@ -59,15 +58,16 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md                           | 56 +++++++++++++++--
- .ai/DECISIONS.md                              | 41 +++++++++++++
- .ai/HANDOFF.md                                | 86 +++++++++++++++++----------
- app/api/webhooks/voice/twilio/status/route.ts |  6 +-
- docs/BILLING.md                               | 13 ++--
- lib/inngest/voice-calls.ts                    | 12 +++-
- lib/inngest/voice-sms.ts                      | 39 ++++++++++--
- lib/voice/credits.ts                          | 48 +++++++++++++--
- 8 files changed, 249 insertions(+), 52 deletions(-)
+.ai/CURRENT_TASK.md                                | 49 +++++++++++++++-
+ .ai/DECISIONS.md                                   | 55 ++++++++++++++++++
+ .ai/HANDOFF.md                                     | 63 ++++++++++++---------
+ actions/addons.ts                                  | 20 ++++---
+ .../[orgSlug]/assinatura/CreditsHistorySection.tsx | 27 +++++----
+ .../assinatura/CreditsPurchaseSection.tsx          | 44 +++++++++++----
+ app/app/[orgSlug]/assinatura/page.tsx              | 66 ++++++++++++++++++++--
+ docs/BILLING.md                                    | 24 +++++---
+ docs/PRICING_ARCHITECTURE.md                       |  8 +++
+ 9 files changed, 284 insertions(+), 72 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -118,11 +118,24 @@ e 2 bugs financeiros reais foram corrigidos (crédito debitado sem estorno
 quando o provider Twilio falhava depois do débito). Ver subseção "Fase 4"
 mais abaixo neste documento e `.ai/CURRENT_TASK.md` § Completed.
 
-**Isto é Fase 2/3/4 de 10 do pedido original — não está concluído.** Fases
-5 (Billing Center UI, pricing page, admin interno), 6 (estratégia de
-migração ativa, se necessária além do audit trail), 7 (testes de
-concorrência real), 8 (auditoria completa do harness) seguem pendentes —
-ver `.ai/CURRENT_TASK.md` § Pending para a lista detalhada.
+**Atualização (mesma sessão, continuação): Fase 5 também concluída** —
+Billing Center (`/app/[orgSlug]/assinatura`) ganhou bloco de usuários
+incluídos/adicionais (`computeSeatCost`), próxima fatura estimada, alerta
+de consumo 50/75/90/100% em Althos Credits, renomeação de copy
+"Créditos de IA" → "Althos Credits", e a compra de pacotes migrou do array
+`@deprecated` para o catálogo central `credit_packages`. **Achado um risco
+real e ativo durante essa mudança** (não corrigido de propósito): a página
+`/upgrade` (checkout) ainda mostra os preços LEGADOS (R$167/397/697)
+enquanto o Billing Center já mostra os repricados (R$149/299/599) para o
+mesmo plano — inconsistência visível ao cliente pagante hoje. Ver
+`docs/PRICING_ARCHITECTURE.md` § "Risco real e ativo" — deve ser a
+PRIMEIRA coisa da próxima sessão.
+
+**Isto é Fase 2/3/4/5 de 10 do pedido original — não está concluído.**
+Fases 6 (reconciliar as duas taxonomias — agora com um bug real como
+motivador concreto), 7 (testes de concorrência real), 8 (auditoria
+completa do harness), 9/10 seguem pendentes — ver `.ai/CURRENT_TASK.md`
+§ Pending para a lista detalhada.
 
 ### Completed
 Ver `.ai/CURRENT_TASK.md` § Completed (lista detalhada com o bug de

@@ -17,7 +17,7 @@
 Nova arquitetura de Pricing/Billing/Althos Credits — repricing + Credit Engine (Fase 2/3 de um pedido de 33 seções)
 
 ## Status
-IN PROGRESS (Fases 2/3 e 4 de 10 concluídas — schema+Credit Engine+Voice/SMS metering; Fases 5-10 pendentes)
+IN PROGRESS (Fases 2/3/4/5 de 10 concluídas — schema+Credit Engine+Voice/SMS metering+Billing Center UI; Fases 6-10 pendentes)
 
 ## Owner
 Claude (Claude Code)
@@ -134,10 +134,55 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
 - `docs/BILLING.md` atualizado com a seção Voice/SMS revisada e os 2 bugs
   corrigidos.
 
+## Completed (Fase 5 — adicionado nesta continuação)
+- `app/app/[orgSlug]/assinatura/page.tsx`: novo bloco "Usuários" (incluídos/
+  adicionais, custo do assento extra via `computeSeatCost()`) e "Próxima
+  fatura estimada" (plano + assentos extras) — só aparecem quando a conta
+  já tem `subscriptions` (taxonomia nova); documentado como limitação
+  esperada, não bug.
+- `CreditsPurchaseSection.tsx`: card de IA renomeado para "Althos Credits"
+  na copy; alerta de consumo 50/75/90/100% (`creditAlert()`) com mensagem
+  inline + barra em destaque; compra de pacote migrada do array
+  `@deprecated CREDIT_PACKS` para o catálogo central `credit_packages`
+  (via `getCreditPackagesCatalog()`, prop `aiPacks` vinda do server).
+- `actions/addons.ts`: `purchaseCreditPack(orgSlug, packIndex: number)` →
+  `purchaseCreditPack(orgSlug, packId: string)`, resolvendo preço no
+  catálogo central em vez do array hardcoded (único call site, atualizado
+  junto). `getCreditPacks()` idem.
+- `CreditsHistorySection.tsx`: bug de exibição corrigido — linhas do tipo
+  `refund` (novo, Fase 2/3/4) apareciam como consumo (vermelho, "-") em vez
+  de crédito devolvido (verde, "+"); também renomeado "Créditos de IA" →
+  "Althos Credits".
+- **Descoberta, não construída**: CTAs de upgrade contextual (seção 17 do
+  pedido) já existem app-wide (`VoicePaywall.tsx` e o mesmo padrão em
+  `relatorios/page.tsx`) — nenhuma mudança necessária, documentado em
+  `docs/BILLING.md` pra não ser reconstruído à toa numa sessão futura.
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176 — sem teste novo
+  nesta leva, mudanças foram de UI/wiring, não lógica pura nova).
+  `npx eslint` nos arquivos tocados: 0 erros, 21 warnings (todos
+  pré-existentes ou do mesmo tipo já tolerado no projeto — complexidade de
+  função, `any`, console.error direto).
+
 ## In Progress
-Nada em edição no momento — Fase 4 está pronta para commit.
+Nada em edição no momento — Fase 5 está pronta para commit.
 
 ## Pending
+- **RISCO REAL ATIVO, achado nesta leva, NÃO corrigido** —
+  `app/app/[orgSlug]/upgrade/page.tsx` (página de checkout/upgrade dentro
+  do app) ainda lê `lib/billing/plans.ts` (taxonomia legada) e mostra
+  R$167/397/697 — o Billing Center já mostra R$149/299/599 pro mesmo
+  plano. Inconsistência visível ao cliente HOJE. Não corrigido porque
+  `UpgradeCheckoutButton` provavelmente usa esse mesmo valor legado pra
+  montar a cobrança Asaas — mudar só o texto sem entender o fluxo de
+  cobrança arrisca cobrar um valor e mostrar outro. Deve ser a PRIMEIRA
+  coisa da próxima sessão, antes de qualquer outra tarefa de Fase 6+ — ver
+  `docs/PRICING_ARCHITECTURE.md`.
+- **Fase 5 (resíduo)** — alertas de consumo só no card de Althos Credits,
+  não em Voice/Email (mesma função pode ser copiada). Reconciliar as duas
+  taxonomias de plano para que toda conta (não só as já migradas pra
+  `subscriptions`) mostre usuários incluídos/fatura estimada. Pricing page
+  pública (marketing) não existe neste repo — confirmado, é outro projeto,
+  não é uma lacuna. Admin interno (MRR, margem de IA por conta) não tocado.
 - **Fase 4 (resíduo)** — `voice_minutes` com breakdown de custo por
   componente (telefonia/STT/LLM/TTS) não existe como tabela dedicada (hoje
   só custo total). Tabela `sms_usage` dedicada não foi criada — decisão

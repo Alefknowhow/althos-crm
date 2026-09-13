@@ -4,7 +4,8 @@ import { z } from 'zod'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { getAccountIdForOrgSlug } from '@/lib/plans/server'
-import { CREDIT_PACKS, ADDON_CREDIT_PRICE_CENTS } from '@/lib/plans/config'
+import { ADDON_CREDIT_PRICE_CENTS } from '@/lib/plans/config'
+import { getCreditPackagesCatalog } from '@/lib/credits/engine'
 import { asaas } from '@/lib/asaas/client'
 import { getResend, EMAIL_FROM } from '@/lib/resend'
 import { isAccessBlocked } from '@/lib/billing/plans'
@@ -12,18 +13,23 @@ import { MIN_CUSTOM_AI_CREDITS } from '@/lib/billing/credit-minimums'
 import { revalidatePath } from 'next/cache'
 
 /**
- * Compra avulsa de créditos de IA — self-service via Asaas (pagamento único,
+ * Compra avulsa de Althos Credits — self-service via Asaas (pagamento único,
  * não é assinatura). Ao confirmar o pagamento, o webhook
  * (app/api/webhooks/asaas/route.ts) credita `ai_credits.credits_purchased`.
+ *
+ * `packId` resolve o preço via `credit_packages` (migration 0244,
+ * `getCreditPackagesCatalog()`) — fonte central, nunca hardcode preço aqui
+ * nem confie em valor vindo do client.
  */
-export async function purchaseCreditPack(orgSlug: string, packIndex: number) {
+export async function purchaseCreditPack(orgSlug: string, packId: string) {
   await requireAuth()
   const org = await getCurrentOrganization(orgSlug) as any
   if (isAccessBlocked(org)) {
     return { ok: false as const, error: 'Conta em modo somente leitura. Assine um plano para comprar créditos.' }
   }
 
-  const pack = CREDIT_PACKS[packIndex]
+  const packs = await getCreditPackagesCatalog()
+  const pack = packs.find(p => p.id === packId)
   if (!pack) return { ok: false as const, error: 'Pacote inválido.' }
 
   const accountId = await getAccountIdForOrgSlug(orgSlug)
@@ -47,7 +53,7 @@ export async function purchaseCreditPack(orgSlug: string, packIndex: number) {
     const payment = await asaas.createPayment(
       customerId,
       pack.priceCents / 100,
-      `Althos CRM — Pacote de ${pack.credits} créditos de IA`,
+      `Althos CRM — Pacote de ${pack.credits} Althos Credits`,
       `credit_pack:${accountId}:${pack.credits}`,
     )
 
@@ -156,7 +162,7 @@ export async function requestAddonChange(orgSlug: string, raw: unknown) {
   return { ok: true as const }
 }
 
-/** Créditos disponíveis pro mês corrente — usado pra exibir "já comprou" no cliente. */
+/** Catálogo vigente de pacotes de Althos Credits — fonte central (`credit_packages`). */
 export async function getCreditPacks() {
-  return CREDIT_PACKS
+  return getCreditPackagesCatalog()
 }

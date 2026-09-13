@@ -26,17 +26,22 @@ function HistoryColumn({
         {rows.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">Nenhum consumo ainda.</p>
         ) : (
-          rows.map(r => (
-            <div key={r.id} className="flex items-center justify-between px-4 py-2 text-xs">
-              <div className="min-w-0 pr-2">
-                <p className="truncate">{r.detail}</p>
-                <p className="text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString('pt-BR')}</p>
+          rows.map(r => {
+            // 'purchased' e 'refund' são créditos entrando no saldo (verde,
+            // "+"); qualquer outro tipo (usage/consumed legado) é consumo.
+            const isCredit = r.type === 'purchased' || r.type === 'refund'
+            return (
+              <div key={r.id} className="flex items-center justify-between px-4 py-2 text-xs">
+                <div className="min-w-0 pr-2">
+                  <p className="truncate">{r.detail}{r.type === 'refund' && ' (estorno)'}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <span className={`tabular-nums shrink-0 ${isCredit ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  {isCredit ? '+' : '-'}{formatAmount(Math.abs(r.amount))}
+                </span>
               </div>
-              <span className={`tabular-nums shrink-0 ${r.type === 'purchased' ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                {r.type === 'purchased' ? '+' : '-'}{formatAmount(Math.abs(r.amount))}
-              </span>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
@@ -51,7 +56,7 @@ export default function CreditsHistorySection({ overview }: { overview: CreditsO
         <p className="text-xs text-muted-foreground mt-0.5">Últimos lançamentos de cada tipo de crédito — compras e consumo juntos, mais recente primeiro.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <HistoryColumn icon={<Sparkles className="w-4 h-4 text-primary" />} title="Créditos de IA" rows={overview.ai.transactions} formatAmount={n => `${n} créd.`} />
+        <HistoryColumn icon={<Sparkles className="w-4 h-4 text-primary" />} title="Althos Credits" rows={overview.ai.transactions} formatAmount={n => `${n} créd.`} />
         <HistoryColumn icon={<Phone className="w-4 h-4 text-primary" />} title="Voice Credits" rows={overview.voice.transactions} formatAmount={formatCents} />
         <HistoryColumn icon={<Mail className="w-4 h-4 text-primary" />} title="Email Credits" rows={overview.email.transactions} formatAmount={formatCents} />
       </div>

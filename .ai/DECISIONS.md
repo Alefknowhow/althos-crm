@@ -129,3 +129,58 @@ Mesmo cuidado da Fase 2/3 aplicado ao evoluir `consume_voice_credits`: como
 adicionar um parâmetro muda a assinatura da função, um `DROP FUNCTION`
 explícito da versão antiga veio antes do `CREATE OR REPLACE`, evitando
 recriar o bug de overload órfão da migration 0244.
+
+## 2026-09-13 — Fase 5: Billing Center UI + descoberta de um risco real (preços legados vs. repricados)
+
+Context: continuação do bloco de pricing/billing (Fases 2/3/4 acima).
+Implementar o Billing Center (usuários incluídos/adicionais, próxima
+fatura estimada, alertas de consumo) exigiu ler a fundo
+`app/app/[orgSlug]/assinatura/page.tsx`, que já buscava tanto `org.plan`
+(taxonomia legada, `getPlan()`) quanto `subscription` (taxonomia nova,
+`getSubscriptionByOrgSlug()`) — mas só usava a segunda para uma checagem
+lateral (`canRefer`), nunca para exibir preço. Ao adicionar o bloco de
+usuários (que só existe na taxonomia nova), ficou evidente que o preço
+exibido no topo da página (via `plan.priceCents`, legado) e o preço usado
+no novo cálculo de fatura estimada (via `newPlanMeta.priceMonthlyCents`,
+repricado) divergiam NA MESMA TELA para o mesmo plano.
+
+Decision:
+1. Corrigir a própria página do Billing Center para ela mesma ser
+   consistente: quando a conta já tem uma linha em `subscriptions`, TODO
+   preço exibido nessa tela usa o valor repricado (`newPlanMeta`), não o
+   legado. Contas sem `subscriptions` continuam mostrando o preço legado
+   (não há dado novo pra usar).
+2. NÃO estender essa correção para `app/app/[orgSlug]/upgrade/page.tsx`
+   (a página de checkout/upgrade) nesta mesma leva — ela ainda lê
+   `lib/billing/plans.ts` (preços legados) e provavelmente monta a
+   cobrança Asaas com esse mesmo valor. Mudar só o texto exibido sem
+   entender/testar o fluxo de cobrança arriscaria mostrar um preço e
+   cobrar outro — pior que a inconsistência atual (visível, mas não afeta
+   cobrança real). Documentado como risco ativo e prioridade #1 da próxima
+   sessão, não "resolvido às pressas" agora.
+3. Migrar a compra de pacotes de Althos Credits do array `@deprecated
+   CREDIT_PACKS` para o catálogo central `credit_packages` (criado na Fase
+   2/3, mas cuja UI nunca tinha sido migrada) — único call site, sem
+   quebra de compatibilidade.
+4. CTAs de upgrade contextual (seção 17 do pedido original) já existiam
+   app-wide (`VoicePaywall.tsx` e o mesmo padrão em `relatorios/page.tsx`)
+   — decisão de NÃO reconstruir isso, só documentar a descoberta.
+
+Reason: um Billing Center internamente inconsistente (dois preços
+diferentes pro mesmo plano, na mesma tela) é pior que não ter feito a
+mudança — mina a confiança do cliente no painel de faturamento. Ao mesmo
+tempo, "corrigir tudo de uma vez" tocando também no fluxo de checkout sem
+entender como ele monta a cobrança é exatamente o tipo de pressa que gera
+prejuízo financeiro real (cobrar errado) — vale mais documentar o risco
+com precisão do que arriscar uma correção mal-entendida.
+
+Impact: `app/app/[orgSlug]/assinatura/page.tsx` ganhou `displayPriceCents`
+(resolve pro valor certo conforme a taxonomia da conta).
+`actions/addons.ts::purchaseCreditPack` mudou de assinatura
+(`packIndex: number` → `packId: string`) — único call site atualizado
+junto. Um bug de exibição também corrigido de passagem:
+`CreditsHistorySection.tsx` mostrava transações do tipo `refund` (novo,
+Fases 2-4) como consumo (vermelho, "-") em vez de crédito devolvido
+(verde, "+"). **Risco real e ativo documentado, não corrigido**: preço
+legado vs. repricado divergem em `/upgrade` — ver
+`docs/PRICING_ARCHITECTURE.md` § "Risco real e ativo".

@@ -20,19 +20,25 @@ Asaas (`lib/asaas/client.ts`) processa dois tipos de cobrança:
 - Toda mutação de saldo passa por função SQL `SECURITY DEFINER` com `SELECT ... FOR UPDATE` (evita race condition em consumo concorrente) — ver `consume_ai_credits`/`refund_ai_credits` em [ALTHOS_CREDITS.md](./ALTHOS_CREDITS.md).
 - Webhook do Asaas é idempotente via `billing_events.dedupe_key` (migration `0224`) — reentrega do mesmo evento não credita duas vezes.
 
-## Billing Center (UI) — estado atual
+## Billing Center (UI) — estado atual (Fase 5 concluída)
 
-A tela em `/app/[orgSlug]/assinatura` (redesenhada em setembro/2026, ver commit `c6c8b9c`) já mostra: plano contratado, complementos, uso atual (créditos IA/Voice/Email com progress bar + compra + histórico separados por seção), indicações/cupons, histórico de faturas com scroll independente.
+A tela em `/app/[orgSlug]/assinatura` mostra: plano contratado (agora também com o bloco "Usuários" — incluídos/adicionais e custo do assento extra, via `computeSeatCost()`), próxima fatura estimada (plano + assentos extras), Althos Credits (renomeado na copy — antes "Créditos de IA"), Voice Credits, Email Credits (cada um com progress bar + compra + histórico separados por seção), complementos, uso atual, indicações/cupons, histórico de faturas com scroll independente.
 
-**Não atualizada nesta leva** para refletir a nova filosofia de "usuários incluídos/adicionais" (seção 10/14 do pedido de repricing) nem para consolidar os 3 saldos de crédito sob o nome único "Althos Credits" na UI (hoje a tela já existe mas fala "créditos de IA/Voice/Email" separadamente, o que tecnicamente está correto — Voice/Email não são Althos Credits — mas a chamada explícita da unidade "Althos Credits" para o saldo de IA ainda não foi feita na camada de copy).
+**Fonte de preço/franquia**: o bloco de "Usuários"/"Próxima fatura estimada" só aparece se a conta já tem uma linha em `subscriptions` (taxonomia NOVA, por-conta) — contas que só existem na taxonomia legada (`organizations.plan`) não mostram esse bloco, porque não há franquia/preço de assento confiável para calcular ali. Isso é uma consequência direta das duas taxonomias coexistindo (ver `PRICING_ARCHITECTURE.md`), não um bug.
 
-### Pendências explícitas (Fase 5, próxima etapa)
+### Compra de Althos Credits agora usa o catálogo central
+`purchaseCreditPack(orgSlug, packId)` passou a receber um `packId` (string) e resolver preço via `getCreditPackagesCatalog()` (tabela `credit_packages`) em vez do array `CREDIT_PACKS` (que já estava marcado `@deprecated` desde a Fase 2/3). Único call site (`CreditsPurchaseSection.tsx`) atualizado junto — sem quebra de compatibilidade porque não havia outro consumidor.
 
-- Bloco "Usuários" mostrando `computeSeatCost()` (5 de 5 incluídos / 7 usuários: 5 incluídos + 2 adicionais = R$98/mês).
-- "Próxima fatura estimada" somando plano + assentos extras + créditos extras + Voice + SMS.
-- Renomear a seção de créditos de IA para "Althos Credits" na copy (a lógica de backend já usa esse conceito; falta só a camada visual).
-- CTAs de upgrade contextual ("Automações estão disponíveis a partir do Pro" / "Voice AI está disponível no Business").
-- Alertas de consumo (50/75/90/100%).
+### Alertas de consumo (seção 16 do pedido) — implementados para Althos Credits
+Limiares 50/75/90/100% no card de Althos Credits do Billing Center (`creditAlert()` em `CreditsPurchaseSection.tsx`) — mensagem inline + barra de progresso em destaque quando acima de 50%. **Não implementado ainda para Voice/Email** (mesma lógica pode ser copiada quando fizer sentido — ficou de fora desta leva pra não inflar o escopo de um pedido já grande).
+
+### CTAs de upgrade contextual (seção 17) — já existiam, não precisou construir
+Descoberto durante a auditoria: o padrão de "recurso bloqueado + CTA de upgrade" já existe e é usado app-wide (`VoicePaywall.tsx`, mesmo padrão reaproveitado de `app/app/[orgSlug]/relatorios/page.tsx`) — cada página gated (`app/app/[orgSlug]/voice/*`) já renderiza um paywall com o texto "X é um recurso dos planos Y e Z" + botão "Fazer upgrade" em vez de simplesmente esconder a rota. Nenhuma mudança foi necessária aqui.
+
+### Pendências explícitas (próxima etapa)
+- Alertas de consumo para Voice/Email (só Althos Credits ganhou nesta leva).
+- Reconciliar as duas taxonomias de plano para que TODA conta mostre usuários incluídos/fatura estimada (hoje só contas já migradas para `subscriptions` mostram).
+- `monthly_grant` como linha de ledger explícita (pendência desde a Fase 2/3, ainda não feita).
 
 ## Admin interno — estado atual
 
