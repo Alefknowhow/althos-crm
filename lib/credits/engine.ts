@@ -56,7 +56,7 @@ export interface ConsumeCreditsInput {
 }
 
 export type ConsumeCreditsResult =
-  | { success: true; creditsUsed: number; remaining: number | null; idempotentReplay?: boolean }
+  | { success: true; creditsUsed: number; remaining: number | null; transactionId: string | null; idempotentReplay?: boolean }
   | { success: false; error: string; available?: number }
 
 /**
@@ -89,12 +89,13 @@ export async function consumeCredits(input: ConsumeCreditsInput): Promise<Consum
     return { success: false, error: 'rpc_error' }
   }
 
-  const res = (data ?? {}) as { success?: boolean; credits_used?: number; remaining?: number; error?: string; available?: number; idempotent_replay?: boolean }
+  const res = (data ?? {}) as { success?: boolean; credits_used?: number; remaining?: number; error?: string; available?: number; idempotent_replay?: boolean; transaction_id?: string }
   if (res.success) {
     return {
       success: true,
       creditsUsed: res.credits_used ?? cost,
       remaining: res.remaining ?? null,
+      transactionId: res.transaction_id ?? null,
       idempotentReplay: res.idempotent_replay,
     }
   }

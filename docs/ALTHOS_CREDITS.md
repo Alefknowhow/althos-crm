@@ -60,6 +60,18 @@ Toda chamada originada de um job assíncrono (Inngest) **deve** passar `idempote
 - **Voice AI**: minutos de chamada são billing de uso próprio (`voice_credits`/`lib/voice/credits.ts`) — Voice não debita de `ai_credits`. Isso já era assim antes desta mudança; mantido deliberadamente (seção 12 do pedido original).
 - **SMS**: mesma lógica — usage próprio, fora do Credit Engine.
 
+## Bug crítico encontrado e corrigido na Fase 7 (testes) — leia antes de tocar em `consume_ai_credits`/`refund_ai_credits`
+
+A migration `0244` (Fase 2/3) reescreveu `consume_ai_credits()`/`refund_ai_credits()` com um `INSERT` que referenciava a coluna **`lead_id`** em `ai_credit_transactions` — mas o nome real da coluna (desde a migration `0073`, rename `leads`→`contatos`) é **`contato_id`**. Qualquer consumo/estorno que passasse do check de saldo (ou seja, **todo consumo bem-sucedido**, não só o caminho de saldo insuficiente) lançava o erro `42703: column "lead_id" does not exist` em vez de debitar.
+
+**Impacto real**: entre o push da Fase 2/3 (commit `ed0a9ad`) e a correção (migration `0248`), toda chamada de sucesso a `consumeAiCredits()`/`consumeCredits()` — Agente IA, lead scoring, Insights, extração de documentos, roteirista — falhava silenciosamente (o erro era capturado e logado, retornando `{success:false, error:'rpc_error'}`, então a feature de IA correspondente ficava indisponível para o usuário, sem crash do app, mas também sem débito nem entrega do recurso).
+
+**Por que os smoke-tests anteriores não pegaram isso**: os testes feitos ao aplicar as migrations `0244`/`0245` só exercitaram o caminho de **saldo insuficiente** (`available: 0` para a conta de teste usada), que retorna *antes* do `INSERT` problemático. Só ao rodar um cenário de consumo **bem-sucedido de verdade** na Fase 7 (testes de billing) é que o bug apareceu.
+
+Corrigido na migration `0248` — trocado `lead_id` por `contato_id` nos dois `INSERT`s, mais o retorno de `transaction_id` que faltava em `consume_ai_credits` (sem ele, não havia como chamar `refund_ai_credits` depois de um consumo). `lib/credits/engine.ts::consumeCredits()` atualizado para expor `transactionId` no resultado, espelhando o que `consumeVoiceCredits()` já fazia.
+
+**Verificado via smoke-test manual (Supabase MCP, conta descartável, apagada ao final)**: consumo normal, retry idempotente (não duplica débito), refund, refund duplicado (rejeitado), saldo insuficiente, isolamento entre contas — todos os 6 cenários passaram após a correção.
+
 ## Pendências conhecidas (não implementadas nesta leva)
 
 - Ledger explícito de `monthly_grant` (hoje a franquia mensal é criada implicitamente no primeiro consumo do período, sem uma transação auditável própria).

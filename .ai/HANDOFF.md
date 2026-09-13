@@ -18,11 +18,13 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T04:14:31.881Z
+**Generated At**: 2026-09-13T04:25:25.764Z
 **Branch**: `master`
-**Last Commit**: c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado) (Alef Trentin, 7 minutes ago)
+**Last Commit**: e3566d9 fix(embarques): dia da linha do tempo alinhado com a linha vertical (Alef Trentin, 2 minutes ago)
 
 **Recent Commits**:
+- e3566d9 fix(embarques): dia da linha do tempo alinhado com a linha vertical
+- bcabdf7 feat(billing): Fase 6 — lista de beneficios atualizada + Voice vira exclusividade Business
 - c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado)
 - ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao
 - dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
@@ -31,26 +33,20 @@ Duas partes:
 - 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
 - 3ae5a70 feat(ia): switch central Claude/DeepSeek via super-admin + remove seletor por org
 - 2a062fe fix(contatos): alinha campo de indicacao com os demais dropdowns
-- 52a867b feat(contatos): origem do lead editavel + indicacao com quem indicou
-- 41ec4ef feat(pipeline): rastreamento Google Ads por pipeline (client-side)
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (9):
+**Unstaged Changes** (5):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M components/features/schedule/ScheduleClient.tsx
-- M components/features/schedule/ScheduleGanttView.tsx
-- M components/features/voice/VoicePaywall.tsx
-- M docs/PRICING_ARCHITECTURE.md
-- M lib/billing/plan-features.ts
-- M lib/plans/config.ts
+- M docs/ALTHOS_CREDITS.md
+- M lib/credits/engine.ts
 
 **Untracked Files** (2):
 - .claude/
-- supabase/migrations/0247_voice_business_only.sql
+- supabase/migrations/0248_fix_credit_functions_contato_id_column.sql
 
 **Staged Diff Summary**:
 ```
@@ -59,16 +55,12 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md                                | 25 +++++++
- .ai/DECISIONS.md                                   | 44 ++++++++++++
- .ai/HANDOFF.md                                     | 68 +++++++++++++------
- components/features/schedule/ScheduleClient.tsx    |  7 +-
- components/features/schedule/ScheduleGanttView.tsx | 20 +++---
- components/features/voice/VoicePaywall.tsx         |  2 +-
- docs/PRICING_ARCHITECTURE.md                       |  8 +++
- lib/billing/plan-features.ts                       | 79 ++++++++++++++--------
- lib/plans/config.ts                                |  7 +-
- 9 files changed, 190 insertions(+), 70 deletions(-)
+.ai/CURRENT_TASK.md    | 40 ++++++++++++++++++++++++++++++++++++++++
+ .ai/DECISIONS.md       | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ .ai/HANDOFF.md         | 27 +++++++++++++++++++++++----
+ docs/ALTHOS_CREDITS.md | 12 ++++++++++++
+ lib/credits/engine.ts  |  5 +++--
+ 5 files changed, 127 insertions(+), 6 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -162,12 +154,31 @@ entitlement real**: Voice AI virou exclusivo do Business (migration
 `0247`) — o código dava acesso a Pro também, divergindo da lista de
 benefícios original do usuário.
 
-**Isto é Fase 2/3/4/5/6 de 10 do pedido original — não está concluído.**
+**Atualização (mesma sessão, continuação): Fase 7 — BUG CRÍTICO ENCONTRADO
+E CORRIGIDO.** Ao testar cenários reais de billing (Supabase MCP, conta
+descartável), o PRIMEIRO teste de consumo bem-sucedido falhou:
+`consume_ai_credits()`/`refund_ai_credits()` (migration `0244`) tinham um
+INSERT referenciando a coluna errada (`lead_id` em vez de `contato_id`,
+nome real desde a migration `0073`). **Todo consumo bem-sucedido de Althos
+Credits esteve quebrado desde o push da Fase 2/3 (`ed0a9ad`) até agora** —
+os smoke-tests anteriores só tinham testado o caminho de saldo
+insuficiente, que não passa pelo INSERT problemático. Corrigido na
+migration `0248` (aplicada em produção). Depois do fix, validei 6
+cenários (consumo, retry idempotente, refund, double-refund, saldo
+insuficiente, isolamento entre contas) tanto pra AI credits quanto Voice
+credits — todos passaram. Ver `docs/ALTHOS_CREDITS.md` § "Bug crítico" e
+`.ai/DECISIONS.md` (2026-09-13, última entrada) para o relato completo.
+**Se você notar qualquer feature de IA "silenciosamente não funcionando"
+em relatos de ANTES desta correção, esta é a causa raiz mais provável.**
+
+**Isto é Fase 2/3/4/5/6/7 de 10 do pedido original — não está concluído.**
 Fase 6 só cobriu benefícios/entitlements de Voice e usuários — a
 reconciliação COMPLETA das duas taxonomias de plano (legada por-org vs.
-nova por-conta) ainda não foi feita. Fases 7 (testes de concorrência
-real), 8 (auditoria completa do harness), 9/10 seguem pendentes — ver
-`.ai/CURRENT_TASK.md` § Pending para a lista detalhada.
+nova por-conta) ainda não foi feita. Fase 7 não testou concorrência REAL
+(múltiplas conexões simultâneas — limitação da ferramenta usada, não do
+código; `SELECT...FOR UPDATE` está correto por revisão). Fase 8 (auditoria
+completa do harness), 9/10 seguem pendentes — ver `.ai/CURRENT_TASK.md`
+§ Pending para a lista detalhada.
 
 ### Completed
 Ver `.ai/CURRENT_TASK.md` § Completed (lista detalhada com o bug de

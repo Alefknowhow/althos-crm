@@ -313,3 +313,52 @@ Impact: `lib/billing/plan-features.ts` reescrito. `lib/plans/config.ts`
 banco). `components/features/voice/VoicePaywall.tsx` copy corrigida.
 `docs/PRICING_ARCHITECTURE.md` documenta a mudança e a pendência de
 WhatsApp.
+
+## 2026-09-13 — Fase 7: bug crítico encontrado nos testes (consume_ai_credits quebrado desde a Fase 2/3)
+
+Context: pedido do usuário pra continuar a Fase 7 (testes críticos de
+billing/credits — concessão mensal, consumo, compra, refund, saldo
+insuficiente, concorrência, idempotência, isolamento entre workspaces).
+Como o projeto não tem suíte de integração (só Vitest unitário), optei por
+exercitar as funções SQL reais via Supabase MCP contra uma conta
+descartável (criada e apagada ao final), já que mockar `SELECT...FOR
+UPDATE`/idempotência em Vitest seria fingir uma garantia que só existe no
+banco de verdade.
+
+**O primeiro cenário testado (consumo normal, saldo suficiente) falhou
+imediatamente** com `42703: column "lead_id" does not exist` — a migration
+`0244` (Fase 2/3) tinha reescrito `consume_ai_credits()`/`refund_ai_credits()`
+com um INSERT referenciando `lead_id`, mas o nome real da coluna em
+`ai_credit_transactions` (desde a migration `0073`, rename
+leads→contatos) é `contato_id`. Isso significa que **todo consumo
+bem-sucedido de Althos Credits esteve quebrado** desde o push da Fase 2/3
+(`ed0a9ad`) até agora — não só um caso hipotético de teste. Os
+smoke-tests anteriores (nas Fases 2/3 e 4) só tinham testado o caminho de
+saldo insuficiente da conta usada (que retorna ANTES do INSERT
+problemático), então o bug não tinha sido pego.
+
+Decision: corrigir imediatamente (migration `0248`) em vez de só
+documentar e seguir — é um bug de produção real, não uma melhoria
+adiável. Também adicionado `transaction_id` ao retorno de
+`consume_ai_credits` (faltava desde a Fase 2/3 — sem ele, `refund_ai_credits`
+nunca poderia ser chamado por um caller que só tivesse o resultado do
+consumo). Depois do fix, repeti os 6 cenários de teste (consumo, retry
+idempotente, refund, double-refund, saldo insuficiente, isolamento) tanto
+para AI credits quanto pra Voice credits — todos passaram. `voice_credits`
+nunca teve esse bug de coluna (não usa `lead_id`/`contato_id`), só o AI
+precisou do fix.
+
+Reason: um bug que quebra a funcionalidade central de um sistema de
+billing (débito nunca acontece) é sempre prioridade máxima assim que
+encontrado — a Fase 7 existe exatamente pra pegar esse tipo de coisa antes
+de afetar mais gente (mesmo sem clientes ativos, o Agente IA/Insights/etc.
+já podem estar em uso interno ou por quem está testando a plataforma).
+
+Impact: `supabase/migrations/0248_fix_credit_functions_contato_id_column.sql`
+aplicada. `lib/credits/engine.ts::consumeCredits()` ganhou `transactionId`
+no tipo de retorno de sucesso. Testado e confirmado via Supabase MCP
+(conta descartável, sem afetar dados reais) — ver `.ai/CURRENT_TASK.md`
+§ Completed (Fase 7) pra lista completa dos 6 cenários validados, e o que
+ficou explicitamente NÃO testado (concorrência real com múltiplas
+conexões — o Supabase MCP executa uma query por vez; código revisado usa
+`SELECT...FOR UPDATE`, padrão correto, mas não validado sob carga real).

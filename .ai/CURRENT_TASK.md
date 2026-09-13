@@ -244,6 +244,46 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
 - `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176 — sem teste
   cobrindo `PLAN_FEATURES` array de UI, é conteúdo de apresentação).
 
+## Completed (Fase 7 — testes críticos de billing/credits)
+- **BUG CRÍTICO ENCONTRADO E CORRIGIDO**: `consume_ai_credits()` e
+  `refund_ai_credits()` (migration `0244`) tinham um `INSERT` referenciando
+  a coluna errada — `lead_id` em vez do nome real `contato_id` (desde a
+  migration `0073`). Isso quebrava **todo consumo bem-sucedido** de Althos
+  Credits (não só o caminho de saldo insuficiente) desde o push da Fase
+  2/3 (`ed0a9ad`) até agora — Agente IA, lead scoring, Insights, etc.
+  falhavam silenciosamente (erro logado, feature indisponível, sem crash).
+  Os smoke-tests anteriores só tinham exercitado o caminho de saldo
+  insuficiente (retorna antes do INSERT problemático) — só um teste de
+  CONSUMO BEM-SUCEDIDO de verdade (Fase 7) expôs o bug. Corrigido na
+  migration `0248`. `lib/credits/engine.ts::consumeCredits()` também
+  ganhou `transactionId` no retorno (faltava — sem ele não dava pra
+  chamar `refundCredits()` depois de um consumo).
+- **6 cenários validados via smoke-test manual** (Supabase MCP, conta
+  descartável criada e apagada ao final, sem afetar dados reais):
+  1. Consumo normal (débito correto, saldo atualizado).
+  2. Retry idempotente (mesma `idempotency_key` — NÃO duplica débito,
+     retorna `idempotent_replay: true`).
+  3. Refund (saldo restaurado corretamente).
+  4. Double-refund rejeitado (`already_refunded`).
+  5. Saldo insuficiente (`insufficient_credits` + saldo disponível correto).
+  6. Isolamento entre contas (nenhuma outra conta tocada pelos testes).
+  Mesmos 6 cenários repetidos para Voice Credits (`consume_voice_credits`/
+  `refund_voice_credits`) — todos passaram sem precisar de correção
+  adicional (só o AI credits tinha o bug de coluna).
+- `account_user_limit()` com `extra_seats` revalidado (franquia 2 + 4
+  extra = 6) — reconfirma a correção da Fase 6.
+- `account_has_feature()` revalidado: Starter sem `voice`/`ai_insights`.
+- **Não testado** (limitação real da ferramenta, documentada — não
+  fingida como feita): concorrência de verdade (duas conexões Postgres
+  simultâneas debitando a mesma conta ao mesmo tempo). O código usa
+  `SELECT ... FOR UPDATE` (lock de linha), que é o padrão correto pra
+  isso, mas validar sob concorrência real exigiria múltiplas conexões
+  paralelas — o Supabase MCP executa uma query por vez. Revisão de
+  código confirma o padrão certo; um teste de carga real (pgbench ou
+  script Node com Promise.all de várias conexões) fica como pendência
+  pra uma suíte de integração futura (o projeto não tem uma hoje).
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
+
 ## In Progress
 Nada em edição no momento.
 
