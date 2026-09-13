@@ -7,12 +7,12 @@ import EmptyState from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
 import { CalendarClock, CalendarDays, ListChecks } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
 import { ScheduleListView } from './ScheduleListView'
+import { ScheduleFiltersBar, type SchedulePeriod, type ScheduleHealthFilter } from './ScheduleFiltersBar'
 
 const DAY = 86400000
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
@@ -52,6 +52,10 @@ export default function ScheduleClient({
   const today = useMemo(() => startOfDay(new Date()), [])
   const [filter, setFilter] = useState<'all' | TripState>('all')
   const [owner, setOwner] = useState<string>('all')
+  const [search, setSearch] = useState('')
+  const [period, setPeriod] = useState<SchedulePeriod>('all')
+  const [health, setHealth] = useState<ScheduleHealthFilter>('all')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   // Deslocamento em dias a partir da posição padrão (hoje na coluna
   // TODAY_COLUMN) — navegação avança/retrocede NAV_STEP_DAYS colunas por vez.
   const [dayOffset, setDayOffset] = useState(0)
@@ -86,8 +90,28 @@ export default function ScheduleClient({
     let out = trips
     if (filter !== 'all') out = out.filter(t => tripState(t, today) === filter)
     if (owner !== 'all') out = out.filter(t => t.created_by === owner)
+    if (health !== 'all') out = out.filter(t => t.health === health)
+    if (period !== 'all') {
+      out = out.filter(t => {
+        const dep = parseDate(t.departure_date)
+        if (!dep) return false
+        if (period === '30d') return dep >= today && dep <= addDays(today, 30)
+        const monthOffset = period === 'month' ? 0 : 1
+        const target = addMonths(today, monthOffset)
+        return dep.getFullYear() === target.getFullYear() && dep.getMonth() === target.getMonth()
+      })
+    }
+    const needle = search.trim().toLowerCase()
+    if (needle) {
+      out = out.filter(t =>
+        (t.client_name || '').toLowerCase().includes(needle) ||
+        (t.destination || '').toLowerCase().includes(needle) ||
+        (t.package_locator || '').toLowerCase().includes(needle) ||
+        (t.air_locator || '').toLowerCase().includes(needle),
+      )
+    }
     return out
-  }, [trips, filter, owner, today])
+  }, [trips, filter, owner, health, period, search, today])
 
   // Janela do gantt: ~monthsSpan meses (30 dias cada) a partir de uma
   // posição fixa em dias antes de hoje (TODAY_COLUMN), deslocada por
@@ -198,13 +222,16 @@ export default function ScheduleClient({
   return (
     <>
       <Tabs defaultValue="list">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <TabsList>
-            <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
-            <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
-          </TabsList>
+        <ScheduleFiltersBar
+          search={search} setSearch={setSearch}
+          owner={owner} setOwner={setOwner} members={members}
+          period={period} setPeriod={setPeriod}
+          health={health} setHealth={setHealth}
+          filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen}
+        />
 
-          {/* Filtros */}
+        {/* Status (Todas/Próximas/Em andamento/Concluídas) + Lista/Linha do tempo — mesma linha, sempre nessa posição. */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {([
               { id: 'all', label: `Todas (${counts.all})` },
@@ -225,17 +252,10 @@ export default function ScheduleClient({
             ))}
           </div>
 
-          {members.length > 0 && (
-            <Select value={owner} onValueChange={setOwner}>
-              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Responsável" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos responsáveis</SelectItem>
-                {members.map(m => (
-                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <TabsList>
+            <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
+            <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
+          </TabsList>
         </div>
 
         {/* ── Gantt ───────────────────────────────────────────── */}

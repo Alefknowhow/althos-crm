@@ -26,6 +26,10 @@ export type ScheduledTrip = {
   /** Saúde da reserva por tarefas pendentes — ver listScheduledTrips. */
   health: 'green' | 'yellow' | 'red'
   flights: FlightLegInfo[]
+  /** Itens inclusos na reserva (voos/hospedagem/transfer/passeios/...) —
+   *  mesmas chaves de INCLUDED_ITEMS (proposals/TravelSalesViewShared.tsx),
+   *  usado pra montar os mini-cards de resumo do painel de embarques. */
+  included_items: string[]
 }
 
 export type FlightLegInfo = {
@@ -59,7 +63,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
   const { data: sales } = await supabase
     .from('travel_sales')
-    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes, created_by')
+    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes, created_by, included_items')
     .eq('organization_id', org.id)
     .not('departure_date', 'is', null)
     .order('departure_date', { ascending: true })
@@ -176,6 +180,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       lead_phone: lead?.phone ?? null,
       health: healthBySale.get(r.id) ?? 'green',
       flights: legsBySale.get(r.id) ?? [],
+      included_items: Array.isArray(r.included_items) ? r.included_items : [],
     } as ScheduledTrip
   })
 }

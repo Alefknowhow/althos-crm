@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import {
   updateTravelSale, listSaleOperatorOptions,
@@ -10,15 +14,20 @@ import {
 } from '@/actions/travel-sales'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
+import ContratoManagerDialog from '@/components/features/reservas/ContratoManagerDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import { TabsContent } from '@/components/ui/tabs'
 import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
-import { Upload, Package, ListTodo, FileText } from 'lucide-react'
+import {
+  Upload, Package, ListTodo, FileText, Users, MoreHorizontal,
+  Save, Ban, Wallet, FileBadge, FileSignature, Trash2,
+} from 'lucide-react'
 import { type LeadOption, type Voucher } from './TravelSalesViewShared'
 import TravelSalesViewSaleEditorHeader from './TravelSalesViewSaleEditorHeader'
 import TravelSalesViewSaleEditorDadosTab from './TravelSalesViewSaleEditorDadosTab'
+import TravelSalesViewSaleEditorViajantesTab from './TravelSalesViewSaleEditorViajantesTab'
 import TravelSalesViewSaleEditorVouchersTab from './TravelSalesViewSaleEditorVouchersTab'
 
 export default function SaleEditor({
@@ -176,16 +185,60 @@ export default function SaleEditor({
           sobreporem ao passar por baixo. */}
       <div className="shrink-0 bg-card">
         <TravelSalesViewSaleEditorHeader
-          orgSlug={orgSlug} s={s} sellerName={sellerName} saving={saving} period={period}
-          onBack={onBack} onDelete={onDelete} handleSaveClick={handleSaveClick}
-          setCreditOpen={setCreditOpen} contractOpen={contractOpen} setContractOpen={setContractOpen}
-          setCancelOpen={setCancelOpen}
+          orgSlug={orgSlug} s={s} sellerName={sellerName} period={period}
+          onBack={onBack}
+          actions={(
+            <>
+              <Button size="sm" disabled={saving} onClick={handleSaveClick}>
+                <Save className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{saving ? 'Salvando…' : 'Salvar'}</span>
+              </Button>
+              <a href={`/voucher-print/${orgSlug}/${s.id}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" title="Gerar voucher">
+                  <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Voucher</span>
+                </Button>
+              </a>
+              <Button variant="outline" size="sm" title="Contrato" onClick={() => setContractOpen(true)}>
+                <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Contrato</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="Mais ações">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {s.contato_id && (
+                    <DropdownMenuItem onClick={() => setCreditOpen(true)} className="cursor-pointer">
+                      <Wallet className="w-3.5 h-3.5 mr-2" /> Usar crédito
+                    </DropdownMenuItem>
+                  )}
+                  {s.status !== 'cancelled' && (
+                    <DropdownMenuItem onClick={() => setCancelOpen(true)} className="cursor-pointer text-destructive focus:text-destructive">
+                      <Ban className="w-3.5 h-3.5 mr-2" /> Cancelar reserva
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive focus:text-destructive">
+                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir venda
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <ContratoManagerDialog
+                orgSlug={orgSlug}
+                saleId={s.id}
+                clientName={s.client_name}
+                open={contractOpen}
+                onOpenChange={setContractOpen}
+              />
+            </>
+          )}
         />
 
-        {/* Dados da Reserva / Produtos / Tarefas / Vouchers / Contratos — abas no topo, cada uma gerida de forma isolada. */}
+        {/* Dados da Reserva / Viajantes / Vouchers / Tarefas / Produtos — abas no topo, cada uma gerida de forma isolada. */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4">
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="dados"><FileText className="w-3.5 h-3.5 mr-1.5" /> Dados da Reserva</TabsTrigger>
+            <TabsTrigger value="dados"><FileText className="w-3.5 h-3.5 mr-1.5" /> Dados da reserva</TabsTrigger>
+            <TabsTrigger value="viajantes"><Users className="w-3.5 h-3.5 mr-1.5" /> Viajantes {travelers.length > 0 && travelers.length}</TabsTrigger>
             <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
             <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
             <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
@@ -197,8 +250,12 @@ export default function SaleEditor({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
           <TravelSalesViewSaleEditorDadosTab
             orgSlug={orgSlug} s={s} set={set} services={services} included={included}
-            toggleIncluded={toggleIncluded} travelers={travelers} leads={leads}
+            toggleIncluded={toggleIncluded}
             operatorOptions={operatorOptions} onExtracted={handleVoucherExtracted}
+          />
+
+          <TravelSalesViewSaleEditorViajantesTab
+            orgSlug={orgSlug} travelers={travelers} leads={leads} set={set}
           />
 
           {/* ── Produtos ────────────────────────────────────────── */}
