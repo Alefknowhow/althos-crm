@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
@@ -8,14 +8,14 @@ import { cn } from '@/lib/utils'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
-import { CalendarClock, CalendarDays, ListChecks } from 'lucide-react'
-import { type TripState } from './ScheduleGanttView'
+import { CalendarClock, CalendarDays, ListChecks, CheckCircle2 } from 'lucide-react'
+import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
 import { ScheduleListView } from './ScheduleListView'
-import { ScheduleTimelineListView } from './ScheduleTimelineListView'
 import { ScheduleFiltersBar, type SchedulePeriod, type ScheduleHealthFilter } from './ScheduleFiltersBar'
 
 const DAY = 86400000
+const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -25,6 +25,12 @@ function parseDate(s?: string | null): Date | null {
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
 function addDays(d: Date, n: number) { return new Date(d.getTime() + n * DAY) }
+function firstOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
+// Coluna em que "hoje" deve ficar posicionado sempre que o módulo é aberto
+// (não no início/borda da janela) — a navegação avança/retrocede o mesmo
+// número de colunas (dias) por clique.
+const TODAY_COLUMN = 4
+const NAV_STEP_DAYS = 30
 
 function tripState(t: ScheduledTrip, today: Date): TripState {
   const dep = parseDate(t.departure_date)
@@ -50,9 +56,35 @@ export default function ScheduleClient({
   const [period, setPeriod] = useState<SchedulePeriod>('all')
   const [health, setHealth] = useState<ScheduleHealthFilter>('all')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  // Deslocamento em dias a partir da posição padrão (hoje na coluna
+  // TODAY_COLUMN) — navegação avança/retrocede NAV_STEP_DAYS colunas por vez.
+  const [dayOffset, setDayOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
+  // Zoom (Ctrl+scroll): quantos meses cabem na janela visível — menos meses
+  // = colunas de dia mais largas (zoom in), mais meses = mais estreitas.
+  // Padrão ao abrir a tela: 1 mês (28-31 colunas de dia, ~30) em vez dos
+  // 3 meses anteriores — a janela é sempre alinhada a mês inteiro (ver
+  // months/dayNumbers abaixo), por isso não dá pra travar em exatos 30 dias
+  // sem também reformular os cabeçalhos de mês pra janelas parciais.
+  const [monthsSpan, setMonthsSpan] = useState(1)
+  const ganttRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ganttRef.current
+    if (!el) return
+    // preventDefault só funciona com um listener nativo não-passivo — o
+    // onWheel do React é passivo por padrão, não bloquearia o zoom do
+    // navegador (Ctrl+scroll também dá zoom na página inteira).
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      setMonthsSpan(v => Math.min(6, Math.max(1, v + (e.deltaY < 0 ? -1 : 1))))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   const filtered = useMemo(() => {
     let out = trips
@@ -80,6 +112,81 @@ export default function ScheduleClient({
     }
     return out
   }, [trips, filter, owner, health, period, search, today])
+
+  // Janela do gantt: ~monthsSpan meses (30 dias cada) a partir de uma
+  // posição fixa em dias antes de hoje (TODAY_COLUMN), deslocada por
+  // dayOffset (navegação em blocos de NAV_STEP_DAYS colunas).
+  const totalDays = Math.max(1, monthsSpan * 30)
+  const windowStart = useMemo(
+    () => addDays(startOfDay(today), dayOffset - TODAY_COLUMN),
+    [today, dayOffset],
+  )
+  const windowEnd = useMemo(() => addDays(windowStart, totalDays), [windowStart, totalDays])
+
+  // Janela não é mais alinhada ao início do mês, então o cabeçalho de meses
+  // precisa fatiar por mês-calendário sobreposto à janela, em vez de assumir
+  // meses inteiros a partir de windowStart.
+  const months = useMemo(() => {
+    const out: { label: string; leftPct: number; widthPct: number }[] = []
+    let cursor = firstOfMonth(windowStart)
+    let guard = 0
+    while (cursor.getTime() < windowEnd.getTime() && guard++ < 24) {
+      const mStart = cursor
+      const mEnd = addMonths(mStart, 1)
+      const segStart = Math.max(mStart.getTime(), windowStart.getTime())
+      const segEnd = Math.min(mEnd.getTime(), windowEnd.getTime())
+      const left = (segStart - windowStart.getTime()) / DAY / totalDays * 100
+      const width = (segEnd - segStart) / DAY / totalDays * 100
+      out.push({ label: `${MONTHS_PT[mStart.getMonth()]} ${mStart.getFullYear()}`, leftPct: left, widthPct: width })
+      cursor = mEnd
+    }
+    return out
+  }, [windowStart, windowEnd, totalDays])
+
+  const todayPct = useMemo(() => {
+    const p = (today.getTime() - windowStart.getTime()) / DAY / totalDays * 100
+    return p >= 0 && p <= 100 ? p : null
+  }, [today, windowStart, totalDays])
+
+  // Cada dia vira uma linha vertical fina, e o número do dia fica
+  // centralizado exatamente em cima dela (mesma posição, não uma coluna) —
+  // só o próprio início (0%) fica de fora, já coberto pela borda do
+  // container.
+  const dayLines = useMemo(() => {
+    const lines: number[] = []
+    for (let i = 1; i < totalDays; i++) lines.push((i / totalDays) * 100)
+    return lines
+  }, [totalDays])
+
+  const dayNumbers = useMemo(() => {
+    const out: { day: number; leftPct: number }[] = []
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(windowStart.getTime() + i * DAY)
+      out.push({ day: d.getDate(), leftPct: (i / totalDays) * 100 })
+    }
+    return out
+  }, [windowStart, totalDays])
+
+  // Trips que aparecem no gantt: que sobrepõem a janela
+  const ganttTrips = useMemo(() => {
+    return filtered.map(t => {
+      const depRaw = parseDate(t.departure_date)
+      const retRaw = parseDate(t.return_date) || depRaw
+      if (!depRaw) return null
+      // parseDate ancora em T12:00:00 (meio-dia) — windowStart/windowEnd são
+      // meia-noite. Sem normalizar pra início do dia aqui, a marcação nasce
+      // deslocada meio dia (metade de uma coluna) pra direita.
+      const dep = startOfDay(depRaw)
+      const end = startOfDay(retRaw || depRaw)
+      // overlap test
+      if (end < windowStart || dep >= windowEnd) return null
+      const clampedStart = Math.max(dep.getTime(), windowStart.getTime())
+      const clampedEnd = Math.min(end.getTime() + DAY, windowEnd.getTime()) // inclui o dia de retorno
+      const left = (clampedStart - windowStart.getTime()) / DAY / totalDays * 100
+      const width = Math.max(1.5, (clampedEnd - clampedStart) / DAY / totalDays * 100)
+      return { trip: t, left, width, state: tripState(t, today) }
+    }).filter(Boolean) as { trip: ScheduledTrip; left: number; width: number; state: TripState }[]
+  }, [filtered, windowStart, windowEnd, totalDays, today])
 
   function openTrip(t: ScheduledTrip) {
     setSelected(t)
@@ -127,20 +234,20 @@ export default function ScheduleClient({
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {([
-              { id: 'all', label: `Todas (${counts.all})` },
-              { id: 'upcoming', label: `Próximas (${counts.upcoming})` },
-              { id: 'ongoing', label: `Em andamento (${counts.ongoing})` },
-              { id: 'past', label: `Concluídas (${counts.past})` },
+              { id: 'all', label: `Todas (${counts.all})`, icon: ListChecks },
+              { id: 'upcoming', label: `Próximas (${counts.upcoming})`, icon: CalendarClock },
+              { id: 'ongoing', label: `Em andamento (${counts.ongoing})`, icon: CalendarDays },
+              { id: 'past', label: `Concluídas (${counts.past})`, icon: CheckCircle2 },
             ] as const).map(b => (
               <button
                 key={b.id}
                 onClick={() => setFilter(b.id)}
                 className={cn(
-                  'px-3 h-8 rounded-full border text-xs font-medium transition-colors',
+                  'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
                   filter === b.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground border-border',
                 )}
               >
-                {b.label}
+                <b.icon className="w-3.5 h-3.5" /> {b.label}
               </button>
             ))}
           </div>
@@ -151,12 +258,19 @@ export default function ScheduleClient({
           </TabsList>
         </div>
 
-        {/* ── Linha do tempo (anexo 3) ─────────────────────────── */}
+        {/* ── Gantt ───────────────────────────────────────────── */}
         <TabsContent value="gantt" className="mt-4">
-          <ScheduleTimelineListView
-            filtered={filtered}
-            today={today}
-            tripState={tripState}
+          <ScheduleGanttView
+            ganttRef={ganttRef}
+            months={months}
+            dayNumbers={dayNumbers}
+            dayLines={dayLines}
+            todayPct={todayPct}
+            totalDays={totalDays}
+            ganttTrips={ganttTrips}
+            dayOffset={dayOffset}
+            setDayOffset={setDayOffset}
+            navStepDays={NAV_STEP_DAYS}
             onOpenTrip={openTrip}
           />
         </TabsContent>

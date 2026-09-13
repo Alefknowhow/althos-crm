@@ -7,10 +7,9 @@
  * itinerário com voos — agrupado por sentido, mostrando conexões quando a
  * reserva tem mais de um trecho na mesma direção. Ocupa a largura cheia da
  * tela (o card é 1 por linha — ver ScheduleListView.tsx) e organiza tudo
- * em linhas horizontais em vez de empilhado, pra aproveitar o espaço. A
- * barra animada "Ida → Volta" do anexo 3 NÃO fica aqui — é exclusiva da
- * aba isolada "Linha do tempo" (ScheduleTimelineListView.tsx). Extraído de
- * ScheduleListView.tsx.
+ * em linhas horizontais em vez de empilhado, pra aproveitar o espaço.
+ * Extraído de ScheduleListView.tsx. A aba isolada "Linha do tempo" é o
+ * gantt mensal de sempre — ver ScheduleGanttView.tsx.
  */
 
 import { useState } from 'react'
@@ -27,7 +26,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ScheduledTrip, FlightLegInfo, OtherProductSummary } from '@/actions/travel-schedule'
-import { updateSaleProductField } from '@/actions/sale-products'
 import { type TripState } from './ScheduleGanttView'
 import {
   whatsappLink, rowStatus, HEALTH_META, FLIGHT_STATUS_META, DATE_ICON_COLOR,
@@ -86,40 +84,9 @@ function connectionLabel(a: FlightLegInfo, b: FlightLegInfo): string | null {
   return `Conexão em ${a.destino || '—'} · ${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}min` : ''}`.trim()
 }
 
-/** Horário do trecho, editável direto no card — o painel de Embarques tem
- *  espaço de sobra aqui, então em vez de só exibir, dá pra preencher/
- *  corrigir sem ter que abrir a reserva em outra tela. */
-function FlightLegTimeInput({ orgSlug, legId, initialValue }: { orgSlug: string; legId: string; initialValue: string | null }) {
-  const [value, setValue] = useState(initialValue || '')
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    if (value === (initialValue || '')) return
-    setSaving(true)
-    const res = await updateSaleProductField(orgSlug, legId, { horario: value })
-    setSaving(false)
-    if (!res.ok) { toast.error(res.error); return }
-    toast.success('Horário atualizado.')
-  }
-
-  return (
-    <input
-      type="text"
-      value={value}
-      placeholder="Horário"
-      onChange={e => setValue(e.target.value)}
-      onBlur={save}
-      onClick={e => e.stopPropagation()}
-      disabled={saving}
-      className={cn(
-        'h-6 w-20 rounded border bg-background px-1.5 text-[11px] text-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        !value && 'border-dashed border-destructive/50 text-destructive placeholder:text-destructive/70',
-      )}
-    />
-  )
-}
-
-function FlightLeg({ orgSlug, leg, showConnection }: { orgSlug: string; leg: FlightLegInfo; showConnection: string | null }) {
+/** Horário do trecho — só leitura, puxado da reserva (Reservas › Produtos
+ *  já tem esse dado; aqui é o mesmo valor, nunca editado a partir daqui). */
+function FlightLeg({ leg, showConnection }: { leg: FlightLegInfo; showConnection: string | null }) {
   const meta = FLIGHT_STATUS_META[leg.status || 'scheduled']
   return (
     <div className="space-y-1">
@@ -129,7 +96,7 @@ function FlightLeg({ orgSlug, leg, showConnection }: { orgSlug: string; leg: Fli
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border bg-muted/20 px-3 py-2 text-xs">
         <span className="font-medium text-foreground/80 shrink-0">{leg.numero_voo || leg.companhia || 'Voo'}</span>
         <span className="text-muted-foreground">{leg.origem || '—'} → {leg.destino || '—'}</span>
-        <FlightLegTimeInput orgSlug={orgSlug} legId={leg.id} initialValue={leg.horario} />
+        {leg.horario && <span className="text-muted-foreground">· {leg.horario}</span>}
         <Badge variant="outline" className={cn('text-[9px] px-1 py-0 ml-auto', meta?.badge)}
           title={leg.revised_departure ? `Novo horário: ${fmtTime(leg.revised_departure)}` : undefined}>
           {meta?.label}{leg.delay_minutes ? ` +${leg.delay_minutes}min` : ''}
@@ -284,7 +251,7 @@ export function ScheduleTripCard({
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ida · {fmtDate(t.departure_date)}</p>
                   {idaLegs.map((f, i) => (
-                    <FlightLeg key={f.id} orgSlug={orgSlug} leg={f} showConnection={i > 0 ? connectionLabel(idaLegs[i - 1], f) : null} />
+                    <FlightLeg key={f.id} leg={f} showConnection={i > 0 ? connectionLabel(idaLegs[i - 1], f) : null} />
                   ))}
                 </div>
               )}
@@ -292,7 +259,7 @@ export function ScheduleTripCard({
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Volta · {fmtDate(t.return_date)}</p>
                   {voltaLegs.map((f, i) => (
-                    <FlightLeg key={f.id} orgSlug={orgSlug} leg={f} showConnection={i > 0 ? connectionLabel(voltaLegs[i - 1], f) : null} />
+                    <FlightLeg key={f.id} leg={f} showConnection={i > 0 ? connectionLabel(voltaLegs[i - 1], f) : null} />
                   ))}
                 </div>
               )}

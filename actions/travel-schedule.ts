@@ -153,7 +153,11 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
         numero_voo: p.data?.numero_voo ?? null,
         origem: p.data?.origem ?? null,
         destino: p.data?.destino ?? null,
-        horario: p.data?.horario ?? null,
+        // 'horario' e 'hora_embarque' são 2 campos distintos no formulário
+        // de Reservas › Produtos (aéreo) — a extração por IA e o
+        // preenchimento manual nem sempre passam pelos dois, então usa o
+        // que estiver preenchido, sem prender numa chave só.
+        horario: p.data?.horario || p.data?.hora_embarque || null,
         data: p.data?.data ?? null,
         status: null,
         delay_minutes: null,
