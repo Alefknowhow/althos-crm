@@ -261,11 +261,16 @@ export interface PlanLimits {
 // docs/plano-precos/03-*). customers deixou de ter teto (era 500/2000 —
 // vira storageMb, que é o custo elástico real). forms, socialMessages,
 // storageMb e emailSends são novos/recalculados nessa mesma leva.
+// `users` aqui é a franquia INCLUÍDA (espelha plans.max_users/includedUsers,
+// migration 0244) — não o teto rígido de convites. O teto real de convite é
+// franquia + subscriptions.extra_seats, calculado em account_user_limit()
+// (SQL) e computeSeatCost() (TS) — nunca leia PLAN_LIMITS.users sozinho pra
+// decidir se uma conta pode convidar mais gente.
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free:     { pipelines: 1,  automations: 0,  automationRuns: 0,     socialAccounts: 0,  socialMessages: 0,    customers: 50, users: 1,  leads: 100, orgs: 1, forms: 1,   storageMb: 0,     emailSends: 0    },
-  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: -1, users: 1,  leads: -1,  orgs: 1, forms: 10,  storageMb: 2048,  emailSends: 300  },
-  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 1000, customers: -1, users: 6,  leads: -1,  orgs: 5, forms: 20,  storageMb: 5120,  emailSends: 1000 },
-  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1, users: 20, leads: -1,  orgs: -1, forms: -1, storageMb: 15360, emailSends: 5000 },
+  starter:  { pipelines: 2,  automations: 5,  automationRuns: 1000,  socialAccounts: 1,  socialMessages: 500,  customers: -1, users: 2,  leads: -1,  orgs: 1, forms: 10,  storageMb: 2048,  emailSends: 300  },
+  pro:      { pipelines: 5,  automations: 20, automationRuns: 10000, socialAccounts: 3,  socialMessages: 1000, customers: -1, users: 5,  leads: -1,  orgs: 5, forms: 20,  storageMb: 5120,  emailSends: 1000 },
+  business: { pipelines: -1, automations: -1, automationRuns: -1,    socialAccounts: -1, socialMessages: -1,   customers: -1, users: 10, leads: -1,  orgs: -1, forms: -1, storageMb: 15360, emailSends: 5000 },
 }
 
 /** Limite de um plano para um recurso (Infinity quando ilimitado). */

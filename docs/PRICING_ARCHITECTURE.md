@@ -82,6 +82,16 @@ Decisão de negócio confirmada nesta sessão: **migrar todas as contas para o n
 
 **O que NÃO foi corrigido, ainda pendente**: assinaturas Asaas já ativas de contas nos planos starter/pro/business (não-scale) continuam cobrando o valor com que foram criadas — mudar `PLANS` só afeta CHECKOUTS NOVOS a partir de agora, não retroage sobre assinaturas recorrentes já em andamento no Asaas. Ajustar o valor de assinaturas existentes (via `updateSubscriptionValue`, hoje sem nenhum caller) é uma decisão de negócio explícita (avisar o cliente antes de mudar o valor cobrado) — não deve ser automatizado sem essa combinação.
 
+## Reconciliação de usuários incluídos/adicionais (2026-09-13, confirmado: sem clientes ativos na plataforma)
+
+Usuário confirmou não haver clientes pagantes ainda — autorização explícita para atualizar valores sem se preocupar com grandfathering. Aproveitado para fechar 3 inconsistências reais encontradas:
+
+1. **Bug funcional real**: `account_user_limit()` (RPC que efetivamente bloqueia convite de novo membro em `actions/team-invite.ts`) usava só `plans.max_users`, ignorando `subscriptions.extra_seats` — uma conta que comprasse assentos extras continuaria travada na franquia base, sem conseguir convidar ninguém a mais. Corrigido na migration `0246`: `account_user_limit()` agora soma `max_users + extra_seats`.
+2. `lib/billing/plans-data.ts` (taxonomia legada): `maxUsers` de Starter/Pro/Business estava 1/6/20 (nunca atualizado desde antes da repricing) — sincronizado para 2/5/10, igual à franquia nova. `trial.maxUsers` também ajustado (6→5, espelha Pro).
+3. `lib/plans/config.ts::PLAN_LIMITS.users` (mirror client-safe da taxonomia nova) estava 1/6/20 — sincronizado para 2/5/10 (igual a `plans.max_users`/`includedUsers`). Comentário adicionado deixando claro que este valor é a FRANQUIA, não o teto real de convite (que soma `extra_seats`).
+4. `actions/billing.ts::activatePlanFromWebhook` — mapa `userLimits` (usado só pela taxonomia legada ao ativar plano via webhook) tinha `starter: 1` — corrigido para `2`.
+5. `PLANS.scale` (alias legado de Business) teve o preço sincronizado com o valor repricado de Business (R$599) — decisão possível só porque não há assinatura Asaas real presa a esse valor ainda.
+
 ## Pendências (próxima etapa)
 
 - Reconciliar a taxonomia legada (`organizations.plan`) com a nova — hoje há dois lugares onde "o plano da conta" pode, em teoria, divergir.

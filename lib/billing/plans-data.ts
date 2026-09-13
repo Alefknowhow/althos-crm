@@ -85,7 +85,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     priceCentsSemestral:null,
     priceCentsAnnual:   null,
     maxLeads:          null,
-    maxUsers:          6,        // espelha o limite do Pro durante o teste
+    maxUsers:          5,        // espelha o limite do Pro durante o teste
     hasAI:             true,
     hasAdvancedAI:     false,
     hasAutomations:    true,
@@ -131,7 +131,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     priceCentsSemestral:80460,   // R$ 804,60/semestre (−10% vs 6×149)
     priceCentsAnnual:   146616,  // R$ 1.466,16/ano (−18% vs 12×149)
     maxLeads:           null,    // unlimited
-    maxUsers:           1,
+    maxUsers:           2,        // 2 usuários incluídos (repricing set/2026 — ver lib/plans/config.ts computeSeatCost)
     hasAI:             true,
     hasAdvancedAI:     false,
     hasAutomations:    true,
@@ -154,7 +154,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     priceCentsSemestral:161460,  // R$ 1.614,60/semestre (−10% vs 6×299)
     priceCentsAnnual:   294264,  // R$ 2.942,64/ano (−18% vs 12×299)
     maxLeads:           null,
-    maxUsers:           6,        // titular + 5 convidados
+    maxUsers:           5,        // 5 usuários incluídos (repricing set/2026)
     hasAI:             true,
     hasAdvancedAI:     false,
     hasAutomations:    true,
@@ -177,7 +177,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     priceCentsSemestral:323460,  // R$ 3.234,60/semestre (−10% vs 6×599)
     priceCentsAnnual:   589656,  // R$ 5.896,56/ano (−18% vs 12×599)
     maxLeads:           null,
-    maxUsers:           20,       // acima disso: plano sob medida ou usuário extra avulso
+    maxUsers:           10,       // 10 usuários incluídos (repricing set/2026); extras via computeSeatCost
     hasAI:             true,
     hasAdvancedAI:     true,
     hasAutomations:    true,
@@ -193,14 +193,17 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
   },
   // Legacy top tier (renamed to Business). Kept hidden so grandfathered org
   // rows / old Asaas webhooks with plan='scale' still resolve to full access.
+  // Sem clientes ativos na plataforma (confirmado 2026-09-13) — preço
+  // sincronizado com o valor repricado de Business em vez de preservar um
+  // valor legado sem necessidade real de grandfathering.
   scale: {
     key:               'scale',
     label:             'Business',
     tagline:           'Para escalar sem limites',
     description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
-    priceCents:         69700,
-    priceCentsSemestral:376380,
-    priceCentsAnnual:   685848,
+    priceCents:         59900,
+    priceCentsSemestral:323460,
+    priceCentsAnnual:   589656,
     maxLeads:           null,
     maxUsers:           null,
     hasAI:             true,

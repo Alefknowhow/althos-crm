@@ -193,6 +193,32 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
   (hoje sem nenhum caller) + avisar o cliente antes — não deve ser
   automatizado sem essa combinação.
 
+## Completed (reconciliação de usuários incluídos/adicionais — usuário confirmou não haver clientes ativos, autorizou prosseguir)
+- **Bug funcional real corrigido**: migration `0246` —
+  `account_user_limit()` (RPC que bloqueia convite de membro em
+  `actions/team-invite.ts`) somava só `plans.max_users`, ignorando
+  `subscriptions.extra_seats` — uma conta com assentos extras comprados
+  continuava travada na franquia base. Corrigido: agora soma os dois.
+  Smoke-testado via SQL direto (franquia 10 + 3 extra = limite 13).
+  **Nota de processo**: durante o smoke-test deixei `extra_seats=3` preso
+  numa conta real por engano (um `UPDATE ... LIMIT 1` sem filtro
+  determinístico não resetou a mesma linha que eu tinha alterado) —
+  detectado na query de verificação seguinte e revertido imediatamente
+  (`UPDATE ... WHERE account_id = X AND extra_seats = 3`). Nenhum outro
+  registro foi afetado (confirmado via `count(*) WHERE extra_seats <> 0` =
+  0 depois do reset).
+- `lib/billing/plans-data.ts`: `maxUsers` de Starter/Pro/Business (e
+  `trial`) sincronizado de 1/6/20 (nunca atualizado antes) para 2/5/5/10
+  — igual à franquia nova. `PLANS.scale` (alias legado) teve o preço
+  sincronizado com Business (R$599) — só possível porque não há
+  assinatura Asaas real presa a esse valor ainda.
+- `lib/plans/config.ts::PLAN_LIMITS.users`: sincronizado de 1/6/20 para
+  2/5/10, com comentário deixando explícito que é a FRANQUIA, não o teto
+  real (que soma `extra_seats`).
+- `actions/billing.ts::activatePlanFromWebhook`: `userLimits.starter`
+  corrigido de 1 para 2.
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
+
 ## In Progress
 Nada em edição no momento.
 

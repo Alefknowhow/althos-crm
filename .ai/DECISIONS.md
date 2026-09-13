@@ -228,3 +228,44 @@ preço antigo do Pro — corrigidas. Nenhuma assinatura Asaas já ativa foi
 tocada (ver ponto 3 acima) — isso seguirá cobrando o valor com que foi
 criada até uma decisão de negócio explícita sobre reajustar clientes
 existentes.
+
+## 2026-09-13 — Confirmado: sem clientes ativos, reconciliação de usuários incluídos/adicionais liberada
+
+Context: usuário confirmou explicitamente que não há clientes pagantes
+ativos na plataforma ainda ("vamos atualizar os valores, não temos
+clientes ativos, pode prosseguir"). Isso remove a principal razão de
+cautela usada nas decisões anteriores desta sessão (preservar
+grandfathering, não tocar em valores que pudessem afetar cobrança real).
+
+Decision: aproveitar a permissão para fechar um bug funcional real
+encontrado ao investigar o modelo de "usuários incluídos + adicionais":
+`account_user_limit()` (a função que de fato bloqueia convite de novo
+membro) somava só `plans.max_users`, nunca `subscriptions.extra_seats` —
+uma conta que comprasse assentos extras continuaria travada na franquia
+base, sem conseguir convidar ninguém a mais. Corrigido na migration
+`0246`. Também sincronizados os valores de `maxUsers`/`PLAN_LIMITS.users`
+que estavam desatualizados desde antes da repricing (1/6/20 → 2/5/10) em
+`lib/billing/plans-data.ts`, `lib/plans/config.ts` e
+`actions/billing.ts::activatePlanFromWebhook`.
+
+Reason: a autorização explícita do usuário (sem clientes ativos) torna
+esses ajustes de baixo risco — antes, mudar `maxUsers`/limites de
+enforcement teria efeito real sobre contas pagantes; agora não há esse
+efeito colateral. Fechar a lacuna de `extra_seats` era necessário de
+qualquer forma para o modelo comercial "usuários incluídos + adicionais"
+funcionar de verdade — sem isso, vender um assento extra não desbloquearia
+nada na prática.
+
+Impact: `supabase/migrations/0246_account_user_limit_extra_seats.sql`
+aplicada. **Incidente de processo durante o smoke-test, corrigido na
+hora**: um `UPDATE ... LIMIT 1` de teste (sem filtro determinístico por
+`account_id`) deixou `extra_seats=3` preso numa conta real por engano —
+detectado na query de verificação seguinte (o resultado não batia com o
+esperado) e revertido imediatamente com um `UPDATE` filtrado por
+`account_id` + `extra_seats=3`. Confirmado via `count(*) WHERE
+extra_seats <> 0 = 0` depois do reset que nenhum outro registro ficou
+afetado. Lição para não repetir: ao testar uma mutação em produção via
+SQL direto, sempre capturar o `account_id` afetado ANTES de mutar (não
+usar `LIMIT 1` solto em UPDATE/SELECT separados — a ordem não é garantida
+entre chamadas), e sempre confirmar o estado revertido com uma query
+separada antes de seguir.

@@ -91,10 +91,12 @@ export async function activatePlanFromWebhook(
 
   // All paid plans now have unlimited leads.
   // Differentiation is on features (AI, automations, users, API), not lead count.
+  // Valores da franquia incluída (repricing set/2026, migration 0244) —
+  // manter em sincronia com lib/billing/plans-data.ts PLANS.*.maxUsers.
   const userLimits: Record<string, number | null> = {
-    starter:  1,
+    starter:  2,
     pro:      5,
-    business: null, // unlimited
+    business: null, // unlimited (sem teto rígido — extras negociados/cobrados à parte)
     scale:    null, // legacy alias of business
   }
 

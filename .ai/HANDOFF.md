@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T03:58:48.993Z
+**Generated At**: 2026-09-13T04:06:41.480Z
 **Branch**: `master`
-**Last Commit**: dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits (Alef Trentin, 7 minutes ago)
+**Last Commit**: ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao (Alef Trentin, 7 minutes ago)
 
 **Recent Commits**:
+- ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao
 - dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
 - 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
 - ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
@@ -32,7 +33,6 @@ Duas partes:
 - 52a867b feat(contatos): origem do lead editavel + indicacao com quem indicou
 - 41ec4ef feat(pipeline): rastreamento Google Ads por pipeline (client-side)
 - d761178 feat(pipeline): Pixel/CAPI da Meta vira config por pipeline, nao por conta
-- 72068f8 fix(contatos): simplifica card da lista — remove telefone e data de última atividade
 
 **Staged Files** (0):
 _(nenhum)_
@@ -41,13 +41,14 @@ _(nenhum)_
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
+- M actions/billing.ts
 - M docs/PRICING_ARCHITECTURE.md
-- M lib/asaas/client.ts
 - M lib/billing/plans-data.ts
-- M tests/unit/billing-plans.test.ts
+- M lib/plans/config.ts
 
-**Untracked Files** (1):
+**Untracked Files** (2):
 - .claude/
+- supabase/migrations/0246_account_user_limit_extra_seats.sql
 
 **Staged Diff Summary**:
 ```
@@ -56,14 +57,14 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md              | 45 ++++++++++++++++++++++++++++++----------
- .ai/DECISIONS.md                 | 44 +++++++++++++++++++++++++++++++++++++++
- .ai/HANDOFF.md                   | 31 +++++++++++++++++----------
- docs/PRICING_ARCHITECTURE.md     | 14 +++++++++----
- lib/asaas/client.ts              | 26 +++++++++++++++--------
- lib/billing/plans-data.ts        | 18 ++++++++--------
- tests/unit/billing-plans.test.ts | 12 +++++------
- 7 files changed, 140 insertions(+), 50 deletions(-)
+.ai/CURRENT_TASK.md          | 26 ++++++++++++++++++++++++++
+ .ai/DECISIONS.md             | 41 +++++++++++++++++++++++++++++++++++++++++
+ .ai/HANDOFF.md               | 31 +++++++++++++------------------
+ actions/billing.ts           |  6 ++++--
+ docs/PRICING_ARCHITECTURE.md | 10 ++++++++++
+ lib/billing/plans-data.ts    | 17 ++++++++++-------
+ lib/plans/config.ts          | 11 ++++++++---
+ 7 files changed, 112 insertions(+), 30 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
