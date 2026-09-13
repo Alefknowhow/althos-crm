@@ -236,6 +236,7 @@ export function FunnelBuilder({
           triggerType={triggerType}
           flow={flow}
           onChangeFlow={setFlow}
+          onUpdateStep={(clientId, p) => patch(clientId, p)}
           onClose={() => setFlowOpen(false)}
         />
       )}

@@ -13,8 +13,11 @@ import type { FunnelFlow, FunnelEdgeCondition } from '@/lib/social/funnel-traver
 import { TRIGGER_TYPE_LABELS, type FunnelTriggerType } from '@/lib/social/trigger-types'
 import SocialFunnelNode, { type SocialFunnelNodeData } from './SocialFunnelNode'
 import SocialFunnelEdgePanel from './SocialFunnelEdgePanel'
+import SocialFunnelNodeEditPanel from './SocialFunnelNodeEditPanel'
+import DeletableEdge from '../flow/DeletableEdge'
 
 const NODE_TYPES = { socialFunnel: SocialFunnelNode }
+const EDGE_TYPES = { default: DeletableEdge }
 const NODE_GAP_Y = 150
 
 /** Id estável de um passo pro grafo — mesma regra de lib/social/funnel-engine.ts::stepGraphId. */
@@ -79,6 +82,7 @@ type Props = {
   triggerType: FunnelTriggerType
   flow: FunnelFlow | undefined
   onChangeFlow: (flow: FunnelFlow) => void
+  onUpdateStep: (clientId: string, patch: Partial<FunnelStep>) => void
   onClose: () => void
 }
 
@@ -91,13 +95,20 @@ export default function SocialFunnelCanvas(props: Props) {
   )
 }
 
-function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClose }: Props) {
+function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onUpdateStep, onClose }: Props) {
   // Estado inicial derivado UMA vez na abertura — depois disso o canvas é
   // a fonte da verdade (mesmo padrão de FormFlowCanvas.tsx).
   const initial = useMemo(() => buildInitialGraph(steps, triggerType, flow), []) // eslint-disable-line react-hooks/exhaustive-deps
-  const [nodes, , onNodesChange] = useNodesState(initial.nodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const stepsById = useMemo(() => {
+    const map = new Map<string, FunnelStep>()
+    steps.forEach((s, i) => map.set(stepGraphId(s, i), s))
+    return map
+  }, [steps])
 
   const onChangeFlowRef = useRef(onChangeFlow)
   onChangeFlowRef.current = onChangeFlow
@@ -142,12 +153,28 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClo
     setSelectedEdgeId(null)
   }
 
+  const selectedNode = nodes.find(n => n.id === selectedNodeId) || null
+  const selectedNodeStep = selectedNode && selectedNode.data.kind === 'step' ? stepsById.get(selectedNode.id) || null : null
+
+  function updateSelectedStep(patch: Partial<FunnelStep>) {
+    if (!selectedNodeId || !selectedNodeStep) return
+    onUpdateStep(selectedNodeId, patch)
+    // Reflete no node local (tipo/label) sem esperar o array de steps do
+    // pai voltar como prop — mescla o patch no step atual pra derivar o
+    // label do mesmo jeito que buildInitialGraph faz.
+    const merged = { ...selectedNodeStep, ...patch }
+    const label = merged.step_type === 'ai' ? (merged.ai_instructions || 'Resposta por IA') : (merged.message_text || 'Mensagem')
+    setNodes(curr => curr.map(n => n.id === selectedNodeId
+      ? { ...n, data: { ...n.data, stepType: merged.step_type, label } }
+      : n))
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <div>
           <p className="text-sm font-semibold">Fluxo da automação</p>
-          <p className="text-xs text-muted-foreground">Arraste a partir de um botão pra ramificar por resposta. Clique numa conexão pra ver/editar.</p>
+          <p className="text-xs text-muted-foreground">Clique num passo pra editar a resposta. Arraste a partir de um botão pra ramificar. Clique no "x" da conexão pra desconectar.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
       </div>
@@ -157,11 +184,13 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClo
           nodes={nodes}
           edges={edges}
           nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
-          onPaneClick={() => setSelectedEdgeId(null)}
+          onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null) }}
+          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null) }}
+          onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null) }}
           fitView
         >
           <Background />
@@ -176,6 +205,14 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClo
             onChange={updateSelectedCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}
+          />
+        )}
+
+        {selectedNodeStep && (
+          <SocialFunnelNodeEditPanel
+            step={selectedNodeStep}
+            onChange={updateSelectedStep}
+            onClose={() => setSelectedNodeId(null)}
           />
         )}
       </div>

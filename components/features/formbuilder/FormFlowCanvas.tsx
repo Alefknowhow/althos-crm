@@ -13,8 +13,11 @@ import type { FormFlow, FlowCondition, FlowEdge } from '@/lib/forms/flow-travers
 import { getOrderedFields } from '@/lib/forms/field-order'
 import FormFlowNode, { type FormFlowNodeData } from './FormFlowNode'
 import FormFlowConditionPanel from './FormFlowConditionPanel'
+import FormFlowNodeEditPanel from './FormFlowNodeEditPanel'
+import DeletableEdge from '../flow/DeletableEdge'
 
 const NODE_TYPES = { formFlow: FormFlowNode }
+const EDGE_TYPES = { default: DeletableEdge }
 const NODE_GAP_Y = 130
 
 /** Monta os nodes/edges iniciais do canvas: se `schema.flow` já existe,
@@ -72,6 +75,7 @@ function buildInitialGraph(schema: FormSchema): { nodes: Node<FormFlowNodeData>[
 type Props = {
   schema: FormSchema
   onChangeFlow: (flow: FormFlow) => void
+  onUpdateField: (fieldId: string, patch: Partial<FormField>) => void
   onClose: () => void
 }
 
@@ -85,15 +89,16 @@ export default function FormFlowCanvas(props: Props) {
   )
 }
 
-function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
+function FormFlowCanvasInner({ schema, onChangeFlow, onUpdateField, onClose }: Props) {
   // Estado inicial derivado do schema UMA vez (na abertura) — depois disso
   // o canvas é a fonte da verdade; não re-deriva a cada re-render do pai
   // (evitaria perder posição/seleção a cada tecla digitada em outro lugar
   // do editor).
   const initial = useMemo(() => buildInitialGraph(schema), []) // eslint-disable-line react-hooks/exhaustive-deps
-  const [nodes, , onNodesChange] = useNodesState(initial.nodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   const fieldsById = useMemo(() => {
     const map = new Map<string, FormField>()
@@ -149,12 +154,26 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
     setSelectedEdgeId(null)
   }
 
+  const selectedNode = nodes.find(n => n.id === selectedNodeId) || null
+  const selectedNodeField = selectedNode && selectedNode.data.kind === 'field' ? fieldsById.get(selectedNode.id) || null : null
+
+  function updateSelectedField(patch: Partial<FormField>) {
+    if (!selectedNodeId) return
+    onUpdateField(selectedNodeId, patch)
+    // Reflete no node local (label/tipo/opções) sem esperar o schema do
+    // pai voltar como prop — o canvas não re-deriva do schema depois de
+    // aberto (ver comentário em `initial` acima).
+    setNodes(curr => curr.map(n => n.id === selectedNodeId
+      ? { ...n, data: { ...n.data, label: patch.label ?? n.data.label, fieldType: patch.type ?? n.data.fieldType, options: patch.options ?? n.data.options } }
+      : n))
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <div>
           <p className="text-sm font-semibold">Fluxo condicional</p>
-          <p className="text-xs text-muted-foreground">Arraste a partir de uma opção de resposta pra ramificar por ela. Clique numa conexão pra ver/editar a condição.</p>
+          <p className="text-xs text-muted-foreground">Clique numa pergunta pra editar texto/tipo/opções. Arraste a partir de uma opção pra ramificar. Clique no "x" da conexão pra desconectar.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
       </div>
@@ -164,11 +183,13 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
           nodes={nodes}
           edges={edges}
           nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
-          onPaneClick={() => setSelectedEdgeId(null)}
+          onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null) }}
+          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null) }}
+          onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null) }}
           fitView
         >
           <Background />
@@ -184,6 +205,14 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}
             lockedToOption={isOptionEdge ? (selectedEdge.data as any)?.condition?.value : undefined}
+          />
+        )}
+
+        {selectedNodeField && (
+          <FormFlowNodeEditPanel
+            field={selectedNodeField}
+            onChange={updateSelectedField}
+            onClose={() => setSelectedNodeId(null)}
           />
         )}
       </div>

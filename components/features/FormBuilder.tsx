@@ -56,6 +56,13 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
     })
   }
 
+  function updateFieldById(id: string, updates: any) {
+    setSchema((prev: any) => ({
+      ...prev,
+      fields: prev.fields.map((f: any) => (f.id === id ? { ...f, ...updates } : f)),
+    }))
+  }
+
   function reorderFields(fromId: string, toId: string) {
     setSchema((prev: any) => {
       const oldIndex = prev.fields.findIndex((f: any) => f.id === fromId)
@@ -205,6 +212,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
         <FormFlowCanvas
           schema={schema}
           onChangeFlow={flow => setSchema((prev: any) => ({ ...prev, flow }))}
+          onUpdateField={updateFieldById}
           onClose={() => setFlowOpen(false)}
         />
       )}
