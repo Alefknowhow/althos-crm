@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
-import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
 import { CalendarClock, CalendarDays, ListChecks } from 'lucide-react'
 import { type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
@@ -54,8 +53,6 @@ export default function ScheduleClient({
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
-  const [products, setProducts] = useState<SaleProduct[]>([])
-  const [loadingProducts, startProducts] = useTransition()
 
   const filtered = useMemo(() => {
     let out = trips
@@ -87,17 +84,12 @@ export default function ScheduleClient({
   function openTrip(t: ScheduledTrip) {
     setSelected(t)
     setTasks([])
-    setProducts([])
     if (t.contato_id) {
       startTasks(async () => {
         const res = await getTripTasks(orgSlug, t.contato_id!)
         setTasks(res)
       })
     }
-    startProducts(async () => {
-      const res = await listSaleProducts(orgSlug, t.id)
-      setProducts(res)
-    })
   }
 
   const counts = useMemo(() => {
@@ -191,8 +183,6 @@ export default function ScheduleClient({
               trip={selected}
               tasks={tasks}
               loadingTasks={loadingTasks}
-              products={products}
-              loadingProducts={loadingProducts}
               state={tripState(selected, today)}
               today={today}
               sellerName={members.find(m => m.user_id === selected.created_by)?.name}

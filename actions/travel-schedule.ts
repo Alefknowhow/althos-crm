@@ -30,9 +30,16 @@ export type ScheduledTrip = {
    *  mesmas chaves de INCLUDED_ITEMS (proposals/TravelSalesViewShared.tsx),
    *  usado pra montar os mini-cards de resumo do painel de embarques. */
   included_items: string[]
+  /** Demais produtos contratados (tudo que não é voo) — versão resumida
+   *  (só kind + título), pra mostrar um card simples por item na linha
+   *  abaixo do itinerário no painel de Embarques. */
+  other_items: OtherProductSummary[]
 }
 
 export type FlightLegInfo = {
+  /** id da linha em sale_products — permite editar o horário direto do
+   *  painel de Embarques (ver updateFlightLegField em actions/sale-products.ts). */
+  id: string
   sentido: string | null
   companhia: string | null
   numero_voo: string | null
@@ -43,6 +50,14 @@ export type FlightLegInfo = {
   status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
   revised_departure: string | null
+}
+
+export type OtherProductSummary = { id: string; kind: string; title: string }
+
+function otherProductTitle(kind: string, data: Record<string, any>): string {
+  return (
+    data.hotel || data.nome || data.navio || data.atracao || data.fornecedor || data.titular || 'Item'
+  )
 }
 
 export type TripTask = {
@@ -117,7 +132,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   if (saleIds.length > 0) {
     const { data: products } = await supabase
       .from('sale_products')
-      .select('sale_id, data')
+      .select('id, sale_id, data')
       .eq('organization_id', org.id)
       .eq('kind', 'aereo')
       .in('sale_id', saleIds)
@@ -130,6 +145,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
         ? await buildFlightDesignator(p.data?.companhia || '', p.data?.numero_voo || '')
         : null
       pending.push({
+        id: p.id,
         sale_id: p.sale_id,
         designator,
         sentido: p.data?.sentido ?? null,
@@ -172,6 +188,22 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
     }
   }
 
+  // Demais produtos contratados (tudo que não é 'aereo') — resumo simples
+  // (kind + título) pra exibir como card na linha abaixo do itinerário.
+  const otherBySale = new Map<string, OtherProductSummary[]>()
+  if (saleIds.length > 0) {
+    const { data: otherProducts } = await supabase
+      .from('sale_products')
+      .select('id, sale_id, kind, data')
+      .eq('organization_id', org.id)
+      .neq('kind', 'aereo')
+      .in('sale_id', saleIds)
+    for (const p of (otherProducts as any[]) ?? []) {
+      if (!otherBySale.has(p.sale_id)) otherBySale.set(p.sale_id, [])
+      otherBySale.get(p.sale_id)!.push({ id: p.id, kind: p.kind, title: otherProductTitle(p.kind, p.data || {}) })
+    }
+  }
+
   return rows.map(r => {
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
     return {
@@ -181,6 +213,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       health: healthBySale.get(r.id) ?? 'green',
       flights: legsBySale.get(r.id) ?? [],
       included_items: Array.isArray(r.included_items) ? r.included_items : [],
+      other_items: otherBySale.get(r.id) ?? [],
     } as ScheduledTrip
   })
 }

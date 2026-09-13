@@ -128,15 +128,12 @@ function AereoLegs({ legs }: { legs: any[] }) {
 }
 
 export default function SaleProductCard({
-  product, onEdit, onDelete, onToggleStatus, readOnly,
+  product, onEdit, onDelete, onToggleStatus,
 }: {
   product: SaleProduct
-  onEdit?: () => void
-  onDelete?: () => void
-  onToggleStatus?: () => void
-  /** Resumo do pacote pra gestor (ex.: painel de Embarques) — sem ações
-   *  de edição/exclusão, só leitura. */
-  readOnly?: boolean
+  onEdit: () => void
+  onDelete: () => void
+  onToggleStatus: () => void
 }) {
   const meta = KIND_META[product.kind] || KIND_META.outro
   const Icon = meta.icon
@@ -160,28 +157,22 @@ export default function SaleProductCard({
         ))}
         {legs && legs.length > 0 && <AereoLegs legs={legs} />}
       </div>
-      {readOnly ? (
-        <span className="shrink-0" title={confirmed ? 'Confirmado' : 'Pendente'}>
-          {confirmed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4 text-muted-foreground" />}
-        </span>
-      ) : (
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={onToggleStatus}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-            title={confirmed ? 'Marcar como pendente' : 'Marcar como confirmado'}
-          >
-            {confirmed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4" />}
-          </button>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} aria-label="Editar produto">
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir produto">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={onToggleStatus}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          title={confirmed ? 'Marcar como pendente' : 'Marcar como confirmado'}
+        >
+          {confirmed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4" />}
+        </button>
+        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} aria-label="Editar produto">
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+        <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir produto">
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
     </div>
   )
 }

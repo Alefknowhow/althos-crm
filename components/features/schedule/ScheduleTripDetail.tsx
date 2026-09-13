@@ -12,11 +12,9 @@ import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
   MapPin, Plane, Hotel, MessageCircle, ExternalLink, CheckSquare, Loader2,
-  CalendarDays, Ticket, Building2, UserRound, Package,
+  CalendarDays, Ticket, Building2, UserRound,
 } from 'lucide-react'
 import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
-import type { SaleProduct } from '@/actions/sale-products'
-import SaleProductCard from '@/components/features/reservas/SaleProductCard'
 import { STATE_META, type TripState } from './ScheduleGanttView'
 
 function parseDate(s?: string | null): Date | null {
@@ -92,7 +90,7 @@ export function whatsappLink(phone?: string | null): string | null {
 }
 
 export function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, state, today, sellerName, products, loadingProducts,
+  orgSlug, trip, tasks, loadingTasks, state, today, sellerName,
 }: {
   orgSlug: string
   trip: ScheduledTrip
@@ -101,10 +99,6 @@ export function TripDetail({
   state: TripState
   today: Date
   sellerName?: string
-  /** Resumo do pacote completo (todos os produtos da venda) — pro gestor
-   *  ver de uma vez tudo que está incluso, não só voos. */
-  products: SaleProduct[]
-  loadingProducts: boolean
 }) {
   const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
@@ -177,22 +171,6 @@ export function TripDetail({
             </div>
           </div>
         )}
-
-        {/* Resumo do pacote — todos os produtos da venda (hospedagem,
-            transfer, passeios, seguro etc.), não só os voos. */}
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
-            <Package className="w-4 h-4 text-primary" /> Resumo do pacote
-            {loadingProducts && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-          </div>
-          {!loadingProducts && products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum produto cadastrado na reserva.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {products.map(p => <SaleProductCard key={p.id} product={p} readOnly />)}
-            </div>
-          )}
-        </div>
 
         {/* ações */}
         <div className="flex flex-wrap gap-2">

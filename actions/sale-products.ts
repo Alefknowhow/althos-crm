@@ -103,6 +103,36 @@ export async function updateSaleProduct(
   return { ok: true as const, product: data as SaleProduct }
 }
 
+/**
+ * Atualiza só alguns campos de `data` (merge, não substitui o objeto
+ * inteiro) — usado pelo painel de Embarques pra editar o horário do voo
+ * direto ali, sem apagar outros campos (conexão, localizador etc.) que o
+ * painel de Embarques nem carrega.
+ */
+export async function updateSaleProductField(orgSlug: string, id: string, patch: Record<string, any>) {
+  const { org, allowed, reason } = await authorize(orgSlug)
+  if (!allowed) return { ok: false as const, error: reason }
+  const supabase = createClient()
+
+  const { data: existing } = await supabase
+    .from('sale_products')
+    .select('data')
+    .eq('id', id)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!existing) return { ok: false as const, error: 'Produto não encontrado.' }
+
+  const merged = { ...(existing.data || {}), ...patch }
+  const { error } = await supabase
+    .from('sale_products')
+    .update({ data: merged, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath(`/app/${orgSlug}/embarques`)
+  return { ok: true as const }
+}
+
 export async function deleteSaleProduct(orgSlug: string, id: string) {
   const { org, allowed, reason } = await authorize(orgSlug)
   if (!allowed) return { ok: false as const, error: reason }

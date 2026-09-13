@@ -26,11 +26,23 @@ import {
   ChevronDown, ClipboardCopy, FileText,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { ScheduledTrip, FlightLegInfo } from '@/actions/travel-schedule'
+import type { ScheduledTrip, FlightLegInfo, OtherProductSummary } from '@/actions/travel-schedule'
+import { updateSaleProductField } from '@/actions/sale-products'
 import { type TripState } from './ScheduleGanttView'
 import {
   whatsappLink, rowStatus, HEALTH_META, FLIGHT_STATUS_META, DATE_ICON_COLOR,
 } from './ScheduleTripDetail'
+
+const OTHER_KIND_META: Record<string, { label: string; icon: typeof Plane }> = {
+  hospedagem: { label: 'Hospedagem', icon: Hotel },
+  transfer: { label: 'Transfer', icon: Car },
+  cruzeiro: { label: 'Cruzeiro', icon: Ship },
+  seguro: { label: 'Seguro', icon: ShieldCheck },
+  passeio: { label: 'Passeio', icon: Compass },
+  veiculo: { label: 'Locação de veículo', icon: Car },
+  ingresso: { label: 'Ingresso', icon: Ticket },
+  outro: { label: 'Outro', icon: Package },
+}
 
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
@@ -74,7 +86,40 @@ function connectionLabel(a: FlightLegInfo, b: FlightLegInfo): string | null {
   return `Conexão em ${a.destino || '—'} · ${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}min` : ''}`.trim()
 }
 
-function FlightLeg({ leg, showConnection }: { leg: FlightLegInfo; showConnection: string | null }) {
+/** Horário do trecho, editável direto no card — o painel de Embarques tem
+ *  espaço de sobra aqui, então em vez de só exibir, dá pra preencher/
+ *  corrigir sem ter que abrir a reserva em outra tela. */
+function FlightLegTimeInput({ orgSlug, legId, initialValue }: { orgSlug: string; legId: string; initialValue: string | null }) {
+  const [value, setValue] = useState(initialValue || '')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (value === (initialValue || '')) return
+    setSaving(true)
+    const res = await updateSaleProductField(orgSlug, legId, { horario: value })
+    setSaving(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Horário atualizado.')
+  }
+
+  return (
+    <input
+      type="text"
+      value={value}
+      placeholder="Horário"
+      onChange={e => setValue(e.target.value)}
+      onBlur={save}
+      onClick={e => e.stopPropagation()}
+      disabled={saving}
+      className={cn(
+        'h-6 w-20 rounded border bg-background px-1.5 text-[11px] text-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        !value && 'border-dashed border-destructive/50 text-destructive placeholder:text-destructive/70',
+      )}
+    />
+  )
+}
+
+function FlightLeg({ orgSlug, leg, showConnection }: { orgSlug: string; leg: FlightLegInfo; showConnection: string | null }) {
   const meta = FLIGHT_STATUS_META[leg.status || 'scheduled']
   return (
     <div className="space-y-1">
@@ -84,12 +129,27 @@ function FlightLeg({ leg, showConnection }: { leg: FlightLegInfo; showConnection
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border bg-muted/20 px-3 py-2 text-xs">
         <span className="font-medium text-foreground/80 shrink-0">{leg.numero_voo || leg.companhia || 'Voo'}</span>
         <span className="text-muted-foreground">{leg.origem || '—'} → {leg.destino || '—'}</span>
-        {leg.horario && <span className="text-muted-foreground">· {leg.horario}</span>}
+        <FlightLegTimeInput orgSlug={orgSlug} legId={leg.id} initialValue={leg.horario} />
         <Badge variant="outline" className={cn('text-[9px] px-1 py-0 ml-auto', meta?.badge)}
           title={leg.revised_departure ? `Novo horário: ${fmtTime(leg.revised_departure)}` : undefined}>
           {meta?.label}{leg.delay_minutes ? ` +${leg.delay_minutes}min` : ''}
         </Badge>
       </div>
+    </div>
+  )
+}
+
+/** Card simples pra "os demais itens contratados" — só o suficiente pra
+ *  simbolizar o que tem (ex.: "Transfer · Aeroporto"), sem repetir todos
+ *  os detalhes que já ficam em Reservas › Produtos. */
+function OtherItemCard({ item }: { item: OtherProductSummary }) {
+  const meta = OTHER_KIND_META[item.kind] || OTHER_KIND_META.outro
+  const Icon = meta.icon
+  return (
+    <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs">
+      <Icon className="w-3.5 h-3.5 text-primary shrink-0" />
+      <span className="text-muted-foreground shrink-0">{meta.label}:</span>
+      <span className="font-medium truncate">{item.title}</span>
     </div>
   )
 }
@@ -224,7 +284,7 @@ export function ScheduleTripCard({
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ida · {fmtDate(t.departure_date)}</p>
                   {idaLegs.map((f, i) => (
-                    <FlightLeg key={i} leg={f} showConnection={i > 0 ? connectionLabel(idaLegs[i - 1], f) : null} />
+                    <FlightLeg key={f.id} orgSlug={orgSlug} leg={f} showConnection={i > 0 ? connectionLabel(idaLegs[i - 1], f) : null} />
                   ))}
                 </div>
               )}
@@ -232,12 +292,20 @@ export function ScheduleTripCard({
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Volta · {fmtDate(t.return_date)}</p>
                   {voltaLegs.map((f, i) => (
-                    <FlightLeg key={i} leg={f} showConnection={i > 0 ? connectionLabel(voltaLegs[i - 1], f) : null} />
+                    <FlightLeg key={f.id} orgSlug={orgSlug} leg={f} showConnection={i > 0 ? connectionLabel(voltaLegs[i - 1], f) : null} />
                   ))}
                 </div>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Demais itens contratados — cards simples (só pra simbolizar o que
+          tem, ex.: "Hospedagem: Hotel X"), na linha abaixo dos voos. */}
+      {t.other_items.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {t.other_items.map(item => <OtherItemCard key={item.id} item={item} />)}
         </div>
       )}
     </div>
