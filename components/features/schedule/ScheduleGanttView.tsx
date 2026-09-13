@@ -21,7 +21,7 @@ export const STATE_META: Record<TripState, { label: string; bar: string; dot: st
 }
 
 export function ScheduleGanttView({
-  ganttRef, months, dayNumbers, dayLines, todayPct, dayWidthPct, totalDays, ganttTrips,
+  ganttRef, months, dayNumbers, dayLines, todayPct, totalDays, ganttTrips,
   dayOffset, setDayOffset, navStepDays, onOpenTrip,
 }: {
   ganttRef: React.RefObject<HTMLDivElement>
@@ -29,7 +29,6 @@ export function ScheduleGanttView({
   dayNumbers: { day: number; leftPct: number }[]
   dayLines: number[]
   todayPct: number | null
-  dayWidthPct: number
   totalDays: number
   ganttTrips: { trip: ScheduledTrip; left: number; width: number; state: TripState }[]
   dayOffset: number
@@ -78,13 +77,19 @@ export function ScheduleGanttView({
                 vertical daquele dia (não numa coluna), fundo diferenciado
                 pra separar visualmente do resto da grade */}
             <div className="relative h-4 border-b bg-muted/60">
-              {dayNumbers.map((d, i) => (
-                <div key={i}
-                  className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70 -translate-x-1/2"
-                  style={{ left: `${d.leftPct}%` }}>
-                  {d.day}
-                </div>
-              ))}
+              {dayNumbers.map((d, i) => {
+                const isToday = todayPct !== null && Math.abs(d.leftPct - todayPct) < 0.01
+                return (
+                  <div key={i}
+                    className={cn(
+                      'absolute top-0 h-full flex items-center justify-center text-[8px] leading-none -translate-x-1/2',
+                      isToday ? 'font-bold text-red-600' : 'text-muted-foreground/70',
+                    )}
+                    style={{ left: `${d.leftPct}%` }}>
+                    {d.day}
+                  </div>
+                )
+              })}
             </div>
 
             {/* rows — altura mínima padrão, preenche até o fim da tela;
@@ -94,11 +99,12 @@ export function ScheduleGanttView({
               {dayLines.map((pct, i) => (
                 <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
               ))}
-              {/* coluna do dia de hoje, pintada */}
+              {/* linha do dia de hoje — vermelha e mais grossa que as
+                  demais linhas de dia, sem coluna pintada */}
               {todayPct !== null && (
-                <div className="absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30 z-10 pointer-events-none"
-                  style={{ left: `${todayPct}%`, width: `${dayWidthPct}%` }}>
-                  <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-medium text-primary bg-card px-1 whitespace-nowrap">Hoje</span>
+                <div className="absolute top-0 bottom-0 w-0.5 bg-red-600 z-10 pointer-events-none"
+                  style={{ left: `${todayPct}%` }}>
+                  <span className="absolute -top-0 left-1/2 -translate-x-1/2 text-[9px] font-bold text-red-600 bg-card px-1 whitespace-nowrap">Hoje</span>
                 </div>
               )}
               {ganttTrips.length === 0 ? (

@@ -124,8 +124,6 @@ export default function ScheduleClient({
     return p >= 0 && p <= 100 ? p : null
   }, [today, windowStart, totalDays])
 
-  const dayWidthPct = 100 / totalDays
-
   // Cada dia vira uma linha vertical fina, e o número do dia fica
   // centralizado exatamente em cima dela (mesma posição, não uma coluna) —
   // só o próprio início (0%) fica de fora, já coberto pela borda do
@@ -248,7 +246,6 @@ export default function ScheduleClient({
             dayNumbers={dayNumbers}
             dayLines={dayLines}
             todayPct={todayPct}
-            dayWidthPct={dayWidthPct}
             totalDays={totalDays}
             ganttTrips={ganttTrips}
             dayOffset={dayOffset}
