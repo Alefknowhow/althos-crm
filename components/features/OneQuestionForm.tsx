@@ -4,8 +4,10 @@ import { useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, ArrowRight, MessageCircle } from 'lucide-react'
-import type { FormField, FormSchema } from './PublicFormPreview'
+import type { FormSchema } from './PublicFormPreview'
 import { FieldRenderer } from './OneQuestionFormField'
+import { getOrderedFields } from '@/lib/forms/field-order'
+import { getNextNodeId } from '@/lib/forms/flow-traversal'
 
 interface OneQuestionFormProps {
   schema: FormSchema
@@ -16,13 +18,6 @@ interface OneQuestionFormProps {
    *  estáticos em branco/cinza-claro. false (padrão) mantém as cores normais
    *  do CRM, usado no preview do editor de formulários. */
   dark?: boolean
-}
-
-const CONTACT_TYPES = new Set<FormField['type']>(['email', 'phone'])
-function isContactField(f: FormField): boolean {
-  if (CONTACT_TYPES.has(f.type)) return true
-  if (f.type === 'short_text' && /nome|name/i.test(f.label)) return true
-  return false
 }
 
 function buildWhatsAppUrl(wa: FormSchema['whatsapp']): string | null {
@@ -37,35 +32,32 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
   const textClass = dark ? 'text-white' : ''
   const mutedClass = dark ? 'text-gray-300' : 'text-muted-foreground'
   const dividerClass = dark ? 'border-white/15' : ''
-  // Reorder: non-contact first, then contact at the end
-  const orderedFields = useMemo(() => {
-    if (!schema?.fields) return []
-    const nonContact = schema.fields.filter(f => !isContactField(f))
-    const contact = schema.fields.filter(f => isContactField(f))
-    return [...nonContact, ...contact]
-  }, [schema])
+  // Reorder: non-contact first, then contact at the end — mesma ordem que
+  // o canvas de fluxo usa como fallback (lib/forms/field-order.ts).
+  const orderedFields = useMemo(() => getOrderedFields(schema?.fields), [schema])
+  const fallbackOrder = useMemo(() => orderedFields.map(f => f.id), [orderedFields])
 
   const showWelcome = !!schema?.welcome?.enabled
   const totalSteps = orderedFields.length + (showWelcome ? 1 : 0)
-  const [step, setStep] = useState(0)
+  const initialNodeId = showWelcome ? 'welcome' : (fallbackOrder[0] ?? 'ending')
+  // Histórico de nodes visitados (não um índice numérico) — com
+  // ramificação, "voltar" precisa ir pra pergunta que foi de fato
+  // respondida antes, não pra "posição - 1" do array.
+  const [history, setHistory] = useState<string[]>([initialNodeId])
   const [values, setValues] = useState<Record<string, any>>({})
   const formRef = useRef<HTMLFormElement>(null)
 
   const whatsappUrl = buildWhatsAppUrl(schema.whatsapp)
   const whatsappLabel = schema.whatsapp?.label || 'Falar no WhatsApp'
 
-  const fieldIndex = showWelcome ? step - 1 : step
-  const currentField = orderedFields[fieldIndex]
-  const isWelcome = showWelcome && step === 0
-  const isLastField = fieldIndex === orderedFields.length - 1
-
-  const handleAdvance = () => {
-    if (step < totalSteps - 1) setStep(s => s + 1)
-  }
-
-  const handleBack = () => {
-    if (step > 0) setStep(s => s - 1)
-  }
+  const currentNodeId = history[history.length - 1]
+  const isWelcome = currentNodeId === 'welcome'
+  const currentField = orderedFields.find(f => f.id === currentNodeId)
+  // Com ramificação, "é a última pergunta?" depende da resposta atual —
+  // recalculado a cada render em vez de ser um índice fixo.
+  const isLastField = !isWelcome && currentField
+    ? getNextNodeId(schema.flow, currentNodeId, values, fallbackOrder) === 'ending'
+    : false
 
   const handleFinalSubmit = () => {
     if (isPreview) {
@@ -78,6 +70,16 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
       if (v !== undefined && v !== null) fd.append(k, String(v))
     })
     onSubmit(fd)
+  }
+
+  const handleAdvance = () => {
+    const nextId = getNextNodeId(schema.flow, currentNodeId, values, fallbackOrder)
+    if (nextId === 'ending') { handleFinalSubmit(); return }
+    setHistory(h => [...h, nextId])
+  }
+
+  const handleBack = () => {
+    setHistory(h => (h.length > 1 ? h.slice(0, -1) : h))
   }
 
   const setValue = (id: string, v: any) => setValues(prev => ({ ...prev, [id]: v }))
@@ -101,12 +103,12 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
         <div className={`h-1 rounded-full overflow-hidden mb-8 ${dark ? 'bg-white/15' : 'bg-muted'}`}>
           <div
             className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
+            style={{ width: `${Math.min(100, (history.length / totalSteps) * 100)}%` }}
           />
         </div>
       )}
 
-      <div key={step} className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div key={currentNodeId} className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
         {isWelcome && (
           <div className="space-y-6 text-center py-6">
             <h2 className={`text-2xl font-bold tracking-tight ${textClass}`}>
@@ -191,7 +193,7 @@ export default function OneQuestionForm({ schema, isPreview = false, loading = f
             />
 
             <div className="flex items-center gap-2 pt-4">
-              {step > 0 && (
+              {history.length > 1 && (
                 <Button
                   type="button"
                   variant="ghost"

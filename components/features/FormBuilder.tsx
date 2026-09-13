@@ -12,6 +12,7 @@ import PagesSidebar from './formbuilder/PagesSidebar'
 import PreviewPane from './formbuilder/PreviewPane'
 import PropertiesPanel from './formbuilder/PropertiesPanel'
 import SettingsSheet from './formbuilder/SettingsSheet'
+import FormFlowCanvas from './formbuilder/FormFlowCanvas'
 import type { ActivePageId } from './formbuilder/types'
 
 export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, eventTypes = [] }: any) {
@@ -19,6 +20,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
   const [schema, setSchema] = useState(initialForm.schema || { fields: [] })
   const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [flowOpen, setFlowOpen] = useState(false)
 
   // Página selecionada no editor: 'welcome' | id do campo | 'ending'.
   const [activePageId, setActivePageId] = useState<ActivePageId>(
@@ -125,6 +127,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
         onAddField={addField}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenUrlEditor={() => { setSlugDraft(form.slug); setEditingUrl(true) }}
+        onOpenFlow={() => setFlowOpen(true)}
       />
 
       <div className="flex flex-1 min-h-0">
@@ -196,6 +199,14 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
             </div>
           </div>
         </div>
+      )}
+
+      {flowOpen && (
+        <FormFlowCanvas
+          schema={schema}
+          onChangeFlow={flow => setSchema((prev: any) => ({ ...prev, flow }))}
+          onClose={() => setFlowOpen(false)}
+        />
       )}
     </div>
   )

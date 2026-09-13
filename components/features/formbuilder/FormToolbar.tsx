@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover'
-import { Plus, Palette, ExternalLink, Settings, Link as LinkIcon } from 'lucide-react'
+import { Plus, Palette, ExternalLink, Settings, Link as LinkIcon, Workflow } from 'lucide-react'
 import { toast } from 'sonner'
 import { FORM_BACKGROUND_PRESETS, DEFAULT_FORM_BACKGROUND, type FormBackgroundPreset } from '@/lib/forms/background-presets'
 import { FORM_FONT_PRESETS, DEFAULT_FORM_FONT, type FormFontPreset } from '@/lib/forms/font-presets'
@@ -21,9 +21,10 @@ interface Props {
   onAddField: (type: string) => void
   onOpenSettings: () => void
   onOpenUrlEditor: () => void
+  onOpenFlow: () => void
 }
 
-export default function FormToolbar({ form, setForm, schema, setSchema, saving, onSave, onAddField, onOpenSettings, onOpenUrlEditor }: Props) {
+export default function FormToolbar({ form, setForm, schema, setSchema, saving, onSave, onAddField, onOpenSettings, onOpenUrlEditor, onOpenFlow }: Props) {
   return (
     <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b bg-background shrink-0 flex-wrap">
       <FieldTypePicker
@@ -87,6 +88,10 @@ export default function FormToolbar({ form, setForm, schema, setSchema, saving, 
 
       <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpenSettings}>
         <Settings className="w-4 h-4" /> Configurações
+      </Button>
+
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpenFlow}>
+        <Workflow className="w-4 h-4" /> Fluxo
       </Button>
 
       <div className="ml-auto flex items-center gap-2 flex-wrap">

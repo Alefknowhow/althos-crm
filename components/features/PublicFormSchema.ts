@@ -3,6 +3,9 @@
  * PublicFormPreview.tsx.
  */
 
+import type { FormFlow } from '@/lib/forms/flow-traversal'
+export type { FormFlow, FlowEdge, FlowCondition, FlowOperator } from '@/lib/forms/flow-traversal'
+
 export type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'select' | 'single_choice' | 'multi_select' | 'date' | 'checkbox' | 'rating' | 'opinion_scale'
 
 export interface FormField {
@@ -68,4 +71,7 @@ export interface FormSchema {
   briefing?: FormBriefing
   footerInfo?: FormFooterInfo
   style?: FormStyle
+  /** Fluxo condicional (modo one_question) — opcional, ausente = ordem
+   *  linear de sempre. Ver lib/forms/flow-traversal.ts. */
+  flow?: FormFlow
 }
