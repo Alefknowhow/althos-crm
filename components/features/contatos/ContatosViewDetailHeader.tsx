@@ -174,8 +174,10 @@ export function DetailHeader({
           </div>
         </div>
 
-        {/* Ações principais — mesma linha do cabeçalho, alinhadas à direita. */}
-        <div className="flex flex-wrap items-center gap-2 md:max-w-[420px] md:justify-end">
+        {/* Ações principais — mesma linha do cabeçalho, alinhadas à direita,
+            numa linha só a partir de md (tem espaço de sobra — pedido
+            explícito de não quebrar). */}
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 md:justify-end shrink-0">
           {c.phone && (
             <Button size="sm" variant="outline" asChild>
               <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
