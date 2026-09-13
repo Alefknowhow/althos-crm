@@ -6,7 +6,7 @@ import { Mail, Phone, Pencil, AtSign, ExternalLink } from 'lucide-react'
 import type { ContatoContactPoint } from '@/actions/contatos'
 import type { CustomerDoc } from '@/components/features/customers/CustomerDocuments'
 import { DocumentsStrip } from './CustomerProfileFormDocumentsStrip'
-import { formatPhoneDisplay } from '@/lib/utils'
+import { cn, formatPhoneDisplay } from '@/lib/utils'
 
 type ReadForm = {
   name: string
@@ -71,11 +71,18 @@ export function CustomerProfileFormReadView({
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-          {rows.map(r => (
-            <div key={r.label} className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{r.label}</div>
-              <div className="text-sm truncate">{r.value}</div>
+        {/* Duas colunas separadas por uma barra vertical (pedido do
+            redesign) — cada linha do formulário ainda alterna esquerda/
+            direita, igual ao grid de 2 colunas anterior. */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {[rows.filter((_, i) => i % 2 === 0), rows.filter((_, i) => i % 2 === 1)].map((col, colIdx) => (
+            <div key={colIdx} className={cn('flex-1 min-w-0 space-y-2.5', colIdx === 1 && 'sm:pl-4 sm:border-l')}>
+              {col.map(r => (
+                <div key={r.label} className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{r.label}</div>
+                  <div className="text-sm truncate">{r.value}</div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

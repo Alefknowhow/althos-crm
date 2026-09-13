@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { WhatsAppGlyph } from '@/components/features/LeadCard'
-import { cn, formatPhoneDisplay } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -137,8 +137,9 @@ export function DetailHeader({
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-start gap-3">
+      {/* Header — nome/status à esquerda, ações principais à direita (mesma
+          linha, pedido explícito de aproveitar esse espaço). */}
+      <div className="flex items-start gap-3 flex-wrap">
         <button onClick={onBack} className="md:hidden mt-1 text-muted-foreground hover:text-foreground" aria-label="Voltar">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -146,9 +147,8 @@ export function DetailHeader({
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold leading-tight break-words">{c.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {c.phone && <span>{formatPhoneDisplay(c.phone)}</span>}
-            {c.email && <span>{c.phone ? ' · ' : ''}{c.email}</span>}
-            {stageName ? `${(c.phone || c.email) ? ' · ' : ''}Funil: ${stageName}` : ''}
+            {c.email && <span>{c.email}</span>}
+            {stageName ? `${c.email ? ' · ' : ''}Funil: ${stageName}` : ''}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <div className="w-32">
@@ -172,6 +172,79 @@ export function DetailHeader({
               onChange={onChangeSource}
             />
           </div>
+        </div>
+
+        {/* Ações principais — mesma linha do cabeçalho, alinhadas à direita. */}
+        <div className="flex flex-wrap items-center gap-2 md:max-w-[420px] md:justify-end">
+          {c.phone && (
+            <Button size="sm" variant="outline" asChild>
+              <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
+                <WhatsAppGlyph color="#25D366" /> <span className="ml-1.5">WhatsApp</span>
+              </a>
+            </Button>
+          )}
+          {c.phone && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={openingConversation}
+              onClick={onOpenConversation}
+            >
+              <WhatsAppGlyph color="#0a84ff" /> <span className="ml-1.5">Iniciar Waba</span>
+            </Button>
+          )}
+          {c.phone && (
+            <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
+              <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
+            </Button>
+          )}
+          {c.email && (
+            <SendEmailDialog orgSlug={orgSlug} lead={c} templates={selected.templates} org={{ name: orgName }} />
+          )}
+          <Button size="sm" variant="outline" onClick={onNewTask} className="hidden md:inline-flex">
+            <Plus className="w-4 h-4 mr-1.5" /> Atividade
+          </Button>
+          {c.status === 'cliente' && (
+            <Button size="sm" variant="outline" onClick={onReopen} disabled={reopening} className="hidden md:inline-flex">
+              <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="px-2">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* Só no mobile — no desktop essas ações já aparecem como botão solto acima. */}
+              {c.phone && (
+                <DropdownMenuItem className="md:hidden" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
+                  <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={onNewTask} className="md:hidden">
+                <Plus className="w-3.5 h-3.5 mr-2" /> Atividade
+              </DropdownMenuItem>
+              {c.status === 'cliente' && (
+                <DropdownMenuItem onClick={onReopen} disabled={reopening} className="md:hidden">
+                  <RefreshCw className="w-3.5 h-3.5 mr-2" /> Nova negociação
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator className="md:hidden" />
+              <RequalifyButton orgSlug={orgSlug} leadId={c.id} asMenuItem />
+              <DropdownMenuItem onClick={onEditDados}>
+                <Pencil className="w-3.5 h-3.5 mr-2" /> Editar dados
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={onDelete}
+                disabled={deleting}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir contato
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -227,79 +300,6 @@ export function DetailHeader({
         {c.status === 'cliente' && (
           <NpsCard orgSlug={orgSlug} leadId={c.id} npsScore={c.nps_score ?? null} npsUpdatedAt={c.nps_updated_at ?? null} />
         )}
-      </div>
-
-      {/* Barra de ações principais */}
-      <div className="flex flex-wrap gap-2">
-        {c.phone && (
-          <Button size="sm" variant="outline" asChild>
-            <a href={`https://wa.me/${onlyDigits(c.phone)}`} target="_blank" rel="noopener noreferrer">
-              <WhatsAppGlyph color="#25D366" /> <span className="ml-1.5">WhatsApp</span>
-            </a>
-          </Button>
-        )}
-        {c.phone && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={openingConversation}
-            onClick={onOpenConversation}
-          >
-            <WhatsAppGlyph color="#0a84ff" /> <span className="ml-1.5">Iniciar Waba</span>
-          </Button>
-        )}
-        {c.phone && (
-          <Button size="sm" variant="outline" className="hidden md:inline-flex" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
-            <PhoneCall className="w-4 h-4 mr-1.5" /> Ligar
-          </Button>
-        )}
-        {c.email && (
-          <SendEmailDialog orgSlug={orgSlug} lead={c} templates={selected.templates} org={{ name: orgName }} />
-        )}
-        <Button size="sm" variant="outline" onClick={onNewTask} className="hidden md:inline-flex">
-          <Plus className="w-4 h-4 mr-1.5" /> Atividade
-        </Button>
-        {c.status === 'cliente' && (
-          <Button size="sm" variant="outline" onClick={onReopen} disabled={reopening} className="hidden md:inline-flex">
-            <RefreshCw className={cn('w-4 h-4 mr-1.5', reopening && 'animate-spin')} /> Nova negociação
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="px-2">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {/* Só no mobile — no desktop essas ações já aparecem como botão solto acima. */}
-            {c.phone && (
-              <DropdownMenuItem className="md:hidden" onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
-                <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={onNewTask} className="md:hidden">
-              <Plus className="w-3.5 h-3.5 mr-2" /> Atividade
-            </DropdownMenuItem>
-            {c.status === 'cliente' && (
-              <DropdownMenuItem onClick={onReopen} disabled={reopening} className="md:hidden">
-                <RefreshCw className="w-3.5 h-3.5 mr-2" /> Nova negociação
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator className="md:hidden" />
-            <RequalifyButton orgSlug={orgSlug} leadId={c.id} asMenuItem />
-            <DropdownMenuItem onClick={onEditDados}>
-              <Pencil className="w-3.5 h-3.5 mr-2" /> Editar dados
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={onDelete}
-              disabled={deleting}
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir contato
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </>
   )

@@ -36,24 +36,26 @@ const KIND_OPTIONS: { value: SaleProductKind; label: string }[] = [
   { value: 'outro', label: 'Outro' },
 ]
 
-type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea' }
+type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea'; required?: boolean }
 
 const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
   aereo: [
     { key: 'companhia', label: 'Companhia' },
     { key: 'numero_voo', label: 'Número do voo' },
-    { key: 'sentido', label: 'Sentido (ida/volta)' },
+    { key: 'sentido', label: 'Sentido (ida/volta)', required: true },
     { key: 'localizador', label: 'Localizador (web check-in)' },
     { key: 'bilhete', label: 'Nº do bilhete' },
-    { key: 'origem', label: 'Origem (código)' },
-    { key: 'destino', label: 'Destino (código)' },
-    { key: 'data', label: 'Data de embarque', type: 'date' },
-    { key: 'hora_embarque', label: 'Hora de embarque' },
+    { key: 'origem', label: 'Origem (código)', required: true },
+    { key: 'destino', label: 'Destino (código)', required: true },
+    { key: 'data', label: 'Data de embarque', type: 'date', required: true },
+    { key: 'hora_embarque', label: 'Hora de embarque', required: true },
     { key: 'data_chegada', label: 'Data de chegada', type: 'date' },
     { key: 'hora_chegada', label: 'Hora de chegada' },
-    { key: 'horario', label: 'Horário (partida-chegada)' },
+    { key: 'horario', label: 'Horário (partida-chegada)', required: true },
     { key: 'passageiros', label: 'Passageiros' },
     { key: 'bagagem', label: 'Franquia de bagagem' },
+    { key: 'conexao_local', label: 'Conexão — aeroporto/cidade (se houver)' },
+    { key: 'conexao_duracao', label: 'Conexão — tempo de espera (se houver)' },
   ],
   hospedagem: [
     { key: 'hotel', label: 'Hotel' },
@@ -257,7 +259,14 @@ function ProductFormDialog({
 
   const fields = KIND_FIELDS[kind]
 
+  function missingRequiredLabel(): string | null {
+    const missing = fields.find(f => f.required && !String(data[f.key] || '').trim())
+    return missing ? missing.label : null
+  }
+
   async function handleSave() {
+    const missing = missingRequiredLabel()
+    if (missing) { toast.error(`Preencha "${missing}" antes de salvar.`); return }
     setSaving(true)
     const res = product
       ? await updateSaleProduct(orgSlug, product.id, { data })
@@ -290,7 +299,7 @@ function ProductFormDialog({
           <div className="grid grid-cols-2 gap-2.5">
             {fields.map(f => (
               <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
-                <Label className="text-xs">{f.label}</Label>
+                <Label className="text-xs">{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
                 {f.type === 'textarea' ? (
                   <Textarea
                     rows={2}

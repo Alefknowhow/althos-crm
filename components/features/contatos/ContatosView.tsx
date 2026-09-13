@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -173,8 +173,8 @@ export default function ContatosView({
                 <div
                   key={c.id}
                   className={cn(
-                    'px-3 py-2.5 transition-colors',
-                    active ? 'bg-primary/10' : 'hover:bg-muted/40',
+                    'px-3 py-2.5 border-l-[3px] transition-colors',
+                    active ? 'bg-primary/10 border-l-primary' : 'border-l-transparent hover:bg-muted/40',
                   )}
                 >
                   <button
@@ -189,6 +189,9 @@ export default function ContatosView({
                           <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
                         )}
                       </div>
+                      {c.phone && (
+                        <span className="text-xs text-muted-foreground truncate block">{formatPhoneDisplay(c.phone)}</span>
+                      )}
                     </div>
                     {meta && (
                       <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium shrink-0', meta.badgeClass)}>
