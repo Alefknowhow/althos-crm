@@ -74,26 +74,22 @@ export function ScheduleGanttView({
               ))}
             </div>
 
-            {/* dia do mês — linha bem discreta, fundo diferenciado pra
-                separar visualmente do resto da grade */}
+            {/* dia do mês — número centralizado exatamente em cima da linha
+                vertical daquele dia (não numa coluna), fundo diferenciado
+                pra separar visualmente do resto da grade */}
             <div className="relative h-4 border-b bg-muted/60">
               {dayNumbers.map((d, i) => (
                 <div key={i}
-                  className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70"
-                  style={{ left: `${d.leftPct}%`, width: `${dayWidthPct}%` }}>
+                  className="absolute top-0 h-full flex items-center justify-center text-[8px] leading-none text-muted-foreground/70 -translate-x-1/2"
+                  style={{ left: `${d.leftPct}%` }}>
                   {d.day}
                 </div>
               ))}
             </div>
 
             {/* rows — altura mínima padrão, preenche até o fim da tela;
-                além disso rola verticalmente em vez de esticar a página.
-                Linhas de grade horizontais a cada 48px (altura de uma linha
-                de viagem) cobrem o espaço inteiro, não só onde há viagens. */}
-            <div
-              className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto"
-              style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 47px, hsl(var(--border) / 0.5) 47px, hsl(var(--border) / 0.5) 48px)' }}
-            >
+                além disso rola verticalmente em vez de esticar a página. */}
+            <div className="relative min-h-[360px] h-[calc(100vh-440px)] overflow-y-auto">
               {/* linhas verticais marcando cada dia */}
               {dayLines.map((pct, i) => (
                 <div key={i} className="absolute top-0 bottom-0 w-px bg-border/60 pointer-events-none" style={{ left: `${pct}%` }} />
@@ -112,7 +108,7 @@ export function ScheduleGanttView({
               ) : ganttTrips.map(({ trip, left, width, state }) => {
                 const meta = STATE_META[state]
                 return (
-                  <div key={trip.id} className={cn('relative h-12 border-b last:border-b-0', meta.row)}>
+                  <div key={trip.id} className={cn('relative h-12', meta.row)}>
                     <button
                       type="button"
                       onClick={() => onOpenTrip(trip)}

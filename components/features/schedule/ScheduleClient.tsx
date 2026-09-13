@@ -126,8 +126,9 @@ export default function ScheduleClient({
 
   const dayWidthPct = 100 / totalDays
 
-  // Linha vertical fina marcando o início de cada dia — só o próprio
-  // limite (0%) e o fim (100%) ficam de fora, já cobertos pela borda do
+  // Cada dia vira uma linha vertical fina, e o número do dia fica
+  // centralizado exatamente em cima dela (mesma posição, não uma coluna) —
+  // só o próprio início (0%) fica de fora, já coberto pela borda do
   // container.
   const dayLines = useMemo(() => {
     const lines: number[] = []
@@ -135,8 +136,6 @@ export default function ScheduleClient({
     return lines
   }, [totalDays])
 
-  // Número do dia, centralizado em cada coluna — linha bem discreta acima
-  // das viagens, só pra orientar visualmente.
   const dayNumbers = useMemo(() => {
     const out: { day: number; leftPct: number }[] = []
     for (let i = 0; i < totalDays; i++) {
