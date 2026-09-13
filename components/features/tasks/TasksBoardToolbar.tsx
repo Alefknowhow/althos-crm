@@ -1,30 +1,113 @@
 'use client'
 
 /**
- * Search/filter toolbar + calendar nav header + active-filter chips for
- * TasksBoard. Prop-driven, split out of TasksBoard.tsx.
+ * Barra de controles do módulo Tarefas — reformulada guiada pelos 2
+ * anexos do pedido (modo Calendário / modo Lista):
+ *  1. Cabeçalho: contagem "X atrasada · Y para hoje" + botão "Nova tarefa".
+ *  2. Busca + "Minhas tarefas" (select) + "Filtros" (popover com badge).
+ *  3. Barra de controles fixa: à esquerda, navegação de calendário (modo
+ *     Calendário) OU abas de período (modo Lista); à direita, SEMPRE na
+ *     mesma posição nos dois modos, o toggle Lista/Calendário — e, só no
+ *     modo Calendário, o toggle Mês/Semana ao lado dele (pedido explícito:
+ *     o toggle Lista/Calendário não pode mudar de lugar entre os modos).
  */
 
 import { useState } from 'react'
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
-import { relatedTypeOptions, RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { relatedTypeOptions } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
-import { User2, Calendar, Search, X, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, List, Search, X, Plus, SlidersHorizontal, AlertCircle } from 'lucide-react'
 import {
   type Member, type PriorityFilter, type AssigneeFilter,
-  type StatusFilter, type RelatedFilter, type CalView,
-  GROUPS, STATUS_OPTIONS, PRIORITY_META, FOCUS_RING,
+  type StatusFilter, type RelatedFilter, type CalView, type ViewMode, type ListPeriod,
+  STATUS_OPTIONS, PRIORITY_META, FOCUS_RING,
 } from './TasksBoardShared'
-import { FilterChip, weekRangeLabel } from './TasksBoardCalendarViews'
-import { MobileFilterSheet, MobileFilterTrigger } from '@/components/features/mobile/MobileFilterSheet'
+import { TasksBoardToolbarMobile } from './TasksBoardToolbarMobile'
+import { TasksBoardControlsRow } from './TasksBoardControlsRow'
+
+export const LIST_PERIODS: { id: ListPeriod; label: string }[] = [
+  { id: 'today', label: 'Hoje' },
+  { id: 'week', label: 'Esta semana' },
+  { id: 'month', label: 'Este mês' },
+  { id: 'all', label: 'Todas' },
+]
+
+/** Conteúdo dos 4 filtros — compartilhado entre o popover desktop e o sheet mobile. */
+export function FilterFields({
+  members, assignee, setAssignee, priority, setPriority, statusFilter, setStatusFilter,
+  relatedFilter, setRelatedFilter, niche, size = 'default',
+}: {
+  members: Member[]
+  assignee: AssigneeFilter
+  setAssignee: (v: AssigneeFilter) => void
+  priority: PriorityFilter
+  setPriority: (v: PriorityFilter) => void
+  statusFilter: StatusFilter
+  setStatusFilter: (v: StatusFilter) => void
+  relatedFilter: RelatedFilter
+  setRelatedFilter: (v: RelatedFilter) => void
+  niche?: string | null
+  size?: 'default' | 'mobile'
+}) {
+  const cls = size === 'mobile' ? 'h-11 w-full text-sm' : 'h-8 w-full text-xs'
+  return (
+    <>
+      {members.length > 0 && (
+        <ResponsiveSelect
+          className={cls}
+          aria-label="Filtrar por responsável"
+          value={assignee}
+          onValueChange={v => setAssignee(v as AssigneeFilter)}
+          options={[
+            { value: 'all', label: 'Responsável: Todos' },
+            { value: 'none', label: 'Responsável: Sem responsável' },
+            ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name}` })),
+          ]}
+        />
+      )}
+      <ResponsiveSelect
+        className={cls}
+        aria-label="Filtrar por prioridade"
+        value={priority}
+        onValueChange={v => setPriority(v as PriorityFilter)}
+        options={[
+          { value: 'all', label: 'Prioridade: Todas' },
+          { value: 'high', label: `Prioridade: ${PRIORITY_META.high.label}` },
+          { value: 'normal', label: `Prioridade: ${PRIORITY_META.normal.label}` },
+          { value: 'low', label: `Prioridade: ${PRIORITY_META.low.label}` },
+        ]}
+      />
+      <ResponsiveSelect
+        className={cls}
+        aria-label="Filtrar por status"
+        value={statusFilter}
+        onValueChange={v => setStatusFilter(v as StatusFilter)}
+        options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.value === 'all' ? 'Status: Todos' : `Status: ${o.label}` }))}
+      />
+      <ResponsiveSelect
+        className={cls}
+        aria-label="Filtrar por relacionado a"
+        value={relatedFilter}
+        onValueChange={v => setRelatedFilter(v as RelatedFilter)}
+        options={[
+          { value: 'all', label: 'Relacionado a: Todos' },
+          ...relatedTypeOptions(niche).map(o => ({ value: o.value, label: `Relacionado a: ${o.label}` })),
+        ]}
+      />
+    </>
+  )
+}
 
 export function TasksBoardToolbar({
   search, setSearch, currentUserId, onlyMine, setOnlyMine, todayOnly, onClickToday, onNewTask,
   calView, setCalView, onNavPrev, onNavNext, calMonth, weekDays,
   members, assignee, setAssignee, priority, setPriority, statusFilter, setStatusFilter,
   relatedFilter, setRelatedFilter, niche,
-  selectedDay, setSelectedDay, setTodayOnly,
+  selectedDay, setSelectedDay,
+  viewMode, setViewMode, listPeriod, setListPeriod,
+  overdueCount, todayCount,
 }: {
   search: string
   setSearch: (v: string) => void
@@ -52,316 +135,157 @@ export function TasksBoardToolbar({
   niche?: string | null
   selectedDay: string | null
   setSelectedDay: (v: string | null) => void
-  setTodayOnly: (v: boolean) => void
+  viewMode: ViewMode
+  setViewMode: (v: ViewMode) => void
+  listPeriod: ListPeriod
+  setListPeriod: (v: ListPeriod) => void
+  overdueCount: number
+  todayCount: number
 }) {
   const activeFilterCount = [priority !== 'all', assignee !== 'all', statusFilter !== 'all', relatedFilter !== 'all'].filter(Boolean).length
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   function clearAllFilters() {
     setAssignee('all'); setPriority('all'); setStatusFilter('all'); setRelatedFilter('all')
   }
 
+  // Toggle Lista/Calendário — MESMO componente nos dois lugares (desktop e
+  // mobile) e sempre no mesmo ponto da barra (extremo direito da 2ª linha),
+  // pra nunca "pular de lugar" quando o modo muda (pedido explícito).
+  const ViewToggle = (
+    <div className="inline-flex rounded-lg border bg-muted/30 p-0.5 shrink-0">
+      <button
+        type="button"
+        onClick={() => setViewMode('list')}
+        className={cn('inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-colors', FOCUS_RING,
+          viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+      >
+        <List className="w-3.5 h-3.5" /> Lista
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode('calendar')}
+        className={cn('inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-colors', FOCUS_RING,
+          viewMode === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+      >
+        <CalendarDays className="w-3.5 h-3.5" /> Calendário
+      </button>
+    </div>
+  )
+
   return (
     <>
-      {/* ── Mobile (abaixo de md): 2 linhas fixas, resto vira sheet ──────
-          Pedido explícito: a barra inteira (busca+chips+nav de calendário+
-          4 selects) ocupava metade da tela em telas estreitas. Calendário
-          nem existe mais no mobile (ver TasksBoard.tsx), então a navegação
-          de mês/semana também some — só busca, ações rápidas e 1 botão de
-          filtros (sheet) restam. */}
-      <div className="md:hidden space-y-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar tarefa..."
-            className={cn('h-10 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-sm placeholder:text-muted-foreground', FOCUS_RING)}
-          />
-          {search && (
-            <button type="button" onClick={() => setSearch('')} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-3.5 h-3.5" />
-            </button>
+      {/* ── Cabeçalho: contagem + Nova tarefa (mesmo em mobile e desktop) ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm">
+          {overdueCount > 0 && (
+            <span className="inline-flex items-center gap-1 font-medium text-destructive mr-2">
+              <AlertCircle className="w-3.5 h-3.5" /> {overdueCount} atrasada{overdueCount !== 1 ? 's' : ''}
+            </span>
           )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {currentUserId && (
-            <button
-              type="button"
-              onClick={() => setOnlyMine(v => !v)}
-              className={cn('inline-flex items-center gap-1 px-2.5 h-9 rounded-full border text-xs font-medium shrink-0', FOCUS_RING, onlyMine ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border')}
-            >
-              <User2 className="w-3.5 h-3.5" /> Minhas
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onClickToday}
-            className={cn('inline-flex items-center gap-1 px-2.5 h-9 rounded-pill border text-xs font-medium shrink-0', FOCUS_RING, todayOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border')}
-          >
-            <Calendar className="w-3.5 h-3.5" /> Hoje
-          </button>
-          <MobileFilterTrigger activeCount={activeFilterCount} onClick={() => setMobileFiltersOpen(true)} />
-          <div className="ml-auto">
-            <button
-              type="button"
-              onClick={onNewTask}
-              aria-label="Nova tarefa"
-              className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary text-primary-foreground"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Chips de filtro ativo — Dia/Hoje/Minhas já têm toggle próprio
-            acima, aqui só os 4 filtros do sheet (evita duplicar "Hoje"). */}
-        {activeFilterCount > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
-            {assignee !== 'all' && (
-              <FilterChip label={`Responsável: ${assignee === 'none' ? 'Sem responsável' : (members.find(m => m.user_id === assignee)?.name ?? '—')}`} onClear={() => setAssignee('all')} />
-            )}
-            {statusFilter !== 'all' && <FilterChip label={`Status: ${GROUPS.find(g => g.id === statusFilter)?.label ?? statusFilter}`} onClear={() => setStatusFilter('all')} />}
-            {relatedFilter !== 'all' && (
-              <FilterChip label={`Relacionado a: ${RELATED_TYPE_LABELS[relatedFilter as RelatedTypeValue] ?? relatedFilter}`} onClear={() => setRelatedFilter('all')} />
-            )}
-          </div>
-        )}
-
-        <MobileFilterSheet
-          open={mobileFiltersOpen}
-          onOpenChange={setMobileFiltersOpen}
-          activeCount={activeFilterCount}
-          onApply={() => {}}
-          onClear={clearAllFilters}
-        >
-          {members.length > 0 && (
-            <ResponsiveSelect
-              className="h-11 w-full text-sm"
-              aria-label="Filtrar por responsável"
-              value={assignee}
-              onValueChange={v => setAssignee(v as AssigneeFilter)}
-              options={[
-                { value: 'all', label: 'Responsável: Todos' },
-                { value: 'none', label: 'Responsável: Sem responsável' },
-                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name}` })),
-              ]}
-            />
-          )}
-          <ResponsiveSelect
-            className="h-11 w-full text-sm"
-            aria-label="Filtrar por prioridade"
-            value={priority}
-            onValueChange={v => setPriority(v as PriorityFilter)}
-            options={[
-              { value: 'all', label: 'Prioridade: Todas' },
-              { value: 'high', label: `Prioridade: ${PRIORITY_META.high.label}` },
-              { value: 'normal', label: `Prioridade: ${PRIORITY_META.normal.label}` },
-              { value: 'low', label: `Prioridade: ${PRIORITY_META.low.label}` },
-            ]}
-          />
-          <ResponsiveSelect
-            className="h-11 w-full text-sm"
-            aria-label="Filtrar por status"
-            value={statusFilter}
-            onValueChange={v => setStatusFilter(v as StatusFilter)}
-            options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.value === 'all' ? 'Status: Todos' : `Status: ${o.label}` }))}
-          />
-          <ResponsiveSelect
-            className="h-11 w-full text-sm"
-            aria-label="Filtrar por relacionado a"
-            value={relatedFilter}
-            onValueChange={v => setRelatedFilter(v as RelatedFilter)}
-            options={[
-              { value: 'all', label: 'Relacionado a: Todos' },
-              ...relatedTypeOptions(niche).map(o => ({ value: o.value, label: `Relacionado a: ${o.label}` })),
-            ]}
-          />
-        </MobileFilterSheet>
-      </div>
-
-      {/* ── Desktop (md+): layout original, inalterado ────────────────── */}
-      <div className="hidden md:block space-y-2">
-      {/* Busca + chip "Minhas" + Nova tarefa */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por título ou descrição..."
-            className={cn(
-              'h-8 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-xs placeholder:text-muted-foreground',
-              FOCUS_RING,
-            )}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Limpar busca"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        {currentUserId && (
-          <button
-            type="button"
-            onClick={() => setOnlyMine(v => !v)}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors shrink-0',
-              FOCUS_RING,
-              onlyMine
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-background hover:bg-muted text-muted-foreground border-border',
-            )}
-          >
-            <User2 className="w-3.5 h-3.5" /> Minhas
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onClickToday}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-3 h-8 rounded-pill border text-xs font-medium transition-colors shrink-0',
-            FOCUS_RING,
-            todayOnly
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-background hover:bg-muted text-muted-foreground border-border',
-          )}
-        >
-          <Calendar className="w-3.5 h-3.5" /> Hoje
-        </button>
-        <div className="ml-auto">
-          <Button onClick={onNewTask} aria-label="Nova tarefa">
-            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova tarefa</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Header do calendário: navegação + Mês/Semana + filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onNavPrev}
-            className={cn('flex items-center justify-center h-8 w-8 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-            aria-label="Anterior"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm font-semibold min-w-[150px] text-center capitalize">
-            {calView === 'month'
-              ? calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-              : weekRangeLabel(weekDays)}
+          <span className="text-muted-foreground">
+            {overdueCount > 0 && '· '}{todayCount} para hoje
           </span>
-          <button
-            type="button"
-            onClick={onNavNext}
-            className={cn('flex items-center justify-center h-8 w-8 rounded-md border hover:bg-muted transition-colors', FOCUS_RING)}
-            aria-label="Próximo"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
+        <Button onClick={onNewTask} aria-label="Nova tarefa">
+          <Plus className="w-4 h-4" /> Nova tarefa
+        </Button>
+      </div>
 
-        <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
-          {(['month', 'week'] as CalView[]).map(v => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setCalView(v)}
-              className={cn(
-                'px-3 h-7 rounded-md text-xs font-medium transition-colors',
-                FOCUS_RING,
-                calView === v ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {v === 'month' ? 'Mês' : 'Semana'}
-            </button>
-          ))}
-        </div>
+      {/* ── Mobile (abaixo de md) ──────────────────────────────────────── */}
+      <TasksBoardToolbarMobile
+        search={search} setSearch={setSearch}
+        currentUserId={currentUserId}
+        onlyMine={onlyMine} setOnlyMine={setOnlyMine}
+        todayOnly={todayOnly} onClickToday={onClickToday}
+        members={members}
+        assignee={assignee} setAssignee={setAssignee}
+        priority={priority} setPriority={setPriority}
+        statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
+        niche={niche}
+        viewMode={viewMode} listPeriod={listPeriod} setListPeriod={setListPeriod}
+        viewToggle={ViewToggle}
+        activeFilterCount={activeFilterCount}
+        clearAllFilters={clearAllFilters}
+      />
 
-        {selectedDay && (
-          <FilterChip
-            label={`Dia: ${new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short' })}`}
-            onClear={() => setSelectedDay(null)}
-          />
-        )}
-        {todayOnly && <FilterChip label="Hoje" onClear={() => setTodayOnly(false)} />}
-        {onlyMine && <FilterChip label="Minhas" onClear={() => setOnlyMine(() => false)} />}
+      {/* ── Desktop (md+) ──────────────────────────────────────────────── */}
+      <div className="hidden md:block space-y-2">
+        {/* Busca + Minhas tarefas + Filtros */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por título ou descrição..."
+              className={cn('h-8 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-xs placeholder:text-muted-foreground', FOCUS_RING)}
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          {members.length > 0 && (
+          {currentUserId && (
             <ResponsiveSelect
-              className="h-8 w-[170px] text-xs"
-              aria-label="Filtrar por responsável"
-              value={assignee}
-              onValueChange={v => setAssignee(v as AssigneeFilter)}
+              className="h-8 w-[170px] text-xs shrink-0"
+              aria-label="Minhas tarefas ou todas"
+              value={onlyMine ? 'mine' : 'all'}
+              onValueChange={v => setOnlyMine(() => v === 'mine')}
               options={[
-                { value: 'all', label: 'Responsável: Todos' },
-                { value: 'none', label: 'Responsável: Sem responsável' },
-                ...members.map(m => ({ value: m.user_id, label: `Responsável: ${m.name}` })),
+                { value: 'mine', label: 'Minhas tarefas' },
+                { value: 'all', label: 'Todas as tarefas' },
               ]}
             />
           )}
-          <ResponsiveSelect
-            className="h-8 w-[150px] text-xs"
-            aria-label="Filtrar por prioridade"
-            value={priority}
-            onValueChange={v => setPriority(v as PriorityFilter)}
-            options={[
-              { value: 'all', label: 'Prioridade: Todas' },
-              { value: 'high', label: `Prioridade: ${PRIORITY_META.high.label}` },
-              { value: 'normal', label: `Prioridade: ${PRIORITY_META.normal.label}` },
-              { value: 'low', label: `Prioridade: ${PRIORITY_META.low.label}` },
-            ]}
-          />
-          <ResponsiveSelect
-            className="h-8 w-[150px] text-xs"
-            aria-label="Filtrar por status"
-            value={statusFilter}
-            onValueChange={v => setStatusFilter(v as StatusFilter)}
-            options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.value === 'all' ? 'Status: Todos' : `Status: ${o.label}` }))}
-          />
-          <ResponsiveSelect
-            className="h-8 w-[180px] text-xs"
-            aria-label="Filtrar por relacionado a"
-            value={relatedFilter}
-            onValueChange={v => setRelatedFilter(v as RelatedFilter)}
-            options={[
-              { value: 'all', label: 'Relacionado a: Todos' },
-              ...relatedTypeOptions(niche).map(o => ({ value: o.value, label: `Relacionado a: ${o.label}` })),
-            ]}
-          />
-        </div>
-      </div>
 
-      {/* Chips de filtros ativos — cada × zera só aquele filtro (Dia/Hoje/
-          Minhas ficam junto do switch Mês/Semana, no header do calendário acima) */}
-      {(priority !== 'all' || assignee !== 'all' || statusFilter !== 'all' || relatedFilter !== 'all') && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {priority !== 'all' && <FilterChip label={`Prioridade: ${PRIORITY_META[priority].label}`} onClear={() => setPriority('all')} />}
-          {assignee !== 'all' && (
-            <FilterChip
-              label={`Responsável: ${assignee === 'none' ? 'Sem responsável' : (members.find(m => m.user_id === assignee)?.name ?? '—')}`}
-              onClear={() => setAssignee('all')}
-            />
-          )}
-          {statusFilter !== 'all' && <FilterChip label={`Status: ${GROUPS.find(g => g.id === statusFilter)?.label ?? statusFilter}`} onClear={() => setStatusFilter('all')} />}
-          {relatedFilter !== 'all' && (
-            <FilterChip
-              label={`Relacionado a: ${RELATED_TYPE_LABELS[relatedFilter as RelatedTypeValue] ?? relatedFilter}`}
-              onClear={() => setRelatedFilter('all')}
-            />
-          )}
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn('inline-flex items-center gap-1.5 px-3 h-8 rounded-md border text-xs font-medium transition-colors shrink-0', FOCUS_RING,
+                  'bg-background hover:bg-muted text-muted-foreground border-border')}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 space-y-2">
+              <FilterFields
+                members={members} assignee={assignee} setAssignee={setAssignee}
+                priority={priority} setPriority={setPriority}
+                statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
+                niche={niche}
+              />
+              {activeFilterCount > 0 && (
+                <button type="button" onClick={clearAllFilters} className="text-xs text-primary hover:underline">
+                  Limpar filtros
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
-      )}
+
+        {/* Barra de controles fixa: nav/abas à esquerda, view+período à
+            direita — o toggle Lista/Calendário fica sempre no mesmo lugar
+            (extremo direito), nos dois modos. */}
+        <TasksBoardControlsRow
+          viewMode={viewMode} calView={calView} setCalView={setCalView}
+          onNavPrev={onNavPrev} onNavNext={onNavNext} calMonth={calMonth} weekDays={weekDays}
+          onClickToday={onClickToday} todayOnly={todayOnly}
+          listPeriod={listPeriod} setListPeriod={setListPeriod}
+          selectedDay={selectedDay} setSelectedDay={setSelectedDay}
+          viewToggle={ViewToggle}
+        />
       </div>
     </>
   )

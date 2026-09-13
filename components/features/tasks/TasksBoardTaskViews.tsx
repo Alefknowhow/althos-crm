@@ -17,8 +17,8 @@ import {
 import { RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
 import UserAvatar from '@/components/features/UserAvatar'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Circle, Trash2, MoreVertical, Pencil } from 'lucide-react'
-import { PRIORITY_META, fmtDate, dueTimeOnly, fmtDuration, isOverdue, memberLabelColor, FOCUS_RING, type Task, type Member } from './TasksBoardShared'
+import { CheckCircle2, Circle, Trash2, MoreVertical, Pencil, CalendarClock } from 'lucide-react'
+import { PRIORITY_META, fmtDate, dueTimeOnly, fmtDuration, isOverdue, overdueDays, memberLabelColor, FOCUS_RING, type Task, type Member } from './TasksBoardShared'
 
 export { EditSheet } from './TasksBoardEditSheet'
 
@@ -122,6 +122,7 @@ export function TaskListRow({
   const member = members.find(m => m.user_id === task.assigned_to)
   const relatedTypeLabel = task.related ? (RELATED_TYPE_LABELS[task.related.type as RelatedTypeValue] ?? 'Relacionado') : null
   const [previewOpen, setPreviewOpen] = useState(false)
+  const daysLate = overdueDays(task)
 
   return (
     <div className={cn(
@@ -145,12 +146,13 @@ export function TaskListRow({
           : <Circle className="w-[18px] h-[18px] text-muted-foreground hover:text-foreground transition-colors" />}
       </button>
 
+      <div className="flex-1 min-w-0 space-y-1">
       <Popover open={previewOpen} onOpenChange={setPreviewOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             title={task.title}
-            className="flex-1 min-w-0 text-left space-y-0.5"
+            className="w-full min-w-0 text-left space-y-0.5"
           >
             {/* Linha 1: título (esq.) | responsável (largura fixa) + data/hora (dir.).
                 Grid com coluna 2 de largura fixa (180px) — o responsável
@@ -204,6 +206,32 @@ export function TaskListRow({
           />
         </PopoverContent>
       </Popover>
+
+      {/* Ações rápidas de atraso — badge "X dias de atraso" + Reagendar/
+          Concluir explícitos, só pra tarefas atrasadas (pedido do redesign:
+          anexo 2 mostra essas ações direto na linha, não escondidas no "..."). */}
+      {daysLate !== null && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-pill bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+            {daysLate} {daysLate === 1 ? 'dia' : 'dias'} de atraso
+          </span>
+          <button
+            type="button"
+            onClick={onOpen}
+            className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-md border text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors', FOCUS_RING)}
+          >
+            <CalendarClock className="w-3 h-3" /> Reagendar
+          </button>
+          <button
+            type="button"
+            onClick={onToggleDone}
+            className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors', FOCUS_RING)}
+          >
+            <CheckCircle2 className="w-3 h-3" /> Concluir
+          </button>
+        </div>
+      )}
+      </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

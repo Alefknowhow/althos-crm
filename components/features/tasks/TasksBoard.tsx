@@ -1,36 +1,36 @@
 'use client'
 
 /**
- * TasksBoard — duas disposições de tela, alternadas pelo switch Mês/Semana
- * do toolbar:
- *  - Mês: mini calendário compacto (só data, sem info de tarefa — ver
- *    TasksBoardMiniCalendar.tsx) à esquerda + lista agrupada à direita.
- *  - Semana: timeline por hora em tela cheia (TasksBoardCalendarPanel.tsx),
- *    sem a lista ao lado — precisa do espaço todo pra não espremer as 7
- *    colunas do dia.
- * As duas leituras usam o mesmo array de tarefas filtrado.
+ * TasksBoard — dois modos de topo (viewMode: Lista/Calendário, botão fixo
+ * na mesma posição do toolbar em ambos), e dentro do modo Calendário, duas
+ * disposições (calView: Mês/Semana):
+ *  - Lista: grupos por status (Atrasadas/Hoje/Próximas/Concluídas), sem
+ *    calendário nenhum ao lado (TasksBoardListPanel.tsx).
+ *  - Calendário › Mês: grade mensal em tela cheia com chips de tarefa
+ *    (TasksBoardMonthGrid.tsx).
+ *  - Calendário › Semana: timeline por hora em tela cheia
+ *    (TasksBoardCalendarPanel.tsx).
+ * Todas as leituras usam o mesmo array de tarefas filtrado.
  *
  * Persistência de data/hora segue a mesma âncora UTC do resto do módulo
  * (dueDateOnly/fmtDate tratam devido_date como UTC pra nunca "pular" de dia
  * por causa do fuso do navegador) — ver combineDueDate/dueTimeOnly.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TaskDialog from '@/components/features/TaskDialog'
 import {
   type Member, type Task, type PriorityFilter, type AssigneeFilter, type GroupId,
-  type StatusFilter, type RelatedFilter, type CalView,
+  type StatusFilter, type RelatedFilter, type CalView, type ViewMode, type ListPeriod,
   EXPANDED_STORAGE_KEY, DEFAULT_EXPANDED,
-  todayISO, dueDateOnly, dueTimeOnly, classify, completedAtMs,
-  startOfMonth, addMonths, startOfWeek, addDays, addWeeks, ymd,
+  dueDateOnly, startOfMonth, addMonths, startOfWeek, addWeeks, ymd,
 } from './TasksBoardShared'
 import { EditSheet } from './TasksBoardTaskViews'
 import { TasksBoardToolbar } from './TasksBoardToolbar'
-import { TasksBoardListPanel } from './TasksBoardListPanel'
-import { TasksBoardCalendarPanel } from './TasksBoardCalendarPanel'
-import { TasksBoardMiniCalendar } from './TasksBoardMiniCalendar'
+import { TasksBoardBody } from './TasksBoardBody'
 import { useTasksBoardMutations } from './useTasksBoardMutations'
+import { useTasksBoardDerived, useTasksBoardGrid } from './useTasksBoardDerived'
 
 export default function TasksBoard({
   initialTasks,
@@ -58,6 +58,8 @@ export default function TasksBoard({
   const [editing, setEditing] = useState<Task | null>(null)
   const [expanded, setExpanded] = useState<Record<GroupId, boolean>>(DEFAULT_EXPANDED)
 
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [listPeriod, setListPeriod] = useState<ListPeriod>('today')
   const [calView, setCalView] = useState<CalView>('month')
   const [calMonth, setCalMonth] = useState(() => startOfMonth(new Date()))
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()))
@@ -90,93 +92,10 @@ export default function TasksBoard({
     })
   }
 
-  // ── Filtros (afetam calendário E lista, ao mesmo tempo) ────────────────────
-  function matchesAssignee(t: Task, f: AssigneeFilter): boolean {
-    if (f === 'all') return true
-    if (f === 'none') return !t.assigned_to
-    return t.assigned_to === f
-  }
-  function matchesSearch(t: Task, q: string): boolean {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return true
-    return t.title.toLowerCase().includes(needle) || (t.description ?? '').toLowerCase().includes(needle)
-  }
-
-  function matchesRelated(t: Task, f: RelatedFilter): boolean {
-    if (f === 'all') return true
-    return (t.related?.type ?? null) === f
-  }
-
-  const filtered = useMemo(
-    () => tasks.filter(t =>
-      (priority === 'all' || t.priority === priority) &&
-      matchesAssignee(t, assignee) &&
-      (statusFilter === 'all' || classify(t) === statusFilter) &&
-      matchesRelated(t, relatedFilter) &&
-      (!onlyMine || t.assigned_to === currentUserId) &&
-      matchesSearch(t, search),
-    ),
-    [tasks, priority, assignee, statusFilter, relatedFilter, onlyMine, currentUserId, search],
-  )
-
-  const tasksByDate = useMemo(() => {
-    const map: Record<string, Task[]> = {}
-    for (const t of filtered) {
-      const d = dueDateOnly(t)
-      if (!d) continue
-      ;(map[ymd(d)] ??= []).push(t)
-    }
-    for (const k of Object.keys(map)) {
-      map[k].sort((a, b) => (dueTimeOnly(a.due_date) || '').localeCompare(dueTimeOnly(b.due_date) || ''))
-    }
-    return map
-  }, [filtered])
-
-  // A lista segue o período visível no calendário — mês inteiro (visão Mês)
-  // ou semana inteira (visão Semana). Não existe mais filtro de um dia
-  // avulso: o único recorte diário é o toggle "Hoje" (mais abaixo). Tarefas
-  // sem data ficam sempre visíveis (não têm período pra pertencer).
-  const periodTasks = useMemo(() => {
-    if (selectedDay) {
-      return filtered.filter(t => t.due_date && t.due_date.split('T')[0] === selectedDay)
-    }
-    if (todayOnly) {
-      const t0 = todayISO()
-      return filtered.filter(t => t.due_date && t.due_date.split('T')[0] === t0)
-    }
-    if (calView === 'month') {
-      return filtered.filter(t => {
-        const d = dueDateOnly(t)
-        if (!d) return true
-        return d.getFullYear() === calMonth.getFullYear() && d.getMonth() === calMonth.getMonth()
-      })
-    }
-    const weekStart = startOfWeek(weekAnchor)
-    const weekEnd = addDays(weekStart, 6)
-    return filtered.filter(t => {
-      const d = dueDateOnly(t)
-      if (!d) return true
-      return d >= weekStart && d <= weekEnd
-    })
-  }, [filtered, selectedDay, todayOnly, calView, calMonth, weekAnchor])
-
-  const grouped = useMemo(() => {
-    const byGroup: Record<GroupId, Task[]> = { overdue: [], today: [], upcoming: [], done: [] }
-    for (const t of periodTasks) byGroup[classify(t)].push(t)
-    // Atrasadas/Hoje/Próximas: due_date ASC, depois horário ASC (undated por
-    // último). Concluídas: completed_at DESC (mais recente primeiro).
-    const byDateAsc = (a: Task, b: Task) => {
-      const da = dueDateOnly(a)?.getTime() ?? Infinity
-      const db = dueDateOnly(b)?.getTime() ?? Infinity
-      if (da !== db) return da - db
-      return (dueTimeOnly(a.due_date) || '').localeCompare(dueTimeOnly(b.due_date) || '')
-    }
-    byGroup.overdue.sort(byDateAsc)
-    byGroup.today.sort((a, b) => (dueTimeOnly(a.due_date) || '').localeCompare(dueTimeOnly(b.due_date) || ''))
-    byGroup.upcoming.sort(byDateAsc)
-    byGroup.done.sort((a, b) => completedAtMs(b) - completedAtMs(a))
-    return byGroup
-  }, [periodTasks])
+  const { tasksByDate, overdueCount, todayCount, grouped } = useTasksBoardDerived({
+    tasks, priority, assignee, statusFilter, relatedFilter, onlyMine, currentUserId, search,
+    viewMode, listPeriod, selectedDay, todayOnly, calView, calMonth, weekAnchor,
+  })
 
   /** Clicar numa tarefa na lista: navega o calendário pro período dela,
    *  destaca e abre o drawer de edição completo. */
@@ -190,34 +109,7 @@ export default function TasksBoard({
     setEditing(task)
   }
 
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)), [weekAnchor])
-
-  // Faixa de horas da timeline: padrão comercial (7h–20h), expandida se
-  // alguma tarefa com horário da semana visível ficar fora desse intervalo.
-  const hourRange = useMemo(() => {
-    let min = 7, max = 20
-    for (const d of weekDays) {
-      for (const t of tasksByDate[ymd(d)] || []) {
-        const time = dueTimeOnly(t.due_date)
-        if (!time) continue
-        const h = parseInt(time.split(':')[0], 10)
-        if (h < min) min = h
-        if (h > max) max = h
-      }
-    }
-    return { start: min, end: max }
-  }, [weekDays, tasksByDate])
-  const hours = useMemo(
-    () => Array.from({ length: hourRange.end - hourRange.start + 1 }, (_, i) => hourRange.start + i),
-    [hourRange],
-  )
-
-  const monthDays = useMemo(() => {
-    const gridStart = startOfWeek(calMonth)
-    return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
-  }, [calMonth])
-
-  const todayYmd = ymd(new Date())
+  const { weekDays, hours, monthDays, todayYmd } = useTasksBoardGrid({ weekAnchor, calMonth, tasksByDate })
 
   return (
     <div className="space-y-4">
@@ -245,97 +137,46 @@ export default function TasksBoard({
         relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
         niche={niche}
         selectedDay={selectedDay} setSelectedDay={setSelectedDay}
-        setTodayOnly={setTodayOnly}
+        viewMode={viewMode} setViewMode={setViewMode}
+        listPeriod={listPeriod} setListPeriod={setListPeriod}
+        overdueCount={overdueCount} todayCount={todayCount}
       />
 
-      {/* Corpo: Semana ocupa a tela inteira (timeline por hora precisa do
-          espaço); Mês mostra o mini calendário (só seletor de data, sem
-          informação de tarefa) ao lado da lista. Calendário (mês OU semana)
-          nunca aparece abaixo de lg — pedido explícito, mobile só vê lista,
-          mesmo que calView já esteja em 'week' (ex.: estado persistido). */}
-      {calView === 'week' ? (
-        <>
-          <div className="hidden lg:block">
-            <TasksBoardCalendarPanel
-              weekDays={weekDays}
-              hours={hours}
-              todayYmd={todayYmd}
-              tasksByDate={tasksByDate}
-              members={members}
-              highlightId={highlightId}
-              openPopoverId={openPopoverId}
-              setOpenPopoverId={setOpenPopoverId}
-              dragOverKey={dragOverKey}
-              setDragOverKey={setDragOverKey}
-              orgSlug={orgSlug}
-              onDropAllDay={handleDropOnAllDay}
-              onDropSlot={handleDropOnSlot}
-              onChipDragStart={onChipDragStart}
-              onChipDragEnd={onChipDragEnd}
-              onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
-              onToggleDone={handleToggleDone}
-              onSetPriority={handleSetPriority}
-              onEdit={setEditing}
-              onDelete={handleDelete}
-            />
-          </div>
-          <div className="lg:hidden">
-            <TasksBoardListPanel
-              orgSlug={orgSlug}
-              members={members}
-              selectedDay={selectedDay}
-              setSelectedDay={setSelectedDay}
-              todayOnly={todayOnly}
-              calView={calView}
-              calMonth={calMonth}
-              weekAnchor={weekAnchor}
-              grouped={grouped}
-              expanded={expanded}
-              toggleGroup={toggleGroup}
-              highlightId={highlightId}
-              onOpenFromList={openFromList}
-              onToggleDone={handleToggleDone}
-              onSetPriority={handleSetPriority}
-              onDelete={handleDelete}
-            />
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
-          {/* Calendário mensal removido do mobile por completo (pedido
-              explícito: "remove o calendário do mobile, manter apenas lista
-              de tarefas") — não é só reordenado, nem existe no DOM abaixo
-              de lg. Desktop inalterado. */}
-          <div className="hidden lg:block lg:w-64 shrink-0">
-            <TasksBoardMiniCalendar
-              days={monthDays}
-              calMonth={calMonth}
-              todayYmd={todayYmd}
-              selectedDay={selectedDay}
-              onDayClick={d => { setSelectedDay(prev => prev === d ? null : d); setTodayOnly(false) }}
-            />
-          </div>
-
-          <TasksBoardListPanel
-            orgSlug={orgSlug}
-            members={members}
-            selectedDay={selectedDay}
-            setSelectedDay={setSelectedDay}
-            todayOnly={todayOnly}
-            calView={calView}
-            calMonth={calMonth}
-            weekAnchor={weekAnchor}
-            grouped={grouped}
-            expanded={expanded}
-            toggleGroup={toggleGroup}
-            highlightId={highlightId}
-            onOpenFromList={openFromList}
-            onToggleDone={handleToggleDone}
-            onSetPriority={handleSetPriority}
-            onDelete={handleDelete}
-          />
-        </div>
-      )}
+      <TasksBoardBody
+        viewMode={viewMode}
+        calView={calView}
+        orgSlug={orgSlug}
+        members={members}
+        selectedDay={selectedDay}
+        setSelectedDay={setSelectedDay}
+        todayOnly={todayOnly}
+        calMonth={calMonth}
+        weekAnchor={weekAnchor}
+        grouped={grouped}
+        expanded={expanded}
+        toggleGroup={toggleGroup}
+        highlightId={highlightId}
+        openFromList={openFromList}
+        handleToggleDone={handleToggleDone}
+        handleSetPriority={handleSetPriority}
+        handleDelete={handleDelete}
+        weekDays={weekDays}
+        hours={hours}
+        todayYmd={todayYmd}
+        tasksByDate={tasksByDate}
+        openPopoverId={openPopoverId}
+        setOpenPopoverId={setOpenPopoverId}
+        dragOverKey={dragOverKey}
+        setDragOverKey={setDragOverKey}
+        onDropAllDay={handleDropOnAllDay}
+        onDropSlot={handleDropOnSlot}
+        onChipDragStart={onChipDragStart}
+        onChipDragEnd={onChipDragEnd}
+        onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
+        onEdit={setEditing}
+        monthDays={monthDays}
+        onDayClick={d => setQuickAdd({ date: d })}
+      />
 
       <EditSheet
         task={editing}

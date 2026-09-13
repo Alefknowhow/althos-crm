@@ -22,13 +22,37 @@ export function useTasksBoardMutations({
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
 
   async function handleToggleDone(task: Task) {
-    const next = task.status === 'done' ? 'open' : 'done'
+    const prevStatus = task.status
+    const next = prevStatus === 'done' ? 'open' : 'done'
     setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: next } : t)))
     const res = await toggleTaskStatus(orgSlug, task.id, next)
     if (!res.ok) {
-      setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: task.status } : t)))
+      setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: prevStatus } : t)))
       toast.error('Erro ao atualizar tarefa')
       return
+    }
+    // "Desfazer" só faz sentido pra quem acabou de concluir (não pra quem
+    // reabriu uma tarefa) — reverte pro status anterior com a mesma
+    // action optimista + chamada ao servidor.
+    if (next === 'done') {
+      toast.success('Tarefa concluída', {
+        action: {
+          label: 'Desfazer',
+          onClick: async () => {
+            setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: prevStatus } : t)))
+            // Este branch só roda quando `next === 'done'`, ou seja
+            // `prevStatus` já era diferente de 'done' — sempre volta pra
+            // 'open' (toggleTaskStatus só aceita open/done, sem 'doing').
+            const undo = await toggleTaskStatus(orgSlug, task.id, 'open')
+            if (!undo.ok) {
+              setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, status: next } : t)))
+              toast.error('Erro ao desfazer')
+              return
+            }
+            router.refresh()
+          },
+        },
+      })
     }
     router.refresh()
   }

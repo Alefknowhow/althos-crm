@@ -35,6 +35,13 @@ export type GroupId = 'overdue' | 'today' | 'upcoming' | 'done'
 export type StatusFilter = 'all' | GroupId
 export type RelatedFilter = 'all' | string
 export type CalView = 'month' | 'week'
+/** Visão de topo do módulo — Calendário (grade) ou Lista (grupos por status).
+ *  O botão que alterna entre as duas fica sempre na MESMA posição da barra
+ *  de controles, nos dois modos (pedido explícito do redesign). */
+export type ViewMode = 'calendar' | 'list'
+/** Abas de período do modo Lista — substituem a navegação de calendário
+ *  (que só existe no modo Calendário) por atalhos de intervalo. */
+export type ListPeriod = 'today' | 'week' | 'month' | 'all'
 
 export const GROUPS: { id: GroupId; label: string; empty: string }[] = [
   { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada.' },
@@ -69,6 +76,17 @@ export function dueDateOnly(t: Task): Date | null {
 
 export function isOverdue(t: Task) {
   return !!t.due_date && t.due_date.split('T')[0] < todayISO() && t.status !== 'done'
+}
+
+/** Dias corridos de atraso (>= 1) — null se a tarefa não estiver atrasada.
+ *  Usado no badge "X dias de atraso" da linha da lista. */
+export function overdueDays(t: Task): number | null {
+  if (!isOverdue(t)) return null
+  const due = dueDateOnly(t)
+  if (!due) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const diff = Math.round((today.getTime() - due.getTime()) / 86_400_000)
+  return diff > 0 ? diff : null
 }
 
 export function fmtDate(iso?: string | null) {
