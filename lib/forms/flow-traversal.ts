@@ -11,7 +11,7 @@
  * armadilha).
  */
 
-export type FlowOperator = 'eq' | 'neq' | 'contains' | 'not_contains' | 'is_empty' | 'is_filled'
+export type FlowOperator = 'eq' | 'neq' | 'contains' | 'not_contains' | 'is_empty' | 'is_filled' | 'gt' | 'gte' | 'lt' | 'lte'
 
 export type FlowCondition = {
   fieldId: string
@@ -52,6 +52,17 @@ export function evaluateCondition(condition: FlowCondition, answers: Record<stri
     case 'not_contains': return !current.includes(target)
     case 'is_empty': return current === ''
     case 'is_filled': return current !== ''
+    case 'gt': case 'gte': case 'lt': case 'lte': {
+      // Comparação numérica — pergunta de valor/número (ex.: "acima de
+      // R$3.000"). Valor não-numérico nunca bate (evita falso positivo).
+      const a = Number(current.replace(/[^\d.,-]/g, '').replace(',', '.'))
+      const b = Number(target.replace(/[^\d.,-]/g, '').replace(',', '.'))
+      if (Number.isNaN(a) || Number.isNaN(b)) return false
+      if (condition.operator === 'gt') return a > b
+      if (condition.operator === 'gte') return a >= b
+      if (condition.operator === 'lt') return a < b
+      return a <= b
+    }
     default: return false
   }
 }

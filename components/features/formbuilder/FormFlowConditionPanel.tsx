@@ -12,17 +12,24 @@ const OPERATOR_OPTIONS: { value: FlowOperator; label: string }[] = [
   { value: 'neq', label: 'é diferente de' },
   { value: 'contains', label: 'contém' },
   { value: 'not_contains', label: 'não contém' },
+  { value: 'gt', label: 'é maior que (numérico)' },
+  { value: 'gte', label: 'é maior ou igual a (numérico)' },
+  { value: 'lt', label: 'é menor que (numérico)' },
+  { value: 'lte', label: 'é menor ou igual a (numérico)' },
   { value: 'is_filled', label: 'foi respondida' },
   { value: 'is_empty', label: 'não foi respondida' },
 ]
 
-const NEEDS_VALUE = new Set<FlowOperator>(['eq', 'neq', 'contains', 'not_contains'])
+const NEEDS_VALUE = new Set<FlowOperator>(['eq', 'neq', 'contains', 'not_contains', 'gt', 'gte', 'lt', 'lte'])
+// Comparação numérica não faz sentido contra a lista de opções — sempre
+// texto livre, mesmo quando o campo de origem tem `options`.
+const NUMERIC_OPERATORS = new Set<FlowOperator>(['gt', 'gte', 'lt', 'lte'])
 
 /** Painel de edição de uma edge selecionada — condição (baseada na
  *  resposta do campo de origem) ou "caminho padrão" (sem condição, usado
  *  quando nenhuma outra condição daquele node bate). */
 export default function FormFlowConditionPanel({
-  sourceField, condition, onChange, onRemoveEdge, onClose,
+  sourceField, condition, onChange, onRemoveEdge, onClose, lockedToOption,
 }: {
   /** Campo de origem da edge — null quando a edge sai de 'welcome' (sem
    *  resposta pra comparar, então só existe caminho padrão). */
@@ -31,6 +38,9 @@ export default function FormFlowConditionPanel({
   onChange: (condition: FlowCondition | undefined) => void
   onRemoveEdge: () => void
   onClose: () => void
+  /** Edge veio de arrastar direto de uma opção no node (ver FormFlowNode) —
+   *  a condição já está fixada por esse handle, não é editável aqui. */
+  lockedToOption?: string
 }) {
   const isDefault = !condition
 
@@ -43,7 +53,11 @@ export default function FormFlowConditionPanel({
         </button>
       </div>
 
-      {!sourceField ? (
+      {lockedToOption ? (
+        <p className="text-xs text-muted-foreground">
+          Segue por aqui quando a resposta é <span className="font-medium text-foreground">&ldquo;{lockedToOption}&rdquo;</span>.
+        </p>
+      ) : !sourceField ? (
         <p className="text-xs text-muted-foreground">
           Conexões saindo do início não têm condição — é sempre o caminho padrão.
         </p>
@@ -84,7 +98,7 @@ export default function FormFlowConditionPanel({
                 </SelectContent>
               </Select>
               {NEEDS_VALUE.has(condition.operator) && (
-                sourceField.options?.length ? (
+                sourceField.options?.length && !NUMERIC_OPERATORS.has(condition.operator) ? (
                   <Select value={condition.value || ''} onValueChange={v => onChange({ ...condition, value: v })}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha uma opção" /></SelectTrigger>
                     <SelectContent>
@@ -96,7 +110,7 @@ export default function FormFlowConditionPanel({
                 ) : (
                   <Input
                     className="h-8 text-xs"
-                    placeholder="Valor de comparação"
+                    placeholder={NUMERIC_OPERATORS.has(condition.operator) ? 'Número de comparação (ex.: 3000)' : 'Valor de comparação'}
                     value={condition.value || ''}
                     onChange={e => onChange({ ...condition, value: e.target.value })}
                   />

@@ -38,6 +38,7 @@ function buildInitialGraph(schema: FormSchema): { nodes: Node<FormFlowNodeData>[
         label: kind === 'welcome' ? 'Início' : kind === 'ending' ? 'Fim do formulário' : field?.label || id,
         kind,
         fieldType: field?.type,
+        options: field?.options,
       },
     }
   })
@@ -48,14 +49,22 @@ function buildInitialGraph(schema: FormSchema): { nodes: Node<FormFlowNodeData>[
     from: id,
     to: chain[i + 1],
   }))
-  const edges: Edge[] = sourceEdges.map(e => ({
-    id: e.id,
-    source: e.from,
-    target: e.to,
-    animated: !e.condition,
-    label: e.condition ? 'condição' : undefined,
-    data: { condition: e.condition },
-  }))
+  const edges: Edge[] = sourceEdges.map(e => {
+    const field = orderedFields.find(f => f.id === e.from)
+    const optIndex = e.condition?.operator === 'eq' && field?.options
+      ? field.options.indexOf(e.condition.value || '')
+      : -1
+    const sourceHandle = optIndex >= 0 ? `opt-${optIndex}` : 'default'
+    return {
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      sourceHandle,
+      animated: !e.condition,
+      label: e.condition ? 'condição' : undefined,
+      data: { condition: e.condition },
+    }
+  })
 
   return { nodes, edges }
 }
@@ -113,11 +122,21 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
   }, [nodes, edges])
 
   const onConnect = useCallback((connection: Connection) => {
-    setEdges(curr => addEdge({ ...connection, animated: true, data: { condition: undefined } }, curr))
-  }, [setEdges])
+    // Conexão saindo de um handle de opção já fixa a condição — o handle
+    // já diz qual resposta é, sem precisar abrir o painel.
+    const optMatch = connection.sourceHandle?.match(/^opt-(\d+)$/)
+    const sourceField = connection.source ? fieldsById.get(connection.source) : null
+    const condition: FlowCondition | undefined = optMatch && sourceField?.options && connection.source
+      ? { fieldId: connection.source, operator: 'eq', value: sourceField.options[Number(optMatch[1])] }
+      : undefined
+    setEdges(curr => addEdge({ ...connection, animated: !condition, data: { condition } }, curr))
+  }, [setEdges, fieldsById])
 
   const selectedEdge = edges.find(e => e.id === selectedEdgeId) || null
   const selectedSourceField = selectedEdge && selectedEdge.source !== 'welcome' ? fieldsById.get(selectedEdge.source) || null : null
+  // Edge saindo de um handle de opção já vem com a condição fixada pelo
+  // próprio handle — não abre painel manual pra ela (só pro handle "padrão").
+  const isOptionEdge = !!selectedEdge?.sourceHandle?.startsWith('opt-')
 
   function updateSelectedCondition(condition: FlowCondition | undefined) {
     setEdges(curr => curr.map(e => e.id === selectedEdgeId
@@ -135,7 +154,7 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <div>
           <p className="text-sm font-semibold">Fluxo condicional</p>
-          <p className="text-xs text-muted-foreground">Arraste de um node pra outro pra criar uma conexão. Clique numa conexão pra definir uma condição.</p>
+          <p className="text-xs text-muted-foreground">Arraste a partir de uma opção de resposta pra ramificar por ela. Clique numa conexão pra ver/editar a condição.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
       </div>
@@ -164,6 +183,7 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onClose }: Props) {
             onChange={updateSelectedCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}
+            lockedToOption={isOptionEdge ? (selectedEdge.data as any)?.condition?.value : undefined}
           />
         )}
       </div>
