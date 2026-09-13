@@ -6,7 +6,7 @@ import {
   useNodesState, useEdgesState, type Node, type Edge, type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { FormSchema, FormField } from '../PublicFormSchema'
 import type { FormFlow, FlowCondition, FlowEdge } from '@/lib/forms/flow-traversal'
@@ -76,6 +76,9 @@ type Props = {
   schema: FormSchema
   onChangeFlow: (flow: FormFlow) => void
   onUpdateField: (fieldId: string, patch: Partial<FormField>) => void
+  /** Cria um novo campo (no schema, fonte de verdade) e devolve seu id —
+   *  o canvas usa o id pra desenhar o node novo direto no fluxo. */
+  onAddField: (type: string) => string
   onClose: () => void
 }
 
@@ -89,7 +92,7 @@ export default function FormFlowCanvas(props: Props) {
   )
 }
 
-function FormFlowCanvasInner({ schema, onChangeFlow, onUpdateField, onClose }: Props) {
+function FormFlowCanvasInner({ schema, onChangeFlow, onUpdateField, onAddField, onClose }: Props) {
   // Estado inicial derivado do schema UMA vez (na abertura) — depois disso
   // o canvas é a fonte da verdade; não re-deriva a cada re-render do pai
   // (evitaria perder posição/seleção a cada tecla digitada em outro lugar
@@ -157,6 +160,26 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onUpdateField, onClose }: P
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null
   const selectedNodeField = selectedNode && selectedNode.data.kind === 'field' ? fieldsById.get(selectedNode.id) || null : null
 
+  /** "+ Adicionar pergunta" no canvas: cria o campo no schema (fonte de
+   *  verdade, via onAddField) e desenha o node correspondente aqui — ligado
+   *  por uma edge ao node selecionado, se houver um. */
+  function handleAddField() {
+    const fieldId = onAddField('short_text')
+    const basePos = selectedNode?.position ?? { x: 40, y: Math.max(0, ...nodes.map(n => n.position.y)) + NODE_GAP_Y }
+    const newPos = { x: basePos.x + 260, y: basePos.y }
+    setNodes(curr => [...curr, {
+      id: fieldId,
+      type: 'formFlow',
+      position: newPos,
+      data: { label: 'Nova pergunta', kind: 'field', fieldType: 'short_text', options: undefined },
+    }])
+    if (selectedNodeId) {
+      setEdges(curr => addEdge({ id: `${selectedNodeId}->${fieldId}`, source: selectedNodeId, target: fieldId, animated: true }, curr))
+    }
+    setSelectedNodeId(fieldId)
+    setSelectedEdgeId(null)
+  }
+
   function updateSelectedField(patch: Partial<FormField>) {
     if (!selectedNodeId) return
     onUpdateField(selectedNodeId, patch)
@@ -175,7 +198,10 @@ function FormFlowCanvasInner({ schema, onChangeFlow, onUpdateField, onClose }: P
           <p className="text-sm font-semibold">Fluxo condicional</p>
           <p className="text-xs text-muted-foreground">Clique numa pergunta pra editar texto/tipo/opções. Arraste a partir de uma opção pra ramificar. Clique no "x" da conexão pra desconectar.</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleAddField}><Plus className="w-4 h-4 mr-1" /> Adicionar pergunta</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+        </div>
       </div>
 
       <div className="relative flex-1 min-h-0">

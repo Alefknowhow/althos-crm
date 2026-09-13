@@ -28,8 +28,10 @@ const nk = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`
 
 const TYPE_ORDER: FunnelTriggerType[] = ['dm', 'comment', 'comment_and_dm', 'story', 'story_reply']
 
-/* ═══════════════ Editor de botões de um passo (resposta rápida / link) ═══════════════ */
-function ButtonsEditor({ buttons, onChange }: { buttons: FunnelButton[]; onChange: (b: FunnelButton[]) => void }) {
+/* ═══════════════ Editor de botões de um passo (resposta rápida / link) ═══════════════
+ * Exportado — reaproveitado também no editor de node do canvas
+ * (SocialFunnelNodeEditPanel.tsx), pra editar botões sem sair do fluxo. */
+export function ButtonsEditor({ buttons, onChange }: { buttons: FunnelButton[]; onChange: (b: FunnelButton[]) => void }) {
   function update(i: number, patch: Partial<FunnelButton>) {
     onChange(buttons.map((b, j) => j === i ? { ...b, ...patch } : b))
   }
@@ -96,8 +98,13 @@ export function FunnelBuilder({
       return n
     })
   }
-  function addStep(type: 'message' | 'ai') {
-    setSteps(list => [...list, { _key: nk(), sort_order: list.length, step_type: type, message_text: type === 'message' ? '' : null, ai_instructions: type === 'ai' ? '' : null, wait_for_reply: true, buttons: [] }])
+  /** Retorna o `_key` do passo novo — usado tanto pelo botão da lista quanto
+   *  pelo canvas de fluxo ("+ Adicionar passo"), que precisa do id pra criar
+   *  o node correspondente. */
+  function addStep(type: 'message' | 'ai'): string {
+    const key = nk()
+    setSteps(list => [...list, { _key: key, sort_order: list.length, step_type: type, message_text: type === 'message' ? '' : null, ai_instructions: type === 'ai' ? '' : null, wait_for_reply: true, buttons: [] }])
+    return key
   }
 
   async function handleSave() {
@@ -237,6 +244,7 @@ export function FunnelBuilder({
           flow={flow}
           onChangeFlow={setFlow}
           onUpdateStep={(clientId, p) => patch(clientId, p)}
+          onAddStep={addStep}
           onClose={() => setFlowOpen(false)}
         />
       )}

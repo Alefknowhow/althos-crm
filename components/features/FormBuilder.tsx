@@ -34,7 +34,10 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
     setActivePageId(id)
   }
 
-  function addField(type: string) {
+  /** Retorna o id do campo novo — usado tanto pela sidebar/toolbar quanto
+   *  pelo canvas de fluxo ("+ Adicionar pergunta"), que precisa do id pra
+   *  desenhar o node correspondente. */
+  function addField(type: string): string {
     const isChoice = ['single_choice', 'select', 'multi_select'].includes(type)
     const def = {
       id: `field_${Date.now()}`,
@@ -45,6 +48,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
     }
     setSchema({ ...schema, fields: [...schema.fields, def] })
     selectPage(def.id)
+    return def.id
   }
 
   function updateSelectedField(updates: any) {
@@ -213,6 +217,7 @@ export default function FormBuilder({ orgSlug, initialForm, pipelines, stages, e
           schema={schema}
           onChangeFlow={flow => setSchema((prev: any) => ({ ...prev, flow }))}
           onUpdateField={updateFieldById}
+          onAddField={addField}
           onClose={() => setFlowOpen(false)}
         />
       )}

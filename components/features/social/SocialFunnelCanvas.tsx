@@ -6,7 +6,7 @@ import {
   useNodesState, useEdgesState, type Node, type Edge, type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { FunnelStep } from '@/actions/social-funnels'
 import type { FunnelFlow, FunnelEdgeCondition } from '@/lib/social/funnel-traversal'
@@ -83,6 +83,9 @@ type Props = {
   flow: FunnelFlow | undefined
   onChangeFlow: (flow: FunnelFlow) => void
   onUpdateStep: (clientId: string, patch: Partial<FunnelStep>) => void
+  /** Cria um novo passo (na lista, fonte de verdade) e devolve seu client_id
+   *  — o canvas usa o id pra desenhar o node novo direto no fluxo. */
+  onAddStep: (type: 'message' | 'ai') => string
   onClose: () => void
 }
 
@@ -95,7 +98,7 @@ export default function SocialFunnelCanvas(props: Props) {
   )
 }
 
-function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onUpdateStep, onClose }: Props) {
+function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onUpdateStep, onAddStep, onClose }: Props) {
   // Estado inicial derivado UMA vez na abertura — depois disso o canvas é
   // a fonte da verdade (mesmo padrão de FormFlowCanvas.tsx).
   const initial = useMemo(() => buildInitialGraph(steps, triggerType, flow), []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -159,14 +162,38 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onUpd
   function updateSelectedStep(patch: Partial<FunnelStep>) {
     if (!selectedNodeId || !selectedNodeStep) return
     onUpdateStep(selectedNodeId, patch)
-    // Reflete no node local (tipo/label) sem esperar o array de steps do
-    // pai voltar como prop — mescla o patch no step atual pra derivar o
-    // label do mesmo jeito que buildInitialGraph faz.
+    // Reflete no node local (tipo/label/botões) sem esperar o array de steps
+    // do pai voltar como prop — mescla o patch no step atual pra derivar o
+    // label/handles do mesmo jeito que buildInitialGraph faz. buttonLabels
+    // precisa ser atualizado aqui também: é o que desenha os handles de
+    // saída por botão no node (SocialFunnelNode.tsx) — sem isso, editar os
+    // botões pelo painel do canvas não mostraria os handles novos até
+    // fechar e reabrir o fluxo.
     const merged = { ...selectedNodeStep, ...patch }
     const label = merged.step_type === 'ai' ? (merged.ai_instructions || 'Resposta por IA') : (merged.message_text || 'Mensagem')
     setNodes(curr => curr.map(n => n.id === selectedNodeId
-      ? { ...n, data: { ...n.data, stepType: merged.step_type, label } }
+      ? { ...n, data: { ...n.data, stepType: merged.step_type, label, buttonLabels: merged.buttons?.map(b => b.label) } }
       : n))
+  }
+
+  /** "+ Adicionar passo" no canvas: cria o passo na lista (fonte de
+   *  verdade, via onAddStep) e desenha o node correspondente aqui — ligado
+   *  por uma edge ao node selecionado, se houver um. */
+  function handleAddStep() {
+    const clientId = onAddStep('message')
+    const basePos = selectedNode?.position ?? { x: 40, y: Math.max(0, ...nodes.map(n => n.position.y)) + NODE_GAP_Y }
+    const newPos = { x: basePos.x + 260, y: basePos.y }
+    setNodes(curr => [...curr, {
+      id: clientId,
+      type: 'socialFunnel',
+      position: newPos,
+      data: { label: 'Mensagem', kind: 'step', stepType: 'message', waitForReply: true, buttonLabels: [] },
+    }])
+    if (selectedNodeId) {
+      setEdges(curr => addEdge({ id: `${selectedNodeId}->${clientId}`, source: selectedNodeId, target: clientId, animated: true }, curr))
+    }
+    setSelectedNodeId(clientId)
+    setSelectedEdgeId(null)
   }
 
   return (
@@ -176,7 +203,10 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onUpd
           <p className="text-sm font-semibold">Fluxo da automação</p>
           <p className="text-xs text-muted-foreground">Clique num passo pra editar a resposta. Arraste a partir de um botão pra ramificar. Clique no "x" da conexão pra desconectar.</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleAddStep}><Plus className="w-4 h-4 mr-1" /> Adicionar passo</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+        </div>
       </div>
 
       <div className="relative flex-1 min-h-0">

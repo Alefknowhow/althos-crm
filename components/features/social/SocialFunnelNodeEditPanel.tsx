@@ -2,7 +2,8 @@
 
 import { Textarea } from '@/components/ui/textarea'
 import { MessageSquare, Sparkles, X } from 'lucide-react'
-import type { FunnelStep } from '@/actions/social-funnels'
+import type { FunnelStep, FunnelButton } from '@/actions/social-funnels'
+import { ButtonsEditor } from './SocialFunnelBuilder'
 
 /** Editor de passo direto no node do canvas — fixo/IA e o texto
  *  correspondente, sem precisar fechar o fluxo e voltar pra lista. */
@@ -14,7 +15,7 @@ export default function SocialFunnelNodeEditPanel({
   onClose: () => void
 }) {
   return (
-    <div className="absolute top-3 left-3 z-10 w-72 rounded-md border bg-card shadow-lg p-3 space-y-3">
+    <div className="absolute top-3 left-3 z-10 w-80 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-md border bg-card shadow-lg p-3 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Passo</p>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -56,6 +57,14 @@ export default function SocialFunnelNodeEditPanel({
           onChange={e => onChange({ ai_instructions: e.target.value })}
         />
       )}
+
+      <div className="space-y-1">
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Botões (resposta rápida / link)</p>
+        <ButtonsEditor
+          buttons={step.buttons || []}
+          onChange={(b: FunnelButton[]) => onChange({ buttons: b })}
+        />
+      </div>
     </div>
   )
 }
