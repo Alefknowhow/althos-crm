@@ -79,8 +79,8 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
   trial: {
     key:               'trial',
     label:             'Teste grátis',
-    tagline:           'Teste por 15 dias',
-    description:       'Acesso completo ao plano Pro por 15 dias, sem cartão de crédito.',
+    tagline:           'Teste por 14 dias',
+    description:       'Acesso completo ao plano Pro por 14 dias, com reembolso garantido se cancelar dentro do período.',
     priceCents:         0,
     priceCentsSemestral:null,
     priceCentsAnnual:   null,

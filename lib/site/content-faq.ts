@@ -67,7 +67,7 @@ export const DIFFERENTIATORS: Differentiator[] = [
   {
     icon: 'Wallet',
     title: 'Preço honesto',
-    body: 'Planos transparentes, sem pegadinha. Teste grátis por 15 dias, sem cartão. Pague mensal ou economize 18% no anual quando quiser evoluir.',
+    body: 'Planos transparentes, sem pegadinha. Reembolso garantido em 14 dias. Pague mensal ou economize 18% no anual quando quiser evoluir.',
   },
 ]
 
@@ -81,7 +81,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Começando',
     question: 'Preciso de cartão de crédito para começar?',
-    answer: 'Não. Você testa o app completo por 15 dias sem informar cartão — esse já é o seu período de satisfação garantida. Se decidir continuar depois do teste, aí sim assina com uma forma de pagamento (cartão ou Pix), sem período adicional de reembolso.',
+    answer: 'Sim — você escolhe um plano e paga (Pix ou cartão) já no cadastro. Mas não tem risco: se cancelar em até 14 dias, devolvemos 100% do valor pago, sem perguntas.',
   },
   {
     category: 'Começando',
@@ -106,7 +106,7 @@ export const FAQ: FaqItem[] = [
   {
     category: 'Planos',
     question: 'Qual a diferença entre os planos?',
-    answer: 'O teste grátis de 15 dias já dá acesso completo ao Pro, incluindo o módulo do seu nicho. O Starter é o ponto de entrada pago (catálogo, tarefas, agendamentos e Meta Ads, sem WhatsApp/Instagram), o Pro adiciona WhatsApp, Instagram, insights com IA e mais usuários, e o Business libera tudo, sem limites de uso.',
+    answer: 'O Starter já inclui CRM, WhatsApp, Instagram e Atendente de IA — com franquia de 2 usuários e 500 Althos Credits/mês. O Pro adiciona Automações, Agentes de IA, Financeiro, Integrações/API e mais usuários (5 incluídos, 2.500 créditos). O Business libera Voice AI, SMS, múltiplas unidades e permissões avançadas, com 10 usuários incluídos e 7.500 créditos/mês.',
   },
   {
     category: 'Planos',

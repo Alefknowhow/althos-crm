@@ -150,7 +150,7 @@ function SignupForm() {
           <p className="text-sm text-muted-foreground leading-snug">
             {inviteToken
               ? 'Você foi convidado. Crie sua conta para começar.'
-              : 'Teste grátis por 14 dias · sem cartão.'}
+              : 'Escolha um plano e comece hoje · reembolso garantido em 14 dias.'}
           </p>
         </div>
 

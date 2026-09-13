@@ -18,11 +18,13 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T05:05:13.303Z
+**Generated At**: 2026-09-13T11:56:58.357Z
 **Branch**: `master`
-**Last Commit**: 44a98fb docs(harness): Fases 8/9/10 — harness atualizado + verificacao final (lint/typecheck/test/build) (Alef Trentin, 12 minutes ago)
+**Last Commit**: 87a6d01 feat(formularios): editor de fluxo condicional em canvas de nodes (Alef Trentin, 7 hours ago)
 
 **Recent Commits**:
+- 87a6d01 feat(formularios): editor de fluxo condicional em canvas de nodes
+- 8b10e05 fix(billing): recalibra 5x o custo por acao de IA (unit economics do Business)
 - 44a98fb docs(harness): Fases 8/9/10 — harness atualizado + verificacao final (lint/typecheck/test/build)
 - 8e39257 fix(embarques): linha do dia atual em vermelho negrito, sem coluna pintada
 - 37cffaa fix(billing): Fase 7 — corrige bug critico que quebrava todo consumo de Althos Credits desde a Fase 2/3
@@ -31,28 +33,45 @@ Duas partes:
 - c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado)
 - ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao
 - dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
-- 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
-- ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (9):
+**Unstaged Changes** (25):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
-- M components/features/OneQuestionForm.tsx
-- M components/features/PublicFormSchema.ts
-- M components/features/formbuilder/FormToolbar.tsx
-- M docs/ALTHOS_CREDITS.md
-- M lib/plans/credit-pricing.ts
-- M package-lock.json
-- M package.json
+- M .ai/HANDOFF.md
+- M actions/billing.ts
+- M actions/organization-setup.ts
+- M actions/social-funnels.ts
+- M app/(public)/funcionalidades/page.tsx
+- M app/(public)/planos/page.tsx
+- M app/(public)/signup/page.tsx
+- M app/app/[orgSlug]/assinatura/SubscriptionActions.tsx
+- M app/app/[orgSlug]/assinatura/page.tsx
+- M app/app/[orgSlug]/upgrade/page.tsx
+- M components/features/billing/CheckoutModal.tsx
+- M components/features/social/SocialFunnelBuilder.tsx
+- M components/landing/AlthosHomeCompare.tsx
+- M components/landing/AlthosHomeFooterSections.tsx
+- M components/landing/AlthosHomePricing.tsx
+- M components/site/NicheLanding.tsx
+- M components/site/PricingPlans.tsx
+- M docs/PRICING_ARCHITECTURE.md
+- M lib/asaas/client.ts
+- M lib/billing/plans-data.ts
+- M lib/inngest/trial-emails.ts
+- M lib/site/content-faq.ts
+- M lib/social/funnel-engine.ts
 
-**Untracked Files** (4):
+**Untracked Files** (7):
 - .claude/
-- lib/forms/field-order.ts
-- lib/forms/flow-traversal.ts
-- supabase/migrations/0249_ai_credit_cost_5x_recalibration.sql
+- components/features/social/SocialFunnelCanvas.tsx
+- components/features/social/SocialFunnelEdgePanel.tsx
+- components/features/social/SocialFunnelNode.tsx
+- lib/social/funnel-traversal.ts
+- supabase/migrations/0249_social_funnel_flow.sql
+- supabase/migrations/0250_organizations_refund_tracking.sql
 
 **Staged Diff Summary**:
 ```
@@ -61,16 +80,32 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md                             |  22 +++
- .ai/DECISIONS.md                                |  42 ++++++
- components/features/OneQuestionForm.tsx         |  64 ++++-----
- components/features/PublicFormSchema.ts         |   6 +
- components/features/formbuilder/FormToolbar.tsx |   9 +-
- docs/ALTHOS_CREDITS.md                          |  20 +++
- lib/plans/credit-pricing.ts                     |  35 +++--
- package-lock.json                               | 177 ++++++++++++++++++++++++
- package.json                                    |   1 +
- 9 files changed, 332 insertions(+), 44 deletions(-)
+.ai/CURRENT_TASK.md                                |  43 +++++++
+ .ai/DECISIONS.md                                   |  54 +++++++++
+ .ai/HANDOFF.md                                     | 112 ++++++++++++-----
+ actions/billing.ts                                 |  63 +++++++++-
+ actions/organization-setup.ts                      |  22 +++-
+ actions/social-funnels.ts                          |  16 +++
+ app/(public)/funcionalidades/page.tsx              |   2 +-
+ app/(public)/planos/page.tsx                       |   4 +-
+ app/(public)/signup/page.tsx                       |   2 +-
+ .../[orgSlug]/assinatura/SubscriptionActions.tsx   |  34 ++++--
+ app/app/[orgSlug]/assinatura/page.tsx              |   1 +
+ app/app/[orgSlug]/upgrade/page.tsx                 |  43 ++-----
+ components/features/billing/CheckoutModal.tsx      | 107 ++++++----------
+ components/features/social/SocialFunnelBuilder.tsx |  44 +++++--
+ components/landing/AlthosHomeCompare.tsx           |   4 +-
+ components/landing/AlthosHomeFooterSections.tsx    |   2 +-
+ components/landing/AlthosHomePricing.tsx           | 104 +++++++---------
+ components/site/NicheLanding.tsx                   |   6 +-
+ components/site/PricingPlans.tsx                   | 134 +++++++++------------
+ docs/PRICING_ARCHITECTURE.md                       |  15 +++
+ lib/asaas/client.ts                                |  20 +++
+ lib/billing/plans-data.ts                          |   4 +-
+ lib/inngest/trial-emails.ts                        |   2 +-
+ lib/site/content-faq.ts                            |   6 +-
+ lib/social/funnel-engine.ts                        |  35 +++++-
+ 25 files changed, 574 insertions(+), 305 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -302,7 +337,30 @@ SMS deliberadamente NÃO ganhou uma tabela `sms_usage` própria — continua no
 ledger de Voice (`usageType: 'sms'`), decisão pragmática documentada em
 `docs/BILLING.md`, não uma lacuna esquecida.
 
-### Recommended Next Steps (atualizado — sessão completou Fases 2 a 10)
+### Atualização (mesma sessão, continuação): Business preço fixo + garantia de reembolso de 14 dias
+Usuário pediu 3 coisas: (1) Business sai de "sob consulta" e vira R$599
+fixo (checkout normal); (2) benefícios errados no site corrigidos
+(`PricingPlans.tsx`/`AlthosHomePricing.tsx` tinham números da repricing
+anterior); (3) trial vira "cobra na hora, reembolsa 100% se cancelar em
+até 14 dias" — substituindo o antigo "14/15 dias grátis sem cartão, sem
+reembolso depois". Implementado: `lib/asaas/client.ts::refundPayment()`
+(novo), `actions/billing.ts::cancelSubscriptionWithRefund()` (novo),
+migration `0250` (`organizations.refunded_at` + `trial_ends_at`
+reaproveitada — pra quem já pagou, passa a significar "fim da janela de
+reembolso"), redirect pós-cadastro pra `/upgrade`
+(`actions/organization-setup.ts`), UI de "Cancelar e reembolsar"
+(`SubscriptionActions.tsx`). Copy de "15 dias sem cartão" trocada em ~10
+arquivos de site/marketing. **Pendência deliberada, não implementada**:
+NÃO há gate real bloqueando acesso ao app pra quem não pagou — o
+redirect pro `/upgrade` é só UX; o trial de 14 dias por baixo continua
+funcional se o usuário não completar o pagamento. Ver
+`docs/PRICING_ARCHITECTURE.md` § "Reavaliação do teste grátis".
+
+### Recommended Next Steps (atualizado — sessão completou Fases 2 a 10 + ajustes pós-Fase-10)
+0. **Gate de acesso real para quem não pagou** (mais recente, mais
+   urgente se o negócio quiser aplicar "cobra na hora" de verdade) — hoje
+   só existe o redirect de UX pro `/upgrade`; nada bloqueia navegar direto
+   pro app durante o trial de 14 dias sem nunca pagar.
 1. **Fase 6 completa**: reconciliar de vez as duas taxonomias de plano
    (`organizations.plan` legada vs. `accounts`/`subscriptions` nova) — o
    pior sintoma já foi corrigido (preço de `/upgrade` batendo com o

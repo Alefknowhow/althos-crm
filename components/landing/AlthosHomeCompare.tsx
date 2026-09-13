@@ -30,14 +30,14 @@ const CMP_ROWS: { feat: string; a: boolean | string; k: boolean | string; h: boo
   { feat: 'Feito para nichos brasileiros', a: true, k: false, h: false },
   { feat: 'Preço e cobrança em Real (R$)', a: true, k: false, h: false },
   { feat: 'Suporte humano em português', a: true, k: 'Limitado', h: 'Limitado' },
-  { feat: 'Teste completo por 15 dias, sem cartão', a: true, k: 'Limitado', h: 'Limitado' },
+  { feat: 'Reembolso garantido em 14 dias', a: true, k: 'Limitado', h: 'Limitado' },
   { feat: 'Pronto pra usar em minutos', a: true, k: 'Configuração longa', h: 'Implantação cara' },
   { feat: 'Sem fidelidade — cancele quando quiser', a: true, k: true, h: false },
 ]
 
 const GUARANTEES = [
   { h: 'Sem fidelidade', p: 'Cancele quando quiser, direto pelo painel. Nada de multa ou letra miúda.' },
-  { h: 'Comece sem cartão', p: 'Teste o app completo por 15 dias. Você só assina quando decidir continuar.' },
+  { h: 'Sem risco', p: 'Assine e use o app completo. Cancele em até 14 dias e devolvemos 100% do valor pago.' },
   { h: 'Suporte de gente', p: 'Atendimento humano em português, por quem conhece o seu tipo de negócio.' },
   { h: 'Seus dados protegidos', p: 'Hospedagem segura e conformidade com a LGPD. Seus contatos são só seus.' },
 ]

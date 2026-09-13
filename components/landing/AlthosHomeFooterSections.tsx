@@ -90,7 +90,7 @@ export function FinalCta() {
         <h2 className="reveal" data-d="0">Pronto para transformar seus <em>resultados</em>?</h2>
         <p className="reveal" data-d="1">Coloque a IA do Althos pra atender, qualificar e vender por você — hoje, em minutos.</p>
         <div className="reveal" data-d="2">
-          <a href="/signup" className="btn btn-solid">Testar grátis por 15 dias <span className="arrow">→</span></a>
+          <a href="/signup" className="btn btn-solid">Começar agora <span className="arrow">→</span></a>
         </div>
         <div className="micro reveal" data-d="3"><span className="check">✓</span> Teste completo · sem cartão</div>
       </div>

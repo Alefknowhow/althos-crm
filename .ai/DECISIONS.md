@@ -465,3 +465,57 @@ debitou exatamente 5 créditos (7500→7495), confirmando que o mesmo teto
 agora rende 1.500 respostas em vez de 7.500. `docs/ALTHOS_CREDITS.md`
 documenta a tabela completa de antes/depois e o raciocínio de unit
 economics.
+
+## 2026-09-13 — Business preço fixo + garantia de reembolso de 14 dias (substitui o trial sem cartão)
+
+Context: usuário pediu 3 coisas juntas: (1) Business deixar de ser "sob
+consulta" e virar R$599 fixo; (2) benefícios errados no site corrigidos;
+(3) reavaliar o trial — passar de "14/15 dias grátis sem cartão" pra
+"cobra na hora, devolve o dinheiro se cancelar em até 14 dias". Perguntei
+ao usuário como ele queria o fluxo de cadastro (escolher plano+pagar no
+próprio /signup vs. manter cadastro simples e cobrar depois); ele pediu
+minha recomendação em vez de escolher.
+
+Decision:
+1. Recomendei e implementei: cadastro continua simples (nome/e-mail/senha,
+   sem fricção adicional), mas o REDIRECIONAMENTO pós-cadastro passa a ser
+   `/upgrade` (escolher plano + pagar) em vez de direto pro app —
+   reaproveitando o `CheckoutModal`/`UpgradeCheckoutButton` já existentes,
+   sem construir UI nova nem reescrever o formulário de cadastro.
+2. Reembolso automático (usuário confirmou: "automático"): novo
+   `refundPayment()` no client Asaas + `cancelSubscriptionWithRefund()`
+   como action — cancela e estorna numa chamada só, condicionado à janela
+   de 14 dias.
+3. `organizations.trial_ends_at` REAPROVEITADA em vez de criar uma coluna
+   nova exclusiva pra reembolso — pra quem já pagou (tem
+   `asaas_subscription_id`), o mesmo campo passa a significar "fim da
+   janela de reembolso" em vez de "fim do acesso grátis". Verificado que
+   isso é seguro: `isAccessBlocked()` só lê esse campo quando
+   `plan IN ('trial','free_trial')`, e uma conta que pagou já teve `plan`
+   trocado pro plano real em `activatePlanFromWebhook` — os dois usos do
+   campo nunca colidem pra uma mesma conta.
+4. **Decisão explícita de NÃO implementar nesta leva**: um gate real que
+   bloqueie o acesso ao app pra quem ainda não pagou. O redirecionamento
+   pro `/upgrade` é só uma sugestão de UX (o trial de 14 dias por baixo
+   continua funcional se o usuário fechar a aba antes de pagar) — construir
+   um gate de verdade seria uma mudança de app/[orgSlug]/layout.tsx que
+   arrisca travar prospects já em trial ativo agora, então foi
+   deliberadamente adiado e documentado como pendência clara.
+
+Reason: a peça mais arriscada (mudar comportamento de acesso ao app pra
+todo mundo, inclusive quem já está no meio de um trial) foi isolada e
+adiada; a peça de valor imediato (parar de anunciar "sem cartão" quando a
+intenção é cobrar, e ter o mecanismo de estorno pronto) foi entregue sem
+esse risco.
+
+Impact: migration `0250` (`organizations.refunded_at`, comentário em
+`trial_ends_at`). `lib/asaas/client.ts` (`refundPayment`,
+`getSubscriptionAllPayments`). `actions/billing.ts`
+(`cancelSubscriptionWithRefund`, `activatePlanFromWebhook` ajustado pra 14
+dias). `actions/organization-setup.ts` (redirect + trial 15→14 dias).
+`SubscriptionActions.tsx` (UI de cancelamento com reembolso). Business
+sem mais "sob consulta" em `PricingPlans.tsx`, `AlthosHomePricing.tsx`,
+`upgrade/page.tsx`, `CheckoutModal.tsx`. Copy de "15 dias sem cartão"
+substituída em ~10 arquivos de site/marketing. Nenhuma cobrança real foi
+feita para testar o fluxo — validado só por leitura de código e
+typecheck/test.

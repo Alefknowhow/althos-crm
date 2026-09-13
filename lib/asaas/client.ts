@@ -156,6 +156,26 @@ export const asaas = {
   },
 
   /**
+   * Estorna um pagamento já confirmado/recebido — usado pela garantia de
+   * reembolso de 14 dias (seção "Reavaliação do teste grátis", set/2026):
+   * o cliente paga na hora da assinatura, e se cancelar dentro de 14 dias o
+   * valor é devolvido via este endpoint. Funciona pra PIX e cartão; a Asaas
+   * processa o estorno pro método original de pagamento.
+   */
+  async refundPayment(paymentId: string, description?: string) {
+    return asaasFetch(`/payments/${paymentId}/refund`, {
+      method: 'POST',
+      body: JSON.stringify(description ? { description } : {}),
+    })
+  },
+
+  /** Todos os pagamentos de uma assinatura (não só o mais recente) — usado
+   *  pra achar o pagamento CONFIRMADO/RECEIVED a estornar na garantia de 14 dias. */
+  async getSubscriptionAllPayments(subscriptionId: string) {
+    return asaasFetch(`/subscriptions/${subscriptionId}/payments?limit=10`)
+  },
+
+  /**
    * One-off charge (not tied to a subscription) — used for add-ons that are
    * a single purchase rather than a recurring line item, e.g. AI credit packs.
    * `externalReference` lets the webhook map the payment back without a

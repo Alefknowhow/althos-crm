@@ -370,6 +370,49 @@ atualizados. Esta seção consolida o estado final.
 - `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
 - `docs/ALTHOS_CREDITS.md` documenta a tabela completa antes/depois.
 
+## Completed (Business preço fixo + benefícios do site + garantia de reembolso de 14 dias)
+- **Business deixou de ser "sob consulta"**: agora R$599/mês fixo, checkout
+  normal (igual Starter/Pro) — corrigido em `components/site/PricingPlans.tsx`,
+  `components/landing/AlthosHomePricing.tsx`,
+  `app/app/[orgSlug]/upgrade/page.tsx`,
+  `components/features/billing/CheckoutModal.tsx`.
+- **Benefícios do site corrigidos**: `planFeatures()`/`planFeats()` em
+  `PricingPlans.tsx`/`AlthosHomePricing.tsx` estavam com números da
+  repricing anterior e WhatsApp marcado como bloqueado no Starter (já era
+  `true` no código real) — reescritos seguindo a mesma estrutura já usada
+  em `lib/billing/plan-features.ts` (Fase 6).
+- **Trial vira garantia de reembolso de 14 dias**: decisão do usuário —
+  cobra na hora (Pix/cartão) em vez de trial sem cartão; reembolso 100% se
+  cancelar em até 14 dias. Implementado:
+  - `lib/asaas/client.ts::refundPayment()` (novo, `POST /payments/{id}/refund`)
+    + `getSubscriptionAllPayments()`.
+  - `actions/billing.ts::cancelSubscriptionWithRefund()` (novo) — cancela
+    + estorna se dentro da janela.
+  - Migration `0250`: `organizations.refunded_at` (nova coluna);
+    `trial_ends_at` reaproveitada (comentário na coluna) — pra quem já
+    pagou, passa a significar "fim da janela de reembolso" em vez de "fim
+    do acesso grátis". `activatePlanFromWebhook` seta 14 dias a partir da
+    confirmação do pagamento.
+  - `actions/organization-setup.ts::createOrganization` redireciona pro
+    `/upgrade` (escolher plano + pagar) em vez de direto pro app — 14 dias
+    (era 15) no trial de fallback caso o usuário não pague na hora.
+  - UI: `SubscriptionActions.tsx` mostra "Cancelar e reembolsar" com copy
+    própria durante a janela.
+  - Copy atualizada em TODO lugar que mencionava "15 dias"/"sem cartão":
+    `/planos`, `/funcionalidades`, homepage (Pricing/Compare/Footer),
+    páginas de nicho, FAQ, `/signup`, `lib/billing/plans-data.ts` (trial),
+    `lib/inngest/trial-emails.ts` (e-mail de trial expirado).
+  - **Achado de passagem**: a resposta do FAQ sobre diferença de planos
+    também tinha benefícios errados (Starter "sem WhatsApp/Instagram") —
+    corrigida junto.
+- **Pendências explícitas desta mudança** (não implementadas, documentadas
+  em `docs/PRICING_ARCHITECTURE.md`): (1) não há gate de acesso real
+  bloqueando o app pra quem não pagou — só o redirecionamento inicial; (2)
+  fluxo de convite confirmado por leitura de código (não testado no
+  navegador) que não é afetado; (3) reembolso de PIX não testado com
+  cobrança real (pode depender de configuração da conta Asaas).
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
+
 ## In Progress
 Nada em edição no momento — sessão pronta para commit final.
 

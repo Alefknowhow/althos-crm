@@ -100,6 +100,12 @@ export async function activatePlanFromWebhook(
     scale:    null, // legacy alias of business
   }
 
+  // trial_ends_at reaproveitado (migration 0250): pra quem já pagou, deixa de
+  // significar "fim do acesso grátis" e passa a significar "até quando a
+  // conta é elegível a reembolso automático de 14 dias" — ver
+  // cancelSubscriptionWithRefund() abaixo.
+  const refundEligibleUntil = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+
   const { error } = await admin
     .from('organizations')
     .update({
@@ -108,7 +114,7 @@ export async function activatePlanFromWebhook(
       activated_at:        new Date().toISOString(),
       limit_leads:         null,                          // unlimited for all paid plans
       limit_users:         userLimits[planKey] ?? 1,
-      trial_ends_at:       null,
+      trial_ends_at:       refundEligibleUntil,
     })
     .eq('asaas_subscription_id', subscriptionId)
 
@@ -149,6 +155,61 @@ export async function cancelSubscription(
 
   revalidatePath(`/app/${orgSlug}/assinatura`)
   return { ok: true }
+}
+
+/**
+ * Garantia de reembolso de 14 dias: cancela a assinatura E estorna o
+ * pagamento mais recente confirmado, SE a conta ainda estiver dentro da
+ * janela (org.trial_ends_at, reaproveitado com esse significado após o
+ * primeiro pagamento — ver activatePlanFromWebhook). Fora da janela, cai
+ * pro cancelamento normal (sem estorno) — a assinatura para de renovar, mas
+ * o que já foi cobrado não é devolvido.
+ */
+export async function cancelSubscriptionWithRefund(
+  orgSlug: string,
+): Promise<{ ok: boolean; refunded: boolean; error?: string }> {
+  await requireAuth()
+  const org      = await getCurrentOrganization(orgSlug) as any
+  const supabase = createClient()
+
+  const subscriptionId = org.asaas_subscription_id as string | null | undefined
+  if (!subscriptionId) {
+    return { ok: false, refunded: false, error: 'Nenhuma assinatura ativa encontrada.' }
+  }
+
+  const refundWindowEnd = org.trial_ends_at ? new Date(org.trial_ends_at) : null
+  const withinRefundWindow = refundWindowEnd !== null && refundWindowEnd.getTime() > Date.now() && org.subscription_status !== 'trial'
+
+  let refunded = false
+
+  try {
+    if (withinRefundWindow) {
+      const payments = await asaas.getSubscriptionAllPayments(subscriptionId)
+      const paidPayment = ((payments?.data as any[]) ?? []).find(
+        (p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED',
+      )
+      if (paidPayment) {
+        await asaas.refundPayment(paidPayment.id, 'Cancelamento dentro da garantia de 14 dias')
+        refunded = true
+      }
+    }
+
+    await asaas.cancelSubscription(subscriptionId)
+  } catch (err: any) {
+    console.error('[cancelSubscriptionWithRefund]', err?.message)
+    return { ok: false, refunded: false, error: err.message || 'Erro ao cancelar/estornar assinatura' }
+  }
+
+  await supabase
+    .from('organizations')
+    .update({
+      subscription_status: 'canceled',
+      ...(refunded ? { refunded_at: new Date().toISOString() } : {}),
+    })
+    .eq('id', org.id)
+
+  revalidatePath(`/app/${orgSlug}/assinatura`)
+  return { ok: true, refunded }
 }
 
 export async function getOrgUsage(orgId: string) {

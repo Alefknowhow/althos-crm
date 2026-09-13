@@ -7,43 +7,44 @@ import {
   type BillingCycle,
   type PlanConfig,
 } from '@/lib/billing/plans'
-import { PLAN_LIMITS, PLAN_META, type PlanId } from '@/lib/plans/config'
+import { PLAN_META, type PlanId } from '@/lib/plans/config'
 import { CHECK, CROSS, nBR } from './AlthosHomeShared'
 
 /**
- * Lista de funcionalidades por plano pago — espelha exatamente
- * components/site/PricingPlans.tsx (fonte: lib/plans/config). Starter/Pro/
- * Business têm as MESMAS funcionalidades; muda a QUANTIDADE de uso e dois
- * recursos premium (Insights IA + Exportar relatórios) ficam em Pro/Business.
+ * Lista de funcionalidades por plano pago — espelha
+ * components/site/PricingPlans.tsx / docs/PRICING_ARCHITECTURE.md § 2: CRM/
+ * WhatsApp/Instagram/IA básica em todos os planos; Automações/Agentes de
+ * IA/Financeiro/Produtos/API/MCP a partir do Pro; Voice AI/SMS/múltiplas
+ * unidades só no Business.
  */
 function planFeats(plan: PlanConfig): [string, boolean][] {
   const id = plan.key as PlanId
-  const lim = PLAN_LIMITS[id] ?? PLAN_LIMITS.starter
   const meta = PLAN_META[id] ?? PLAN_META.starter
   const isPro = id === 'pro' || id === 'business'
+  const isBusiness = id === 'business'
   return [
-    [lim.users === -1 ? 'Usuários ilimitados' : `${lim.users} usuário${lim.users > 1 ? 's' : ''}`, true],
-    [lim.orgs === -1 ? 'Empresas ilimitadas' : `${lim.orgs} empresa${lim.orgs > 1 ? 's' : ''}`, true],
-    ['Leads ilimitados', true],
-    [lim.customers === -1 ? 'Clientes ilimitados' : `${nBR(lim.customers)} clientes`, true],
-    [`${nBR(meta.aiCreditsMonthly)} créditos de IA/mês`, true],
-    [lim.automations === -1 ? 'Automações ilimitadas' : `${lim.automations} automações`, true],
-    ['Meta Ads (Pixel + CAPI)', true],
-    ['WhatsApp e Instagram', isPro],
+    [`${meta.includedUsers} usuário${meta.includedUsers > 1 ? 's' : ''} incluído${meta.includedUsers > 1 ? 's' : ''}`, true],
+    [`${nBR(meta.aiCreditsMonthly)} Althos Credits/mês`, true],
+    ['CRM, Pipeline e Contatos', true],
+    ['WhatsApp e Instagram', true],
     ['Atendente de IA 24h + score', true],
-    ['Agendamentos online', true],
+    ['Meta Ads (Pixel + CAPI)', true],
+    ['Automações', isPro],
+    ['Agentes de IA', isPro],
+    ['Financeiro e Produtos', isPro],
     ['Insights de vendas com IA', isPro],
-    ['Exportar relatórios', isPro],
+    ['Integrações, API e MCP', isPro],
+    ['Voice AI e SMS', isBusiness],
+    ['Múltiplas empresas/unidades', isBusiness],
+    ['Permissões e auditoria avançadas', isBusiness],
   ]
 }
 
 const FREE_FEATS: [string, boolean][] = [
-  ['Todos os recursos do Pro', true],
-  ['Módulo do seu nicho incluso', true],
-  ['WhatsApp, Instagram e Meta Ads', true],
-  ['Atendente de IA 24h + score', true],
-  ['Automações e agendamentos', true],
-  ['Sem necessidade de cartão', true],
+  ['Acesso completo desde o primeiro dia', true],
+  ['Cancele quando quiser', true],
+  ['Reembolso de 100% em até 14 dias', true],
+  ['Sem burocracia', true],
 ]
 
 /* ----------------------------- Pricing ----------------------------- */
@@ -72,16 +73,16 @@ export function Pricing() {
       </div>
 
       <div className="plans">
-        {/* Trial — não entra no checkout, é o teste completo de 15 dias */}
+        {/* Garantia de 14 dias — não entra no checkout, é a política de reembolso */}
         <article className="plan reveal">
-          <h3>Teste grátis</h3>
-          <p className="ptag">Experimente o app completo</p>
+          <h3>Garantia de 14 dias</h3>
+          <p className="ptag">Teste sem risco</p>
           <div className="price">
-            <span className="val">15 dias</span>
+            <span className="val">14 dias</span>
           </div>
-          <p className="annual-note">Sem cartão de crédito</p>
-          <p className="pdesc">Acesso completo ao plano Pro por 15 dias — incluindo o módulo do seu nicho, sem limitação.</p>
-          <a href="/signup" className="btn btn-outline">Começar teste grátis</a>
+          <p className="annual-note">Reembolso garantido</p>
+          <p className="pdesc">Assine qualquer plano e use por 14 dias. Não gostou? Cancele nesse período e devolvemos 100% do valor pago.</p>
+          <a href="/signup" className="btn btn-outline">Começar agora</a>
           <ul>
             {FREE_FEATS.map(([label, on], i) => (
               <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
@@ -92,41 +93,25 @@ export function Pricing() {
         {PUBLIC_PLANS.map(plan => {
           const pricing = getPlanPricing(plan, cycle)
           const popular = plan.key === 'pro'
-          const isBusiness = plan.key === 'business'
           return (
             <article className={`plan reveal${popular ? ' popular spot' : ''}`} key={plan.key}>
               {popular && <span className="plan-badge">★ Mais popular</span>}
               <h3>{plan.label}</h3>
               <p className="ptag">{plan.tagline}</p>
-              {isBusiness ? (
-                <>
-                  <div className="price">
-                    <span className="val" style={{ fontSize: '28px' }}>Sob consulta</span>
-                  </div>
-                  <p className="annual-note">Plano sob medida pro seu volume de operação</p>
-                </>
-              ) : (
-                <>
-                  <div className="price">
-                    <span className="cur">R$</span>
-                    <span className="val">{fmt(pricing.perMonthCents)}</span>
-                    <span className="per">/mês</span>
-                  </div>
-                  <p className="annual-note">
-                    {cycle === 'monthly'
-                      ? 'cobrado mensalmente'
-                      : cycle === 'annual'
-                        ? `${pricing.totalLabel} por ano · economize ${pricing.savedLabel}`
-                        : `${pricing.totalLabel} a cada 6 meses · economize ${pricing.savedLabel}`}
-                  </p>
-                </>
-              )}
+              <div className="price">
+                <span className="cur">R$</span>
+                <span className="val">{fmt(pricing.perMonthCents)}</span>
+                <span className="per">/mês</span>
+              </div>
+              <p className="annual-note">
+                {cycle === 'monthly'
+                  ? 'cobrado mensalmente'
+                  : cycle === 'annual'
+                    ? `${pricing.totalLabel} por ano · economize ${pricing.savedLabel}`
+                    : `${pricing.totalLabel} a cada 6 meses · economize ${pricing.savedLabel}`}
+              </p>
               <p className="pdesc">{plan.description}</p>
-              {isBusiness ? (
-                <a href="/fale-com-vendas" className="btn btn-outline">Falar com vendas</a>
-              ) : (
-                <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
-              )}
+              <a href="/signup" className={`btn ${popular ? 'btn-solid' : 'btn-outline'}`}>Começar grátis</a>
               <ul>
                 {planFeats(plan).map(([label, on], i) => (
                   <li className={on ? '' : 'off'} key={i}>{on ? CHECK : CROSS} {label}</li>
@@ -138,8 +123,7 @@ export function Pricing() {
       </div>
 
       <p className="price-note reveal" data-d="0">
-        Teste <b>15 dias grátis</b>, sem cartão — esse já é o seu período de satisfação garantida. Depois do
-        teste, você assina com uma forma de pagamento (Pix ou cartão) e a cobrança vale pra valer, sem reembolso.
+        A assinatura é cobrada no ato (Pix ou cartão). Cancelou em até <b>14 dias</b>? Devolvemos 100% do valor pago.
         No semestral e no anual, pague à vista no Pix ou parcele no cartão de crédito.
         <b> Sem fidelidade</b> — cancele quando quiser.
       </p>

@@ -12,33 +12,35 @@ import {
   type BillingCycle,
   type PlanConfig,
 } from '@/lib/billing/plans'
-import { PLAN_LIMITS, PLAN_META, type PlanId } from '@/lib/plans/config'
+import { PLAN_META, type PlanId } from '@/lib/plans/config'
 
 /**
- * Linhas de comparação por plano. Starter/Pro/Business têm as MESMAS
- * funcionalidades — o que muda é a QUANTIDADE de uso (usuários, empresas,
- * clientes, créditos de IA, automações). Dois recursos premium (Insights IA e
- * Exportar relatórios) ficam reservados a Pro/Business.
+ * Linhas de comparação por plano — segue a estrutura de benefícios definida
+ * em docs/PRICING_ARCHITECTURE.md § 2: CRM/WhatsApp/Instagram/IA básica em
+ * todos os planos; Automações/Agentes de IA/Financeiro/Produtos/API/MCP a
+ * partir do Pro; Voice AI/SMS/múltiplas unidades só no Business.
  */
 function planFeatures(p: PlanConfig): { label: string; on: boolean }[] {
-  const id   = p.key as PlanId
-  const lim  = PLAN_LIMITS[id] ?? PLAN_LIMITS.starter
-  const meta = PLAN_META[id] ?? PLAN_META.starter
+  const id    = p.key as PlanId
+  const meta  = PLAN_META[id] ?? PLAN_META.starter
   const isPro = id === 'pro' || id === 'business'
+  const isBusiness = id === 'business'
   const n = (v: number) => v.toLocaleString('pt-BR')
   return [
-    { label: lim.users === -1 ? 'Usuários ilimitados' : `${lim.users} usuário${lim.users > 1 ? 's' : ''}`, on: true },
-    { label: lim.orgs === -1 ? 'Empresas ilimitadas' : `${lim.orgs} empresa${lim.orgs > 1 ? 's' : ''}`, on: true },
-    { label: 'Leads ilimitados', on: true },
-    { label: lim.customers === -1 ? 'Clientes ilimitados' : `${n(lim.customers)} clientes`, on: true },
-    { label: `${n(meta.aiCreditsMonthly)} créditos de IA/mês`, on: true },
-    { label: lim.automations === -1 ? 'Automações ilimitadas' : `${lim.automations} automações`, on: true },
-    { label: 'Meta Ads (Pixel + CAPI)', on: true },
-    { label: 'WhatsApp e Instagram', on: isPro },
+    { label: `${meta.includedUsers} usuário${meta.includedUsers > 1 ? 's' : ''} incluído${meta.includedUsers > 1 ? 's' : ''}`, on: true },
+    { label: `${n(meta.aiCreditsMonthly)} Althos Credits/mês`, on: true },
+    { label: 'CRM, Pipeline e Contatos', on: true },
+    { label: 'WhatsApp e Instagram', on: true },
     { label: 'Atendente de IA 24h + score', on: true },
-    { label: 'Agendamentos online', on: true },
+    { label: 'Meta Ads (Pixel + CAPI)', on: true },
+    { label: 'Automações', on: isPro },
+    { label: 'Agentes de IA', on: isPro },
+    { label: 'Financeiro e Produtos', on: isPro },
     { label: 'Insights de vendas com IA', on: isPro },
-    { label: 'Exportar relatórios', on: isPro },
+    { label: 'Integrações, API e MCP', on: isPro },
+    { label: 'Voice AI e SMS', on: isBusiness },
+    { label: 'Múltiplas empresas/unidades', on: isBusiness },
+    { label: 'Permissões e auditoria avançadas', on: isBusiness },
   ]
 }
 
@@ -78,7 +80,7 @@ export function PricingPlans() {
 
       {/* Cards */}
       <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Trial card (não entra no checkout — é o teste completo de 15 dias) */}
+        {/* Garantia de 14 dias (não entra no checkout — é a política de reembolso) */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -86,35 +88,33 @@ export function PricingPlans() {
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="relative flex flex-col rounded-none border border-[#383838] bg-[#262626] p-5 sm:p-7"
         >
-          <h3 className="text-lg font-bold text-[#f4f4f4]">Teste grátis</h3>
-          <p className="mt-1 text-[13px] text-[#8d8d8d]">Experimente o app completo</p>
+          <h3 className="text-lg font-bold text-[#f4f4f4]">Garantia de 14 dias</h3>
+          <p className="mt-1 text-[13px] text-[#8d8d8d]">Teste sem risco</p>
 
           <div className="mt-5">
             <div className="flex items-end gap-1">
-              <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">15 dias</span>
+              <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">14 dias</span>
             </div>
-            <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Sem cartão de crédito</p>
+            <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Reembolso garantido</p>
           </div>
 
           <p className="mt-4 text-[13px] leading-relaxed text-[#a8a8a8]">
-            Acesso completo ao plano Pro por 15 dias — pipeline, WhatsApp com Agente de IA, automações e o módulo do seu nicho, sem limitação.
+            Assine qualquer plano e use por 14 dias. Não gostou? Cancele nesse período e devolvemos 100% do valor pago — sem perguntas.
           </p>
 
           <Link
             href="/signup"
             className="mt-6 rounded-none border border-[#525252] px-5 py-3 text-center text-[14px] font-semibold text-[#d4d4d4] transition-all hover:bg-[#1f1f1f]"
           >
-            Começar teste grátis
+            Começar agora
           </Link>
 
           <ul className="mt-5 space-y-2 border-t border-[#383838] pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">
             {[
-              { label: 'Todos os recursos do Pro', on: true },
-              { label: 'Módulo do seu nicho incluso', on: true },
-              { label: 'WhatsApp, Instagram e Meta Ads', on: true },
-              { label: 'Atendente de IA 24h + score', on: true },
-              { label: 'Automações e agendamentos', on: true },
-              { label: 'Sem necessidade de cartão', on: true },
+              { label: 'Acesso completo desde o primeiro dia', on: true },
+              { label: 'Cancele quando quiser', on: true },
+              { label: 'Reembolso de 100% em até 14 dias', on: true },
+              { label: 'Sem burocracia', on: true },
             ].map(f => (
               <li key={f.label} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -127,7 +127,6 @@ export function PricingPlans() {
         {PUBLIC_PLANS.map((plan, i) => {
           const pricing    = getPlanPricing(plan, cycle)
           const highlight  = plan.key === 'pro'
-          const isBusiness = plan.key === 'business'
           const features   = planFeatures(plan)
 
           return (
@@ -152,50 +151,33 @@ export function PricingPlans() {
               <h3 className="text-lg font-bold text-[#f4f4f4]">{plan.label}</h3>
               <p className="mt-1 text-[13px] text-[#8d8d8d]">{plan.tagline}</p>
 
-              {/* Preço — Business não expõe preço público, é sob consulta */}
-              {isBusiness ? (
-                <div className="mt-5">
-                  <div className="text-2xl font-bold tracking-tight text-[#f4f4f4]">Sob consulta</div>
-                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">Plano sob medida pro seu volume de operação</p>
+              <div className="mt-5">
+                <div className="flex items-end gap-1">
+                  <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">{pricing.perMonthLabel}</span>
+                  <span className="mb-1 text-[13px] text-[#8d8d8d]">/mês</span>
                 </div>
-              ) : (
-                <div className="mt-5">
-                  <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold tracking-tight text-[#f4f4f4]">{pricing.perMonthLabel}</span>
-                    <span className="mb-1 text-[13px] text-[#8d8d8d]">/mês</span>
-                  </div>
-                  {cycle === 'annual' ? (
-                    <p className="mt-1.5 text-[12px] text-[#8d8d8d]">
-                      {pricing.totalLabel} cobrados uma vez por ano
-                      <span className="ml-1 text-emerald-600">· economize {pricing.savedLabel}</span>
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-[12px] text-[#8d8d8d]">cobrado mensalmente</p>
-                  )}
-                </div>
-              )}
+                {cycle === 'annual' ? (
+                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">
+                    {pricing.totalLabel} cobrados uma vez por ano
+                    <span className="ml-1 text-emerald-600">· economize {pricing.savedLabel}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[12px] text-[#8d8d8d]">cobrado mensalmente</p>
+                )}
+              </div>
 
               <p className="mt-4 text-[13px] leading-relaxed text-[#a8a8a8]">{plan.description}</p>
 
-              {isBusiness ? (
-                <Link
-                  href="/fale-com-vendas"
-                  className="mt-6 rounded-none border border-[#525252] px-5 py-3 text-center text-[14px] font-semibold text-[#d4d4d4] transition-all hover:bg-[#1f1f1f]"
-                >
-                  Falar com vendas
-                </Link>
-              ) : (
-                <Link
-                  href="/signup"
-                  className={`mt-6 rounded-none px-5 py-3 text-center text-[14px] font-semibold transition-all ${
-                    highlight
-                      ? 'bg-blue-600 text-white   shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
-                      : 'border border-[#525252] text-[#d4d4d4] hover:bg-[#1f1f1f]'
-                  }`}
-                >
-                  Começar grátis
-                </Link>
-              )}
+              <Link
+                href="/signup"
+                className={`mt-6 rounded-none px-5 py-3 text-center text-[14px] font-semibold transition-all ${
+                  highlight
+                    ? 'bg-blue-600 text-white   shadow-blue-600/30 hover:bg-blue-500 hover:-translate-y-0.5'
+                    : 'border border-[#525252] text-[#d4d4d4] hover:bg-[#1f1f1f]'
+                }`}
+              >
+                Começar grátis
+              </Link>
 
               {/* Features */}
               <ul className="mt-5 space-y-2 border-t border-[#383838] pt-5 sm:mt-6 sm:space-y-2.5 sm:pt-6">
@@ -219,10 +201,10 @@ export function PricingPlans() {
 
       {/* Nota de pagamento */}
       <p className="mt-8 text-center text-[13px] text-[#8d8d8d] sm:mt-10">
-        Teste <strong className="text-[#d4d4d4]">15 dias grátis</strong>, sem cartão — esse já é o seu período de satisfação garantida.
-        Depois do teste, você assina com uma forma de pagamento (Pix ou cartão) e a cobrança vale pra valer, sem reembolso.
-        No semestral e no anual, pague à vista no <strong className="text-[#d4d4d4]">Pix</strong> ou parcele no{' '}
-        <strong className="text-[#d4d4d4]">cartão de crédito</strong>. Sem fidelidade — cancele quando quiser.
+        A assinatura é cobrada no ato (Pix ou cartão). Cancelou em até <strong className="text-[#d4d4d4]">14 dias</strong>?
+        Devolvemos 100% do valor pago. No semestral e no anual, pague à vista no{' '}
+        <strong className="text-[#d4d4d4]">Pix</strong> ou parcele no <strong className="text-[#d4d4d4]">cartão de crédito</strong>.
+        Sem fidelidade — cancele quando quiser.
       </p>
     </div>
   )

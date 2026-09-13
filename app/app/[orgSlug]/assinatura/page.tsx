@@ -251,6 +251,7 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
             orgSlug={params.orgSlug}
             currentPlan={org.plan as 'starter' | 'pro' | 'business' | 'scale' | 'free' | 'trial' | 'free_trial' | null}
             subscriptionStatus={org.subscription_status}
+            refundEligibleUntil={org.asaas_subscription_id ? org.trial_ends_at : null}
           />
         )}
       </div>

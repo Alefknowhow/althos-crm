@@ -112,7 +112,7 @@ export async function createOrganization(formData: FormData) {
       // (isAccessBlocked), não o gate de feature/crédito de IA, que é
       // inteiramente baseado nesta tabela `subscriptions`. plan_id='pro'
       // replica a promessa de "acesso completo ao Pro" do trial.
-      const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       await admin
         .from('subscriptions')
         .upsert({
@@ -133,8 +133,11 @@ export async function createOrganization(formData: FormData) {
       slug,
       account_id: accountId,
       niche: accountNiche,            // mirror of the account niche
-      // New signups start on a real 15-day trial with full Pro access, no card
-      // required (matches the marketing site's "teste grátis por 15 dias").
+      // New signups start on a real 14-day trial with full Pro access
+      // (reavaliação set/2026: o redirect pós-cadastro leva pra /upgrade,
+      // pedindo plano+pagamento na hora — mas se o usuário fechar antes de
+      // pagar, a conta ainda funciona nesse trial de 14 dias até
+      // isAccessBlocked() congelar por falta de assinatura ativa).
       // If it lapses without a paid subscription, isAccessBlocked() flags the
       // org and the app layout freezes it to read-only (see app/app/[orgSlug]/layout.tsx).
       // subscription_status='trialing' (não 'active') — o cron de e-mails de
@@ -144,7 +147,7 @@ export async function createOrganization(formData: FormData) {
       plan: 'trial',
       account_type: 'self_signup',
       subscription_status: 'trialing',
-      trial_ends_at: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       // Limites amplos durante o trial (espelha o Pro) — ficam apertados só se
       // a conta congelar ou assinar um plano com teto menor (Starter).
       limit_leads: null,
@@ -226,7 +229,16 @@ export async function createOrganization(formData: FormData) {
     ])
   }
 
-  return { ok: true as const, data: org, redirectTo: `/app/${slug}` }
+  // Reavaliação do teste grátis (set/2026): a primeira tela do usuário
+  // recém-cadastrado passa a ser a de planos/pagamento (mesmo /upgrade e
+  // CheckoutModal já usados por quem já é cliente), não o app direto —
+  // "cobra na hora do cadastro" em vez de trial totalmente sem fricção.
+  // NOTA: isto é só um redirecionamento — a conta ainda é criada com acesso
+  // de trial funcional (ver bloco acima) caso o usuário feche a aba antes de
+  // escolher/pagar um plano; um gate de acesso que bloqueie de fato o app até
+  // o pagamento confirmar não foi implementado nesta leva (documentado como
+  // pendência em docs/PRICING_ARCHITECTURE.md).
+  return { ok: true as const, data: org, redirectTo: `/app/${slug}/upgrade` }
 }
 
 /**

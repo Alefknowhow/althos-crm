@@ -6,7 +6,7 @@ import { PUBLIC_PLANS } from '@/lib/billing/plans'
 
 const TITLE = 'Planos e Preços — Althos CRM'
 const DESCRIPTION =
-  'Planos transparentes do Althos CRM. Teste grátis por 15 dias, sem cartão. Pague mensal ou economize 18% no anual.'
+  'Planos transparentes do Althos CRM. Reembolso garantido em 14 dias. Pague mensal ou economize 18% no anual.'
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -69,7 +69,7 @@ export default function PlanosPage() {
             Um preço justo para cada fase do seu negócio
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-[#a8a8a8] sm:mt-4 sm:text-lg">
-            Teste o app completo por 15 dias, sem cartão. Mude de plano quando quiser. Sem pegadinha.
+            Assine, use o app completo, e cancele quando quiser. Reembolso garantido em até 14 dias. Sem pegadinha.
           </p>
         </div>
       </section>

@@ -75,7 +75,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
               <NicheWaitlistForm niche={c.slug} />
               <p className="mt-4 text-xs text-[#707070]">
                 Quer usar o Althos como CRM completo já hoje?{' '}
-                <Link href="/signup" className="text-[#78a9ff] hover:underline">Teste grátis por 15 dias →</Link>
+                <Link href="/signup" className="text-[#78a9ff] hover:underline">Comece agora →</Link>
               </p>
             </div>
           ) : (
@@ -94,7 +94,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
                   Ver planos
                 </Link>
               </div>
-              <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão</p>
+              <p className="mt-4 text-xs text-[#707070]">✓ Reembolso garantido em 14 dias</p>
             </>
           )}
 
@@ -272,7 +272,7 @@ export function NicheLanding({ c }: { c: NicheContent }) {
                   Como funciona
                 </Link>
               </div>
-              <p className="mt-4 text-xs text-[#707070]">✓ Teste grátis por 15 dias · sem cartão · sem fidelidade</p>
+              <p className="mt-4 text-xs text-[#707070]">✓ Reembolso garantido em 14 dias · sem fidelidade</p>
             </>
           )}
         </div>
