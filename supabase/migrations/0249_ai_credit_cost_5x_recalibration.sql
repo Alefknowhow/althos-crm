@@ -1,0 +1,24 @@
+-- ============================================================================
+-- 0249_ai_credit_cost_5x_recalibration.sql
+-- Recalibração de unit economics dos Althos Credits (pedido do usuário,
+-- 2026-09-13): a franquia mensal do Business (7.500 créditos) representava,
+-- ao custo real de token de hoje (~US$0,01/mensagem de WhatsApp via Agente
+-- IA), até US$75/mês de custo real por conta — margem inviável.
+--
+-- Decisão: manter a franquia de créditos INALTERADA (Starter 500 / Pro 2.500
+-- / Business 7.500 — não mexer no número que o cliente vê/comprou) e aplicar
+-- um fator de multiplicação 5x no CONSUMO de todas as ações de IA. Onde uma
+-- ação custava 1 crédito, passa a custar 5 — uniformemente, para TODAS as
+-- ações (não só as baratas). Efeito: o mesmo teto de 7.500 créditos do
+-- Business agora cobre o equivalente a 1.500 ações "de 1 crédito" (era
+-- 7.500), reduzindo o custo real máximo de ~US$75 para ~US$15/mês por conta
+-- — a meta pedida pelo usuário.
+--
+-- Esta tabela (ai_action_cost_catalog) é a fonte VIVA de custo por ação
+-- (editável no super-admin, /super-admin/ai-credits, sem deploy) — o
+-- fallback estático em código (lib/plans/credit-pricing.ts::AI_CREDIT_COST)
+-- é atualizado no mesmo commit desta migration, pros dois nunca divergirem
+-- logo após a mudança.
+-- ============================================================================
+
+update public.ai_action_cost_catalog set credits_cost = credits_cost * 5;

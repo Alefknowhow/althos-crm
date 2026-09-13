@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T04:51:50.113Z
+**Generated At**: 2026-09-13T05:05:13.303Z
 **Branch**: `master`
-**Last Commit**: 8e39257 fix(embarques): linha do dia atual em vermelho negrito, sem coluna pintada (Alef Trentin, 9 minutes ago)
+**Last Commit**: 44a98fb docs(harness): Fases 8/9/10 — harness atualizado + verificacao final (lint/typecheck/test/build) (Alef Trentin, 12 minutes ago)
 
 **Recent Commits**:
+- 44a98fb docs(harness): Fases 8/9/10 — harness atualizado + verificacao final (lint/typecheck/test/build)
 - 8e39257 fix(embarques): linha do dia atual em vermelho negrito, sem coluna pintada
 - 37cffaa fix(billing): Fase 7 — corrige bug critico que quebrava todo consumo de Althos Credits desde a Fase 2/3
 - e3566d9 fix(embarques): dia da linha do tempo alinhado com a linha vertical
@@ -32,28 +33,26 @@ Duas partes:
 - dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
 - 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
 - ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
-- 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (10):
+**Unstaged Changes** (9):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
-- M .ai/HANDOFF.md
-- M .harness/agents/database.md
-- M .harness/invariants.md
-- M CLAUDE.md
-- M app/app/[orgSlug]/assinatura/page.tsx
-- M docs/novo-modelo-de-precos.md
-- M docs/plano-precos/03-tabela-final-de-planos.md
-- M lib/plans/config.ts
+- M components/features/OneQuestionForm.tsx
+- M components/features/PublicFormSchema.ts
+- M components/features/formbuilder/FormToolbar.tsx
+- M docs/ALTHOS_CREDITS.md
+- M lib/plans/credit-pricing.ts
+- M package-lock.json
+- M package.json
 
 **Untracked Files** (4):
 - .claude/
-- app/app/[orgSlug]/assinatura/UsageRow.tsx
-- lib/plans/credit-pricing.ts
-- lib/plans/seats.ts
+- lib/forms/field-order.ts
+- lib/forms/flow-traversal.ts
+- supabase/migrations/0249_ai_credit_cost_5x_recalibration.sql
 
 **Staged Diff Summary**:
 ```
@@ -62,17 +61,16 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md                            |  83 +++++++++++++-
- .ai/DECISIONS.md                               |  61 +++++++++++
- .ai/HANDOFF.md                                 |  80 +++++++++-----
- .harness/agents/database.md                    |   4 +-
- .harness/invariants.md                         |  11 ++
- CLAUDE.md                                      |   9 +-
- app/app/[orgSlug]/assinatura/page.tsx          |  35 +-----
- docs/novo-modelo-de-precos.md                  |   4 +-
- docs/plano-precos/03-tabela-final-de-planos.md |   4 +-
- lib/plans/config.ts                            | 144 ++++---------------------
- 10 files changed, 240 insertions(+), 195 deletions(-)
+.ai/CURRENT_TASK.md                             |  22 +++
+ .ai/DECISIONS.md                                |  42 ++++++
+ components/features/OneQuestionForm.tsx         |  64 ++++-----
+ components/features/PublicFormSchema.ts         |   6 +
+ components/features/formbuilder/FormToolbar.tsx |   9 +-
+ docs/ALTHOS_CREDITS.md                          |  20 +++
+ lib/plans/credit-pricing.ts                     |  35 +++--
+ package-lock.json                               | 177 ++++++++++++++++++++++++
+ package.json                                    |   1 +
+ 9 files changed, 332 insertions(+), 44 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:

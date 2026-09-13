@@ -77,26 +77,39 @@ export const CREDIT_PACKS: { credits: number; priceCents: number }[] = [
 
 /**
  * Cost (in AI credits) of each AI action. Mirrors the cost used by
- * `consume_ai_credits`. NOTE: DB credits are integer; fractional costs are
- * rounded UP at consume time (see consumeAiCredits in lib/plans/server.ts).
+ * `consume_ai_credits` — na prática, o catálogo VIVO em
+ * `ai_action_cost_catalog` (editável no super-admin, `resolveActionCreditCost`
+ * em lib/plans/pricing.ts) é a fonte real; isto é só o fallback estático
+ * quando o catálogo não está disponível. NOTE: DB credits are integer;
+ * fractional costs are rounded UP at consume time (see consumeAiCredits in
+ * lib/plans/server.ts).
+ *
+ * Recalibração 5x (2026-09-13, migration 0249): a franquia de 7.500
+ * créditos do Business, ao custo real de ~US$0,01/mensagem de WhatsApp,
+ * representava até US$75/mês de custo real por conta — margem inviável.
+ * Em vez de reduzir a franquia (número que o cliente vê), o CUSTO de cada
+ * ação em créditos foi multiplicado por 5 uniformemente — o mesmo teto de
+ * 7.500 créditos agora cobre o equivalente a 1.500 ações "baratas" (era
+ * 7.500), limitando o custo real a ~US$15/mês por conta. Os valores abaixo
+ * já refletem essa recalibração — não são mais os originais de lançamento.
  */
 export const AI_CREDIT_COST = {
-  qualify_lead: 1,
-  ai_attendant_reply: 1,
-  instagram_ai_reply: 1,
-  ai_insights_query: 2,
-  lead_scoring: 1, // doc spec was 0.5 — rounded up to 1 because credits are integer
-  generate_proposal: 3,
+  qualify_lead: 5,
+  ai_attendant_reply: 5,
+  instagram_ai_reply: 5,
+  ai_insights_query: 10,
+  lead_scoring: 5,
+  generate_proposal: 15,
   // Leitura de imagem/PDF por visão (voucher, orçamento colado, etc.) — mais
   // cara que uma chamada de texto simples por causa do custo de visão do modelo.
-  ocr_extract: 3,
+  ocr_extract: 15,
   // Geração de roteiro com Gemini Flash 2.5 + busca na web — chamada mais
   // pesada que um OCR (grounding, prompt maior, saída longa).
-  roteirista_generate: 4,
+  roteirista_generate: 20,
   // Chat de IA analítica do Financeiro — mesmo custo-base do copiloto da
   // Inicial (ai_insights_query), mantido separado pra métricas de uso e
   // gating de plano independentes.
-  financial_ai_chat: 2,
+  financial_ai_chat: 10,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST

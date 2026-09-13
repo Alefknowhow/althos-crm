@@ -348,6 +348,28 @@ atualizados. Esta seção consolida o estado final.
   herdou a correção de preço da Fase 5 automaticamente. Nenhuma ação
   necessária, só corrigi o registro.
 
+## Completed (recalibração 5x do custo por ação de IA — unit economics do Business)
+- Usuário perguntou o custo real de uma resposta de Agente IA no WhatsApp;
+  ao calcular, ficou claro que a franquia do Business (7.500 créditos, 1
+  crédito/resposta, ~US$0,01 real/resposta) representava até US$75/mês de
+  custo real por conta. Usuário confirmou o teto correto (US$15/mês) e
+  pediu a correção: manter a franquia FIXA (7.500 continua sendo o número
+  vendido) e multiplicar o CUSTO de cada ação por 5, uniformemente, em
+  TODAS as ações.
+- Migration `0249`: `ai_action_cost_catalog` (fonte viva, editável em
+  `/super-admin/ai-credits`) multiplicada por 5 em todas as linhas —
+  `ai_attendant_reply`/`instagram_ai_reply`/`qualify_lead`/`lead_scoring`/
+  `property_matching` 1→5, `ai_insights_query` 9→45, `financial_ai_chat`
+  7→35, `generate_proposal` 8→40, `ocr_extract` 5→25,
+  `roteirista_generate` 4→20.
+- `lib/plans/credit-pricing.ts::AI_CREDIT_COST` (fallback estático)
+  atualizado na mesma proporção. Franquia mensal por plano
+  (`PLAN_META.aiCreditsMonthly`) **não foi alterada**.
+- Validado via smoke-test (conta descartável, plano Business, apagada ao
+  final): `ai_attendant_reply` debitou exatamente 5 créditos (7500→7495).
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
+- `docs/ALTHOS_CREDITS.md` documenta a tabela completa antes/depois.
+
 ## In Progress
 Nada em edição no momento — sessão pronta para commit final.
 

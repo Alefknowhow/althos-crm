@@ -423,3 +423,45 @@ Impact: `.harness/invariants.md`, `.harness/agents/database.md`,
 de linhas). `docs/novo-modelo-de-precos.md`,
 `docs/plano-precos/03-tabela-final-de-planos.md` marcados supersedidos.
 Build de produção validado (`npm run build`, PASS).
+
+## 2026-09-13 — Recalibração 5x do custo por ação de IA (unit economics do Business)
+
+Context: usuário perguntou quanto custa uma resposta de Agente IA no
+WhatsApp e se o custo por função tinha mudado nesta sessão. Ao responder,
+calculei que a franquia do Business (7.500 créditos, 1 crédito/resposta,
+~US$0,01 de custo real de token por resposta) representava até
+**US$75/mês de custo real por conta** — o usuário confirmou que isso
+excede a margem que faz sentido e pediu correção: o custo real máximo
+deve ser **no máximo US$15/mês (R$75)** por conta Business.
+
+Decision: o usuário foi explícito sobre a abordagem — manter a franquia
+de créditos FIXA (7.500 continua sendo o número vendido/exibido) e
+multiplicar o CUSTO de cada ação por um fator 5, uniformemente, para
+TODAS as ações que consomem Althos Credits (não só as baratas). Onde uma
+ação custava 1 crédito, agora custa 5.
+
+Reason: multiplicar o consumo por 5 em vez de reduzir a franquia por 5
+tem o MESMO efeito em unit economics (7.500 créditos ÷ 5x custo = mesmo
+teto real de gasto que 1.500 créditos ÷ 1x custo), mas preserva o número
+"7.500 Althos Credits" que já foi comunicado/vendido como benefício do
+plano — mudar esse número seria pior comercialmente do que ajustar o
+custo interno de cada ação (que o cliente não vê o valor absoluto, só o
+saldo restante).
+
+Impact: migration `0249` multiplicou por 5 todos os valores em
+`ai_action_cost_catalog` (fonte viva, editável em
+`/super-admin/ai-credits`): `ai_attendant_reply`/`instagram_ai_reply`/
+`qualify_lead`/`lead_scoring`/`property_matching` 1→5,
+`ai_insights_query` 9→45, `financial_ai_chat` 7→35, `generate_proposal`
+8→40, `ocr_extract` 5→25, `roteirista_generate` 4→20.
+`lib/plans/credit-pricing.ts::AI_CREDIT_COST` (fallback estático)
+atualizado com a mesma proporção ×5 sobre os valores que já tinha (não
+necessariamente os mesmos números do catálogo vivo — os dois já
+divergiam antes desta mudança; a proporção interna de cada um foi
+preservada). Franquia mensal por plano (`PLAN_META.aiCreditsMonthly`:
+500/2.500/7.500) **não foi alterada** — só o custo por ação. Validado via
+smoke-test (conta descartável, plano Business): `ai_attendant_reply`
+debitou exatamente 5 créditos (7500→7495), confirmando que o mesmo teto
+agora rende 1.500 respostas em vez de 7.500. `docs/ALTHOS_CREDITS.md`
+documenta a tabela completa de antes/depois e o raciocínio de unit
+economics.

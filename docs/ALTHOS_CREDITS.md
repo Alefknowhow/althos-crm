@@ -50,6 +50,26 @@ Decisão explícita (migration `0244`): **não renomear as tabelas**. Renomear u
 
 Toda chamada originada de um job assíncrono (Inngest) **deve** passar `idempotencyKey`. Convenção: `buildCreditIdempotencyKey(module, action, refId)` → `"${module}:${action}:${refId}"`, onde `refId` é um identificador estável do evento (ex.: `inngest step id`, `message id` do WhatsApp) — o MESMO evento reprocessado (retry) gera a MESMA chave, e a RPC devolve o resultado já registrado em vez de debitar de novo (`idempotent_replay: true`).
 
+### Recalibração 5x do custo por ação (2026-09-13)
+
+A franquia mensal de créditos (Starter 500 / Pro 2.500 / Business 7.500) foi definida na Fase 2/3 sem levar em conta o custo real de token por ação. Ao custo real de ~US$0,01 por resposta de WhatsApp via Agente IA, a franquia do Business (7.500 créditos, 1 crédito/resposta) representava até **US$75/mês de custo real por conta** — margem inviável.
+
+Decisão: **manter a franquia inalterada** (7.500 continua sendo o número que o cliente vê e comprou) e multiplicar o **custo de cada ação em créditos por 5**, uniformemente, em todas as ações — migration `0249`. Onde uma ação custava 1 crédito, agora custa 5. Efeito: o mesmo teto de 7.500 créditos passa a cobrir o equivalente a 1.500 ações "de 1 crédito" (era 7.500), reduzindo o custo real máximo para **~US$15/mês por conta** — a meta definida pelo negócio.
+
+| Ação | Custo antes | Custo depois (5x) |
+|---|---:|---:|
+| Resposta do Agente IA (WhatsApp/Instagram) | 1 | 5 |
+| Qualificação de lead / Lead scoring / Property matching | 1 | 5 |
+| Consulta ao Copiloto/Insights | 9 | 45 |
+| Chat financeiro IA | 7 | 35 |
+| Geração de proposta | 8 | 40 |
+| OCR (documento/voucher) | 5 | 25 |
+| Roteirista de viagem | 4 | 20 |
+
+A fonte viva desses valores é `ai_action_cost_catalog` (editável em `/super-admin/ai-credits`, sem deploy) — os números acima já refletem a atualização. `lib/plans/credit-pricing.ts::AI_CREDIT_COST` (fallback estático, usado só se o catálogo estiver indisponível) foi atualizado no mesmo commit para não divergir logo após a mudança.
+
+**Multiplicador de modelo continua se aplicando por cima** — ex.: uma resposta do Agente IA com Claude Sonnet (3×) custaria `5 × 3 = 15` créditos, não mais `1 × 3 = 3`.
+
 ### Multiplicador por modelo
 
 `MODEL_CREDIT_MULTIPLIER` (`lib/plans/config.ts`) — Althos paga o token, então modelos mais caros consomem mais créditos por ação (Haiku 1× · Sonnet/GPT-4o 3× · Opus 5×). Isso preserva o custo por crédito ~constante independente de qual modelo respondeu.
