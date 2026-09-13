@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import type { FunnelTriggerType } from '@/lib/social/trigger-types'
+import type { FunnelFlow } from '@/lib/social/funnel-traversal'
 
 /**
  * CRUD dos funis de conversa em DM (Instagram). O motor (lib/social) usa o
@@ -16,6 +17,10 @@ export type FunnelButton = { type: 'reply' | 'link'; label: string; value: strin
 
 export type FunnelStep = {
   id?: string
+  /** Identidade estável entre saves (saveFunnelSteps faz delete+reinsert,
+   *  então o `id` do banco muda a cada save) — usada como id de node no
+   *  canvas de fluxo. Ver lib/social/funnel-traversal.ts. */
+  client_id?: string | null
   sort_order: number
   step_type: 'message' | 'ai'
   message_text: string | null
@@ -40,6 +45,9 @@ export type SocialFunnel = {
   is_active: boolean
   created_at: string
   steps: FunnelStep[]
+  /** Fluxo condicional (ramificação por botão/palavra-chave) — opcional,
+   *  ausente = ordem linear de sempre. Ver lib/social/funnel-traversal.ts. */
+  flow?: FunnelFlow
 }
 
 const ButtonSchema = z.object({
@@ -49,6 +57,7 @@ const ButtonSchema = z.object({
 })
 
 const StepSchema = z.object({
+  client_id: z.string().max(80).nullable().optional(),
   step_type: z.enum(['message', 'ai']),
   message_text: z.string().max(2000).nullable().optional(),
   ai_instructions: z.string().max(2000).nullable().optional(),
@@ -71,6 +80,9 @@ const FunnelPatchSchema = z.object({
   create_lead: z.boolean().optional(),
   reply_publicly: z.boolean().optional(),
   is_active: z.boolean().optional(),
+  // Grafo de fluxo condicional — JSON solto (mesmo tratamento de
+  // schema.flow em Formulários), sem validação estrita de forma.
+  flow: z.any().optional(),
 })
 
 async function guard(orgSlug: string) {
@@ -184,6 +196,10 @@ export async function saveFunnelSteps(orgSlug: string, funnelId: string, steps: 
   if (parsed.data.length) {
     const rows = parsed.data.map((s, i) => ({
       funnel_id: funnelId,
+      // Identidade estável entre saves — gera se o passo ainda não tiver
+      // uma (passo novo), preserva se já tiver (edita sem quebrar edges
+      // do canvas de fluxo que referenciam esse client_id).
+      client_id: s.client_id || crypto.randomUUID(),
       sort_order: i,
       step_type: s.step_type,
       message_text: s.step_type === 'message' ? (s.message_text || null) : null,

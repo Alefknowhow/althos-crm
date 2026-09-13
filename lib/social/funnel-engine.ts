@@ -19,6 +19,7 @@ import { generateAiReply } from '@/lib/social/ai'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 import { consumeAiCredits } from '@/lib/plans/server'
+import { getNextStepId, type FunnelFlow } from '@/lib/social/funnel-traversal'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -38,6 +39,7 @@ type Inbound = {
 }
 
 type Step = {
+  client_id: string | null
   sort_order: number
   step_type: 'message' | 'ai'
   message_text: string | null
@@ -115,6 +117,13 @@ async function runFrom(
   return i
 }
 
+/** Id estável do passo pro grafo de fluxo — usa client_id quando existe
+ *  (passos salvos depois da migration 0249), senão um id sintético
+ *  posicional (passos antigos, que nunca têm `flow` de qualquer forma). */
+function stepGraphId(step: Step): string {
+  return step.client_id || `idx-${step.sort_order}`
+}
+
 function funnelMatches(kws: string[] | null, text: string): boolean {
   const list = (kws || []).map(k => k.toLowerCase().trim()).filter(Boolean)
   if (list.length === 0) return true // sem palavra-chave = qualquer primeira DM
@@ -139,11 +148,15 @@ export async function runFunnelForInbound(
   let funnelId: string
   let startIndex: number
   let stateId: string | null = null
+  let flow: FunnelFlow | undefined
 
   if (state) {
     funnelId = (state as any).funnel_id
     startIndex = (state as any).current_step
     stateId = (state as any).id
+    const { data: funnelRow } = await admin
+      .from('social_funnels').select('flow').eq('id', funnelId).maybeSingle()
+    flow = (funnelRow as any)?.flow || undefined
   } else {
     // 2) Procura um funil ativo cujo gatilho case. Resposta a story tem
     //    prioridade para funis 'story_reply'/'story'; senão, funis de 'dm'
@@ -169,10 +182,30 @@ export async function runFunnelForInbound(
   // 3) Carrega os passos do funil.
   const { data: stepsData } = await admin
     .from('social_funnel_steps')
-    .select('sort_order, step_type, message_text, ai_instructions, wait_for_reply, buttons')
+    .select('client_id, sort_order, step_type, message_text, ai_instructions, wait_for_reply, buttons')
     .eq('funnel_id', funnelId)
     .order('sort_order', { ascending: true })
   const steps = (stepsData || []) as Step[]
+
+  // 3b) Se está retomando (havia estado ativo), o passo que causou a
+  // pausa é o anterior a `startIndex` — é o único ponto em que existe uma
+  // resposta de verdade pra decidir o próximo passo (ramificação por
+  // botão/palavra-chave). Sem `flow`, cai no mesmo `startIndex` de sempre.
+  if (state && flow) {
+    const waitingStep = steps[startIndex - 1]
+    if (waitingStep) {
+      const matchedButtonIndex = (waitingStep.buttons || []).findIndex(b => b.value === inbound.text)
+      const fallbackOrder = steps.map(stepGraphId)
+      const nextId = getNextStepId(flow, stepGraphId(waitingStep), {
+        replyText: inbound.text,
+        matchedButtonIndex: matchedButtonIndex === -1 ? null : matchedButtonIndex,
+        fallbackOrder,
+      })
+      const resolvedIndex = nextId === 'end' ? steps.length : fallbackOrder.indexOf(nextId)
+      if (resolvedIndex !== -1) startIndex = resolvedIndex
+    }
+  }
+
   if (steps.length === 0 || startIndex >= steps.length) {
     // Nada a enviar / já terminou.
     if (stateId) await admin.from('social_conversation_state').update({ status: 'done' }).eq('id', stateId)

@@ -12,13 +12,15 @@ import {
 } from '@/components/ui/dialog'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, MessageSquare, Sparkles,
-  Loader2, Zap, Link2, MousePointerClick,
+  Loader2, Zap, Link2, MousePointerClick, Workflow,
 } from 'lucide-react'
 import {
   updateFunnel, saveFunnelSteps,
   type SocialFunnel, type FunnelStep, type FunnelButton,
 } from '@/actions/social-funnels'
+import type { FunnelFlow } from '@/lib/social/funnel-traversal'
 import { TRIGGER_TYPE_LABELS, type FunnelTriggerType } from '@/lib/social/trigger-types'
+import SocialFunnelCanvas from './SocialFunnelCanvas'
 
 type EditStep = FunnelStep & { _key: string }
 let seq = 0
@@ -74,9 +76,13 @@ export function FunnelBuilder({
   const [replyPublicly, setReplyPublicly] = useState(funnel.reply_publicly)
   const [steps, setSteps] = useState<EditStep[]>(
     (funnel.steps.length ? funnel.steps : [{ sort_order: 0, step_type: 'message' as const, message_text: '', ai_instructions: null, wait_for_reply: true, buttons: [] }])
-      .map(s => ({ ...s, buttons: s.buttons || [], _key: nk() })),
+      // _key reaproveita o client_id já salvo (pra não invalidar edges do
+      // canvas de fluxo a cada reabertura) — só gera um novo pra passo sem.
+      .map(s => ({ ...s, buttons: s.buttons || [], _key: s.client_id || nk() })),
   )
   const [saving, setSaving] = useState(false)
+  const [flowOpen, setFlowOpen] = useState(false)
+  const [flow, setFlow] = useState<FunnelFlow | undefined>(funnel.flow)
 
   function patch(key: string, p: Partial<EditStep>) {
     setSteps(list => list.map(s => s._key === key ? { ...s, ...p } : s))
@@ -98,8 +104,8 @@ export function FunnelBuilder({
     setSaving(true)
     const kwArr = keywords.split(',').map(k => k.trim()).filter(Boolean)
     const [u, s] = await Promise.all([
-      updateFunnel(orgSlug, funnel.id, { name: name || 'Automação', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead, reply_publicly: isCommentish ? replyPublicly : false }),
-      saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order: _so, ...rest }) => rest)),
+      updateFunnel(orgSlug, funnel.id, { name: name || 'Automação', trigger_type: triggerType, trigger_keywords: kwArr.length ? kwArr : null, create_lead: createLead, reply_publicly: isCommentish ? replyPublicly : false, flow }),
+      saveFunnelSteps(orgSlug, funnel.id, steps.map(({ _key, sort_order: _so, ...rest }) => ({ ...rest, client_id: _key }))),
     ])
     setSaving(false)
     if (!u.ok) { toast.error(u.error); return }
@@ -109,7 +115,8 @@ export function FunnelBuilder({
       ...funnel, name: name || 'Automação', trigger_type: triggerType, create_lead: createLead,
       reply_publicly: isCommentish ? replyPublicly : false,
       trigger_keywords: kwArr.length ? kwArr : null,
-      steps: steps.map(({ _key, ...rest }) => rest),
+      flow,
+      steps: steps.map(({ _key, ...rest }) => ({ ...rest, client_id: _key })),
     })
   }
 
@@ -118,12 +125,17 @@ export function FunnelBuilder({
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Configurar automação — {TRIGGER_TYPE_LABELS[triggerType]}</DialogTitle>
-          <DialogDescription>
-            Cada passo é enviado na sequência. Com &ldquo;esperar resposta&rdquo;, a automação pausa
-            até a pessoa responder (reabrindo a janela de 24h do Instagram) — ou até ela tocar num botão.
-          </DialogDescription>
+        <DialogHeader className="flex-row items-start justify-between gap-2 space-y-0">
+          <div>
+            <DialogTitle>Configurar automação — {TRIGGER_TYPE_LABELS[triggerType]}</DialogTitle>
+            <DialogDescription>
+              Cada passo é enviado na sequência. Com &ldquo;esperar resposta&rdquo;, a automação pausa
+              até a pessoa responder (reabrindo a janela de 24h do Instagram) — ou até ela tocar num botão.
+            </DialogDescription>
+          </div>
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => setFlowOpen(true)}>
+            <Workflow className="w-4 h-4" /> Fluxo
+          </Button>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -212,6 +224,16 @@ export function FunnelBuilder({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {flowOpen && (
+        <SocialFunnelCanvas
+          steps={steps.map(({ _key, ...rest }) => ({ ...rest, client_id: _key }))}
+          triggerType={triggerType}
+          flow={flow}
+          onChangeFlow={setFlow}
+          onClose={() => setFlowOpen(false)}
+        />
+      )}
     </Dialog>
   )
 }

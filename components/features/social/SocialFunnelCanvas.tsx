@@ -1,0 +1,182 @@
+'use client'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
+  useNodesState, useEdgesState, type Node, type Edge, type Connection,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import type { FunnelStep } from '@/actions/social-funnels'
+import type { FunnelFlow, FunnelEdgeCondition } from '@/lib/social/funnel-traversal'
+import { TRIGGER_TYPE_LABELS, type FunnelTriggerType } from '@/lib/social/trigger-types'
+import SocialFunnelNode, { type SocialFunnelNodeData } from './SocialFunnelNode'
+import SocialFunnelEdgePanel from './SocialFunnelEdgePanel'
+
+const NODE_TYPES = { socialFunnel: SocialFunnelNode }
+const NODE_GAP_Y = 150
+
+/** Id estável de um passo pro grafo — mesma regra de lib/social/funnel-engine.ts::stepGraphId. */
+function stepGraphId(step: FunnelStep, index: number): string {
+  return step.client_id || `idx-${index}`
+}
+
+function buildInitialGraph(
+  steps: FunnelStep[], triggerType: FunnelTriggerType, flow: FunnelFlow | undefined,
+): { nodes: Node<SocialFunnelNodeData>[]; edges: Edge[] } {
+  const ids = steps.map((s, i) => stepGraphId(s, i))
+  const chain = ['trigger', ...ids, 'end']
+  const positions = flow?.positions || {}
+
+  const nodes: Node<SocialFunnelNodeData>[] = chain.map((id, i) => {
+    const stepIndex = ids.indexOf(id)
+    const step = stepIndex >= 0 ? steps[stepIndex] : null
+    const kind: SocialFunnelNodeData['kind'] = id === 'trigger' ? 'trigger' : id === 'end' ? 'end' : 'step'
+    const label = kind === 'trigger'
+      ? TRIGGER_TYPE_LABELS[triggerType]
+      : kind === 'end' ? 'Fim da automação'
+      : (step?.step_type === 'ai' ? (step.ai_instructions || 'Resposta por IA') : (step?.message_text || 'Mensagem'))
+    return {
+      id,
+      type: 'socialFunnel',
+      position: positions[id] || { x: 40, y: i * NODE_GAP_Y },
+      data: {
+        label,
+        kind,
+        stepType: step?.step_type,
+        waitForReply: step?.wait_for_reply,
+        buttonLabels: step?.buttons?.map(b => b.label),
+      },
+    }
+  })
+
+  const savedEdges = flow?.edges
+  const sourceEdges = savedEdges && savedEdges.length > 0 ? savedEdges : chain.slice(0, -1).map((id, i) => ({
+    id: `${id}->${chain[i + 1]}`,
+    from: id,
+    to: chain[i + 1],
+  }))
+  const edges: Edge[] = sourceEdges.map(e => {
+    const condition = (e as any).condition as FunnelEdgeCondition | undefined
+    const sourceHandle = condition?.type === 'button' ? `btn-${condition.buttonIndex}` : 'default'
+    return {
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      sourceHandle,
+      animated: !condition,
+      label: condition?.type === 'keyword' ? 'palavra-chave' : undefined,
+      data: { condition },
+    }
+  })
+
+  return { nodes, edges }
+}
+
+type Props = {
+  steps: FunnelStep[]
+  triggerType: FunnelTriggerType
+  flow: FunnelFlow | undefined
+  onChangeFlow: (flow: FunnelFlow) => void
+  onClose: () => void
+}
+
+/** Wrapper público — provê o contexto do React Flow. */
+export default function SocialFunnelCanvas(props: Props) {
+  return (
+    <ReactFlowProvider>
+      <SocialFunnelCanvasInner {...props} />
+    </ReactFlowProvider>
+  )
+}
+
+function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClose }: Props) {
+  // Estado inicial derivado UMA vez na abertura — depois disso o canvas é
+  // a fonte da verdade (mesmo padrão de FormFlowCanvas.tsx).
+  const initial = useMemo(() => buildInitialGraph(steps, triggerType, flow), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const [nodes, , onNodesChange] = useNodesState(initial.nodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+
+  const onChangeFlowRef = useRef(onChangeFlow)
+  onChangeFlowRef.current = onChangeFlow
+  useEffect(() => {
+    const positions: Record<string, { x: number; y: number }> = {}
+    for (const n of nodes) positions[n.id] = n.position
+    onChangeFlowRef.current({
+      positions,
+      edges: edges.map(e => ({
+        id: e.id,
+        from: e.source,
+        to: e.target,
+        condition: (e.data as any)?.condition as FunnelEdgeCondition | undefined,
+      })),
+    })
+  }, [nodes, edges])
+
+  function onConnect(connection: Connection) {
+    // Conexão saindo de um botão já fixa a condição — não precisa de
+    // painel manual, o handle já diz qual botão é.
+    const btnMatch = connection.sourceHandle?.match(/^btn-(\d+)$/)
+    const condition: FunnelEdgeCondition | undefined = btnMatch
+      ? { type: 'button', buttonIndex: Number(btnMatch[1]) }
+      : undefined
+    setEdges(curr => addEdge({ ...connection, animated: !condition, data: { condition } }, curr))
+  }
+
+  const selectedEdge = edges.find(e => e.id === selectedEdgeId) || null
+  // Só edges saindo do handle "resposta livre" (sem botão) aceitam edição
+  // manual de condição — as de botão já vêm com a condição fixada.
+  const showKeywordPanel = selectedEdge && selectedEdge.sourceHandle !== undefined && !selectedEdge.sourceHandle?.startsWith('btn-')
+
+  function updateSelectedCondition(condition: FunnelEdgeCondition | undefined) {
+    setEdges(curr => curr.map(e => e.id === selectedEdgeId
+      ? { ...e, data: { condition }, animated: !condition, label: condition?.type === 'keyword' ? 'palavra-chave' : undefined }
+      : e))
+  }
+
+  function removeSelectedEdge() {
+    setEdges(curr => curr.filter(e => e.id !== selectedEdgeId))
+    setSelectedEdgeId(null)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
+        <div>
+          <p className="text-sm font-semibold">Fluxo da automação</p>
+          <p className="text-xs text-muted-foreground">Arraste a partir de um botão pra ramificar por resposta. Clique numa conexão pra ver/editar.</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4 mr-1" /> Fechar</Button>
+      </div>
+
+      <div className="relative flex-1 min-h-0">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={NODE_TYPES}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onEdgeClick={(_, edge) => setSelectedEdgeId(edge.id)}
+          onPaneClick={() => setSelectedEdgeId(null)}
+          fitView
+        >
+          <Background />
+          <Controls />
+          <MiniMap pannable zoomable className="!bg-card" />
+        </ReactFlow>
+
+        {showKeywordPanel && selectedEdge && (
+          <SocialFunnelEdgePanel
+            condition={(selectedEdge.data as any)?.condition}
+            onChange={updateSelectedCondition}
+            onRemoveEdge={removeSelectedEdge}
+            onClose={() => setSelectedEdgeId(null)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
