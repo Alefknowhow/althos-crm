@@ -269,3 +269,47 @@ SQL direto, sempre capturar o `account_id` afetado ANTES de mutar (não
 usar `LIMIT 1` solto em UPDATE/SELECT separados — a ordem não é garantida
 entre chamadas), e sempre confirmar o estado revertido com uma query
 separada antes de seguir.
+
+## 2026-09-13 — Fase 6: lista de benefícios atualizada + Voice vira exclusividade Business
+
+Context: usuário pediu pra continuar a Fase 6, lembrando 3 coisas: (1)
+disparos de e-mail de campanha também são cobrados por crédito, (2)
+atualizar a lista de benefícios ligada aos planos, (3) Business é R$599
+até 10 usuários — atualizar benefícios/limites em Assinatura/Upgrade.
+
+Decision:
+1. Confirmado (não precisou construir): TODO envio de e-mail — incluindo
+   disparos de campanha — já passa por `consumeEmailCredits()`
+   (`lib/inngest/functions.ts::sendEmail`), implementado numa sessão
+   anterior a esta. A tabela de benefícios (`lib/billing/plan-features.ts`)
+   só precisava deixar isso EXPLÍCITO na copy ("Consome Email Credits"),
+   não é uma feature nova a implementar.
+2. `PLAN_FEATURES` (tabela de benefícios de `/upgrade`/`CheckoutModal`)
+   reescrita seguindo a estrutura exata que o usuário definiu na sessão de
+   repricing original (CRM em todos os planos → Automações/Agentes de
+   IA/Financeiro/Produtos/Integrações/API/MCP a partir do Pro → Voice
+   AI/SMS/múltiplas unidades/permissões avançadas/auditoria só Business).
+3. **Mudança de entitlement real, não só de copy**: ao escrever a tabela
+   nova, percebi que `lib/plans/config.ts::PLAN_FEATURES.pro.voice` e o
+   `plans.features.voice` no banco eram `true` para o Pro também — o
+   código real dava Voice AI pro Pro, mas a lista de benefícios original do
+   usuário só menciona Voice no Business. Decidido corrigir o entitlement
+   (não só a tabela de marketing) para bater com o que o usuário
+   especificou — sem clientes ativos, mudança seguramente aplicável agora
+   (migration `0247`).
+4. Documentado, não inventado: "WhatsApp 1 número (Starter) / múltiplos
+   números (Business)" é oferta comercial na tabela — o código não trava
+   por quantidade de conexões WhatsApp hoje. Não fingir que já é enforced.
+
+Reason: o usuário está ativamente corrigindo a estrutura comercial peça
+por peça; a tabela de benefícios teria ficado tecnicamente correta mas
+comercialmente errada (venderia Voice no Pro) se eu só tivesse mudado a
+copy sem tocar no entitlement real — pior tipo de inconsistência (a app
+concede um recurso que o marketing e o negócio não pretendiam vender
+naquele tier).
+
+Impact: `lib/billing/plan-features.ts` reescrito. `lib/plans/config.ts`
+(`PLAN_FEATURES.pro.voice: false`) e migration `0247` (mesmo campo no
+banco). `components/features/voice/VoicePaywall.tsx` copy corrigida.
+`docs/PRICING_ARCHITECTURE.md` documenta a mudança e a pendência de
+WhatsApp.

@@ -16,7 +16,7 @@ export function VoicePaywall({ orgSlug }: { orgSlug: string }) {
           <Lock className="h-6 w-6" />
         </div>
         <div className="space-y-1">
-          <h2 className="font-semibold">Althos Voice é um recurso dos planos Pro e Business</h2>
+          <h2 className="font-semibold">Althos Voice é um recurso do plano Business</h2>
           <p className="text-sm text-muted-foreground">
             Centralize chamadas, SMS e agentes de voz com IA diretamente no seu CRM.
           </p>

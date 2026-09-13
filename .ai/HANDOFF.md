@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T04:06:41.480Z
+**Generated At**: 2026-09-13T04:14:31.881Z
 **Branch**: `master`
-**Last Commit**: ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao (Alef Trentin, 7 minutes ago)
+**Last Commit**: c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado) (Alef Trentin, 7 minutes ago)
 
 **Recent Commits**:
+- c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado)
 - ee697d0 fix(billing): corrige preco de /upgrade — 3a copia hardcoded cobrava R$137 no Starter em producao
 - dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
 - 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
@@ -32,23 +33,24 @@ Duas partes:
 - 2a062fe fix(contatos): alinha campo de indicacao com os demais dropdowns
 - 52a867b feat(contatos): origem do lead editavel + indicacao com quem indicou
 - 41ec4ef feat(pipeline): rastreamento Google Ads por pipeline (client-side)
-- d761178 feat(pipeline): Pixel/CAPI da Meta vira config por pipeline, nao por conta
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (7):
+**Unstaged Changes** (9):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M actions/billing.ts
+- M components/features/schedule/ScheduleClient.tsx
+- M components/features/schedule/ScheduleGanttView.tsx
+- M components/features/voice/VoicePaywall.tsx
 - M docs/PRICING_ARCHITECTURE.md
-- M lib/billing/plans-data.ts
+- M lib/billing/plan-features.ts
 - M lib/plans/config.ts
 
 **Untracked Files** (2):
 - .claude/
-- supabase/migrations/0246_account_user_limit_extra_seats.sql
+- supabase/migrations/0247_voice_business_only.sql
 
 **Staged Diff Summary**:
 ```
@@ -57,14 +59,16 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md          | 26 ++++++++++++++++++++++++++
- .ai/DECISIONS.md             | 41 +++++++++++++++++++++++++++++++++++++++++
- .ai/HANDOFF.md               | 31 +++++++++++++------------------
- actions/billing.ts           |  6 ++++--
- docs/PRICING_ARCHITECTURE.md | 10 ++++++++++
- lib/billing/plans-data.ts    | 17 ++++++++++-------
- lib/plans/config.ts          | 11 ++++++++---
- 7 files changed, 112 insertions(+), 30 deletions(-)
+.ai/CURRENT_TASK.md                                | 25 +++++++
+ .ai/DECISIONS.md                                   | 44 ++++++++++++
+ .ai/HANDOFF.md                                     | 68 +++++++++++++------
+ components/features/schedule/ScheduleClient.tsx    |  7 +-
+ components/features/schedule/ScheduleGanttView.tsx | 20 +++---
+ components/features/voice/VoicePaywall.tsx         |  2 +-
+ docs/PRICING_ARCHITECTURE.md                       |  8 +++
+ lib/billing/plan-features.ts                       | 79 ++++++++++++++--------
+ lib/plans/config.ts                                |  7 +-
+ 9 files changed, 190 insertions(+), 70 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -136,12 +140,34 @@ mesma fonte em vez de manter seu próprio mapa. Ver `docs/PRICING_ARCHITECTURE.m
 ativas continuam cobrando o valor antigo — ajustar isso é decisão de
 negócio (avisar cliente antes), não corrigido aqui.
 
-**Isto é Fase 2/3/4/5 de 10 do pedido original — não está concluído.**
-Fases 6 (reconciliar as duas taxonomias de plano por completo — o pior
-sintoma já foi corrigido, mas as duas taxonomias ainda coexistem), 7
-(testes de concorrência real), 8 (auditoria completa do harness), 9/10
-seguem pendentes — ver `.ai/CURRENT_TASK.md` § Pending para a lista
-detalhada.
+**Atualização (mesma sessão, continuação): reconciliação de usuários
+incluídos/adicionais** — usuário confirmou não haver clientes ativos
+("pode prosseguir"). Bug funcional real corrigido: `account_user_limit()`
+(bloqueia convite de membro) ignorava `subscriptions.extra_seats` —
+migration `0246`. `maxUsers`/`PLAN_LIMITS.users` sincronizados (1/6/20 →
+2/5/10) em `lib/billing/plans-data.ts`, `lib/plans/config.ts`,
+`actions/billing.ts`. Um incidente de processo (dado de teste
+`extra_seats=3` preso numa conta real por engano) foi detectado e
+revertido na hora — ver `.ai/DECISIONS.md` (2026-09-13) pra não repetir o
+padrão de `UPDATE ... LIMIT 1` sem filtro determinístico.
+
+**Atualização (mesma sessão, continuação): Fase 6 — lista de benefícios +
+Voice vira exclusividade Business** — `lib/billing/plan-features.ts`
+(tabela de `/upgrade`/`CheckoutModal`) reescrita com os números atuais
+(Althos Credits 500/2.500/7.500, usuários 2/5/10 + preço de assento
+extra) e a estrutura de benefícios que o usuário definiu originalmente.
+Confirmado (não precisou construir): disparos de e-mail de campanha já
+consomem Email Credits desde uma sessão anterior. **Mudança de
+entitlement real**: Voice AI virou exclusivo do Business (migration
+`0247`) — o código dava acesso a Pro também, divergindo da lista de
+benefícios original do usuário.
+
+**Isto é Fase 2/3/4/5/6 de 10 do pedido original — não está concluído.**
+Fase 6 só cobriu benefícios/entitlements de Voice e usuários — a
+reconciliação COMPLETA das duas taxonomias de plano (legada por-org vs.
+nova por-conta) ainda não foi feita. Fases 7 (testes de concorrência
+real), 8 (auditoria completa do harness), 9/10 seguem pendentes — ver
+`.ai/CURRENT_TASK.md` § Pending para a lista detalhada.
 
 ### Completed
 Ver `.ai/CURRENT_TASK.md` § Completed (lista detalhada com o bug de

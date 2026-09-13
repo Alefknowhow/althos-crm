@@ -98,7 +98,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: true,
     instagram_automation: true,
     bulk_campaigns: true,
-    voice: false,          // Althos Voice: só Pro/Business
+    voice: false,          // Althos Voice: só Business (repricing set/2026)
   },
   pro: {
     tasks: true,
@@ -115,7 +115,10 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     meta_ads_panel: true,
     instagram_automation: true,
     bulk_campaigns: true,
-    voice: true,
+    // Voice AI é diferencial exclusivo do Business na repricing set/2026
+    // (docs/PRICING_ARCHITECTURE.md § 2) — antes era Pro+Business; corrigido
+    // a pedido do usuário (sem clientes ativos, seguro mudar entitlement).
+    voice: false,
   },
   business: {
     tasks: true,

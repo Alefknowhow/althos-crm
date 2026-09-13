@@ -219,6 +219,31 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
   corrigido de 1 para 2.
 - `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
 
+## Completed (Fase 6 — lista de benefícios + Voice vira exclusividade Business)
+- `lib/billing/plan-features.ts` (`PLAN_FEATURES`, tabela mostrada em
+  `/upgrade` e no `CheckoutModal`) reescrita por completo: números da
+  repricing anterior (créditos IA 300/1200/3000) trocados pelos atuais
+  (Althos Credits 500/2.500/7.500), usuários incluídos 2/5/10 + linha nova
+  de usuário adicional (R$39/49/59), WhatsApp corrigido de `false` no
+  Starter pra `'1 número'` (já era `true` no código real desde a migration
+  `0155` — a tabela de marketing estava desatualizada), estrutura de linhas
+  reorganizada seguindo a lista de benefícios que o usuário definiu (CRM
+  em todos → Automações/Agentes IA/Financeiro/Produtos/API/MCP a partir do
+  Pro → Voice/SMS/múltiplas unidades/auditoria só Business). E-mail
+  marketing exibido como "Consome Email Credits" (confirmado: TODO envio,
+  incluindo campanhas, já passa por `consumeEmailCredits()` desde antes
+  desta sessão — `lib/inngest/functions.ts::sendEmail`).
+- **Mudança de entitlement real**: Voice AI vira exclusivo do Business
+  (migration `0247`) — antes Pro também tinha `voice:true` (tanto no DB
+  `plans.features` quanto no mirror `lib/plans/config.ts`), divergindo da
+  lista de benefícios original do usuário. Corrigido nos dois lugares.
+  Copy do paywall (`VoicePaywall.tsx`) também corrigida.
+- Documentado como pendência (não inventado): "WhatsApp 1 número/múltiplos
+  números" é oferta comercial — o código não trava por QUANTIDADE de
+  conexões WhatsApp hoje, só por volume mensal de mensagens.
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176 — sem teste
+  cobrindo `PLAN_FEATURES` array de UI, é conteúdo de apresentação).
+
 ## In Progress
 Nada em edição no momento.
 
