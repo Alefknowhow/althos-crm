@@ -8,6 +8,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI, Type } from '@google/genai'
+import { getPlatformAiKey, resolveAnthropicEngine } from './api-key'
 
 export type ExtractedFinancialDocument = {
   tipo: 'receita' | 'despesa' | null
@@ -46,11 +47,15 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
 const SYSTEM_PROMPT = 'Você extrai dados estruturados de documentos financeiros (nota fiscal, boleto, recibo, comprovante) em português do Brasil. Quando um campo não estiver presente no documento, use null.'
 
 export async function extractFinancialDocumentFromFile(
-  apiKey: string,
   base64: string,
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf',
 ): Promise<ExtractedFinancialDocument> {
-  const client = new Anthropic({ apiKey })
+  const isPdf = mediaType === 'application/pdf'
+  // O bloco `document` (PDF) não é suportado pelo endpoint Anthropic-
+  // compatible da DeepSeek — PDF sempre vai pro Claude direto, ignorando o
+  // switch ai_engine. Imagem pode rotear normalmente via resolveAnthropicEngine().
+  const { apiKey, baseURL } = isPdf ? { apiKey: getPlatformAiKey(), baseURL: undefined } : await resolveAnthropicEngine()
+  const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
   const contentBlock: Anthropic.Messages.ContentBlockParam =
     mediaType === 'application/pdf'

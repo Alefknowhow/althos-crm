@@ -7,7 +7,7 @@ import { extractTravelDocumentFromFile, extractTravelDocumentFromFileGemini, typ
 import { extractFinancialDocumentFromFile, extractFinancialDocumentFromFileGemini, type ExtractedFinancialDocument } from '@/lib/ai/financial-document-extract'
 import { extractFlightLegsFromImage, type ExtractedFlightLeg } from '@/lib/ai/flight-ocr-extract'
 import { extractCruiseFromImage, extractCruiseFromText, type ExtractedCruise } from '@/lib/ai/cruise-ocr-extract'
-import { getPlatformAiKey, hasPlatformAiKey, getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
+import { hasPlatformAiKey, getGeminiKey, hasGeminiKey } from '@/lib/ai/api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 
 const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'] as const
@@ -68,7 +68,7 @@ export async function extractTravelDocument(
   try {
     const data = provider === 'gemini'
       ? await extractTravelDocumentFromFileGemini(getGeminiKey(), input.base64, input.mediaType as any)
-      : await extractTravelDocumentFromFile(getPlatformAiKey(), input.base64, input.mediaType as any)
+      : await extractTravelDocumentFromFile(input.base64, input.mediaType as any)
     return { ok: true, data }
   } catch (err: any) {
     return { ok: false, error: err?.message || 'Erro ao processar o documento com IA.' }
@@ -123,7 +123,7 @@ export async function extractFinancialDocument(
   try {
     const data = provider === 'gemini'
       ? await extractFinancialDocumentFromFileGemini(getGeminiKey(), input.base64, input.mediaType as any)
-      : await extractFinancialDocumentFromFile(getPlatformAiKey(), input.base64, input.mediaType as any)
+      : await extractFinancialDocumentFromFile(input.base64, input.mediaType as any)
     return { ok: true, data }
   } catch (err: any) {
     return { ok: false, error: err?.message || 'Erro ao processar o documento com IA.' }

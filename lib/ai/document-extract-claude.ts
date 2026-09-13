@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { ExtractedTravelDocument } from './document-extract-types'
 import { TRAVELERS_PROMPT_HINT } from './document-extract-types'
 import { normalizeExtractedDocument } from './document-extract-normalize'
+import { getPlatformAiKey, resolveAnthropicEngine } from './api-key'
 
 const EXTRACT_TOOL: Anthropic.Messages.Tool = {
   name: 'extract_travel_document',
@@ -200,11 +201,15 @@ const EXTRACT_TOOL: Anthropic.Messages.Tool = {
 }
 
 export async function extractTravelDocumentFromFile(
-  apiKey: string,
   base64: string,
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf',
 ): Promise<ExtractedTravelDocument> {
-  const client = new Anthropic({ apiKey })
+  const isPdf = mediaType === 'application/pdf'
+  // O bloco `document` (PDF) não é suportado pelo endpoint Anthropic-
+  // compatible da DeepSeek — PDF sempre vai pro Claude direto, ignorando o
+  // switch ai_engine. Imagem pode rotear normalmente via resolveAnthropicEngine().
+  const { apiKey, baseURL } = isPdf ? { apiKey: getPlatformAiKey(), baseURL: undefined } : await resolveAnthropicEngine()
+  const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
   const contentBlock: Anthropic.Messages.ContentBlockParam =
     mediaType === 'application/pdf'
