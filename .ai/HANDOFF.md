@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T03:50:45.543Z
+**Generated At**: 2026-09-13T03:58:48.993Z
 **Branch**: `master`
-**Last Commit**: 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine (Alef Trentin, 21 minutes ago)
+**Last Commit**: dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits (Alef Trentin, 7 minutes ago)
 
 **Recent Commits**:
+- dbb4a4c feat(billing): Fase 5 — Billing Center reflete usuarios incluidos/adicionais e Althos Credits
 - 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
 - ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
 - 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
@@ -32,21 +33,18 @@ Duas partes:
 - 41ec4ef feat(pipeline): rastreamento Google Ads por pipeline (client-side)
 - d761178 feat(pipeline): Pixel/CAPI da Meta vira config por pipeline, nao por conta
 - 72068f8 fix(contatos): simplifica card da lista — remove telefone e data de última atividade
-- 95ca1db feat(mobile): varredura final 2 — tabelas sem scroll contido
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (9):
+**Unstaged Changes** (7):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M actions/addons.ts
-- M app/app/[orgSlug]/assinatura/CreditsHistorySection.tsx
-- M app/app/[orgSlug]/assinatura/CreditsPurchaseSection.tsx
-- M app/app/[orgSlug]/assinatura/page.tsx
-- M docs/BILLING.md
 - M docs/PRICING_ARCHITECTURE.md
+- M lib/asaas/client.ts
+- M lib/billing/plans-data.ts
+- M tests/unit/billing-plans.test.ts
 
 **Untracked Files** (1):
 - .claude/
@@ -58,16 +56,14 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md                                | 49 +++++++++++++++-
- .ai/DECISIONS.md                                   | 55 ++++++++++++++++++
- .ai/HANDOFF.md                                     | 63 ++++++++++++---------
- actions/addons.ts                                  | 20 ++++---
- .../[orgSlug]/assinatura/CreditsHistorySection.tsx | 27 +++++----
- .../assinatura/CreditsPurchaseSection.tsx          | 44 +++++++++++----
- app/app/[orgSlug]/assinatura/page.tsx              | 66 ++++++++++++++++++++--
- docs/BILLING.md                                    | 24 +++++---
- docs/PRICING_ARCHITECTURE.md                       |  8 +++
- 9 files changed, 284 insertions(+), 72 deletions(-)
+.ai/CURRENT_TASK.md              | 45 ++++++++++++++++++++++++++++++----------
+ .ai/DECISIONS.md                 | 44 +++++++++++++++++++++++++++++++++++++++
+ .ai/HANDOFF.md                   | 31 +++++++++++++++++----------
+ docs/PRICING_ARCHITECTURE.md     | 14 +++++++++----
+ lib/asaas/client.ts              | 26 +++++++++++++++--------
+ lib/billing/plans-data.ts        | 18 ++++++++--------
+ tests/unit/billing-plans.test.ts | 12 +++++------
+ 7 files changed, 140 insertions(+), 50 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -123,19 +119,28 @@ Billing Center (`/app/[orgSlug]/assinatura`) ganhou bloco de usuários
 incluídos/adicionais (`computeSeatCost`), próxima fatura estimada, alerta
 de consumo 50/75/90/100% em Althos Credits, renomeação de copy
 "Créditos de IA" → "Althos Credits", e a compra de pacotes migrou do array
-`@deprecated` para o catálogo central `credit_packages`. **Achado um risco
-real e ativo durante essa mudança** (não corrigido de propósito): a página
-`/upgrade` (checkout) ainda mostra os preços LEGADOS (R$167/397/697)
-enquanto o Billing Center já mostra os repricados (R$149/299/599) para o
-mesmo plano — inconsistência visível ao cliente pagante hoje. Ver
-`docs/PRICING_ARCHITECTURE.md` § "Risco real e ativo" — deve ser a
-PRIMEIRA coisa da próxima sessão.
+`@deprecated` para o catálogo central `credit_packages`.
+
+**Atualização (mesma sessão, continuação): preço de `/upgrade` CORRIGIDO**
+— usuário pediu explicitamente pra corrigir o risco acima antes de
+continuar. Investigação revelou que era pior do que documentado: existia
+uma TERCEIRA cópia de preço, em `lib/asaas/client.ts::planValue()`,
+hardcoded desde o lançamento (R$137/397/697) — e é ESSE valor, não o
+mostrado na tela, que era realmente cobrado na assinatura Asaas
+(undercharge real e silencioso). Corrigido: `PLANS` (`lib/billing/plans-data.ts`)
+atualizado pros valores repricados; `planValue()` reescrito pra ler dessa
+mesma fonte em vez de manter seu próprio mapa. Ver `docs/PRICING_ARCHITECTURE.md`
+§ "Risco real encontrado na Fase 5 e CORRIGIDO" e `.ai/DECISIONS.md`
+(2026-09-13, segunda entrada do dia). **Pendente**: assinaturas Asaas já
+ativas continuam cobrando o valor antigo — ajustar isso é decisão de
+negócio (avisar cliente antes), não corrigido aqui.
 
 **Isto é Fase 2/3/4/5 de 10 do pedido original — não está concluído.**
-Fases 6 (reconciliar as duas taxonomias — agora com um bug real como
-motivador concreto), 7 (testes de concorrência real), 8 (auditoria
-completa do harness), 9/10 seguem pendentes — ver `.ai/CURRENT_TASK.md`
-§ Pending para a lista detalhada.
+Fases 6 (reconciliar as duas taxonomias de plano por completo — o pior
+sintoma já foi corrigido, mas as duas taxonomias ainda coexistem), 7
+(testes de concorrência real), 8 (auditoria completa do harness), 9/10
+seguem pendentes — ver `.ai/CURRENT_TASK.md` § Pending para a lista
+detalhada.
 
 ### Completed
 Ver `.ai/CURRENT_TASK.md` § Completed (lista detalhada com o bug de

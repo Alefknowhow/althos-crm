@@ -1,3 +1,5 @@
+import { PLANS } from '@/lib/billing/plans-data'
+
 const ASAAS_API_KEY = process.env.ASAAS_API_KEY
 const ASAAS_API_URL = process.env.ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3'
 
@@ -51,17 +53,23 @@ type AsaasCycle = 'MONTHLY' | 'SEMIANNUALLY' | 'YEARLY'
  *  - MONTHLY:      preço mensal do plano.
  *  - SEMIANNUALLY: total semestral à vista (−10%), cobrado a cada 6 meses.
  *  - YEARLY:       total anual à vista (−18%), cobrado 1×/ano.
- * Fonte única: lib/billing/plans.ts (junho/2026: 137 / 397 / 697).
- * 'scale' mantido como alias legado de 'business' (mesmo preço).
+ *
+ * Fonte única de verdade: `PLANS` (lib/billing/plans-data.ts,
+ * priceCents/priceCentsSemestral/priceCentsAnnual) — antes deste fix este
+ * mapa vivia hardcoded e duplicado AQUI, congelado no preço de lançamento
+ * (R$137/397/697), enquanto a página /upgrade e o CheckoutModal já
+ * mostravam R$167/397/697 (repricing de set/2026) — ou seja, o cliente via
+ * um preço na tela e era cobrado outro, mais barato, no Starter. Corrigido
+ * lendo do mesmo lugar que a UI (repricing atual: R$149/299/599).
  */
 function planValue(planKey: string, cycle: AsaasCycle = 'MONTHLY'): number {
-  const key = planKey.replace(/^althos_/, '') // 'althos_pro' -> 'pro'
-  const monthly:   Record<string, number> = { starter: 137,    pro: 397,    business: 697,    scale: 697 }
-  const semestral: Record<string, number> = { starter: 739.80, pro: 2143.80, business: 3763.80, scale: 3763.80 }
-  const annual:    Record<string, number> = { starter: 1348.08, pro: 3906.48, business: 6858.48, scale: 6858.48 }
-  if (cycle === 'YEARLY')       return annual[key]    ?? annual.starter
-  if (cycle === 'SEMIANNUALLY') return semestral[key] ?? semestral.starter
-  return monthly[key] ?? monthly.starter
+  const key = planKey.replace(/^althos_/, '') as keyof typeof PLANS // 'althos_pro' -> 'pro'
+  const plan = PLANS[key] ?? PLANS.starter
+  const cents =
+    cycle === 'YEARLY'       ? (plan.priceCentsAnnual ?? plan.priceCents ?? 0)
+    : cycle === 'SEMIANNUALLY' ? (plan.priceCentsSemestral ?? plan.priceCents ?? 0)
+    : (plan.priceCents ?? 0)
+  return cents / 100
 }
 
 /** Rótulo pt-BR do ciclo, para a descrição da cobrança no Asaas. */

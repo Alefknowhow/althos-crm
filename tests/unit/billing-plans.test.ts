@@ -99,18 +99,18 @@ describe('getPlanPricing', () => {
   it('computes per-month equivalent and savings for the annual cycle', () => {
     const p = getPlanPricing(PLANS.pro, 'annual')
     expect(p.cycle).toBe('annual')
-    expect(p.totalCents).toBe(390648)
-    expect(p.perMonthCents).toBe(Math.round(390648 / 12))
-    expect(p.fullYearCents).toBe(39700 * 12)
-    expect(p.savedCents).toBe(39700 * 12 - 390648)
+    expect(p.totalCents).toBe(294264)
+    expect(p.perMonthCents).toBe(Math.round(294264 / 12))
+    expect(p.fullYearCents).toBe(29900 * 12)
+    expect(p.savedCents).toBe(29900 * 12 - 294264)
     expect(p.savedCents).toBeGreaterThan(0)
   })
 
   it('reports zero savings on the monthly cycle', () => {
     const p = getPlanPricing(PLANS.pro, 'monthly')
     expect(p.cycle).toBe('monthly')
-    expect(p.totalCents).toBe(39700)
-    expect(p.perMonthCents).toBe(39700)
+    expect(p.totalCents).toBe(29900)
+    expect(p.perMonthCents).toBe(29900)
     expect(p.savedCents).toBe(0)
   })
 

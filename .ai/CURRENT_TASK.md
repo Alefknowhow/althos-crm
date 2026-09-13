@@ -163,20 +163,43 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
   pré-existentes ou do mesmo tipo já tolerado no projeto — complexidade de
   função, `any`, console.error direto).
 
+## Completed (correção do preço de /upgrade — pedida explicitamente pelo usuário logo após a Fase 5)
+- Investigação encontrou um problema PIOR do que o documentado ao final da
+  Fase 5: existiam TRÊS cópias de preço, não duas. Além da taxonomia legada
+  (`lib/billing/plans-data.ts`, R$167/397/697) e da nova repricada
+  (`lib/plans/config.ts`, R$149/299/599), havia uma TERCEIRA em
+  `lib/asaas/client.ts::planValue()` — hardcoded, nunca atualizada desde o
+  lançamento (R$137/397/697), e é ESSE valor que é realmente cobrado na
+  assinatura Asaas. Ou seja: cliente via R$167 no Starter e era cobrado
+  R$137 — undercharge real e silencioso em produção, não só inconsistência
+  visual.
+- Corrigido: `PLANS.starter/pro/business` em `lib/billing/plans-data.ts`
+  atualizados pros valores repricados (149/299/599 + semestral/anual).
+  `planValue()` em `lib/asaas/client.ts` deixou de ter mapa próprio — passou
+  a ler os mesmos campos de `PLANS`. Preço exibido (`/upgrade`,
+  `CheckoutModal`) e preço cobrado (Asaas) agora vêm da MESMA fonte.
+- `PLANS.scale` (alias legado de business, contas grandfathered) mantido
+  no preço antigo de propósito — mudar isso não muda o que ninguém vê (não
+  é plano público) e não afeta assinaturas Asaas já ativas, que são
+  objetos remotos independentes.
+- Teste desatualizado corrigido: `tests/unit/billing-plans.test.ts` tinha
+  asserções com o preço antigo do Pro (annual R$3.906,48) — atualizado
+  para R$2.942,64.
+- `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
+- **Ainda pendente, decisão de negócio explícita necessária**: assinaturas
+  Asaas JÁ ATIVAS de contas starter/pro/business continuam cobrando o
+  valor com que foram criadas — mudar `PLANS` só afeta checkouts NOVOS a
+  partir de agora. Ajustar assinaturas existentes exige `updateSubscriptionValue`
+  (hoje sem nenhum caller) + avisar o cliente antes — não deve ser
+  automatizado sem essa combinação.
+
 ## In Progress
-Nada em edição no momento — Fase 5 está pronta para commit.
+Nada em edição no momento.
 
 ## Pending
-- **RISCO REAL ATIVO, achado nesta leva, NÃO corrigido** —
-  `app/app/[orgSlug]/upgrade/page.tsx` (página de checkout/upgrade dentro
-  do app) ainda lê `lib/billing/plans.ts` (taxonomia legada) e mostra
-  R$167/397/697 — o Billing Center já mostra R$149/299/599 pro mesmo
-  plano. Inconsistência visível ao cliente HOJE. Não corrigido porque
-  `UpgradeCheckoutButton` provavelmente usa esse mesmo valor legado pra
-  montar a cobrança Asaas — mudar só o texto sem entender o fluxo de
-  cobrança arrisca cobrar um valor e mostrar outro. Deve ser a PRIMEIRA
-  coisa da próxima sessão, antes de qualquer outra tarefa de Fase 6+ — ver
-  `docs/PRICING_ARCHITECTURE.md`.
+- ~~RISCO REAL ATIVO: /upgrade mostrava preço legado~~ **CORRIGIDO nesta
+  mesma sessão, continuação** — ver "Completed (correção do preço de
+  /upgrade)" abaixo e `docs/PRICING_ARCHITECTURE.md`.
 - **Fase 5 (resíduo)** — alertas de consumo só no card de Althos Credits,
   não em Voice/Email (mesma função pode ser copiada). Reconciliar as duas
   taxonomias de plano para que toda conta (não só as já migradas pra

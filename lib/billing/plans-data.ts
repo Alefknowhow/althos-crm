@@ -127,9 +127,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Starter',
     tagline:           'Ideal para começar',
     description:       'Para pequenos negócios que querem organizar e profissionalizar o atendimento.',
-    priceCents:         16700,
-    priceCentsSemestral:90180,   // R$ 901,80/semestre (−10% vs 6×167)
-    priceCentsAnnual:   164328,  // R$ 1.643,28/ano (−18% vs 12×167)
+    priceCents:         14900,
+    priceCentsSemestral:80460,   // R$ 804,60/semestre (−10% vs 6×149)
+    priceCentsAnnual:   146616,  // R$ 1.466,16/ano (−18% vs 12×149)
     maxLeads:           null,    // unlimited
     maxUsers:           1,
     hasAI:             true,
@@ -150,9 +150,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Pro',
     tagline:           'Para crescer',
     description:       'Para empresas que querem automatizar processos e aumentar as vendas.',
-    priceCents:         39700,
-    priceCentsSemestral:214380,  // R$ 2.143,80/semestre (−10% vs 6×397)
-    priceCentsAnnual:   390648,  // R$ 3.906,48/ano (−18% vs 12×397)
+    priceCents:         29900,
+    priceCentsSemestral:161460,  // R$ 1.614,60/semestre (−10% vs 6×299)
+    priceCentsAnnual:   294264,  // R$ 2.942,64/ano (−18% vs 12×299)
     maxLeads:           null,
     maxUsers:           6,        // titular + 5 convidados
     hasAI:             true,
@@ -173,9 +173,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     label:             'Business',
     tagline:           'Para escalar sem limites',
     description:       'Para empresas que precisam de mais controle, dados e performance em escala.',
-    priceCents:         69700,
-    priceCentsSemestral:376380,  // R$ 3.763,80/semestre (−10% vs 6×697)
-    priceCentsAnnual:   685848,  // R$ 6.858,48/ano (−18% vs 12×697)
+    priceCents:         59900,
+    priceCentsSemestral:323460,  // R$ 3.234,60/semestre (−10% vs 6×599)
+    priceCentsAnnual:   589656,  // R$ 5.896,56/ano (−18% vs 12×599)
     maxLeads:           null,
     maxUsers:           20,       // acima disso: plano sob medida ou usuário extra avulso
     hasAI:             true,

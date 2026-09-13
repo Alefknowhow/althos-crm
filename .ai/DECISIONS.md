@@ -184,3 +184,47 @@ Fases 2-4) como consumo (vermelho, "-") em vez de crédito devolvido
 (verde, "+"). **Risco real e ativo documentado, não corrigido**: preço
 legado vs. repricado divergem em `/upgrade` — ver
 `docs/PRICING_ARCHITECTURE.md` § "Risco real e ativo".
+
+## 2026-09-13 — Correção do preço de /upgrade: 3 cópias de preço, uma cobrando errado de verdade
+
+Context: usuário pediu explicitamente para corrigir o risco documentado ao
+final da Fase 5 ("corrige o /upgrade antes de continuar"). Investigação
+(seguindo a cadeia real: `UpgradeCheckoutButton` → `CheckoutModal` →
+`createCheckoutSession` (actions/billing.ts) → `asaas.createSubscription` →
+`planValue()`) encontrou que o problema era maior do que "só a UI mostra
+preço diferente": `lib/asaas/client.ts::planValue()` tinha um TERCEIRO mapa
+de preço, hardcoded e nunca atualizado desde o lançamento (R$137/397/697),
+e é ESSE valor — não o que aparece na tela — que vira o `value` da
+assinatura Asaas de verdade. O comentário da função até dizia "Fonte
+única: lib/billing/plans.ts", mas nunca foi de fato ligado a ela.
+
+Decision:
+1. Corrigir a causa raiz, não só o sintoma: `lib/billing/plans-data.ts`
+   (`PLANS.starter/pro/business`) atualizado pros valores repricados
+   (149/299/599), e `planValue()` reescrito para LER desses mesmos campos
+   em vez de manter seu próprio mapa. Preço exibido e preço cobrado agora
+   têm uma única fonte — não há uma quarta cópia escondida em algum lugar
+   que eu não tenha visto, verificado por grep em todo o repo por qualquer
+   um dos valores antigos (137/167/397/697 e seus totais semestral/anual).
+2. `PLANS.scale` (alias legado, contas grandfathered no plano antigo)
+   deliberadamente NÃO alterado — não é plano público, e mudar o número
+   aqui não afeta o valor de uma assinatura Asaas já criada (é um objeto
+   remoto independente); só mudaria o que uma tela mostrasse, sem efeito
+   real, então não há necessidade.
+3. NÃO ajustar assinaturas Asaas já ativas (`updateSubscriptionValue`,
+   hoje sem caller nenhum) — mudar o valor cobrado de um cliente que já
+   está pagando é uma decisão comercial que exige aviso prévio, não uma
+   correção de bug a ser automatizada nesta leva.
+
+Reason: o pedido do usuário foi direto ("corrige antes de continuar") — a
+prioridade era eliminar o undercharge real (Starter cobrando R$137 em vez
+do valor mostrado), não só alinhar textos. Rastrear até a chamada real da
+API do Asaas (em vez de assumir que só a exibição estava errada) evitou
+deixar a causa raiz intacta.
+
+Impact: `lib/billing/plans-data.ts`, `lib/asaas/client.ts::planValue()`
+corrigidos. `tests/unit/billing-plans.test.ts` tinha asserções presas ao
+preço antigo do Pro — corrigidas. Nenhuma assinatura Asaas já ativa foi
+tocada (ver ponto 3 acima) — isso seguirá cobrando o valor com que foi
+criada até uma decisão de negócio explícita sobre reajustar clientes
+existentes.

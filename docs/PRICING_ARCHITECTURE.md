@@ -68,13 +68,19 @@ Tabela `credit_packages` (migration `0244`) — catálogo editável sem deploy, 
 
 Decisão de negócio confirmada nesta sessão: **migrar todas as contas para o novo preço/franquia imediatamente** (não há opção de grandfathering habilitada). Para permitir auditoria/rollback de decisão comercial sem tocar em schema, `subscriptions` ganhou `legacy_plan_id` (snapshot do `plan_id` no momento da migration) e `repriced_at`. Isto NÃO é um mecanismo de grandfathering ativo — é só rastro de auditoria. Se o negócio decidir reverter para os preços antigos para uma conta específica, os dados para isso existem, mas a lógica de "aplicar plano legado" não foi construída (pendência).
 
-## Risco real e ativo encontrado durante a Fase 5 (não corrigido — precisa de decisão antes de tocar)
+## Risco real encontrado na Fase 5 e CORRIGIDO nesta leva (/upgrade + cobrança real)
 
-`app/app/[orgSlug]/upgrade/page.tsx` (a "página de planos" dentro do app, onde o cliente clica pra assinar/fazer upgrade) lê `PUBLIC_PLANS`/`formatPrice(plan.priceCents)` de **`lib/billing/plans.ts` — a taxonomia LEGADA**, que ainda mostra os preços antigos (R$167/397/697), não os repricados (R$149/299/599). O `UpgradeCheckoutButton` dessa página provavelmente cria a cobrança Asaas usando esse mesmo valor legado.
+`app/app/[orgSlug]/upgrade/page.tsx` (a "página de planos" dentro do app) lia `PUBLIC_PLANS`/`formatPrice(plan.priceCents)` de `lib/billing/plans-data.ts` (taxonomia legada), que ainda tinha os preços da repricing de set/2026 (R$167/397/697) — divergindo do Billing Center, já repricado (R$149/299/599) na própria Fase 5.
 
-Isso significa que, HOJE, um cliente pode ver R$299/mês no painel de Assinatura (Billing Center, já corrigido na Fase 5) e R$397/mês na página de upgrade/checkout para o MESMO plano Pro — inconsistência visível e ativa.
+**Investigação revelou um problema pior**: existia uma TERCEIRA cópia de preço, em `lib/asaas/client.ts::planValue()` — hardcoded e nunca atualizada desde o lançamento (R$137/397/697), que é o valor **realmente cobrado** na assinatura Asaas quando o cliente clica em "Continuar para pagamento". Ou seja: o cliente via R$167 no Starter e era cobrado R$137 — undercharge real, silencioso, em produção.
 
-**Por que não foi corrigido nesta leva**: mudar o preço exibido em `/upgrade` sem entender exatamente como `UpgradeCheckoutButton` monta a cobrança Asaas arrisca cobrar um valor e mostrar outro (pior que a inconsistência atual). Essa é exatamente a reconciliação de taxonomias que a Fase 2/3 já sinalizou como "alto risco, não fazer de afogadilho". Precisa ser a PRIMEIRA coisa da próxima sessão de Fase 6, antes de qualquer outra coisa — é um bug visível ao cliente pagante agora.
+**Corrigido** (não apenas documentado):
+1. `lib/billing/plans-data.ts` — `PLANS.starter/pro/business.priceCents(Semestral/Annual)` atualizados para os valores repricados (R$149/299/599 + semestral −10%/anual −18%), a MESMA fonte que `getPlanPricing()` usa para `/upgrade` e o `CheckoutModal`.
+2. `lib/asaas/client.ts::planValue()` — deixou de ter um mapa próprio hardcoded; agora lê os mesmos `priceCents`/`priceCentsSemestral`/`priceCentsAnnual` de `PLANS`. Preço exibido e preço cobrado agora vêm da MESMA fonte — não podem mais divergir.
+3. `PLANS.scale` (alias legado de `business`, usado só por orgs já grandfathered nesse plano antigo) foi deliberadamente **mantido** no preço antigo (R$697) — mudar isso não afeta preço exibido a ninguém (não é `isPublicPlan`) e alterar retroativamente cobraria diferente de assinaturas Asaas já ativas, que são objetos remotos independentes; ajustar cobrança de assinaturas JÁ EXISTENTES exigiria uma chamada à API do Asaas por conta, isso sim uma tarefa de Fase 6 (migração ativa), não um ajuste de config.
+4. Teste desatualizado corrigido: `tests/unit/billing-plans.test.ts` tinha asserções com o preço antigo do Pro (R$397/R$3.906,48 anual) — atualizado para R$299/R$2.942,64.
+
+**O que NÃO foi corrigido, ainda pendente**: assinaturas Asaas já ativas de contas nos planos starter/pro/business (não-scale) continuam cobrando o valor com que foram criadas — mudar `PLANS` só afeta CHECKOUTS NOVOS a partir de agora, não retroage sobre assinaturas recorrentes já em andamento no Asaas. Ajustar o valor de assinaturas existentes (via `updateSubscriptionValue`, hoje sem nenhum caller) é uma decisão de negócio explícita (avisar o cliente antes de mudar o valor cobrado) — não deve ser automatizado sem essa combinação.
 
 ## Pendências (próxima etapa)
 
