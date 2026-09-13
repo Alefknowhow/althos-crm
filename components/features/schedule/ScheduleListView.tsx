@@ -2,9 +2,8 @@
 
 /**
  * List view for ScheduleClient. Prop-driven, split out of
- * ScheduleClient.tsx. Grade de cards (guiada pelo anexo 2 do redesign) —
- * 2 colunas em telas largas pra caber várias viagens visíveis sem rolar
- * demais; o card em si é ScheduleTripCard.tsx.
+ * ScheduleClient.tsx. Um card por linha, ocupando toda a largura
+ * disponível (pedido explícito) — o card em si é ScheduleTripCard.tsx.
  */
 
 import type { ScheduledTrip } from '@/actions/travel-schedule'
@@ -27,7 +26,7 @@ export function ScheduleListView({
 
   return (
     <div className="space-y-3">
-      <div className="grid lg:grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         {filtered.map(t => (
           <ScheduleTripCard
             key={t.id}

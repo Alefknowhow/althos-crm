@@ -31,11 +31,9 @@ export default function TravelSalesViewSaleEditorDadosTab({
 }) {
   return (
     <TabsContent value="dados" className="space-y-4 pt-4">
-      <div className="flex justify-end">
-        <VoucherUploadWithOcr orgSlug={orgSlug} label="Add voucher" onExtracted={onExtracted} />
-      </div>
       <div className="space-y-4 max-w-3xl">
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5 items-end">
+          <VoucherUploadWithOcr orgSlug={orgSlug} label="Add voucher" onExtracted={onExtracted} />
           <Field label="Cliente">
             {s.contato_id ? (
               <div className="h-9 flex items-center px-3 rounded-md border bg-muted/40 text-sm justify-between gap-2">
