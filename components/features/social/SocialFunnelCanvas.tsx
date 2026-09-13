@@ -126,9 +126,10 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClo
   }
 
   const selectedEdge = edges.find(e => e.id === selectedEdgeId) || null
-  // Só edges saindo do handle "resposta livre" (sem botão) aceitam edição
-  // manual de condição — as de botão já vêm com a condição fixada.
-  const showKeywordPanel = selectedEdge && selectedEdge.sourceHandle !== undefined && !selectedEdge.sourceHandle?.startsWith('btn-')
+  const selectedEdgeCondition = (selectedEdge?.data as any)?.condition as FunnelEdgeCondition | undefined
+  const selectedButtonLabel = selectedEdgeCondition?.type === 'button'
+    ? nodes.find(n => n.id === selectedEdge?.source)?.data.buttonLabels?.[selectedEdgeCondition.buttonIndex]
+    : undefined
 
   function updateSelectedCondition(condition: FunnelEdgeCondition | undefined) {
     setEdges(curr => curr.map(e => e.id === selectedEdgeId
@@ -168,9 +169,10 @@ function SocialFunnelCanvasInner({ steps, triggerType, flow, onChangeFlow, onClo
           <MiniMap pannable zoomable className="!bg-card" />
         </ReactFlow>
 
-        {showKeywordPanel && selectedEdge && (
+        {selectedEdge && (
           <SocialFunnelEdgePanel
-            condition={(selectedEdge.data as any)?.condition}
+            condition={selectedEdgeCondition}
+            buttonLabel={selectedButtonLabel}
             onChange={updateSelectedCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}

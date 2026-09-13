@@ -123,7 +123,12 @@ export function FunnelBuilder({
   const isCommentish = triggerType === 'comment' || triggerType === 'comment_and_dm'
 
   return (
-    <Dialog open onOpenChange={o => !o && onClose()}>
+    // Dialog fica fechado (open={!flowOpen}) enquanto o canvas de fluxo
+    // está aberto — os dois são full-screen; abrir os dois ao mesmo tempo
+    // gera disputa de z-index com o portal do Dialog (o canvas nascia
+    // atrás) e fechar o Dialog nesse estado disparava onClose() e
+    // derrubava o canvas junto. Alternar entre os dois evita as duas coisas.
+    <Dialog open={!flowOpen} onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
         <DialogHeader className="flex-row items-start justify-between gap-2 space-y-0">
           <div>
