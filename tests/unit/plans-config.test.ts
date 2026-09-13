@@ -9,6 +9,7 @@ import {
   currentPeriodMonth,
   getPlanMeta,
   formatPlanPrice,
+  computeSeatCost,
 } from '@/lib/plans/config'
 
 describe('getPlanLimit', () => {
@@ -62,9 +63,9 @@ describe('minimumPlanFor', () => {
 
 describe('getCyclePriceCents', () => {
   it('returns the correct total per billing cycle', () => {
-    expect(getCyclePriceCents('pro', 'monthly')).toBe(39700)
-    expect(getCyclePriceCents('pro', 'semestral')).toBe(214380)
-    expect(getCyclePriceCents('pro', 'annual')).toBe(390648)
+    expect(getCyclePriceCents('pro', 'monthly')).toBe(29900)
+    expect(getCyclePriceCents('pro', 'semestral')).toBe(161460)
+    expect(getCyclePriceCents('pro', 'annual')).toBe(294264)
   })
 })
 
@@ -84,7 +85,7 @@ describe('modelCreditMultiplier', () => {
 
 describe('getPlanMeta', () => {
   it('resolves metadata and defaults to free', () => {
-    expect(getPlanMeta('starter').aiCreditsMonthly).toBe(310)
+    expect(getPlanMeta('starter').aiCreditsMonthly).toBe(500)
     expect(getPlanMeta('garbage').id).toBe('free')
   })
 })
@@ -129,5 +130,32 @@ describe('currentPeriodMonth', () => {
     // 23:30 UTC on the 31st stays in the same UTC month even if local tz
     // would already be past midnight into the next month.
     expect(currentPeriodMonth(new Date('2026-01-31T23:30:00Z'))).toBe('2026-01')
+  })
+})
+
+describe('computeSeatCost', () => {
+  it('charges nothing when usage is within the included franchise', () => {
+    expect(computeSeatCost('pro', 5)).toEqual({
+      totalUsers: 5, includedUsers: 5, extraUsers: 0, extraUserPriceCents: 4900, extraCostCents: 0,
+    })
+  })
+
+  it('charges per extra seat above the plan franchise — "7 usuários: 5 incluídos + 2 adicionais"', () => {
+    expect(computeSeatCost('pro', 7)).toEqual({
+      totalUsers: 7, includedUsers: 5, extraUsers: 2, extraUserPriceCents: 4900, extraCostCents: 9800,
+    })
+  })
+
+  it('uses the correct per-plan extra-seat price', () => {
+    expect(computeSeatCost('starter', 3).extraCostCents).toBe(3900)   // 1 extra × R$39
+    expect(computeSeatCost('business', 12).extraCostCents).toBe(11800) // 2 extra × R$59
+  })
+
+  it('never returns negative extra users when under the franchise', () => {
+    expect(computeSeatCost('business', 1).extraUsers).toBe(0)
+  })
+
+  it('falls back to the free plan for unknown plans', () => {
+    expect(computeSeatCost('nonexistent', 3).includedUsers).toBe(1)
   })
 })

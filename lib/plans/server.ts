@@ -12,8 +12,8 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { getPlanMeta, modelCreditMultiplier, computeCreditCost, currentPeriodMonth, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
-import { resolveActionCreditCost } from '@/lib/plans/pricing'
+import { getPlanMeta, currentPeriodMonth, type AiAction, type FeatureKey, type PlanId } from '@/lib/plans/config'
+import { consumeCredits } from '@/lib/credits/engine'
 
 export interface AccountSubscription {
   accountId: string
@@ -108,15 +108,14 @@ export type ConsumeResult =
   | { success: false; error: string; remaining?: number }
 
 /**
- * Debit AI credits for an action against an account's current-period balance.
- * Calls the race-safe SQL function `consume_ai_credits` (SELECT ... FOR UPDATE).
- *
- * `action` resolves its cost from the live ai_action_cost_catalog table
- * (lib/plans/pricing.ts, editable in /super-admin/ai-credits without a
- * deploy) unless an explicit `credits` override is given. The base cost is
- * multiplied by the AI model's multiplier
- * (Haiku 1× · Sonnet/GPT-4o 3× · Opus 5×), since Althos pays the token bill —
- * pricier models burn credits faster. Fractional costs round UP (DB integers).
+ * Debit Althos Credits for an action against an account's current-period
+ * balance. Thin wrapper over the central Credit Engine
+ * (lib/credits/engine.ts::consumeCredits) — kept with this exact name/shape
+ * so the ~30 existing AI call sites (attendant, qualifier, insights,
+ * document-extract, roteirista, financial-ai...) don't need to change.
+ * New call sites should prefer `consumeCredits()` directly (it also accepts
+ * `module`/`idempotencyKey`/`internalCostCents` for unit economics and
+ * retry-safety, which this legacy shape doesn't expose).
  */
 export async function consumeAiCredits(opts: {
   accountId: string
@@ -126,31 +125,17 @@ export async function consumeAiCredits(opts: {
   leadId?: string | null
   metadata?: Record<string, unknown>
 }): Promise<ConsumeResult> {
-  const { accountId, action, model = null, leadId = null, metadata = {} } = opts
-  const baseCost = opts.credits ?? (await resolveActionCreditCost(action))
-  const multiplier = modelCreditMultiplier(model)
-  const cost = computeCreditCost(baseCost, multiplier)
-
-  const supabase = createClient()
-  const { data, error } = await supabase.rpc('consume_ai_credits', {
-    p_account_id: accountId,
-    p_action: action,
-    p_credits: cost,
-    p_contato_id: leadId,
-    p_metadata: { ...metadata, model: model ?? undefined, multiplier },
+  const res = await consumeCredits({
+    accountId: opts.accountId,
+    action: opts.action,
+    module: 'other',
+    credits: opts.credits,
+    model: opts.model,
+    leadId: opts.leadId,
+    metadata: opts.metadata,
   })
-
-  if (error) {
-    console.error('[plans] consumeAiCredits error:', error.message)
-    return { success: false, error: 'rpc_error' }
-  }
-
-  // The function returns jsonb: {success:true, remaining} | {success:false, error}
-  const res = (data ?? {}) as { success?: boolean; remaining?: number; error?: string }
-  if (res.success) {
-    return { success: true, remaining: res.remaining ?? 0 }
-  }
-  return { success: false, error: res.error ?? 'insufficient_credits', remaining: res.remaining }
+  if (res.success) return { success: true, remaining: res.remaining ?? 0 }
+  return { success: false, error: res.error, remaining: res.available }
 }
 
 export interface AiCreditsStatus {

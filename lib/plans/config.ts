@@ -143,28 +143,31 @@ export interface PlanMeta {
   priceSemestralCents: number
   priceAnnualCents: number
   aiCreditsMonthly: number
+  /** Usuários inclusos no preço base do plano (migration 0244). */
+  includedUsers: number
+  /** Preço (centavos/mês) de cada usuário além de includedUsers. 0 = não vende assento avulso. */
+  extraUserPriceCents: number
 }
 
 /**
  * Static plan metadata — mirror of the `plans` price/credit columns.
- * Prices reflect a repricing de set/2026 (migration 0155,
- * docs/plano-precos/): Starter subiu de R$137 pra R$167 (ganhou canais reais
- * com teto de uso); Pro e Business mantiveram o preço da revamp de
- * junho/2026 (migration 0064). Semestral −10% · Anual −18% (totais pagos
- * por ciclo, já com desconto).
  *
- * Créditos de IA mensais = 10% do valor do plano, ao custo real do
- * crédito (R$0,054/crédito — ver ai_credit_pricing_settings), arredondado:
- * Starter 310 · Pro 740 · Business 1.290.
+ * Repricing de set/2026 (migration 0244, PRICING_ARCHITECTURE.md): nova
+ * filosofia comercial — plano base da empresa + usuários incluídos/extras +
+ * Althos Credits (em vez de cobrança majoritariamente por usuário). Preços:
+ * Starter R$149 · Pro R$299 · Business R$599 (mensal). Semestral −10% ·
+ * Anual −18% (totais pagos por ciclo, já com desconto). Substitui a
+ * repricing anterior (migration 0155, R$167/397/697) — decisão de negócio
+ * explícita: migrar TODAS as contas para os novos valores, sem
+ * grandfathering (subscriptions.legacy_plan_id guarda o plano anterior por
+ * auditoria).
  *
- * Esse custo foi recalibrado na migration 0156 depois de uma primeira
- * rodada errada: a estimativa por tokens (1500in/150out, Haiku) dava
- * US$0,00225/resposta, mas o custo real observado em produção é
- * ~US$0,01/resposta (~4,4x maior — iterações de tool-use e contexto
- * maior que o assumido não entravam na conta). Os créditos da migration
- * 0155 (700/1650/2900, calculados a 5% com o custo errado) foram
- * corrigidos e o volume-alvo também subiu de 5% para 10% do valor do
- * plano nessa mesma migration 0156.
+ * Créditos de IA mensais ("Althos Credits"): Starter 500 · Pro 2.500 ·
+ * Business 7.500 — franquia fixa por plano (não é mais % do preço).
+ *
+ * includedUsers/extraUserPriceCents: usuário adicional além da franquia
+ * custa R$39 (Starter) / R$49 (Pro) / R$59 (Business) por mês — ver
+ * computeSeatCost() abaixo.
  */
 export const PLAN_META: Record<PlanId, PlanMeta> = {
   free: {
@@ -174,31 +177,65 @@ export const PLAN_META: Record<PlanId, PlanMeta> = {
     priceSemestralCents: 0,
     priceAnnualCents: 0,
     aiCreditsMonthly: 0,
+    includedUsers: 1,
+    extraUserPriceCents: 0,
   },
   starter: {
     id: 'starter',
     name: 'Starter',
-    priceMonthlyCents: 16700,
-    priceSemestralCents: 90180,
-    priceAnnualCents: 164328,
-    aiCreditsMonthly: 310,
+    priceMonthlyCents: 14900,
+    priceSemestralCents: 80460,
+    priceAnnualCents: 146616,
+    aiCreditsMonthly: 500,
+    includedUsers: 2,
+    extraUserPriceCents: 3900,
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    priceMonthlyCents: 39700,
-    priceSemestralCents: 214380,
-    priceAnnualCents: 390648,
-    aiCreditsMonthly: 740,
+    priceMonthlyCents: 29900,
+    priceSemestralCents: 161460,
+    priceAnnualCents: 294264,
+    aiCreditsMonthly: 2500,
+    includedUsers: 5,
+    extraUserPriceCents: 4900,
   },
   business: {
     id: 'business',
     name: 'Business',
-    priceMonthlyCents: 69700,
-    priceSemestralCents: 376380,
-    priceAnnualCents: 685848,
-    aiCreditsMonthly: 1290,
+    priceMonthlyCents: 59900,
+    priceSemestralCents: 323460,
+    priceAnnualCents: 589656,
+    aiCreditsMonthly: 7500,
+    includedUsers: 10,
+    extraUserPriceCents: 5900,
   },
+}
+
+/**
+ * Custo de usuários adicionais além da franquia do plano — "5 de 5
+ * incluídos" / "7 usuários: 5 incluídos + 2 adicionais = R$98/mês".
+ * Fonte central: nenhum componente deve recalcular isso com valores
+ * próprios (ver seção 10 de PRICING_ARCHITECTURE.md).
+ */
+export interface SeatCost {
+  totalUsers: number
+  includedUsers: number
+  extraUsers: number
+  extraUserPriceCents: number
+  extraCostCents: number
+}
+
+export function computeSeatCost(plan: PlanId | string | null | undefined, totalUsers: number): SeatCost {
+  const meta = getPlanMeta(plan)
+  const extraUsers = Math.max(0, totalUsers - meta.includedUsers)
+  return {
+    totalUsers,
+    includedUsers: meta.includedUsers,
+    extraUsers,
+    extraUserPriceCents: meta.extraUserPriceCents,
+    extraCostCents: extraUsers * meta.extraUserPriceCents,
+  }
 }
 
 /**
@@ -321,7 +358,13 @@ export function currentPeriodMonth(d = new Date()): string {
 /** Preço de venda do crédito avulso (add-on), em centavos. */
 export const ADDON_CREDIT_PRICE_CENTS = 15
 
-/** Pacotes de créditos avulsos à venda (preço unitário decrescente). */
+/**
+ * @deprecated Pacotes legados (crédito de IA em pequena escala). O catálogo
+ * vigente de Althos Credits é a tabela `credit_packages` (migration 0244),
+ * lido via `getCreditPackagesCatalog()` em lib/credits/engine.ts — nunca
+ * hardcode pacotes/preços em componentes. Mantido só para não quebrar
+ * imports existentes até a UI migrar.
+ */
 export const CREDIT_PACKS: { credits: number; priceCents: number }[] = [
   { credits: 100, priceCents: 1500 },   // R$0,15/cr
   { credits: 500, priceCents: 7000 },   // R$0,14/cr
