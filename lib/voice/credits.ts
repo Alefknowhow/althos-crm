@@ -15,7 +15,7 @@ import { getVoiceMarkupPct } from './pricing'
 export type VoiceUsageType = 'call_human' | 'call_ai' | 'sms' | 'number_rental'
 
 export type ConsumeVoiceResult =
-  | { success: true; althosCostCents: number; remainingCents: number }
+  | { success: true; althosCostCents: number; remainingCents: number; transactionId: string | null; idempotentReplay?: boolean }
   | { success: false; error: string; availableCents?: number }
 
 /**
@@ -23,6 +23,11 @@ export type ConsumeVoiceResult =
  * conta. Chama a função SQL race-safe `consume_voice_credits` (SELECT ...
  * FOR UPDATE), que também aplica os limites de segurança configurados pela
  * organização (voice_accounts.limits).
+ *
+ * `idempotencyKey` (migration 0245) — OBRIGATÓRIO para qualquer chamada
+ * originada de um job Inngest sujeito a retry (voice-calls, voice-sms): sem
+ * ela, um retry de `step.run` reexecuta a função inteira e debita de novo.
+ * Convenção: `buildVoiceIdempotencyKey(usageType, refId)`.
  */
 export async function consumeVoiceCredits(opts: {
   accountId: string
@@ -31,8 +36,9 @@ export async function consumeVoiceCredits(opts: {
   providerCostCents: number
   voiceCallId?: string | null
   metadata?: Record<string, unknown>
+  idempotencyKey?: string
 }): Promise<ConsumeVoiceResult> {
-  const { accountId, organizationId, usageType, providerCostCents, voiceCallId = null, metadata = {} } = opts
+  const { accountId, organizationId, usageType, providerCostCents, voiceCallId = null, metadata = {}, idempotencyKey = null } = opts
   const markupPct = await getVoiceMarkupPct()
 
   const supabase = createClient()
@@ -44,6 +50,7 @@ export async function consumeVoiceCredits(opts: {
     p_markup_pct: markupPct,
     p_voice_call_id: voiceCallId,
     p_metadata: metadata,
+    p_idempotency_key: idempotencyKey,
   })
 
   if (error) {
@@ -51,11 +58,44 @@ export async function consumeVoiceCredits(opts: {
     return { success: false, error: 'rpc_error' }
   }
 
-  const res = (data ?? {}) as { success?: boolean; althos_cost_cents?: number; remaining_cents?: number; error?: string; available_cents?: number }
+  const res = (data ?? {}) as { success?: boolean; althos_cost_cents?: number; remaining_cents?: number; error?: string; available_cents?: number; transaction_id?: string; idempotent_replay?: boolean }
   if (res.success) {
-    return { success: true, althosCostCents: res.althos_cost_cents ?? 0, remainingCents: res.remaining_cents ?? 0 }
+    return {
+      success: true,
+      althosCostCents: res.althos_cost_cents ?? 0,
+      remainingCents: res.remaining_cents ?? 0,
+      transactionId: res.transaction_id ?? null,
+      idempotentReplay: res.idempotent_replay,
+    }
   }
   return { success: false, error: res.error ?? 'insufficient_credits', availableCents: res.available_cents }
+}
+
+/**
+ * Estorna uma transação de consumo do Voice Credits — usar quando o
+ * provider (Twilio) falha DEPOIS do débito (a chamada não completou / o SMS
+ * não foi enviado). Idempotente por transação (1 estorno cada).
+ */
+export async function refundVoiceCredits(transactionId: string, reason?: string): Promise<{ success: boolean; refundedCents?: number; error?: string }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('refund_voice_credits', {
+    p_transaction_id: transactionId,
+    p_reason: reason ?? null,
+  })
+  if (error) {
+    console.error('[voice] refundVoiceCredits error:', error.message)
+    return { success: false, error: 'rpc_error' }
+  }
+  const res = (data ?? {}) as { success?: boolean; refunded_cents?: number; error?: string }
+  return { success: res.success === true, refundedCents: res.refunded_cents, error: res.error }
+}
+
+/**
+ * Convenção de chave de idempotência para consumo de Voice/SMS originado de
+ * jobs assíncronos — o MESMO evento reprocessado gera a MESMA chave.
+ */
+export function buildVoiceIdempotencyKey(usageType: VoiceUsageType, refId: string): string {
+  return `voice:${usageType}:${refId}`
 }
 
 export interface VoiceCreditsStatus {

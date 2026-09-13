@@ -88,3 +88,44 @@ que criou uma função sobrecarregada órfã e removeu o bypass de
 super-admin) foi cometido e corrigido dentro da própria sessão — ver
 `.ai/HANDOFF.md` § Known Problems para o diagnóstico completo antes de
 tocar em `consume_ai_credits` de novo.
+
+## 2026-09-13 — Fase 4: Voice/SMS ganham idempotência/refund, SEM entrar no Credit Engine de IA
+
+Context: continuação da tarefa de repricing/Credit Engine (decisão acima).
+Auditoria do `lib/voice/credits.ts`/`consume_voice_credits` encontrou o
+mesmo tipo de gap que a Fase 2/3 corrigiu para IA: nenhuma proteção de
+idempotência (retry de `step.run` do Inngest reexecuta a função inteira) e
+nenhuma função de estorno — se o provider (Twilio) falhasse depois do
+débito, o cliente perdia o crédito sem receber a chamada/SMS. Confirmado
+como bug REAL, não hipotético, ao ler `lib/inngest/voice-calls.ts` e
+`lib/inngest/voice-sms.ts`: ambos debitavam e só marcavam status de falha,
+sem estornar.
+
+Decision:
+1. Levar o Credit Engine de IA (idempotency_key + refund_of, migration
+   `0244`) para `voice_credit_transactions` também (migration `0245`) —
+   MESMO padrão, ledger SEPARADO. Voice/SMS continuam fora do conceito
+   comercial "Althos Credits" (decisão da Fase 2/3, reafirmada aqui).
+2. SMS não ganhou uma tabela `sms_usage` própria — continua usando
+   `voice_credit_transactions` com `usage_type='sms'`. Reaproveitar em vez
+   de duplicar uma segunda tabela de ledger para uma unidade de negócio
+   pequena.
+3. Em `voice-sms.ts`, o catch que estorna NÃO relança o erro — decisão
+   deliberada: relançar faria o Inngest reprocessar o mesmo step com a
+   MESMA idempotency key (`event.id`, estável entre retries), que
+   encontraria a transação já estornada e devolveria um "idempotent
+   replay" (sucesso, sem novo débito) — o reenvio sairia de graça. Parar o
+   retry ali (retornar `skipped`) é o comportamento seguro.
+
+Reason: mesma motivação da Fase 2/3 — billing é dado crítico, e um retry
+que double-charga ou um provider-failure que nunca estorna são prejuízos
+financeiros reais (não teóricos) para o cliente ou para a Althos.
+
+Impact: `lib/voice/credits.ts` ganhou `refundVoiceCredits()` e
+`buildVoiceIdempotencyKey()`; `consumeVoiceCredits()` aceita
+`idempotencyKey` e retorna `transactionId`. `lib/inngest/voice-calls.ts` e
+`lib/inngest/voice-sms.ts` corrigidos para estornar em falha pós-débito.
+Mesmo cuidado da Fase 2/3 aplicado ao evoluir `consume_voice_credits`: como
+adicionar um parâmetro muda a assinatura da função, um `DROP FUNCTION`
+explícito da versão antiga veio antes do `CREATE OR REPLACE`, evitando
+recriar o bug de overload órfão da migration 0244.

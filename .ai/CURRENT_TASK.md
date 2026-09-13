@@ -17,7 +17,7 @@
 Nova arquitetura de Pricing/Billing/Althos Credits — repricing + Credit Engine (Fase 2/3 de um pedido de 33 seções)
 
 ## Status
-IN PROGRESS (Fase 3 de 10 concluída — schema+engine; Fases 4-10 pendentes)
+IN PROGRESS (Fases 2/3 e 4 de 10 concluídas — schema+Credit Engine+Voice/SMS metering; Fases 5-10 pendentes)
 
 ## Owner
 Claude (Claude Code)
@@ -93,14 +93,58 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
   criados.
 - `npx tsc --noEmit`: PASS. `npm test`: PASS (173/173, 22 arquivos).
 
+## Completed (Fase 4 — adicionado nesta continuação)
+- Migration `0245_voice_credits_idempotency.sql`: `voice_credit_transactions`
+  ganhou `idempotency_key` (índice único parcial) e `refund_of` (índice
+  único parcial). `consume_voice_credits` reescrita para ser idempotente e
+  retornar `transaction_id`; nova função `refund_voice_credits`.
+- **Mesmo tipo de bug de overload da migration 0244 evitado desta vez**:
+  como adicionar `p_idempotency_key` muda a assinatura da função, um `DROP
+  FUNCTION` explícito da assinatura antiga (7 args) veio ANTES do `CREATE OR
+  REPLACE` (8 args) — verificado via `pg_proc` que existe só 1 overload
+  antes e depois, e smoke-testado com a chamada posicional antiga.
+- `lib/voice/credits.ts`: `consumeVoiceCredits()` aceita `idempotencyKey` e
+  retorna `transactionId`; novo `refundVoiceCredits()`; novo
+  `buildVoiceIdempotencyKey(usageType, refId)`.
+- **2 bugs financeiros reais corrigidos** (não eram só "falta de rigor" —
+  causavam perda de crédito sem entrega do serviço):
+  - `lib/inngest/voice-calls.ts`: falha do provider (Twilio) DEPOIS da
+    reserva de crédito nunca estornava — cliente perdia o crédito sem a
+    chamada acontecer. Corrigido com `refundVoiceCredits` no catch, antes
+    de marcar a chamada como `failed`. (Retry não duplica o débito porque o
+    guard existente `call.status !== 'queued'` já bloqueia reprocessamento
+    — a idempotency key aqui é defesa em profundidade, não a proteção
+    principal.)
+  - `lib/inngest/voice-sms.ts`: mesmo problema para SMS. Corrigido, com uma
+    decisão de design importante: o catch NÃO relança o erro depois de
+    estornar — se relançasse, o retry do Inngest reexecutaria o mesmo
+    step com a MESMA idempotency key (baseada em `event.id`, estável entre
+    retries), encontraria a transação já estornada e devolveria um
+    "idempotent replay" reportando sucesso SEM debitar de novo — ou seja, o
+    reenvio sairia de graça. Parar o retry (retornar `skipped` em vez de
+    `throw`) evita esse under-charge; reenviar de verdade exige um novo
+    evento (`event.id` novo).
+  - `app/api/webhooks/voice/twilio/status/route.ts`: idempotency key
+    adicionada na reconciliação de minutos extras (defesa em profundidade —
+    já havia dedupe no nível do webhook via `voice_provider_events`, não
+    era um bug ativo, mas ficou consistente com o resto do Credit Engine).
+- Testes novos: `tests/unit/voice-credits.test.ts` (`buildVoiceIdempotencyKey`,
+  3 casos). `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176, 23
+  arquivos).
+- `docs/BILLING.md` atualizado com a seção Voice/SMS revisada e os 2 bugs
+  corrigidos.
+
 ## In Progress
-Nada em edição no momento — este bloco (Fase 2/3) está pronto para commit.
+Nada em edição no momento — Fase 4 está pronta para commit.
 
 ## Pending
-- **Fase 4** — conectar Voice/SMS/WhatsApp ao metering (Voice/SMS já têm
-  ledger PRÓPRIO, mas sem o padrão de idempotência/refund que o Credit
-  Engine ganhou; `voice_minutes` com breakdown de custo STT/LLM/TTS
-  descrito no pedido não existe como tabela; `sms_usage` não existe).
+- **Fase 4 (resíduo)** — `voice_minutes` com breakdown de custo por
+  componente (telefonia/STT/LLM/TTS) não existe como tabela dedicada (hoje
+  só custo total). Tabela `sms_usage` dedicada não foi criada — decisão
+  pragmática de manter SMS no ledger de Voice (`usageType: 'sms'`) em vez
+  de duplicar infraestrutura; documentado em `docs/BILLING.md`, não é uma
+  lacuna, é uma escolha — revisitar se o produto precisar de métricas de
+  SMS separadas de Voice no futuro.
 - **Fase 5** — Billing Center (bloco de usuários incluídos/extras, próxima
   fatura estimada, histórico de Althos Credits com filtros, alertas de
   50/75/90/100%), página de planos pública, upgrade contextual, Admin

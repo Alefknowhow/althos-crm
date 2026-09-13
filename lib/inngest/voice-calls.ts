@@ -8,7 +8,7 @@ import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
 import { getVoiceProvider } from '../voice/get-provider'
 import { getAccountIdForOrgSlug } from '../plans/server'
-import { consumeVoiceCredits } from '../voice/credits'
+import { consumeVoiceCredits, refundVoiceCredits, buildVoiceIdempotencyKey } from '../voice/credits'
 
 export const placeVoiceCallFn = inngest.createFunction(
   {
@@ -41,6 +41,9 @@ export const placeVoiceCallFn = inngest.createFunction(
         providerCostCents: ESTIMATED_MINUTE_COST_CENTS,
         voiceCallId,
         metadata: { reason: 'call_reserve' },
+        // Chave estável por chamada: um retry deste step (falha de rede antes
+        // de chegar no provider) nunca debita a reserva duas vezes.
+        idempotencyKey: buildVoiceIdempotencyKey('call_human', `reserve:${voiceCallId}`),
       })
 
       if (!debit.success) {
@@ -78,6 +81,13 @@ export const placeVoiceCallFn = inngest.createFunction(
 
         return { providerCallId: providerResult.providerCallId }
       } catch (err: any) {
+        // O provider falhou DEPOIS do débito da reserva — a organização não
+        // recebeu a chamada, então não deve pagar por ela. Estorna antes de
+        // marcar como falha (falha "depois da chamada" — seção 23 do pedido
+        // de billing: nunca cobrar por um recurso que não foi entregue).
+        if (debit.transactionId) {
+          await refundVoiceCredits(debit.transactionId, err?.message || 'provider_error')
+        }
         await admin.from('voice_calls').update({ status: 'failed', outcome: err?.message || 'provider_error' }).eq('id', voiceCallId)
         throw err
       }

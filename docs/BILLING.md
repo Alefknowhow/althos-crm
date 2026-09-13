@@ -38,11 +38,16 @@ A tela em `/app/[orgSlug]/assinatura` (redesenhada em setembro/2026, ver commit 
 
 `/super-admin` já tem visão de organizações/contas/assinaturas, mas **não foi auditado nem estendido nesta leva** para os novos campos (MRR por conta, custo estimado de IA vs. receita, margem, ação manual de conceder/corrigir crédito com audit log). Pendência explícita da Fase 5/9.
 
-## Voice e SMS — separação de billing (parcialmente existente, não unificada nesta leva)
+## Voice e SMS — separação de billing
 
-- **Voice**: `voice_credits`/`voice_credit_transactions` (migration `0228`, `lib/voice/credits.ts`) — saldo próprio, em cents, não Althos Credits. Estrutura de `voice_minutes`/breakdown de custo (telefonia + STT + LLM + TTS) descrita no pedido original **não existe ainda** como tabela dedicada — hoje o registro de uso de chamada vive em `voice_calls` sem a quebra de custo por componente. Pendência real, não implementada nesta leva.
-- **SMS**: cobrança de SMS ainda não tem uma tabela `sms_usage` dedicada — pendência da próxima etapa.
-- **WhatsApp**: mensagens normais não têm billing de uso próprio hoje (a Meta cobra o cliente diretamente via conta própria dele na maioria dos casos) — nenhuma mudança feita aqui; confirmado que o sistema já não debita Althos Credits por mensagem comum, só quando a IA responde.
+- **Voice**: `voice_credits`/`voice_credit_transactions` (migration `0228`) — saldo próprio, em cents, não Althos Credits. **Fase 4 (migration `0245`)** trouxe o mesmo rigor do Credit Engine: `consume_voice_credits` agora aceita `idempotencyKey` (protege contra double-charge em retry de `step.run` do Inngest) e existe `refund_voice_credits` (estorno idempotente por transação). `lib/voice/credits.ts` expõe `consumeVoiceCredits()`, `refundVoiceCredits()` e `buildVoiceIdempotencyKey(usageType, refId)`.
+  - Estrutura de `voice_minutes` com breakdown de custo por componente (telefonia + STT + LLM + TTS) descrita no pedido original **ainda não existe** como tabela dedicada — hoje `voice_calls`/`voice_credit_transactions` registram custo total (`provider_cost_cents`/`althos_cost_cents`), não a quebra por componente. Pendência real.
+- **SMS**: usa o MESMO ledger de Voice (`usageType: 'sms'` em `voice_credit_transactions`) — não existe uma tabela `sms_usage` separada como o pedido original sugeria; decisão pragmática de reaproveitar a arquitetura já auditada como "usage própria, fora do Credit Engine" em vez de duplicar um ledger para uma unidade de negócio pequena. Também recebeu idempotência+refund na Fase 4.
+- **WhatsApp**: mensagens normais não têm billing de uso próprio hoje (a Meta cobra o cliente diretamente via conta própria dele na maioria dos casos) — confirmado nesta auditoria (Fase 4) que nenhum ponto do fluxo de ingestão de WhatsApp chama o Credit Engine; só o Agente IA responde.
+
+### Bugs reais corrigidos na Fase 4 (não eram só "falta de rigor" — causavam prejuízo financeiro real)
+- `lib/inngest/voice-calls.ts`: se o provider (Twilio) falhasse **depois** da reserva de crédito ser debitada, o cliente perdia o crédito sem receber a chamada — nenhum estorno acontecia. Corrigido: estorna antes de marcar a chamada como falha.
+- `lib/inngest/voice-sms.ts`: mesmo problema para SMS — falha do provider depois do débito não estornava. Corrigido, com uma ressalva importante: a função **não relança o erro** depois de estornar (documentado no código) — deixar o Inngest reprocessar o mesmo evento reencontraria a transação já estornada pela idempotency key e devolveria um "replay" que reporta sucesso sem debitar de novo (reenvio de graça). Parar o retry ali é o comportamento seguro; um reenvio real precisa de um novo evento.
 
 ## O que foi implementado nesta leva (migration `0244`) vs. o que falta
 

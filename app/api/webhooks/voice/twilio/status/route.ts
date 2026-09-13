@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { createAdminClient } from '@/lib/supabase/server'
-import { consumeVoiceCredits } from '@/lib/voice/credits'
+import { consumeVoiceCredits, buildVoiceIdempotencyKey } from '@/lib/voice/credits'
 import { getAccountIdForOrgSlug } from '@/lib/plans/server'
 import { inngest } from '@/lib/inngest/client'
 
@@ -63,6 +63,10 @@ export async function POST(req: Request) {
         providerCostCents: extraMinutes * PER_MINUTE_COST_CENTS,
         voiceCallId,
         metadata: { reason: 'call_reconcile', durationSeconds },
+        // Já deduplicado pelo INSERT em voice_provider_events acima (retry de
+        // webhook da Twilio nem chega aqui) — chave aqui é defesa em
+        // profundidade, mesmo padrão do resto do Credit Engine.
+        idempotencyKey: buildVoiceIdempotencyKey('call_human', `reconcile:${eventId}`),
       })
     }
 

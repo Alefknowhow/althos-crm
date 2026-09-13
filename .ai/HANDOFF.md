@@ -18,11 +18,12 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T03:14:10.106Z
+**Generated At**: 2026-09-13T03:28:55.885Z
 **Branch**: `master`
-**Last Commit**: 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem) (Alef Trentin, 27 minutes ago)
+**Last Commit**: ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits) (Alef Trentin, 14 minutes ago)
 
 **Recent Commits**:
+- ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
 - 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
 - 3ae5a70 feat(ia): switch central Claude/DeepSeek via super-admin + remove seletor por org
 - 2a062fe fix(contatos): alinha campo de indicacao com os demais dropdowns
@@ -32,27 +33,24 @@ Duas partes:
 - 72068f8 fix(contatos): simplifica card da lista — remove telefone e data de última atividade
 - 95ca1db feat(mobile): varredura final 2 — tabelas sem scroll contido
 - 9b9b230 feat(mobile): M22-M24 (Ofertas, Catálogo, Embarques) — scroll e toque
-- 871116c feat(mobile): M20 Vendas + alvos de toque remanescentes (Seguros/Imóveis)
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (6):
+**Unstaged Changes** (8):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M lib/plans/config.ts
-- M lib/plans/server.ts
-- M tests/unit/plans-config.test.ts
+- M app/api/webhooks/voice/twilio/status/route.ts
+- M docs/BILLING.md
+- M lib/inngest/voice-calls.ts
+- M lib/inngest/voice-sms.ts
+- M lib/voice/credits.ts
 
-**Untracked Files** (7):
+**Untracked Files** (3):
 - .claude/
-- docs/ALTHOS_CREDITS.md
-- docs/BILLING.md
-- docs/PRICING_ARCHITECTURE.md
-- lib/credits/
-- supabase/migrations/0244_althos_credits_engine.sql
-- tests/unit/credit-engine.test.ts
+- supabase/migrations/0245_voice_credits_idempotency.sql
+- tests/unit/voice-credits.test.ts
 
 **Staged Diff Summary**:
 ```
@@ -61,13 +59,15 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md             | 127 ++++++++++++++++++++++++++++++-----
- .ai/DECISIONS.md                |  44 ++++++++++++
- .ai/HANDOFF.md                  | 145 ++++++++++++++++++++++++++++++----------
- lib/plans/config.ts             | 101 ++++++++++++++++++++--------
- lib/plans/server.ts             |  55 ++++++---------
- tests/unit/plans-config.test.ts |  36 ++++++++--
- 6 files changed, 386 insertions(+), 122 deletions(-)
+.ai/CURRENT_TASK.md                           | 56 +++++++++++++++--
+ .ai/DECISIONS.md                              | 41 +++++++++++++
+ .ai/HANDOFF.md                                | 86 +++++++++++++++++----------
+ app/api/webhooks/voice/twilio/status/route.ts |  6 +-
+ docs/BILLING.md                               | 13 ++--
+ lib/inngest/voice-calls.ts                    | 12 +++-
+ lib/inngest/voice-sms.ts                      | 39 ++++++++++--
+ lib/voice/credits.ts                          | 48 +++++++++++++--
+ 8 files changed, 249 insertions(+), 52 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -112,12 +112,17 @@ call sites de IA) virou wrapper fino sobre o engine — nenhum call site
 precisou mudar nesta leva. Documentação nova: `docs/PRICING_ARCHITECTURE.md`,
 `docs/ALTHOS_CREDITS.md`, `docs/BILLING.md`.
 
-**Isto é Fase 2/3 de 10 do pedido original — não está concluído.** Fases
-4 (Voice/SMS/WhatsApp metering completo), 5 (Billing Center UI, pricing
-page, admin interno), 6 (estratégia de migração ativa, se necessária além
-do audit trail), 7 (testes de concorrência real), 8 (auditoria completa do
-harness) seguem pendentes — ver `.ai/CURRENT_TASK.md` § Pending para a
-lista detalhada.
+**Atualização (mesma sessão, continuação): Fase 4 também concluída** —
+Voice/SMS ganharam o mesmo padrão de idempotência/refund (migration `0245`)
+e 2 bugs financeiros reais foram corrigidos (crédito debitado sem estorno
+quando o provider Twilio falhava depois do débito). Ver subseção "Fase 4"
+mais abaixo neste documento e `.ai/CURRENT_TASK.md` § Completed.
+
+**Isto é Fase 2/3/4 de 10 do pedido original — não está concluído.** Fases
+5 (Billing Center UI, pricing page, admin interno), 6 (estratégia de
+migração ativa, se necessária além do audit trail), 7 (testes de
+concorrência real), 8 (auditoria completa do harness) seguem pendentes —
+ver `.ai/CURRENT_TASK.md` § Pending para a lista detalhada.
 
 ### Completed
 Ver `.ai/CURRENT_TASK.md` § Completed (lista detalhada com o bug de
@@ -211,13 +216,32 @@ duas versões e recria uma única função correta. Se você notar qualquer
   (marcadores `AUTO:BEGIN`/`AUTO:END`) — não remova nem escreva os tokens
   literalmente fora da seção real.
 
+### Fase 4 (concluída nesta continuação — Voice/SMS metering)
+Migration `0245_voice_credits_idempotency.sql`: `consume_voice_credits`
+ganhou `idempotency_key` + retorno de `transaction_id`; nova
+`refund_voice_credits`. `lib/voice/credits.ts` expõe `consumeVoiceCredits()`
+(agora com `idempotencyKey`), `refundVoiceCredits()`,
+`buildVoiceIdempotencyKey()`. **2 bugs financeiros reais corrigidos**: nem
+`lib/inngest/voice-calls.ts` nem `lib/inngest/voice-sms.ts` estornavam
+crédito quando o provider (Twilio) falhava DEPOIS do débito — cliente
+pagava por chamada/SMS que nunca saiu. Corrigido nos dois. Decisão de
+design registrada no código de `voice-sms.ts`: o catch NÃO relança o erro
+após estornar, porque um retry do Inngest reexecutaria o mesmo step com a
+MESMA idempotency key (`event.id`), encontraria a transação já estornada e
+devolveria um "replay" que reporta sucesso sem debitar de novo (reenvio de
+graça) — ver `docs/BILLING.md` para o raciocínio completo antes de "corrigir"
+isso adicionando um `throw` de volta.
+
+SMS deliberadamente NÃO ganhou uma tabela `sms_usage` própria — continua no
+ledger de Voice (`usageType: 'sms'`), decisão pragmática documentada em
+`docs/BILLING.md`, não uma lacuna esquecida.
+
 ### Recommended Next Steps
-1. Fase 4: conectar Voice/SMS ao mesmo padrão de idempotência/refund do
-   Credit Engine (sem misturá-los com Althos Credits — continuam ledgers
-   próprios, só ganham o mesmo RIGOR).
-2. Fase 5: Billing Center UI — bloco de usuários incluídos/adicionais
+1. Fase 5: Billing Center UI — bloco de usuários incluídos/adicionais
    (`computeSeatCost` já existe, falta consumir na UI), histórico de
    Althos Credits com filtros, alertas de consumo, upgrade contextual.
+2. Fase 4 (resíduo, opcional): `voice_minutes` com breakdown de custo por
+   componente (telefonia/STT/LLM/TTS) — hoje só custo total é registrado.
 3. Rodar `npm run build` antes do próximo deploy (não rodado nesta leva).
 4. Auditoria dos pontos de `if (plan === ...)` espalhados no código legado
    (não tocados nesta leva) — candidato a uma tarefa própria, separada.
