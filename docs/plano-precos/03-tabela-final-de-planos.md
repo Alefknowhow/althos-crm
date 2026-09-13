@@ -1,4 +1,6 @@
-# Etapa 3 — Tabela Final de Planos (implementada em produção)
+# Etapa 3 — Tabela Final de Planos (SUPERSEDIDO — ver docs/PRICING_ARCHITECTURE.md)
+
+> ⚠️ **Documento histórico, preços desatualizados.** Esta repricing (Starter R$167/Pro R$397/Business R$697) foi substituída em set/2026 pela repricing "Althos Credits" (Starter R$149/Pro R$299/Business R$599 + usuários incluídos/adicionais + Voice AI exclusivo do Business) — ver **[docs/PRICING_ARCHITECTURE.md](../PRICING_ARCHITECTURE.md)**, **[docs/ALTHOS_CREDITS.md](../ALTHOS_CREDITS.md)** e **[docs/BILLING.md](../BILLING.md)** para a arquitetura vigente. Mantido só como registro histórico de decisão — não usar os números abaixo como referência atual.
 
 > Fecha a estratégia de preços iniciada nas etapas 1 (inventário por nicho) e 2 (viabilidade de mercado). Os números abaixo já estão aplicados na tabela `plans` do banco de produção e espelhados em `lib/plans/config.ts` / `lib/billing/plans-data.ts` (commit `3f1f8da`).
 

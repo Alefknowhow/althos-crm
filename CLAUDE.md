@@ -30,7 +30,7 @@ Althos CRM é um CRM multi-tenant que atende várias verticais (não só agênci
 | Telefonia/SMS/Voice AI | **Twilio** (`twilio` + `@twilio/voice-sdk`), abstraído via `lib/voice/provider.ts` (`VoiceProvider` interface) — nunca importar o SDK da Twilio fora de `lib/voice/providers/`. Módulo "Althos Voice", gated a Pro/Business. |
 | IA | Anthropic (`@anthropic-ai/sdk`) como motor principal, Google Gemini (`@google/genai`) como alternativa em alguns pontos (qualificação de lead, OCR, transcrição de chamada) |
 | MCP | Servidor MCP próprio em `app/api/mcp/route.ts` (`@modelcontextprotocol/sdk`) — expõe tools do CRM (`lib/agent/tools/registry.ts`) para agentes de IA externos (Claude Code, Codex) autenticados via token pessoal gerado em Configurações → Conector MCP (`app/app/[orgSlug]/configuracoes/agentes/`). |
-| Billing | **Duas taxonomias coexistindo** (reconciliação "Prompt 8" ainda não aconteceu): (1) legado por-ORG, `lib/billing/plans.ts` (`PlanKey`: trial/starter/pro/scale/agency/internal, coluna `organizations.plan`) — ainda é o que gateia limites/features na maior parte do app (`app/app/[orgSlug]/layout.tsx`, `actions/*-crud.ts`, `lib/billing/limits.ts`); (2) novo por-CONTA, `lib/plans/config.ts`/`lib/plans/server.ts` (`PlanId`: free/starter/pro/business, tabelas `plans`/`subscriptions`) — fonte de verdade para `checkFeatureAccess`/créditos de IA/Voice. Pagamento em si é **Asaas** (`lib/asaas/`) nas duas. Não assuma que uma substituiu a outra. |
+| Billing | **Duas taxonomias coexistindo** (reconciliação ainda não aconteceu por completo — ver `docs/PRICING_ARCHITECTURE.md`): (1) legado por-ORG, `lib/billing/plans.ts`/`plans-data.ts` (`PlanKey`: trial/starter/pro/scale/agency/internal, coluna `organizations.plan`) — ainda é o que gateia limites/features na maior parte do app (`app/app/[orgSlug]/layout.tsx`, `actions/*-crud.ts`, `lib/billing/limits.ts`), e é a fonte de preço/benefícios exibida em `/upgrade`+`CheckoutModal` (`lib/billing/plan-features.ts`); (2) novo por-CONTA, `lib/plans/config.ts`/`lib/plans/server.ts` (`PlanId`: free/starter/pro/business, tabelas `plans`/`subscriptions`) — fonte de verdade para `checkFeatureAccess`/entitlements/Voice e para preço/franquia em `/app/[orgSlug]/assinatura` (Billing Center). Pagamento em si é **Asaas** (`lib/asaas/`) nas duas — `lib/asaas/client.ts::planValue()` lê do (1). Não assuma que uma substituiu a outra; um valor pode divergir entre as duas se só uma for atualizada (já aconteceu — ver histórico de commits `ee697d0`/`bcabdf7`). **Créditos de IA** ("Althos Credits", nome comercial) passam por um Credit Engine central (`lib/credits/engine.ts`) — nunca debite/estorne fora dele; ver `docs/ALTHOS_CREDITS.md`, `docs/BILLING.md`. |
 | Deploy | Vercel (região `gru1`, ver `vercel.json`) |
 | Testes | Vitest (unit, `tests/unit/`) — **sem E2E/Playwright configurado** |
 | Lint | ESLint 9 (flat config, `eslint.typed.config.mjs`) — `npm run lint`/`lint:fix`/`lint:types`, roda dentro de `scripts/verify.sh` (ver seção Deployment) |
@@ -69,7 +69,7 @@ Althos CRM é um CRM multi-tenant que atende várias verticais (não só agênci
 - **Nunca confie em gate client-side sozinho.** Toda ação sensível re-verifica no servidor.
 
 ### Banco de dados
-- Toda mudança de schema é uma migration numerada em `supabase/migrations/NNNN_descricao.sql` (231+ migrations até o momento — não hardcode esse número em prosa, confira `ls supabase/migrations | tail -1` pro próximo). Aplicadas via MCP do Supabase (`apply_migration`) ou CLI — nunca editar uma migration já aplicada.
+- Toda mudança de schema é uma migration numerada em `supabase/migrations/NNNN_descricao.sql` (248+ migrations até o momento — não hardcode esse número em prosa, confira `ls supabase/migrations | tail -1` pro próximo). Aplicadas via MCP do Supabase (`apply_migration`) ou CLI — nunca editar uma migration já aplicada. **Ao usar `CREATE OR REPLACE FUNCTION` para adicionar/renomear um parâmetro**: isso só substitui a função se a lista de TIPOS for idêntica — mudar a lista cria uma segunda função sobrecarregada (bug real, corrigido 2x em set/2026). Confirme a assinatura via `SELECT oid::regprocedure FROM pg_proc WHERE proname='...'` antes e depois de editar. Ver `.harness/agents/database.md` para o processo completo.
 - RLS habilitada em praticamente toda tabela nova. Ao criar tabela nova: `ENABLE ROW LEVEL SECURITY` + policy de isolamento por org é o padrão, não a exceção.
 
 ### Storage
@@ -141,7 +141,9 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 | UI/Design System | `components/ui/`, o componente `features/` mais próximo do que já existe |
 | Nicho (viagens/clínicas/imóveis/seguros/tráfego) | `lib/niche.ts`, `lib/niche-modules.ts` + a área específica do nicho |
 | Permissões | `lib/permissions.ts`, `lib/permissions.server.ts` |
-| Billing | `lib/asaas/`, `lib/billing/plans.ts` (legado, por-org) **e** `lib/plans/config.ts`/`lib/plans/server.ts` (novo, por-conta) — confirme qual dos dois a tarefa toca antes de assumir |
+| Billing | `lib/asaas/`, `lib/billing/plans.ts`/`plans-data.ts` (legado, por-org) **e** `lib/plans/config.ts`/`lib/plans/server.ts` (novo, por-conta) — confirme qual dos dois a tarefa toca antes de assumir. Ver `docs/PRICING_ARCHITECTURE.md` |
+| Créditos de IA ("Althos Credits") | `lib/credits/engine.ts` (Credit Engine — único ponto de entrada), `docs/ALTHOS_CREDITS.md` |
+| Voice/SMS (billing de uso) | `lib/voice/credits.ts`, `docs/BILLING.md` § Voice e SMS |
 
 ### Camada 3 — Implementação
 - Arquivos diretamente relacionados à mudança.
@@ -160,3 +162,4 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 - Documentação de features já auditadas: `docs/audit/*.md` (não confiar cegamente — são snapshots, confirme contra o código se a tarefa depende disso).
 - Guia de deploy: `DEPLOY.md`.
 - Perfil de projeto herdado (pré-Harness, pode conter itens desatualizados — ex.: menciona Stripe/Pino/Playwright que não existem no código real): `.agent.md`.
+- Arquitetura de Pricing/Billing/Créditos (vigente, set/2026): `docs/PRICING_ARCHITECTURE.md`, `docs/ALTHOS_CREDITS.md`, `docs/BILLING.md`. `docs/novo-modelo-de-precos.md` e `docs/plano-precos/03-tabela-final-de-planos.md` são histórico de decisões ANTERIORES a essa — preços desatualizados, marcados como supersedidos no topo do arquivo.

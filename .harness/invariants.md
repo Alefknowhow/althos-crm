@@ -63,6 +63,17 @@ Regras que não podem ser violadas por uma mudança de código, refletindo a arq
 - **[ENFORCED]** Cores usam variáveis de tema (`bg-background`, `bg-primary`, etc.), não hex hardcoded — exceção documentada: cores de marca de canal externo (verde do WhatsApp, azul do Instagram/Facebook).
 - **[PARTIAL]** Mobile-first não é uniforme em toda tela — confirmado em telas públicas (formulários, landing, WhatsApp/Instagram mobile) mas não auditado tela a tela.
 
+## Billing / Credits
+
+- **[ENFORCED]** "Althos Credits" (nome comercial de IA) só é debitado/estornado via `lib/credits/engine.ts` (`consumeCredits`/`refundCredits`) — nunca chame as RPCs `consume_ai_credits`/`refund_ai_credits` diretamente de um novo call site, e nunca implemente lógica de débito própria num módulo.
+- **[ENFORCED]** Toda chamada de consumo de crédito (IA ou Voice) originada de um job assíncrono (Inngest) ou de um webhook sujeito a retry passa `idempotencyKey`/`p_idempotency_key` — ver `buildCreditIdempotencyKey()`/`buildVoiceIdempotencyKey()`. Uma mesma chave nunca debita duas vezes (índice único parcial em `ai_credit_transactions.idempotency_key`/`voice_credit_transactions.idempotency_key`).
+- **[ENFORCED]** Voice e SMS usam ledger PRÓPRIO (`voice_credits`/`voice_credit_transactions`), **nunca** debitam de Althos Credits — WhatsApp normal também não debita créditos (só quando a IA responde, e aí é o módulo `ai_attendant` que debita).
+- **[ENFORCED]** Toda função de consumo é `SECURITY DEFINER` com `SELECT ... FOR UPDATE` na linha de saldo do período — nunca `UPDATE` direto em `ai_credits.credits_used`/`voice_credits.credits_used_cents` fora dessas funções.
+- **[ENFORCED]** `plans` (catálogo central) é a única fonte de preço/franquia — `lib/plans/config.ts` é um mirror client-safe, nunca a fonte de enforcement. Ver `docs/PRICING_ARCHITECTURE.md`.
+- **[ENFORCED]** Teto de convite de novo membro = `plans.max_users + subscriptions.extra_seats` (`account_user_limit()`) — nunca leia só `max_users`/`PLAN_LIMITS.users` para decidir se uma conta pode convidar mais gente (esses são a franquia, não o teto real).
+- **[TARGET INVARIANT — NOT YET ENFORCED]** Concorrência real (múltiplas conexões simultâneas debitando a mesma conta) não foi validada sob carga — só por revisão de código (`FOR UPDATE` é o padrão certo do Postgres, mas não há teste de carga automatizado).
+- **[TARGET INVARIANT — NOT YET ENFORCED]** As duas taxonomias de plano (`organizations.plan`, legada por-org, vs. `accounts`/`subscriptions`, nova por-conta) ainda coexistem — não foram reconciliadas nesta leva. Um valor de preço/limite pode, em teoria, divergir entre as duas se só uma for atualizada (já aconteceu uma vez: ver `docs/PRICING_ARCHITECTURE.md`, correção do preço de `/upgrade`).
+
 ## Testing
 
 - **[ENFORCED]** Testes unitários existem em `tests/unit/*.test.ts` (Vitest) para lógica pura (antispam, billing, currency, date-filter, webhooks, slugify).

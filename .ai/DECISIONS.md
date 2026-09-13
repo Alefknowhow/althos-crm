@@ -362,3 +362,64 @@ no tipo de retorno de sucesso. Testado e confirmado via Supabase MCP
 ficou explicitamente NÃO testado (concorrência real com múltiplas
 conexões — o Supabase MCP executa uma query por vez; código revisado usa
 `SELECT...FOR UPDATE`, padrão correto, mas não validado sob carga real).
+
+## 2026-09-13 — Fases 8/9/10: harness atualizado + verificação final
+
+Context: usuário pediu pra executar as Fases 8 (harness), 9 (handoff) e 10
+(verificação) em sequência, sem pedir nova autorização entre elas.
+
+Decision:
+1. **Fase 8**: alimentar de volta no harness as lições reais desta sessão
+   em vez de só resumir o que foi feito. `.harness/agents/database.md`
+   ganhou 2 itens de processo obrigatório: (a) nunca escrever
+   INSERT/UPDATE referenciando nome de coluna "de memória" — confirmar
+   via `information_schema.columns` primeiro (o bug real `lead_id`/
+   `contato_id` da Fase 7); (b) `CREATE OR REPLACE FUNCTION` que muda a
+   lista de parâmetros cria função órfã em vez de substituir — sempre
+   `DROP FUNCTION` explícito antes + confirmar via `pg_proc`; (c) smoke-test
+   de função de billing precisa exercitar o caminho de SUCESSO, não só
+   erro. `.harness/invariants.md` ganhou uma seção "Billing / Credits"
+   nova. `CLAUDE.md` atualizado (contador de migrations, referências aos
+   3 docs novos, aviso sobre `CREATE OR REPLACE FUNCTION`). Documentos de
+   pricing obsoletos (`docs/novo-modelo-de-precos.md`,
+   `docs/plano-precos/03-tabela-final-de-planos.md`) marcados como
+   supersedidos no topo do próprio arquivo — NÃO apagados (histórico).
+2. **Fase 9**: feita incrementalmente a cada fase anterior (cada commit
+   desta sessão já saiu com `.ai/HANDOFF.md`/`CURRENT_TASK.md`/
+   `DECISIONS.md` atualizados) — Fase 9 aqui só consolida, não é um
+   trabalho novo.
+3. **Fase 10**: rodei lint/typecheck/test/build de verdade (não assumi
+   que "deveria passar"). `npm run lint` sozinho estourava a memória
+   default do Node nesta máquina — precisou de
+   `NODE_OPTIONS=--max-old-space-size=8192` (limitação de ambiente, não
+   do código). Encontrou 14 erros reais: 2 eram meus (dois arquivos que
+   ultrapassaram o limite de 350 linhas do lint depois das mudanças desta
+   sessão — `lib/plans/config.ts`, `app/app/[orgSlug]/assinatura/page.tsx`),
+   corrigidos por extração (`lib/plans/seats.ts`, `lib/plans/credit-pricing.ts`,
+   `assinatura/UsageRow.tsx`); os outros 12 são do trabalho de uma sessão
+   paralela rodando no mesmo working directory — confirmados fora de
+   escopo, NÃO tocados (risco de conflitar com trabalho em andamento).
+   `npm run build` passou limpo.
+4. **Erro de auditoria próprio, corrigido**: eu tinha afirmado (Fases 5/6)
+   que "a pricing page pública não existe neste repo". Isso estava
+   ERRADO — `app/(public)/planos/page.tsx` existe; minha varredura
+   anterior procurou por "pricing"/"preco" no nome do arquivo e não achou
+   "planos". Boa notícia: ela lê `PUBLIC_PLANS` de
+   `lib/billing/plans-data.ts` sem número hardcoded próprio, então já
+   herdou a correção de preço da Fase 5 automaticamente — nenhuma ação
+   necessária, só corrigi o registro pra não propagar a informação errada
+   pra uma sessão futura.
+
+Reason: o pedido explícito era "executar em sequência sem pedir nova
+autorização" — mas isso não significa pular verificação real. Rodar
+lint/build de verdade (em vez de assumir que passariam) pegou 2
+regressões reais próprias antes que virassem problema, e corrigir o
+próprio erro de auditoria (pricing page) evita que uma sessão futura
+herde uma premissa falsa.
+
+Impact: `.harness/invariants.md`, `.harness/agents/database.md`,
+`CLAUDE.md` atualizados. `lib/plans/seats.ts`, `lib/plans/credit-pricing.ts`,
+`app/app/[orgSlug]/assinatura/UsageRow.tsx` (novos, extraídos por limite
+de linhas). `docs/novo-modelo-de-precos.md`,
+`docs/plano-precos/03-tabela-final-de-planos.md` marcados supersedidos.
+Build de produção validado (`npm run build`, PASS).

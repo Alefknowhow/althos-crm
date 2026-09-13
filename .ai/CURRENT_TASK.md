@@ -17,7 +17,7 @@
 Nova arquitetura de Pricing/Billing/Althos Credits — repricing + Credit Engine (Fase 2/3 de um pedido de 33 seções)
 
 ## Status
-IN PROGRESS (Fases 2/3/4/5 de 10 concluídas — schema+Credit Engine+Voice/SMS metering+Billing Center UI; Fases 6-10 pendentes)
+IN PROGRESS (Fases 2-10 do pedido original executadas nesta sessão — Fase 6, reconciliação COMPLETA das duas taxonomias de plano, é o maior item que ainda falta e fica para a próxima sessão)
 
 ## Owner
 Claude (Claude Code)
@@ -284,8 +284,72 @@ nesta leva — nenhuma mudança de UI/build que o exigisse).
   pra uma suíte de integração futura (o projeto não tem uma hoje).
 - `npx tsc --noEmit`: PASS. `npm test`: PASS (176/176).
 
+## Completed (Fase 8 — auditoria do harness)
+- `CLAUDE.md`: linha de Billing atualizada (menciona Credit Engine/Althos
+  Credits, os dois lugares onde preço pode divergir, e os 3 docs novos).
+  Contador de migrations atualizado (231+ → 248+). Nova nota sobre o
+  perigo de `CREATE OR REPLACE FUNCTION` mudando assinatura. Seção "Onde
+  encontrar o quê" ganhou linhas pra `docs/PRICING_ARCHITECTURE.md`,
+  `docs/ALTHOS_CREDITS.md`, `docs/BILLING.md`, e nota que
+  `docs/novo-modelo-de-precos.md`/`docs/plano-precos/03-*.md` estão
+  supersedidos (marcados no topo dos próprios arquivos).
+- `.harness/invariants.md`: nova seção "Billing / Credits" com os
+  invariantes reais desta sessão (Credit Engine como único ponto de
+  entrada, idempotência obrigatória em jobs assíncronos, Voice/SMS fora
+  do Althos Credits, `FOR UPDATE` obrigatório, `plans` como fonte central,
+  `account_user_limit` = franquia + extra_seats) — incluindo 2
+  `TARGET INVARIANT — NOT YET ENFORCED` honestos (concorrência real não
+  testada; as duas taxonomias de plano ainda coexistem).
+- `.harness/agents/database.md`: 2 lições reais desta sessão viraram
+  processo obrigatório pro próprio harness: (1) nunca escrever
+  INSERT/UPDATE referenciando nome de coluna de memória — confirmar via
+  `information_schema.columns` primeiro (o bug `lead_id`/`contato_id`
+  da Fase 7); (2) `CREATE OR REPLACE FUNCTION` que muda a lista de
+  parâmetros cria uma função órfã em vez de substituir — sempre `DROP
+  FUNCTION` explícito antes, e confirmar via `pg_proc` antes/depois; (3)
+  toda função de billing/crédito precisa de smoke-test que exercite o
+  CAMINHO DE SUCESSO de verdade (não só erro/saldo insuficiente), usando
+  conta descartável apagada ao final.
+- Documentos de pricing obsoletos marcados como supersedidos (não
+  apagados — mantidos como histórico): `docs/novo-modelo-de-precos.md`,
+  `docs/plano-precos/03-tabela-final-de-planos.md`.
+
+## Completed (Fase 9 — handoff)
+Feito incrementalmente a cada fase desta sessão (ver todas as entradas
+acima e em `.ai/DECISIONS.md`) em vez de num passo único ao final — cada
+commit já saiu com `.ai/HANDOFF.md`/`.ai/CURRENT_TASK.md`/`.ai/DECISIONS.md`
+atualizados. Esta seção consolida o estado final.
+
+## Completed (Fase 10 — verificação)
+- `npx tsc --noEmit`: PASS.
+- `npm test`: PASS (176/176, 23 arquivos).
+- `npm run lint` (precisou de `NODE_OPTIONS=--max-old-space-size=8192` —
+  o repo é grande demais pro heap default do Node nesta máquina, isso já
+  era assim antes desta sessão): 14 erros antes de eu rodar. **2 eram
+  meus** (`lib/plans/config.ts` e `app/app/[orgSlug]/assinatura/page.tsx`
+  passaram do limite de 350 linhas do lint depois das mudanças desta
+  sessão) — corrigidos extraindo `lib/plans/seats.ts` (computeSeatCost),
+  `lib/plans/credit-pricing.ts` (precificação por modelo/ação) e
+  `app/app/[orgSlug]/assinatura/UsageRow.tsx` (componente de barra de
+  uso), todos reexportados/importados sem quebrar nenhum consumidor
+  existente. **Os outros 12 erros são do trabalho da sessão paralela**
+  (`flight-lookup.ts`, `WhatsappChatHeader.tsx`,
+  `ContatosViewDetailPanel.tsx`, `LeadDataTab.tsx`,
+  `MarketingOverview.tsx`, `ScheduleTripDetail.tsx`, `TasksBoard.tsx`,
+  `TasksBoardToolbar.tsx`, `ActiveCallProvider.tsx`, `VoiceTeamClient.tsx`,
+  `flight-status-cron.ts`) — confirmados fora do escopo desta tarefa,
+  **não corrigidos** (não é meu código, e mexer neles arriscaria
+  conflitar com uma sessão em andamento).
+- `npm run build`: PASS — build de produção completo, sem erro. Notei
+  (e corrigi um erro meu de auditoria) que `app/(public)/planos/page.tsx`
+  é a pricing page pública que eu tinha dito (erradamente, na Fase 5/6)
+  "não existir neste repo" — ela existe, lê `PUBLIC_PLANS` de
+  `lib/billing/plans-data.ts` sem número hardcoded próprio, então já
+  herdou a correção de preço da Fase 5 automaticamente. Nenhuma ação
+  necessária, só corrigi o registro.
+
 ## In Progress
-Nada em edição no momento.
+Nada em edição no momento — sessão pronta para commit final.
 
 ## Pending
 - ~~RISCO REAL ATIVO: /upgrade mostrava preço legado~~ **CORRIGIDO nesta
@@ -294,9 +358,18 @@ Nada em edição no momento.
 - **Fase 5 (resíduo)** — alertas de consumo só no card de Althos Credits,
   não em Voice/Email (mesma função pode ser copiada). Reconciliar as duas
   taxonomias de plano para que toda conta (não só as já migradas pra
-  `subscriptions`) mostre usuários incluídos/fatura estimada. Pricing page
-  pública (marketing) não existe neste repo — confirmado, é outro projeto,
-  não é uma lacuna. Admin interno (MRR, margem de IA por conta) não tocado.
+  `subscriptions`) mostre usuários incluídos/fatura estimada. Admin interno
+  (MRR, margem de IA por conta) não tocado.
+  **Correção (Fase 10)**: eu tinha dito aqui que "a pricing page pública
+  não existe neste repo" — ISSO ESTAVA ERRADO. Ela existe:
+  `app/(public)/planos/page.tsx` + `components/site/PricingPlans.tsx`.
+  Só não apareceu na minha varredura anterior (procurei por "pricing"/
+  "preco" no nome do arquivo, não achei "planos"). Boa notícia: ela lê
+  `PUBLIC_PLANS` de `lib/billing/plans-data.ts` (sem número hardcoded
+  próprio), então já herdou automaticamente a correção de preço da Fase 5
+  (R$149/299/599) — confirmado via grep, sem valor antigo solto no
+  componente. Nenhuma ação necessária, mas registro a correção do meu
+  próprio erro de auditoria.
 - **Fase 4 (resíduo)** — `voice_minutes` com breakdown de custo por
   componente (telefonia/STT/LLM/TTS) não existe como tabela dedicada (hoje
   só custo total). Tabela `sms_usage` dedicada não foi criada — decisão

@@ -18,11 +18,13 @@ Duas partes:
 ## Automatic Context
 
 <!-- AUTO:BEGIN -->
-**Generated At**: 2026-09-13T04:25:25.764Z
+**Generated At**: 2026-09-13T04:51:50.113Z
 **Branch**: `master`
-**Last Commit**: e3566d9 fix(embarques): dia da linha do tempo alinhado com a linha vertical (Alef Trentin, 2 minutes ago)
+**Last Commit**: 8e39257 fix(embarques): linha do dia atual em vermelho negrito, sem coluna pintada (Alef Trentin, 9 minutes ago)
 
 **Recent Commits**:
+- 8e39257 fix(embarques): linha do dia atual em vermelho negrito, sem coluna pintada
+- 37cffaa fix(billing): Fase 7 — corrige bug critico que quebrava todo consumo de Althos Credits desde a Fase 2/3
 - e3566d9 fix(embarques): dia da linha do tempo alinhado com a linha vertical
 - bcabdf7 feat(billing): Fase 6 — lista de beneficios atualizada + Voice vira exclusividade Business
 - c0210d4 fix(billing): reconcilia limites de usuarios incluidos/adicionais (sem clientes ativos, autorizado)
@@ -31,22 +33,27 @@ Duas partes:
 - 183be32 feat(billing): Fase 4 — Voice/SMS ganham idempotência e refund do Credit Engine
 - ed0a9ad feat(billing): Fase 2/3 da nova arquitetura de pricing — repricing + Credit Engine (Althos Credits)
 - 8c6ce4c feat(ia): migracao parcial de OCR de visao para o switch central (so imagem)
-- 3ae5a70 feat(ia): switch central Claude/DeepSeek via super-admin + remove seletor por org
-- 2a062fe fix(contatos): alinha campo de indicacao com os demais dropdowns
 
 **Staged Files** (0):
 _(nenhum)_
 
-**Unstaged Changes** (5):
+**Unstaged Changes** (10):
 - M .ai/CURRENT_TASK.md
 - M .ai/DECISIONS.md
 - M .ai/HANDOFF.md
-- M docs/ALTHOS_CREDITS.md
-- M lib/credits/engine.ts
+- M .harness/agents/database.md
+- M .harness/invariants.md
+- M CLAUDE.md
+- M app/app/[orgSlug]/assinatura/page.tsx
+- M docs/novo-modelo-de-precos.md
+- M docs/plano-precos/03-tabela-final-de-planos.md
+- M lib/plans/config.ts
 
-**Untracked Files** (2):
+**Untracked Files** (4):
 - .claude/
-- supabase/migrations/0248_fix_credit_functions_contato_id_column.sql
+- app/app/[orgSlug]/assinatura/UsageRow.tsx
+- lib/plans/credit-pricing.ts
+- lib/plans/seats.ts
 
 **Staged Diff Summary**:
 ```
@@ -55,12 +62,17 @@ _(nenhuma alteração)_
 
 **Unstaged Diff Summary**:
 ```
-.ai/CURRENT_TASK.md    | 40 ++++++++++++++++++++++++++++++++++++++++
- .ai/DECISIONS.md       | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
- .ai/HANDOFF.md         | 27 +++++++++++++++++++++++----
- docs/ALTHOS_CREDITS.md | 12 ++++++++++++
- lib/credits/engine.ts  |  5 +++--
- 5 files changed, 127 insertions(+), 6 deletions(-)
+.ai/CURRENT_TASK.md                            |  83 +++++++++++++-
+ .ai/DECISIONS.md                               |  61 +++++++++++
+ .ai/HANDOFF.md                                 |  80 +++++++++-----
+ .harness/agents/database.md                    |   4 +-
+ .harness/invariants.md                         |  11 ++
+ CLAUDE.md                                      |   9 +-
+ app/app/[orgSlug]/assinatura/page.tsx          |  35 +-----
+ docs/novo-modelo-de-precos.md                  |   4 +-
+ docs/plano-precos/03-tabela-final-de-planos.md |   4 +-
+ lib/plans/config.ts                            | 144 ++++---------------------
+ 10 files changed, 240 insertions(+), 195 deletions(-)
 ```
 
 **Verification Commands Available in This Repo**:
@@ -292,15 +304,33 @@ SMS deliberadamente NÃO ganhou uma tabela `sms_usage` própria — continua no
 ledger de Voice (`usageType: 'sms'`), decisão pragmática documentada em
 `docs/BILLING.md`, não uma lacuna esquecida.
 
-### Recommended Next Steps
-1. Fase 5: Billing Center UI — bloco de usuários incluídos/adicionais
-   (`computeSeatCost` já existe, falta consumir na UI), histórico de
-   Althos Credits com filtros, alertas de consumo, upgrade contextual.
-2. Fase 4 (resíduo, opcional): `voice_minutes` com breakdown de custo por
-   componente (telefonia/STT/LLM/TTS) — hoje só custo total é registrado.
-3. Rodar `npm run build` antes do próximo deploy (não rodado nesta leva).
-4. Auditoria dos pontos de `if (plan === ...)` espalhados no código legado
-   (não tocados nesta leva) — candidato a uma tarefa própria, separada.
+### Recommended Next Steps (atualizado — sessão completou Fases 2 a 10)
+1. **Fase 6 completa**: reconciliar de vez as duas taxonomias de plano
+   (`organizations.plan` legada vs. `accounts`/`subscriptions` nova) — o
+   pior sintoma já foi corrigido (preço de `/upgrade` batendo com o
+   cobrado de verdade), mas elas ainda coexistem e podem divergir de novo
+   se só uma for atualizada no futuro. Candidato a uma tarefa própria,
+   grande e arriscada — ler `docs/PRICING_ARCHITECTURE.md` inteiro antes.
+2. Testes de concorrência real (múltiplas conexões simultâneas) para
+   `consume_ai_credits`/`consume_voice_credits` — não testado nesta
+   sessão (limitação da ferramenta usada, não do código). Precisa de um
+   script Node com `Promise.all` de várias conexões Postgres reais, ou
+   pgbench — infraestrutura de teste que o projeto ainda não tem.
+3. `voice_minutes` com breakdown de custo por componente (telefonia/STT/
+   LLM/TTS) — hoje só custo total é registrado.
+4. Auditoria dos pontos de `if (plan === ...)` espalhados no código
+   legado (não tocados nesta sessão) — candidato a uma tarefa própria.
+5. Admin interno (super-admin) — MRR, margem de IA por conta, ação manual
+   de crédito com audit log — não tocado nesta sessão.
+
+### Verificação final desta sessão (Fase 10)
+`npx tsc --noEmit`: PASS. `npm test`: PASS (176/176). `npm run lint`
+(precisa de `NODE_OPTIONS=--max-old-space-size=8192` nesta máquina — já
+era assim antes): 2 erros próprios corrigidos (arquivos que passaram de
+350 linhas — `lib/plans/config.ts` split em `lib/plans/seats.ts` +
+`lib/plans/credit-pricing.ts`; `assinatura/page.tsx` split com
+`UsageRow.tsx`), 12 erros restantes são do trabalho da sessão paralela,
+não tocados. `npm run build`: PASS.
 
 ### Continuation Instructions
 

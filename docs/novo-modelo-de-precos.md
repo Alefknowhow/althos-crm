@@ -1,4 +1,6 @@
-# Novo Modelo de Preços — Althos CRM
+# Novo Modelo de Preços — Althos CRM (SUPERSEDIDO — ver docs/PRICING_ARCHITECTURE.md)
+
+> ⚠️ **Documento histórico de planejamento, anterior a duas repricings desde então.** A arquitetura comercial vigente ("plano base + usuários incluídos/adicionais + Althos Credits + consumo de comunicação", set/2026) está em **[docs/PRICING_ARCHITECTURE.md](../PRICING_ARCHITECTURE.md)**, **[docs/ALTHOS_CREDITS.md](../ALTHOS_CREDITS.md)** e **[docs/BILLING.md](../BILLING.md)**. Mantido como registro histórico das decisões originais (trial de 15 dias, módulos de nicho como complemento, Financeiro transversal) — a maioria ainda vale, mas os VALORES abaixo não.
 
 > Consolidação das decisões da sessão de estudo de pricing. Documento de planejamento — nenhuma implementação (código, tabela `plans`, gateway de pagamento) foi feita ainda. Os valores aqui são **hipótese de lançamento**, não preço validado em mercado — sinalizo onde recomendo testar antes de travar.
 

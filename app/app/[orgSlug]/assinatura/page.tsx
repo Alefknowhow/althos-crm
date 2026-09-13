@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Zap, Users, Mail, MessageSquare, Calendar, AlertCircle } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { UsageRow } from './UsageRow'
 
 function statusLabel(status: string | null) {
   const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -319,37 +320,3 @@ export default async function SubscriptionPage({ params }: { params: { orgSlug: 
   )
 }
 
-function UsageRow({
-  icon, label, used, limit, pct,
-}: {
-  icon: React.ReactNode
-  label: string
-  used: number
-  limit: number
-  pct: number
-}) {
-  const isUnlimited = !isFinite(limit)
-  const isHigh = pct >= 80
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          {icon}
-          <span>{label}</span>
-        </div>
-        <span className={`font-medium tabular-nums ${isHigh ? 'text-destructive' : ''}`}>
-          {used.toLocaleString('pt-BR')}
-          {!isUnlimited && ` / ${limit.toLocaleString('pt-BR')}`}
-          {isUnlimited && ' / ∞'}
-        </span>
-      </div>
-      {!isUnlimited && (
-        <Progress
-          value={Math.min(pct, 100)}
-          className={isHigh ? '[&>div]:bg-destructive' : ''}
-        />
-      )}
-    </div>
-  )
-}
