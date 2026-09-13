@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sanitizeChatHistory } from '@/lib/ai/chat-history'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { getAttendantConfig } from './ai_attendant-config'
 
 export async function listSandboxSessions(orgSlug: string) {
@@ -105,7 +105,7 @@ export async function sendSandboxMessage(
     .maybeSingle()
   // AI runs on the platform's centralized token (env), metered per account by
   // the credit gate below — no per-org API key required.
-  const apiKey = getPlatformAiKey()
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) {
     return {
       ok: false as const,
@@ -194,6 +194,7 @@ export async function sendSandboxMessage(
       },
       {
         apiKey,
+        baseURL,
         model: config.model,
         maxOutputTokens: 600,
       },

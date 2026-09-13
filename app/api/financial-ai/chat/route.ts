@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 
 /**
  * Streaming endpoint for the Financeiro AI analyst chat. Same shape as
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     .eq('id', org.id)
     .maybeSingle()
 
-  const apiKey = getPlatformAiKey()
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) {
     return new Response(
       JSON.stringify({ type: 'error', error: 'IA temporariamente indisponível. Tente novamente em instantes.' }),
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
               return JSON.stringify(r)
             },
           },
-          { apiKey, model, maxOutputTokens: 1200, maxIterations: 6 },
+          { apiKey, baseURL, model, maxOutputTokens: 1200, maxIterations: 6 },
         )) {
           if (event.type === 'text_delta') {
             fullReply += event.text

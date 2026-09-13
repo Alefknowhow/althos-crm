@@ -29,7 +29,7 @@ export async function respondAsAttendant(
   input: AttendantInput,
   config: AttendantConfig,
 ): Promise<AttendantResult> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const client = new Anthropic({ apiKey: config.apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
 
   const handoffRequested = detectHandoff(input.messages, input.handoffPhrases || [])
 
@@ -134,9 +134,9 @@ export async function respondAsAttendant(
  */
 export async function summarizeForHandoff(
   input: { messages: AttendantTurn[]; leadProfile?: AttendantInput['leadProfile']; orgName?: string },
-  config: { apiKey: string; model?: string },
+  config: { apiKey: string; baseURL?: string; model?: string },
 ): Promise<string> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const client = new Anthropic({ apiKey: config.apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
 
   const transcript = input.messages
     .map(m => `${m.role === 'user' ? 'Cliente' : 'IA'}: ${m.content}`)
@@ -176,7 +176,7 @@ export async function* respondAsAttendantStream(
   input: AttendantInput,
   config: AttendantConfig,
 ): AsyncGenerator<CopilotStreamEvent, void, unknown> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const client = new Anthropic({ apiKey: config.apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
 
   const systemBlocks = buildSystemBlocks(input)
   const model = config.model || 'claude-haiku-4-5'

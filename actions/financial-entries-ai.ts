@@ -33,7 +33,7 @@ export async function suggestCategoryForEntry(
 
   if (!input.descricao?.trim()) return { ok: false, error: 'Informe uma descrição para sugerir a categoria.' }
 
-  const { getPlatformAiKey, hasPlatformAiKey } = await import('@/lib/ai/api-key')
+  const { hasPlatformAiKey, resolveAnthropicEngine } = await import('@/lib/ai/api-key')
   if (!hasPlatformAiKey()) return { ok: false, error: 'IA não configurada.' }
 
   const { copilotNicheFor } = await import('@/lib/ai/insights-tools')
@@ -42,7 +42,8 @@ export async function suggestCategoryForEntry(
   const examples = CATEGORY_EXAMPLES_BY_NICHE[niche]
 
   const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const client = new Anthropic({ apiKey: getPlatformAiKey() })
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
+  const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
   const CATEGORIZE_TOOL: any = {
     name: 'categorize_entry',

@@ -36,6 +36,7 @@ export type MatchedProperty = { propertyId: string; score: number; reason: strin
 
 export type MatcherConfig = {
   apiKey: string
+  baseURL?: string
   model: string
 }
 
@@ -116,7 +117,7 @@ export async function matchProperties(
   input: MatcherInput,
   config: MatcherConfig,
 ): Promise<{ result: MatchedProperty[]; usage: Anthropic.Messages.Usage; modelUsed: string }> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const client = new Anthropic({ apiKey: config.apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
   const validIds = new Set(input.candidates.map(c => c.id))
 
   const response = await client.messages.create({

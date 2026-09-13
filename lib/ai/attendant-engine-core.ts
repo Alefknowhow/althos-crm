@@ -58,6 +58,10 @@ export type AttendantInput = {
 
 export type AttendantConfig = {
   apiKey: string
+  /** Optional override — set when routing through a non-Anthropic-hosted
+   *  endpoint (e.g. DeepSeek's Anthropic-compatible API), via
+   *  resolveAnthropicEngine() (lib/ai/api-key.ts). */
+  baseURL?: string
   model: string
   maxOutputTokens?: number
   // Hard ceiling on tool-use iterations. Beyond this we force end_turn to

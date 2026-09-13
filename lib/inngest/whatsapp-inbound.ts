@@ -13,7 +13,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { sendTextMessage } from '@/lib/whatsapp/meta-client'
 import { respondAsAttendant, summarizeForHandoff } from '@/lib/ai/attendant-engine'
 import { ATTENDANT_TOOLS, executeAttendantTool } from '@/lib/ai/attendant-tools'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 
 export type WhatsappInboundEvent = {
@@ -126,7 +126,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
       .maybeSingle()
     if (newerOutbound) return { skipped: 'already-answered' }
 
-    const apiKey = getPlatformAiKey()
+    const { apiKey, baseURL } = await resolveAnthropicEngine()
     if (!apiKey) return { skipped: 'no-api-key' }
 
     // Créditos de IA por conta — mesmo medidor do sandbox e do Instagram.
@@ -202,6 +202,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
         },
         {
           apiKey,
+          baseURL,
           model: org.ai_qualifier_model || 'claude-haiku-4-5',
           maxOutputTokens: 600,
         },
@@ -247,7 +248,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
       try {
         const summary = await summarizeForHandoff(
           { messages: [...messages, { role: 'assistant', content: result.reply }], leadProfile, orgName: org.name },
-          { apiKey, model: org.ai_qualifier_model || 'claude-haiku-4-5' },
+          { apiKey, baseURL, model: org.ai_qualifier_model || 'claude-haiku-4-5' },
         )
         if (summary) {
           await admin.from('whatsapp_conversations').update({

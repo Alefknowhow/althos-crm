@@ -5,7 +5,7 @@ import { sanitizeChatHistory } from '@/lib/ai/chat-history'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 
 /* -------- Sessions -------- */
 
@@ -111,7 +111,7 @@ export async function sendInsightMessage(
     .maybeSingle()
   // AI runs on the platform's centralized token (env), metered per account by
   // the credit gate above — no per-org API key required.
-  const apiKey = getPlatformAiKey()
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) {
     return {
       ok: false as const,
@@ -224,6 +224,7 @@ export async function sendInsightMessage(
       },
       {
         apiKey,
+        baseURL,
         model,
         maxOutputTokens: 1200,
         maxIterations: 6,

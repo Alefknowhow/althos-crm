@@ -4,7 +4,7 @@
  * (tool forçado, sem parse de texto livre).
  */
 import Anthropic from '@anthropic-ai/sdk'
-import { getPlatformAiKey } from '../ai/api-key'
+import { resolveAnthropicEngine } from '../ai/api-key'
 
 const INSIGHTS_TOOL: Anthropic.Messages.Tool = {
   name: 'extract_call_insights',
@@ -60,7 +60,8 @@ export interface CallInsights {
 }
 
 export async function generateCallInsights(transcriptText: string): Promise<CallInsights> {
-  const client = new Anthropic({ apiKey: getPlatformAiKey() })
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
+  const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
   const response = await client.messages.create({
     model: 'claude-haiku-4-5',
     max_tokens: 1500,

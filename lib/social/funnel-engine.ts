@@ -16,6 +16,7 @@
 import type { createAdminClient } from '@/lib/supabase/server'
 import { sendInstagramDM, privateReplyToComment, replyToComment, type MessageButton } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 import { consumeAiCredits } from '@/lib/plans/server'
 
@@ -49,7 +50,7 @@ async function renderStep(
   admin: Admin, orgId: string, step: Step, inbound: Inbound,
 ): Promise<string> {
   if (step.step_type === 'message') return (step.message_text || '').trim()
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) return ''
   const { data: org } = await admin
     .from('organizations')
@@ -69,6 +70,7 @@ async function renderStep(
   try {
     return await generateAiReply({
       apiKey,
+      baseURL,
       model: org?.ai_qualifier_model,
       orgName: org?.name,
       businessContext: org?.ai_business_context,

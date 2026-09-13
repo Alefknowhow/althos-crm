@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { checkFeatureAccessByOrgSlug, consumeAiCredits, getAccountIdForOrgSlug } from '@/lib/plans/server'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { matchProperties, type MatcherCandidate } from '@/lib/ai/property-matcher'
 import type { PropertyPreferences } from './property-preferences'
 
@@ -71,7 +71,7 @@ export async function matchPropertiesForLead(orgSlug: string, contatoId: string)
     return { ok: false as const, error: 'Nenhum imóvel disponível compatível com o pré-filtro encontrado.' }
   }
 
-  const apiKey = getPlatformAiKey()
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) return { ok: false as const, error: 'IA temporariamente indisponível. Tente novamente em instantes.' }
 
   const credit = await consumeAiCredits({
@@ -88,7 +88,7 @@ export async function matchPropertiesForLead(orgSlug: string, contatoId: string)
   try {
     const { result } = await matchProperties(
       { lead: { name: contato.name, preferences: prefs }, candidates },
-      { apiKey, model: 'claude-sonnet-5' },
+      { apiKey, baseURL, model: 'claude-sonnet-5' },
     )
     const byId = new Map(candidates.map(c => [c.id, c]))
     const suggestions: MatchSuggestion[] = result

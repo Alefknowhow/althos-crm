@@ -34,6 +34,8 @@ export type QualifierResult = {
 
 export type QualifierConfig = {
   apiKey: string
+  /** Só usado no branch 'claude' — repassado a resolveAnthropicEngine(). */
+  baseURL?: string
   model: string
   systemPrompt?: string | null
   businessContext?: string | null
@@ -119,7 +121,7 @@ async function qualifyLeadClaude(
   input: QualifierInput,
   config: QualifierConfig,
 ): Promise<{ result: QualifierResult; usage: Anthropic.Messages.Usage; modelUsed: string }> {
-  const client = new Anthropic({ apiKey: config.apiKey })
+  const client = new Anthropic({ apiKey: config.apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
 
   const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
     {

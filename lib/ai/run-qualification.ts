@@ -9,7 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { qualifyLead } from './qualifier'
-import { getPlatformAiKey, getGeminiKey, hasGeminiKey } from './api-key'
+import { getGeminiKey, hasGeminiKey, resolveAnthropicEngine } from './api-key'
 import { consumeAiCredits } from '@/lib/plans/server'
 
 export type RunQualificationResult =
@@ -34,7 +34,9 @@ export async function runLeadQualification(
   // AI runs on the platform's centralized token (env), metered per account by
   // the credit system below — no per-org API key required.
   const provider = orgConfig.ai_provider === 'gemini' ? 'gemini' : 'claude'
-  const apiKey = provider === 'gemini' ? getGeminiKey() : getPlatformAiKey()
+  const anthropicEngine = provider === 'claude' ? await resolveAnthropicEngine() : null
+  const apiKey = provider === 'gemini' ? getGeminiKey() : (anthropicEngine?.apiKey || '')
+  const baseURL = anthropicEngine?.baseURL
   if (provider === 'gemini' && !hasGeminiKey()) return { ok: false, reason: 'IA (Gemini) não configurada.' }
   if (!apiKey) return { ok: false, reason: 'IA temporariamente indisponível. Tente novamente em instantes.' }
 
@@ -131,6 +133,7 @@ export async function runLeadQualification(
       },
       {
         apiKey,
+        baseURL,
         model,
         systemPrompt: orgConfig.ai_qualifier_prompt,
         businessContext: orgConfig.ai_business_context,

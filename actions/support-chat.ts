@@ -2,6 +2,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { serializeHelpForAI } from '@/lib/help/content'
 import { nicheKeyFor, type NicheKey } from '@/lib/niche'
 import { BRAND } from '@/lib/constants/brand'
@@ -44,8 +45,10 @@ export async function askSupport(
   try {
     const supabase = createClient()
 
-    // Centralized platform token (env) — same key for every account.
-    const apiKey = process.env.ANTHROPIC_API_KEY || ''
+    // Centralized platform token, routed via resolveAnthropicEngine() so a
+    // super-admin toggle (system_config.ai_engine) can point every account
+    // at DeepSeek's Anthropic-compatible endpoint without a redeploy.
+    const { apiKey, baseURL } = await resolveAnthropicEngine()
     let model = 'claude-haiku-4-5'
     let nicheKey: NicheKey | null = null
     try {
@@ -69,7 +72,7 @@ export async function askSupport(
       }
     }
 
-    const client = new Anthropic({ apiKey })
+    const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
     const system = [
       {

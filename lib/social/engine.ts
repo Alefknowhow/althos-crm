@@ -17,6 +17,7 @@ import {
   getInstagramUserProfile,
 } from '@/lib/social/instagram'
 import { generateAiReply } from '@/lib/social/ai'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-engine'
 import { getOrCreateConversation, enrichConversationProfile, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 import { inngest } from '@/lib/inngest/client'
@@ -209,8 +210,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
       .select('name, ai_business_context, ai_qualifier_model, account_id')
       .eq('id', orgId)
       .maybeSingle()
-    // Centralized platform token (env) — same key for every account.
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const { apiKey, baseURL } = await resolveAnthropicEngine()
     if (!apiKey) {
       console.warn('[social engine] ANTHROPIC_API_KEY not configured')
       return
@@ -234,6 +234,7 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     try {
       responseText = await generateAiReply({
         apiKey,
+        baseURL,
         model: org?.ai_qualifier_model,
         orgName: org?.name,
         businessContext: org?.ai_business_context,

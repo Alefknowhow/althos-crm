@@ -6,6 +6,7 @@ export type InboundKind = 'dm' | 'comment'
  *  motor de automações simples e pelo motor de funil de conversa. */
 export async function generateAiReply(opts: {
   apiKey: string
+  baseURL?: string
   model?: string | null
   orgName?: string | null
   businessContext?: string | null
@@ -14,7 +15,7 @@ export async function generateAiReply(opts: {
   inboundText: string
   senderUsername?: string | null
 }): Promise<string> {
-  const client = new Anthropic({ apiKey: opts.apiKey })
+  const client = new Anthropic({ apiKey: opts.apiKey, ...(opts.baseURL && { baseURL: opts.baseURL }) })
 
   const system = [
     `Você é o atendente social de ${opts.orgName || 'uma empresa'} respondendo no Instagram.`,

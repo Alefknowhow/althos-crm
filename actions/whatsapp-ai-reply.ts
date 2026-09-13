@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccessByOrgSlug, consumeAiCredits } from '@/lib/plans/server'
-import { getPlatformAiKey } from '@/lib/ai/api-key'
+import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { respondAsAttendant } from '@/lib/ai/attendant-engine'
 
 const WHATSAPP_UPGRADE_ERROR = 'WhatsApp não está incluído no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
@@ -44,7 +44,7 @@ export async function suggestWhatsappReply(orgSlug: string, conversationId: stri
     .maybeSingle()
   if (!conv) return { ok: false as const, error: 'Conversa não encontrada.' }
 
-  const apiKey = getPlatformAiKey()
+  const { apiKey, baseURL } = await resolveAnthropicEngine()
   if (!apiKey) return { ok: false as const, error: 'IA não configurada para esta conta.' }
 
   const orgAny = org as any
@@ -100,7 +100,7 @@ export async function suggestWhatsappReply(orgSlug: string, conversationId: stri
         messages,
         tools: [],
       },
-      { apiKey, model: 'claude-haiku-4-5', maxOutputTokens: 400 },
+      { apiKey, baseURL, model: 'claude-haiku-4-5', maxOutputTokens: 400 },
     )
     if (!result.reply.trim()) return { ok: false as const, error: 'A IA não gerou nenhuma sugestão.' }
     return { ok: true as const, suggestion: result.reply }
