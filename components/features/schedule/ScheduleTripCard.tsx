@@ -63,7 +63,9 @@ function fmtDate(s?: string | null) {
   return d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
 }
 
-/** Tempo de conexão entre a chegada de um trecho e a partida do próximo. */
+/** Tempo de conexão entre a chegada de um trecho e a partida do próximo —
+ *  só usado quando o trecho não tem o campo "Conexão — tempo de espera"
+ *  preenchido explicitamente (calcula pela diferença de horários). */
 function connectionDuration(a: FlightLegInfo, b: FlightLegInfo): string | null {
   const arrDate = a.data_chegada || a.data
   const arrTime = a.horario_chegada || a.horario
@@ -77,6 +79,27 @@ function connectionDuration(a: FlightLegInfo, b: FlightLegInfo): string | null {
   return `${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}min` : ''}`.trim() || null
 }
 
+/** Sigla de aeroporto — em destaque (maior e em negrito), pedido
+ *  explícito, pra ficar fácil de bater o olho na rota. */
+function AirportCode({ code }: { code: string | null }) {
+  return <span className="font-bold text-[13px] text-foreground">{code || '—'}</span>
+}
+
+/** Pontos de conexão entre a origem e o destino final — um por trecho
+ *  intermediário quando o voo tem vários trechos (data.legs), ou o único
+ *  ponto de escala quando um trecho só já vem com "Conexão —
+ *  aeroporto/cidade" preenchido no próprio produto. */
+function connectionStops(legs: FlightLegInfo[]): { local: string; duracao: string | null }[] {
+  if (legs.length > 1) {
+    return legs.slice(0, -1).map((leg, i) => ({
+      local: legs[i + 1].conexao_local || leg.destino || '—',
+      duracao: legs[i + 1].conexao_duracao || connectionDuration(leg, legs[i + 1]),
+    }))
+  }
+  const only = legs[0]
+  return only.conexao_local ? [{ local: only.conexao_local, duracao: only.conexao_duracao }] : []
+}
+
 /** Uma etiqueta por sentido de voo (Ida/Volta/...) — condensa todos os
  *  trechos daquele sentido (com conexões) numa linha só. */
 function FlightGroupTag({ sentido, legs }: { sentido: string; legs: FlightLegInfo[] }) {
@@ -86,25 +109,23 @@ function FlightGroupTag({ sentido, legs }: { sentido: string; legs: FlightLegInf
   const worstStatus = STATUS_PRIORITY.find(s => legs.some(l => l.status === s)) || 'scheduled'
   const meta = FLIGHT_STATUS_META[worstStatus]
   const delay = legs.reduce((sum, l) => sum + (l.delay_minutes || 0), 0)
+  const stops = connectionStops(legs)
 
   return (
     <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-muted/20 px-3 py-2 text-xs">
       <Plane className="w-3.5 h-3.5 text-primary shrink-0" />
       <span className="font-semibold capitalize shrink-0">{sentido}</span>
       <span className="text-muted-foreground shrink-0">{numero}</span>
-      <span className="text-muted-foreground">
-        {fmtDate(first.data)} {first.horario || ''} {first.origem || '—'}
+      <span className="text-muted-foreground inline-flex items-center gap-1">
+        {fmtDate(first.data)} {first.horario || ''} <AirportCode code={first.origem} />
       </span>
-      {legs.slice(0, -1).map((leg, i) => {
-        const dur = connectionDuration(leg, legs[i + 1])
-        return (
-          <span key={leg.id} className="text-muted-foreground italic">
-            → {leg.destino || '—'}{dur ? ` (${dur})` : ''}
-          </span>
-        )
-      })}
-      <span className="text-muted-foreground">
-        → {fmtDate(last.data_chegada || last.data)} {last.horario_chegada || ''} {last.destino || '—'}
+      {stops.map((stop, i) => (
+        <span key={i} className="text-muted-foreground inline-flex items-center gap-1">
+          → <AirportCode code={stop.local} /> {stop.duracao && <span className="italic">({stop.duracao})</span>}
+        </span>
+      ))}
+      <span className="text-muted-foreground inline-flex items-center gap-1">
+        → {fmtDate(last.data_chegada || last.data)} {last.horario_chegada || ''} <AirportCode code={last.destino} />
       </span>
       <Badge variant="outline" className={cn('text-[9px] px-1 py-0 shrink-0', meta?.badge)}>
         {meta?.label}{delay > 0 ? ` +${delay}min` : ''}

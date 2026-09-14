@@ -50,6 +50,13 @@ export type FlightLegInfo = {
    *  do formulário de Reservas › Produtos (aéreo). */
   data_chegada: string | null
   horario_chegada: string | null
+  /** Conexão ANTES deste trecho — aeroporto/cidade de escala + tempo de
+   *  espera. Campos "Conexão — aeroporto/cidade" e "Conexão — tempo de
+   *  espera" do formulário de Reservas › Produtos (aéreo), ou os
+   *  equivalentes escala_local/escala_duracao quando o voo tem vários
+   *  trechos extraídos de um voucher (data.legs). */
+  conexao_local: string | null
+  conexao_duracao: string | null
   status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
   revised_departure: string | null
@@ -162,31 +169,58 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
     type PendingLeg = FlightLegInfo & { sale_id: string; designator: string | null }
     const pending: PendingLeg[] = []
     for (const p of (products as any[]) ?? []) {
-      const flightDate = String(p.data?.data || '')
-      const designator = /^\d{4}-\d{2}-\d{2}$/.test(flightDate)
-        ? await buildFlightDesignator(p.data?.companhia || '', p.data?.numero_voo || '')
-        : null
-      pending.push({
-        id: p.id,
-        sale_id: p.sale_id,
-        designator,
-        sentido: p.data?.sentido ?? null,
-        companhia: p.data?.companhia ?? null,
-        numero_voo: p.data?.numero_voo ?? null,
-        origem: p.data?.origem ?? null,
-        destino: p.data?.destino ?? null,
-        // 'horario' e 'hora_embarque' são 2 campos distintos no formulário
-        // de Reservas › Produtos (aéreo) — a extração por IA e o
-        // preenchimento manual nem sempre passam pelos dois, então usa o
-        // que estiver preenchido, sem prender numa chave só.
-        horario: p.data?.horario || p.data?.hora_embarque || null,
-        data: p.data?.data ?? null,
-        data_chegada: p.data?.data_chegada ?? null,
-        horario_chegada: p.data?.hora_chegada ?? null,
-        status: null,
-        delay_minutes: null,
-        revised_departure: null,
-      })
+      // Um produto 'aereo' pode ser um trecho único (campos direto em
+      // `data`, com uma conexão opcional em `conexao_local`/`conexao_duracao`)
+      // ou vários trechos extraídos de um voucher (`data.legs[]`, cada um
+      // com sua própria escala_local/escala_duracao — a espera ANTES dele).
+      const multiLeg = Array.isArray(p.data?.legs) && p.data.legs.length > 0
+      const rawLegs = multiLeg
+        ? p.data.legs.map((l: any) => ({
+            companhia: l.companhia ?? p.data?.companhia ?? null,
+            numero_voo: l.numero ?? null,
+            origem: l.origem ?? null,
+            destino: l.destino ?? null,
+            horario: l.hora_embarque ?? null,
+            data: p.data?.data ?? null,
+            data_chegada: p.data?.data_chegada ?? null,
+            horario_chegada: l.hora_chegada ?? null,
+            conexao_local: l.escala_local ?? null,
+            conexao_duracao: l.escala_duracao ?? null,
+          }))
+        : [{
+            companhia: p.data?.companhia ?? null,
+            numero_voo: p.data?.numero_voo ?? null,
+            origem: p.data?.origem ?? null,
+            destino: p.data?.destino ?? null,
+            // 'horario' e 'hora_embarque' são 2 campos distintos no
+            // formulário de Reservas › Produtos (aéreo) — a extração por
+            // IA e o preenchimento manual nem sempre passam pelos dois,
+            // então usa o que estiver preenchido, sem prender numa chave só.
+            horario: p.data?.horario || p.data?.hora_embarque || null,
+            data: p.data?.data ?? null,
+            data_chegada: p.data?.data_chegada ?? null,
+            horario_chegada: p.data?.hora_chegada ?? null,
+            conexao_local: p.data?.conexao_local ?? null,
+            conexao_duracao: p.data?.conexao_duracao ?? null,
+          }]
+
+      for (let i = 0; i < rawLegs.length; i++) {
+        const raw = rawLegs[i]
+        const flightDate = String(raw.data || '')
+        const designator = /^\d{4}-\d{2}-\d{2}$/.test(flightDate)
+          ? await buildFlightDesignator(raw.companhia || '', raw.numero_voo || '')
+          : null
+        pending.push({
+          id: multiLeg ? `${p.id}-${i}` : p.id,
+          sale_id: p.sale_id,
+          designator,
+          sentido: p.data?.sentido ?? null,
+          ...raw,
+          status: null,
+          delay_minutes: null,
+          revised_departure: null,
+        })
+      }
     }
 
     const designators = Array.from(new Set(pending.map(l => l.designator).filter(Boolean))) as string[]
