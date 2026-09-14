@@ -1,22 +1,22 @@
 'use client'
 
 /**
- * Linha de busca + Responsável + Período + Filtros do painel de Embarques
+ * Linha de busca + Responsável + Período + Saúde do painel de Embarques
  * — extraída de ScheduleClient.tsx só pra manter o arquivo dentro do
- * limite de linhas do lint.
+ * limite de linhas do lint. "Saúde da reserva" era um filtro escondido
+ * num popover "Filtros" — como era o único item ali, virou um dropdown
+ * visível ao lado de "Período" (pedido explícito).
  */
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
-import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 
 export type SchedulePeriod = 'all' | '30d' | 'month' | 'next_month'
 export type ScheduleHealthFilter = 'all' | 'green' | 'yellow' | 'red'
 
 export function ScheduleFiltersBar({
   search, setSearch, owner, setOwner, members,
-  period, setPeriod, health, setHealth, filtersOpen, setFiltersOpen,
+  period, setPeriod, health, setHealth,
 }: {
   search: string
   setSearch: (v: string) => void
@@ -27,8 +27,6 @@ export function ScheduleFiltersBar({
   setPeriod: (v: SchedulePeriod) => void
   health: ScheduleHealthFilter
   setHealth: (v: ScheduleHealthFilter) => void
-  filtersOpen: boolean
-  setFiltersOpen: (v: boolean) => void
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -70,32 +68,15 @@ export function ScheduleFiltersBar({
         </SelectContent>
       </Select>
 
-      <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 h-9 rounded-md border text-xs font-medium transition-colors',
-              'bg-background hover:bg-muted text-muted-foreground border-border',
-            )}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
-            {health !== 'all' && <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">1</span>}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-56 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Saúde da reserva</p>
-          <Select value={health} onValueChange={v => setHealth(v as ScheduleHealthFilter)}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="green">Em dia</SelectItem>
-              <SelectItem value="yellow">Atenção</SelectItem>
-              <SelectItem value="red">Pendência importante</SelectItem>
-            </SelectContent>
-          </Select>
-        </PopoverContent>
-      </Popover>
+      <Select value={health} onValueChange={v => setHealth(v as ScheduleHealthFilter)}>
+        <SelectTrigger className="h-9 w-[170px] text-xs"><SelectValue placeholder="Saúde da reserva" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Saúde: todas</SelectItem>
+          <SelectItem value="green">Em dia</SelectItem>
+          <SelectItem value="yellow">Atenção</SelectItem>
+          <SelectItem value="red">Pendência importante</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }

@@ -37,8 +37,7 @@ export type ScheduledTrip = {
 }
 
 export type FlightLegInfo = {
-  /** id da linha em sale_products — permite editar o horário direto do
-   *  painel de Embarques (ver updateFlightLegField em actions/sale-products.ts). */
+  /** id da linha em sale_products. */
   id: string
   sentido: string | null
   companhia: string | null
@@ -47,17 +46,40 @@ export type FlightLegInfo = {
   destino: string | null
   horario: string | null
   data: string | null
+  /** Data/horário de chegada — campos "Data de chegada"/"Hora de chegada"
+   *  do formulário de Reservas › Produtos (aéreo). */
+  data_chegada: string | null
+  horario_chegada: string | null
   status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
   revised_departure: string | null
 }
 
-export type OtherProductSummary = { id: string; kind: string; title: string }
+export type OtherProductSummary = { id: string; kind: string; title: string; subtitle: string | null }
 
-function otherProductTitle(kind: string, data: Record<string, any>): string {
-  return (
-    data.hotel || data.nome || data.navio || data.atracao || data.fornecedor || data.titular || 'Item'
-  )
+/** Resumo de "demais itens contratados" pro painel de Embarques — mesma
+ *  lógica de título/subtítulo do SaleProductCard (Reservas › Produtos),
+ *  só que compacto (1 linha) em vez do card completo. */
+function otherProductSummary(kind: string, data: Record<string, any>): { title: string; subtitle: string | null } {
+  switch (kind) {
+    case 'hospedagem':
+      return {
+        title: data.hotel || 'Hospedagem',
+        subtitle: [data.tipo_quarto, data.regime].filter(Boolean).join(' · ') || null,
+      }
+    case 'transfer':
+      return { title: data.fornecedor || 'Transfer', subtitle: [data.origem, data.destino].filter(Boolean).join(' → ') || null }
+    case 'cruzeiro':
+      return { title: data.navio || data.companhia || 'Cruzeiro', subtitle: data.roteiro || null }
+    case 'ingresso':
+      return { title: data.atracao || data.nome || 'Ingresso', subtitle: data.fornecedor || null }
+    case 'seguro':
+      return { title: data.nome || data.fornecedor || 'Seguro viagem', subtitle: null }
+    case 'veiculo':
+      return { title: data.fornecedor || data.nome || 'Locação de veículo', subtitle: [data.categoria, data.modelo].filter(Boolean).join(' · ') || null }
+    default:
+      return { title: data.nome || data.fornecedor || 'Item', subtitle: null }
+  }
 }
 
 export type TripTask = {
@@ -159,6 +181,8 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
         // que estiver preenchido, sem prender numa chave só.
         horario: p.data?.horario || p.data?.hora_embarque || null,
         data: p.data?.data ?? null,
+        data_chegada: p.data?.data_chegada ?? null,
+        horario_chegada: p.data?.hora_chegada ?? null,
         status: null,
         delay_minutes: null,
         revised_departure: null,
@@ -204,7 +228,8 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       .in('sale_id', saleIds)
     for (const p of (otherProducts as any[]) ?? []) {
       if (!otherBySale.has(p.sale_id)) otherBySale.set(p.sale_id, [])
-      otherBySale.get(p.sale_id)!.push({ id: p.id, kind: p.kind, title: otherProductTitle(p.kind, p.data || {}) })
+      const { title, subtitle } = otherProductSummary(p.kind, p.data || {})
+      otherBySale.get(p.sale_id)!.push({ id: p.id, kind: p.kind, title, subtitle })
     }
   }
 

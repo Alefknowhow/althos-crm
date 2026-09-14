@@ -55,7 +55,6 @@ export default function ScheduleClient({
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState<SchedulePeriod>('all')
   const [health, setHealth] = useState<ScheduleHealthFilter>('all')
-  const [filtersOpen, setFiltersOpen] = useState(false)
   // Deslocamento em dias a partir da posição padrão (hoje na coluna
   // TODAY_COLUMN) — navegação avança/retrocede NAV_STEP_DAYS colunas por vez.
   const [dayOffset, setDayOffset] = useState(0)
@@ -227,7 +226,6 @@ export default function ScheduleClient({
           owner={owner} setOwner={setOwner} members={members}
           period={period} setPeriod={setPeriod}
           health={health} setHealth={setHealth}
-          filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen}
         />
 
         {/* Status (Todas/Próximas/Em andamento/Concluídas) + Lista/Linha do tempo — mesma linha, sempre nessa posição. */}
