@@ -12,13 +12,11 @@
  *     o toggle Lista/Calendário não pode mudar de lugar entre os modos).
  */
 
-import { useState } from 'react'
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { relatedTypeOptions } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
-import { CalendarDays, List, Search, X, Plus, SlidersHorizontal, AlertCircle } from 'lucide-react'
+import { CalendarDays, List, Search, X, Plus, AlertCircle } from 'lucide-react'
 import {
   type Member, type PriorityFilter, type AssigneeFilter,
   type StatusFilter, type RelatedFilter, type CalView, type ViewMode, type ListPeriod,
@@ -37,7 +35,7 @@ export const LIST_PERIODS: { id: ListPeriod; label: string }[] = [
 /** Conteúdo dos 4 filtros — compartilhado entre o popover desktop e o sheet mobile. */
 export function FilterFields({
   members, assignee, setAssignee, priority, setPriority, statusFilter, setStatusFilter,
-  relatedFilter, setRelatedFilter, niche, size = 'default',
+  relatedFilter, setRelatedFilter, niche, size = 'default', inline = false,
 }: {
   members: Member[]
   assignee: AssigneeFilter
@@ -50,8 +48,11 @@ export function FilterFields({
   setRelatedFilter: (v: RelatedFilter) => void
   niche?: string | null
   size?: 'default' | 'mobile'
+  /** Direto na barra de controles (não dentro de popover/sheet) — largura
+   *  fixa e compacta em vez de esticar 100% do container. */
+  inline?: boolean
 }) {
-  const cls = size === 'mobile' ? 'h-11 w-full text-sm' : 'h-8 w-full text-xs'
+  const cls = inline ? 'h-8 w-[150px] text-xs shrink-0' : size === 'mobile' ? 'h-11 w-full text-sm' : 'h-8 w-full text-xs'
   return (
     <>
       {members.length > 0 && (
@@ -143,7 +144,6 @@ export function TasksBoardToolbar({
   todayCount: number
 }) {
   const activeFilterCount = [priority !== 'all', assignee !== 'all', statusFilter !== 'all', relatedFilter !== 'all'].filter(Boolean).length
-  const [filtersOpen, setFiltersOpen] = useState(false)
 
   function clearAllFilters() {
     setAssignee('all'); setPriority('all'); setStatusFilter('all'); setRelatedFilter('all')
@@ -243,36 +243,21 @@ export function TasksBoardToolbar({
             />
           )}
 
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={cn('inline-flex items-center gap-1.5 px-3 h-8 rounded-md border text-xs font-medium transition-colors shrink-0', FOCUS_RING,
-                  'bg-background hover:bg-muted text-muted-foreground border-border')}
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 space-y-2">
-              <FilterFields
-                members={members} assignee={assignee} setAssignee={setAssignee}
-                priority={priority} setPriority={setPriority}
-                statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-                relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
-                niche={niche}
-              />
-              {activeFilterCount > 0 && (
-                <button type="button" onClick={clearAllFilters} className="text-xs text-primary hover:underline">
-                  Limpar filtros
-                </button>
-              )}
-            </PopoverContent>
-          </Popover>
+          {/* Filtros direto na barra (sem popover "Filtros" escondendo) —
+              pedido explícito de deixá-los visíveis ao lado de "Todas as
+              tarefas". */}
+          <FilterFields
+            members={members} assignee={assignee} setAssignee={setAssignee}
+            priority={priority} setPriority={setPriority}
+            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+            relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
+            niche={niche} inline
+          />
+          {activeFilterCount > 0 && (
+            <button type="button" onClick={clearAllFilters} className={cn('text-xs text-primary hover:underline shrink-0', FOCUS_RING)}>
+              Limpar filtros
+            </button>
+          )}
         </div>
 
         {/* Barra de controles fixa: nav/abas à esquerda, view+período à

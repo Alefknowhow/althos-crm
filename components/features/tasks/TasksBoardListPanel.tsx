@@ -57,18 +57,21 @@ export function TasksBoardListPanel({
         )}
       </div>
 
-      <div className="rounded-[8px] border bg-card overflow-hidden divide-y">
+      {/* Cada grupo é seu próprio cartão, com respiro entre um e outro —
+          antes ficavam todos colados num container só, só separados por
+          uma linha fina (pedido explícito de "desgrudar"). */}
+      <div className="space-y-2.5">
         {GROUPS.map(g => {
           const list = grouped[g.id]
           const isOpen = expanded[g.id]
           const danger = g.id === 'overdue'
           return (
-            <div key={g.id}>
+            <div key={g.id} className="rounded-[8px] border bg-card overflow-hidden">
               <button
                 type="button"
                 onClick={() => toggleGroup(g.id)}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3.5 h-11 text-left transition-colors duration-150 hover:bg-muted/40',
+                  'flex w-full items-center gap-2 px-3.5 h-11 text-left transition-colors duration-150 bg-muted/30 hover:bg-muted/50',
                   FOCUS_RING,
                 )}
               >
@@ -78,7 +81,7 @@ export function TasksBoardListPanel({
                 <span className={cn('text-[13px] font-semibold', danger && list.length > 0 && 'text-destructive')}>
                   {g.label}
                 </span>
-                <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
+                <span className={cn('ml-auto shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums', g.badge)}>
                   {list.length}
                 </span>
               </button>

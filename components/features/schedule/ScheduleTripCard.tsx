@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import {
   Plane, Hotel, Car, Ship, ShieldCheck, Compass, Ticket, Package,
   MessageCircle, ArrowUpRight, MoreHorizontal, ClipboardCopy, FileText,
@@ -215,7 +215,6 @@ export function ScheduleTripCard({
           <span className="text-muted-foreground">Localizador:</span> <span className="font-medium">{locator || '—'}</span>
           {locator && <ClipboardCopy className="w-3 h-3" />}
         </button>
-        <span className="ml-auto font-medium">{formatCurrency(t.total_cents || 0)}</span>
       </div>
 
       {/* Linha 3 — uma etiqueta por sentido, todas na mesma linha */}

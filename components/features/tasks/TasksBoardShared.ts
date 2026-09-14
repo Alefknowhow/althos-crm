@@ -43,11 +43,13 @@ export type ViewMode = 'calendar' | 'list'
  *  (que só existe no modo Calendário) por atalhos de intervalo. */
 export type ListPeriod = 'today' | 'week' | 'month' | 'all'
 
-export const GROUPS: { id: GroupId; label: string; empty: string }[] = [
-  { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada.' },
-  { id: 'today',    label: 'Hoje',       empty: 'Nenhuma tarefa para hoje.' },
-  { id: 'upcoming', label: 'Próximas',   empty: 'Nenhuma tarefa programada.' },
-  { id: 'done',     label: 'Concluídas', empty: 'Nenhuma tarefa concluída.' },
+// Cor da etiqueta de contagem no cabeçalho de cada grupo — reforça o
+// status de cada lista (atrasada pesa mais que "próximas", por exemplo).
+export const GROUPS: { id: GroupId; label: string; empty: string; badge: string }[] = [
+  { id: 'overdue',  label: 'Atrasadas',  empty: 'Nenhuma tarefa atrasada.',   badge: 'bg-destructive/15 text-destructive' },
+  { id: 'today',    label: 'Hoje',       empty: 'Nenhuma tarefa para hoje.',  badge: 'bg-primary/15 text-primary' },
+  { id: 'upcoming', label: 'Próximas',   empty: 'Nenhuma tarefa programada.', badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
+  { id: 'done',     label: 'Concluídas', empty: 'Nenhuma tarefa concluída.',  badge: 'bg-success/15 text-success' },
 ]
 
 export const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
