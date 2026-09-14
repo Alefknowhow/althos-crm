@@ -4,17 +4,28 @@
  * Week-timeline calendar view for TasksBoard. Split out of
  * TasksBoardCalendarViews.tsx — prop-driven, none of this reads
  * TasksBoard's local state directly.
+ *
+ * Criação rápida por arraste: clique e arraste num trecho vazio da
+ * timeline pra selecionar o horário (mínimo 30min — um clique simples,
+ * sem arrastar, já cria um bloco padrão de 30min a partir do ponto
+ * clicado). Ao soltar o mouse, `onRangeSelected` recebe o intervalo +
+ * a posição em tela do trecho, pra o popover de criação (renderizado
+ * pelo componente pai) abrir ancorado ali do lado — ver
+ * TasksBoardQuickCreatePopover.tsx.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { WEEKDAYS_PT, ROW_H, ymd, dueTimeOnly, type Task, type Member } from './TasksBoardShared'
 import { CalendarTaskChip } from './TasksBoardCalendarViews'
+import { type QuickAddSelection } from './TasksBoardQuickCreatePopover'
+
+type DragState = { day: string; rectTop: number; rectLeft: number; rectRight: number; startMin: number; endMin: number }
 
 export function WeekTimeline({
   days, hours, todayYmd, tasksByDate, members, highlightId,
   openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
-  onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd, onQuickAdd, renderPopover,
+  onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd, onRangeSelected, renderPopover,
 }: {
   days: Date[]
   hours: number[]
@@ -30,7 +41,7 @@ export function WeekTimeline({
   onDropSlot: (e: React.DragEvent, dayYmd: string, hour: number) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
   onChipDragEnd: () => void
-  onQuickAdd: (d: string, t?: string) => void
+  onRangeSelected: (selection: QuickAddSelection) => void
   renderPopover: (task: Task, close: () => void) => React.ReactNode
 }) {
   // Linha vermelha da hora atual — atualiza a cada minuto, não a cada
@@ -43,6 +54,69 @@ export function WeekTimeline({
   }, [])
   const nowInHourRange = now.getHours() >= hours[0] && now.getHours() <= hours[hours.length - 1]
   const nowTop = (now.getHours() - hours[0]) * ROW_H + (now.getMinutes() / 60) * ROW_H
+
+  // Seleção por arraste — ver comentário do arquivo.
+  const dragRef = useRef<DragState | null>(null)
+  const [preview, setPreview] = useState<{ day: string; topMin: number; endMin: number } | null>(null)
+
+  function minutesFromClientY(clientY: number, rectTop: number): number {
+    const raw = ((clientY - rectTop) / ROW_H) * 60
+    const snapped = Math.round(raw / 15) * 15
+    return Math.max(0, Math.min(hours.length * 60, snapped))
+  }
+  function minutesToTime(minFromStart: number): string {
+    const total = hours[0] * 60 + minFromStart
+    const h = Math.floor(total / 60)
+    const m = total % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  function handleColumnMouseDown(e: React.MouseEvent<HTMLDivElement>, day: string) {
+    if (e.button !== 0) return
+    // Não inicia seleção ao clicar numa tarefa existente (o chip cuida do
+    // próprio clique/drag) — só em área vazia da timeline.
+    if ((e.target as HTMLElement).closest('[data-quickadd-ignore]')) return
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const startMin = minutesFromClientY(e.clientY, rect.top)
+    const state: DragState = { day, rectTop: rect.top, rectLeft: rect.left, rectRight: rect.right, startMin, endMin: startMin + 30 }
+    dragRef.current = state
+    setPreview({ day, topMin: startMin, endMin: startMin + 30 })
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return
+      const endMin = minutesFromClientY(ev.clientY, dragRef.current.rectTop)
+      dragRef.current.endMin = endMin
+      setPreview({
+        day: dragRef.current.day,
+        topMin: Math.min(dragRef.current.startMin, endMin),
+        endMin: Math.max(dragRef.current.startMin, endMin),
+      })
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      const d = dragRef.current
+      dragRef.current = null
+      setPreview(null)
+      if (!d) return
+      const topMin = Math.min(d.startMin, d.endMin)
+      const endMin = Math.max(topMin + 30, Math.max(d.startMin, d.endMin))
+      onRangeSelected({
+        day: d.day,
+        startTime: minutesToTime(topMin),
+        endTime: minutesToTime(endMin),
+        anchor: {
+          top: d.rectTop + (topMin / 60) * ROW_H,
+          bottom: d.rectTop + (endMin / 60) * ROW_H,
+          left: d.rectLeft,
+          right: d.rectRight,
+        },
+      })
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   return (
     <div className="rounded-[8px] border bg-card overflow-hidden">
@@ -101,7 +175,7 @@ export function WeekTimeline({
       </div>
 
       {/* Timeline */}
-      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] relative">
+      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] relative select-none">
         {/* Coluna de horas */}
         <div>
           {hours.map(h => (
@@ -114,8 +188,9 @@ export function WeekTimeline({
         {days.map(d => {
           const key = ymd(d)
           const timed = (tasksByDate[key] || []).filter(t => dueTimeOnly(t.due_date))
+          const dayPreview = preview && preview.day === key ? preview : null
           return (
-            <div key={key} className="relative border-l min-w-0">
+            <div key={key} className="relative border-l min-w-0 cursor-crosshair" onMouseDown={e => handleColumnMouseDown(e, key)}>
               {hours.map(h => {
                 const slotKey = `slot:${key}:${h}`
                 const isDragOver = dragOverKey === slotKey
@@ -126,11 +201,18 @@ export function WeekTimeline({
                     onDragOver={e => { e.preventDefault(); setDragOverKey(slotKey) }}
                     onDragLeave={() => setDragOverKey(null)}
                     onDrop={e => onDropSlot(e, key, h)}
-                    onDoubleClick={() => onQuickAdd(key, `${String(h).padStart(2, '0')}:00`)}
                     className={cn('border-b border-border/60', isDragOver && 'bg-primary/5')}
                   />
                 )
               })}
+
+              {/* Preview da seleção sendo arrastada */}
+              {dayPreview && (
+                <div
+                  className="absolute inset-x-0.5 z-30 rounded-md bg-primary/15 border border-primary/40 pointer-events-none"
+                  style={{ top: (dayPreview.topMin / 60) * ROW_H, height: ((dayPreview.endMin - dayPreview.topMin) / 60) * ROW_H }}
+                />
+              )}
 
               {/* Linha vermelha da hora atual — só na coluna de hoje */}
               {key === todayYmd && nowInHourRange && (
@@ -157,6 +239,7 @@ export function WeekTimeline({
                 return (
                   <div
                     key={t.id}
+                    data-quickadd-ignore
                     style={{ top, height, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
                     className="absolute px-0.5 z-10"
                   >

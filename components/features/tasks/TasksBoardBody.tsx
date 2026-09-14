@@ -13,6 +13,7 @@ import {
 import { TasksBoardListPanel } from './TasksBoardListPanel'
 import { TasksBoardCalendarPanel } from './TasksBoardCalendarPanel'
 import { TasksBoardMonthGrid } from './TasksBoardMonthGrid'
+import { type QuickAddSelection } from './TasksBoardQuickCreatePopover'
 
 export function TasksBoardBody({
   viewMode, calView, orgSlug, members,
@@ -22,7 +23,7 @@ export function TasksBoardBody({
   weekDays, hours, todayYmd, tasksByDate,
   openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
   onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd,
-  onQuickAddSlot, onEdit, monthDays, onDayClick,
+  onRangeSelected, onEdit, monthDays, onDayClick,
 }: {
   viewMode: ViewMode
   calView: CalView
@@ -53,7 +54,7 @@ export function TasksBoardBody({
   onDropSlot: (e: React.DragEvent, dayYmd: string, hour: number) => void
   onChipDragStart: (e: React.DragEvent, taskId: string) => void
   onChipDragEnd: () => void
-  onQuickAddSlot: (d: string, t?: string) => void
+  onRangeSelected: (selection: QuickAddSelection) => void
   onEdit: (t: Task | null) => void
   monthDays: Date[]
   onDayClick: (d: string) => void
@@ -109,7 +110,7 @@ export function TasksBoardBody({
             onDropSlot={onDropSlot}
             onChipDragStart={onChipDragStart}
             onChipDragEnd={onChipDragEnd}
-            onQuickAddSlot={onQuickAddSlot}
+            onRangeSelected={onRangeSelected}
             onToggleDone={handleToggleDone}
             onSetPriority={handleSetPriority}
             onEdit={onEdit}

@@ -10,12 +10,13 @@
 import { type Member, type Task } from './TasksBoardShared'
 import { WeekTimeline } from './TasksBoardCalendarViews'
 import { TaskPopoverContent } from './TasksBoardTaskViews'
+import { type QuickAddSelection } from './TasksBoardQuickCreatePopover'
 
 export function TasksBoardCalendarPanel({
   weekDays, hours, todayYmd, tasksByDate, members,
   highlightId, openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
   orgSlug, onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd,
-  onQuickAddSlot, onToggleDone, onSetPriority, onEdit, onDelete,
+  onRangeSelected, onToggleDone, onSetPriority, onEdit, onDelete,
 }: {
   weekDays: Date[]
   hours: number[]
@@ -32,7 +33,7 @@ export function TasksBoardCalendarPanel({
   onDropSlot: (e: React.DragEvent, dayYmd: string, hour: number) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
   onChipDragEnd: () => void
-  onQuickAddSlot: (d: string, t?: string) => void
+  onRangeSelected: (selection: QuickAddSelection) => void
   onToggleDone: (task: Task) => void
   onSetPriority: (task: Task, p: Task['priority']) => void
   onEdit: (task: Task) => void
@@ -55,7 +56,7 @@ export function TasksBoardCalendarPanel({
         onDropSlot={onDropSlot}
         onChipDragStart={onChipDragStart}
         onChipDragEnd={onChipDragEnd}
-        onQuickAdd={onQuickAddSlot}
+        onRangeSelected={onRangeSelected}
         renderPopover={(task, close) => (
           <TaskPopoverContent
             task={task} orgSlug={orgSlug} members={members}

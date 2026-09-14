@@ -31,6 +31,7 @@ import { TasksBoardToolbar } from './TasksBoardToolbar'
 import { TasksBoardBody } from './TasksBoardBody'
 import { useTasksBoardMutations } from './useTasksBoardMutations'
 import { useTasksBoardDerived, useTasksBoardGrid } from './useTasksBoardDerived'
+import { TasksBoardQuickCreatePopover, type QuickAddSelection } from './TasksBoardQuickCreatePopover'
 
 export default function TasksBoard({
   initialTasks,
@@ -68,6 +69,7 @@ export default function TasksBoard({
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
   const [quickAdd, setQuickAdd] = useState<{ date: string; time?: string } | null>(null)
+  const [weekQuickAdd, setWeekQuickAdd] = useState<QuickAddSelection | null>(null)
 
   const {
     dragOverKey, setDragOverKey,
@@ -172,7 +174,7 @@ export default function TasksBoard({
         onDropSlot={handleDropOnSlot}
         onChipDragStart={onChipDragStart}
         onChipDragEnd={onChipDragEnd}
-        onQuickAddSlot={(d, t) => setQuickAdd({ date: d, time: t })}
+        onRangeSelected={setWeekQuickAdd}
         onEdit={setEditing}
         monthDays={monthDays}
         onDayClick={d => setQuickAdd({ date: d })}
@@ -207,6 +209,21 @@ export default function TasksBoard({
         onOpenChange={o => !o && setQuickAdd(null)}
         trigger={<span className="hidden" />}
       />
+
+      {/* Criação rápida por arraste na visão Semana — popover leve ancorado
+          ao lado do intervalo selecionado, sem overlay (pedido explícito:
+          resto da tela continua interativo, fecha ao clicar fora). */}
+      {weekQuickAdd && (
+        <TasksBoardQuickCreatePopover
+          orgSlug={orgSlug}
+          selection={weekQuickAdd}
+          onClose={() => setWeekQuickAdd(null)}
+          onMoreOptions={(day, time) => {
+            setWeekQuickAdd(null)
+            setQuickAdd({ date: day, time })
+          }}
+        />
+      )}
     </div>
   )
 }
