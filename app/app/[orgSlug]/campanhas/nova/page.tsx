@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/supabase/types'
 import { getPipelinesAndStages } from '@/actions/pipeline'
-import { listDistinctTags, listSelectableWaTemplates } from '@/actions/send-campaigns'
+import { listSelectableWaTemplates } from '@/actions/send-campaigns'
+import { listDistinctTags, listDistinctSources } from '@/actions/send-campaigns-audience'
 import { listEmailTemplates } from '@/actions/emails'
 import NewCampaignForm from '@/components/features/campaigns/NewCampaignForm'
 import { Button } from '@/components/ui/button'
@@ -10,9 +11,10 @@ import { MessageSquare, Mail } from 'lucide-react'
 export default async function NovaCampanhaPage({ params }: { params: { orgSlug: string } }) {
   await requireAuth()
 
-  const [{ pipelines, stages }, tags, waTemplates, emailTemplates] = await Promise.all([
+  const [{ pipelines, stages }, tags, sources, waTemplates, emailTemplates] = await Promise.all([
     getPipelinesAndStages(params.orgSlug),
     listDistinctTags(params.orgSlug),
+    listDistinctSources(params.orgSlug),
     listSelectableWaTemplates(params.orgSlug),
     listEmailTemplates(params.orgSlug),
   ])
@@ -44,6 +46,7 @@ export default async function NovaCampanhaPage({ params }: { params: { orgSlug: 
         pipelines={pipelines}
         stages={stages}
         tags={tags}
+        sources={sources}
         waTemplates={waTemplates}
         emailTemplates={emailTemplates}
       />

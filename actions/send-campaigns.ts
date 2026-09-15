@@ -5,48 +5,10 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { inngest } from '@/lib/inngest/client'
+import { buildAudienceQuery } from './send-campaigns-audience'
+import { EMPTY_AUDIENCE_FILTER, type AudienceFilter } from '@/lib/campaigns/audience-filter'
 
 const UPGRADE_ERROR = 'Campanhas de Envio não estão incluídas no seu plano atual. Faça upgrade para o Pro ou Business para usar este recurso.'
-
-export interface AudienceFilter {
-  tags: string[]
-  stageIds: string[]
-  pipelineId: string | null
-}
-
-async function buildAudienceQuery(supabase: ReturnType<typeof createClient>, orgId: string, filter: AudienceFilter) {
-  let q = supabase
-    .from('contatos')
-    .select('id, name, phone, email', { count: 'exact' })
-    .eq('organization_id', orgId)
-
-  if (filter.tags.length > 0) q = q.overlaps('tags', filter.tags)
-  if (filter.stageIds.length > 0) q = q.in('stage_id', filter.stageIds)
-  if (filter.pipelineId) q = q.eq('pipeline_id', filter.pipelineId)
-
-  return q
-}
-
-/** Tags distintas usadas pelos contatos da org — alimenta o checklist do construtor de público. */
-export async function listDistinctTags(orgSlug: string) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const { data } = await supabase
-    .from('contatos')
-    .select('tags')
-    .eq('organization_id', org.id)
-    .not('tags', 'is', null)
-
-  const set = new Set<string>()
-  for (const row of data || []) {
-    for (const tag of (row.tags as string[] | null) || []) {
-      if (tag) set.add(tag)
-    }
-  }
-  return Array.from(set).sort()
-}
 
 /**
  * Templates elegíveis pra campanha em massa. O status aqui é autodeclarado
@@ -68,16 +30,6 @@ export async function listSelectableWaTemplates(orgSlug: string) {
     .order('display_name', { ascending: true })
 
   return data || []
-}
-
-export async function previewAudienceCount(orgSlug: string, filter: AudienceFilter) {
-  await requireAuth()
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-
-  const q = await buildAudienceQuery(supabase, org.id, filter)
-  const { count } = await q
-  return count || 0
 }
 
 export interface CreateCampaignInput {
@@ -145,6 +97,16 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
       audience_tags: input.audience.tags,
       audience_stage_ids: input.audience.stageIds,
       audience_pipeline_id: input.audience.pipelineId,
+      audience_status: input.audience.status,
+      audience_sources: input.audience.sources,
+      audience_tier: input.audience.tier || null,
+      audience_has_email: input.audience.hasEmail,
+      audience_has_phone: input.audience.hasPhone,
+      audience_no_contact_days: input.audience.noContactDays || null,
+      audience_created_from: input.audience.createdFrom || null,
+      audience_created_to: input.audience.createdTo || null,
+      audience_value_min_cents: input.audience.valueMin > 0 ? input.audience.valueMin * 100 : null,
+      audience_value_max_cents: input.audience.valueMax > 0 ? input.audience.valueMax * 100 : null,
       status: 'draft',
       created_by: user.id,
     })
@@ -156,7 +118,9 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
   return { ok: true as const, campaignId: row.id }
 }
 
-export async function materializeAndScheduleCampaign(orgSlug: string, campaignId: string, sendAtISO?: string | null) {
+export async function materializeAndScheduleCampaign(
+  orgSlug: string, campaignId: string, sendAtISO?: string | null, contatoIds?: string[],
+) {
   if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'bulk_campaigns'))) {
     return { ok: false as const, error: UPGRADE_ERROR }
   }
@@ -180,14 +144,41 @@ export async function materializeAndScheduleCampaign(orgSlug: string, campaignId
     scheduledAt = when.toISOString()
   }
 
-  const filter: AudienceFilter = {
-    tags: campaign.audience_tags || [],
-    stageIds: campaign.audience_stage_ids || [],
-    pipelineId: campaign.audience_pipeline_id,
+  // Veio da pré-lista com checkbox (fluxo novo) — busca só os ids
+  // escolhidos, direto, sem re-rodar o filtro. Nunca confia em nome/
+  // telefone vindos do client: re-busca os dados reais, escopados pela
+  // org, só a partir dos ids.
+  let contacts: { id: string; name: string | null; phone: string | null; email: string | null }[] | null
+  if (contatoIds && contatoIds.length > 0) {
+    const { data, error: idsError } = await supabase
+      .from('contatos')
+      .select('id, name, phone, email')
+      .eq('organization_id', org.id)
+      .in('id', contatoIds)
+    if (idsError) return { ok: false as const, error: idsError.message }
+    contacts = data
+  } else {
+    const filter: AudienceFilter = {
+      ...EMPTY_AUDIENCE_FILTER,
+      tags: campaign.audience_tags || [],
+      stageIds: campaign.audience_stage_ids || [],
+      pipelineId: campaign.audience_pipeline_id,
+      status: campaign.audience_status || [],
+      sources: campaign.audience_sources || [],
+      tier: campaign.audience_tier || '',
+      hasEmail: !!campaign.audience_has_email,
+      hasPhone: !!campaign.audience_has_phone,
+      noContactDays: campaign.audience_no_contact_days || 0,
+      createdFrom: campaign.audience_created_from || '',
+      createdTo: campaign.audience_created_to || '',
+      valueMin: campaign.audience_value_min_cents ? campaign.audience_value_min_cents / 100 : 0,
+      valueMax: campaign.audience_value_max_cents ? campaign.audience_value_max_cents / 100 : 0,
+    }
+    const q = await buildAudienceQuery(supabase, org.id, filter)
+    const { data, error: audienceError } = await q
+    if (audienceError) return { ok: false as const, error: audienceError.message }
+    contacts = data
   }
-  const q = await buildAudienceQuery(supabase, org.id, filter)
-  const { data: contacts, error: audienceError } = await q
-  if (audienceError) return { ok: false as const, error: audienceError.message }
   if (!contacts || contacts.length === 0) {
     return { ok: false as const, error: 'Nenhum contato entrou nesse filtro.' }
   }
