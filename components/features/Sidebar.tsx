@@ -116,7 +116,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       {/* Desktop-only — a versão mobile do cabeçalho (logo + nome + X) é
           renderizada direto pelo SidebarShell, pra não duplicar quando o
           drawer mobile monta este mesmo children pela segunda vez. */}
-      <div className="hidden md:flex h-14 border-b border-sidebar-border items-center justify-between px-5 relative">
+      <div className="hidden md:flex h-14 items-center justify-between px-5 relative">
         <Logo className="sidebar-brand" v2 textClassName="text-sidebar-foreground" />
         <div className="sidebar-toggle-btn shrink-0">
           <SidebarCollapseToggleButton />

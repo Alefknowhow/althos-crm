@@ -6,58 +6,18 @@ import type { ContatoDeal } from '@/actions/contatos'
 import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
 import { DealCard } from './ContatosViewDetailHelpers'
 
-export function NegociacoesTab({
-  orgSlug, selected, isTravel, deals,
-}: {
-  orgSlug:  string
-  selected: NonNullable<Selected>
-  isTravel: boolean
-  deals:    ContatoDeal[]
-}) {
-  // Nicho viagens: cotações (travel_proposals) ligadas ao lead, não o
-  // histórico genérico de negocios (que é sobre movimento de pipeline,
-  // não sobre o que foi efetivamente proposto ao cliente).
-  if (isTravel) {
-    return (selected.travelCotacoes || []).length > 0 ? (
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs text-muted-foreground">
-            <tr>
-              <th className="text-left font-medium px-3 py-2">Cotação</th>
-              <th className="text-left font-medium px-3 py-2">Período</th>
-              <th className="text-right font-medium px-3 py-2">Valor</th>
-              <th className="text-left font-medium px-3 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {(selected.travelCotacoes || []).map((p: any) => (
-              <tr key={p.id} className="hover:bg-muted/30">
-                <td className="px-3 py-2 font-medium">
-                  <Link href={`/app/${orgSlug}/cotacoes/${p.id}`} className="hover:underline">
-                    {p.title || 'Cotação'}
-                  </Link>
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {p.start_date ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date)}` : '—'}
-                </td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtCurrency(p.total_cents || 0)}</td>
-                <td className="px-3 py-2"><Badge variant="outline" className="text-[10px]">{p.status}</Badge></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ) : (
-      <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma cotação registrada.</p>
-    )
-  }
-
+/** Negócios — todas as negociações do contato, vindas do pipeline
+ *  (tabela `negocios`), independente do nicho. Mostra a etapa quando a
+ *  negociação ainda está em andamento (DealCard já exibe stage_name).
+ *  Diferente de Vendas: aqui é o histórico do funil, não o que foi
+ *  efetivamente vendido/reservado. */
+export function NegociacoesTab({ deals }: { deals: ContatoDeal[] }) {
   return deals.length > 0 ? (
     <div className="space-y-2">
       {deals.map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />)}
     </div>
   ) : (
-    <p className="text-xs text-muted-foreground text-center py-4 border rounded-lg">Nenhuma negociação registrada.</p>
+    <p className="text-xs text-muted-foreground text-center py-4 rounded-lg bg-card">Nenhuma negociação registrada.</p>
   )
 }
 

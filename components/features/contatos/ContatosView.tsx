@@ -56,7 +56,6 @@ export default function ContatosView({
   members,
   statusTabs,
   responsavelFilter,
-  orgName,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -123,6 +122,7 @@ export default function ContatosView({
   if (selected) {
     return (
       <DetailPanel
+        key={selected.contato.id}
         orgSlug={orgSlug}
         selected={selected}
         onBack={() => navigate({ sel: null })}
@@ -130,7 +130,6 @@ export default function ContatosView({
         isTravel={isTravel}
         isRealEstate={isRealEstate}
         properties={properties}
-        orgName={orgName}
       />
     )
   }

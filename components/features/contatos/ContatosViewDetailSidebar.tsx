@@ -2,30 +2,32 @@
 
 /**
  * Coluna esquerda do painel do cliente — perfil + ações rápidas + dados
- * pessoais, sempre visível (não é mais uma aba). Estrutura 1:1 com o
- * artboard 26 do /design: avatar centralizado, pílula de status, NPS +
- * créditos lado a lado, WhatsApp/Ligar, lista de campos, canal de
- * aquisição, dados pessoais, documentos de viagem, parentes e tags.
+ * pessoais, sempre visível (não é aba). Ajustes pedidos após o primeiro
+ * corte: NPS/créditos saíram daqui (foram pra Visão geral), canal de
+ * aquisição virou etiqueta simples ao lado do status, parentesco virou
+ * uma linha de texto livre + botão (sem popup/select), campos em 2
+ * colunas, e o lápis de editar fica no topo, perto do telefone.
  */
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { WhatsAppGlyph } from '@/components/features/LeadCard'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
-import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
-import { NpsCard } from './NpsSection'
-import { CONTATO_STATUS_META } from '@/lib/contatos'
+import { addRelationship, deleteRelationship } from '@/actions/relationships'
+import { type RelationshipRow } from '@/lib/relationships'
+import { CONTATO_STATUS_META, CONTATO_SOURCE_EDIT_OPTIONS, contatoSourceLabel } from '@/lib/contatos'
 import { fmtCurrency, fmtDate, STATUS_VALUES, type Selected } from './ContatosViewShared'
 import { AvatarUploader } from './ContatosViewWidgets'
-import { OriginEditor } from './ContatosViewDetailHeader'
 
 export function DetailSidebar({
-  orgSlug, selected, c, isTravel, sellerName, creditBalance,
+  orgSlug, selected, c, isTravel, sellerName,
   savingStatus, onChangeStatus, savingSource, onChangeSource,
   tags, tagInput, setTagInput, onAddTag, onRemoveTag,
   openingConversation, onOpenConversation,
@@ -35,11 +37,10 @@ export function DetailSidebar({
   c:                   NonNullable<Selected>['contato']
   isTravel:            boolean
   sellerName:          string | null | undefined
-  creditBalance:       number
   savingStatus:        boolean
   onChangeStatus:      (v: string) => void
   savingSource:        boolean
-  onChangeSource:      (v: { source: string; referred_by_contato_id?: string | null; referred_by_name?: string | null }) => void
+  onChangeSource:      (v: { source: string }) => void
   tags:                string[]
   tagInput:            string
   setTagInput:         (v: string) => void
@@ -59,35 +60,39 @@ export function DetailSidebar({
     : null
 
   return (
-    <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0 space-y-5">
+    <div className="w-full lg:w-[360px] xl:w-[400px] shrink-0 space-y-5">
       {/* ── Perfil ──────────────────────────────────────────────── */}
       <div className="flex flex-col items-center text-center gap-2">
         <AvatarUploader orgSlug={orgSlug} contatoId={c.id} name={c.name} url={c.avatar_url} />
         <h2 className="text-lg font-bold leading-tight">{c.name}</h2>
         {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
-        <div className="w-36 mt-1">
-          <Select value={(c.status as string) || 'lead'} onValueChange={onChangeStatus} disabled={savingStatus}>
-            <SelectTrigger className={`h-7 border-none rounded-full justify-center text-[12px] font-semibold ${meta?.badgeClass || ''}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_VALUES.map(s => (
-                <SelectItem key={s} value={s} className="text-xs">{CONTATO_STATUS_META[s].label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* NPS + Créditos */}
-      <div className="grid grid-cols-2 gap-2">
-        <NpsCard orgSlug={orgSlug} leadId={c.id} npsScore={c.nps_score ?? null} npsUpdatedAt={c.nps_updated_at ?? null} />
-        {isTravel && (
-          <div className="rounded-lg bg-card p-2.5 text-center">
-            <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Créditos cancel.</div>
-            <div className="text-sm font-bold mt-0.5 text-primary">{creditBalance > 0 ? fmtCurrency(creditBalance) : '—'}</div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <div className="w-fit">
+            <Select value={(c.status as string) || 'lead'} onValueChange={onChangeStatus} disabled={savingStatus}>
+              <SelectTrigger className={`h-7 border-none rounded-full justify-center gap-1 px-3 text-[12px] font-semibold ${meta?.badgeClass || ''}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_VALUES.map(s => (
+                  <SelectItem key={s} value={s} className="text-xs">{CONTATO_STATUS_META[s].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          {/* Canal de aquisição — só a etiqueta, sem rastrear "indicado por quem". */}
+          <div className="w-fit">
+            <Select value={c.source || 'manual'} onValueChange={v => onChangeSource({ source: v })} disabled={savingSource}>
+              <SelectTrigger className="h-7 border-none rounded-full justify-center gap-1 px-3 text-[12px] font-semibold bg-muted text-muted-foreground">
+                <SelectValue>{contatoSourceLabel(c.source)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {CONTATO_SOURCE_EDIT_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* WhatsApp / Ligar */}
@@ -110,71 +115,37 @@ export function DetailSidebar({
         </button>
       </div>
 
-      {/* Campos rápidos */}
-      <div className="space-y-3.5">
-        <SidebarField label="Telefone principal" value={c.phone || '—'} />
-        <SidebarField label="E-mail" value={c.email || '—'} />
-        <SidebarField label="Valor em negociação" value={c.value_cents ? fmtCurrency(c.value_cents) : '—'} />
-        <SidebarField
-          label={monthsAsCustomer != null ? `Cliente há ${monthsAsCustomer} meses` : 'Desde'}
-          value={fmtDate(c.became_customer_at || c.created_at)}
-        />
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Responsável</div>
-          <div className="text-sm font-medium">{sellerName || '—'}</div>
-        </div>
-      </div>
-
-      {/* Canal de aquisição */}
-      <div className="rounded-lg bg-card p-3 space-y-2">
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Canal de aquisição</div>
-        <OriginEditor
-          orgSlug={orgSlug}
-          source={c.source ?? null}
-          referredBy={c.referred_by ?? null}
-          referredByName={c.referred_by_name ?? null}
-          saving={savingSource}
-          onChange={onChangeSource}
-        />
-      </div>
-
-      {/* Dados pessoais */}
+      {/* Campos — 2 colunas, lápis de editar logo no topo (perto do telefone) */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Dados pessoais</div>
-          <button type="button" onClick={() => setEditOpen(true)} className="text-muted-foreground hover:text-foreground">
-            <Pencil className="w-3 h-3" />
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Dados do contato</div>
+          <button type="button" onClick={() => setEditOpen(true)} className="text-muted-foreground hover:text-foreground" aria-label="Editar dados">
+            <Pencil className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <SidebarField label="Telefone" value={c.phone || '—'} />
+          <SidebarField label="E-mail" value={c.email || '—'} />
+          <SidebarField label="Valor em negociação" value={c.value_cents ? fmtCurrency(c.value_cents) : '—'} />
+          <SidebarField
+            label={monthsAsCustomer != null ? `Cliente há ${monthsAsCustomer} meses` : 'Desde'}
+            value={fmtDate(c.became_customer_at || c.created_at)}
+          />
+          <SidebarField label="Responsável" value={sellerName || '—'} />
           <SidebarField label="CPF" value={c.cpf || '—'} />
-          <SidebarField label="Data de nascimento" value={c.date_of_birth ? fmtDate(c.date_of_birth) : '—'} />
-          <SidebarField label="Endereço" value={address || '—'} />
+          <SidebarField label="Nascimento" value={c.date_of_birth ? fmtDate(c.date_of_birth) : '—'} />
+          <SidebarField label="Endereço" value={address || '—'} className="col-span-2" clamp />
+          {isTravel && (
+            <>
+              <SidebarField label="Passaporte" value={c.passport_number || '—'} />
+              <SidebarField label="Validade passaporte" value={c.passport_expiry ? fmtDate(c.passport_expiry) : '—'} />
+              <SidebarField label="Visto (EUA)" value={c.has_us_visa ? 'Possui' : 'Não possui'} className="col-span-2" />
+            </>
+          )}
         </div>
       </div>
 
-      {/* Documentos de viagem — só nicho viagens */}
-      {isTravel && (c.passport_number || c.has_us_visa) && (
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
-            Documentos de viagem · segmento viagens
-          </div>
-          <div className="space-y-3">
-            {c.passport_number && (
-              <SidebarField label="Passaporte" value={`${c.passport_number}${c.passport_expiry ? ` · válido até ${fmtDate(c.passport_expiry)}` : ''}`} />
-            )}
-            {c.has_us_visa && <SidebarField label="Visto (EUA)" value="Possui" />}
-          </div>
-        </div>
-      )}
-
-      {/* Parentes */}
-      <div>
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Parentes</div>
-        <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
-      </div>
-
-      {/* Tags */}
+      {/* Tags — acima de Parentesco */}
       <div className="flex flex-wrap items-center gap-1.5">
         {tags.map(t => (
           <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
@@ -194,9 +165,11 @@ export function DetailSidebar({
         />
       </div>
 
-      {/* Edição completa (CPF/RG/passaporte/endereço/contatos) — o mesmo
-          formulário de sempre, só que agora vive num modal em vez de
-          embutido na aba, pra manter a coluna da esquerda só leitura. */}
+      {/* Parentes — texto livre, uma linha por pessoa */}
+      <RelationshipsSimple orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
+
+      {/* Edição completa (CPF/RG/passaporte/endereço/contatos) — modal,
+          aberto pelo lápis acima. */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <CustomerProfileForm
@@ -213,11 +186,92 @@ export function DetailSidebar({
   )
 }
 
-function SidebarField({ label, value }: { label: string; value: string }) {
+function SidebarField({ label, value, className, clamp }: { label: string; value: string; className?: string; clamp?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${className || ''}`}>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</div>
-      <div className="text-sm font-medium truncate">{value}</div>
+      <div className={`text-sm font-medium ${clamp ? 'line-clamp-2' : 'truncate'}`}>{value}</div>
+    </div>
+  )
+}
+
+/** Parentesco simplificado — texto livre, sem grau/tipo. Aperta "+" (ou
+ *  Enter) pra salvar e a linha vira uma informação de texto, igual às
+ *  outras (endereço, etc). Sempre grava kind:'outro' — o campo não existe
+ *  mais na UI, só no schema (mantido pra não quebrar o histórico já salvo
+ *  com um grau específico). */
+function RelationshipsSimple({ orgSlug, contatoId, initial }: { orgSlug: string; contatoId: string; initial: RelationshipRow[] }) {
+  const router = useRouter()
+  const [items, setItems] = useState<RelationshipRow[]>(initial)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function add() {
+    const value = text.trim()
+    if (!value || saving) return
+    setSaving(true)
+    const res = await addRelationship(orgSlug, { contatoId, kind: 'outro', relatedName: value })
+    setSaving(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setText('')
+    // A action não devolve a linha criada — adiciona otimista (id
+    // temporário) e revalida em segundo plano pra reconciliar com o servidor.
+    setItems(prev => [...prev, {
+      id: `tmp-${Date.now()}`,
+      kind: 'outro',
+      note: null,
+      related_contato_id: null,
+      related_name: value,
+      related_cpf: null,
+      related_birth_date: null,
+      created_at: new Date().toISOString(),
+    }])
+    router.refresh()
+  }
+
+  async function remove(id: string) {
+    setItems(prev => prev.filter(r => r.id !== id))
+    const res = await deleteRelationship(orgSlug, id, contatoId)
+    if (!res.ok) toast.error(res.error)
+    else router.refresh()
+  }
+
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Parentes</div>
+      <div className="space-y-1.5 mb-2">
+        {items.map(r => (
+          <div key={r.id} className="group flex items-center justify-between gap-2 text-sm">
+            <span className="truncate">{r.related_name}</span>
+            <button
+              type="button"
+              onClick={() => remove(r.id)}
+              className="shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+              aria-label="Remover"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder="Nome · data de nascimento · CPF..."
+          className="h-8 text-sm flex-1"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={saving || !text.trim()}
+          className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
+          aria-label="Adicionar parente"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   )
 }

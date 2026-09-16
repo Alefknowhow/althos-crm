@@ -9,7 +9,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronLeft, MoreVertical, Plus, RefreshCw, Trash2, Wallet, CalendarClock, Radio } from 'lucide-react'
+import { ChevronLeft, MoreVertical, Plus, RefreshCw, Trash2, Wallet, CalendarClock, Radio, Coins } from 'lucide-react'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import {
   setContatoStatus, setContatoSource, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead, type ContatoDeal,
@@ -17,9 +17,11 @@ import {
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import TaskDialog from '@/components/features/TaskDialog'
 import RequalifyButton from '@/components/features/ai/RequalifyButton'
+import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { NpsCard } from './NpsSection'
 import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
 import { DetailSidebar } from './ContatosViewDetailSidebar'
 import { OverviewTab } from './ContatosViewDetailOverviewTab'
@@ -31,11 +33,12 @@ const TABS = [
   { key: 'visao-geral', label: 'Visão geral' },
   { key: 'atividades', label: 'Atividades' },
   { key: 'negocios', label: 'Negócios' },
+  { key: 'vendas', label: 'Vendas' },
   { key: 'documentos', label: 'Documentos' },
 ] as const
 
 export function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName,
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [],
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -44,7 +47,6 @@ export function DetailPanel({
   isTravel: boolean
   isRealEstate?: boolean
   properties?: { id: string; title: string; code: string | null }[]
-  orgName: string
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -80,13 +82,12 @@ export function DetailPanel({
 
   useEffect(() => {
     let active = true
-    if (c.status === 'cliente') {
-      listContatoDeals(orgSlug, c.id).then(d => { if (active) setDeals(d) })
-    } else {
-      setDeals([])
-    }
+    // Negociações vêm do histórico do pipeline (tabela `negocios`),
+    // independente do status atual do contato — inclui a negociação em
+    // andamento (ainda "lead"), não só as já viradas "cliente".
+    listContatoDeals(orgSlug, c.id).then(d => { if (active) setDeals(d) })
     return () => { active = false }
-  }, [orgSlug, c.id, c.status])
+  }, [orgSlug, c.id])
 
   useEffect(() => {
     let active = true
@@ -198,7 +199,6 @@ export function DetailPanel({
           c={c}
           isTravel={isTravel}
           sellerName={sellerName}
-          creditBalance={creditBalance}
           savingStatus={savingStatus}
           onChangeStatus={changeStatus}
           savingSource={savingSource}
@@ -231,10 +231,14 @@ export function DetailPanel({
 
           {activeTab === 'visao-geral' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <VisaoKpi icon={Wallet} label="Total comprado" value={fmtCurrency(totalPurchased)} />
                 <VisaoKpi icon={CalendarClock} label="Negócios abertos" value={String(openDeals)} />
                 <VisaoKpi icon={Radio} label="Última interação" value={lastActivity ? fmtDate(lastActivity) : '—'} />
+                <NpsCard orgSlug={orgSlug} leadId={c.id} npsScore={c.nps_score ?? null} npsUpdatedAt={c.nps_updated_at ?? null} />
+                {isTravel && (
+                  <VisaoKpi icon={Coins} label="Créditos de cancelamento" value={creditBalance > 0 ? fmtCurrency(creditBalance) : '—'} />
+                )}
               </div>
 
               <div className="rounded-lg bg-card p-4">
@@ -267,18 +271,23 @@ export function DetailPanel({
             <ActivitiesTab
               orgSlug={orgSlug}
               selected={selected}
-              c={c}
-              orgName={orgName}
               onNewTask={() => setNewTaskOpen(true)}
             />
           )}
 
-          {activeTab === 'negocios' && (
-            <NegociacoesTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} deals={deals} />
+          {activeTab === 'negocios' && <NegociacoesTab deals={deals} />}
+
+          {activeTab === 'vendas' && (
+            <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
           )}
 
           {activeTab === 'documentos' && (
-            <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
+            <CustomerDocuments
+              orgSlug={orgSlug}
+              leadId={c.id}
+              profileId={c.id}
+              initialDocuments={selected.documents}
+            />
           )}
         </div>
       </div>

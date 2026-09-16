@@ -37,11 +37,14 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
 
   return (
     <>
-      {/* Desktop aside */}
+      {/* Desktop aside — card flutuante (cantos arredondados + sombra),
+          mesma pegada do header, em vez de rail retangular grudado nas
+          bordas. */}
       <aside
         data-collapsed={collapsed}
         className={cn(
-          'group hidden md:flex shrink-0 border-r border-sidebar-border bg-sidebar flex-col h-full relative transition-[width] duration-200 ease-out',
+          'group hidden md:flex shrink-0 bg-sidebar flex-col relative transition-[width] duration-200 ease-out',
+          'my-3 ml-3 rounded-lg shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] overflow-hidden',
           collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
         )}
       >
