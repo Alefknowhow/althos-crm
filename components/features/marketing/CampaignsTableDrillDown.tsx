@@ -98,10 +98,10 @@ export function DrillDownStatusBadge({ status }: { status: string }) {
     <Badge
       className={
         active
-          ? 'bg-green-100 text-green-700 border-green-200'
+          ? 'bg-success text-success-foreground'
           : paused
-            ? 'bg-amber-100 text-amber-700 border-amber-200'
-            : 'bg-muted text-muted-foreground'
+            ? 'bg-warning text-warning-foreground'
+            : 'bg-muted-foreground/60 text-white'
       }
     >
       {active ? 'Ativo' : paused ? 'Pausado' : status || '—'}

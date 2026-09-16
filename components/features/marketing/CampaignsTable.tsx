@@ -234,10 +234,10 @@ export default function CampaignsTable({
                       <Badge
                         className={
                           r.status === 'active'
-                            ? 'bg-green-100 text-green-700 border-green-200'
+                            ? 'bg-success text-success-foreground'
                             : r.status === 'paused'
-                              ? 'bg-amber-100 text-amber-700 border-amber-200'
-                              : 'bg-muted text-muted-foreground'
+                              ? 'bg-warning text-warning-foreground'
+                              : 'bg-muted-foreground/60 text-white'
                         }
                       >
                         {r.status === 'active' ? 'Ativa' : r.status === 'paused' ? 'Pausada' : r.status}

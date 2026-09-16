@@ -7,11 +7,11 @@ import { Plus, MessageSquare, Mail } from 'lucide-react'
 import { listCampaigns } from '@/actions/send-campaigns'
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  draft:     { label: 'Rascunho',  className: 'bg-muted text-muted-foreground border-muted-foreground/20' },
-  scheduled: { label: 'Agendada',  className: 'bg-blue-100 text-blue-800 border-blue-200' },
-  sending:   { label: 'Enviando',  className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  completed: { label: 'Concluída', className: 'bg-green-100 text-green-800 border-green-200' },
-  canceled:  { label: 'Cancelada', className: 'bg-red-100 text-red-800 border-red-200' },
+  draft:     { label: 'Rascunho',  className: 'bg-muted-foreground/60 text-white' },
+  scheduled: { label: 'Agendada',  className: 'bg-info text-info-foreground' },
+  sending:   { label: 'Enviando',  className: 'bg-warning text-warning-foreground' },
+  completed: { label: 'Concluída', className: 'bg-success text-success-foreground' },
+  canceled:  { label: 'Cancelada', className: 'bg-destructive text-destructive-foreground' },
 }
 
 export default async function CampanhasPage({ params }: { params: { orgSlug: string } }) {
@@ -43,7 +43,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
         </div>
       </div>
 
-      <div className="bg-card border rounded-none overflow-hidden">
+      <div className="bg-card rounded-lg overflow-hidden">
         {campaigns.length > 0 ? (
           <div className="overflow-x-auto">
           <Table>
@@ -73,7 +73,7 @@ export default async function CampanhasPage({ params }: { params: { orgSlug: str
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge className={status.className} variant="outline">{status.label}</Badge>
+                      <Badge className={status.className}>{status.label}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {c.recipient_count > 0 ? `${c.sent_count}/${c.recipient_count} enviados${c.failed_count ? ` · ${c.failed_count} falhas` : ''}` : '—'}
