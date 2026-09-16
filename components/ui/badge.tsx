@@ -17,11 +17,11 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/85 uppercase tracking-wide text-[11px]",
         success:
-          "border-transparent bg-success/15 text-success uppercase tracking-wide text-[11px]",
+          "border-transparent bg-success text-success-foreground hover:bg-success/85 uppercase tracking-wide text-[11px]",
         warning:
-          "border-transparent bg-warning/15 text-warning uppercase tracking-wide text-[11px]",
+          "border-transparent bg-warning text-warning-foreground hover:bg-warning/85 uppercase tracking-wide text-[11px]",
         info:
-          "border-transparent bg-info/15 text-info uppercase tracking-wide text-[11px]",
+          "border-transparent bg-info text-info-foreground hover:bg-info/85 uppercase tracking-wide text-[11px]",
         outline:
           "border-border text-foreground hover:bg-accent",
       },

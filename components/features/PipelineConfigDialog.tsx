@@ -176,8 +176,8 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors',
                     s.is_won
-                      ? 'bg-success/15 text-success'
-                      : 'bg-muted text-muted-foreground hover:bg-success/10 hover:text-success',
+                      ? 'bg-success text-success-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-success/15 hover:text-success',
                   )}
                 >
                   <Trophy className="w-3 h-3" />
@@ -193,8 +193,8 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors',
                     s.is_lost
-                      ? 'bg-destructive/15 text-destructive'
-                      : 'bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
+                      ? 'bg-destructive text-destructive-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-destructive/15 hover:text-destructive',
                   )}
                 >
                   <ThumbsDown className="w-3 h-3" />

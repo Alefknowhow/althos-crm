@@ -138,12 +138,12 @@ export function initials(name: string, email: string): string {
 }
 
 export const TIER = {
-  hot:    { label: 'Quente', cls: 'bg-destructive/15 text-destructive' },
-  quente: { label: 'Quente', cls: 'bg-destructive/15 text-destructive' },
-  warm:   { label: 'Morno',  cls: 'bg-warning/15 text-warning' },
-  morno:  { label: 'Morno',  cls: 'bg-warning/15 text-warning' },
-  cold:   { label: 'Frio',   cls: 'bg-info/15 text-info' },
-  frio:   { label: 'Frio',   cls: 'bg-info/15 text-info' },
+  hot:    { label: 'Quente', cls: 'bg-destructive text-destructive-foreground' },
+  quente: { label: 'Quente', cls: 'bg-destructive text-destructive-foreground' },
+  warm:   { label: 'Morno',  cls: 'bg-warning text-warning-foreground' },
+  morno:  { label: 'Morno',  cls: 'bg-warning text-warning-foreground' },
+  cold:   { label: 'Frio',   cls: 'bg-info text-info-foreground' },
+  frio:   { label: 'Frio',   cls: 'bg-info text-info-foreground' },
 } as const
 
 export function onlyDigits(s?: string | null) {
@@ -233,7 +233,7 @@ export default function LeadCard({
           <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2 flex items-center gap-1.5 flex-wrap">
             {lead.name}
             {lead.status === 'cliente' && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success shrink-0">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-success px-1.5 py-0.5 text-[10px] font-semibold text-success-foreground shrink-0">
                 <UserCheck className="h-2.5 w-2.5" />
                 Cliente
               </span>
