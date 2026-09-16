@@ -30,3 +30,12 @@ export function parseCurrency(value: string): number {
   const digits = value.replace(/\D/g, '')
   return parseInt(digits, 10) || 0
 }
+
+/** Normaliza o `ai_tier` de um lead (pt-BR ou en) pro balde usado nos filtros do Kanban. */
+export function tierBucket(t?: string | null): 'hot' | 'warm' | 'cold' | null {
+  const v = (t || '').toLowerCase()
+  if (v === 'hot' || v === 'quente') return 'hot'
+  if (v === 'warm' || v === 'morno') return 'warm'
+  if (v === 'cold' || v === 'frio') return 'cold'
+  return null
+}

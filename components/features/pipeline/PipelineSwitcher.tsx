@@ -10,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, Settings, Star } from 'lucide-react'
 
@@ -36,11 +35,11 @@ export default function PipelineSwitcher({
 
   if (pipelines.length <= 1) {
     return (
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold">{current?.name || 'Pipeline'}</h1>
+      <div className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card text-[12.5px] font-semibold shadow-[0_1px_2px_rgba(0,0,0,.05)]">
+        {current?.name || 'Pipeline'}
         <Link
           href={`/app/${orgSlug}/configuracoes/pipelines`}
-          className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center"
           title="Gerenciar pipelines"
         >
           <Settings className="w-3.5 h-3.5" />
@@ -52,10 +51,13 @@ export default function PipelineSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-auto p-1 -ml-1 gap-2 hover:bg-muted">
-          <h1 className="text-2xl font-bold">{current?.name || 'Pipeline'}</h1>
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
-        </Button>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card text-[12.5px] font-semibold shadow-[0_1px_2px_rgba(0,0,0,.05)] hover:bg-muted transition-colors"
+        >
+          {current?.name || 'Pipeline'}
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel>Pipelines</DropdownMenuLabel>

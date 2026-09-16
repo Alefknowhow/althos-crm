@@ -24,17 +24,10 @@ import { traduzirErro } from '@/lib/utils/error-translator'
 import { KanbanBoardToolbar } from './KanbanBoardToolbar'
 import { KanbanBoardNewLeadDialog } from './KanbanBoardNewLeadDialog'
 import { KanbanBoardMoveDialogs } from './KanbanBoardMoveDialogs'
+import { formatCurrency, tierBucket } from '@/lib/utils'
 
 type Member = { id: string; name: string; email: string }
 type SortKey = 'recent' | 'value_desc' | 'name'
-
-function tierBucket(t?: string | null): 'hot' | 'warm' | 'cold' | null {
-  const v = (t || '').toLowerCase()
-  if (v === 'hot' || v === 'quente') return 'hot'
-  if (v === 'warm' || v === 'morno') return 'warm'
-  if (v === 'cold' || v === 'frio') return 'cold'
-  return null
-}
 
 export default function KanbanBoard({
   orgSlug,
@@ -126,6 +119,11 @@ export default function KanbanBoard({
     })
     return out
   }, [leads, search, ownerFilter, tierFilter, stalledOnly, sortKey])
+
+  const openValueLabel = useMemo(
+    () => formatCurrency(leads.reduce((acc, l) => acc + (l.value_cents || 0), 0)),
+    [leads],
+  )
 
   function clearFilters() {
     setSearch('')
@@ -242,6 +240,8 @@ export default function KanbanBoard({
       {/* Toolbar */}
       <KanbanBoardToolbar
         toolbarStart={toolbarStart}
+        totalLabel={openValueLabel}
+        onNewLead={() => setCreateStageId(stages[0]?.id ?? null)}
         view={view} setView={setView}
         members={members}
         ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}

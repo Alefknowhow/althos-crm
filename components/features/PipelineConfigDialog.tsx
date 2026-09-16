@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createStage, updateStage, deleteStage, savePipelineMetaConfig, savePipelineGoogleConfig } from '@/actions/pipeline'
-import { Trophy, ThumbsDown, Trash2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { Trophy, ThumbsDown, Trash2, Eye, EyeOff, CheckCircle2, Settings2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
@@ -123,7 +123,9 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>Configurar Pipeline</Button>
+      <Button variant="outline" size="sm" className="gap-1.5 bg-card" onClick={() => setOpen(true)}>
+        <Settings2 className="w-3.5 h-3.5" /> Configurar pipeline
+      </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>

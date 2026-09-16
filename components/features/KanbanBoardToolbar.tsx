@@ -13,7 +13,7 @@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Search, AlarmClock, X, LayoutGrid, List, SlidersHorizontal } from 'lucide-react'
+import { Search, AlarmClock, X, LayoutGrid, List, SlidersHorizontal, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Member = { id: string; name: string; email: string }
@@ -101,16 +101,29 @@ function FilterFields({
 
 export function KanbanBoardToolbar(props: {
   toolbarStart?: React.ReactNode
+  totalLabel?: string
+  onNewLead?: () => void
   view: 'board' | 'list'
   setView: (v: 'board' | 'list') => void
   search: string
   setSearch: (v: string) => void
 } & FilterFieldsProps) {
-  const { toolbarStart, view, setView, search, setSearch, filtersActive } = props
+  const { toolbarStart, totalLabel, onNewLead, view, setView, search, setSearch, filtersActive } = props
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {/* Título curto do módulo + valor em aberto — como no canvas, à
+          esquerda do seletor de pipeline. */}
+      <div className="flex items-baseline gap-1.5 pr-1">
+        <h1 className="text-[15px] font-bold">Pipeline</h1>
+        {totalLabel && (
+          <span className="text-xs font-medium text-muted-foreground">· {totalLabel} em aberto</span>
+        )}
+      </div>
+
       {toolbarStart}
+
+      <div className="flex-1 hidden md:block" />
 
       {/* Board / list view toggle — desktop only (mobile uses the stage accordion) */}
       <div className="hidden md:inline-flex h-9 items-center rounded-md border border-border p-0.5">
@@ -175,6 +188,17 @@ export function KanbanBoardToolbar(props: {
       <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
         <FilterFields {...props} />
       </div>
+
+      {onNewLead && (
+        <button
+          type="button"
+          onClick={onNewLead}
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-4 w-4" />
+          Novo negócio
+        </button>
+      )}
     </div>
   )
 }
