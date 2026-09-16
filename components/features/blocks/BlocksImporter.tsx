@@ -164,7 +164,7 @@ export default function BlocksImporter({
         </DialogHeader>
 
         {rows.length === 0 ? (
-          <label className="block border-2 border-dashed border-border rounded-none p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+          <label className="block border-2 border-dashed border-border rounded-lg p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
             <input
               ref={fileRef}
               type="file"
@@ -190,7 +190,7 @@ export default function BlocksImporter({
               <span className="font-medium text-foreground">{fileName}</span> — {validCount} de {rows.length} linha(s) válida(s).
               {validCount < rows.length && ' Linhas com problema (em vermelho) não serão importadas.'}
             </p>
-            <div className="max-h-[50vh] overflow-auto rounded-none border">
+            <div className="max-h-[50vh] overflow-auto rounded-lg border">
               <table className="w-full text-xs min-w-[760px]">
                 <thead className="sticky top-0 bg-muted">
                   <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">

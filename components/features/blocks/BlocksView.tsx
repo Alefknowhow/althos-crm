@@ -126,7 +126,7 @@ export default function BlocksView({
 
       <p className="text-sm text-muted-foreground mb-2">{filtered.length} de {blocks.length} bloqueio(s)</p>
 
-      <div className="rounded-none border bg-card overflow-x-auto">
+      <div className="rounded-lg bg-card overflow-x-auto">
         <table className="w-full text-sm min-w-[960px]">
           <thead>
             <tr className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -170,7 +170,7 @@ export default function BlocksView({
                       </button>
                       <span className={cn(
                         'min-w-[2.5rem] text-center font-semibold tabular-nums',
-                        soldOut ? 'text-destructive' : b.assentos_disponiveis <= 3 ? 'text-amber-600' : 'text-success',
+                        soldOut ? 'text-destructive' : b.assentos_disponiveis <= 3 ? 'text-warning' : 'text-success',
                       )}>
                         {b.assentos_disponiveis}{b.assentos_total ? `/${b.assentos_total}` : ''}
                       </span>
