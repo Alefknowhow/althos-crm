@@ -10,10 +10,10 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  draft: { label: 'Rascunho', cls: 'bg-slate-100 text-slate-600' },
-  sent: { label: 'Enviada', cls: 'bg-sky-100 text-sky-700' },
-  accepted: { label: 'Aceita', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: 'Recusada', cls: 'bg-rose-100 text-rose-700' },
+  draft: { label: 'Rascunho', cls: 'bg-muted-foreground/60 text-secondary-foreground' },
+  sent: { label: 'Enviada', cls: 'bg-info text-info-foreground' },
+  accepted: { label: 'Aceita', cls: 'bg-success text-success-foreground' },
+  rejected: { label: 'Recusada', cls: 'bg-destructive text-destructive-foreground' },
 }
 
 function fmtDate(d?: string | null) {
@@ -62,7 +62,7 @@ export default function LeadProposalsButton({
         onPointerDown={stop}
         onClick={openDialog}
         title="Ver cotações do lead"
-        className="flex h-6 w-6 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
+        className="flex h-6 w-6 items-center justify-center rounded-full text-amber-600 hover:bg-amber-50"
       >
         <FileText className="h-3.5 w-3.5" />
       </button>

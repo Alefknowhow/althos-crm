@@ -49,7 +49,7 @@ export default function LeadFormResponsesButton({
         onPointerDown={stop}
         onClick={openDialog}
         title="Ver respostas do formulário"
-        className="flex h-6 w-6 items-center justify-center rounded-md text-violet-600 hover:bg-violet-50"
+        className="flex h-6 w-6 items-center justify-center rounded-full text-violet-600 hover:bg-violet-50"
       >
         <ClipboardList className="h-3.5 w-3.5" />
       </button>

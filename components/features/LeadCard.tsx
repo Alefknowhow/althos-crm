@@ -55,7 +55,7 @@ export function OpenWabaButton({ orgSlug, leadId }: { orgSlug: string; leadId: s
       onClick={handleClick}
       disabled={loading}
       title="Iniciar Waba"
-      className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-sky-50 disabled:opacity-50"
+      className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-sky-50 disabled:opacity-50"
     >
       <WhatsAppGlyph color="#0a84ff" />
     </button>
@@ -308,7 +308,7 @@ export default function LeadCard({
               onPointerDown={stop}
               onClick={e => { stop(e); openDialer({ contatoId: lead.id, name: lead.name, phone: lead.phone! }) }}
               title="Ligar"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-primary hover:bg-primary/10"
             >
               <PhoneCall className="h-3.5 w-3.5" />
             </button>
@@ -321,7 +321,7 @@ export default function LeadCard({
               onPointerDown={stop}
               onClick={stop}
               title="WhatsApp"
-              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-emerald-50"
+              className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-emerald-50"
             >
               <WhatsAppGlyph color="#25D366" />
             </a>
@@ -332,7 +332,7 @@ export default function LeadCard({
               onPointerDown={stop}
               onClick={stop}
               title="E-mail"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-sky-600 hover:bg-sky-50"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-sky-600 hover:bg-sky-50"
             >
               <Mail className="h-3.5 w-3.5" />
             </a>
