@@ -9,17 +9,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Label } from '@/components/ui/label'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { cn, formatCurrency } from '@/lib/utils'
 import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import { createProposal, deleteProposal, type ProposalRow } from '@/actions/travel-proposals'
 import { toast } from 'sonner'
-import { FileSignature, Plus, MapPin, Search } from 'lucide-react'
+import { FileSignature, Plus, MapPin, Search, SlidersHorizontal } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { fmtTimestamp, destOf, sellerLabelColor } from './ProposalsListHelpers'
+import { fmtTimestamp, destOf, sellerLabelColor, proposalStatusMeta } from './ProposalsListHelpers'
 import { ProposalRowActions } from './ProposalsListRowActions'
 import { ProposalDetail } from './ProposalsListDetail'
 import { DuplicateProposalDialog } from './ProposalsListDuplicateDialog'
@@ -57,6 +59,9 @@ export default function ProposalsList({
     () => new Map(members.map(m => [m.user_id, m.name])),
     [members],
   )
+
+  const hasActiveFilters = seller !== 'all' || dateBucket !== 'all'
+  function clearFilters() { setSeller('all'); setDateBucket('all') }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -129,44 +134,70 @@ export default function ProposalsList({
           />
         </div>
 
-        {members.length > 0 && (
-          <Select value={seller} onValueChange={setSeller}>
-            <SelectTrigger className="h-9 text-xs w-[170px] shrink-0">
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os vendedores</SelectItem>
-              {members.map(m => (
-                <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Vendedor/Período organizados num único menu "Filtros" — em vez
+            de seletores soltos na barra. */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,.05)] shrink-0"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filtros
+              {hasActiveFilters && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">•</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 space-y-3">
+            {members.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Responsável</Label>
+                <Select value={seller} onValueChange={setSeller}>
+                  <SelectTrigger className="h-9 text-xs w-full"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Período</Label>
+              <ResponsiveSelect
+                className="h-9 w-full text-xs"
+                aria-label="Filtrar por data"
+                value={dateBucket}
+                onValueChange={v => setDateBucket(v as DateBucket)}
+                options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+              />
+            </div>
+            {hasActiveFilters && (
+              <button type="button" onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
+                Limpar filtros
+              </button>
+            )}
+          </PopoverContent>
+        </Popover>
 
-        <ResponsiveSelect
-          className="h-9 w-[150px] shrink-0 text-xs"
-          aria-label="Filtrar por data"
-          value={dateBucket}
-          onValueChange={v => setDateBucket(v as DateBucket)}
-          options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
-        />
+        <div className="flex-1" />
 
         <Button
           onClick={handleCreate}
           disabled={creating}
-          className="h-9 px-2.5 text-xs shrink-0"
-          title="Nova proposta"
-          aria-label="Nova proposta"
+          className="h-9 px-3 text-xs shrink-0"
         >
           <Plus className="w-4 h-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">{creating ? 'Criando…' : 'Nova proposta'}</span>
+          <span className="hidden sm:inline">{creating ? 'Criando…' : 'Nova cotação'}</span>
         </Button>
       </div>
 
       <div className="grid md:grid-cols-[50fr_48fr] gap-4 flex-1 min-h-0">
         {/* ── List (tabela) ────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-auto h-full',
+          'rounded-lg bg-card overflow-auto h-full',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -181,7 +212,8 @@ export default function ProposalsList({
                   <TableHead className="hidden lg:table-cell">Destino</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="hidden md:table-cell whitespace-nowrap">Data</TableHead>
-                  <TableHead className="hidden lg:table-cell">Vendedor</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Responsável</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -214,6 +246,16 @@ export default function ProposalsList({
                       <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
                         {fmtTimestamp(p.created_at)}
                       </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {(() => {
+                          const meta = proposalStatusMeta(p.status)
+                          return (
+                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap', meta.cls)}>
+                              {meta.label}
+                            </span>
+                          )
+                        })()}
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {seller ? (
                           <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
@@ -238,7 +280,7 @@ export default function ProposalsList({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto h-full',
+          'rounded-lg bg-card overflow-y-auto h-full',
           !selected && 'hidden md:flex',
         )}>
           {selected

@@ -10,22 +10,36 @@ export function destOf(p: ProposalRow) {
   return (p.destinations || []).map((d: any) => d?.name).filter(Boolean).join(', ')
 }
 
-// 8 cores determinísticas por vendedor, indexadas por hash do user_id — o
-// mesmo vendedor sempre pega a mesma cor em toda a lista.
+// 6 cores sólidas determinísticas por vendedor (paleta categórica do
+// design system), indexadas por hash do user_id — o mesmo vendedor
+// sempre pega a mesma cor em toda a lista.
 const SELLER_LABEL_COLORS = [
-  'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-  'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300',
-  'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
-  'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+  'bg-[color:var(--chart-1)] text-white',
+  'bg-[color:var(--chart-2)] text-white',
+  'bg-[color:var(--chart-3)] text-white',
+  'bg-[color:var(--chart-4)] text-white',
+  'bg-[color:var(--chart-5)] text-white',
+  'bg-[color:var(--chart-6)] text-white',
 ]
 
 export function sellerLabelColor(userId: string | null | undefined): string {
-  if (!userId) return 'bg-muted text-muted-foreground'
+  if (!userId) return 'bg-muted-foreground/60 text-white'
   let h = 0
   for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0
   return SELLER_LABEL_COLORS[h % SELLER_LABEL_COLORS.length]
+}
+
+/** Status real da cotação (travel_proposals.status) — mapeado pro rótulo e
+ *  cor sólida do design system. Valores fora da lista conhecida caem no
+ *  fallback (capitaliza o texto cru, cor neutra) em vez de inventar estado. */
+export const PROPOSAL_STATUS_META: Record<string, { label: string; cls: string }> = {
+  draft:    { label: 'Rascunho', cls: 'bg-warning text-warning-foreground' },
+  sent:     { label: 'Enviada', cls: 'bg-info text-info-foreground' },
+  approved: { label: 'Aprovada', cls: 'bg-success text-success-foreground' },
+  rejected: { label: 'Recusada', cls: 'bg-destructive text-destructive-foreground' },
+  expired:  { label: 'Expirada', cls: 'bg-destructive text-destructive-foreground' },
+}
+
+export function proposalStatusMeta(status: string): { label: string; cls: string } {
+  return PROPOSAL_STATUS_META[status] || { label: status.charAt(0).toUpperCase() + status.slice(1), cls: 'bg-muted-foreground/60 text-white' }
 }
