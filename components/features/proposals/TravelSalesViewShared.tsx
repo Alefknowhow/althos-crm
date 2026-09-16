@@ -16,7 +16,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Check, ChevronsUpDown, UserCircle2 } from 'lucide-react'
+import { CheckCircle2, Check, ChevronsUpDown, SlidersHorizontal, UserCircle2 } from 'lucide-react'
+import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { DATE_BUCKETS, type DateBucket } from '@/lib/utils/date-filter'
 
 export type ProposalOption = { id: string; title: string | null; client_name: string | null; contato_id?: string | null }
 export type LeadOption = { id: string; name: string; phone: string | null }
@@ -209,6 +211,77 @@ export function OperatorInput({ value, onChange, options }: { value: string; onC
         <SelectItem value="__other__">Outra (digitar)…</SelectItem>
       </SelectContent>
     </Select>
+  )
+}
+
+/** Botão único "Filtros" (vendedor + período) — mesmo padrão de
+ *  Contatos/Financeiro/Tarefas/Cotações, evita poluir a toolbar. */
+export function TravelSalesFiltersMenu({
+  members, seller, onSellerChange, dateBucket, onDateBucketChange, hasActiveFilters, onClear,
+}: {
+  members: Member[]
+  seller: string
+  onSellerChange: (v: string) => void
+  dateBucket: DateBucket
+  onDateBucketChange: (v: DateBucket) => void
+  hasActiveFilters: boolean
+  onClear: () => void
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,.05)] shrink-0',
+            FOCUS_RING,
+          )}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filtros
+          {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-3">
+        {members.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs">Vendedor</Label>
+            <Select value={seller} onValueChange={onSellerChange}>
+              <SelectTrigger className="h-9 text-xs w-full">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os vendedores</SelectItem>
+                {members.map(m => (
+                  <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <Label className="text-xs">Período</Label>
+          <ResponsiveSelect
+            className="h-9 w-full text-xs"
+            aria-label="Filtrar por data"
+            value={dateBucket}
+            onValueChange={v => onDateBucketChange(v as DateBucket)}
+            options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+          />
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 

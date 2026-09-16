@@ -6,15 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import EmptyState from '@/components/ui/empty-state'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { ResponsiveSelect } from '@/components/ui/responsive-select'
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { DATE_BUCKETS, matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
+import { matchesDateBucket, type DateBucket } from '@/lib/utils/date-filter'
 import {
   updateTravelSale, saveTravelSaleAndGenerateTasks, deleteTravelSale, createTravelSale,
   type TravelSaleRow,
@@ -24,7 +20,7 @@ import { toast } from 'sonner'
 import {
   MapPin, Calendar, Receipt, Plus, Search, UserCircle2, Building2, Ticket,
 } from 'lucide-react'
-import { FOCUS_RING, type ProposalOption, type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
+import { FOCUS_RING, TravelSalesFiltersMenu, type ProposalOption, type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
 import NewSaleDialog from './TravelSalesViewNewSaleDialog'
 import SaleEditor from './TravelSalesViewSaleEditor'
 
@@ -76,6 +72,8 @@ export default function TravelSalesView({
   }, [sales, query, seller, dateBucket])
 
   const selected = sales.find(s => s.id === selectedId) ?? null
+  const hasActiveFilters = seller !== 'all' || dateBucket !== 'all'
+  function clearFilters() { setSeller('all'); setDateBucket('all') }
 
   async function handleDelete(id: string) {
     const res = await deleteTravelSale(orgSlug, id)
@@ -171,26 +169,14 @@ export default function TravelSalesView({
           />
         </div>
 
-        {members.length > 0 && (
-          <Select value={seller} onValueChange={setSeller}>
-            <SelectTrigger className="h-9 text-xs w-[170px] shrink-0">
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os vendedores</SelectItem>
-              {members.map(m => (
-                <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <ResponsiveSelect
-          className="h-9 w-[150px] shrink-0 text-xs"
-          aria-label="Filtrar por data"
-          value={dateBucket}
-          onValueChange={v => setDateBucket(v as DateBucket)}
-          options={DATE_BUCKETS.map(b => ({ value: b.id, label: b.label }))}
+        <TravelSalesFiltersMenu
+          members={members}
+          seller={seller}
+          onSellerChange={setSeller}
+          dateBucket={dateBucket}
+          onDateBucketChange={setDateBucket}
+          hasActiveFilters={hasActiveFilters}
+          onClear={clearFilters}
         />
 
         {headerAction}
@@ -205,7 +191,7 @@ export default function TravelSalesView({
       )}>
         {/* ── List ─────────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-y-auto divide-y h-full',
+          'rounded-lg bg-card overflow-y-auto divide-y h-full',
           selected && 'hidden md:block',
         )}>
           {filtered.length === 0 ? (
@@ -279,7 +265,7 @@ export default function TravelSalesView({
 
         {/* ── Detail ───────────────────────────────────────────── */}
         <div className={cn(
-          'rounded-none border bg-card overflow-hidden h-full',
+          'rounded-lg bg-card overflow-hidden h-full',
           !selected && 'hidden md:flex',
         )}>
           {selected
