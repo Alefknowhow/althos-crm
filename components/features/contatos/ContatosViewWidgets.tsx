@@ -195,8 +195,8 @@ export function NewContatoDialog({
 
   return (
     <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) reset() }}>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        <Plus className="w-4 h-4 mr-1" /> Contato
+      <Button onClick={() => setOpen(true)} className="shrink-0">
+        <Plus className="w-4 h-4 mr-1" /> Novo contato
       </Button>
       <DialogContent className="sm:max-w-md">
         <div className="space-y-4">

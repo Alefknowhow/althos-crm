@@ -29,7 +29,7 @@ import { useCallDialer } from '@/components/features/voice/CallDialerModal'
  *  opções de origem já conhecidas cobrem a maioria dos casos; se o valor
  *  atual for algo antigo/livre (ex.: "form:Nome do Form"), ele aparece como
  *  uma opção extra no topo pra não sumir do Select ao abrir a tela. */
-function OriginEditor({
+export function OriginEditor({
   orgSlug, source, referredBy, referredByName, saving, onChange,
 }: {
   orgSlug: string

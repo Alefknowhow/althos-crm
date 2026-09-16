@@ -58,14 +58,17 @@ export function FiltersSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm" variant="outline">
-          <SlidersHorizontal className="w-4 h-4 mr-1.5" /> Filtros
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,.05)] shrink-0"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" /> Mais filtros
           {activeCount > 0 && (
-            <span className="ml-1.5 rounded-full bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 tabular-nums">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground tabular-nums">
               {activeCount}
             </span>
           )}
-        </Button>
+        </button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>

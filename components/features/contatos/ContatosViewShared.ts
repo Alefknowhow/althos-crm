@@ -25,6 +25,7 @@ export type ListRow = {
   updated_at: string | null
   ai_tier: string | null
   has_documents: boolean
+  assigned_to: string | null
 }
 
 export type Sale = {
@@ -75,6 +76,7 @@ export interface Props {
   properties?: { id: string; title: string; code: string | null }[]
   members: { id: string; name: string }[]
   statusTabs?: React.ReactNode
+  responsavelFilter?: React.ReactNode
   orgName: string
   /** Templates de WhatsApp aprovados — alimenta o seletor de template do
    *  disparo manual de NPS (ver NpsSection.tsx). Filtrado a status='approved'

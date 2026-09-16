@@ -2,8 +2,6 @@
 
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
-import ContatoRelationships from '@/components/features/contatos/ContatoRelationships'
 import PropertyInterestsSection from '@/components/features/properties/PropertyInterestsSection'
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
 import PropertyPreferencesCard from '@/components/features/properties/PropertyPreferencesCard'
@@ -15,7 +13,7 @@ import { DealCard } from './ContatosViewDetailHelpers'
 
 export function OverviewTab({
   orgSlug, selected, c, isTravel, isRealEstate, properties, members,
-  dadosEditRequested, deals, credits, onShowAllDeals,
+  deals, credits, onShowAllDeals,
 }: {
   orgSlug:            string
   selected:           NonNullable<Selected>
@@ -24,26 +22,12 @@ export function OverviewTab({
   isRealEstate?:      boolean
   properties:         { id: string; title: string; code: string | null }[]
   members:            { id: string; name: string }[]
-  dadosEditRequested: boolean
   deals:              ContatoDeal[]
   credits:            TravelCreditRow[]
   onShowAllDeals:     () => void
 }) {
   return (
     <>
-      {/* Cadastro do Cliente — incorporado à Visão geral, no topo da aba */}
-      <CustomerProfileForm
-        orgSlug={orgSlug}
-        leadId={c.id}
-        initial={c}
-        initialContactPoints={selected.contactPoints}
-        initialDocuments={selected.documents}
-        initialEditMode={dadosEditRequested}
-      />
-
-      {/* Parentesco */}
-      <ContatoRelationships orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
-
       {/* Negociações (resumo) */}
       {deals.length > 0 && (
         <div>

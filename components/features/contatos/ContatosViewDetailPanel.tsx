@@ -1,28 +1,41 @@
 'use client'
 
 /**
- * The contact detail side panel for ContatosView, plus its two small
- * private helpers (ActivityRow, Field). Split out of ContatosView.tsx.
+ * Painel do cliente — página cheia (não é mais um painel lateral dividido
+ * com a lista). Estrutura: coluna esquerda de perfil (ContatosViewDetailSidebar)
+ * + coluna direita com abas, KPIs e linha do tempo, igual ao artboard 26.
  */
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ChevronLeft, MoreVertical, Plus, RefreshCw, Trash2, Wallet, CalendarClock, Radio } from 'lucide-react'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import {
   setContatoStatus, setContatoSource, reopenNegotiation, listContatoDeals, updateLeadTags, deleteLead, type ContatoDeal,
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import TaskDialog from '@/components/features/TaskDialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { type Selected } from './ContatosViewShared'
-import { DetailHeader } from './ContatosViewDetailHeader'
+import RequalifyButton from '@/components/features/ai/RequalifyButton'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
+import { DetailSidebar } from './ContatosViewDetailSidebar'
 import { OverviewTab } from './ContatosViewDetailOverviewTab'
 import { ActivitiesTab } from './ContatosViewDetailActivitiesTab'
 import { NegociacoesTab, ComprasTab } from './ContatosViewDetailHistoryTabs'
+import { ActivityRow } from './ContatosViewDetailHelpers'
+
+const TABS = [
+  { key: 'visao-geral', label: 'Visão geral' },
+  { key: 'atividades', label: 'Atividades' },
+  { key: 'negocios', label: 'Negócios' },
+  { key: 'documentos', label: 'Documentos' },
+] as const
 
 export function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName, whatsappTemplates,
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], orgName,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -32,7 +45,6 @@ export function DetailPanel({
   isRealEstate?: boolean
   properties?: { id: string; title: string; code: string | null }[]
   orgName: string
-  whatsappTemplates?: import('@/actions/whatsapp-templates').WaTemplate[]
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -44,8 +56,7 @@ export function DetailPanel({
   const [deals, setDeals] = useState<ContatoDeal[]>([])
   const [credits, setCredits] = useState<TravelCreditRow[]>([])
   const [newTaskOpen, setNewTaskOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('visao-geral')
-  const [dadosEditRequested, setDadosEditRequested] = useState(false)
+  const [activeTab, setActiveTab] = useState<typeof TABS[number]['key']>('visao-geral')
   const [openingConversation, setOpeningConversation] = useState(false)
 
   async function handleOpenConversation(contatoId: string) {
@@ -59,15 +70,13 @@ export function DetailPanel({
 
   // Nicho viagens: "Total comprado" soma as reservas (travel_sales), não a
   // tabela genérica `sales` (que fica sempre vazia nesse nicho — Compras já
-  // usa a mesma fonte, ver aba Compras acima).
+  // usa a mesma fonte, ver aba Documentos acima).
   const completedSales = selected.sales.filter(s => s.status === 'completed')
   const travelReservasValid = (selected.travelReservas || []).filter((r: any) => r.status !== 'cancelled')
   const totalPurchased = isTravel
     ? travelReservasValid.reduce((a: number, r: any) => a + (r.total_cents || 0), 0)
     : completedSales.reduce((a, s) => a + (s.amount_cents || 0), 0)
-  const lastPurchase = isTravel
-    ? (travelReservasValid[0]?.created_at || null)
-    : (completedSales[0]?.sale_date || null)
+  const lastActivity = selected.activities[0]?.created_at || c.last_activity_at
 
   useEffect(() => {
     let active = true
@@ -90,6 +99,7 @@ export function DetailPanel({
   }, [orgSlug, c.id, isTravel])
 
   const creditBalance = credits.reduce((a, cr) => a + (cr.status === 'available' ? cr.valor_cents - cr.valor_usado_cents : 0), 0)
+  const openDeals = deals.filter(d => d.status !== 'won' && d.status !== 'lost').length
 
   function changeStatus(value: string) {
     startStatus(async () => {
@@ -146,89 +156,132 @@ export function DetailPanel({
     saveTags(tags.filter(x => x !== t))
   }
 
-
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
-      <DetailHeader
-        orgSlug={orgSlug}
-        selected={selected}
-        c={c}
-        onBack={onBack}
-        isTravel={isTravel}
-        savingStatus={savingStatus}
-        onChangeStatus={changeStatus}
-        savingSource={savingSource}
-        onChangeSource={changeSource}
-        tags={tags}
-        tagInput={tagInput}
-        setTagInput={setTagInput}
-        onAddTag={addTag}
-        onRemoveTag={removeTag}
-        totalPurchased={totalPurchased}
-        lastPurchase={lastPurchase}
-        sellerName={sellerName}
-        creditBalance={creditBalance}
-        openingConversation={openingConversation}
-        onOpenConversation={() => handleOpenConversation(c.id)}
-        orgName={orgName}
-        onNewTask={() => setNewTaskOpen(true)}
-        reopening={reopening}
-        onReopen={handleReopen}
-        onEditDados={() => setDadosEditRequested(true)}
-        deleting={deleting}
-        onDelete={handleDelete}
-      />
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar para Contatos
+        </button>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-nowrap overflow-x-auto hide-scrollbar justify-start md:justify-center h-auto w-full md:w-fit">
-          <TabsTrigger value="visao-geral" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Visão geral</TabsTrigger>
-          <TabsTrigger value="atividades" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Atividades</TabsTrigger>
-          <TabsTrigger value="negociacoes" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Negociações</TabsTrigger>
-          <TabsTrigger value="compras" className="shrink-0 text-xs px-2.5 py-1.5 md:text-sm md:px-3 md:py-1">Compras</TabsTrigger>
-        </TabsList>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="w-8 h-8 grid place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setNewTaskOpen(true)}>
+              <Plus className="w-3.5 h-3.5 mr-2" /> Nova atividade
+            </DropdownMenuItem>
+            {c.status === 'cliente' && (
+              <DropdownMenuItem onClick={handleReopen} disabled={reopening}>
+                <RefreshCw className={`w-3.5 h-3.5 mr-2 ${reopening ? 'animate-spin' : ''}`} /> Nova negociação
+              </DropdownMenuItem>
+            )}
+            <RequalifyButton orgSlug={orgSlug} leadId={c.id} asMenuItem />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={handleDelete} disabled={deleting}>
+              <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir contato
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-        {/* ── Visão geral ─────────────────────────────────────────── */}
-        <TabsContent value="visao-geral" className="space-y-5 pt-4">
-          <OverviewTab
-            orgSlug={orgSlug}
-            selected={selected}
-            c={c}
-            isTravel={isTravel}
-            isRealEstate={isRealEstate}
-            properties={properties}
-            members={members}
-            dadosEditRequested={dadosEditRequested}
-            deals={deals}
-            credits={credits}
-            onShowAllDeals={() => setActiveTab('negociacoes')}
-          />
-        </TabsContent>
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        <DetailSidebar
+          orgSlug={orgSlug}
+          selected={selected}
+          c={c}
+          isTravel={isTravel}
+          sellerName={sellerName}
+          creditBalance={creditBalance}
+          savingStatus={savingStatus}
+          onChangeStatus={changeStatus}
+          savingSource={savingSource}
+          onChangeSource={changeSource}
+          tags={tags}
+          tagInput={tagInput}
+          setTagInput={setTagInput}
+          onAddTag={addTag}
+          onRemoveTag={removeTag}
+          openingConversation={openingConversation}
+          onOpenConversation={() => handleOpenConversation(c.id)}
+        />
 
-        {/* ── Atividades ──────────────────────────────────────────── */}
-        <TabsContent value="atividades" className="space-y-5 pt-4">
-          {/* 2x2: Tarefas/E-mails em cima, WhatsApp/Timeline embaixo. As duas
-              listas (Tarefas, E-mails) ficam limitadas a ~10 itens visíveis,
-              com scroll vertical próprio a partir daí. */}
-          <ActivitiesTab
-            orgSlug={orgSlug}
-            selected={selected}
-            c={c}
-            orgName={orgName}
-            onNewTask={() => setNewTaskOpen(true)}
-          />
-        </TabsContent>
+        <div className="flex-1 min-w-0">
+          {/* Abas — pílula, igual ao resto do design system */}
+          <div className="flex gap-1 p-1 rounded-full bg-muted w-fit mb-5 overflow-x-auto max-w-full">
+            {TABS.map(t => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setActiveTab(t.key)}
+                className={`shrink-0 h-8 px-4 rounded-full text-[13px] font-semibold transition-colors ${
+                  activeTab === t.key ? 'bg-card shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-        {/* ── Negociações ─────────────────────────────────────────── */}
-        <TabsContent value="negociacoes" className="pt-4">
-          <NegociacoesTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} deals={deals} />
-        </TabsContent>
+          {activeTab === 'visao-geral' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <VisaoKpi icon={Wallet} label="Total comprado" value={fmtCurrency(totalPurchased)} />
+                <VisaoKpi icon={CalendarClock} label="Negócios abertos" value={String(openDeals)} />
+                <VisaoKpi icon={Radio} label="Última interação" value={lastActivity ? fmtDate(lastActivity) : '—'} />
+              </div>
 
-        {/* ── Compras ─────────────────────────────────────────────── */}
-        <TabsContent value="compras" className="pt-4">
-          <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
-        </TabsContent>
+              <div className="rounded-lg bg-card p-4">
+                <h3 className="text-sm font-bold mb-3">Linha do tempo</h3>
+                {selected.activities.length > 0 ? (
+                  <div className="space-y-4">
+                    {selected.activities.slice(0, 8).map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nenhuma atividade registrada.</p>
+                )}
+              </div>
 
-      </Tabs>
+              <OverviewTab
+                orgSlug={orgSlug}
+                selected={selected}
+                c={c}
+                isTravel={isTravel}
+                isRealEstate={isRealEstate}
+                properties={properties}
+                members={members}
+                deals={deals}
+                credits={credits}
+                onShowAllDeals={() => setActiveTab('negocios')}
+              />
+            </div>
+          )}
+
+          {activeTab === 'atividades' && (
+            <ActivitiesTab
+              orgSlug={orgSlug}
+              selected={selected}
+              c={c}
+              orgName={orgName}
+              onNewTask={() => setNewTaskOpen(true)}
+            />
+          )}
+
+          {activeTab === 'negocios' && (
+            <NegociacoesTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} deals={deals} />
+          )}
+
+          {activeTab === 'documentos' && (
+            <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
+          )}
+        </div>
+      </div>
 
       <TaskDialog
         orgSlug={orgSlug}
@@ -241,5 +294,16 @@ export function DetailPanel({
   )
 }
 
+function VisaoKpi({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-card p-3.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+        <Icon className="w-3.5 h-3.5" />
+        <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+      </div>
+      <div className="text-lg font-bold">{value}</div>
+    </div>
+  )
+}
 
 export { DealCard } from './ContatosViewDetailHelpers'
