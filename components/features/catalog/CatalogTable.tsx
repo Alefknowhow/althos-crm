@@ -74,9 +74,8 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
                 {product.sku && <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{product.sku}</div>}
               </TableCell>
               <TableCell>
-                <Badge 
-                  variant={product.type === 'service' ? 'secondary' : 'outline'} 
-                  className={product.type === 'service' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200'}
+                <Badge
+                  className={product.type === 'service' ? 'bg-info text-info-foreground' : 'bg-muted-foreground/60 text-white'}
                 >
                   {product.type === 'service' ? 'Serviço' : 'Produto'}
                 </Badge>
@@ -92,7 +91,7 @@ export default function CatalogTable({ products, orgSlug, categories }: CatalogT
                 {product.category ? <Badge variant="outline" className="font-normal">{product.category}</Badge> : '-'}
               </TableCell>
               <TableCell>
-                <Badge variant={product.is_active ? 'success' : 'destructive'} className={product.is_active ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50' : ''}>
+                <Badge variant={product.is_active ? 'success' : 'destructive'}>
                   {product.is_active ? 'Ativo' : 'Inativo'}
                 </Badge>
               </TableCell>

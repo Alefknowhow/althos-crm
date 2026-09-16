@@ -70,7 +70,7 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic 
       {/* ── Master: compact list ─────────────────────────────────── */}
       <div
         className={cn(
-          'lg:w-1/2 lg:shrink-0 rounded-none border bg-card overflow-y-auto',
+          'lg:w-1/2 lg:shrink-0 rounded-lg bg-card overflow-y-auto',
           mobileDetail && 'hidden lg:block',
         )}
       >
@@ -89,7 +89,7 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic 
               >
                 <span className={cn(
                   'shrink-0 w-9 h-9 rounded-lg grid place-items-center',
-                  isService ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600',
+                  isService ? 'bg-info text-info-foreground' : 'bg-muted-foreground/60 text-white',
                 )}>
                   {isService ? <Wrench className="w-4 h-4" /> : <Package className="w-4 h-4" />}
                 </span>
@@ -97,7 +97,7 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic 
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{product.name}</span>
                     {!product.is_active && (
-                      <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0 bg-red-50 text-red-600 border-red-200">Inativo</Badge>
+                      <Badge className="text-[9px] px-1 h-4 shrink-0 bg-destructive text-destructive-foreground">Inativo</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
@@ -118,7 +118,7 @@ export default function CatalogSplit({ products, orgSlug, categories, isTraffic 
       {/* ── Detail panel ─────────────────────────────────────────── */}
       <div
         className={cn(
-          'lg:w-1/2 lg:flex-1 rounded-none border bg-card overflow-y-auto',
+          'lg:w-1/2 lg:flex-1 rounded-lg bg-card overflow-y-auto',
           !mobileDetail && 'hidden lg:block',
         )}
       >
@@ -183,15 +183,15 @@ function ProductDetail({
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className={cn(
-          'shrink-0 w-12 h-12 rounded-none grid place-items-center',
-          isService ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600',
+          'shrink-0 w-12 h-12 rounded-lg grid place-items-center',
+          isService ? 'bg-info text-info-foreground' : 'bg-muted-foreground/60 text-white',
         )}>
           {isService ? <Wrench className="w-5 h-5" /> : <Package className="w-5 h-5" />}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold leading-tight">{product.name}</h2>
-            <Badge variant="outline" className={product.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}>
+            <Badge className={product.is_active ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}>
               {product.is_active ? 'Ativo' : 'Inativo'}
             </Badge>
           </div>
