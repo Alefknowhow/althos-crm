@@ -40,12 +40,12 @@ export const HEALTH_META: Record<string, { dot: string; title: string }> = {
 }
 
 export const FLIGHT_STATUS_META: Record<string, { label: string; badge: string }> = {
-  scheduled: { label: 'Previsto', badge: 'border-muted-foreground/30 text-muted-foreground' },
-  active: { label: 'Em curso', badge: 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' },
-  landed: { label: 'Pousado', badge: 'border-emerald-300 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400' },
-  cancelled: { label: 'Cancelado', badge: 'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400' },
-  diverted: { label: 'Desviado', badge: 'border-orange-300 text-orange-600 dark:border-orange-800 dark:text-orange-400' },
-  unknown: { label: 'Sem dados', badge: 'border-muted-foreground/30 text-muted-foreground' },
+  scheduled: { label: 'Previsto', badge: 'bg-muted-foreground/60 text-white border-transparent' },
+  active: { label: 'Em curso', badge: 'bg-info text-info-foreground border-transparent' },
+  landed: { label: 'Pousado', badge: 'bg-success text-success-foreground border-transparent' },
+  cancelled: { label: 'Cancelado', badge: 'bg-destructive text-destructive-foreground border-transparent' },
+  diverted: { label: 'Desviado', badge: 'bg-warning text-warning-foreground border-transparent' },
+  unknown: { label: 'Sem dados', badge: 'bg-muted-foreground/60 text-white border-transparent' },
 }
 
 /** Cor do ícone de calendário/indicador de status — usada tanto na lista
@@ -63,7 +63,7 @@ export const DATE_ICON_COLOR: Record<'cancelled' | TripState, string> = {
  *  o popup de detalhe. */
 export function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, today: Date) {
   if (t.status === 'cancelled') {
-    return { key: 'cancelled' as const, label: 'Cancelada', badge: 'border-red-300 text-red-700 bg-red-50 dark:border-red-900 dark:text-red-400 dark:bg-red-950/30' }
+    return { key: 'cancelled' as const, label: 'Cancelada', badge: 'bg-destructive text-destructive-foreground border-transparent' }
   }
   if (state === 'ongoing') return { key: state, label: 'Em viagem', badge: STATE_META.ongoing.badge }
   if (state === 'past') return { key: state, label: 'Já realizada', badge: STATE_META.past.badge }
@@ -100,7 +100,6 @@ export function TripDetail({
   today: Date
   sellerName?: string
 }) {
-  const meta = STATE_META[state]
   const wa = whatsappLink(trip.lead_phone)
   const dep = parseDate(trip.departure_date)
   const status = rowStatus(trip, state, dep, today)

@@ -15,9 +15,9 @@ const DAY_PX = 22
 export type TripState = 'upcoming' | 'ongoing' | 'past'
 
 export const STATE_META: Record<TripState, { label: string; bar: string; dot: string; badge: string; row: string }> = {
-  upcoming: { label: 'Próxima', bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', row: 'bg-indigo-500/[0.06]' },
-  ongoing: { label: 'Em andamento', bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', row: 'bg-emerald-500/[0.06]' },
-  past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 border-slate-200', row: 'bg-slate-400/[0.06]' },
+  upcoming: { label: 'Próxima', bar: 'bg-indigo-500', dot: 'bg-indigo-500', badge: 'bg-info text-info-foreground border-transparent', row: 'bg-indigo-500/[0.06]' },
+  ongoing: { label: 'Em andamento', bar: 'bg-emerald-500', dot: 'bg-emerald-500', badge: 'bg-success text-success-foreground border-transparent', row: 'bg-emerald-500/[0.06]' },
+  past: { label: 'Concluída', bar: 'bg-slate-400', dot: 'bg-slate-400', badge: 'bg-muted-foreground/60 text-white border-transparent', row: 'bg-slate-400/[0.06]' },
 }
 
 export function ScheduleGanttView({
@@ -38,7 +38,7 @@ export function ScheduleGanttView({
 }) {
   return (
     <>
-      <div ref={ganttRef} className="rounded-none border bg-card overflow-hidden">
+      <div ref={ganttRef} className="rounded-lg bg-card overflow-hidden">
         {/* nav header */}
         <div className="flex items-center justify-between gap-2 p-3 border-b">
           <Button variant="outline" size="sm" onClick={() => setDayOffset(o => o - navStepDays)}>
