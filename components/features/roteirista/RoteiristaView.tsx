@@ -129,7 +129,7 @@ export default function RoteiristaView({
 
   return (
     <div className="flex flex-1 min-h-0 gap-4">
-      <div className="w-full md:w-[300px] shrink-0 flex flex-col border rounded-none bg-card">
+      <div className="w-full md:w-[300px] shrink-0 flex flex-col border rounded-lg bg-card">
         <div className="p-3 border-b flex items-center gap-2">
           <Button size="sm" className="flex-1" onClick={handleNewConversation}>
             <Plus className="w-4 h-4 mr-1.5" /> Nova conversa
@@ -167,7 +167,7 @@ export default function RoteiristaView({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 border rounded-none bg-card flex flex-col">
+      <div className="flex-1 min-w-0 border rounded-lg bg-card flex flex-col">
         {!selected && !sending ? (
           <div className="flex-1 flex flex-col">
             <EmptyState
@@ -219,7 +219,7 @@ export default function RoteiristaView({
                       {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                     </div>
                     {m.role === 'user' ? (
-                      <div className="max-w-[80%] rounded-none px-3.5 py-2 text-sm bg-primary text-primary-foreground inline-block whitespace-pre-wrap">
+                      <div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-sm bg-primary text-primary-foreground inline-block whitespace-pre-wrap">
                         {m.content}
                       </div>
                     ) : (
@@ -233,7 +233,7 @@ export default function RoteiristaView({
                   <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <Sparkles className="w-3.5 h-3.5" />
                   </div>
-                  <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
+                  <div className="bg-muted rounded-2xl px-3.5 py-2 text-sm flex items-center gap-2">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span className="text-muted-foreground text-xs">pesquisando e escrevendo…</span>
                   </div>
