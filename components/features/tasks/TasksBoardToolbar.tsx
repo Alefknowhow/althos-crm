@@ -14,9 +14,10 @@
 
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { relatedTypeOptions } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
-import { CalendarDays, List, Search, X, Plus, AlertCircle } from 'lucide-react'
+import { CalendarDays, List, Search, X, Plus, AlertCircle, SlidersHorizontal } from 'lucide-react'
 import {
   type Member, type PriorityFilter, type AssigneeFilter,
   type StatusFilter, type RelatedFilter, type CalView, type ViewMode, type ListPeriod,
@@ -243,21 +244,38 @@ export function TasksBoardToolbar({
             />
           )}
 
-          {/* Filtros direto na barra (sem popover "Filtros" escondendo) —
-              pedido explícito de deixá-los visíveis ao lado de "Todas as
-              tarefas". */}
-          <FilterFields
-            members={members} assignee={assignee} setAssignee={setAssignee}
-            priority={priority} setPriority={setPriority}
-            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-            relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
-            niche={niche} inline
-          />
-          {activeFilterCount > 0 && (
-            <button type="button" onClick={clearAllFilters} className={cn('text-xs text-primary hover:underline shrink-0', FOCUS_RING)}>
-              Limpar filtros
-            </button>
-          )}
+          {/* Filtros organizados num único botão "Filtros" (regra geral do
+              /design) — antes ficavam soltos direto na barra. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn('inline-flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,.05)] shrink-0', FOCUS_RING)}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Filtros
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 space-y-2">
+              <FilterFields
+                members={members} assignee={assignee} setAssignee={setAssignee}
+                priority={priority} setPriority={setPriority}
+                statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
+                niche={niche}
+              />
+              {activeFilterCount > 0 && (
+                <button type="button" onClick={clearAllFilters} className={cn('text-xs text-primary hover:underline', FOCUS_RING)}>
+                  Limpar filtros
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Barra de controles fixa: nav/abas à esquerda, view+período à
