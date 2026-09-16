@@ -1,5 +1,7 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
+import { Logo } from '@/components/brand/Logo'
+import SidebarCollapseToggleButton from '@/components/features/SidebarCollapseToggleButton'
 import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
@@ -134,64 +136,70 @@ export default async function OrgLayout({
       </div>
       <SidebarCollapseProvider>
       <PageHintProvider>
+      {/* Header ocupa a largura inteira da tela (não fica mais restrito à
+          coluna do conteúdo) — logo "Althos CRM" e o botão de colapsar a
+          sidebar moram aqui agora. A sidebar passa a ficar abaixo desta
+          barra, não mais do topo ao fundo da tela. */}
+      <header className="print:hidden h-14 shrink-0 border-b border-border bg-card flex items-center px-3 md:px-5 gap-3 justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="hidden md:flex items-center shrink-0">
+            <Logo v2 showText textClassName="text-[15px]" />
+          </div>
+          <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
+          <div className="hidden md:block shrink-0">
+            <SidebarCollapseToggleButton />
+          </div>
+          <GlobalBackButton orgSlug={params.orgSlug} />
+          {/* Mobile: título compacto (inalterado). Desktop: ícone +
+              nome do módulo em destaque. */}
+          <div className="md:hidden min-w-0">
+            <HeaderSidebarToggle orgSlug={params.orgSlug} />
+          </div>
+          <div className="hidden md:block min-w-0">
+            <HeaderModuleTitle orgSlug={params.orgSlug} />
+          </div>
+          {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
+          {orgs.length > 1 && (
+            <>
+              <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
+              <span className="hidden md:inline text-[12.5px] font-medium tracking-apple-snug text-muted-foreground">
+                Organização
+              </span>
+              <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Busca e Copiloto no header viram exclusivos do desktop —
+              no mobile os dois já têm entrada própria na barra inferior
+              (Consultar/Assistente), manter os dois no header também
+              duplicava a ação (pedido explícito: remover a duplicidade). */}
+          {/* Push toggle e alternância de tema saíram do header — moveram
+              pro menu do usuário (mesma consolidação do canvas do
+              /design, artboard 05: "só o sino permanece" no header). */}
+          {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
+          <HeaderSearchBar />
+          <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
+          <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
+          <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
+          <div className="hidden md:inline-flex">
+            <SupportHeaderButton />
+          </div>
+          <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
+          <div className="hidden md:inline-flex">
+            <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
+          </div>
+          <HeaderMobileMenu orgSlug={params.orgSlug} />
+        </div>
+      </header>
+
       <div className="flex flex-1 min-h-0 print:block">
         <div className="print:hidden md:py-3 md:pl-3 min-h-0">
           <Sidebar orgSlug={params.orgSlug} />
         </div>
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0 print:block">
-          {/* pl-14 on mobile leaves space for the fixed sidebar hamburger
-              rendered by SidebarShell. md+ uses normal padding since the
-              desktop aside occupies its own column. Hidden entirely on
-              print so only the page's own content (ex.: DocumentPrintView)
-              shows up — nunca a chrome do CRM. */}
-          <header className="print:hidden mx-3 sm:mx-5 mt-3 h-[60px] shrink-0 rounded-lg bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] flex items-center px-3.5 md:px-5 gap-3 justify-between sticky top-0 z-30">
-            <div className="flex items-center gap-3 min-w-0">
-              <GlobalBackButton orgSlug={params.orgSlug} />
-              {/* Mobile: título compacto (inalterado). Desktop: ícone +
-                  nome do módulo em destaque (reformulação). */}
-              <div className="md:hidden min-w-0">
-                <HeaderSidebarToggle orgSlug={params.orgSlug} />
-              </div>
-              <div className="hidden md:block min-w-0">
-                <HeaderModuleTitle orgSlug={params.orgSlug} />
-              </div>
-              {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
-              {orgs.length > 1 && (
-                <>
-                  <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
-                  <span className="hidden md:inline text-[12.5px] font-medium tracking-apple-snug text-muted-foreground">
-                    Organização
-                  </span>
-                  <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Busca e Copiloto no header viram exclusivos do desktop —
-                  no mobile os dois já têm entrada própria na barra inferior
-                  (Consultar/Assistente), manter os dois no header também
-                  duplicava a ação (pedido explícito: remover a duplicidade). */}
-              {/* Push toggle e alternância de tema saíram do header — moveram
-                  pro menu do usuário (mesma consolidação do canvas do
-                  /design, artboard 05: "só o sino permanece" no header). */}
-              {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
-              <HeaderSearchBar />
-              <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
-              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
-              <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-              <div className="hidden md:inline-flex">
-                <SupportHeaderButton />
-              </div>
-              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
-              <div className="hidden md:inline-flex">
-                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
-              </div>
-              <HeaderMobileMenu orgSlug={params.orgSlug} />
-            </div>
-          </header>
-
           <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-5 overflow-y-auto overflow-x-hidden bg-background print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}

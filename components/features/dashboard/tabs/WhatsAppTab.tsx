@@ -3,6 +3,7 @@ import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getWhatsappAnalytics } from '@/actions/whatsapp-analytics'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
+import { Clock, MessageCircle, Send, Inbox, Users } from 'lucide-react'
 import WhatsAppHeatmap from '../WhatsAppHeatmap'
 import WhatsAppDailyChartInner from '../WhatsAppDailyChartInner'
 
@@ -34,26 +35,31 @@ export default async function WhatsAppTab({ ctx }: { ctx: WidgetCtx }) {
           label="Tempo médio de resposta"
           value={fmtResponseTime(data.avgResponseMinutes)}
           help="Tempo médio entre uma mensagem recebida e a próxima mensagem enviada na mesma conversa."
+          icon={<Clock />}
         />
         <KpiCard
           label="Taxa de resposta"
           value={data.responseRatePct !== null ? `${data.responseRatePct}%` : '—'}
           help="Percentual de mensagens recebidas que tiveram uma mensagem enviada depois, na mesma conversa."
+          icon={<MessageCircle />}
         />
         <KpiCard
           label="Conversas iniciadas"
           value={String(data.conversationsStarted)}
           help="Conversas cuja primeira mensagem observada no período foi enviada pela agência."
+          icon={<Send />}
         />
         <KpiCard
           label="Conversas recebidas"
           value={String(data.conversationsReceived)}
           help="Conversas cuja primeira mensagem observada no período foi enviada pelo cliente."
+          icon={<Inbox />}
         />
         <KpiCard
           label="Conversas por atendente"
           value={data.avgConversationsPerAttendant !== null ? String(data.avgConversationsPerAttendant) : '—'}
           help="Média de conversas com atividade no período por atendente responsável (whatsapp_conversations.assigned_to)."
+          icon={<Users />}
         />
       </div>
 

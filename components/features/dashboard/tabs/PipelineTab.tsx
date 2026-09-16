@@ -11,7 +11,7 @@ import LeadSourcesWidget from '../LeadSourcesWidget'
 import SourcePerformanceWidget from '../SourcePerformanceWidget'
 import TimeInStageWidget from '../TimeInStageWidget'
 import BarListCard from '../BarListCard'
-import { TrendingDown } from 'lucide-react'
+import { TrendingDown, Users, Wallet, Percent, Clock, Receipt, Gauge, Target, CheckCircle2 } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -46,21 +46,25 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           label="Leads no período"
           value={String(funnel.total_leads)}
           help="Leads criados no período selecionado, dentro do filtro de pipeline/origem atual."
+          icon={<Users />}
         />
         <KpiCard
           label="Pipeline total"
           value={fmtCurrency(funnel.total_value_cents)}
           help="Soma do valor de todas as oportunidades em aberto no funil."
+          icon={<Wallet />}
         />
         <KpiCard
           label="Conversão geral"
           value={`${funnel.overall_conversion_pct.toFixed(1)}%`}
           help="Percentual de leads que chegaram até o último estágio do funil."
+          icon={<Percent />}
         />
         <KpiCard
           label="Ciclo médio"
           value={avgCycleDays > 0 ? `${avgCycleDays.toFixed(0)} dias` : '—'}
           help="Soma do tempo médio que os leads passam em cada estágio, últimos 90 dias."
+          icon={<Clock />}
         />
       </div>
 
@@ -69,21 +73,25 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           label="Ticket médio"
           value={fmtCurrency(ticket.avg_cents)}
           help="Receita do período dividida pelo número de vendas concluídas."
+          icon={<Receipt />}
         />
         <KpiCard
           label="Velocidade do pipeline"
           value={avgCycleDays > 0 ? `${fmtCurrency(velocityCentsPerDay)}/dia` : '—'}
           help="Leads × ticket médio × taxa de conversão ÷ ciclo médio — quanto de receita o funil produz por dia, no ritmo atual."
+          icon={<Gauge />}
         />
         <KpiCard
           label="Oportunidades"
           value={String(funnel.first_stage_count)}
           help="Leads atualmente no primeiro estágio do funil."
+          icon={<Target />}
         />
         <KpiCard
           label="Fechados"
           value={String(funnel.last_stage_count)}
           help="Leads atualmente no último estágio do funil, na janela selecionada."
+          icon={<CheckCircle2 />}
         />
       </div>
 

@@ -4,6 +4,7 @@ import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getTicketMedio } from '@/actions/dashboard-tabs'
 import { getMonthlyRevenueGoal } from '@/actions/organization'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
+import { DollarSign, Target, ShoppingCart, Receipt } from 'lucide-react'
 import KpiCard from '../KpiCard'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import RevenueForecastWidget from '../RevenueForecastWidget'
@@ -33,22 +34,26 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
           label="Receita"
           value={fmtCurrency(ticket.revenue_cents)}
           help="Soma das vendas concluídas no período selecionado."
+          icon={<DollarSign />}
         />
         <KpiCard
           label="Meta do mês"
           value={monthlyGoalCents ? fmtCurrency(monthlyGoalCents) : '—'}
           trendLabel={goalProgressPct !== null ? `${goalProgressPct}% atingido` : undefined}
           help="Meta de receita mensal configurada para a organização (Configurações › Metas)."
+          icon={<Target />}
         />
         <KpiCard
           label="Vendas"
           value={String(ticket.sales_count)}
           help="Número de vendas concluídas no período selecionado."
+          icon={<ShoppingCart />}
         />
         <KpiCard
           label="Ticket médio"
           value={fmtCurrency(ticket.avg_cents)}
           help="Receita do período dividida pelo número de vendas concluídas."
+          icon={<Receipt />}
         />
       </div>
 

@@ -1,9 +1,7 @@
-import { Logo } from '@/components/brand/Logo'
 import { getCurrentOrganization, getUser } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
-import SidebarCollapseToggleButton from './SidebarCollapseToggleButton'
 import SidebarUserMenu from './SidebarUserMenu'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
@@ -113,17 +111,11 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
   return (
     <SidebarShell>
-      {/* Desktop-only — a versão mobile do cabeçalho (logo + nome + X) é
-          renderizada direto pelo SidebarShell, pra não duplicar quando o
-          drawer mobile monta este mesmo children pela segunda vez. */}
-      <div className="hidden md:flex h-14 items-center justify-between px-5 relative">
-        <Logo className="sidebar-brand" v2 textClassName="text-sidebar-foreground" />
-        <div className="sidebar-toggle-btn shrink-0">
-          <SidebarCollapseToggleButton />
-        </div>
-      </div>
-
-      <nav className="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
+      {/* Logo + botão de colapsar saíram daqui — agora moram no header
+          (largura cheia da tela, acima da sidebar). O drawer mobile
+          continua com seu próprio cabeçalho (logo + X), renderizado
+          direto pelo SidebarShell. */}
+      <nav className="flex-1 min-h-0 px-3 pt-3 pb-4 space-y-0.5 overflow-y-auto">
 
         {/* ── Topo ──────────────────────────────────── */}
         <SidebarNavLink href={base} exact dataTour="insights">

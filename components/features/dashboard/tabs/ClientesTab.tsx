@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CityRevenueChart from '../CityRevenueChart'
 import RecompraTable from '../RecompraTable'
 import { COMPACT_CARD_H } from '../dashboardSizes'
-import { Crown, MapPin, AlertTriangle, Layers } from 'lucide-react'
+import { Crown, MapPin, AlertTriangle, Layers, Smile, Users, UserPlus, Repeat, RefreshCw, Wallet, Receipt } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -61,46 +61,55 @@ export default async function ClientesTab({ ctx, isClinic = false }: { ctx: Widg
               : `Nenhuma resposta de NPS registrada ainda. Dispare a pesquisa em Contatos ou crie uma automação com o gatilho "Cliente Convertido".`
           }
           trend={nps.responses === 0 ? undefined : nps.score >= 50 ? 'up' : nps.score < 0 ? 'down' : undefined}
+          icon={<Smile />}
         />
         <KpiCard
           label={`${whoPlural} ativos`}
           value={String(activeCustomers)}
           help={`${whoPlural} com compra concluída, exceto os em risco (sem comprar há 90+ dias).`}
+          icon={<Users />}
         />
         <KpiCard
           label={`Novos ${whoLower}s`}
           value={String(segmentation.novo)}
           help={`${whoPlural} com exatamente 1 compra, feita nos últimos 30 dias.`}
+          icon={<UserPlus />}
         />
         <KpiCard
           label={`${whoPlural} recorrentes`}
           value={String(segmentation.recorrente)}
           help={`${whoPlural} com 2 ou mais compras (fora do grupo VIP), não em risco.`}
+          icon={<Repeat />}
         />
         <KpiCard
           label="Taxa de recompra"
           value={`${repurchase.pct}%`}
           help={`${repurchase.repeatCustomers} de ${repurchase.totalCustomers} cliente(s) compraram mais de uma vez.`}
+          icon={<RefreshCw />}
         />
         <KpiCard
           label="LTV médio"
           value={fmtCurrency(ltv.avgLtvCents)}
           help={`Receita total histórica por cliente, média entre ${ltv.customersWithSales} cliente(s) com ao menos uma venda concluída.`}
+          icon={<Wallet />}
         />
         <KpiCard
           label="Ticket médio"
           value={fmtCurrency(ticket.avg_cents)}
           help="Receita do período dividida pelo número de vendas concluídas."
+          icon={<Receipt />}
         />
         <KpiCard
           label={`${whoPlural} VIP`}
           value={String(segmentation.vip)}
           help={`${whoPlural} entre os 10% de maior valor total comprado (histórico completo), não em risco.`}
+          icon={<Crown />}
         />
         <KpiCard
           label={`${whoPlural} em risco`}
           value={String(segmentation.em_risco)}
           help={`${whoPlural} com ao menos uma compra, sem nenhuma compra nova há 90+ dias.`}
+          icon={<AlertTriangle />}
         />
       </div>
 

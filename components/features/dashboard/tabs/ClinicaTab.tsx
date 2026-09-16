@@ -4,7 +4,7 @@ import KpiCard from '../KpiCard'
 import BarListCard from '../BarListCard'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
-import { Stethoscope, Percent } from 'lucide-react'
+import { Stethoscope, Percent, CalendarCheck, Award, Wallet, RotateCcw, Users2 } from 'lucide-react'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -25,32 +25,38 @@ export default async function ClinicaTab({ orgSlug }: { orgSlug: string }) {
           label="Atendimentos hoje"
           value={`${m.attendancesToday}`}
           help="Total de atendimentos registrados na data de hoje."
+          icon={<CalendarCheck />}
         />
         <KpiCard
           label="Profissional destaque (30d)"
           value={topProfessional?.label || '—'}
           trendLabel={topProfessional ? `${topProfessional.valueLabel} atendimento(s)` : undefined}
           help="Profissional com mais atendimentos registrados nos últimos 30 dias."
+          icon={<Award />}
         />
         <KpiCard
           label="Taxa de no-show (30d)"
           value={m.noShowRate30d === null ? '—' : `${m.noShowRate30d.toFixed(1)}%`}
           help="Percentual de agendamentos marcados como 'não compareceu' nos últimos 30 dias, sobre o total de realizados + no-show."
+          icon={<Percent />}
         />
         <KpiCard
           label="Comissões pendentes"
           value={fmtCurrency(m.pendingCommissionsCents)}
           help="Soma das comissões calculadas ainda não marcadas como pagas."
+          icon={<Wallet />}
         />
         <KpiCard
           label="Retornos pendentes"
           value={`${m.pendingReturns}`}
           help="Atendimentos com retorno sugerido ainda sem novo agendamento criado."
+          icon={<RotateCcw />}
         />
         <KpiCard
           label="Lista de espera"
           value={`${m.waitlistOpen}`}
           help="Pacientes aguardando vaga (status 'aguardando')."
+          icon={<Users2 />}
         />
       </div>
 
@@ -60,14 +66,14 @@ export default async function ClinicaTab({ orgSlug }: { orgSlug: string }) {
           help="Contagem de atendimentos registrados nos últimos 30 dias, por profissional."
           icon={Stethoscope}
           rows={m.attendancesByProfessional}
-          color="#0ea5e9"
+          color="var(--chart-1)"
         />
         <BarListCard
           title="Receita por serviço (30d)"
           help="Valor cobrado (clinic_attendances.total_cents, editável na tela de Atendimentos) × número de atendimentos nos últimos 30 dias."
           icon={Percent}
           rows={m.revenueByService}
-          color="#10b981"
+          color="var(--chart-2)"
         />
       </div>
 

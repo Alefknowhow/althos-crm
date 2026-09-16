@@ -1,7 +1,7 @@
 import { getImoveisDashboardMetrics } from '@/actions/dashboard-imoveis'
 import KpiCard from '../KpiCard'
 import BarListCard from '../BarListCard'
-import { Home, FileSignature } from 'lucide-react'
+import { Home, FileSignature, CheckCircle2, CalendarClock, Wallet } from 'lucide-react'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -22,21 +22,25 @@ export default async function ImobiliariaTab({ orgSlug }: { orgSlug: string }) {
           label="Imóveis disponíveis"
           value={`${m.availableCount}`}
           help="Imóveis com status 'disponível' no estoque atual."
+          icon={<Home />}
         />
         <KpiCard
           label="Vendidos/alugados (30d)"
           value={`${m.closedCount30d}`}
           help="Negócios fechados (venda ou locação) nos últimos 30 dias."
+          icon={<CheckCircle2 />}
         />
         <KpiCard
           label="Visitas nos próx. 7 dias"
           value={`${m.visitsUpcoming7d}`}
           help="Visitas agendadas ou confirmadas com data nos próximos 7 dias."
+          icon={<CalendarClock />}
         />
         <KpiCard
           label="Comissão pendente"
           value={fmtCurrency(m.pendingCommissionCents)}
           help="Soma das comissões de negócios fechados ainda não marcadas como pagas no Financeiro."
+          icon={<Wallet />}
         />
       </div>
 
@@ -46,14 +50,14 @@ export default async function ImobiliariaTab({ orgSlug }: { orgSlug: string }) {
           help="Contagem de propostas criadas nos últimos 30 dias, por status atual."
           icon={FileSignature}
           rows={m.proposalsByStatus}
-          color="#0ea5e9"
+          color="var(--chart-1)"
         />
         <BarListCard
           title="Estoque disponível por cidade"
           help="Imóveis com status 'disponível', agrupados por cidade."
           icon={Home}
           rows={m.propertiesByCity}
-          color="#10b981"
+          color="var(--chart-2)"
         />
       </div>
     </div>

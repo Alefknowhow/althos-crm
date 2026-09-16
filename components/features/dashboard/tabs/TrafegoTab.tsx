@@ -1,5 +1,6 @@
 import { getTrafegoDashboardMetrics } from '@/actions/dashboard-trafego'
 import KpiCard from '../KpiCard'
+import { DollarSign, ShoppingCart, Users, UserPlus, Target, Repeat2, Megaphone, Gauge, Percent, TrendingDown, UserX } from 'lucide-react'
 
 function fmtCurrency(cents: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
@@ -21,26 +22,31 @@ export default async function TrafegoTab({ orgSlug }: { orgSlug: string }) {
           label="Receita (30d)"
           value={fmtCurrency(m.revenueCents)}
           help="Soma das vendas concluídas nos últimos 30 dias."
+          icon={<DollarSign />}
         />
         <KpiCard
           label="Vendas (30d)"
           value={`${m.salesCount}`}
           help="Número de vendas concluídas nos últimos 30 dias."
+          icon={<ShoppingCart />}
         />
         <KpiCard
           label="Clientes ativos"
           value={`${m.activeClients}`}
           help="Contatos com status 'cliente' no momento."
+          icon={<Users />}
         />
         <KpiCard
           label="Novos clientes (30d)"
           value={`${m.newClients}`}
           help="Contatos que viraram cliente nos últimos 30 dias."
+          icon={<UserPlus />}
         />
         <KpiCard
           label="Leads gerados (30d)"
           value={`${m.leadsGenerated}`}
           help="Novos contatos criados nos últimos 30 dias."
+          icon={<Target />}
         />
       </div>
 
@@ -51,31 +57,37 @@ export default async function TrafegoTab({ orgSlug }: { orgSlug: string }) {
           label="MRR"
           value="—"
           help="Depende de um conceito de contrato recorrente por cliente, ainda não modelado no CRM."
+          icon={<Repeat2 />}
         />
         <KpiCard
           label="Investimento em mídia"
           value="—"
           help="Depende do módulo Tráfego (conexão com Meta/Google Ads), ainda não conectado."
+          icon={<Megaphone />}
         />
         <KpiCard
           label="ROAS"
           value="—"
           help="Depende do investimento em mídia (módulo Tráfego) para ser calculado."
+          icon={<Gauge />}
         />
         <KpiCard
           label="Margem"
           value="—"
           help="Depende de custos por cliente, ainda não modelados no Financeiro desta vertical."
+          icon={<Percent />}
         />
         <KpiCard
           label="Clientes abaixo da meta"
           value="—"
           help="Depende de metas configuráveis por cliente, ainda não existentes no sistema."
+          icon={<TrendingDown />}
         />
         <KpiCard
           label="Churn"
           value="—"
           help="Depende de um histórico de cancelamento de contrato por cliente, ainda não modelado."
+          icon={<UserX />}
         />
       </div>
     </div>

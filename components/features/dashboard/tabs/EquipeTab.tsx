@@ -13,7 +13,7 @@ import KpiCard from '../KpiCard'
 import SellersRankingWidget from '../SellersRankingWidget'
 import BarListCard from '../BarListCard'
 import EquipeTeamSection from '../EquipeTeamSection'
-import { UserCheck, ListChecks, Award } from 'lucide-react'
+import { UserCheck, ListChecks, Award, Sparkles, Target, Clock, MessageCircle, Bot } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -68,6 +68,7 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
           label="Créditos de IA"
           value={credits ? `${credits.available}` : '—'}
           help="Créditos de IA disponíveis no plano atual para o mês corrente (incluídos + comprados − usados)."
+          icon={<Sparkles />}
         />
         <KpiCard
           label="Meta individual (média)"
@@ -75,21 +76,25 @@ export default async function EquipeTab({ ctx }: { ctx: WidgetCtx }) {
           help={anyIndividual
             ? 'Média entre a meta individual configurada (quando houver) e o fallback — meta da empresa ÷ vendedores ativos, pra quem não tem meta própria. Configurável em Configurações › Equipe.'
             : 'Nenhum vendedor tem meta individual configurada ainda — mostrando a meta da empresa dividida igualmente entre os ativos. Configurável em Configurações › Equipe.'}
+          icon={<Target />}
         />
         <KpiCard
           label="Tempo médio de resposta"
           value={response.avgResponseMinutes !== null ? fmtMinutes(response.avgResponseMinutes) : '—'}
           help="Tempo médio entre a mensagem do lead/cliente e a próxima resposta na mesma conversa (humana ou automática via IA), no período selecionado."
+          icon={<Clock />}
         />
         <KpiCard
           label="Taxa de resposta"
           value={response.responseRatePct !== null ? `${response.responseRatePct}%` : '—'}
           help={`Percentual de mensagens recebidas que tiveram alguma resposta depois, no período (${response.answeredCount} de ${response.inboundCount}).`}
+          icon={<MessageCircle />}
         />
         <KpiCard
           label="Mensagens respondidas pela IA"
           value={String(aiAnswered)}
           help="Mensagens de clientes/leads respondidas automaticamente pela IA (sem intervenção humana) no período selecionado."
+          icon={<Bot />}
         />
       </div>
 
