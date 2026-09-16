@@ -10,9 +10,10 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { FinancialSettingRow } from '@/actions/financial-settings'
-import { TrendingUp, TrendingDown, CalendarRange } from 'lucide-react'
+import { TrendingUp, TrendingDown, CalendarRange, SlidersHorizontal } from 'lucide-react'
 
 export const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background'
 
@@ -160,6 +161,75 @@ export function PeriodFilterDropdown({
         </>
       )}
     </div>
+  )
+}
+
+/** Menu único "Filtros" da toolbar de Lançamentos — Período/Tipo/Status
+ *  organizados num só popover, em vez de 3 seletores soltos na barra. */
+export function FinancialFiltersMenu({
+  period, customFrom, customTo, onPeriodChange,
+  tipoFilter, onTipoChange,
+  statusFilter, onStatusChange,
+  hasActiveFilters, onClear,
+}: {
+  period: PeriodId
+  customFrom: string
+  customTo: string
+  onPeriodChange: (v: PeriodId, from: string, to: string) => void
+  tipoFilter: 'all' | 'receita' | 'despesa'
+  onTipoChange: (v: 'all' | 'receita' | 'despesa') => void
+  statusFilter: string
+  onStatusChange: (v: string) => void
+  hasActiveFilters: boolean
+  onClear: () => void
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,.05)] shrink-0"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filtros
+          {hasActiveFilters && (
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">•</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Período</Label>
+          <PeriodFilterDropdown value={period} customFrom={customFrom} customTo={customTo} onChange={onPeriodChange} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Tipo</Label>
+          <Select value={tipoFilter} onValueChange={v => onTipoChange(v as 'all' | 'receita' | 'despesa')}>
+            <SelectTrigger className="h-9 text-xs w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="receita">Receitas</SelectItem>
+              <SelectItem value="despesa">Despesas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={onStatusChange}>
+            <SelectTrigger className="h-9 text-xs w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos status</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        {hasActiveFilters && (
+          <button type="button" onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground underline">
+            Limpar filtros
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 

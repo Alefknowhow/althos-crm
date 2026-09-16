@@ -10,7 +10,7 @@ import CashFlowProjectionChart from './CashFlowProjectionChart'
 import ExpensesByCategoryChart from './ExpensesByCategoryChart'
 import { getFinancialDashboardData, updateFinancialEntry } from '@/actions/financial'
 import { PERIOD_OPTIONS, periodToRange, type PeriodId } from '@/lib/utils/period-range'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Wallet, DollarSign, TrendingDown, TrendingUp, Percent, LineChart, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
 import { toast } from 'sonner'
 import { BreakdownList, BreakdownDonut, AccountsBucket, StrategicIndicatorsCard } from './FinancialDashboardWidgets'
 
@@ -62,9 +62,9 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
       {/* Era uma linha de até 7 botões (1 por período) — pedido explícito:
           trocar por um único seletor discreto ("drill drop"), igual ao
           padrão já usado no filtro do heatmap de WhatsApp. */}
-      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 py-2 -mt-2 flex justify-end bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70">
+      <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 py-2 -mt-2 flex justify-end bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <Select value={period} onValueChange={v => setPeriod(v as PeriodId)}>
-          <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+          <SelectTrigger className="h-8 w-auto min-w-[140px] rounded-full text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -90,6 +90,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               help="Posição acumulada de caixa (só lançamentos efetivamente pagos) até o fim do período selecionado."
               trend={data.kpis.saldoEmCaixa.trend}
               trendLabel={fmtPct(data.kpis.saldoEmCaixa.delta_pct)}
+              icon={<Wallet />}
             />
             <KpiCard
               label="Receita do período"
@@ -97,6 +98,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               help="Soma de todos os lançamentos de receita com competência no período selecionado."
               trend={data.kpis.receitaDoMes.trend}
               trendLabel={fmtPct(data.kpis.receitaDoMes.delta_pct)}
+              icon={<DollarSign />}
             />
             <KpiCard
               label="Despesa do período"
@@ -104,6 +106,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               help="Soma de todos os lançamentos de despesa com competência no período selecionado."
               trend={data.kpis.despesaDoMes.trend}
               trendLabel={fmtPct(data.kpis.despesaDoMes.delta_pct)}
+              icon={<TrendingDown />}
             />
             <KpiCard
               label="Lucro líquido"
@@ -111,6 +114,7 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
               help="Receita menos despesa do período selecionado."
               trend={data.kpis.lucroLiquido.trend}
               trendLabel={fmtPct(data.kpis.lucroLiquido.delta_pct)}
+              icon={<TrendingUp />}
             />
             <KpiCard
               label="Margem de lucro"
@@ -122,22 +126,26 @@ export default function FinancialDashboard({ orgSlug }: { orgSlug: string }) {
                   : data.kpis.margemLucroPct >= data.kpis.margemLucroPctPrev ? 'up' : 'down'
               }
               trendLabel={fmtPctPoints(data.kpis.margemLucroPct, data.kpis.margemLucroPctPrev)}
+              icon={<Percent />}
             />
             <KpiCard
               label="Fluxo de caixa previsto"
               value={fmtCurrency(data.kpis.fluxoCaixaPrevistoCents)}
               help="Receitas pendentes menos despesas pendentes com vencimento dentro do período selecionado."
               trend={data.kpis.fluxoCaixaPrevistoCents >= 0 ? 'up' : 'down'}
+              icon={<LineChart />}
             />
             <KpiCard
               label="Contas a receber"
               value={fmtCurrency(data.kpis.contasAReceberCents)}
               help="Total de receitas pendentes ou vencidas em aberto, na posição atual."
+              icon={<ArrowDownToLine />}
             />
             <KpiCard
               label="Contas a pagar"
               value={fmtCurrency(data.kpis.contasAPagarCents)}
               help="Total de despesas pendentes ou vencidas em aberto, na posição atual."
+              icon={<ArrowUpFromLine />}
             />
           </div>
 

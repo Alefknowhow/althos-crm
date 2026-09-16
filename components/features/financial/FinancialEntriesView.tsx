@@ -15,7 +15,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import EmptyState from '@/components/ui/empty-state'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -32,8 +31,8 @@ import {
   Wallet, Plus, Upload, Search, Circle, TrendingUp, TrendingDown,
 } from 'lucide-react'
 import {
-  STATUS_LABELS, PAGE_SIZE, type PeriodId, type SortKey,
-  periodRange, PeriodFilterDropdown, SummaryCard,
+  PAGE_SIZE, type PeriodId, type SortKey,
+  periodRange, SummaryCard, FinancialFiltersMenu,
 } from './FinancialEntriesShared'
 import { EntryDetailsModal } from './FinancialEntriesTableWidgets'
 import { FinancialEntriesTable } from './FinancialEntriesTable'
@@ -189,23 +188,17 @@ export default function FinancialEntriesView({
           <Input value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} placeholder="Pesquisar lançamentos…" className="pl-8 h-9" />
         </div>
 
-        <PeriodFilterDropdown value={period} customFrom={customFrom} customTo={customTo} onChange={(v, f, t) => { setPeriod(v); setCustomFrom(f); setCustomTo(t); setPage(1) }} />
+        {/* Período/Tipo/Status organizados num único menu "Filtros" — em vez
+            de 3 seletores soltos na barra. */}
+        <FinancialFiltersMenu
+          period={period} customFrom={customFrom} customTo={customTo}
+          onPeriodChange={(v, f, t) => { setPeriod(v); setCustomFrom(f); setCustomTo(t); setPage(1) }}
+          tipoFilter={tipoFilter} onTipoChange={v => { setTipoFilter(v); setPage(1) }}
+          statusFilter={statusFilter} onStatusChange={v => { setStatusFilter(v); setPage(1) }}
+          hasActiveFilters={hasActiveFilters} onClear={clearFilters}
+        />
 
-        <Select value={tipoFilter} onValueChange={v => { setTipoFilter(v as any); setPage(1) }}>
-          <SelectTrigger className="h-9 text-xs w-[110px] shrink-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="receita">Receitas</SelectItem>
-            <SelectItem value="despesa">Despesas</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1) }}>
-          <SelectTrigger className="h-9 text-xs w-[120px] shrink-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos status</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="flex-1" />
 
         <Button size="sm" className="h-9 px-3 shrink-0" onClick={() => setNewOpen(true)}>
           <Plus className="w-4 h-4 mr-1.5" /> Lançamento
@@ -214,12 +207,6 @@ export default function FinancialEntriesView({
         <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs shrink-0" onClick={() => setCsvOpen(true)}>
           <Upload className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Importar CSV</span>
         </Button>
-
-        {hasActiveFilters && (
-          <button type="button" onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground underline shrink-0">
-            Limpar filtros
-          </button>
-        )}
       </div>
 
       {/* ── Cards de resumo ─────────────────────────────────────────── */}
