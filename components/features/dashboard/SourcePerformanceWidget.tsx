@@ -64,9 +64,9 @@ export default async function SourcePerformanceWidget({
                       <strong
                         className={
                           r.conversion_pct >= 30
-                            ? 'text-emerald-600'
+                            ? 'text-success'
                             : r.conversion_pct >= 10
-                              ? 'text-amber-600'
+                              ? 'text-warning'
                               : 'text-muted-foreground'
                         }
                       >

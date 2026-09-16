@@ -53,7 +53,7 @@ export default function RevenueForecastCard({
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 shrink-0 pb-2">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <TrendingUp className="w-4 h-4 text-success" />
             Forecast de receita
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
@@ -142,7 +142,7 @@ export default function RevenueForecastCard({
                       <span className="text-muted-foreground">
                         {fmtCurrency(row.pipeline_value_cents)}
                       </span>
-                      <span className="text-emerald-600 font-semibold">
+                      <span className="text-success font-semibold">
                         → {fmtCurrency(row.expected_value_cents)}
                       </span>
                     </div>

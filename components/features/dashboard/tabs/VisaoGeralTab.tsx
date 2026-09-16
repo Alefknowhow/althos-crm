@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { DollarSign, ShoppingCart, Receipt, TrendingUp, Target, ShoppingBasket } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getDashboardMetrics } from '@/actions/dashboard'
@@ -58,31 +59,37 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
           label="Receita"
           value={fmtCurrency(metrics.revenue.value * 100)}
           help="Soma das vendas concluídas no período selecionado."
+          icon={DollarSign}
         />
         <KpiCard
           label="Vendas"
           value={String(ticket.sales_count)}
           help="Número de vendas concluídas no período selecionado."
+          icon={ShoppingCart}
         />
         <KpiCard
           label="Ticket médio"
           value={fmtCurrency(ticket.avg_cents)}
           help="Receita do período dividida pelo número de vendas concluídas."
+          icon={Receipt}
         />
         <KpiCard
           label="Conversão"
           value={`${conversionPct.toFixed(1)}%`}
           help="Percentual de leads do período que chegaram a um estágio de fechamento."
+          icon={TrendingUp}
         />
         <KpiCard
           label="Meta do mês"
           value={monthlyGoalCents ? fmtCurrency(monthlyGoalCents) : '—'}
           help="Meta de receita mensal configurada para a organização (Configurações › Metas)."
+          icon={Target}
         />
         <KpiCard
           label="Pipeline aberto"
           value={fmtCurrency(pipelineValueCents)}
           help="Soma do valor de todas as oportunidades em aberto no funil, na filtragem atual."
+          icon={ShoppingBasket}
         />
       </div>
 

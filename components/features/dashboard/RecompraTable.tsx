@@ -28,7 +28,7 @@ export default async function RecompraTable({ orgSlug, orgId }: { orgSlug: strin
     <Card className={`${TABLE_H} flex flex-col overflow-hidden`}>
       <CardHeader className="pb-2 shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
-          <Repeat className="w-4 h-4 text-amber-600" />
+          <Repeat className="w-4 h-4 text-warning" />
           Rank de recompra — clientes há mais tempo sem viajar de novo
         </CardTitle>
         <p className="text-xs text-muted-foreground mt-1">

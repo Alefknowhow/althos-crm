@@ -28,12 +28,12 @@ interface RecentActivityProps {
 }
 
 const ACTIVITY_META: Record<string, { icon: LucideIcon; label: string; tone: string }> = {
-  lead_created:    { icon: UserPlus,      label: 'Novo lead',           tone: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' },
-  whatsapp_message:{ icon: MessageSquare, label: 'Mensagem WhatsApp',   tone: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' },
+  lead_created:    { icon: UserPlus,      label: 'Novo lead',           tone: 'text-success bg-success/12' },
+  whatsapp_message:{ icon: MessageSquare, label: 'Mensagem WhatsApp',   tone: 'text-success bg-success/12' },
   call:            { icon: Phone,         label: 'Ligação',             tone: 'text-blue-600 dark:text-blue-400 bg-blue-500/10' },
   email:           { icon: Mail,          label: 'E-mail',              tone: 'text-blue-600 dark:text-blue-400 bg-blue-500/10' },
   stage_changed:   { icon: RefreshCw,     label: 'Mudança de etapa',    tone: 'text-orange-600 dark:text-orange-400 bg-orange-500/10' },
-  task_completed:  { icon: CheckCircle2,  label: 'Tarefa concluída',    tone: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' },
+  task_completed:  { icon: CheckCircle2,  label: 'Tarefa concluída',    tone: 'text-success bg-success/12' },
 }
 
 const FALLBACK_META = { icon: AlertCircle, label: 'Atividade', tone: 'text-muted-foreground bg-secondary' }

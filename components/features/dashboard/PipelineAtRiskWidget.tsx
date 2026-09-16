@@ -48,7 +48,7 @@ export default async function PipelineAtRiskWidget({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 shrink-0">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertTriangle className="w-4 h-4 text-warning" />
             Pipeline em risco
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">

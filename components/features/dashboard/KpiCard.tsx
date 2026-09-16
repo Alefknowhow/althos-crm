@@ -18,6 +18,7 @@ export default function KpiCard({
   mock,
   className,
   compact,
+  icon: Icon,
 }: {
   label: string
   value: string
@@ -28,6 +29,8 @@ export default function KpiCard({
   className?: string
   /** Versão menor — pra caber várias lado a lado numa linha só (ex.: Indicadores estratégicos). */
   compact?: boolean
+  /** Ícone opcional — chip circular tintado no canto superior direito, como no /design. */
+  icon?: React.ComponentType<{ className?: string }>
 }) {
   const helpId = useId()
   const trendColor =
@@ -41,23 +44,29 @@ export default function KpiCard({
     )}>
       <div className="flex items-start justify-between gap-1.5">
         <span className={cn('font-medium text-muted-foreground truncate', compact ? 'text-[10px]' : 'text-xs sm:text-[13px]')}>{label}</span>
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-describedby={helpId}
-                className="hidden sm:inline-flex shrink-0 text-muted-foreground/70 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded-full"
-              >
-                <Info className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
-                <span className="sr-only">O que é {label}?</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent id={helpId} className="max-w-[240px] text-left">
-              {help}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {Icon ? (
+          <span className={cn('shrink-0 grid place-items-center rounded-full bg-primary/12 text-primary', compact ? 'w-5 h-5' : 'w-7 h-7')}>
+            <Icon className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+          </span>
+        ) : (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-describedby={helpId}
+                  className="hidden sm:inline-flex shrink-0 text-muted-foreground/70 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring rounded-full"
+                >
+                  <Info className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+                  <span className="sr-only">O que é {label}?</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent id={helpId} className="max-w-[240px] text-left">
+                {help}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
       <div className={cn('min-w-0', compact ? 'mt-0.5' : 'mt-1 sm:mt-2')}>
         <div className={cn('font-bold tabular-nums truncate', compact ? 'text-sm' : 'text-base sm:text-2xl')}>{value}</div>
