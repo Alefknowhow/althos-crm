@@ -64,7 +64,7 @@ export default function OffersList({
       </div>
 
       {offers.length === 0 ? (
-        <div className="rounded-none border border-dashed p-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
           <Store className="w-8 h-8 mx-auto mb-3 opacity-20" />
           Nenhuma oferta ainda. Crie um pacote pronto — é montado igual a uma cotação, mas sem cliente.
         </div>
@@ -72,17 +72,17 @@ export default function OffersList({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {offers.map(o => (
             <Link key={o.id} href={`/app/${orgSlug}/ofertas/${o.id}`}
-              className="group rounded-none border overflow-hidden bg-card   transition-shadow">
+              className="group rounded-lg overflow-hidden bg-card transition-shadow">
               <div className="aspect-[16/10] bg-muted relative">
                 {o.cover_image_url
                   ? // eslint-disable-next-line @next/next/no-img-element
                     <img src={o.cover_image_url} alt={o.title || ''} className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center text-muted-foreground/30"><ImageIcon className="w-8 h-8" /></div>}
                 <div className="absolute top-2 left-2 flex gap-1.5">
-                  <Badge className={o.offer_published ? 'bg-emerald-600' : 'bg-slate-500'}>
+                  <Badge className={o.offer_published ? 'bg-success text-success-foreground' : 'bg-muted-foreground/60 text-white'}>
                     {o.offer_published ? 'Publicada' : 'Rascunho'}
                   </Badge>
-                  {o.offer_category && <Badge variant="secondary">{o.offer_category}</Badge>}
+                  {o.offer_category && <Badge className="bg-info text-info-foreground">{o.offer_category}</Badge>}
                 </div>
                 <button
                   type="button"
