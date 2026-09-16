@@ -17,7 +17,7 @@ export function SocialInboxMessagesPane({
         const media = renderInstagramMedia(m, setLightboxUrl)
         return (
           <div key={m.id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[65%] rounded-[22px] px-4 py-2 ${isInbound ? 'bg-[#efefef] dark:bg-[#262626] text-black dark:text-white' : 'bg-[#3797f0] text-white'}`}>
+            <div className={`max-w-[65%] rounded-[22px] px-4 py-2 text-foreground ${isInbound ? 'bg-card' : 'bg-primary/10'}`}>
               {media}
               {m.message_text && <div className="text-sm leading-relaxed whitespace-pre-wrap">{m.message_text}</div>}
               {m.buttons && m.buttons.length > 0 && (
@@ -25,19 +25,19 @@ export function SocialInboxMessagesPane({
                   {m.buttons.map((b, k) => (
                     b.type === 'link' ? (
                       <a key={k} href={b.value} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 hover:bg-white/10 truncate">
+                        className="text-xs text-center px-3 py-1.5 rounded-full border border-foreground/20 hover:bg-foreground/10 truncate">
                         {b.label}
                       </a>
                     ) : (
                       <span key={k}
-                        className="text-xs text-center px-3 py-1.5 rounded-full border border-white/40 truncate">
+                        className="text-xs text-center px-3 py-1.5 rounded-full border border-foreground/20 truncate">
                         {b.label}
                       </span>
                     )
                   ))}
                 </div>
               )}
-              <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isInbound ? 'text-[#8e8e8e]' : 'text-white/70'}`}>
+              <div className="text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-muted-foreground">
                 {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 {!isInbound && m.sent_by === 'agent' && m.sent_by_name && ` · ${m.sent_by_name}`}
                 {!isInbound && m.sent_by !== 'agent' && ` · ${m.sent_by === 'funnel' ? 'funil' : 'automação'}`}

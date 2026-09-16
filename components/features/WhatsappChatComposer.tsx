@@ -19,7 +19,7 @@ export default function WhatsappChatComposer({
   sending, handleMicClick,
 }: any) {
   return (
-    <form onSubmit={handleSend} className="px-2 py-1.5 sm:px-3 sm:py-3 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex gap-0.5 sm:gap-2 items-center shrink-0 z-10 relative">
+    <form onSubmit={handleSend} className="px-2 py-1.5 sm:px-3 sm:py-3 bg-background border-t border-border flex gap-0.5 sm:gap-2 items-center shrink-0 z-10 relative">
       {recording ? (
         <>
           <button

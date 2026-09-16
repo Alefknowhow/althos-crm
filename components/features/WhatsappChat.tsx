@@ -12,7 +12,7 @@ import WhatsappChatMessagesPane from './WhatsappChatMessagesPane'
 import { useWhatsappChatState } from './useWhatsappChatState'
 import { toast } from 'sonner'
 
-export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], emailTemplates = [], orgName, isMock, pipelineStages = [], aiEnabledGlobally = false }: any) {
+export default function WhatsappChat({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members = [], panelContext, scheduled = [], templates = [], emailTemplates = [], orgName, isMock, pipelineStages = [], aiEnabledGlobally = false, hideSidebar = false }: any) {
   const s = useWhatsappChatState({
     orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, members, pipelineStages,
   })
@@ -22,7 +22,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
 
   return (
     <div className="flex w-full h-full min-h-0 overflow-hidden border-t">
-      <WhatsappChatSidebar
+      {!hideSidebar && <WhatsappChatSidebar
         inboxView={s.inboxView}
         onViewChange={s.setInboxView}
         unreadCount={s.conversations.filter((c: any) => !c.archived && c.unread_count > 0).length}
@@ -52,10 +52,10 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
         handleQuickAssign={s.handleQuickAssign}
         handleQuickStageChange={s.handleQuickStageChange}
         now={s.now}
-      />
+      />}
 
       <div
-        className={`relative flex-1 min-w-0 flex-col overflow-x-hidden bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/fundo-light.jpg')] dark:bg-[url('/fundo-dark.jpg')] bg-cover bg-center bg-no-repeat ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        className={`relative flex-1 min-w-0 flex-col overflow-x-hidden bg-background ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
         onDragOver={e => { if (selectedConversation) { e.preventDefault(); s.setDraggingFile(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target) s.setDraggingFile(false) }}
         onDrop={e => {

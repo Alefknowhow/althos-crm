@@ -9,11 +9,11 @@ import {
 import { setConversationArchived, setConversationMuted, setConversationPinned, setConversationFavorite } from '@/actions/whatsapp'
 
 export default function WhatsappChatHeader({
-  orgSlug, router, selectedConversation, stageName, lastSeen, aiEnabledGlobally, pausingAi,
+  orgSlug, router, selectedConversation, lastSeen, aiEnabledGlobally, pausingAi,
   handleToggleAi, showSearch, setShowSearch, setMsgQuery, handleToggleFlag, handleMarkUnread, setConfirmAction,
 }: any) {
   return (
-    <div className="px-4 md:px-6 py-3 border-b border-[#e9edef] dark:border-[#2a3942] bg-white dark:bg-[#202c33] flex justify-between items-center gap-2 h-16 shrink-0 overflow-hidden z-10">
+    <div className="px-4 md:px-6 py-3 border-b border-border bg-card flex justify-between items-center gap-2 h-16 shrink-0 overflow-hidden z-10">
       <div className="flex items-center gap-2 min-w-0 overflow-hidden">
         <button
           type="button"

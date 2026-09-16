@@ -39,7 +39,7 @@ export default function WhatsappChatSidebar({
   memberById, handleQuickAssign, handleQuickStageChange, now,
 }: any) {
   return (
-    <div className={`min-w-0 flex-1 md:flex-none md:w-1/3 md:max-w-[350px] border-r border-[#e9edef] dark:border-[#2a3942] flex-col bg-white dark:bg-[#111b21] ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+    <div className={`min-w-0 flex-1 md:flex-none md:w-1/3 md:max-w-[350px] border-r border-border flex-col bg-background ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
       {/* Busca + filtros do inbox */}
       <div className="px-3 pt-3 pb-2 border-b bg-background shrink-0 space-y-2">
         <h2 className="text-lg font-semibold">{{ all: 'Conversas', unread: 'Não lidas', pinned: 'Fixadas', archived: 'Arquivadas' }[inboxView as string]}</h2>
@@ -163,7 +163,7 @@ export default function WhatsappChatSidebar({
 
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.map((c: any) => (
-          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`relative pl-4 pr-3 py-3 border-b border-[#e9edef] dark:border-[#2a3942] cursor-pointer hover:bg-[#f5f6f6] dark:hover:bg-[#202c33] transition-colors flex items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : ''}`}>
+          <div key={c.id} onClick={() => router.push(`/app/${orgSlug}/conversas?id=${c.id}`)} className={`relative pl-4 pr-3 py-3 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors flex items-start gap-3 ${selectedConversation?.id === c.id ? 'bg-accent' : ''}`}>
             {/* Listra de status — azul quando a IA está atendendo, verde
                 quando é atendimento manual (IA pausada nesta conversa). */}
             {aiEnabledGlobally && (

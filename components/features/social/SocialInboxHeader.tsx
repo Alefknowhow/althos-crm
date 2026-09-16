@@ -17,11 +17,11 @@ export function SocialInboxHeader({
   orgSlug, router, selectedConversation, pausing, handleTogglePause, handleToggleFlag, handleMarkUnread, setConfirmAction,
 }: any) {
   return (
-    <div className="px-4 md:px-6 py-3 border-b border-[#efefef] dark:border-[#262626] bg-white dark:bg-black flex justify-between items-center gap-2 h-[72px] shrink-0 z-10">
+    <div className="px-4 md:px-6 py-3 border-b border-border bg-card flex justify-between items-center gap-2 h-[72px] shrink-0 z-10">
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
-          onClick={() => router.push(`/app/${orgSlug}/social/inbox`)}
+          onClick={() => router.push(`/app/${orgSlug}/conversas?ch=instagram`)}
           className="md:hidden shrink-0 -ml-1 p-1 rounded-md hover:bg-muted text-muted-foreground"
           aria-label="Voltar para a lista"
         >
@@ -33,7 +33,7 @@ export function SocialInboxHeader({
             {selectedConversation.sender_name || (selectedConversation.sender_username ? `@${selectedConversation.sender_username}` : 'Instagram')}
           </span>
           {selectedConversation.sender_username && selectedConversation.sender_name && (
-            <span className="text-xs text-[#8e8e8e] truncate block">@{selectedConversation.sender_username}</span>
+            <span className="text-xs text-muted-foreground truncate block">@{selectedConversation.sender_username}</span>
           )}
         </div>
       </div>

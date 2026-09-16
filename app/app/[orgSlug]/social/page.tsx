@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
 
 /**
- * Direct Inbox é a aba padrão do hub do Instagram — qualquer link pra
- * /social "puro" (sidebar, atalhos, etc.) cai direto na inbox em vez de
- * Automações, que agora vive em /social/automacoes.
+ * A inbox do Instagram (Direct/Comentários) virou aba dentro do módulo
+ * unificado "Conversas" (app/app/[orgSlug]/conversas) — link antigo pra
+ * /social "puro" (bookmark, atalho) cai lá agora. /social/automacoes
+ * continua existindo à parte, até a Fase 3 mover automações pro módulo
+ * genérico.
  */
 export default function SocialPage({ params }: { params: { orgSlug: string } }) {
-  redirect(`/app/${params.orgSlug}/social/inbox`)
+  redirect(`/app/${params.orgSlug}/conversas?ch=instagram`)
 }

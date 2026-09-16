@@ -47,17 +47,17 @@ export default function WhatsappChatMessagesPane({
           return (
             <div key={m.id} className={`flex min-w-0 ${isInbound ? 'justify-start' : 'justify-end'}`}>
               <div
-                className={`max-w-[75%] min-w-0 rounded-[7px] px-2.5 py-1.5 relative shadow-sm ${
+                className={`max-w-[75%] min-w-0 rounded-[7px] px-2.5 py-1.5 relative shadow-sm text-foreground ${
                   isInbound
-                    ? 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-[2px]'
-                    : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-[2px]'
+                    ? 'bg-card rounded-tl-[2px]'
+                    : 'bg-primary/10 rounded-tr-[2px]'
                 }`}
               >
                 <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                   {media || (text ? (linkUrl ? linkifyText(text) : highlightText(text, msgQuery)) : '[Mídia recebida]')}
                 </div>
                 {linkUrl && <LinkPreviewCard url={linkUrl} />}
-                <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-[#667781] dark:text-[#8696a0]`}>
+                <div className="text-[10px] mt-1 text-right flex items-center justify-end gap-1 text-muted-foreground">
                   {!isInbound && m.sent_by_name && <span className="truncate max-w-[120px]">{m.sent_by_name} ·</span>}
                   {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   {!isInbound && <MessageTicks status={m.status} />}

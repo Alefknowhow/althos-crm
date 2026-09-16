@@ -38,9 +38,13 @@ type Props = {
   panelContext?: any
   emailTemplates?: any[]
   orgName?: string
+  /** Lista unificada (WhatsApp+Instagram) do módulo Conversas já mostra a
+   *  própria sidebar por fora — quando true, SocialInbox renderiza só o
+   *  cabeçalho/mensagens/composer, sem a lista interna. */
+  hideSidebar?: boolean
 }
 
-export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, justConnected, members = [], panelContext, emailTemplates = [], orgName }: Props) {
+export default function SocialInbox({ orgSlug, orgId, conversations: conversationsProp, selectedConversation, initialMessages, justConnected, members = [], panelContext, emailTemplates = [], orgName, hideSidebar = false }: Props) {
   const [panelOpen, setPanelOpen] = useState(true)
   // Lista ao vivo — semeada pelo server, atualizada em tempo real abaixo.
   const [conversations, setConversations] = useState(conversationsProp)
@@ -82,7 +86,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
   useEffect(() => {
     if (justConnected) {
       toast.success('Instagram conectado com sucesso!')
-      router.replace(`/app/${orgSlug}/social/inbox`)
+      router.replace(`/app/${orgSlug}/conversas?ch=instagram`)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [justConnected])
@@ -140,7 +144,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
     const res = await markSocialConversationAsUnread(orgSlug, selectedConversation.id)
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Marcada como não lida.')
-    router.push(`/app/${orgSlug}/social/inbox`)
+    router.push(`/app/${orgSlug}/conversas?ch=instagram`)
   }
 
   async function handleConfirmedAction() {
@@ -156,7 +160,7 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
         const res = await deleteSocialConversation(orgSlug, selectedConversation.id)
         if (!res.ok) throw new Error(res.error)
         toast.success('Conversa apagada.')
-        router.push(`/app/${orgSlug}/social/inbox`)
+        router.push(`/app/${orgSlug}/conversas?ch=instagram`)
       } else if (confirmAction === 'block') {
         const willBlock = !selectedConversation.blocked
         const res = await setSocialConversationBlocked(orgSlug, selectedConversation.id, willBlock)
@@ -183,18 +187,20 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
   }
 
   return (
-    <div className="flex w-full h-full border-t border-[#efefef] dark:border-[#262626]">
-      <SocialInboxSidebar
-        filteredConversations={filteredConversations}
-        totalCount={conversations.length}
-        selectedConversation={selectedConversation}
-        query={query}
-        setQuery={setQuery}
-        onSelect={id => router.push(`/app/${orgSlug}/social/inbox?id=${id}`)}
-      />
+    <div className="flex w-full h-full border-t border-border">
+      {!hideSidebar && (
+        <SocialInboxSidebar
+          filteredConversations={filteredConversations}
+          totalCount={conversations.length}
+          selectedConversation={selectedConversation}
+          query={query}
+          setQuery={setQuery}
+          onSelect={id => router.push(`/app/${orgSlug}/conversas?ch=instagram&id=${id}`)}
+        />
+      )}
 
       <div
-        className={`relative flex-1 flex-col bg-white dark:bg-black ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
+        className={`relative flex-1 flex-col bg-background ${selectedConversation ? 'flex' : 'hidden md:flex'}`}
         onDragOver={e => { if (selectedConversation) { e.preventDefault(); setDraggingFile(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target) setDraggingFile(false) }}
         onDrop={e => {
@@ -251,13 +257,13 @@ export default function SocialInbox({ orgSlug, orgId, conversations: conversatio
             />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-white dark:bg-black">
+          <div className="flex-1 flex items-center justify-center bg-background">
             <div className="text-center p-8 max-w-sm">
-              <div className="mx-auto mb-4 h-16 w-16 rounded-full border-2 border-black dark:border-white flex items-center justify-center">
+              <div className="mx-auto mb-4 h-16 w-16 rounded-full border-2 border-foreground flex items-center justify-center">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
               </div>
               <h3 className="font-normal text-xl mb-1">Suas mensagens</h3>
-              <p className="text-[#8e8e8e] text-sm">Selecione uma conversa para atender manualmente.</p>
+              <p className="text-muted-foreground text-sm">Selecione uma conversa para atender manualmente.</p>
             </div>
           </div>
         )}

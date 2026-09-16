@@ -11,7 +11,7 @@ export function SocialInboxComposer({
   uploadingMedia, sending, handleMicClick,
 }: any) {
   return (
-    <form onSubmit={handleSend} className="p-4 bg-white dark:bg-black border-t border-[#efefef] dark:border-[#262626] flex gap-2 items-center shrink-0 relative">
+    <form onSubmit={handleSend} className="p-4 bg-background border-t border-border flex gap-2 items-center shrink-0 relative">
       {recording ? (
         <>
           <button
@@ -24,7 +24,7 @@ export function SocialInboxComposer({
             <Trash2 className="w-5 h-5" />
           </button>
 
-          <div className="flex-1 flex items-center gap-2 min-w-0 bg-[#efefef] dark:bg-[#262626] rounded-full px-4 min-h-[44px]">
+          <div className="flex-1 flex items-center gap-2 min-w-0 bg-muted rounded-full px-4 min-h-[44px]">
             {!recordingPaused && <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />}
             <span className="tabular-nums text-sm font-medium text-red-500 shrink-0">
               {Math.floor(recordingSeconds / 60)}:{String(recordingSeconds % 60).padStart(2, '0')}
@@ -33,7 +33,7 @@ export function SocialInboxComposer({
               {WAVEFORM_BARS.map((h, i) => (
                 <span
                   key={i}
-                  className={`w-[3px] rounded-full shrink-0 ${recordingPaused ? 'bg-muted-foreground/30' : 'bg-[#3797f0]/50'}`}
+                  className={`w-[3px] rounded-full shrink-0 ${recordingPaused ? 'bg-muted-foreground/30' : 'bg-primary/50'}`}
                   style={{ height: `${h}px` }}
                 />
               ))}
@@ -57,7 +57,7 @@ export function SocialInboxComposer({
           <button
             type="button"
             onClick={handleSendRecording}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-[#3797f0] text-white hover:opacity-90 shrink-0"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0"
             title="Enviar áudio"
             aria-label="Enviar áudio"
           >
@@ -71,7 +71,7 @@ export function SocialInboxComposer({
         <button
           type="button"
           onClick={() => setShowEmoji((v: boolean) => !v)}
-          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${showEmoji ? 'bg-muted text-[#3797f0]' : ''}`}
+          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground ${showEmoji ? 'bg-muted text-primary' : ''}`}
           title="Emojis"
           aria-label="Emojis"
         >
@@ -80,7 +80,7 @@ export function SocialInboxComposer({
         {showEmoji && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-            <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-2xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
+            <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-card border border-border rounded-2xl shadow-lg p-2 grid grid-cols-8 gap-0.5">
               {EMOJIS.map(e => (
                 <button
                   key={e}
@@ -115,14 +115,14 @@ export function SocialInboxComposer({
 
       <Input
         ref={inputRef}
-        className="flex-1 bg-white dark:bg-black border border-[#dbdbdb] dark:border-[#262626] rounded-full px-5 min-h-[44px] focus-visible:ring-0"
+        className="flex-1 bg-background border border-border rounded-full px-5 min-h-[44px] focus-visible:ring-0"
         placeholder="Mensagem..."
         value={input}
         onChange={e => setInput(e.target.value)}
       />
 
       {input.trim() ? (
-        <Button type="submit" disabled={sending} variant="ghost" className="rounded-full min-h-[44px] min-w-[44px] px-0 text-[#3797f0] hover:bg-[#efefef] dark:hover:bg-[#262626]" title="Enviar">
+        <Button type="submit" disabled={sending} variant="ghost" className="rounded-full min-h-[44px] min-w-[44px] px-0 text-primary hover:bg-muted" title="Enviar">
           {sending ? '...' : (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
           )}
@@ -132,7 +132,7 @@ export function SocialInboxComposer({
           type="button"
           onClick={handleMicClick}
           disabled={uploadingMedia}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-[#3797f0] text-white hover:opacity-90 shrink-0 disabled:opacity-50"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 shrink-0 disabled:opacity-50"
           title="Gravar áudio"
           aria-label="Gravar áudio"
         >
