@@ -135,7 +135,7 @@ export default async function OrgLayout({
       <SidebarCollapseProvider>
       <PageHintProvider>
       <div className="flex flex-1 min-h-0 print:block">
-        <div className="print:hidden">
+        <div className="print:hidden md:py-3 md:pl-3 min-h-0">
           <Sidebar orgSlug={params.orgSlug} />
         </div>
 

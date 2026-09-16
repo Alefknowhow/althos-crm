@@ -13,6 +13,8 @@ import {
 } from '@/actions/funnel'
 import { CHART_CARD_H } from './dashboardSizes'
 
+type FunnelStage = FunnelResult['stages'][number]
+
 type SourceOptions = {
   forms: Array<{ id: string; name: string }>
   campaigns: Array<{ name: string; utm_campaign: string }>
@@ -170,56 +172,99 @@ export default function ConversionFunnelWidget({
           </div>
         </div>
 
-        {/* Funil em colunas verticais — cada etapa é uma barra que cresce de
-            baixo pra cima, proporcional à contagem. Largura fixa por coluna,
-            rola no eixo X se não couberem todas. Altura do card nunca varia
-            com o número de etapas. */}
+        {/* Funil de verdade — segmentos horizontais centralizados, cada um
+            um trapézio (bordas laterais na diagonal) que afunila da
+            contagem da própria etapa até a contagem da próxima, com pouco
+            espaçamento entre as linhas e o dado no centro de cada uma. */}
         {!hasAnyData ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
             Nenhum lead corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex items-stretch gap-3 pt-2 pb-1">
-            {result.stages.map((stage, idx) => {
-              const heightPct = Math.max(6, (stage.count / maxCount) * 100)
-              const color = stage.color || '#0f62fe'
-
-              return (
-                <div key={stage.id} className="flex flex-col items-center flex-1 min-w-0">
-                  {/* Área da coluna — a barra fica ancorada embaixo e cresce
-                      pra cima conforme o valor. */}
-                  <div className="flex-1 w-full flex items-end justify-center min-h-0">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
-                      onKeyDown={e => { if (e.key === 'Enter') router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`) }}
-                      title="Ver no Pipeline"
-                      className="w-full max-w-[56px] rounded-t-md cursor-pointer transition-all hover:brightness-95"
-                      style={{ height: `${heightPct}%`, backgroundColor: color }}
-                    />
-                  </div>
-                  {/* Rótulos — eixo X do "gráfico" */}
-                  <div className="mt-2 text-center min-w-0 w-full">
-                    <div className="text-base font-bold tabular-nums leading-tight">{stage.count}</div>
-                    <div className="text-xs font-medium truncate" title={stage.name}>{stage.name}</div>
-                    {stage.value_cents > 0 && (
-                      <div className="text-[10px] text-muted-foreground tabular-nums truncate">
-                        {fmtCurrency(stage.value_cents)}
-                      </div>
-                    )}
-                    {idx > 0 && (
-                      <div className="text-[10px] text-muted-foreground/80 mt-0.5">
-                        {stage.conversion_from_previous.toFixed(0)}%
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <FunnelChart
+            stages={result.stages}
+            maxCount={maxCount}
+            fmtCurrency={fmtCurrency}
+            onOpen={() => router.push(`/app/${orgSlug}/pipeline${pipelineId ? `?pipeline_id=${pipelineId}` : ''}`)}
+          />
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/** Funil de verdade: cada etapa é um trapézio (topo = contagem da própria
+ *  etapa, base = contagem da etapa seguinte) — as bordas laterais ficam na
+ *  diagonal e o conjunto afunila de cima pra baixo. Linhas grossas, pouco
+ *  espaçamento entre elas, dado sempre centralizado dentro da própria linha. */
+function FunnelChart({
+  stages, maxCount, fmtCurrency, onOpen,
+}: {
+  stages: FunnelStage[]
+  maxCount: number
+  fmtCurrency: (cents: number) => string
+  onOpen: () => void
+}) {
+  const ROW_H = 48
+  const GAP = 6
+  const MIN_PCT = 24
+  const n = stages.length
+  const totalH = n * ROW_H + (n - 1) * GAP
+
+  const widths = stages.map(s => MIN_PCT + (100 - MIN_PCT) * (s.count / maxCount))
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col justify-center py-1">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={e => { if (e.key === 'Enter') onOpen() }}
+        title="Ver no Pipeline"
+        className="relative w-full cursor-pointer"
+        style={{ height: totalH }}
+      >
+        <svg viewBox={`0 0 100 ${totalH}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+          {stages.map((stage, i) => {
+            const y0 = i * (ROW_H + GAP)
+            const y1 = y0 + ROW_H
+            const topW = widths[i]
+            const botW = i < n - 1 ? widths[i + 1] : widths[i] * 0.82
+            const topX0 = 50 - topW / 2
+            const topX1 = 50 + topW / 2
+            const botX0 = 50 - botW / 2
+            const botX1 = 50 + botW / 2
+            const fill = stage.color || `var(--chart-${(i % 6) + 1})`
+            return (
+              <polygon
+                key={stage.id}
+                points={`${topX0},${y0} ${topX1},${y0} ${botX1},${y1} ${botX0},${y1}`}
+                fill={fill}
+                className="transition-opacity hover:opacity-90"
+              />
+            )
+          })}
+        </svg>
+
+        {stages.map((stage, i) => {
+          const y0 = i * (ROW_H + GAP)
+          return (
+            <div
+              key={stage.id}
+              className="absolute inset-x-0 flex flex-col items-center justify-center text-center px-4 pointer-events-none"
+              style={{ top: y0, height: ROW_H }}
+            >
+              <div className="text-[13px] font-bold text-white leading-tight tabular-nums truncate max-w-full">
+                {stage.count} · {stage.name}
+              </div>
+              <div className="text-[10px] text-white/80 leading-tight tabular-nums truncate max-w-full">
+                {i > 0 ? `${stage.conversion_from_previous.toFixed(0)}% · ` : ''}
+                {stage.value_cents > 0 ? fmtCurrency(stage.value_cents) : ''}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }

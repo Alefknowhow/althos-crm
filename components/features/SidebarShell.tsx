@@ -43,8 +43,8 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
       <aside
         data-collapsed={collapsed}
         className={cn(
-          'group hidden md:flex shrink-0 bg-sidebar flex-col relative transition-[width] duration-200 ease-out',
-          'my-3 ml-3 rounded-lg shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] overflow-hidden',
+          'group hidden md:flex shrink-0 bg-sidebar flex-col relative h-full min-h-0 transition-[width] duration-200 ease-out',
+          'rounded-lg shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] overflow-hidden',
           collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
         )}
       >
