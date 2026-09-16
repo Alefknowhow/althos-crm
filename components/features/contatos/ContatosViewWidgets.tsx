@@ -62,7 +62,7 @@ export function ListAvatar({ name, url }: { name: string; url: string | null }) 
     return <img src={url} alt={name} className="shrink-0 w-9 h-9 rounded-full object-cover" />
   }
   return (
-    <span className="shrink-0 w-9 h-9 rounded-full grid place-items-center bg-brand-100 text-brand-700 text-xs font-semibold">
+    <span className="shrink-0 w-9 h-9 rounded-full grid place-items-center bg-primary/15 text-primary text-xs font-semibold">
       {initials(name)}
     </span>
   )
@@ -123,7 +123,7 @@ export function AvatarUploader({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={shownUrl} alt={name} className="w-14 h-14 rounded-full object-cover" />
       ) : (
-        <span className="w-14 h-14 rounded-full grid place-items-center bg-brand-100 text-brand-700 text-lg font-semibold">
+        <span className="w-14 h-14 rounded-full grid place-items-center bg-primary/15 text-primary text-lg font-semibold">
           {initials(name)}
         </span>
       )}

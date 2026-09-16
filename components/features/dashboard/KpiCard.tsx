@@ -31,7 +31,7 @@ export default function KpiCard({
 }) {
   const helpId = useId()
   const trendColor =
-    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-muted-foreground'
+    trend === 'up' ? 'text-success' : trend === 'down' ? 'text-destructive' : 'text-muted-foreground'
 
   return (
     <Card className={cn(
@@ -40,7 +40,7 @@ export default function KpiCard({
       className,
     )}>
       <div className="flex items-start justify-between gap-1.5">
-        <span className={cn('font-medium text-muted-foreground truncate', compact ? 'text-[9px]' : 'text-[10px] sm:text-xs')}>{label}</span>
+        <span className={cn('font-semibold uppercase tracking-wide text-muted-foreground truncate', compact ? 'text-[9px]' : 'text-[9.5px] sm:text-[10.5px]')}>{label}</span>
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>

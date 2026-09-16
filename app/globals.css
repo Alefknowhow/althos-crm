@@ -5,11 +5,21 @@
 @layer base {
   :root {
     /* IBM Carbon-inspired light palette mapped to shadcn tokens */
-    --background: 0 0% 98%;             /* #fafafa canvas — levemente diferente do card, pra dar profundidade sem depender de sombra (era igual ao card, 100%, antes do redesign) */
+    --background: 0 0% 95%;             /* #f2f2f3 canvas — levemente diferente do card, pra dar profundidade sem depender de sombra (era #fafafa antes do redesign do /design) */
     --foreground: 0 0% 9%;              /* #161616 ink */
 
     --card: 0 0% 100%;                  /* #ffffff — mais claro que o background, "flutua" por cima */
     --card-foreground: 0 0% 9%;
+
+    /* Paleta categórica (validada via dataviz skill/validate_palette.js) —
+       hex direto, não HSL, porque é consumida como cor de série em gráficos
+       (fill/stroke), não como token de superfície/texto. */
+    --chart-1: #0a84ff;
+    --chart-2: #0f9d8a;
+    --chart-3: #8b5cf6;
+    --chart-4: #e0862a;
+    --chart-5: #d6497a;
+    --chart-6: #5aa831;
 
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
@@ -58,10 +68,16 @@
 
   /* Force light theme regardless of OS preference — used on public pages */
   .light {
-    --background: 0 0% 98%;
+    --background: 0 0% 95%;
     --foreground: 0 0% 9%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 9%;
+    --chart-1: #0a84ff;
+    --chart-2: #0f9d8a;
+    --chart-3: #8b5cf6;
+    --chart-4: #e0862a;
+    --chart-5: #d6497a;
+    --chart-6: #5aa831;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
     --primary: 210 100% 52%;
@@ -89,12 +105,12 @@
     color-scheme: light;
     /* Break dark-mode color inheritance from body */
     color: hsl(0 0% 9%);
-    background-color: hsl(0 0% 98%);
+    background-color: hsl(0 0% 95%);
   }
 
   .dark {
     /* IBM Carbon-inspired dark palette (Carbon's "g100" theme family) */
-    --background: 0 0% 10%;             /* #1a1a1a Carbon g100 background */
+    --background: 0 0% 9%;              /* #161616 — era #1a1a1a antes do redesign do /design */
     --foreground: 0 0% 96%;             /* #f4f4f4 */
 
     --card: 0 0% 15%;                   /* #262626 Carbon layer-01 */
@@ -103,8 +119,15 @@
     --popover: 0 0% 15%;
     --popover-foreground: 0 0% 96%;
 
-    --primary: 210 100% 52%;            /* #0a84ff — mesmo azul Apple do light, sem trocar de tom */
-    --primary-foreground: 0 0% 100%;
+    --primary: 210 100% 63%;            /* #409cff — mais claro que o azul do light (#0a84ff) pra manter contraste AA sobre o fundo escuro, igual ao canvas */
+    --primary-foreground: 0 0% 8%;
+
+    --chart-1: #3b8fef;
+    --chart-2: #189384;
+    --chart-3: #8b7af0;
+    --chart-4: #c97a1f;
+    --chart-5: #e2578f;
+    --chart-6: #4a9c33;
     --action-primary: 210 100% 42%;
     --action-primary-hover: 210 100% 38%;
     --action-primary-active: 210 100% 33%;
@@ -131,9 +154,9 @@
 
     --border: 0 0% 22%;                 /* #383838 */
     --input: 0 0% 22%;
-    --ring: 210 100% 52%;
+    --ring: 210 100% 63%;               /* acompanha o novo --primary escuro (#409cff) */
 
-    --sidebar: 0 0% 10%;
+    --sidebar: 0 0% 9%;                 /* acompanha o novo --background escuro (#161616) */
     --sidebar-foreground: 0 0% 96%;
     --sidebar-border: 0 0% 22%;
     --sidebar-accent: 0 0% 15%;

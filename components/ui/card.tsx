@@ -11,7 +11,7 @@ const Card = React.forwardRef<
     className={cn(
       // Cantos macios + sombra ambiente suave — a borda quase some, a luz
       // é que sustenta a leitura de "isso está por cima" (em vez de linha dura).
-      "rounded-2xl border border-border/60 bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,.04),0_16px_32px_-20px_rgba(0,0,0,.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_16px_32px_-20px_rgba(0,0,0,.5)]",
+      "rounded-lg border border-border/60 bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.05)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_16px_32px_-20px_rgba(0,0,0,.5)]",
       className
     )}
     {...props}

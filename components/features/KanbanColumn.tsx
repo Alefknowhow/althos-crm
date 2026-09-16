@@ -34,36 +34,36 @@ export default function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col bg-muted/30 rounded-none w-full md:w-[320px] shrink-0 md:snap-center border overflow-hidden h-auto md:h-full max-h-[75vh] md:max-h-none transition-colors',
-        isOver && 'ring-2 ring-brand-400 border-brand-300',
+        'flex flex-col bg-muted/50 dark:bg-black/20 rounded-lg w-full md:w-[280px] shrink-0 md:snap-center overflow-hidden h-auto md:h-full max-h-[75vh] md:max-h-none transition-colors',
+        isOver && 'ring-2 ring-primary/50',
       )}
     >
-      {/* Top accent bar */}
+      {/* Top accent bar — cor da etapa, como no canvas */}
       <div className="h-1 w-full shrink-0" style={{ backgroundColor: accent }} />
 
-      <div className="px-4 py-3 border-b bg-background flex justify-between items-center shrink-0">
+      <div className="px-2.5 pt-2.5 pb-1.5 flex justify-between items-center shrink-0">
         <div className="min-w-0">
-          <div className="font-semibold text-sm flex items-center gap-2">
+          <div className="font-bold text-xs flex items-center gap-1.5">
             <span className="truncate">{stage.name}</span>
-            <span className="text-muted-foreground bg-muted px-2 py-0.5 rounded-full text-xs tabular-nums">
+            <span className="text-muted-foreground/70 text-[11px] font-semibold tabular-nums">
               {leads.length}
             </span>
-          </div>
-          <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-            {formatCurrency(totalValue)}
           </div>
         </div>
         <button
           type="button"
           onClick={() => onAddLead(stage.id)}
           title="Adicionar lead"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Plus className="h-4 w-4" />
         </button>
       </div>
+      <div className="text-[10.5px] text-muted-foreground/70 px-2.5 pb-2 tabular-nums">
+        {formatCurrency(totalValue)}
+      </div>
 
-      <div ref={setNodeRef} className="flex-1 p-3 overflow-y-auto space-y-2.5 min-h-[150px]">
+      <div ref={setNodeRef} className="flex-1 px-2 pb-2 overflow-y-auto space-y-2 min-h-[150px]">
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map(lead => (
             <LeadCard
@@ -84,7 +84,7 @@ export default function KanbanColumn({
           <button
             type="button"
             onClick={() => onAddLead(stage.id)}
-            className="flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border py-8 text-xs text-muted-foreground/70 transition-colors hover:border-brand-300 hover:text-brand-600"
+            className="flex w-full flex-col items-center justify-center gap-1 rounded-lg border-[1.5px] border-dashed border-border py-8 text-xs text-muted-foreground/60 transition-colors hover:border-primary/40 hover:text-primary"
           >
             <Plus className="h-4 w-4" />
             Adicionar lead

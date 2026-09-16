@@ -76,6 +76,17 @@ const config = {
           'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
         },
 
+        // Paleta categórica de gráficos (validada via dataviz skill) — hex
+        // direto (var(--chart-N) não é HSL), ordem fixa, nunca ciclada.
+        chart: {
+          1: 'var(--chart-1)',
+          2: 'var(--chart-2)',
+          3: 'var(--chart-3)',
+          4: 'var(--chart-4)',
+          5: 'var(--chart-5)',
+          6: 'var(--chart-6)',
+        },
+
         // Althos brand — indigo scale (corporate, trustworthy)
         brand: {
           50: '#eef2ff',

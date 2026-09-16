@@ -40,7 +40,7 @@ export function DealCard({ d, fmtCurrency, fmtDate }: { d: ContatoDeal; fmtCurre
       <div className="min-w-0">
         <span className={cn(
           'font-medium',
-          d.status === 'won' && 'text-emerald-600',
+          d.status === 'won' && 'text-success',
           d.status === 'lost' && 'text-muted-foreground',
         )}>
           {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}

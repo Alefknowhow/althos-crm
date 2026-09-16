@@ -77,7 +77,7 @@ function FilterFields({
         className={cn(
           'inline-flex h-9 items-center justify-center gap-1.5 rounded-md border px-3 text-sm transition-colors w-full md:w-auto',
           stalledOnly
-            ? 'border-amber-300 bg-amber-50 text-amber-700'
+            ? 'border-warning/40 bg-warning/10 text-warning'
             : 'border-border text-muted-foreground hover:bg-secondary',
         )}
       >

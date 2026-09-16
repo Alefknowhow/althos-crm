@@ -161,7 +161,7 @@ export default function ContatosView({
         {/* Master */}
         <div
           className={cn(
-            'md:w-[300px] lg:w-[360px] md:shrink-0 rounded-none border bg-card flex flex-col overflow-hidden',
+            'md:w-[300px] lg:w-[360px] md:shrink-0 rounded-lg border border-border/60 bg-card flex flex-col overflow-hidden',
             mobileDetail && 'hidden md:flex',
           )}
         >
@@ -186,7 +186,7 @@ export default function ContatosView({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium truncate">{c.name}</span>
                         {c.has_documents && (
-                          <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
+                          <FileCheck2 className="w-3.5 h-3.5 shrink-0 text-success" />
                         )}
                       </div>
                       {c.phone && (
@@ -274,7 +274,7 @@ export default function ContatosView({
         {/* Detail */}
         <div
           className={cn(
-            'md:flex-1 md:min-w-0 rounded-none border bg-card overflow-y-auto',
+            'md:flex-1 md:min-w-0 rounded-lg border border-border/60 bg-card overflow-y-auto',
             !mobileDetail && 'hidden md:block',
           )}
         >

@@ -31,31 +31,31 @@ export default function PipelineKpiBar({ leads }: { leads: Lead[] }) {
       label: 'Valor em aberto',
       value: formatCurrency(totalCents),
       icon: Wallet,
-      tone: 'text-brand-600 bg-brand-50',
+      tone: 'text-primary bg-primary/12',
     },
     {
       label: 'Negócios ativos',
       value: String(count),
       icon: Briefcase,
-      tone: 'text-sky-600 bg-sky-50',
+      tone: 'text-info bg-info/12',
     },
     {
       label: 'Ticket médio',
       value: formatCurrency(avgCents),
       icon: Calculator,
-      tone: 'text-emerald-600 bg-emerald-50',
+      tone: 'text-success bg-success/12',
     },
     {
       label: 'Parados +7d',
       value: String(stalled),
       icon: AlarmClock,
-      tone: stalled > 0 ? 'text-amber-600 bg-amber-50' : 'text-muted-foreground bg-secondary',
+      tone: stalled > 0 ? 'text-warning bg-warning/12' : 'text-muted-foreground bg-secondary',
     },
     {
       label: 'Quentes (IA)',
       value: String(hot),
       icon: Flame,
-      tone: hot > 0 ? 'text-rose-600 bg-rose-50' : 'text-muted-foreground bg-secondary',
+      tone: hot > 0 ? 'text-destructive bg-destructive/12' : 'text-muted-foreground bg-secondary',
     },
   ]
 
@@ -66,13 +66,13 @@ export default function PipelineKpiBar({ leads }: { leads: Lead[] }) {
         return (
           <div
             key={item.label}
-            className="flex items-center gap-3 rounded-none border border-border bg-card px-3.5 py-2.5"
+            className="flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3.5 py-2.5"
           >
             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
               <Icon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {item.label}
               </p>
               <p className="truncate text-base font-semibold tabular-nums tracking-apple-tight">

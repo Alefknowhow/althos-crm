@@ -14,27 +14,27 @@ export const CONTATO_STATUS_META: Record<
 > = {
   lead: {
     label: 'Lead',
-    badgeClass: 'border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-900/20',
-    dot: 'bg-blue-500',
+    badgeClass: 'border-transparent text-info bg-info/15',
+    dot: 'bg-info',
   },
   cliente: {
     label: 'Cliente',
-    badgeClass: 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20',
-    dot: 'bg-emerald-500',
+    badgeClass: 'border-transparent text-success bg-success/15',
+    dot: 'bg-success',
   },
   inativo: {
     label: 'Inativo',
-    badgeClass: 'border-zinc-300 text-zinc-600 bg-zinc-50 dark:bg-zinc-800/40',
-    dot: 'bg-zinc-400',
+    badgeClass: 'border-transparent text-muted-foreground bg-muted',
+    dot: 'bg-muted-foreground/60',
   },
   fornecedor: {
     label: 'Fornecedor',
-    badgeClass: 'border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-900/20',
-    dot: 'bg-amber-500',
+    badgeClass: 'border-transparent text-warning bg-warning/15',
+    dot: 'bg-warning',
   },
   colaborador: {
     label: 'Colaborador',
-    badgeClass: 'border-violet-300 text-violet-700 bg-violet-50 dark:bg-violet-900/20',
+    badgeClass: 'border-transparent text-violet-600 dark:text-violet-300 bg-violet-500/15',
     dot: 'bg-violet-500',
   },
 }

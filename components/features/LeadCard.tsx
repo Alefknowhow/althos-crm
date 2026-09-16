@@ -138,12 +138,12 @@ export function initials(name: string, email: string): string {
 }
 
 export const TIER = {
-  hot:    { label: 'Quente', cls: 'bg-rose-100 text-rose-700' },
-  quente: { label: 'Quente', cls: 'bg-rose-100 text-rose-700' },
-  warm:   { label: 'Morno',  cls: 'bg-amber-100 text-amber-700' },
-  morno:  { label: 'Morno',  cls: 'bg-amber-100 text-amber-700' },
-  cold:   { label: 'Frio',   cls: 'bg-sky-100 text-sky-700' },
-  frio:   { label: 'Frio',   cls: 'bg-sky-100 text-sky-700' },
+  hot:    { label: 'Quente', cls: 'bg-destructive/15 text-destructive' },
+  quente: { label: 'Quente', cls: 'bg-destructive/15 text-destructive' },
+  warm:   { label: 'Morno',  cls: 'bg-warning/15 text-warning' },
+  morno:  { label: 'Morno',  cls: 'bg-warning/15 text-warning' },
+  cold:   { label: 'Frio',   cls: 'bg-info/15 text-info' },
+  frio:   { label: 'Frio',   cls: 'bg-info/15 text-info' },
 } as const
 
 export function onlyDigits(s?: string | null) {
@@ -210,13 +210,13 @@ export default function LeadCard({
       style={isOverlay ? undefined : style}
       {...attributes}
       className={cn(
-        'group/card relative bg-background border rounded-none   select-none transition-all',
-        isOverlay ? '  rotate-1 scale-[1.02]' : 'hover:border-primary/40  ',
+        'group/card relative bg-card rounded-lg shadow-[0_1px_2px_rgba(0,0,0,.05),0_4px_10px_rgba(0,0,0,.04)] select-none transition-all cursor-pointer',
+        isOverlay ? 'rotate-1 scale-[1.02]' : 'hover:shadow-[0_1px_2px_rgba(0,0,0,.08),0_8px_16px_rgba(0,0,0,.08)]',
         isDragging ? 'opacity-30' : '',
       )}
     >
       {/* Left accent for stalled deals */}
-      {isStalled && <span className="absolute left-0 top-0 h-full w-1 rounded-l-xl bg-amber-400" />}
+      {isStalled && <span className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-warning" />}
 
       {/* Drag handle area — stage dot + title + seller + value */}
       <div
@@ -233,7 +233,7 @@ export default function LeadCard({
           <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground line-clamp-2 flex items-center gap-1.5 flex-wrap">
             {lead.name}
             {lead.status === 'cliente' && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 shrink-0">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success shrink-0">
                 <UserCheck className="h-2.5 w-2.5" />
                 Cliente
               </span>
@@ -283,7 +283,7 @@ export default function LeadCard({
 
       {/* Footer: timestamp + quick actions */}
       <div className="flex items-center justify-between border-t border-border/60 px-2.5 py-1">
-        <p className={cn('text-[10px] truncate', isStalled ? 'font-medium text-amber-600' : 'text-muted-foreground/70')}>
+        <p className={cn('text-[10px] truncate', isStalled ? 'font-medium text-warning' : 'text-muted-foreground/70')}>
           {refDate ? `há ${formatDistanceToNow(new Date(refDate), { locale: ptBR })}` : 'sem atividade'}
         </p>
         <div className="flex items-center gap-1 shrink-0">
@@ -292,7 +292,7 @@ export default function LeadCard({
           ) : owner ? (
             <span
               title={owner.name || owner.email}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary"
             >
               {initials(owner.name, owner.email)}
             </span>

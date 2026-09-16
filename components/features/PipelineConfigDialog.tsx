@@ -131,7 +131,7 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
           </DialogHeader>
 
           <p className="text-xs text-muted-foreground -mt-1">
-            Marque <span className="font-medium text-emerald-600">Ganho</span> para disparar o evento{' '}
+            Marque <span className="font-medium text-success">Ganho</span> para disparar o evento{' '}
             <strong>Purchase</strong> na Meta CAPI quando um lead entrar nesse estágio.
             Marque <span className="font-medium text-destructive">Perdido</span> para disparar{' '}
             <strong>NotQualified</strong>.
@@ -174,8 +174,8 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors',
                     s.is_won
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
-                      : 'bg-muted text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-900/20',
+                      ? 'bg-success/15 text-success'
+                      : 'bg-muted text-muted-foreground hover:bg-success/10 hover:text-success',
                   )}
                 >
                   <Trophy className="w-3 h-3" />
@@ -191,8 +191,8 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors',
                     s.is_lost
-                      ? 'bg-red-100 text-destructive dark:bg-red-900/40 dark:text-red-400'
-                      : 'bg-muted text-muted-foreground hover:bg-red-50 hover:text-destructive dark:hover:bg-red-900/20',
+                      ? 'bg-destructive/15 text-destructive'
+                      : 'bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
                   )}
                 >
                   <ThumbsDown className="w-3 h-3" />
@@ -237,7 +237,7 @@ export default function PipelineConfigDialog({ orgSlug, pipeline, stages }: any)
             </div>
             <div className="space-y-1.5">
               {pipeline.has_meta_access_token && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                <div className="flex items-center gap-1.5 text-xs text-success">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Token configurado. Cole um novo abaixo para atualizar.
                 </div>
