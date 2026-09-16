@@ -80,13 +80,13 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
             style={{ transform: open ? 'translateX(0)' : 'translateX(-100%)' }}
           >
             <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-4 shrink-0">
-              <Logo className="sidebar-brand" v2 />
+              <Logo className="sidebar-brand" v2 textClassName="text-sidebar-foreground" />
               <button
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Fechar menu"
-                className="w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground"
+                className="w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground/70"
               >
                 <X className="w-4 h-4" />
               </button>

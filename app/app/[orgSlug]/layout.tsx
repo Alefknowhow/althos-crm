@@ -147,7 +147,7 @@ export default async function OrgLayout({
               desktop aside occupies its own column. Hidden entirely on
               print so only the page's own content (ex.: DocumentPrintView)
               shows up — nunca a chrome do CRM. */}
-          <header className="print:hidden h-14 border-b border-border bg-background flex items-center px-3 md:px-5 gap-2 justify-between sticky top-0 z-30">
+          <header className="print:hidden mx-3 sm:mx-5 mt-3 h-[60px] shrink-0 rounded-lg bg-card shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] flex items-center px-3.5 md:px-5 gap-3 justify-between sticky top-0 z-30">
             <div className="flex items-center gap-3 min-w-0">
               <GlobalBackButton orgSlug={params.orgSlug} />
               {/* Mobile: título compacto (inalterado). Desktop: ícone +
@@ -161,8 +161,8 @@ export default async function OrgLayout({
               {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
               {orgs.length > 1 && (
                 <>
-                  <div className="hidden md:block w-px h-4 bg-border" />
-                  <span className="hidden md:inline text-sm font-medium tracking-apple-snug text-muted-foreground">
+                  <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
+                  <span className="hidden md:inline text-[12.5px] font-medium tracking-apple-snug text-muted-foreground">
                     Organização
                   </span>
                   <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
@@ -170,7 +170,7 @@ export default async function OrgLayout({
               )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {/* Busca e Copiloto no header viram exclusivos do desktop —
                   no mobile os dois já têm entrada própria na barra inferior
                   (Consultar/Assistente), manter os dois no header também
@@ -178,20 +178,18 @@ export default async function OrgLayout({
               {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
               <HeaderSearchBar />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
-              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
               <div className="hidden md:inline-flex">
                 <PushNotificationToggle orgSlug={params.orgSlug} />
               </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-              <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
                 <SupportHeaderButton />
               </div>
-              <div className="hidden md:block w-px h-4 bg-border mx-1" />
               <div className="hidden md:inline-flex">
                 <ModeToggle />
               </div>
-              <div className="hidden md:block w-px h-4 bg-border mx-1" />
+              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
               <div className="hidden md:inline-flex">
                 <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
               </div>
@@ -199,7 +197,7 @@ export default async function OrgLayout({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-0 pb-5 overflow-y-auto overflow-x-hidden bg-background print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
+          <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-5 overflow-y-auto overflow-x-hidden bg-background print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}
             </div>

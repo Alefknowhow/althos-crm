@@ -84,11 +84,11 @@ export default function SidebarUserMenu({ name, email, avatarUrl, isOwner }: Pro
       >
         <UserAvatar name={name} email={email} avatarUrl={avatarUrl} size={28} />
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-xs font-medium truncate leading-tight">{name || 'Usuário'}</p>
-          <p className="text-[10px] text-muted-foreground truncate leading-tight">{email}</p>
+          <p className="text-xs font-medium truncate leading-tight text-sidebar-foreground">{name || 'Usuário'}</p>
+          <p className="text-[10px] text-sidebar-foreground/50 truncate leading-tight">{email}</p>
         </div>
         <ChevronUp
-          className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${open ? '' : 'rotate-180'}`}
+          className={`w-3.5 h-3.5 text-sidebar-foreground/50 shrink-0 transition-transform ${open ? '' : 'rotate-180'}`}
         />
       </button>
     </div>

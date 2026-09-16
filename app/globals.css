@@ -58,12 +58,14 @@
 
     --radius: 14px;                     /* era 8px — cantos mais macios, padrão "SaaS premium" */
 
-    /* Sidebar (used by app shell) */
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 88%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 9%;
+    /* Sidebar (used by app shell) — rail fica sempre escuro (#0f0f10, igual
+       ao canvas do /design), independente do tema claro/escuro do resto do
+       app. Por isso os mesmos valores se repetem em :root/.light/.dark. */
+    --sidebar: 0 0% 6%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 96%;
   }
 
   /* Force light theme regardless of OS preference — used on public pages */
@@ -156,10 +158,11 @@
     --input: 0 0% 22%;
     --ring: 210 100% 63%;               /* acompanha o novo --primary escuro (#409cff) */
 
-    --sidebar: 0 0% 9%;                 /* acompanha o novo --background escuro (#161616) */
+    /* Mesmos valores do :root — rail sempre escuro, não acompanha o tema. */
+    --sidebar: 0 0% 6%;
     --sidebar-foreground: 0 0% 96%;
-    --sidebar-border: 0 0% 22%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 96%;
 
     /* Sem isso, o navegador renderiza o popup nativo de <select>/<option>

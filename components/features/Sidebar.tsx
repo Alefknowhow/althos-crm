@@ -15,7 +15,7 @@ import { SidebarNavExtra } from './SidebarNavExtra'
 /** Non-interactive section divider label. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-[0.06em] font-bold text-muted-foreground select-none">
+    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-[0.06em] font-bold text-sidebar-foreground/45 select-none">
       {children}
     </p>
   )
@@ -117,7 +117,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           renderizada direto pelo SidebarShell, pra não duplicar quando o
           drawer mobile monta este mesmo children pela segunda vez. */}
       <div className="hidden md:flex h-14 border-b border-sidebar-border items-center justify-between px-5 relative">
-        <Logo className="sidebar-brand" v2 />
+        <Logo className="sidebar-brand" v2 textClassName="text-sidebar-foreground" />
         <div className="sidebar-toggle-btn shrink-0">
           <SidebarCollapseToggleButton />
         </div>

@@ -13,7 +13,7 @@ import {
 /** Non-interactive section divider label. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-[0.06em] font-bold text-muted-foreground select-none">
+    <p className="px-2 pt-4 pb-1 text-[10px] uppercase tracking-[0.06em] font-bold text-sidebar-foreground/45 select-none">
       {children}
     </p>
   )

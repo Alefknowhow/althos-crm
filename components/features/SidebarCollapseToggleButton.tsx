@@ -12,7 +12,7 @@ export default function SidebarCollapseToggleButton() {
       onClick={toggle}
       aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-      className="shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+      className="shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
     >
       {collapsed
         ? <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
