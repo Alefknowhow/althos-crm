@@ -4,10 +4,8 @@ import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
-import { ModeToggle } from '@/components/features/ModeToggle'
 import { AiCreditsBadge } from '@/components/ai-credits-badge'
 import OnboardingTour from '@/components/features/OnboardingTour'
-import PushNotificationToggle from '@/components/features/PushNotificationToggle'
 import TrialBanner from '@/components/features/billing/TrialBanner'
 import { SupportWidget, SupportHeaderButton } from '@/components/features/SupportWidget'
 import { isAccessBlocked, getPlan } from '@/lib/billing/plans'
@@ -175,19 +173,16 @@ export default async function OrgLayout({
                   no mobile os dois já têm entrada própria na barra inferior
                   (Consultar/Assistente), manter os dois no header também
                   duplicava a ação (pedido explícito: remover a duplicidade). */}
+              {/* Push toggle e alternância de tema saíram do header — moveram
+                  pro menu do usuário (mesma consolidação do canvas do
+                  /design, artboard 05: "só o sino permanece" no header). */}
               {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
               <HeaderSearchBar />
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
               <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
-              <div className="hidden md:inline-flex">
-                <PushNotificationToggle orgSlug={params.orgSlug} />
-              </div>
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
               <div className="hidden md:inline-flex">
                 <SupportHeaderButton />
-              </div>
-              <div className="hidden md:inline-flex">
-                <ModeToggle />
               </div>
               <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
               <div className="hidden md:inline-flex">

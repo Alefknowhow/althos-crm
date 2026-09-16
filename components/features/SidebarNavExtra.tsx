@@ -1,12 +1,13 @@
 import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarSupportLink from './SidebarSupportLink'
+import SidebarConfigAccordion from './SidebarConfigAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
-  FileText, Package, Zap, Settings, Megaphone, Send, FileSignature,
+  FileText, Package, Zap, Megaphone, Send, FileSignature,
   Star, Building2, ShieldAlert, Target, FileStack, Phone,
 } from 'lucide-react'
 
@@ -221,13 +222,7 @@ export async function SidebarNavExtra({
       {can('settings') && (
         <>
           <SectionLabel>Configurações</SectionLabel>
-
-          <SidebarNavLink href={`${base}/configuracoes`} exact>
-            <span className="flex items-center gap-2.5">
-              <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Configurações</span>
-            </span>
-          </SidebarNavLink>
+          <SidebarConfigAccordion base={base} />
         </>
       )}
 

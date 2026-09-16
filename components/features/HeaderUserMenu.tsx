@@ -2,11 +2,52 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { LogOut, User, ChevronDown, CreditCard, Crown, Gem, Star } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { LogOut, User, ChevronDown, CreditCard, Crown, Gem, Star, Sun, Moon, SlidersHorizontal } from 'lucide-react'
 import { logout } from '@/actions/auth'
 import UserAvatar from './UserAvatar'
 import ProfileSheet from './ProfileSheet'
+import { cn } from '@/lib/utils'
 import type { PlanKey } from '@/lib/billing/plans-data'
+
+/** Alternância de tema, inline — 2 opções lado a lado (claro/escuro), mesmo
+ *  padrão do canvas do /design. "Sistema" fica de fora aqui (o menu mobile
+ *  antigo já cobria isso via ModeToggle, que continua existindo lá). */
+function ThemeSwitchRow() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+      <span className="flex items-center gap-2.5 text-foreground">
+        <Sun className="w-4 h-4 text-muted-foreground" />
+        Tema
+      </span>
+      <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+        <button
+          type="button"
+          onClick={() => setTheme('light')}
+          aria-label="Tema claro"
+          className={cn(
+            'flex h-6 w-7 items-center justify-center rounded transition-colors',
+            theme === 'light' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground',
+          )}
+        >
+          <Sun className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTheme('dark')}
+          aria-label="Tema escuro"
+          className={cn(
+            'flex h-6 w-7 items-center justify-center rounded transition-colors',
+            theme === 'dark' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground',
+          )}
+        >
+          <Moon className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   orgSlug: string
@@ -102,6 +143,17 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl, isOwne
             Meu perfil
           </button>
 
+          <ThemeSwitchRow />
+
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setProfileOpen(true) }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+            Preferências
+          </button>
+
           {isOwner && (
             <Link
               href={`/app/${orgSlug}/assinatura`}
@@ -112,6 +164,8 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl, isOwne
               Assinatura
             </Link>
           )}
+
+          <div className="h-px my-1 bg-border" />
 
           <form action={logout}>
             <button
