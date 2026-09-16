@@ -44,8 +44,8 @@ export const metadata: Metadata = {
     // compartilhado com o site institucional, que ainda não foi
     // atualizado. O ícone do app instalado no celular (iOS) já usa a
     // logo nova.
-    icon: [{ url: "/logo-mark.png", type: "image/png" }],
-    apple: [{ url: "/logo-mark-v2.png" }],
+    icon: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/logo-mark-v2.svg" }],
   },
   appleWebApp: {
     capable: true,

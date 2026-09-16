@@ -8,11 +8,12 @@ import { BRAND } from '@/lib/constants/brand'
  * need to change.
  *
  * `v2` opts into the new logo artwork (2026 refresh) via a separate file
- * (`/logo-mark-v2.png`) — the old `/logo-mark.png` is still shared with the
- * public marketing site (favicon, PWA icon, login/signup pages), which
- * isn't getting the new logo yet (full site redesign coming). App-only
- * surfaces (Sidebar, SupportWidget) pass `v2` to get the new mark without
- * touching the site.
+ * (`/logo-mark-v2.svg`) — `/logo-mark.svg` is still shared with the public
+ * marketing site (favicon, PWA icon, login/signup pages), which isn't
+ * getting the new logo yet (full site redesign coming). App-only surfaces
+ * (Sidebar, SupportWidget) pass `v2` to get the new mark without touching
+ * the site. Both marks are SVG now (were PNG) — `unoptimized` skips the
+ * Next.js image optimizer, which refuses SVG by default.
  */
 export function LogoMark({
   className,
@@ -24,10 +25,11 @@ export function LogoMark({
 }) {
   return (
     <Image
-      src={v2 ? '/logo-mark-v2.png' : '/logo-mark.png'}
+      src={v2 ? '/logo-mark-v2.svg' : '/logo-mark.svg'}
       alt={`${BRAND.shortName} logo`}
       width={64}
       height={64}
+      unoptimized
       className={cn('h-7 w-7 shrink-0 rounded-md object-cover', className)}
     />
   )

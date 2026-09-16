@@ -12,15 +12,15 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/logo-mark-v2.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
+      "src": "/logo-mark-v2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/logo-mark-v2.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ]

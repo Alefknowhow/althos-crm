@@ -18,7 +18,7 @@ export default function KpiCard({
   mock,
   className,
   compact,
-  icon: Icon,
+  icon,
 }: {
   label: string
   value: string
@@ -29,8 +29,12 @@ export default function KpiCard({
   className?: string
   /** Versão menor — pra caber várias lado a lado numa linha só (ex.: Indicadores estratégicos). */
   compact?: boolean
-  /** Ícone opcional — chip circular tintado no canto superior direito, como no /design. */
-  icon?: React.ComponentType<{ className?: string }>
+  /** Ícone opcional (já renderizado, ex. `<DollarSign />`) — chip circular
+   *  tintado no canto superior direito, como no /design. Recebe o elemento
+   *  já montado (não o componente) porque KpiCard é client e a maioria dos
+   *  call sites são Server Components — passar a referência do componente
+   *  (em vez do elemento já renderizado) quebra a serialização RSC. */
+  icon?: React.ReactNode
 }) {
   const helpId = useId()
   const trendColor =
@@ -44,9 +48,12 @@ export default function KpiCard({
     )}>
       <div className="flex items-start justify-between gap-1.5">
         <span className={cn('font-medium text-muted-foreground truncate', compact ? 'text-[10px]' : 'text-xs sm:text-[13px]')}>{label}</span>
-        {Icon ? (
-          <span className={cn('shrink-0 grid place-items-center rounded-full bg-primary/12 text-primary', compact ? 'w-5 h-5' : 'w-7 h-7')}>
-            <Icon className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+        {icon ? (
+          <span className={cn(
+            'shrink-0 grid place-items-center rounded-full bg-primary/12 text-primary [&_svg]:shrink-0',
+            compact ? 'w-5 h-5 [&_svg]:w-3 [&_svg]:h-3' : 'w-7 h-7 [&_svg]:w-3.5 [&_svg]:h-3.5',
+          )}>
+            {icon}
           </span>
         ) : (
           <TooltipProvider delayDuration={150}>

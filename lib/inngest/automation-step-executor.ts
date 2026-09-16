@@ -246,7 +246,7 @@ export async function executeAutomationStep(
             body:  pushBody,
             url:   pushUrl,
             tag:   `automation-${auto.id}`,
-            icon:  '/logo-mark.png',
+            icon:  '/logo-badge.png',
           })
           const { createNotification } = await import('@/actions/notifications')
           await createNotification({
