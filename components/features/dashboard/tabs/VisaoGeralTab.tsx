@@ -10,6 +10,7 @@ import KpiCard from '../KpiCard'
 import { MobileKpiGrid } from '@/components/features/mobile/MobileKpiGrid'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
+import StageThroughputWidget from '../StageThroughputWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
 import SellersRankingWidget from '../SellersRankingWidget'
 import PipelineAtRiskWidget from '../PipelineAtRiskWidget'
@@ -125,14 +126,20 @@ export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
         </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
-        <ConversionFunnelWidget
-          orgSlug={ctx.orgSlug}
-          pipelineId={ctx.pipelineId}
-          initialResult={ctx.initialFunnel}
-          sourceOptions={ctx.funnelSourceOptions}
-        />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+          <ConversionFunnelWidget
+            orgSlug={ctx.orgSlug}
+            pipelineId={ctx.pipelineId}
+            initialResult={ctx.initialFunnel}
+            sourceOptions={ctx.funnelSourceOptions}
+          />
+        </Suspense>
+
+        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+          <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
+        </Suspense>
+      </div>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="visao-geral" />

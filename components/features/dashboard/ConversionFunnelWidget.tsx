@@ -193,10 +193,9 @@ export default function ConversionFunnelWidget({
   )
 }
 
-/** Funil de verdade: cada etapa é um trapézio (topo = contagem da própria
- *  etapa, base = contagem da etapa seguinte) — as bordas laterais ficam na
- *  diagonal e o conjunto afunila de cima pra baixo. Linhas grossas, pouco
- *  espaçamento entre elas, dado sempre centralizado dentro da própria linha. */
+/** Funil de barras horizontais retas e centralizadas — sem taper diagonal
+ *  entre etapas. Linha grossa, espaçamento generoso entre elas (dá espaço
+ *  pro dado, sempre centralizado dentro da própria barra, ficar legível). */
 function FunnelChart({
   stages, maxCount, fmtCurrency, onOpen,
 }: {
@@ -205,54 +204,25 @@ function FunnelChart({
   fmtCurrency: (cents: number) => string
   onOpen: () => void
 }) {
-  const ROW_H = 48
-  const GAP = 6
-  const MIN_PCT = 24
-  const n = stages.length
-  const totalH = n * ROW_H + (n - 1) * GAP
-
-  const widths = stages.map(s => MIN_PCT + (100 - MIN_PCT) * (s.count / maxCount))
+  const MIN_PCT = 28
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col justify-center py-1">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={e => { if (e.key === 'Enter') onOpen() }}
-        title="Ver no Pipeline"
-        className="relative w-full cursor-pointer"
-        style={{ height: totalH }}
-      >
-        <svg viewBox={`0 0 100 ${totalH}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-          {stages.map((stage, i) => {
-            const y0 = i * (ROW_H + GAP)
-            const y1 = y0 + ROW_H
-            const topW = widths[i]
-            const botW = i < n - 1 ? widths[i + 1] : widths[i] * 0.82
-            const topX0 = 50 - topW / 2
-            const topX1 = 50 + topW / 2
-            const botX0 = 50 - botW / 2
-            const botX1 = 50 + botW / 2
-            const fill = stage.color || `var(--chart-${(i % 6) + 1})`
-            return (
-              <polygon
-                key={stage.id}
-                points={`${topX0},${y0} ${topX1},${y0} ${botX1},${y1} ${botX0},${y1}`}
-                fill={fill}
-                className="transition-opacity hover:opacity-90"
-              />
-            )
-          })}
-        </svg>
-
-        {stages.map((stage, i) => {
-          const y0 = i * (ROW_H + GAP)
-          return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => { if (e.key === 'Enter') onOpen() }}
+      title="Ver no Pipeline"
+      className="flex-1 min-h-0 flex flex-col justify-center gap-3 py-1 cursor-pointer"
+    >
+      {stages.map((stage, i) => {
+        const widthPct = MIN_PCT + (100 - MIN_PCT) * (stage.count / maxCount)
+        const fill = stage.color || `var(--chart-${(i % 6) + 1})`
+        return (
+          <div key={stage.id} className="flex justify-center">
             <div
-              key={stage.id}
-              className="absolute inset-x-0 flex flex-col items-center justify-center text-center px-4 pointer-events-none"
-              style={{ top: y0, height: ROW_H }}
+              className="h-14 rounded-md flex flex-col items-center justify-center text-center px-4 transition-opacity hover:opacity-90 min-w-0"
+              style={{ width: `${widthPct}%`, backgroundColor: fill }}
             >
               <div className="text-[13px] font-bold text-white leading-tight tabular-nums truncate max-w-full">
                 {stage.count} · {stage.name}
@@ -262,9 +232,9 @@ function FunnelChart({
                 {stage.value_cents > 0 ? fmtCurrency(stage.value_cents) : ''}
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

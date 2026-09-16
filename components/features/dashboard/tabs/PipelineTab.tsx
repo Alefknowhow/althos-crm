@@ -87,18 +87,20 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
         />
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
-        <ConversionFunnelWidget
-          orgSlug={ctx.orgSlug}
-          pipelineId={ctx.pipelineId}
-          initialResult={ctx.initialFunnel}
-          sourceOptions={ctx.funnelSourceOptions}
-        />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+          <ConversionFunnelWidget
+            orgSlug={ctx.orgSlug}
+            pipelineId={ctx.pipelineId}
+            initialResult={ctx.initialFunnel}
+            sourceOptions={ctx.funnelSourceOptions}
+          />
+        </Suspense>
 
-      <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
-        <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
-      </Suspense>
+        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+          <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
+        </Suspense>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
         <div className="md:col-span-6">
