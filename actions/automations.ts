@@ -113,7 +113,8 @@ export async function createAutomation(orgSlug: string, payload: any) {
       name: payload.name,
       trigger_type: payload.trigger_type || 'form.submitted',
       trigger_config: payload.trigger_config || {},
-      steps: payload.steps || []
+      steps: payload.steps || [],
+      ...(payload.flow !== undefined ? { flow: payload.flow } : {}),
     })
     .select()
     .maybeSingle()

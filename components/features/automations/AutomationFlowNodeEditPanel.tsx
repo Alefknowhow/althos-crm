@@ -1,11 +1,12 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, GripHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TriggerConfig } from './AutomationFlowTriggerConfig'
 import { StepConfig } from './AutomationFlowStepConfig'
 import { stepMeta, triggerMeta, type Step, type FormOpt, type StageOpt, type WaTemplate } from './AutomationFlowMeta'
 import type { AutomationFlowEdge } from '@/lib/automations/automation-traversal'
+import { useDraggablePosition } from './useDraggablePanel'
 
 /**
  * Painel de configuração no canto superior esquerdo — aberto ao clicar num
@@ -42,20 +43,27 @@ export default function AutomationFlowNodeEditPanel({
 }) {
   const title = kind === 'trigger' ? triggerMeta(auto.trigger_type).label : stepMeta(step?.type || '').label
 
-  const style = anchor
+  const anchorStyle = anchor
     ? {
         top: Math.max(12, Math.min(anchor.y, anchor.containerHeight - 120)),
         left: Math.max(12, Math.min(anchor.x + 16, anchor.containerWidth - PANEL_WIDTH - 12)),
       }
-    : undefined
+    : { top: 12, left: 12 }
+  const { style, onHeaderMouseDown } = useDraggablePosition(anchorStyle)
 
   return (
     <div
       className="absolute z-10 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-md border bg-card shadow-lg p-3 space-y-3"
-      style={{ width: PANEL_WIDTH, ...(style ?? { top: 12, left: 12 }) }}
+      style={{ width: PANEL_WIDTH, ...(style ?? anchorStyle) }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold truncate">{title}</p>
+      <div
+        onMouseDown={onHeaderMouseDown}
+        className="flex items-center justify-between gap-2 cursor-move select-none -mx-3 -mt-3 px-3 pt-3 pb-1"
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          <GripHorizontal className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+          <p className="text-sm font-semibold truncate">{title}</p>
+        </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar">
           <X className="w-4 h-4" />
         </button>

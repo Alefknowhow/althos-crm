@@ -43,3 +43,38 @@ export async function generateAiReply(opts: {
   const block = res.content.find(b => b.type === 'text') as Anthropic.Messages.TextBlock | undefined
   return (block?.text || '').trim()
 }
+
+/** Gera uma mensagem de Instagram PROATIVA (não é resposta a nada — ex.: o
+ *  passo "DM do Instagram" de uma automação, modo IA) a partir só de
+ *  instruções + dados do lead. Mesmo tom/regras de generateAiReply, sem a
+ *  moldura de "responder a uma mensagem recebida". */
+export async function generateAiMessage(opts: {
+  apiKey: string
+  baseURL?: string
+  model?: string | null
+  orgName?: string | null
+  businessContext?: string | null
+  instructions: string
+  lead?: { name?: string | null; email?: string | null; phone?: string | null } | null
+}): Promise<string> {
+  const client = new Anthropic({ apiKey: opts.apiKey, ...(opts.baseURL && { baseURL: opts.baseURL }) })
+
+  const system = [
+    `Você escreve uma mensagem direta (DM) do Instagram em nome de ${opts.orgName || 'uma empresa'}.`,
+    opts.businessContext ? `Contexto do negócio (base geral):\n${opts.businessContext}` : '',
+    `Instruções deste passo (o que a mensagem precisa dizer):\n${opts.instructions}`,
+    opts.lead?.name ? `Nome da pessoa: ${opts.lead.name}.` : '',
+    'Regras: escreva só o texto da mensagem, sem aspas, sem explicação. Curta, simpática e natural, como um humano da equipe. No máximo 3 frases. Pode usar 1 emoji quando fizer sentido.',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  const res = await client.messages.create({
+    model: opts.model || 'claude-haiku-4-5',
+    max_tokens: 300,
+    system,
+    messages: [{ role: 'user', content: 'Escreva a mensagem agora.' }],
+  })
+  const block = res.content.find(b => b.type === 'text') as Anthropic.Messages.TextBlock | undefined
+  return (block?.text || '').trim()
+}

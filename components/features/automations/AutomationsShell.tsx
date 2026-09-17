@@ -13,6 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import CreateAutomationWithAiDialog from './CreateAutomationWithAiDialog'
 
 const TRIGGER_LABELS: Record<string, string> = {
   'form.submitted':     'Formulário',
@@ -126,6 +127,7 @@ export default function AutomationsShell({
               Histórico
             </Link>
           </Button>
+          <CreateAutomationWithAiDialog orgSlug={orgSlug} />
           <Button onClick={handleNew} disabled={pending} size="sm">
             <Plus className="w-4 h-4 mr-1.5" />
             {pending ? 'Criando...' : 'Nova Automação'}

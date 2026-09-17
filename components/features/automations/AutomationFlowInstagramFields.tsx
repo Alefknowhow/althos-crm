@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, MessageSquare, Sparkles, Hourglass } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Step } from './AutomationFlowMeta'
 import type { AutomationFlowEdge } from '@/lib/automations/automation-traversal'
 
@@ -25,21 +26,54 @@ export function InstagramDmFields({
   labelClass: string
 }) {
   const buttons: { type: 'reply' | 'link'; label: string; value: string }[] = step.config.buttons || []
+  const mode: 'fixed' | 'ai' = step.config.mode === 'ai' ? 'ai' : 'fixed'
 
   function setButtons(next: typeof buttons) { patch({ buttons: next }) }
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2">
-        <Label className={labelClass}>Mensagem</Label>
-        <textarea
-          placeholder="Ex.: Oi {{lead.name}}! Aqui está o que você pediu 👇"
-          value={step.config.message || ''}
-          onChange={e => patch({ message: e.target.value })}
-          rows={3}
-          className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
-        />
+      <div className="inline-flex rounded-md border overflow-hidden text-xs">
+        <button
+          type="button"
+          onClick={() => patch({ mode: 'fixed' })}
+          className={cn('inline-flex items-center gap-1 px-2.5 py-1.5', mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> Mensagem fixa
+        </button>
+        <button
+          type="button"
+          onClick={() => patch({ mode: 'ai' })}
+          className={cn('inline-flex items-center gap-1 px-2.5 py-1.5', mode === 'ai' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Responder com IA
+        </button>
       </div>
+
+      {mode === 'fixed' ? (
+        <div className="space-y-2">
+          <Label className={labelClass}>Mensagem</Label>
+          <textarea
+            placeholder="Ex.: Oi {{lead.name}}! Aqui está o que você pediu 👇"
+            value={step.config.message || ''}
+            onChange={e => patch({ message: e.target.value })}
+            rows={3}
+            className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label className={labelClass}>Instruções para a IA</Label>
+          <textarea
+            placeholder="Ex.: Agradeça o interesse, pergunte qual destino a pessoa quer visitar e em que mês pretende viajar."
+            value={step.config.aiInstructions || ''}
+            onChange={e => patch({ aiInstructions: e.target.value })}
+            rows={3}
+            className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
+          />
+          <p className="text-xs text-muted-foreground">A IA escreve a mensagem na hora do envio, seguindo essas instruções.</p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label className={labelClass}>Botões (até 3)</Label>
         {buttons.map((b, i) => (
@@ -64,6 +98,14 @@ export function InstagramDmFields({
           </Button>
         )}
       </div>
+
+      {buttons.length > 0 && (
+        <p className="text-xs text-muted-foreground flex items-start gap-1.5 pt-1 border-t">
+          <Hourglass className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          Pra desviar o fluxo conforme o botão clicado, conecte este passo a um <span className="font-medium text-foreground">Aguardar Resposta</span> e
+          configure as ramificações nas conexões que saem dele.
+        </p>
+      )}
     </div>
   )
 }

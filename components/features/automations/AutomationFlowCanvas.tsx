@@ -177,6 +177,18 @@ function addStep(type: string, afterNodeId?: string) {
   const selectedEdgeCondition = (selectedEdge?.data as any)?.condition as AutomationEdgeCondition | undefined
   const selectedEdgeSourceIsWait = selectedEdge ? stepsById.get(selectedEdge.source)?.type === 'wait_for_reply' : false
 
+  // Rótulos reais dos botões pro Select do painel de conexão: acha o passo
+  // que alimenta o "Aguardar Resposta" de origem desta edge (via a edge que
+  // chega nele) e lê os botões configurados nele.
+  const selectedEdgeButtonOptions = useMemo(() => {
+    if (!selectedEdge || !selectedEdgeSourceIsWait) return undefined
+    const incoming = edges.find(e => e.target === selectedEdge.source)
+    const sourceStep = incoming ? stepsById.get(incoming.source) : undefined
+    const buttons: { label: string; value: string }[] | undefined = sourceStep?.config?.buttons
+    if (!buttons || buttons.length === 0) return undefined
+    return buttons.map((b, i) => ({ label: b.label || `Botão ${i + 1}`, value: i }))
+  }, [selectedEdge, selectedEdgeSourceIsWait, edges, stepsById])
+
   function updateSelectedEdgeCondition(condition: AutomationEdgeCondition | undefined) {
     setEdges(curr => curr.map(e => e.id === selectedEdgeId
       ? { ...e, animated: !condition, label: condition?.type === 'keyword' ? 'palavra-chave' : condition?.type === 'button' ? `botão ${condition.buttonIndex}` : undefined, data: { condition } }
@@ -263,6 +275,7 @@ function addStep(type: string, afterNodeId?: string) {
           <AutomationFlowEdgePanel
             condition={selectedEdgeCondition}
             sourceIsWaitForReply={selectedEdgeSourceIsWait}
+            buttonOptions={selectedEdgeButtonOptions}
             onChange={updateSelectedEdgeCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}

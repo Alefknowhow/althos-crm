@@ -103,7 +103,10 @@ export function describeStep(step: Step, stages: StageOpt[]): string {
     case 'send_push':     return c.title || 'Sem título configurado'
     case 'webhook':       return c.url ? c.url.replace(/^https?:\/\//, '').slice(0, 32) : 'Sem URL configurada'
     case 'send_nps_survey': return 'Pergunta fixa "de 0 a 10..."'
-    case 'send_instagram_dm': return c.message ? (c.buttons?.length ? `${c.buttons.length} botão(ões)` : 'Texto simples') : 'Sem mensagem configurada'
+    case 'send_instagram_dm': {
+      if (c.mode === 'ai') return c.aiInstructions ? `IA · ${c.buttons?.length ? `${c.buttons.length} botão(ões)` : 'texto livre'}` : 'IA sem instruções'
+      return c.message ? (c.buttons?.length ? `${c.buttons.length} botão(ões)` : 'Texto simples') : 'Sem mensagem configurada'
+    }
     case 'wait_for_reply': return c.branches?.length ? `${c.branches.length} ramo(s)` : 'Segue em sequência'
     default:              return ''
   }

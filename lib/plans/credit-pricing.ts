@@ -115,6 +115,9 @@ export const AI_CREDIT_COST = {
   // Analisa as respostas de um formulário e devolve insights — mesmo
   // custo-base do ai_insights_query (é a mesma categoria de análise).
   form_ai_insights: 10,
+  // Gera/ajusta uma automação inteira (gatilho + passos + ramificações)
+  // por conversa (módulo Automações) — mesmo custo-base do form_ai_generate.
+  automation_ai_generate: 10,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST
