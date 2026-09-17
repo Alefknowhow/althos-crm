@@ -58,9 +58,9 @@ export default function FormPageHeader({ orgSlug, form }: Props) {
           className="font-semibold text-base border-transparent hover:border-input focus:border-input flex-1 min-w-0 max-w-md h-9 px-2"
         />
         {form.is_active ? (
-          <Badge className="bg-green-100 text-green-800 border-green-200 shrink-0">Ativo</Badge>
+          <Badge className="bg-success text-success-foreground shrink-0">Ativo</Badge>
         ) : (
-          <Badge variant="outline" className="shrink-0">Pausado</Badge>
+          <Badge className="bg-muted-foreground/60 text-white shrink-0">Pausado</Badge>
         )}
       </div>
       <nav className="px-3 sm:px-6 flex gap-1">
