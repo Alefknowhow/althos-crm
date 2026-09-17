@@ -73,6 +73,24 @@ export default async function ConversasPage({
 
   const igConversations = planInstagram ? await listConversations(params.orgSlug) : []
 
+  // Responsável/etapa dos contatos do Instagram — o WhatsApp já traz isso
+  // no join de cima; aqui é um select à parte pelos poucos contato_id
+  // presentes na lista carregada.
+  const igContatoIds = igConversations.map(c => c.contato_id).filter((id): id is string => !!id)
+  const { data: igContatosRaw } = igContatoIds.length > 0 ? await supabase
+    .from('contatos')
+    .select('id, assigned_to, pipeline_stages(name, color)')
+    .in('id', igContatoIds) : { data: [] }
+  const igContatoById = new Map((igContatosRaw || []).map((c: any) => [c.id, c]))
+
+  const members = await listOrgMembers(params.orgSlug)
+
+  const { data: pipelineStages } = await supabase
+    .from('pipeline_stages')
+    .select('id, name, pipeline_id, position, is_won, is_lost, pipelines!inner(organization_id)')
+    .eq('pipelines.organization_id', org.id)
+    .order('position', { ascending: true })
+
   const unifiedRows: UnifiedConversationRow[] = mergeConversationsByRecency(
     waConversations.map((c: any) => ({
       id: c.id,
@@ -82,16 +100,27 @@ export default async function ConversasPage({
       preview: c.last_message_preview ?? null,
       lastMessageAt: c.last_message_at ?? null,
       unreadCount: c.unread_count ?? 0,
+      assignedTo: c.contatos?.assigned_to ?? null,
+      stageName: c.contatos?.pipeline_stages?.name ?? null,
+      stageColor: c.contatos?.pipeline_stages?.color ?? null,
+      archived: !!c.archived,
     })),
-    igConversations.map(c => ({
-      id: c.id,
-      channel: 'instagram' as const,
-      name: c.sender_name || (c.sender_username ? `@${c.sender_username}` : 'Instagram'),
-      avatarUrl: c.sender_avatar_url,
-      preview: c.last_message_preview,
-      lastMessageAt: c.last_message_at,
-      unreadCount: c.unread_count,
-    })),
+    igConversations.map(c => {
+      const contato = c.contato_id ? igContatoById.get(c.contato_id) : null
+      return {
+        id: c.id,
+        channel: 'instagram' as const,
+        name: c.sender_name || (c.sender_username ? `@${c.sender_username}` : 'Instagram'),
+        avatarUrl: c.sender_avatar_url,
+        preview: c.last_message_preview,
+        lastMessageAt: c.last_message_at,
+        unreadCount: c.unread_count,
+        assignedTo: contato?.assigned_to ?? null,
+        stageName: contato?.pipeline_stages?.name ?? null,
+        stageColor: contato?.pipeline_stages?.color ?? null,
+        archived: !!c.archived,
+      }
+    }),
   )
 
   // Canal selecionado: por ?ch= explícito, senão inferido de qual lista
@@ -109,6 +138,8 @@ export default async function ConversasPage({
       rows={unifiedRows}
       selectedId={searchParams.id}
       hasComentarios={planInstagram}
+      members={members}
+      pipelineStages={(pipelineStages || []).map(s => ({ id: s.id, name: s.name }))}
     />
   )
 
@@ -119,7 +150,6 @@ export default async function ConversasPage({
     const messages = selectedConversation
       ? await getConversationMessages(params.orgSlug, selectedConversation.id)
       : []
-    const members = await listOrgMembers(params.orgSlug)
     const emailTemplates = await listEmailTemplates(params.orgSlug)
     const panelContext = selectedConversation
       ? await getSocialConversationContext(params.orgSlug, selectedConversation.id)
@@ -148,14 +178,6 @@ export default async function ConversasPage({
   }
 
   // canal whatsapp (default, inclusive quando nada está selecionado ainda)
-  const members = await listOrgMembers(params.orgSlug)
-
-  const { data: pipelineStages } = await supabase
-    .from('pipeline_stages')
-    .select('id, name, pipeline_id, position, is_won, is_lost, pipelines!inner(organization_id)')
-    .eq('pipelines.organization_id', org.id)
-    .order('position', { ascending: true })
-
   const templates = await getWaTemplates(params.orgSlug)
   const emailTemplates = await listEmailTemplates(params.orgSlug)
 

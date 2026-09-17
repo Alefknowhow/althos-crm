@@ -158,3 +158,10 @@ export async function updateAttendantConfig(orgSlug: string, raw: unknown) {
   revalidatePath(`/app/${orgSlug}/configuracoes/agente-ia`)
   return { ok: true as const }
 }
+
+/** Exposes hasPlatformAiKey() (server-only) pra client components — usado
+ *  pelo dialog "Configurar agente de IA" aberto de dentro de Conversas. */
+export async function checkPlatformAiKeyConfigured(): Promise<boolean> {
+  const { hasPlatformAiKey } = await import('@/lib/ai/api-key')
+  return hasPlatformAiKey()
+}

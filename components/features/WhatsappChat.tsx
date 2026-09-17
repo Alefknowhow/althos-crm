@@ -135,7 +135,7 @@ export default function WhatsappChat({ orgSlug, orgId, conversations: conversati
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-white/60">
-            <div className="text-center p-8 bg-background/80 rounded-none   border max-w-sm">
+            <div className="text-center p-8 bg-background/80 rounded-lg border max-w-sm">
                <h3 className="font-semibold text-lg mb-2">WhatsApp Web</h3>
                <p className="text-muted-foreground text-sm">Selecione uma conversa na barra lateral para iniciar o atendimento ao cliente.</p>
             </div>

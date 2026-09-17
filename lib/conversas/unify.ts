@@ -16,6 +16,10 @@ export type UnifiedConversationRow = {
   preview: string | null
   lastMessageAt: string | null
   unreadCount: number
+  assignedTo: string | null
+  stageName: string | null
+  stageColor: string | null
+  archived: boolean
 }
 
 export function mergeConversationsByRecency(

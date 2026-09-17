@@ -116,7 +116,7 @@ export default function WhatsappChatComposer({
         {showEmoji && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setShowEmoji(false)} />
-            <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-none   p-2 grid grid-cols-8 gap-0.5">
+            <div className="absolute bottom-12 left-0 z-20 w-64 max-h-56 overflow-y-auto bg-background border rounded-lg p-2 grid grid-cols-8 gap-0.5">
               {EMOJIS.map(e => (
                 <button
                   key={e}
