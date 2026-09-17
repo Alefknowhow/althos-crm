@@ -86,6 +86,8 @@ export interface ExtractSalesEventsInput {
   engine?: { apiKey: string; baseURL?: string }
   client?: Anthropic
   model?: string
+  /** Saída de `formatKnowledgeForPrompt()` (lib/sales-coach/knowledge.ts) — opcional. */
+  orgKnowledge?: string
 }
 
 export async function extractSalesEvents(input: ExtractSalesEventsInput): Promise<SalesEvent[]> {
@@ -95,6 +97,7 @@ export async function extractSalesEvents(input: ExtractSalesEventsInput): Promis
     input.client ?? new Anthropic({ apiKey: input.engine?.apiKey ?? '', ...(input.engine?.baseURL && { baseURL: input.engine.baseURL }) })
 
   const userMessage = [
+    ...(input.orgKnowledge ? [input.orgKnowledge, ''] : []),
     'CONTEXTO COMERCIAL ATUAL (JSON, pra evitar reportar o que já é conhecido):',
     JSON.stringify(input.context),
     '',

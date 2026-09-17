@@ -43,6 +43,8 @@ export interface GenerateNextBestActionInput {
   engine?: { apiKey: string; baseURL?: string }
   client?: Anthropic
   model?: string
+  /** Saída de `formatKnowledgeForPrompt()` (lib/sales-coach/knowledge.ts) — opcional. */
+  orgKnowledge?: string
 }
 
 export async function generateNextBestAction(input: GenerateNextBestActionInput): Promise<NextBestAction | null> {
@@ -58,6 +60,7 @@ export async function generateNextBestAction(input: GenerateNextBestActionInput)
       {
         role: 'user',
         content: [
+          ...(input.orgKnowledge ? [input.orgKnowledge, ''] : []),
           'CONTEXTO COMERCIAL DA REUNIÃO ATÉ AGORA (JSON):',
           JSON.stringify(input.context),
           '',

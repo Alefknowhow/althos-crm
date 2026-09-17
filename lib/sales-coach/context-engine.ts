@@ -63,8 +63,9 @@ function formatTranscript(segments: TranscriptSegmentInput[]): string {
   return segments.map((s) => `${s.speaker ? `[${s.speaker}] ` : ''}${s.text}`).join('\n')
 }
 
-function buildUserMessage(previousContext: SalesContext, newSegments: TranscriptSegmentInput[]): string {
+function buildUserMessage(previousContext: SalesContext, newSegments: TranscriptSegmentInput[], orgKnowledge?: string): string {
   return [
+    ...(orgKnowledge ? [orgKnowledge, ''] : []),
     'CONTEXTO COMERCIAL ATUAL (JSON):',
     JSON.stringify(previousContext),
     '',
@@ -86,6 +87,8 @@ export interface UpdateSalesContextInput {
   engine?: { apiKey: string; baseURL?: string }
   client?: Anthropic
   model?: string
+  /** Saída de `formatKnowledgeForPrompt()` (lib/sales-coach/knowledge.ts) — opcional, omitir se a org não configurou nada. */
+  orgKnowledge?: string
 }
 
 export async function updateSalesContext(input: UpdateSalesContextInput): Promise<SalesContext> {
@@ -99,7 +102,7 @@ export async function updateSalesContext(input: UpdateSalesContextInput): Promis
     max_tokens: 1024,
     tools: [CONTEXT_TOOL],
     tool_choice: { type: 'tool', name: 'update_sales_context' },
-    messages: [{ role: 'user', content: buildUserMessage(input.previousContext, input.newSegments) }],
+    messages: [{ role: 'user', content: buildUserMessage(input.previousContext, input.newSegments, input.orgKnowledge) }],
   })
 
   const toolUse = response.content.find(

@@ -3,8 +3,23 @@
  * não tem acesso a `lib/supabase/server.ts::createAdminClient()`. Mesmo
  * padrão (service role, bypassa RLS deliberadamente): TODA query aqui
  * filtra `organization_id` manualmente, nunca confia em RLS.
+ *
+ * `createClient()` do @supabase/supabase-js sempre instancia um
+ * RealtimeClient internamente, mesmo quando não usamos `.channel()` —
+ * e esse RealtimeClient exige `WebSocket` global nativo (só existe a
+ * partir do Node 22). No Node 20 (imagem do Dockerfile) isso lança uma
+ * exceção não capturada e DERRUBA O PROCESSO INTEIRO na primeira chamada
+ * ao Supabase (achado real em produção — Railway, 2026-09-17, via
+ * `/debug-env` + logs: WS fechava com código 1006 sem nenhuma mensagem de
+ * erro no cliente, só nos logs do servidor). Polyfill com `ws` (já é
+ * dependência deste serviço) resolve sem precisar trocar a imagem base.
  */
+import WebSocket from 'ws'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+
+if (!('WebSocket' in globalThis)) {
+  ;(globalThis as unknown as { WebSocket: typeof WebSocket }).WebSocket = WebSocket
+}
 
 let client: SupabaseClient | null = null
 

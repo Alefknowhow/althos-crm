@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
@@ -5,6 +7,7 @@ import { SalesCoachPaywall } from '@/components/features/sales-coach/SalesCoachP
 import { SalesCoachLiveSpike } from '@/components/features/sales-coach/SalesCoachLiveSpike'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +40,13 @@ export default async function SalesCoachPage({ params }: { params: { orgSlug: st
       <PageHeader
         title="IA Sales Coach"
         hint="Copiloto comercial com IA que acompanha suas reuniões em tempo real (versão de teste técnico)."
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/app/${params.orgSlug}/sales-coach/configuracoes`}>
+              <Settings className="w-4 h-4" /> Contexto da empresa
+            </Link>
+          </Button>
+        }
       />
       <SalesCoachLiveSpike orgSlug={params.orgSlug} />
     </div>

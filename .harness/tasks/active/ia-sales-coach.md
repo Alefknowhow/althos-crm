@@ -278,3 +278,53 @@ que o previsto):**
   inválido foi validada contra o serviço real. Esse é o próximo teste
   natural, e pode ser feito a qualquer momento agora que a infra está no
   ar (não depende mais de "amanhã").
+- **Achado real ao testar**: usuário não encontrava a página — eu tinha
+  criado `app/app/[orgSlug]/sales-coach/page.tsx` mas nunca adicionado o
+  item de navegação. Corrigido: `components/features/SidebarNavExtra.tsx`
+  ganhou entrada "IA Sales Coach" (seção Comunicação, ao lado de Voice),
+  gate por `can('sales_coach')`.
+- **Vercel**: `SALES_COACH_REALTIME_SECRET`/`SALES_COACH_REALTIME_URL`
+  configuradas manualmente pelo usuário no dashboard (produção) — mesma
+  razão do Railway (não tenho tool de escrita de env var da Vercel
+  disponível, e não devo passar segredo via CLI sem aprovação item a
+  item). Confirmado redeploy automático após adicionar (`READY`).
+- **Commit + push**: `49e69fb` — `feat(sales-coach): adiciona IA Sales
+  Coach — infra realtime, engines e item de menu`. Só os arquivos do
+  Sales Coach foram staged (não `public/*.png` deletados por outra
+  sessão, não `.claude/`) — cuidado de não misturar mudanças de sessões
+  paralelas no mesmo working directory. **Achado**: `git add` inicial
+  quase commitou `services/sales-coach-realtime/node_modules/` inteiro
+  (sem `.gitignore` no serviço novo) — criado `.gitignore` ali
+  (`node_modules/`, `dist/`, `.env`) e revertido o stage antes de
+  commitar.
+
+**Fatia extra — Knowledge Base + Objection Library (§17/§19) enquanto
+usuário aguardava o deploy da Vercel corrigir o erro de conexão:**
+- Migration `0259_sales_coach_knowledge.sql` aplicada: 1 linha por org
+  (`company_pitch`, `products`, `differentiators`, `competitors`,
+  `objections` jsonb). MVP sem retrieval/embeddings — texto curto o
+  bastante pra ir direto no prompt (decisão deliberada, documentada no
+  comentário da migration).
+- `lib/sales-coach/knowledge.ts`: tipos + `formatKnowledgeForPrompt()`
+  (formata num bloco de texto pro prompt, com aviso explícito de que é
+  referência, não instrução — mesma cautela de segurança das outras
+  engines).
+- `actions/sales-coach-knowledge.ts`: `getSalesCoachKnowledge`/
+  `saveSalesCoachKnowledge` — mesmo padrão de `actions/voice-settings.ts`
+  (gate por feature + permissão + `isOrgManager`, upsert via admin client).
+- UI: `app/app/[orgSlug]/sales-coach/configuracoes/page.tsx` +
+  `SalesCoachKnowledgeForm.tsx` (pitch, produtos, diferenciais,
+  concorrentes, lista editável de objeções). Link "Contexto da empresa" 
+  adicionado no header da página principal do Sales Coach.
+- As 3 engines (`context-engine.ts`, `event-engine.ts`,
+  `next-best-action.ts`) ganharam parâmetro opcional `orgKnowledge`
+  (string pronta de `formatKnowledgeForPrompt()`), injetado no início do
+  prompt quando presente — mas **ainda não há nenhum caller passando
+  isso de verdade**, porque o consumer que liga o stream de transcrição
+  às engines (fatia 5) não existe ainda. Isto é preparação, não pipeline
+  funcionando ponta a ponta.
+- `npx tsc --noEmit` PASS, `npm test` PASS (183/183, sem teste novo pra
+  esta fatia — é CRUD simples + formatação de string, coberto
+  indiretamente pelos testes de engine existentes que já teriam
+  detectado uma assinatura quebrada), ESLint 0 erros/0 warnings nos
+  arquivos tocados.
