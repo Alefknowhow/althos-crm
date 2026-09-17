@@ -197,3 +197,25 @@ export async function testWhatsappConnection(orgSlug: string) {
   }
 }
 
+/** Status + config pra montar o botão "Conectar WhatsApp" fora da tela de
+ *  Configurações (ex.: pop-up em Conversas) sem duplicar a query. */
+export async function getWhatsappConnectionStatus(orgSlug: string): Promise<{
+  alreadyConnected: boolean
+  displayPhone: string | null
+  embeddedConfigured: boolean
+  appId: string | null
+  configId: string | null
+}> {
+  const org = await getCurrentOrganization(orgSlug)
+  const alreadyConnected = !!org.whatsapp_phone_number_id && !!org.whatsapp_access_token && org.whatsapp_access_token !== 'mock'
+  const appId = process.env.NEXT_PUBLIC_META_APP_ID || null
+  const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || null
+  return {
+    alreadyConnected,
+    displayPhone: (org as any).whatsapp_display_phone || null,
+    embeddedConfigured: !!(appId && configId),
+    appId,
+    configId,
+  }
+}
+

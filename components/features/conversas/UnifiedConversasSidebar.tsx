@@ -13,6 +13,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import ConfigurarAgenteIaDialog from './ConfigurarAgenteIaDialog'
 import UnifiedConversaRow from './UnifiedConversaRow'
+import { IgIcon, WhatsAppIcon } from './ConversasChannelIcons'
+import ConnectWhatsappDialog from '@/components/features/integrations/ConnectWhatsappDialog'
+import ConnectInstagramDialog from '@/components/features/integrations/ConnectInstagramDialog'
 import type { UnifiedConversationRow } from '@/lib/conversas/unify'
 
 type InboxView = 'all' | 'unread' | 'archived'
@@ -42,6 +45,8 @@ export default function UnifiedConversasSidebar({
   const [filterResponsavel, setFilterResponsavel] = useState<string>('all')
   const [filterStage, setFilterStage] = useState<string>('all')
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [connectWhatsappOpen, setConnectWhatsappOpen] = useState(false)
+  const [connectInstagramOpen, setConnectInstagramOpen] = useState(false)
 
   // Contagem regressiva da janela de 24h do WhatsApp (WindowBadge) — atualiza
   // a cada 30s pra todas as linhas sem precisar de um setInterval por linha.
@@ -120,6 +125,13 @@ export default function UnifiedConversasSidebar({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setInboxView('archived')} className="gap-2">
                 <Archive className="w-4 h-4" /> Arquivadas
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setConnectWhatsappOpen(true)} className="gap-2">
+                <WhatsAppIcon className="w-4 h-4" /> Conectar WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setConnectInstagramOpen(true)} className="gap-2">
+                <IgIcon className="w-4 h-4" /> Conectar Instagram
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="gap-2">
@@ -281,6 +293,8 @@ export default function UnifiedConversasSidebar({
       </div>
 
       <ConfigurarAgenteIaDialog orgSlug={orgSlug} open={aiDialogOpen} onOpenChange={setAiDialogOpen} />
+      <ConnectWhatsappDialog orgSlug={orgSlug} open={connectWhatsappOpen} onOpenChange={setConnectWhatsappOpen} />
+      <ConnectInstagramDialog orgSlug={orgSlug} open={connectInstagramOpen} onOpenChange={setConnectInstagramOpen} />
     </div>
   )
 }
