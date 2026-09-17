@@ -1,10 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
+import { generateUniqueFormSlug } from './forms-slug'
 
 // Used by the automations editor to populate the "form.submitted" trigger
 // dropdown. Returns the minimal {id, name} shape.
@@ -19,39 +19,6 @@ export async function getForms(orgSlug: string) {
   return data || []
 }
 
-/**
- * Form slugs back the public URL (`/f/{slug}`) and are GLOBALLY unique.
- * The check MUST bypass RLS \u2014 otherwise it can't see slugs in other orgs,
- * returns false negatives, and the INSERT trips the unique constraint.
- *
- * We can't use the project's `createAdminClient` here because that wraps
- * `@supabase/ssr`'s createServerClient, which still attaches the logged-in
- * user's auth cookie even when handed the service role key \u2014 the cookie
- * wins and RLS is enforced. Use the raw service-role client instead.
- */
-async function generateUniqueSlug(name: string): Promise<string> {
-  const admin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  )
-  const baseSlug = name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '') || 'form'
-  let slug = baseSlug
-  let count = 1
-  while (count < 1000) {
-    const { data } = await admin.from('forms').select('id').eq('slug', slug).maybeSingle()
-    if (!data) break
-    slug = `${baseSlug}-${count}`
-    count++
-  }
-  return slug
-}
-
 export async function createForm(orgSlug: string, name: string) {
   const user = await requireAuth()
   const org  = await getCurrentOrganization(orgSlug)
@@ -61,7 +28,7 @@ export async function createForm(orgSlug: string, name: string) {
 
   const supabase = createClient()
 
-  const slug = await generateUniqueSlug(name)
+  const slug = await generateUniqueFormSlug(name)
 
   const initialSchema = {
     fields: [

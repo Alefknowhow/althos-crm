@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import FormListActions from '@/components/features/FormListActions'
 import NewFormButton from '@/components/features/NewFormButton'
+import CreateFormWithAiDialog from '@/components/features/forms/CreateFormWithAiDialog'
 import { FileEdit, BarChart2 } from 'lucide-react'
 
 export default async function FormsPage({ params }: { params: { orgSlug: string } }) {
@@ -21,11 +22,12 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
 
   return (
     <div className="pt-3 space-y-6">
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        <CreateFormWithAiDialog orgSlug={params.orgSlug} />
         <NewFormButton orgSlug={params.orgSlug} />
       </div>
 
-      <div className="bg-card border rounded-none overflow-hidden">
+      <div className="bg-card rounded-lg overflow-hidden">
         {forms && forms.length > 0 ? (
           <div className="overflow-x-auto">
           <Table>
@@ -53,9 +55,9 @@ export default async function FormsPage({ params }: { params: { orgSlug: string 
                     </TableCell>
                     <TableCell>
                       {form.is_active ? (
-                        <Badge className="bg-green-100 text-green-800 border-green-200">Ativo</Badge>
+                        <Badge className="bg-success text-success-foreground">Ativo</Badge>
                       ) : (
-                        <Badge variant="outline">Pausado</Badge>
+                        <Badge className="bg-muted-foreground/60 text-white">Pausado</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">

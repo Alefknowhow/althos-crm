@@ -110,6 +110,11 @@ export const AI_CREDIT_COST = {
   // Inicial (ai_insights_query), mantido separado pra métricas de uso e
   // gating de plano independentes.
   financial_ai_chat: 10,
+  // Gera/ajusta o schema de um formulário por conversa (módulo Formulários).
+  form_ai_generate: 10,
+  // Analisa as respostas de um formulário e devolve insights — mesmo
+  // custo-base do ai_insights_query (é a mesma categoria de análise).
+  form_ai_insights: 10,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST
