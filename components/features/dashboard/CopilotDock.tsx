@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, X, Loader2, Plus, PanelLeft } from 'lucide-react'
+import { Send, X, Loader2, Plus, PanelLeft, Mic, Square } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
-import { getCopilotInit } from '@/actions/copilot'
+import { getCopilotInit, transcribeCopilotAudio } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
 import {
   listInsightsSessions, createInsightsSession, deleteInsightsSession, renameInsightsSession, listInsightsMessages,
@@ -41,8 +41,12 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [, startTransition] = useTransition()
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const router = useRouter()
   const endRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   useEffect(() => {
     if (!open || initialized) return
@@ -205,6 +209,44 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     send(input)
   }
 
+  // Grava um áudio curto do microfone e transcreve via ElevenLabs
+  // (actions/copilot.ts::transcribeCopilotAudio) — o texto cai no campo de
+  // input, o usuário revê e envia como uma mensagem normal.
+  async function startRecording() {
+    if (recording || streaming || transcribing) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      audioChunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        setRecording(false)
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size === 0) return
+        setTranscribing(true)
+        try {
+          const fd = new FormData()
+          fd.append('audio', blob, 'audio.webm')
+          const res = await transcribeCopilotAudio(orgSlug, fd)
+          if (!res.ok) { toast.error('Não foi possível transcrever', { description: res.error }); return }
+          setInput(prev => (prev.trim() ? `${prev.trim()} ${res.text}` : res.text))
+        } finally {
+          setTranscribing(false)
+        }
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setRecording(true)
+    } catch {
+      toast.error('Não foi possível acessar o microfone')
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+  }
+
   return (
     <>
       {open && (
@@ -279,11 +321,23 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
                     <Input
                       value={input}
                       onChange={e => setInput(e.target.value)}
-                      placeholder="Pergunte sobre seu negócio..."
-                      disabled={streaming || !sessionId}
+                      placeholder={recording ? 'Gravando...' : transcribing ? 'Transcrevendo áudio...' : 'Pergunte sobre seu negócio...'}
+                      disabled={streaming || !sessionId || recording || transcribing}
                       className="flex-1 h-9 text-[15px] border-none bg-transparent shadow-none focus-visible:ring-0"
                     />
-                    <Button type="submit" size="icon" disabled={streaming || !input.trim()} className="h-9 w-9 shrink-0 rounded-xl">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={recording ? 'destructive' : 'ghost'}
+                      disabled={streaming || !sessionId || transcribing}
+                      onClick={recording ? stopRecording : startRecording}
+                      title={recording ? 'Parar gravação' : 'Gravar áudio'}
+                      aria-label={recording ? 'Parar gravação' : 'Gravar áudio'}
+                      className="h-9 w-9 shrink-0 rounded-xl"
+                    >
+                      {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </Button>
+                    <Button type="submit" size="icon" disabled={streaming || !input.trim() || recording || transcribing} className="h-9 w-9 shrink-0 rounded-xl">
                       {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </Button>
                   </form>

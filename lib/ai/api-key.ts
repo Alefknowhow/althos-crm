@@ -59,6 +59,21 @@ export function getDeepSeekAnthropicBaseUrl(): string {
   return process.env.DEEPSEEK_ANTHROPIC_BASE_URL || 'https://api.deepseek.com/anthropic'
 }
 
+/**
+ * Single source of truth for the ElevenLabs API key, set via
+ * `ELEVENLABS_API_KEY` (configured in Vercel) — same centralized-token model
+ * as the keys above. Usado por lib/ai/speech-to-text.ts (transcrição de
+ * áudio no Copiloto).
+ */
+export function getElevenLabsKey(): string {
+  return process.env.ELEVENLABS_API_KEY || ''
+}
+
+/** True when the ElevenLabs platform token is configured. */
+export function hasElevenLabsKey(): boolean {
+  return getElevenLabsKey().length > 0
+}
+
 type AnthropicEngineConfig = { apiKey: string; baseURL?: string }
 
 const readAiEngineProvider = cache(async (): Promise<string> => {
