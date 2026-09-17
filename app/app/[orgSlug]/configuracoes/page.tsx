@@ -4,7 +4,6 @@ import { getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import GeneralTab from '@/components/features/GeneralTab'
 import CompanyBrandingCard from '@/components/features/CompanyBrandingCard'
-import DataImportExportCard from '@/components/features/DataImportExportCard'
 import OrganizationsClient from './organizacoes/OrganizationsClient'
 
 export default async function SettingsPage({ params }: { params: { orgSlug: string } }) {
@@ -52,8 +51,6 @@ export default async function SettingsPage({ params }: { params: { orgSlug: stri
         initialGoalCents={goalCents}
         initialBrandAccent={settingsRow?.brand_accent ?? null}
       />
-
-      <DataImportExportCard orgSlug={params.orgSlug} />
     </div>
   )
 }

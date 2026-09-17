@@ -10,14 +10,11 @@ import { MobileSectionPicker, type MobileSection } from '@/components/features/m
  * redundante (a mesma navegação duplicada em dois lugares da tela).
  */
 const TABS = [
-  { key: 'geral',        label: 'Geral',        seg: '' },
-  { key: 'agente-ia',    label: 'Agente IA',    seg: 'agente-ia' },
-  { key: 'equipe',       label: 'Equipe',       seg: 'equipe' },
-  { key: 'notificacoes', label: 'Notificações', seg: 'notificacoes' },
-  { key: 'aparencia',    label: 'Aparência',    seg: 'aparencia' },
-  { key: 'seguranca',    label: 'Segurança',    seg: 'seguranca' },
-  { key: 'integracoes',  label: 'Integrações',  seg: 'integracoes' },
-  { key: 'agentes',      label: 'Conector MCP', seg: 'agentes' },
+  { key: 'geral',        label: 'Geral',                 seg: '' },
+  { key: 'agente-ia',    label: 'Agente IA',             seg: 'agente-ia' },
+  { key: 'dados',        label: 'Importação/Exportação', seg: 'dados' },
+  { key: 'integracoes',  label: 'Integrações',           seg: 'integracoes' },
+  { key: 'agentes',      label: 'Conector MCP',          seg: 'agentes' },
 ] as const
 
 export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {

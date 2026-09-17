@@ -9,10 +9,7 @@ import { cn } from '@/lib/utils'
 const SUB_ITEMS = [
   { seg: '',             label: 'Geral' },
   { seg: 'agente-ia',    label: 'Agente IA' },
-  { seg: 'equipe',       label: 'Equipe' },
-  { seg: 'notificacoes', label: 'Notificações' },
-  { seg: 'aparencia',    label: 'Aparência' },
-  { seg: 'seguranca',    label: 'Segurança' },
+  { seg: 'dados',        label: 'Importação/Exportação' },
   { seg: 'integracoes',  label: 'Integrações' },
   { seg: 'agentes',      label: 'Conector MCP' },
 ] as const

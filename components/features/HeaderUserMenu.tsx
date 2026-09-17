@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
-import { LogOut, User, ChevronDown, CreditCard, Crown, Gem, Star, Sun, Moon, SlidersHorizontal } from 'lucide-react'
+import { LogOut, User, ChevronDown, CreditCard, Crown, Gem, Star, Sun, Moon, Users, Bell, ShieldCheck } from 'lucide-react'
 import { logout } from '@/actions/auth'
 import UserAvatar from './UserAvatar'
 import ProfileSheet from './ProfileSheet'
@@ -145,14 +145,34 @@ export default function HeaderUserMenu({ orgSlug, name, email, avatarUrl, isOwne
 
           <ThemeSwitchRow />
 
-          <button
-            type="button"
-            onClick={() => { setOpen(false); setProfileOpen(true) }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+          <div className="h-px my-1 bg-border" />
+
+          <Link
+            href={`/app/${orgSlug}/configuracoes/equipe`}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
           >
-            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-            Preferências
-          </button>
+            <Users className="w-4 h-4 text-muted-foreground" />
+            Equipe
+          </Link>
+
+          <Link
+            href={`/app/${orgSlug}/configuracoes/notificacoes`}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+          >
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            Notificações
+          </Link>
+
+          <Link
+            href={`/app/${orgSlug}/configuracoes/seguranca`}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent transition-colors"
+          >
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+            Segurança
+          </Link>
 
           {isOwner && (
             <Link
