@@ -25,7 +25,6 @@ import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { CopilotProvider } from '@/components/features/CopilotProvider'
-import { CopilotTriggerButton } from '@/components/features/CopilotTriggerButton'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { checkFeatureAccess, getAccountIdForOrgSlug } from '@/lib/plans/server'
 import { CallDialerProvider } from '@/components/features/voice/CallDialerModal'
@@ -173,16 +172,24 @@ export default async function OrgLayout({
           )}
         </div>
 
+        {/* Busca centralizada entre o bloco da esquerda (logo/módulo) e o
+            bloco da direita (notificações/suporte/usuário) — pedido
+            explícito de ficar mais central e maior, em vez de colada nos
+            ícones da direita. */}
+        <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-2">
+          <HeaderSearchBar />
+        </div>
+
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Busca e Copiloto no header viram exclusivos do desktop —
-              no mobile os dois já têm entrada própria na barra inferior
-              (Consultar/Assistente), manter os dois no header também
-              duplicava a ação (pedido explícito: remover a duplicidade). */}
+          {/* Busca vira exclusiva do desktop — no mobile já tem entrada
+              própria na barra inferior (Consultar), manter no header
+              também duplicava a ação (pedido explícito: remover a
+              duplicidade). Copiloto de IA removido do header (pedido
+              explícito) — continua acessível pelo widget flutuante
+              (CopilotDock) e pela barra inferior mobile. */}
           {/* Push toggle e alternância de tema saíram do header — moveram
               pro menu do usuário (mesma consolidação do canvas do
               /design, artboard 05: "só o sino permanece" no header). */}
-          {canUseCopilot && <div className="hidden md:inline-flex"><CopilotTriggerButton /></div>}
-          <HeaderSearchBar />
           <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
           <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
           <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />

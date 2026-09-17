@@ -72,8 +72,14 @@ export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepT
           {buttons.length > 0 && (
             <div className="mt-2 space-y-1">
               {buttons.map((b, i) => (
-                <div key={i} className="text-[10px] rounded border bg-muted/50 px-1.5 py-1 truncate">
+                <div key={i} className="relative text-[10px] rounded border bg-muted/50 px-1.5 py-1 pr-4 truncate">
                   {b.label || `Botão ${i + 1}`}
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`btn-${i}`}
+                    className="!bg-primary"
+                  />
                 </div>
               ))}
             </div>
@@ -83,21 +89,11 @@ export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepT
         !isEnd && <p className="text-xs font-medium mt-0.5 leading-snug line-clamp-3">{data.label}</p>
       )}
 
-      {data.kind !== 'end' && (
-        buttons.length > 0 ? (
-          buttons.map((_, i) => (
-            <Handle
-              key={i}
-              type="source"
-              position={Position.Bottom}
-              id={`btn-${i}`}
-              style={{ left: `${((i + 1) / (buttons.length + 1)) * 100}%` }}
-              className="!bg-primary"
-            />
-          ))
-        ) : (
-          <Handle type="source" position={Position.Bottom} id="default" className="!bg-muted-foreground" />
-        )
+      {/* Sem botões: um único handle de saída padrão embaixo do node. Com
+          botões, o ponto de ligação de cada um vive dentro da própria
+          linha do botão (acima) — nada aqui embaixo. */}
+      {data.kind !== 'end' && buttons.length === 0 && (
+        <Handle type="source" position={Position.Bottom} id="default" className="!bg-muted-foreground" />
       )}
 
       {/* Botão "+" pra adicionar o próximo passo direto a partir deste nó —

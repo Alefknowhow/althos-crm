@@ -6,7 +6,7 @@ import { supportWhatsappLink, BRAND } from '@/lib/constants/brand'
 import { LogoMark } from '@/components/brand/Logo'
 import { cn } from '@/lib/utils'
 import {
-  MessageCircle,
+  LifeBuoy,
   X,
   Send,
   Loader2,
@@ -229,7 +229,7 @@ export function SupportHeaderButton({ className }: { className?: string }) {
         className,
       )}
     >
-      <MessageCircle className="h-5 w-5" />
+      <LifeBuoy className="h-5 w-5" />
     </button>
   )
 }

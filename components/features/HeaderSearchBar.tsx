@@ -21,11 +21,11 @@ export function HeaderSearchBar() {
       type="button"
       onClick={openCommandPalette}
       aria-label="Pesquisar qualquer coisa — lead, cliente, módulo ou ação"
-      className="hidden md:flex items-center gap-2 h-[34px] w-[260px] lg:w-[300px] px-2.5 rounded-lg bg-muted/70 hover:bg-muted text-muted-foreground text-[12.5px] transition-colors shrink-0"
+      className="hidden md:flex items-center gap-2 h-10 w-full max-w-[480px] px-3.5 rounded-full bg-muted/70 hover:bg-muted text-muted-foreground text-[13.5px] transition-colors"
     >
-      <Search className="w-3.5 h-3.5 shrink-0" />
+      <Search className="w-4 h-4 shrink-0" />
       <span className="truncate">Pesquisar qualquer coisa...</span>
-      <kbd className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-mono px-1 py-0.5 rounded bg-foreground/10 shrink-0">
+      <kbd className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-foreground/10 shrink-0">
         {isMac ? '⌘' : 'Ctrl'}K
       </kbd>
     </button>
