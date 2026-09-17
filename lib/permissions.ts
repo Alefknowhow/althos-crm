@@ -43,6 +43,7 @@ export type PermissionKey =
   | 'insights'
   | 'campaigns'
   | 'voice'
+  | 'sales_coach'
   | 'marketing'
   | 'automations'
   | 'templates'
@@ -104,6 +105,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'insights',      label: 'Copiloto IA',       section: 'Comunicação' },
   { key: 'campaigns',     label: 'Campanhas de Envio', section: 'Comunicação' },
   { key: 'voice',         label: 'Althos Voice',      section: 'Comunicação' },
+  { key: 'sales_coach',   label: 'IA Sales Coach',    section: 'Comunicação' },
   // Marketing
   { key: 'marketing',     label: 'Campanhas',         section: 'Marketing' },
   { key: 'forms',         label: 'Formulários',       section: 'Marketing' },
@@ -152,6 +154,7 @@ export function defaultMemberPermissions(): Permissions {
     insights:      false,
     campaigns:     false,
     voice:         false,
+    sales_coach:   false,
     clients:       false,
     catalog:       false,
     sales:         false,

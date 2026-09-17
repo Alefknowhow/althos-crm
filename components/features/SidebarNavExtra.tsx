@@ -9,7 +9,7 @@ import { isModuleEnabled } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
   FileText, Package, Zap, Megaphone, Send, FileSignature,
-  Star, Building2, ShieldAlert, FileStack, Phone, MessageCircle,
+  Star, Building2, ShieldAlert, FileStack, Phone, MessageCircle, Headset,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -138,6 +138,15 @@ export async function SidebarNavExtra({
           <span className="flex items-center gap-2.5">
             <Phone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
             <span>Voice</span>
+          </span>
+        </SidebarNavLink>
+      )}
+
+      {can('sales_coach') && (
+        <SidebarNavLink href={`${base}/sales-coach`}>
+          <span className="flex items-center gap-2.5">
+            <Headset className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+            <span>IA Sales Coach</span>
           </span>
         </SidebarNavLink>
       )}

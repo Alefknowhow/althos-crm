@@ -36,6 +36,7 @@ export type FeatureKey =
   | 'instagram_automation'
   | 'bulk_campaigns'
   | 'voice'
+  | 'sales_coach'
 
 export const FEATURE_KEYS: FeatureKey[] = [
   'tasks',
@@ -53,6 +54,7 @@ export const FEATURE_KEYS: FeatureKey[] = [
   'instagram_automation',
   'bulk_campaigns',
   'voice',
+  'sales_coach',
 ]
 
 /** Per-plan feature flags — mirror of `plans.features`. */
@@ -73,6 +75,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     instagram_automation: false,
     bulk_campaigns: false,
     voice: false,
+    sales_coach: false,
   },
   // Starter/Pro/Business têm as MESMAS funcionalidades desde a reprecificação
   // de set/2026 (docs/plano-precos/) — a diferença é QUANTIDADE de uso (ver
@@ -99,6 +102,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     instagram_automation: true,
     bulk_campaigns: true,
     voice: false,          // Althos Voice: só Business (repricing set/2026)
+    sales_coach: false,    // IA Sales Coach: só Pro/Business (2026-09-17)
   },
   pro: {
     tasks: true,
@@ -119,6 +123,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     // (docs/PRICING_ARCHITECTURE.md § 2) — antes era Pro+Business; corrigido
     // a pedido do usuário (sem clientes ativos, seguro mudar entitlement).
     voice: false,
+    sales_coach: true,
   },
   business: {
     tasks: true,
@@ -136,6 +141,7 @@ export const PLAN_FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
     instagram_automation: true,
     bulk_campaigns: true,
     voice: true,
+    sales_coach: true,
   },
 }
 
@@ -320,6 +326,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   instagram_automation: 'Automação de Instagram',
   bulk_campaigns: 'Campanhas de Envio',
   voice: 'Althos Voice',
+  sales_coach: 'IA Sales Coach',
 }
 
 /** True if the given plan includes the given feature (static check). */

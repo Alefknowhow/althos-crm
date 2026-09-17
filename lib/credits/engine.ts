@@ -31,6 +31,7 @@ export type CreditModule =
   | 'document_extract'
   | 'roteirista'
   | 'qualifier'
+  | 'sales_coach'
   | 'other'
 
 export interface ConsumeCreditsInput {

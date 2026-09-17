@@ -416,6 +416,31 @@ atualizados. Esta seção consolida o estado final.
 ## In Progress
 Nada em edição no momento — sessão pronta para commit final.
 
+---
+
+## Nova tarefa (sessão 2026-09-17) — ver `.harness/tasks/active/ia-sales-coach.md`
+Título: IA Sales Coach — copiloto comercial com IA em tempo real para reuniões.
+Status: **PLANEJAMENTO CONCLUÍDO, IMPLEMENTAÇÃO NÃO INICIADA.** Discovery completo do
+código real feito (AI providers, plans/credits, permissions, RLS, Inngest,
+storage, realtime, agent tools) + pesquisa externa (ElevenLabs Scribe v2
+Realtime, viabilidade de captura de áudio via `getDisplayMedia`). Usuário
+aprovou: infra Railway nova para o WebSocket realtime, e NÃO gravar áudio
+no MVP. Task dividida em 7 fatias (ver arquivo do harness).
+
+**Atualização (mesma sessão, continuação):** fatias 1 e 3 implementadas
+(código completo, verificação parcial). Fatia 3 (infra websocket Railway):
+migration `0253` aplicada, feature/permission/credit module `sales_coach`
+adicionados, serviço `services/sales-coach-realtime/` completo (server,
+provider ElevenLabs, verificação de token, persistência), Route Handler
+`/api/sales-coach/realtime-token`. Fatia 1 (spike browser): captura
+mic+aba via `lib/sales-coach/browser-audio.ts`, UI de teste em
+`app/app/[orgSlug]/sales-coach/page.tsx`. `tsc`/`test`/`build` do monorepo
+todos PASS. **Falta**: deploy real no Railway + `ELEVENLABS_API_KEY` real
+para provar a ponta a ponta de verdade — sem isso, fatia 1 não pode ser
+considerada fechada. Próxima sessão: provisionar Railway, configurar env
+vars, testar com call real, só então avançar pro Sales Context Engine
+(fatia 4, que virou a próxima na ordem já que 1 e 3 estão adiantadas).
+
 ## Pending
 - ~~RISCO REAL ATIVO: /upgrade mostrava preço legado~~ **CORRIGIDO nesta
   mesma sessão, continuação** — ver "Completed (correção do preço de
