@@ -33,6 +33,11 @@ const supabaseWs = supabaseHostname.startsWith('*')
   ? 'wss://*.supabase.co'
   : `wss://${supabaseHostname}`
 
+// IA Sales Coach — serviço realtime dedicado (Railway), fora do domínio
+// Supabase/Vercel. SALES_COACH_REALTIME_URL já vem como wss://... (ver
+// lib/sales-coach/realtime-token.ts) — usa direto.
+const salesCoachRealtimeWs = process.env.SALES_COACH_REALTIME_URL || ''
+
 // Cloudflare R2 hostname — arquivos migrados (avatares, mídia, anexos)
 // passam a ser servidos via signed URL desse domínio em vez do Supabase
 // Storage. R2_ENDPOINT (se setado) ou R2_ACCOUNT_ID (fallback padrão
@@ -89,6 +94,7 @@ const ContentSecurityPolicy = [
     `connect-src 'self'`,
     `https://${supabaseHostname}`,
     supabaseWs,
+    salesCoachRealtimeWs,
     `https://api.inngest.com`,
     `https://api.anthropic.com`,
     `https://api.resend.com`,
