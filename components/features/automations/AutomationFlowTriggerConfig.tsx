@@ -71,6 +71,17 @@ export function TriggerConfig({ auto, setAuto, forms, stages, niche }: { auto: a
         </div>
       )}
 
+      {(auto.trigger_type === 'instagram.dm.received' || auto.trigger_type === 'instagram.comment.received') && (
+        <div className="space-y-2">
+          <Label className="text-xs">Palavra-chave (opcional)</Label>
+          <Input
+            placeholder="Ex: orçamento — vazio dispara em qualquer mensagem"
+            value={auto.trigger_config?.keyword || ''}
+            onChange={e => setAuto({ ...auto, trigger_config: { keyword: e.target.value } })}
+          />
+        </div>
+      )}
+
       {auto.trigger_type === 'lead.stale' && (
         <div className="space-y-2">
           <Label className="text-xs">Dias sem contato</Label>

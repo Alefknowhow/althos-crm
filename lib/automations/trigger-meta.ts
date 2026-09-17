@@ -1,7 +1,7 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
   Stethoscope, Building2, Shield, Smile, DollarSign, Plane, PhoneCall,
-  MessageSquareText, type LucideIcon,
+  MessageSquareText, AtSign, type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -33,6 +33,10 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'voice.call.completed', label: 'Ligação Concluída (Voice)', desc: 'Dispara quando uma ligação (humana ou Voice AI) termina', icon: PhoneCall, color: '#0891b2' },
   { id: 'voice.ai.qualified',   label: 'Lead Qualificado por Voice AI', desc: 'Dispara quando o agente de Voice AI qualifica o lead durante a ligação', icon: PhoneCall, color: '#0891b2' },
   { id: 'sms.received',         label: 'SMS Recebido',            desc: 'Dispara quando um SMS é recebido de um contato',      icon: MessageSquareText, color: '#65a30d' },
+
+  // Instagram — motor genérico (fusão com os funis de DM, ver docs do plano).
+  { id: 'instagram.dm.received',      label: 'DM Recebida (Instagram)',       desc: 'Dispara quando o Instagram recebe uma mensagem direta (opcionalmente filtrada por palavra-chave)', icon: AtSign, color: '#e1306c' },
+  { id: 'instagram.comment.received', label: 'Comentário Recebido (Instagram)', desc: 'Dispara quando um post recebe um comentário (opcionalmente filtrado por palavra-chave)', icon: AtSign, color: '#e1306c' },
 
   // Vertical Clínicas — sem configuração extra (igual appointment.booked).
   { id: 'clinic.appointment.confirmed', label: 'Agendamento Confirmado (Clínica)', desc: 'Dispara quando o paciente confirma o agendamento', icon: Stethoscope, color: '#14b8a6', niche: 'clinicas' },

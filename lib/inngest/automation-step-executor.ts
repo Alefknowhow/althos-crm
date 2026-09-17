@@ -260,6 +260,41 @@ export async function executeAutomationStep(
         break;
       }
 
+      case 'send_instagram_dm': {
+        if (!stepDef.config.message) break
+        // Resolve a conversa/conexão do Instagram vinculadas a este lead —
+        // o motor genérico não tem IGSID/token de conta próprios, só o que
+        // já está salvo em social_conversations/social_connections pra
+        // esse contato (precisa ter chegado uma DM dele antes, mesma
+        // pré-condição do funil de DM antigo).
+        const { data: conv } = await supabase
+          .from('social_conversations')
+          .select('id, sender_external_id, social_connection_id')
+          .eq('contato_id', lead.id)
+          .eq('organization_id', orgId)
+          .order('last_message_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (!conv) { status = 'error'; message = 'Lead sem conversa de Instagram vinculada.'; break }
+        const { data: conn } = await supabase
+          .from('social_connections')
+          .select('page_id, access_token')
+          .eq('id', conv.social_connection_id)
+          .maybeSingle()
+        if (!conn?.access_token) { status = 'error'; message = 'Conexão do Instagram não encontrada.'; break }
+
+        const text = interpolateLeadVars(stepDef.config.message, lead)
+        const buttons = (stepDef.config.buttons || []).filter((b: any) => b.label && b.value).slice(0, 3)
+        sent = { to: conv.sender_external_id, text, buttons: buttons.length || undefined }
+
+        const { sendInstagramDM } = await import('@/lib/social/instagram')
+        await sendInstagramDM(conn.page_id, conn.access_token, conv.sender_external_id, text, buttons.length ? buttons : undefined)
+
+        const { logOutboundMessage } = await import('@/lib/social/conversation-log')
+        await logOutboundMessage(supabase, conv.id, orgId, text, 'automation')
+        break
+      }
+
       case 'webhook': {
         if (stepDef.config.url) {
           const payload = {

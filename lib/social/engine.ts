@@ -26,6 +26,7 @@ import {
   matches, maybeCreateLead, logPendingComment, rehostInboundAttachment,
   type InboundInteraction, type Automation,
 } from './engine-helpers'
+import { resumeWaitingGenericAutomation, fireGenericAutomationTrigger } from './generic-automation-bridge'
 
 export type { InboundInteraction } from './engine-helpers'
 
@@ -165,6 +166,18 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     }
   }
 
+  // 2.55) Retoma uma automação genérica pausada num "Aguardar Resposta"
+  //       (mesmo papel que o passo acima cumpre pro motor de funil antigo,
+  //       agora pro motor genérico fundido — ver generic-automation-bridge.ts).
+  if (inbound.kind === 'dm' && conversationId) {
+    try {
+      const resumed = await resumeWaitingGenericAutomation(supabase, orgId, conversationId, inbound.text)
+      if (resumed) return
+    } catch (e: any) {
+      console.error('[social engine] resume automation failed:', e?.message)
+    }
+  }
+
   // 2.6) Comentário que inicia um funil: responde em privado ao comentário e
   //      abre a conversa (os próximos passos seguem na DM). Não impede a regra
   //      simples de comentário (resposta pública) abaixo.
@@ -178,6 +191,16 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
     } catch (e: any) {
       console.error('[social engine] comment funnel failed:', e?.message)
     }
+  }
+
+  // 2.7) Dispara o motor genérico de Automações pra quem configurou um
+  //      gatilho de Instagram por lá (fusão com o antigo "regra simples" de
+  //      social_automations abaixo — os dois convivem, sem migração forçada
+  //      dos existentes). Ver generic-automation-bridge.ts.
+  try {
+    await fireGenericAutomationTrigger(supabase, orgId, connection.access_token, conversationId, inbound)
+  } catch (e: any) {
+    console.error('[social engine] instagram automation trigger failed:', e?.message)
   }
 
   // 3) Find a matching active automation.

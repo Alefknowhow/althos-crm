@@ -50,6 +50,15 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
 
   function setSteps(next: Step[]) { setAuto({ ...auto, steps: next }) }
 
+  // Ramificação (wait_for_reply): edges do grafo lido pelo motor
+  // (lib/automations/automation-traversal.ts) — ver StepConfig, caso
+  // 'wait_for_reply'. Sem edges, o motor cai no array `steps` linear de
+  // sempre (uma automação sem ramificação continua idêntica).
+  function setStepEdges(stepId: string, edges: import('@/lib/automations/automation-traversal').AutomationFlowEdge[]) {
+    const otherEdges = (auto.flow?.edges || []).filter((e: any) => e.from !== stepId)
+    setAuto({ ...auto, flow: { ...(auto.flow || {}), edges: [...otherEdges, ...edges] } })
+  }
+
   // Insere um step novo na posição `at` (índice dentro de `steps`).
   function insertStep(at: number, type: string) {
     const newStep: Step = { id: `step_${Date.now()}`, type, config: {} }
@@ -97,7 +106,7 @@ export default function AutomationFlow({ auto, setAuto, forms, stages, stepStats
                 badge={`Passo ${i + 1}`}
                 onDelete={() => removeStep(i)}
                 stats={stepStats?.[i] ?? { success: 0, errors: 0 }}
-                config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} />}
+                config={<StepConfig step={step} index={i} steps={steps} setSteps={setSteps} stages={stages} whatsappTemplates={whatsappTemplates} flowEdges={auto.flow?.edges || []} setStepEdges={setStepEdges} />}
               />
               <Connector onInsert={type => insertStep(i + 1, type)} />
             </div>

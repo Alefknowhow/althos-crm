@@ -1,6 +1,8 @@
 import { inngest } from './client'
 import { createAdminClient } from '../supabase/server'
 import { executeAutomationStep } from './automation-step-executor'
+import { getNextAutomationStepId, type AutomationFlow } from '../automations/automation-traversal'
+import { runAutomationGraph } from './automation-run-graph'
 
 // Inngest limita 10 triggers por function — com Core + Clínicas + Imóveis +
 // Seguros a lista passou de 10, então o processamento (mesmo corpo,
@@ -41,6 +43,10 @@ async function handleAutomationEvent({ event, step }: { event: any; step: any })
     }
     if (event.name === 'lead.tag_added' && auto.trigger_config.tag) {
       if (auto.trigger_config.tag !== tag) isMatch = false
+    }
+    if ((event.name === 'instagram.dm.received' || event.name === 'instagram.comment.received') && auto.trigger_config.keyword) {
+      const text = String((event.data as any)?.text || '').toLowerCase()
+      if (!text.includes(auto.trigger_config.keyword.toLowerCase())) isMatch = false
     }
     // task.overdue, lead.stale, appointment.booked: no extra filter needed at this layer
 
@@ -138,6 +144,9 @@ export const processAutomationEventVerticals2 = inngest.createFunction(
       { event: 'voice.call.completed' },
       { event: 'voice.ai.qualified' },
       { event: 'sms.received' },
+      // Instagram — motor genérico (fusão com os funis de DM, Fase 3).
+      { event: 'instagram.dm.received' },
+      { event: 'instagram.comment.received' },
     ]
   },
   handleAutomationEvent,
@@ -167,8 +176,8 @@ export const executeAutomationRun = inngest.createFunction(
     const { automations: auto, contatos: lead, organizations: orgConfig, organization_id: orgId } = run as any
     if (!auto || !lead) return
 
-    let currentStep = run.current_step
     const steps = auto.steps || []
+    const flow: AutomationFlow | undefined = auto.flow
 
     // Helper: write a row to automation_step_logs (best-effort, never throws).
     async function logStep(
@@ -199,6 +208,18 @@ export const executeAutomationRun = inngest.createFunction(
         })
       } catch { /* ignore logging failures */ }
     }
+
+    // Automação com `flow` (grafo, ex.: ramificação por resposta) usa
+    // travessia por id de step (automation-traversal.ts) — pode pausar
+    // num `wait_for_reply` e ser retomada depois por resumeWaitingAutomationRun.
+    // Sem `flow`, cai no array `steps` linear de sempre (comportamento
+    // idêntico ao de antes da Fase 3, nenhuma automação existente muda).
+    if (flow) {
+      await runAutomationGraph({ step, supabase, runId, run, auto, orgId, orgConfig, lead, flow, logStep })
+      return
+    }
+
+    let currentStep = run.current_step
 
     try {
       while (currentStep < steps.length) {
@@ -268,3 +289,32 @@ export const executeAutomationRun = inngest.createFunction(
     }
   }
 )
+
+/**
+ * Retoma um automation_run pausado num `wait_for_reply` assim que a resposta
+ * do lead chega (DM/comentário do Instagram — chamado por
+ * lib/social/engine.ts, mesmo papel que runFunnelForInbound cumpre pro
+ * motor de funil antigo). Resolve o próximo step pelo grafo da automação
+ * (texto/botão da resposta) e reenfileira a execução.
+ */
+export async function resumeWaitingAutomationRun(
+  supabase: ReturnType<typeof createAdminClient>,
+  run: { id: string; organization_id: string; waiting_for_step_id: string | null },
+  auto: { steps: any[]; flow?: AutomationFlow },
+  reply: { replyText: string; matchedButtonIndex: number | null },
+): Promise<void> {
+  if (!run.waiting_for_step_id) return
+  const steps = auto.steps || []
+  const fallbackOrder = steps.map((s: any) => s.id)
+  const nextId = getNextAutomationStepId(auto.flow, run.waiting_for_step_id, {
+    replyText: reply.replyText,
+    matchedButtonIndex: reply.matchedButtonIndex,
+    fallbackOrder,
+  })
+  await supabase.from('automation_runs').update({
+    status: 'running',
+    current_step_id: nextId,
+    waiting_for_step_id: null,
+  }).eq('id', run.id)
+  await inngest.send({ name: 'automation.run.execute', data: { runId: run.id, orgId: run.organization_id } })
+}
