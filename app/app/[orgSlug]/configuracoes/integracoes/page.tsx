@@ -1,130 +1,120 @@
-import { Button } from '@/components/ui/button'
-import { Activity, Share2, Sparkles, AtSign, MapPin, FileSignature, Mail } from 'lucide-react'
+import { getCurrentOrganization } from '@/lib/supabase/types'
+import { getWhatsappConnectionStatus } from '@/actions/whatsapp'
+import { getSocialConnections } from '@/actions/social-automations'
+import { getGoogleBusinessConnections } from '@/actions/google-business'
+import IntegrationsGrid, { type IntegrationCardData } from '@/components/features/integrations/IntegrationsGrid'
 
-type IntegrationItem = {
-  title: string
-  description: string
-  detail: string
-  icon: typeof Activity
-  iconClass?: string
-  iconStyle?: React.CSSProperties
-  actionLabel: string
-  href?: string
-  highlight?: boolean
-}
+export default async function IntegracoesPage({ params }: { params: { orgSlug: string } }) {
+  const orgSlug = params.orgSlug
+  const org = await getCurrentOrganization(orgSlug)
+  const base = `/app/${orgSlug}/configuracoes`
 
-export default function IntegracoesPage({ params }: { params: { orgSlug: string } }) {
-  const base = `/app/${params.orgSlug}/configuracoes`
+  const [whatsapp, instagramConnections, googleConnections] = await Promise.all([
+    getWhatsappConnectionStatus(orgSlug),
+    getSocialConnections(orgSlug),
+    getGoogleBusinessConnections(orgSlug).catch(() => []),
+  ])
 
-  const items: IntegrationItem[] = [
+  const items: IntegrationCardData[] = [
     {
+      id: 'saude',
       title: 'Saúde das Integrações',
-      description: 'Diagnóstico em tempo real de todas as conexões.',
-      detail: 'WhatsApp, Email, Automações e Banco de Dados — status, último erro e disponibilidade dos últimos 30 dias.',
-      icon: Activity,
-      iconClass: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
-      actionLabel: 'Ver painel de saúde',
-      href: `${base}/integracoes/saude`,
-      highlight: true,
+      category: 'Diagnóstico',
+      description: 'Status, último erro e disponibilidade de WhatsApp, E-mail, Automações e Banco de Dados nos últimos 30 dias.',
+      meta: 'Tempo real',
+      connected: true,
+      brand: 'health',
+      moduleHref: `${base}/integracoes/saude`,
     },
     {
-      title: 'WhatsApp Cloud API',
-      description: 'Conecte seu número oficial.',
-      detail: 'Envie e receba mensagens diretamente no CRM.',
-      icon: Share2,
-      iconClass: 'bg-green-100 text-green-600',
-      actionLabel: 'Configurar',
-      href: `${base}/whatsapp`,
+      id: 'whatsapp',
+      title: 'WhatsApp',
+      category: 'Comunicação',
+      description: 'Atendimento, automações e agente de IA no WhatsApp Business.',
+      meta: whatsapp.alreadyConnected
+        ? whatsapp.displayPhone ? `Conectado — ${whatsapp.displayPhone}` : 'Conectado'
+        : 'Não conectado',
+      connected: whatsapp.alreadyConnected,
+      brand: 'whatsapp',
+      connectKind: 'whatsapp',
+      moduleHref: `/app/${orgSlug}/conversas`,
+      manageHref: `${base}/whatsapp`,
     },
     {
-      title: 'Resend (Email)',
-      description: 'Configure seu domínio de e-mail.',
-      detail: 'Envie automações de e-mail com seu domínio.',
-      icon: Share2,
-      iconClass: 'bg-red-100 text-red-600',
-      actionLabel: 'Conectar',
+      id: 'instagram',
+      title: 'Instagram',
+      category: 'Social',
+      description: 'DMs, comentários e automações de resposta. Login, gestão de contas ativas e regras ficam dentro do módulo Instagram.',
+      meta: instagramConnections.length > 0
+        ? `${instagramConnections.length} conta${instagramConnections.length > 1 ? 's' : ''} conectada${instagramConnections.length > 1 ? 's' : ''}`
+        : 'Não conectado',
+      connected: instagramConnections.length > 0,
+      brand: 'instagram',
+      connectKind: 'instagram',
+      moduleHref: `/app/${orgSlug}/conversas`,
+      manageHref: `${base}/social`,
     },
     {
+      id: 'tiktok',
+      title: 'TikTok',
+      category: 'Social',
+      description: 'Gestão de mensagens diretas e automações de comentário — mesma lógica do Instagram, adaptada à API do TikTok.',
+      meta: 'Na fila de desenvolvimento',
+      connected: false,
+      comingSoon: true,
+      brand: 'tiktok',
+    },
+    {
+      id: 'google-business',
+      title: 'Google Business Profile',
+      category: 'Reputação',
+      description: 'Puxe e responda avaliações do Google diretamente do CRM, sem sair do Althos.',
+      meta: googleConnections.length > 0 ? `${googleConnections.length} conta conectada` : 'Não conectado',
+      connected: googleConnections.length > 0,
+      brand: 'google',
+      manageHref: `${base}/google-business`,
+    },
+    {
+      id: 'asaas',
+      title: 'Asaas',
+      category: 'Pagamentos',
+      description: 'Cobranças, assinaturas e conciliação financeira integradas ao módulo Financeiro.',
+      meta: (org as any).asaas_customer_id ? 'Conectado' : 'Não conectado',
+      connected: !!(org as any).asaas_customer_id,
+      brand: 'asaas',
+      moduleHref: `/app/${orgSlug}/financeiro`,
+    },
+    {
+      id: 'agente-ia',
       title: 'Agente IA',
-      description: 'Atendimento automático e score de leads.',
-      detail: 'Configure a persona/atendimento automático no WhatsApp e a qualificação automática: score 0–100, tier (hot/warm/cold), tags e razões.',
-      icon: Sparkles,
-      iconClass: 'bg-purple-100 text-purple-600',
-      actionLabel: 'Configurar',
-      href: `${base}/agente-ia`,
+      category: 'Automação',
+      description: 'Atendimento automático e qualificação de leads (score 0–100, tier, tags) no WhatsApp.',
+      meta: 'Configurável',
+      connected: true,
+      brand: 'ai',
+      manageHref: `${base}/agente-ia`,
     },
     {
-      title: 'Instagram · DMs & Comentários',
-      description: 'Auto-resposta de DMs e comentários.',
-      detail: 'Conecte uma conta profissional e automatize respostas com IA.',
-      icon: AtSign,
-      iconStyle: { background: 'linear-gradient(135deg, #f09433, #dc2743 50%, #bc1888)', color: '#fff' },
-      actionLabel: 'Configurar',
-      href: `${base}/social`,
+      id: 'resend',
+      title: 'E-mail (Resend)',
+      category: 'Comunicação',
+      description: 'Envie automações e campanhas de e-mail com seu próprio domínio.',
+      meta: 'Configurável',
+      connected: false,
+      brand: 'email',
+      manageHref: `${base}/email-creditos`,
     },
     {
-      title: 'Autentique · Assinatura Digital',
-      description: 'Envie contratos de Reservas para assinar.',
-      detail: 'Cada conta usa sua própria chave de API e consome seus próprios créditos de assinatura.',
-      icon: FileSignature,
-      iconClass: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
-      actionLabel: 'Configurar',
-      href: `${base}/autentique`,
-    },
-    {
-      title: 'Email Credits',
-      description: 'Saldo e compra de créditos de disparo de e-mail.',
-      detail: 'Cada e-mail disparado (campanhas, automações) consome 1 crédito — cobrado por unidade, com markup sobre o custo real do provedor.',
-      icon: Mail,
-      iconClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
-      actionLabel: 'Ver saldo e comprar',
-      href: `${base}/email-creditos`,
-    },
-    {
-      title: 'Google Meu Negócio',
-      description: 'Avaliações, publicações e indicadores.',
-      detail: 'Conecte o Perfil da Empresa no Google e gerencie avaliações direto do CRM.',
-      icon: MapPin,
-      iconClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-      actionLabel: 'Configurar',
-      href: `${base}/google-business`,
+      id: 'autentique',
+      title: 'Autentique',
+      category: 'Documentos',
+      description: 'Assinatura digital de contratos — cada conta usa sua própria chave de API.',
+      meta: 'Configurável',
+      connected: false,
+      brand: 'sign',
+      manageHref: `${base}/autentique`,
     },
   ]
 
-  return (
-      <div className="divide-y rounded-none border bg-card">
-        {items.map(item => {
-          const Icon = item.icon
-          return (
-            <div
-              key={item.title}
-              className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-center ${item.highlight ? 'bg-primary/[0.03]' : ''}`}
-            >
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.iconClass || ''}`}
-                style={item.iconStyle}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold">{item.title}</h2>
-                </div>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{item.detail}</p>
-              </div>
-              <div className="shrink-0 sm:ml-4">
-                {item.href ? (
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-                    <a href={item.href}>{item.actionLabel}</a>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">{item.actionLabel}</Button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-  )
+  return <IntegrationsGrid orgSlug={orgSlug} items={items} />
 }
