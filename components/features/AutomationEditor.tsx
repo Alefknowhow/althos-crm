@@ -9,8 +9,12 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { updateAutomation, toggleAutomation } from '@/actions/automations'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import AutomationFlow from '@/components/features/automations/AutomationFlow'
+import AutomationFlowCanvas from '@/components/features/automations/AutomationFlowCanvas'
 import AutomationRunsPanel from '@/components/features/automations/AutomationRunsPanel'
+
+function isInstagramTrigger(triggerType: string): boolean {
+  return triggerType === 'instagram.dm.received' || triggerType === 'instagram.comment.received'
+}
 
 export default function AutomationEditor({ orgSlug, automation, forms, stages, runs, stepStats, whatsappTemplates, niche }: any) {
   const router = useRouter()
@@ -37,12 +41,21 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
   async function handleSave() {
     setSaving(true)
     try {
+      const hasInvalidInstagramStep = !isInstagramTrigger(auto.trigger_type)
+        && (auto.steps || []).some((s: any) => s.type === 'send_instagram_dm')
+      if (hasInvalidInstagramStep) {
+        toast.error('Remova o passo "DM do Instagram" ou troque o gatilho pra um de Instagram antes de salvar.')
+        setSaving(false)
+        return
+      }
+
       const res = await updateAutomation(orgSlug, auto.id, {
         name: auto.name,
         is_active: auto.is_active,
         trigger_type: auto.trigger_type,
         trigger_config: auto.trigger_config,
-        steps: auto.steps
+        steps: auto.steps,
+        flow: auto.flow,
       })
       if (res?.ok) {
         toast.success('Automação salva')
@@ -84,7 +97,7 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
 
       <div className="flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 205px)' }}>
         {activeTab === 'editor' && (
-          <AutomationFlow auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} niche={niche} />
+          <AutomationFlowCanvas auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} niche={niche} />
         )}
 
         {activeTab === 'runs' && (

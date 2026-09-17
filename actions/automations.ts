@@ -138,6 +138,7 @@ export async function updateAutomation(orgSlug: string, id: string, payload: any
   if (payload.trigger_type !== undefined) allowed.trigger_type = payload.trigger_type
   if (payload.trigger_config !== undefined) allowed.trigger_config = payload.trigger_config
   if (payload.steps !== undefined) allowed.steps = payload.steps
+  if (payload.flow !== undefined) allowed.flow = payload.flow
 
   const admin = createAdminClient()
   const { error } = await admin
