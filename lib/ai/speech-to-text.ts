@@ -20,7 +20,7 @@ export async function transcribeAudioElevenLabs(
 
   const form = new FormData()
   form.append('model_id', 'scribe_v1')
-  form.append('file', new Blob([buffer], { type: mimeType || 'audio/webm' }), filename)
+  form.append('file', new Blob([Uint8Array.from(buffer)], { type: mimeType || 'audio/webm' }), filename)
 
   const res = await fetch(ENDPOINT, {
     method: 'POST',
