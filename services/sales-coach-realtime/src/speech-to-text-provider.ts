@@ -19,7 +19,7 @@ export interface SpeechToTextConnection {
   close(): void
   onTranscript(cb: (event: TranscriptEvent) => void): void
   onError(cb: (err: Error) => void): void
-  onClose(cb: () => void): void
+  onClose(cb: (code: number, reason: string) => void): void
 }
 
 export interface SpeechToTextProvider {
@@ -59,7 +59,7 @@ export class ElevenLabsRealtimeProvider implements SpeechToTextProvider {
 
     const transcriptCbs: ((event: TranscriptEvent) => void)[] = []
     const errorCbs: ((err: Error) => void)[] = []
-    const closeCbs: (() => void)[] = []
+    const closeCbs: ((code: number, reason: string) => void)[] = []
 
     ws.on('message', (raw) => {
       let msg: Record<string, unknown>
@@ -72,7 +72,12 @@ export class ElevenLabsRealtimeProvider implements SpeechToTextProvider {
       if (type === 'partial_transcript' && typeof msg.text === 'string') {
         for (const cb of transcriptCbs) cb({ type: 'partial', text: msg.text })
       } else if (
-        (type === 'committed_transcript' || type === 'committed_transcript_with_timestamps') &&
+        // Sempre pedimos include_timestamps:true — a ElevenLabs manda os DOIS
+        // tipos (`committed_transcript` e `committed_transcript_with_timestamps`)
+        // pro mesmo trecho quando isso está ligado. Tratar os dois como
+        // "committed" causava duplicação (achado real em produção,
+        // 2026-09-17) — só o variant com timestamps é processado.
+        type === 'committed_transcript_with_timestamps' &&
         typeof msg.text === 'string'
       ) {
         for (const cb of transcriptCbs) {
@@ -93,13 +98,20 @@ export class ElevenLabsRealtimeProvider implements SpeechToTextProvider {
       for (const cb of errorCbs) cb(err instanceof Error ? err : new Error(String(err)))
     })
 
-    ws.on('close', () => {
-      for (const cb of closeCbs) cb()
+    ws.on('close', (code, reasonBuf) => {
+      const reason = reasonBuf?.toString() || ''
+      console.log('[elevenlabs] conexão fechada', code, reason)
+      for (const cb of closeCbs) cb(code, reason)
     })
 
+    let chunkCount = 0
     return {
       sendAudioChunk(base64Pcm16: string) {
         if (ws.readyState !== WebSocket.OPEN) return
+        chunkCount++
+        if (chunkCount === 1 || chunkCount % 50 === 0) {
+          console.log('[elevenlabs] chunks de áudio enviados até agora:', chunkCount)
+        }
         ws.send(JSON.stringify({ message_type: 'input_audio_chunk', audio_base_64: base64Pcm16 }))
       },
       close() {

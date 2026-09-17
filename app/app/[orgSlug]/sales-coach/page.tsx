@@ -12,11 +12,10 @@ import { Button } from '@/components/ui/button'
 export const dynamic = 'force-dynamic'
 
 /**
- * Fatia 1 (spike técnico) do IA Sales Coach — ver
- * .harness/tasks/active/ia-sales-coach.md. Ainda não é a UI final (spec
- * §20 Sales Coach Live): sem briefing, contexto comercial, eventos ou
- * Next Best Action — só a prova ponta a ponta de captura de áudio +
- * transcrição em tempo real via o serviço realtime (Railway).
+ * Sales Coach Live (spec §20/21, fatia 1+4+5) — captura de mic + aba da
+ * reunião, transcrição em tempo real via o serviço realtime (Railway) e o
+ * painel de decisão (contexto comercial, eventos, Next Best Action) ligado
+ * ao vivo. Ainda faltam: pré-call briefing e post-call analysis (fatia 6).
  */
 export default async function SalesCoachPage({ params }: { params: { orgSlug: string } }) {
   const user = await requireAuth()
@@ -36,10 +35,10 @@ export default async function SalesCoachPage({ params }: { params: { orgSlug: st
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <PageHeader
         title="IA Sales Coach"
-        hint="Copiloto comercial com IA que acompanha suas reuniões em tempo real (versão de teste técnico)."
+        hint="Copiloto comercial com IA que acompanha suas reuniões em tempo real."
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link href={`/app/${params.orgSlug}/sales-coach/configuracoes`}>

@@ -1,10 +1,13 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Radio, Square, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AudioCaptureError, startMixedAudioCapture, type AudioCaptureHandle } from '@/lib/sales-coach/browser-audio'
+import { SalesCoachLivePanel } from './SalesCoachLivePanel'
+import { emptySalesContext, type SalesContext, type SalesEvent, type TranscriptSegmentInput } from '@/lib/sales-coach/types'
+import type { NextBestAction } from '@/lib/sales-coach/next-best-action'
 
 type Status = 'idle' | 'starting' | 'live' | 'ended' | 'error'
 
@@ -14,25 +17,92 @@ interface TranscriptLine {
   isFinal: boolean
 }
 
+// Cadência do loop que liga a transcrição às engines (spec §14: nunca por
+// partial, sempre por intervalo controlado). A cada TURN_INTERVAL_MS, se
+// houver trechos finais novos acumulados, processa um "turno". Next Best
+// Action (modelo mais caro) só a cada NBA_EVERY_N_TURNS turnos.
+const TURN_INTERVAL_MS = 12_000
+const NBA_EVERY_N_TURNS = 2
+
 /**
- * Spike técnico do IA Sales Coach (fatia 1) — prova ponta a ponta:
- * captura de mic + aba da reunião no browser → serviço realtime (Railway)
- * → ElevenLabs Scribe v2 Realtime → transcrição exibida aqui.
- *
- * NÃO é a UI final do Sales Coach Live (spec §20/21) — sem contexto
- * comercial, eventos, Next Best Action. Só valida a infra de áudio+socket
- * antes de investir nas fatias seguintes.
+ * Sales Coach Live (spec §20/21) — captura de mic + aba da reunião,
+ * transcrição em tempo real via o serviço realtime (Railway), e o painel
+ * de decisão (Sales Context Engine + Sales Event Engine + Next Best
+ * Action, ligados ao vivo — fatia 5).
  */
 export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [lines, setLines] = useState<TranscriptLine[]>([])
+  const [context, setContext] = useState<SalesContext | null>(null)
+  const [events, setEvents] = useState<SalesEvent[]>([])
+  const [nextBestAction, setNextBestAction] = useState<NextBestAction | null>(null)
   const partialLineIdRef = useRef<number | null>(null)
   const lineCounterRef = useRef(0)
   const audioHandleRef = useRef<AudioCaptureHandle | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
+  const pendingSegmentsRef = useRef<TranscriptSegmentInput[]>([])
+  const contextRef = useRef<SalesContext>(emptySalesContext())
+  const eventsRef = useRef<SalesEvent[]>([])
+  const turnCounterRef = useRef(0)
+  const turnInFlightRef = useRef(false)
+  const turnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const appendTranscript = useCallback((text: string, isFinal: boolean) => {
+  const runTurn = useCallback(async () => {
+    if (turnInFlightRef.current || pendingSegmentsRef.current.length === 0 || !sessionIdRef.current) return
+    turnInFlightRef.current = true
+    const segments = pendingSegmentsRef.current
+    pendingSegmentsRef.current = []
+    turnCounterRef.current += 1
+    const wantNextBestAction = turnCounterRef.current % NBA_EVERY_N_TURNS === 0
+
+    try {
+      const res = await fetch('/api/sales-coach/process-turn', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          orgSlug,
+          sessionId: sessionIdRef.current,
+          newSegments: segments,
+          previousContext: contextRef.current,
+          existingEvents: eventsRef.current,
+          wantNextBestAction,
+        }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.context) {
+        contextRef.current = data.context
+        setContext(data.context)
+      }
+      if (Array.isArray(data.newEvents) && data.newEvents.length > 0) {
+        eventsRef.current = [...eventsRef.current, ...data.newEvents]
+        setEvents(eventsRef.current)
+      }
+      if (data.nextBestAction) {
+        setNextBestAction(data.nextBestAction)
+      }
+    } catch {
+      // turno perdido não é crítico — o próximo intervalo tenta de novo com os segmentos acumulados
+    } finally {
+      turnInFlightRef.current = false
+    }
+  }, [orgSlug])
+
+  useEffect(() => {
+    if (status === 'live') {
+      turnIntervalRef.current = setInterval(runTurn, TURN_INTERVAL_MS)
+      return () => {
+        if (turnIntervalRef.current) clearInterval(turnIntervalRef.current)
+      }
+    }
+  }, [status, runTurn])
+
+  const appendTranscript = useCallback((text: string, isFinal: boolean, speaker?: string) => {
+    if (isFinal) {
+      pendingSegmentsRef.current = [...pendingSegmentsRef.current, { speaker, text }]
+    }
     setLines((prev) => {
       if (!isFinal) {
         // Substitui a última linha parcial em vez de acumular — evita
@@ -65,6 +135,13 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
     setErrorMessage(null)
     setStatus('starting')
     setLines([])
+    setContext(null)
+    setEvents([])
+    setNextBestAction(null)
+    contextRef.current = emptySalesContext()
+    eventsRef.current = []
+    pendingSegmentsRef.current = []
+    turnCounterRef.current = 0
     partialLineIdRef.current = null
 
     try {
@@ -77,6 +154,7 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
       if (!res.ok) {
         throw new Error(data?.error || 'Não foi possível iniciar a sessão.')
       }
+      sessionIdRef.current = data.sessionId
 
       const ws = new WebSocket(data.wsUrl)
       wsRef.current = ws
@@ -92,7 +170,7 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
           if (msg.type === 'partial' && typeof msg.text === 'string') {
             appendTranscript(msg.text, false)
           } else if (msg.type === 'committed' && typeof msg.text === 'string') {
-            appendTranscript(msg.text, true)
+            appendTranscript(msg.text, true, typeof msg.speakerId === 'string' ? msg.speakerId : undefined)
           } else if (msg.type === 'error') {
             setErrorMessage('Erro no provedor de transcrição — a sessão continua, mas pode haver falhas.')
           }
@@ -103,6 +181,7 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
 
       ws.onclose = () => {
         setStatus((s) => (s === 'live' || s === 'starting' ? 'ended' : s))
+        void runTurn()
       }
 
       const audioHandle = await startMixedAudioCapture((base64Pcm16) => {
@@ -123,7 +202,7 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
       setErrorMessage(message)
       stopEverything('error')
     }
-  }, [orgSlug, appendTranscript, stopEverything])
+  }, [orgSlug, appendTranscript, stopEverything, runTurn])
 
   const stop = useCallback(() => stopEverything('ended'), [stopEverything])
 
@@ -178,24 +257,28 @@ export function SalesCoachLiveSpike({ orgSlug }: { orgSlug: string }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-1.5 text-sm font-medium mb-3">
-            <Radio className="w-4 h-4" /> Transcrição
-          </div>
-          {lines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">A transcrição aparece aqui assim que a call começar.</p>
-          ) : (
-            <div className="space-y-1.5 max-h-96 overflow-y-auto">
-              {lines.map((line) => (
-                <p key={line.id} className={line.isFinal ? 'text-sm' : 'text-sm text-muted-foreground italic'}>
-                  {line.text}
-                </p>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4 items-start">
+        <SalesCoachLivePanel context={context} events={events} nextBestAction={nextBestAction} />
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-1.5 text-sm font-medium mb-3">
+              <Radio className="w-4 h-4" /> Transcrição
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {lines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">A transcrição aparece aqui assim que a call começar.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                {lines.map((line) => (
+                  <p key={line.id} className={line.isFinal ? 'text-sm' : 'text-sm text-muted-foreground italic'}>
+                    {line.text}
+                  </p>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

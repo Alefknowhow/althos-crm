@@ -81,7 +81,16 @@ wss.on('connection', async (browserSocket, req) => {
     const provider = new ElevenLabsRealtimeProvider(ELEVENLABS_API_KEY)
     sttConnection = await provider.connect({ languageCode: 'pt', keyterms: [] })
 
+    let lastCommittedText = ''
     sttConnection.onTranscript((event) => {
+      if (event.type === 'committed' && event.text === lastCommittedText) {
+        // Defesa extra contra duplicata (além do filtro de message_type em
+        // speech-to-text-provider.ts) — nunca repete o mesmo texto final
+        // duas vezes seguidas pro browser nem pro banco.
+        return
+      }
+      if (event.type === 'committed') lastCommittedText = event.text
+
       if (browserSocket.readyState === WebSocket.OPEN) {
         browserSocket.send(JSON.stringify({ type: event.type, text: event.text, speakerId: event.speakerId }))
       }
@@ -105,7 +114,8 @@ wss.on('connection', async (browserSocket, req) => {
       }
     })
 
-    sttConnection.onClose(() => {
+    sttConnection.onClose((code, reason) => {
+      console.log('[sales-coach-realtime] STT provider fechou a conexão', sessionId, code, reason)
       void endSession('ended')
     })
   } catch (err) {
@@ -115,6 +125,7 @@ wss.on('connection', async (browserSocket, req) => {
     return
   }
 
+  let browserChunkCount = 0
   browserSocket.on('message', (raw) => {
     let msg: Record<string, unknown>
     try {
@@ -123,6 +134,10 @@ wss.on('connection', async (browserSocket, req) => {
       return
     }
     if (msg.type === 'audio_chunk' && typeof msg.audio_base64 === 'string') {
+      browserChunkCount++
+      if (browserChunkCount === 1) {
+        console.log('[sales-coach-realtime] primeiro chunk de áudio recebido do browser', sessionId)
+      }
       sttConnection?.sendAudioChunk(msg.audio_base64)
     } else if (msg.type === 'end') {
       browserSocket.close(1000, 'client_ended')
