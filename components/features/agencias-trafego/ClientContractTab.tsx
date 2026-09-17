@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { FileSignature, Wallet } from 'lucide-react'
+import { FileSignature, Wallet, Receipt } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import PlanoContratoManagerDialog from '@/components/features/agencias-trafego/PlanoContratoManagerDialog'
 import ClientPortalAccessCard from '@/components/features/agencias-trafego/ClientPortalAccessCard'
@@ -24,10 +24,13 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Cancelada', className: 'bg-muted text-muted-foreground' },
 }
 
-/** Contrato & Financeiro do cliente — reaproveita o mesmo gerenciador de
- *  contrato de plano usado em SalesTable (plan_contracts), só relocado
- *  pra aparecer também dentro do workspace do cliente. Representa a
- *  relação Agência↔Cliente, nunca o billing do SaaS Althos. */
+/** Contrato & Financeiro do cliente — representa a relação Agência↔Cliente
+ *  (plan_contracts.contato_id), firmada assim que o contato vira cliente
+ *  (ver createCustomer, actions/contatos-contactpoints.ts). Não tem
+ *  relação com vendas: um cliente tem UM contrato com a agência,
+ *  independente de quantas vendas/renovações aconteçam depois — "Vendas"
+ *  aqui é só o histórico financeiro, informativo. Nunca o billing do SaaS
+ *  Althos. */
 export default function ClientContractTab({
   orgSlug, clientId, clientName, clientEmail, clientPhone, profile, sales,
 }: {
@@ -39,7 +42,7 @@ export default function ClientContractTab({
   profile: TrafficClientProfile | null
   sales: SaleRow[]
 }) {
-  const [contractSaleId, setContractSaleId] = useState<string | null>(null)
+  const [contractOpen, setContractOpen] = useState(false)
 
   return (
     <div className="space-y-4">
@@ -62,10 +65,22 @@ export default function ClientContractTab({
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileSignature className="w-4 h-4" /> Contratos</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-sm flex items-center gap-2"><FileSignature className="w-4 h-4" /> Contrato</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setContractOpen(true)}>Gerenciar contrato</Button>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Relação Agência↔Cliente — firmada assim que {clientName} entrou como cliente, independente de vendas.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Receipt className="w-4 h-4" /> Vendas</CardTitle></CardHeader>
         <CardContent>
           {sales.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma venda registrada pra este cliente ainda — o contrato é gerado a partir de uma venda.</p>
+            <p className="text-sm text-muted-foreground">Nenhuma venda registrada pra este cliente ainda.</p>
           ) : (
             <div className="divide-y">
               {sales.map(s => {
@@ -81,7 +96,6 @@ export default function ClientContractTab({
                     <div className="flex items-center gap-2">
                       <span className="tabular-nums font-medium">{formatCurrency(s.amount_cents || 0)}</span>
                       <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                      <Button size="sm" variant="outline" onClick={() => setContractSaleId(s.id)}>Contrato</Button>
                     </div>
                   </div>
                 )
@@ -93,15 +107,15 @@ export default function ClientContractTab({
 
       <ClientPortalAccessCard orgSlug={orgSlug} contatoId={clientId} />
 
-      {contractSaleId && (
+      {contractOpen && (
         <PlanoContratoManagerDialog
           orgSlug={orgSlug}
-          saleId={contractSaleId}
+          contatoId={clientId}
           clientName={clientName}
           clientEmail={clientEmail}
           clientPhone={clientPhone}
-          open={!!contractSaleId}
-          onOpenChange={o => !o && setContractSaleId(null)}
+          open={contractOpen}
+          onOpenChange={setContractOpen}
         />
       )}
     </div>

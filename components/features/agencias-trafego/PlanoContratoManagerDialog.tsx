@@ -29,7 +29,7 @@ import { PlanoContratoDocumentCard } from '@/components/features/agencias-trafeg
 
 type Props = {
   orgSlug: string
-  saleId: string
+  contatoId: string
   clientName: string | null
   clientEmail?: string | null
   clientPhone?: string | null
@@ -50,7 +50,7 @@ const STATUS_META: Record<string, { label: string; className: string; icon: any 
  * actions/plan-contracts.ts + tabela plan_contracts própria, não
  * compartilhada com sale_contracts (Reservas/Viagens).
  */
-export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName, clientEmail, clientPhone, open, onOpenChange }: Props) {
+export default function PlanoContratoManagerDialog({ orgSlug, contatoId, clientName, clientEmail, clientPhone, open, onOpenChange }: Props) {
   const [contract, setContract] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -77,7 +77,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    getPlanSaleContract(orgSlug, saleId).then(c => {
+    getPlanSaleContract(orgSlug, contatoId).then(c => {
       setContract(c)
       setSignerName(prev => c?.signer_name || prev)
       setSignerEmail(prev => c?.signer_email || prev)
@@ -87,17 +87,17 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       setSigner2Phone(prev => c?.signer2_phone || prev)
       setLoading(false)
     })
-  }, [open, orgSlug, saleId])
+  }, [open, orgSlug, contatoId])
 
   async function reload() {
-    const c = await getPlanSaleContract(orgSlug, saleId)
+    const c = await getPlanSaleContract(orgSlug, contatoId)
     setContract(c)
   }
 
   async function openBodyEditor() {
     setEditingBody(true)
     setBodyLoading(true)
-    const res = await getPlanContractEditableBody(orgSlug, saleId)
+    const res = await getPlanContractEditableBody(orgSlug, contatoId)
     setBodyLoading(false)
     if (!res.ok) { toast.error((res as any).error || 'Erro ao carregar o conteúdo'); setEditingBody(false); return }
     setBodyHtml(res.bodyHtml)
@@ -105,7 +105,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
 
   async function handleSaveBody() {
     setSavingBody(true)
-    const res = await savePlanContractBody(orgSlug, saleId, bodyHtml)
+    const res = await savePlanContractBody(orgSlug, contatoId, bodyHtml)
     setSavingBody(false)
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Conteúdo do contrato salvo — a próxima geração de PDF já usa esse texto.')
@@ -116,7 +116,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   async function handleGenerate() {
     setGenerating(true)
     try {
-      const data = await getPlanContractRenderData(orgSlug, saleId)
+      const data = await getPlanContractRenderData(orgSlug, contatoId)
       if (!data.ok) throw new Error(data.error)
 
       flushSync(() => setRenderData(data))
@@ -152,7 +152,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       }
 
       const base64 = pdf.output('datauristring').split(',')[1]
-      const res = await uploadPlanContractPdf(orgSlug, saleId, base64)
+      const res = await uploadPlanContractPdf(orgSlug, contatoId, base64)
       if (!res.ok) {
         toast.error(res.error)
       } else {
@@ -187,7 +187,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
     setSending(true)
     const res = await sendPlanContractForSignature(
       orgSlug,
-      saleId,
+      contatoId,
       {
         name: signerName.trim(),
         email: signerEmail.trim() || undefined,
@@ -210,7 +210,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
 
   async function handleRefresh() {
     setRefreshing(true)
-    const res = await refreshPlanContractStatus(orgSlug, saleId)
+    const res = await refreshPlanContractStatus(orgSlug, contatoId)
     setRefreshing(false)
     if (!res.ok) {
       toast.error(res.error)
@@ -221,7 +221,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
   }
 
   async function handleView(which: 'pdf' | 'signed') {
-    const res = await getPlanContractFileUrl(orgSlug, saleId, which)
+    const res = await getPlanContractFileUrl(orgSlug, contatoId, which)
     if (!res.ok) {
       toast.error(res.error)
       return
@@ -234,7 +234,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
       toast.error('Informe o e-mail de destino.')
       return
     }
-    const res = await sendPlanContractLinkByEmail(orgSlug, saleId, emailTo.trim())
+    const res = await sendPlanContractLinkByEmail(orgSlug, contatoId, emailTo.trim())
     if (!res.ok) toast.error(res.error)
     else toast.success('Link enviado por e-mail.')
   }
@@ -284,7 +284,7 @@ export default function PlanoContratoManagerDialog({ orgSlug, saleId, clientName
 
             <PlanoContratoDocumentCard
               orgSlug={orgSlug}
-              saleId={saleId}
+              contatoId={contatoId}
               generating={generating}
               hasPdf={hasPdf}
               isSigned={isSigned}

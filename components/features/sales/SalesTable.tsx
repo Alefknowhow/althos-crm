@@ -42,7 +42,9 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
-  const [contractSaleId, setContractSaleId] = useState<string | null>(null)
+  // O contrato é Agência↔Cliente (contato_id), não por venda — este botão
+  // na linha da venda é só um atalho pro contrato do cliente dessa venda.
+  const [contractContatoId, setContractContatoId] = useState<string | null>(null)
 
   const memberName = (id: string | null) => {
     if (!id) return '—'
@@ -143,7 +145,8 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                         variant="ghost"
                         className="h-8 w-8"
                         title="Contrato"
-                        onClick={() => setContractSaleId(s.id)}
+                        disabled={!s.contato_id}
+                        onClick={() => setContractContatoId(s.contato_id)}
                       >
                         <FileSignature className="w-3.5 h-3.5" />
                       </Button>
@@ -195,15 +198,15 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {contractSaleId && (
+      {contractContatoId && (
         <PlanoContratoManagerDialog
           orgSlug={orgSlug}
-          saleId={contractSaleId}
-          clientName={sales.find(s => s.id === contractSaleId)?.leads?.name || null}
-          clientEmail={sales.find(s => s.id === contractSaleId)?.leads?.email || null}
-          clientPhone={sales.find(s => s.id === contractSaleId)?.leads?.phone || null}
-          open={!!contractSaleId}
-          onOpenChange={o => !o && setContractSaleId(null)}
+          contatoId={contractContatoId}
+          clientName={sales.find(s => s.contato_id === contractContatoId)?.leads?.name || null}
+          clientEmail={sales.find(s => s.contato_id === contractContatoId)?.leads?.email || null}
+          clientPhone={sales.find(s => s.contato_id === contractContatoId)?.leads?.phone || null}
+          open={!!contractContatoId}
+          onOpenChange={o => !o && setContractContatoId(null)}
         />
       )}
     </div>

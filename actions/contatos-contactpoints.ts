@@ -8,6 +8,7 @@ import { CONTATO_STATUSES } from '@/lib/contatos'
 import { canCreateLead } from '@/lib/billing/limits'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { checkContatoPermission, checkContatoDuplicate, FROZEN_ERROR } from './contatos-shared'
+import { createDraftPlanContract } from '@/lib/trafego/plan-contract-autocreate'
 
 /* =========================================================
  *  Contact points (email/phone), customer creation, contato panel
@@ -168,6 +169,11 @@ export async function createCustomer(orgSlug: string, raw: unknown) {
 
   if (error || !lead) return { ok: false as const, error: error?.message || 'Erro ao criar contato' }
 
+  // Agências de Tráfego: contrato (Agência↔Cliente) firmado assim que vira cliente, sem depender de venda.
+  if (org.niche === 'trafego') {
+    await createDraftPlanContract(supabase, { organizationId: org.id, contatoId: lead.id, userId: user.id })
+  }
+
   revalidatePath(`/app/${orgSlug}/contatos`)
   return { ok: true as const, id: lead.id }
 }
@@ -311,6 +317,7 @@ export async function setContatoStatus(orgSlug: string, contatoId: string, rawSt
     .maybeSingle()
 
   const updates: Record<string, any> = { status }
+  const becomingCustomerNow = status === 'cliente' && !current?.became_customer_at
   if (status === 'cliente') {
     updates.became_customer_at = current?.became_customer_at || new Date().toISOString()
   } else {
@@ -324,6 +331,16 @@ export async function setContatoStatus(orgSlug: string, contatoId: string, rawSt
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
+
+  // Mesma regra de createCustomer acima: o contrato de plano (Agência↔
+  // Cliente) é firmado assim que o contato vira cliente pela primeira vez,
+  // não quando uma venda acontece — cobre também quem virou cliente por
+  // aqui (ex.: negócio ganho no pipeline), não só pelo botão "Criar
+  // cliente" do Traffic Command Center.
+  if (becomingCustomerNow && org.niche === 'trafego') {
+    await createDraftPlanContract(supabase, { organizationId: org.id, contatoId, userId: user.id })
+  }
+
   revalidatePath(`/app/${orgSlug}/contatos`)
   revalidatePath(`/app/${orgSlug}/contatos/${contatoId}`)
   return { ok: true as const }

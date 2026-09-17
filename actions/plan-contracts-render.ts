@@ -2,7 +2,10 @@
 
 /**
  * Plan contract (Agências de Tráfego) render/edit — building the printable
- * HTML from a sale + product template, and saving edited content.
+ * HTML from the client (Agência↔Cliente) + org branding, and saving
+ * edited content. O contrato é firmado assim que o contato vira cliente —
+ * não tem relação com vendas específicas (ver createCustomer,
+ * actions/contatos-contactpoints.ts, que já cria a linha em draft).
  * Split out of actions/plan-contracts.ts.
  */
 
@@ -10,7 +13,6 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
-import { renderTemplate } from '@/lib/inngest/functions'
 
 export async function requireAccess(orgSlug: string) {
   const user = await requireAuth()
@@ -27,34 +29,29 @@ function fmtCurrencyBr(cents: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
 }
 
-export async function getPlanContractRenderData(orgSlug: string, saleId: string) {
+export async function getPlanContractRenderData(orgSlug: string, contatoId: string) {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
-  const { data: sale } = await supabase
-    .from('sales')
-    .select('id, amount_cents, sale_date, payment_method, service_start_date, duration_months, contatos(name, email, phone), products(name, contract_template_id)')
-    .eq('id', saleId).eq('organization_id', org.id).maybeSingle()
-  if (!sale) return { ok: false as const, error: 'Venda não encontrada.' }
+  const { data: client } = await supabase
+    .from('contatos')
+    .select('id, name, email, phone, traffic_client_profile')
+    .eq('id', contatoId).eq('organization_id', org.id).maybeSingle()
+  if (!client) return { ok: false as const, error: 'Cliente não encontrado.' }
 
-  const client: any = (sale as any).contatos
-  const product: any = (sale as any).products
-  const startDate = sale.service_start_date ? new Date(sale.service_start_date + 'T12:00:00') : null
-  const endDate = startDate && sale.duration_months
-    ? new Date(startDate.getFullYear(), startDate.getMonth() + sale.duration_months, startDate.getDate())
-    : null
+  const profile: any = client.traffic_client_profile || {}
 
   const planoSale = {
-    id: sale.id,
-    client_name: client?.name || '',
-    client_email: client?.email || null,
-    client_phone: client?.phone || null,
-    plano: product?.name || '',
-    valor_mensal_cents: sale.amount_cents,
-    duracao_meses: sale.duration_months,
-    data_inicio: sale.service_start_date,
-    data_fim: endDate ? endDate.toISOString().slice(0, 10) : null,
-    forma_pagamento: sale.payment_method,
+    id: contatoId,
+    client_name: client.name || '',
+    client_email: client.email || null,
+    client_phone: client.phone || null,
+    plano: 'Gestão de Tráfego Pago',
+    valor_mensal_cents: profile.monthlyBudgetCents ?? null,
+    duracao_meses: null as number | null,
+    data_inicio: profile.contractStart ?? null,
+    data_fim: null as string | null,
+    forma_pagamento: null as string | null,
   }
 
   const orgBranding = {
@@ -68,88 +65,57 @@ export async function getPlanContractRenderData(orgSlug: string, saleId: string)
     address_street: (org as any).address_street ?? null,
   }
 
-  // Prioridade: conteúdo editado manualmente PRA ESTA VENDA (plan_contracts.
-  // body_html) > modelo padrão do produto > fallback genérico renderizado no
-  // componente. Cada contrato pode ter cláusulas diferentes — editar aqui
-  // não altera o modelo que os outros contratos usam.
+  // Prioridade: conteúdo editado manualmente PRA ESTE CLIENTE
+  // (plan_contracts.body_html) > fallback genérico renderizado no
+  // componente. O contrato é único por cliente (Agência↔Cliente), não por
+  // venda — não existe mais "modelo do produto" aqui (não há produto).
   const { data: existingContract } = await supabase
     .from('plan_contracts')
     .select('body_html')
-    .eq('sale_id', saleId).eq('organization_id', org.id)
+    .eq('contato_id', contatoId).eq('organization_id', org.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
   if (existingContract?.body_html) {
     return { ok: true as const, hasTemplate: true as const, bodyHtml: existingContract.body_html, sale: planoSale, org: orgBranding }
   }
 
-  const templateId = product?.contract_template_id
-  if (templateId) {
-    const { data: template } = await supabase.from('document_templates').select('body_html').eq('id', templateId).eq('organization_id', org.id).maybeSingle()
-    if (template) {
-      const bodyHtml = renderTemplate(template.body_html, {
-        sale: {
-          cliente: planoSale.client_name,
-          plano: planoSale.plano,
-          valor_mensal: fmtCurrencyBr(planoSale.valor_mensal_cents),
-          duracao_meses: planoSale.duracao_meses ? String(planoSale.duracao_meses) : '',
-          data_inicio: fmtDateBr(planoSale.data_inicio),
-          data_fim: fmtDateBr(planoSale.data_fim),
-          forma_pagamento: planoSale.forma_pagamento || '',
-        },
-        org: {
-          nome: org.name,
-          cnpj: orgBranding.cnpj || '',
-          cadastur: orgBranding.cadastur || '',
-          telefone: orgBranding.contact_phone || '',
-          email: orgBranding.contact_email || '',
-          endereco: orgBranding.address_street || '',
-        },
-      })
-      return { ok: true as const, hasTemplate: true as const, bodyHtml, sale: planoSale, org: orgBranding }
-    }
-  }
   return { ok: true as const, hasTemplate: false as const, sale: planoSale, org: orgBranding }
 }
 
 /** HTML inicial pra abrir no editor quando o contrato ainda não tem
- *  conteúdo próprio nem modelo padrão — mesmo texto do fallback renderizado
- *  em PlanContractPrintView, só que como string editável. */
-function buildDefaultPlanContractHtml(sale: { client_name: string; plano: string; valor_mensal_cents: number; duracao_meses: number | null; data_inicio: string | null; data_fim: string | null; forma_pagamento: string | null }): string {
+ *  conteúdo próprio — mesmo texto do fallback renderizado em
+ *  PlanContractPrintView, só que como string editável. */
+function buildDefaultPlanContractHtml(sale: { client_name: string; plano: string; valor_mensal_cents: number | null; duracao_meses: number | null; data_inicio: string | null; data_fim: string | null; forma_pagamento: string | null }): string {
   return [
     `<h1 style="text-align:center;font-weight:700;font-size:18px;">Contrato de Prestação de Serviços</h1>`,
-    `<p>Pelo presente instrumento, a CONTRATADA e <strong>${sale.client_name}</strong>, doravante CONTRATANTE, ajustam a prestação do serviço abaixo descrito.</p>`,
+    `<p>Pelo presente instrumento, a CONTRATADA e <strong>${sale.client_name}</strong>, doravante CONTRATANTE, ajustam a prestação do serviço de gestão de tráfego pago abaixo descrito.</p>`,
     `<table style="width:100%;border-collapse:collapse;">`,
     `<tbody>`,
-    `<tr><td style="padding:4px 0;font-weight:600;">Plano</td><td style="padding:4px 0;">${sale.plano}</td></tr>`,
-    `<tr><td style="padding:4px 0;font-weight:600;">Mensalidade</td><td style="padding:4px 0;">${fmtCurrencyBr(sale.valor_mensal_cents)}</td></tr>`,
-    `<tr><td style="padding:4px 0;font-weight:600;">Duração</td><td style="padding:4px 0;">${sale.duracao_meses ? `${sale.duracao_meses} meses` : '—'}</td></tr>`,
+    `<tr><td style="padding:4px 0;font-weight:600;">Serviço</td><td style="padding:4px 0;">${sale.plano}</td></tr>`,
+    `<tr><td style="padding:4px 0;font-weight:600;">Fee mensal</td><td style="padding:4px 0;">${sale.valor_mensal_cents != null ? fmtCurrencyBr(sale.valor_mensal_cents) : '—'}</td></tr>`,
     `<tr><td style="padding:4px 0;font-weight:600;">Início</td><td style="padding:4px 0;">${fmtDateBr(sale.data_inicio) || '—'}</td></tr>`,
-    `<tr><td style="padding:4px 0;font-weight:600;">Término previsto</td><td style="padding:4px 0;">${fmtDateBr(sale.data_fim) || '—'}</td></tr>`,
-    `<tr><td style="padding:4px 0;font-weight:600;">Forma de pagamento</td><td style="padding:4px 0;">${sale.forma_pagamento || '—'}</td></tr>`,
     `</tbody>`,
     `</table>`,
   ].join('\n')
 }
 
 /** Conteúdo pronto pra abrir no editor (Tiptap) — sempre retorna algo
- *  editável, mesmo sem template configurado. */
-export async function getPlanContractEditableBody(orgSlug: string, saleId: string) {
-  const data = await getPlanContractRenderData(orgSlug, saleId)
+ *  editável, mesmo sem conteúdo próprio salvo ainda. */
+export async function getPlanContractEditableBody(orgSlug: string, contatoId: string) {
+  const data = await getPlanContractRenderData(orgSlug, contatoId)
   if (!data.ok) return data
   const bodyHtml = data.hasTemplate ? data.bodyHtml! : buildDefaultPlanContractHtml(data.sale)
   return { ok: true as const, bodyHtml }
 }
 
-/** Salva o conteúdo editado pra ESTA venda — não mexe no modelo padrão do
- *  produto. Próxima geração de PDF já usa esse conteúdo (ver
- *  getPlanContractRenderData acima). */
-export async function savePlanContractBody(orgSlug: string, saleId: string, bodyHtml: string) {
+/** Salva o conteúdo editado do contrato deste cliente. */
+export async function savePlanContractBody(orgSlug: string, contatoId: string, bodyHtml: string) {
   const { org, user } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: existing } = await supabase
     .from('plan_contracts')
     .select('id, status')
-    .eq('sale_id', saleId).eq('organization_id', org.id)
+    .eq('contato_id', contatoId).eq('organization_id', org.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
   if (existing) {
@@ -160,23 +126,23 @@ export async function savePlanContractBody(orgSlug: string, saleId: string, body
     if (error) return { ok: false as const, error: error.message }
   } else {
     const { error } = await supabase.from('plan_contracts').insert({
-      organization_id: org.id, sale_id: saleId, body_html: bodyHtml, status: 'draft', created_by: user.id,
+      organization_id: org.id, contato_id: contatoId, body_html: bodyHtml, status: 'draft', created_by: user.id,
     })
     if (error) return { ok: false as const, error: error.message }
   }
 
-  revalidatePath(`/app/${orgSlug}/vendas`)
+  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}`)
   return { ok: true as const }
 }
 
-export async function getPlanSaleContract(orgSlug: string, saleId: string) {
+export async function getPlanSaleContract(orgSlug: string, contatoId: string) {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data } = await supabase
     .from('plan_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)

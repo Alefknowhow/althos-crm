@@ -11,10 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, FileSignature, Download, Eye, FileText, Settings2 } from 'lucide-react'
 
 export function PlanoContratoDocumentCard({
-  orgSlug, saleId, generating, hasPdf, isSigned, onGenerate, onView,
+  orgSlug, contatoId, generating, hasPdf, isSigned, onGenerate, onView,
 }: {
   orgSlug: string
-  saleId: string
+  contatoId: string
   generating: boolean
   hasPdf: boolean
   isSigned: boolean
@@ -40,7 +40,7 @@ export function PlanoContratoDocumentCard({
           <Download className="w-4 h-4 mr-1.5" /> Baixar assinado
         </Button>
         <Button size="sm" variant="ghost" asChild>
-          <Link href={`/app/${orgSlug}/vendas/${saleId}/contrato`} target="_blank">
+          <Link href={`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}/contrato`} target="_blank">
             <Settings2 className="w-4 h-4 mr-1.5" /> Ver modelo
           </Link>
         </Button>

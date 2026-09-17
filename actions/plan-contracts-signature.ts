@@ -2,7 +2,9 @@
 
 /**
  * Plan contract (Agências de Tráfego) PDF upload, Autentique e-signature
- * flow, and file/link retrieval. Split out of actions/plan-contracts.ts.
+ * flow, and file/link retrieval. Chave é o cliente (contato_id) — o
+ * contrato é Agência↔Cliente, não por venda. Split out of
+ * actions/plan-contracts.ts.
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -12,12 +14,12 @@ import { getResend, clientEmailFrom } from '@/lib/resend'
 import { getApiKeyOrFail } from '@/actions/contracts'
 import { requireAccess } from './plan-contracts-render'
 
-export async function uploadPlanContractPdf(orgSlug: string, saleId: string, base64Pdf: string) {
+export async function uploadPlanContractPdf(orgSlug: string, contatoId: string, base64Pdf: string) {
   const { org, user } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const bytes = Buffer.from(base64Pdf, 'base64')
-  const path = `${org.id}/${saleId}/${Date.now()}-contrato.pdf`
+  const path = `${org.id}/${contatoId}/${Date.now()}-contrato.pdf`
 
   const { error: uploadError } = await supabase.storage
     .from('plan-contracts')
@@ -27,7 +29,7 @@ export async function uploadPlanContractPdf(orgSlug: string, saleId: string, bas
   const { data: existing } = await supabase
     .from('plan_contracts')
     .select('id')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -42,7 +44,7 @@ export async function uploadPlanContractPdf(orgSlug: string, saleId: string, bas
   } else {
     const { error } = await supabase.from('plan_contracts').insert({
       organization_id: org.id,
-      sale_id: saleId,
+      contato_id: contatoId,
       pdf_path: path,
       status: 'draft',
       created_by: user.id,
@@ -50,13 +52,13 @@ export async function uploadPlanContractPdf(orgSlug: string, saleId: string, bas
     if (error) return { ok: false as const, error: error.message }
   }
 
-  revalidatePath(`/app/${orgSlug}/vendas`)
+  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}`)
   return { ok: true as const }
 }
 
 export async function sendPlanContractForSignature(
   orgSlug: string,
-  saleId: string,
+  contatoId: string,
   signer: { name: string; email?: string; phone?: string },
   signer2: { name: string; email?: string; phone?: string },
 ) {
@@ -69,7 +71,7 @@ export async function sendPlanContractForSignature(
   const { data: contract } = await supabase
     .from('plan_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -84,8 +86,8 @@ export async function sendPlanContractForSignature(
     .download(contract.pdf_path)
   if (downloadError || !file) return { ok: false as const, error: downloadError?.message || 'Não foi possível ler o PDF salvo.' }
 
-  const { data: sale } = await supabase.from('sales').select('id, products(name)').eq('id', saleId).maybeSingle()
-  const docTitle = (sale as any)?.products?.name || saleId
+  const { data: client } = await supabase.from('contatos').select('name').eq('id', contatoId).maybeSingle()
+  const docTitle = client?.name || contatoId
 
   try {
     const doc = await createAutentiqueDocument(
@@ -118,14 +120,14 @@ export async function sendPlanContractForSignature(
       .eq('id', contract.id)
     if (error) return { ok: false as const, error: error.message }
 
-    revalidatePath(`/app/${orgSlug}/vendas`)
+    revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}`)
     return { ok: true as const, link }
   } catch (e: any) {
     return { ok: false as const, error: e.message || 'Erro ao enviar para assinatura na Autentique.' }
   }
 }
 
-export async function refreshPlanContractStatus(orgSlug: string, saleId: string) {
+export async function refreshPlanContractStatus(orgSlug: string, contatoId: string) {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
@@ -135,7 +137,7 @@ export async function refreshPlanContractStatus(orgSlug: string, saleId: string)
   const { data: contract } = await supabase
     .from('plan_contracts')
     .select('*')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -161,7 +163,7 @@ export async function refreshPlanContractStatus(orgSlug: string, saleId: string)
       }
     }
     await supabase.from('plan_contracts').update(updates).eq('id', contract.id)
-    revalidatePath(`/app/${orgSlug}/vendas`)
+    revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${contatoId}`)
     return { ok: true as const, status: updates.status || contract.status }
   } catch (e: any) {
     console.error('refreshPlanContractStatus error:', e)
@@ -169,14 +171,14 @@ export async function refreshPlanContractStatus(orgSlug: string, saleId: string)
   }
 }
 
-export async function getPlanContractFileUrl(orgSlug: string, saleId: string, which: 'pdf' | 'signed' = 'pdf') {
+export async function getPlanContractFileUrl(orgSlug: string, contatoId: string, which: 'pdf' | 'signed' = 'pdf') {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
     .from('plan_contracts')
     .select('pdf_path, signed_pdf_path')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -194,14 +196,14 @@ export async function getPlanContractFileUrl(orgSlug: string, saleId: string, wh
   return { ok: true as const, url: signed.signedUrl }
 }
 
-export async function sendPlanContractLinkByEmail(orgSlug: string, saleId: string, toEmail: string) {
+export async function sendPlanContractLinkByEmail(orgSlug: string, contatoId: string, toEmail: string) {
   const { org } = await requireAccess(orgSlug)
   const supabase = createClient()
 
   const { data: contract } = await supabase
     .from('plan_contracts')
     .select('signature_link')
-    .eq('sale_id', saleId)
+    .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
     .limit(1)
