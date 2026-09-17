@@ -204,6 +204,42 @@ export async function deleteAutomation(orgSlug: string, id: string) {
   return { ok: true }
 }
 
+/** Duplica uma automação (gatilho, passos, ramificações) como rascunho
+ *  pausado — mesmo padrão de "Duplicar" já usado em Formulários. */
+export async function duplicateAutomation(orgSlug: string, id: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'automations')
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+
+  const admin = createAdminClient()
+  const { data: original } = await admin
+    .from('automations')
+    .select('name, trigger_type, trigger_config, steps, flow')
+    .eq('id', id)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!original) return { ok: false as const, error: 'Automação não encontrada' }
+
+  const { data: copy, error } = await admin
+    .from('automations')
+    .insert({
+      organization_id: org.id,
+      name: `${original.name} (cópia)`,
+      trigger_type: original.trigger_type,
+      trigger_config: original.trigger_config,
+      steps: original.steps,
+      flow: original.flow,
+      is_active: false,
+    })
+    .select()
+    .maybeSingle()
+
+  if (error) return { ok: false as const, error: error.message || 'Erro ao duplicar automação' }
+  revalidatePath(`/app/${orgSlug}/automacoes`)
+  return { ok: true as const, automation: copy }
+}
+
 export async function toggleAutomation(orgSlug: string, id: string, isActive: boolean) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)

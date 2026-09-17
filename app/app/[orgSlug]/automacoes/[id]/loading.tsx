@@ -1,9 +1,7 @@
 /**
- * Feedback instantâneo ao trocar de automação na lista — sem isso, o
- * painel direito ficava "parado" durante o fetch (automation/forms/
- * stages/templates/runs), parecendo travado em vez de responsivo. A
- * lista (AutomationsShell, no layout.tsx pai) continua visível o tempo
- * todo — só este painel troca.
+ * Feedback instantâneo ao abrir uma automação — sem isso, a tela ficava
+ * "parada" durante o fetch (automation/forms/stages/templates/runs),
+ * parecendo travada em vez de responsiva.
  */
 export default function AutomationEditorLoading() {
   return (
