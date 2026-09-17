@@ -3,10 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  ArrowLeft, LayoutDashboard, BarChart3, Target, LayoutGrid, Image as ImageIcon,
+  Waypoints, Brain, FileBarChart, FileSignature,
+} from 'lucide-react'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
+import { VerticalTabsNav, type VerticalTabItem } from '@/components/ui/vertical-tabs'
 import TrafficClientProfileCard from '@/components/features/agencias-trafego/TrafficClientProfileCard'
 import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/TrafficClientCampaignsCard'
 import ClientCampaignsTable from '@/components/features/agencias-trafego/ClientCampaignsTable'
@@ -20,7 +24,7 @@ import CampaignCreativesSection from '@/components/features/agencias-trafego/Cam
 import ClientReportsTab from '@/components/features/agencias-trafego/ClientReportsTab'
 import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
 import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBuilder'
-import MarketingStrategistPanel from '@/components/features/agencias-trafego/MarketingStrategistPanel'
+import MarketingStrategistDock from '@/components/features/agencias-trafego/MarketingStrategistDock'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
@@ -42,11 +46,13 @@ type CampaignRow = {
 type SaleRow = { id: string; sale_date: string | null; amount_cents: number | null; status: string; products: { name: string } | null }
 
 /**
- * Ambiente operacional de um cliente de tráfego — 8 abas (Traffic Command
- * Center, ver plano em C:\Users\aleft\.claude\plans\dazzling-baking-anchor.md).
- * Todo dado exibido aqui pertence exclusivamente a `clientId`: contas via
- * ad_accounts.contato_id, campanhas via join com essas contas, nunca "todas
- * as contas do workspace".
+ * Ambiente operacional de um cliente de tráfego — sidebar vertical com 9
+ * seções (Estratégia e Estrutura de Campanhas separadas, antes uma coisa
+ * só). Todo dado exibido aqui pertence exclusivamente a `clientId`: contas
+ * via ad_accounts.contato_id, campanhas via join com essas contas, nunca
+ * "todas as contas do workspace". O Marketing Strategist (IA) vira um
+ * painel lateral fixo (MarketingStrategistDock) em vez de conteúdo de aba —
+ * fica disponível em qualquer seção, sempre escopado a este cliente.
  */
 export default function ClientDetailShell({
   orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, sales, activities,
@@ -84,16 +90,18 @@ export default function ClientDetailShell({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState('visao-geral')
-  const sections: MobileSection[] = [
-    { key: 'visao-geral', label: 'Visão geral' },
-    { key: 'analytics', label: 'Analytics' },
-    { key: 'estrategia', label: 'Estratégia' },
-    { key: 'criativos', label: 'Criativos' },
-    { key: 'conversoes', label: 'Conversões' },
-    { key: 'inteligencia', label: 'Inteligência' },
-    { key: 'relatorios', label: 'Relatórios' },
-    { key: 'contrato', label: 'Contrato & Financeiro' },
+  const items: VerticalTabItem[] = [
+    { key: 'visao-geral', label: 'Visão geral', icon: LayoutDashboard },
+    { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { key: 'estrategia', label: 'Estratégia', icon: Target },
+    { key: 'campanhas', label: 'Estrutura de Campanhas', icon: LayoutGrid },
+    { key: 'criativos', label: 'Criativos', icon: ImageIcon },
+    { key: 'conversoes', label: 'Conversões', icon: Waypoints },
+    { key: 'inteligencia', label: 'Inteligência', icon: Brain },
+    { key: 'relatorios', label: 'Relatórios', icon: FileBarChart },
+    { key: 'contrato', label: 'Contrato & Financeiro', icon: FileSignature },
   ]
+  const sections: MobileSection[] = items.map(i => ({ key: i.key, label: i.label }))
   const hasTrackingData = trackingFunnel.clicks > 0 || trackingLinks.length > 0
 
   return (
@@ -107,21 +115,16 @@ export default function ClientDetailShell({
         <h1 className="text-xl font-bold tracking-tight">{clientName}</h1>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <div className="sm:hidden">
-          <MobileSectionPicker sections={sections} activeKey={tab} onChange={setTab} />
-        </div>
-        <TabsList className="hidden sm:flex flex-wrap h-auto">
-          <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="estrategia">Estratégia</TabsTrigger>
-          <TabsTrigger value="criativos">Criativos</TabsTrigger>
-          <TabsTrigger value="conversoes">Conversões</TabsTrigger>
-          <TabsTrigger value="inteligencia">Inteligência</TabsTrigger>
-          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
-          <TabsTrigger value="contrato">Contrato & Financeiro</TabsTrigger>
-        </TabsList>
+      <div className="sm:hidden">
+        <MobileSectionPicker sections={sections} activeKey={tab} onChange={setTab} />
+      </div>
 
+      <Tabs value={tab} onValueChange={setTab} className="flex flex-col sm:flex-row gap-6 min-w-0">
+        <div className="hidden sm:block shrink-0">
+          <VerticalTabsNav items={items} activeKey={tab} onSelect={setTab} />
+        </div>
+
+        <div className="flex-1 min-w-0">
         <TabsContent value="visao-geral">
           <ClientOverviewTab
             orgSlug={orgSlug}
@@ -154,6 +157,9 @@ export default function ClientDetailShell({
         <TabsContent value="estrategia" className="space-y-4">
           <TrafficClientProfileCard orgSlug={orgSlug} contatoId={clientId} initial={profile} />
           <ClientFunnelCard funnel={trackingFunnel} hasData={hasTrackingData} title="Funil (30 dias)" />
+        </TabsContent>
+
+        <TabsContent value="campanhas">
           <MediaPlanBuilder
             orgSlug={orgSlug}
             contatoId={clientId}
@@ -161,7 +167,6 @@ export default function ClientDetailShell({
             initialItems={mediaPlanItems}
             creatives={creatives.map(c => ({ id: c.id, title: c.title }))}
           />
-          <MarketingStrategistPanel orgSlug={orgSlug} contatoId={clientId} onApplied={() => router.refresh()} />
         </TabsContent>
 
         <TabsContent value="criativos">
@@ -215,7 +220,10 @@ export default function ClientDetailShell({
             sales={sales}
           />
         </TabsContent>
+        </div>
       </Tabs>
+
+      <MarketingStrategistDock orgSlug={orgSlug} contatoId={clientId} onApplied={() => router.refresh()} />
     </div>
   )
 }

@@ -115,7 +115,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           (largura cheia da tela, acima da sidebar). O drawer mobile
           continua com seu próprio cabeçalho (logo + X), renderizado
           direto pelo SidebarShell. */}
-      <nav className="flex-1 min-h-0 px-3 pt-3 pb-4 space-y-0.5 overflow-y-auto">
+      <nav className="sidebar-scroll flex-1 min-h-0 px-3 pt-3 pb-4 space-y-0.5 overflow-y-auto">
 
         {/* ── Topo ──────────────────────────────────── */}
         <SidebarNavLink href={base} exact dataTour="insights">

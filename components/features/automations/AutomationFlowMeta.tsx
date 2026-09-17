@@ -36,6 +36,7 @@ export const STEP_TYPES = [
 ] as const
 
 export const TRIGGER_COLOR = '#7c3aed'
+export type StepTypeMeta = typeof STEP_TYPES[number]
 
 export type Step = { id: string; type: string; config: Record<string, any> }
 

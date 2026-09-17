@@ -4,26 +4,25 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Accordion } from '@/components/ui/accordion'
-import { Plus, CheckCircle2, Layers, Loader2 } from 'lucide-react'
+import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select'
+import { Plus, Layers, Loader2 } from 'lucide-react'
 import {
   createMediaPlan, updateMediaPlan, approveMediaPlan, getMediaPlanWithItems,
   createMediaPlanItem, updateMediaPlanItem, deleteMediaPlanItem,
   type MediaPlan, type MediaPlanItem, type MediaPlanLevel, type MediaPlanPlatform,
 } from '@/actions/media-plans'
-import MediaPlanItemNode from '@/components/features/agencias-trafego/MediaPlanItemNode'
-import { PLATFORM_LABEL, LEVEL_LABEL, centsFromInput, reaisFromCents, type MediaPlanCreative } from '@/components/features/agencias-trafego/media-plan-shared'
+import { MediaPlanItemRow, MediaPlanItemEditForm } from '@/components/features/agencias-trafego/MediaPlanItemNode'
+import MediaPlanMetaCard from '@/components/features/agencias-trafego/MediaPlanMetaCard'
+import { PLATFORM_LABEL, LEVEL_LABEL, type MediaPlanCreative } from '@/components/features/agencias-trafego/media-plan-shared'
 
 /**
  * Estratégia estruturada — plano de mídia versionado + árvore
- * Campanha→Conjunto→Anúncio, editável, base pra futura publicação via API
- * (Meta/Google/etc.) e pro Marketing Strategist (IA). Ver actions/media-plans.ts
- * e MediaPlanItemNode.tsx (o nó recursivo da árvore).
+ * Campanha→Conjunto→Anúncio em 3 colunas lado a lado (Miller columns:
+ * selecionar uma campanha mostra os conjuntos dela na coluna 2, selecionar
+ * um conjunto mostra os anúncios dele na coluna 3) — antes era um único
+ * Accordion recursivo empilhado verticalmente. Base pra futura publicação
+ * via API (Meta/Google/etc.) e pro Marketing Strategist (IA). Ver
+ * actions/media-plans.ts e MediaPlanItemNode.tsx (linha/formulário de um item).
  */
 export default function MediaPlanBuilder({
   orgSlug, contatoId, plans: initialPlans, initialItems, creatives,
@@ -37,6 +36,9 @@ export default function MediaPlanBuilder({
   const [plans, setPlans] = useState(initialPlans)
   const [activePlanId, setActivePlanId] = useState<string | null>(plans[0]?.id ?? null)
   const [items, setItems] = useState<MediaPlanItem[]>(initialItems)
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+  const [selectedAdsetId, setSelectedAdsetId] = useState<string | null>(null)
+  const [selectedAdId, setSelectedAdId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const activePlan = plans.find(p => p.id === activePlanId) || null
@@ -53,6 +55,7 @@ export default function MediaPlanBuilder({
       }, ...prev])
       setActivePlanId(res.id)
       setItems([])
+      setSelectedCampaignId(null); setSelectedAdsetId(null); setSelectedAdId(null)
       toast.success('Novo plano criado')
     })
   }
@@ -84,6 +87,7 @@ export default function MediaPlanBuilder({
 
   function switchPlan(planId: string) {
     setActivePlanId(planId)
+    setSelectedCampaignId(null); setSelectedAdsetId(null); setSelectedAdId(null)
     if (planId === initialPlans[0]?.id) { setItems(initialItems); return }
     startTransition(async () => {
       const res = await getMediaPlanWithItems(orgSlug, planId)
@@ -106,6 +110,12 @@ export default function MediaPlanBuilder({
         status: 'planned', budget_cents: null, budget_type: null, creative_id: null, config: {},
         order_index: orderIndex,
       }])
+      // Cria e já seleciona — ao criar uma campanha, a coluna de conjuntos
+      // abre imediatamente pronta pro próximo passo (pedido explícito pra
+      // Meta Ads, aplicado a qualquer plataforma por consistência).
+      if (level === 'campaign') { setSelectedCampaignId(res.id); setSelectedAdsetId(null); setSelectedAdId(null) }
+      else if (level === 'adset') { setSelectedAdsetId(res.id); setSelectedAdId(null) }
+      else setSelectedAdId(res.id)
     })
   }
 
@@ -132,6 +142,9 @@ export default function MediaPlanBuilder({
       const res = await deleteMediaPlanItem(orgSlug, id)
       if (!res.ok) { toast.error(res.error); return }
       setItems(prev => prev.filter(i => i.id !== id && i.parent_id !== id))
+      if (selectedCampaignId === id) { setSelectedCampaignId(null); setSelectedAdsetId(null); setSelectedAdId(null) }
+      else if (selectedAdsetId === id) { setSelectedAdsetId(null); setSelectedAdId(null) }
+      else if (selectedAdId === id) setSelectedAdId(null)
     })
   }
 
@@ -151,138 +164,121 @@ export default function MediaPlanBuilder({
   }
 
   const campaigns = items.filter(i => i.level === 'campaign' && i.media_plan_id === activePlanId)
+  const adsets = selectedCampaignId ? items.filter(i => i.parent_id === selectedCampaignId) : []
+  const ads = selectedAdsetId ? items.filter(i => i.parent_id === selectedAdsetId) : []
+  const selectedCampaign = items.find(i => i.id === selectedCampaignId) || null
+  const selectedAdset = items.find(i => i.id === selectedAdsetId) || null
+  const selectedAd = items.find(i => i.id === selectedAdId) || null
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-sm">Plano de mídia</CardTitle>
-          <div className="flex items-center gap-2">
-            <Select value={activePlanId ?? undefined} onValueChange={switchPlan}>
-              <SelectTrigger className="h-8 text-xs w-48"><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
-              <SelectContent>
-                {plans.map(p => (
-                  <SelectItem key={p.id} value={p.id}>v{p.version} — {p.status === 'approved' ? 'Aprovado' : p.status === 'archived' ? 'Arquivado' : 'Rascunho'}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" variant="outline" onClick={handleCreatePlan} disabled={isPending}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Nova versão
-            </Button>
-          </div>
-        </CardHeader>
-        {activePlan && (
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={activePlan.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-muted'}>
-                {activePlan.status === 'approved' ? 'Aprovado' : activePlan.status === 'archived' ? 'Arquivado' : 'Rascunho'}
-              </Badge>
-              {activePlan.status !== 'approved' && (
-                <Button size="sm" variant="outline" onClick={handleApprove} disabled={isPending}>
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Nome do plano</Label>
-                <Input value={activePlan.name} onChange={e => patchPlan({ name: e.target.value })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Objetivo principal</Label>
-                <Input value={activePlan.objective_primary ?? ''} onChange={e => patchPlan({ objective_primary: e.target.value })} className="h-8 text-sm" placeholder="Ex.: gerar leads qualificados" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Período início</Label>
-                <Input type="date" value={activePlan.period_start ?? ''} onChange={e => patchPlan({ period_start: e.target.value })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Período fim</Label>
-                <Input type="date" value={activePlan.period_end ?? ''} onChange={e => patchPlan({ period_end: e.target.value })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Orçamento total (R$)</Label>
-                <Input value={reaisFromCents(activePlan.budget_total_cents)} onChange={e => patchPlan({ budget_total_cents: centsFromInput(e.target.value) })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Meta de leads</Label>
-                <Input value={activePlan.target_leads ?? ''} onChange={e => patchPlan({ target_leads: e.target.value ? Number(e.target.value) : null })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">CPL alvo (R$)</Label>
-                <Input value={reaisFromCents(activePlan.target_cpl_cents)} onChange={e => patchPlan({ target_cpl_cents: centsFromInput(e.target.value) })} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">ROAS/meta comercial</Label>
-                <Input value={activePlan.target_roas ?? ''} onChange={e => patchPlan({ target_roas: e.target.value ? Number(e.target.value) : null })} className="h-8 text-sm" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs">Distribuição de budget entre plataformas</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {(Object.keys(PLATFORM_LABEL) as MediaPlanPlatform[]).map(p => (
-                  <div key={p} className="flex items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground w-20 shrink-0">{PLATFORM_LABEL[p]}</span>
-                    <Input
-                      value={reaisFromCents(activePlan.platform_budgets[p])}
-                      onChange={e => patchPlan({ platform_budgets: { ...activePlan.platform_budgets, [p]: centsFromInput(e.target.value) ?? 0 } })}
-                      className="h-7 text-xs"
-                      placeholder="R$"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs">Observações</Label>
-              <Textarea value={activePlan.notes ?? ''} onChange={e => patchPlan({ notes: e.target.value })} className="text-sm min-h-[70px]" />
-            </div>
-
-            <Button size="sm" onClick={savePlan} disabled={isPending}>
-              {isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null} Salvar plano
-            </Button>
-          </CardContent>
-        )}
-      </Card>
+      <MediaPlanMetaCard
+        plans={plans}
+        activePlan={activePlan}
+        activePlanId={activePlanId}
+        isPending={isPending}
+        onSwitchPlan={switchPlan}
+        onCreatePlan={handleCreatePlan}
+        onPatch={patchPlan}
+        onSave={savePlan}
+        onApprove={handleApprove}
+      />
 
       {activePlan && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm">Estrutura de campanhas</CardTitle>
-            <Select onValueChange={v => addItem('campaign', null, v as MediaPlanPlatform)}>
-              <SelectTrigger className="h-8 text-xs w-40"><SelectValue placeholder="+ Campanha" /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(PLATFORM_LABEL) as MediaPlanPlatform[]).map(p => (
-                  <SelectItem key={p} value={p}>{PLATFORM_LABEL[p]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardHeader>
-          <CardContent>
-            {campaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma campanha estruturada ainda.</p>
-            ) : (
-              <Accordion type="multiple" className="w-full">
-                {campaigns.map(campaign => (
-                  <MediaPlanItemNode
-                    key={campaign.id}
-                    item={campaign}
-                    items={items}
-                    creatives={creatives}
-                    onPatch={patchItem}
-                    onSave={saveItem}
-                    onRemove={removeItem}
-                    onAddChild={addItem}
-                    isPending={isPending}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          {/* Coluna 1 — Campanhas */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
+              <CardTitle className="text-sm">Campanhas</CardTitle>
+              <Select onValueChange={v => addItem('campaign', null, v as MediaPlanPlatform)}>
+                <SelectTrigger className="h-7 text-xs w-9 px-0 justify-center [&>svg]:hidden"><Plus className="w-3.5 h-3.5" /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PLATFORM_LABEL) as MediaPlanPlatform[]).map(p => (
+                    <SelectItem key={p} value={p}>{PLATFORM_LABEL[p]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {campaigns.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Nenhuma campanha ainda.</p>
+              ) : campaigns.map(c => (
+                <div key={c.id}>
+                  <MediaPlanItemRow
+                    item={c}
+                    selected={c.id === selectedCampaignId}
+                    onSelect={() => { setSelectedCampaignId(c.id); setSelectedAdsetId(null); setSelectedAdId(null) }}
                   />
-                ))}
-              </Accordion>
-            )}
-          </CardContent>
-        </Card>
+                  {c.id === selectedCampaignId && (
+                    <div className="mt-1">
+                      <MediaPlanItemEditForm item={c} creatives={creatives} onPatch={patchItem} onSave={saveItem} onRemove={removeItem} isPending={isPending} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Coluna 2 — Conjuntos */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
+              <CardTitle className="text-sm">Conjuntos</CardTitle>
+              {selectedCampaign && (
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addItem('adset', selectedCampaign.id, selectedCampaign.platform)}>
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {!selectedCampaign ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Selecione uma campanha.</p>
+              ) : adsets.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Nenhum conjunto ainda.</p>
+              ) : adsets.map(a => (
+                <div key={a.id}>
+                  <MediaPlanItemRow
+                    item={a}
+                    selected={a.id === selectedAdsetId}
+                    onSelect={() => { setSelectedAdsetId(a.id); setSelectedAdId(null) }}
+                  />
+                  {a.id === selectedAdsetId && (
+                    <div className="mt-1">
+                      <MediaPlanItemEditForm item={a} creatives={creatives} onPatch={patchItem} onSave={saveItem} onRemove={removeItem} isPending={isPending} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Coluna 3 — Anúncios */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
+              <CardTitle className="text-sm">Anúncios</CardTitle>
+              {selectedAdset && (
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addItem('ad', selectedAdset.id, selectedAdset.platform)}>
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {!selectedAdset ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Selecione um conjunto.</p>
+              ) : ads.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Nenhum anúncio ainda.</p>
+              ) : ads.map(ad => (
+                <div key={ad.id}>
+                  <MediaPlanItemRow item={ad} selected={ad.id === selectedAdId} onSelect={() => setSelectedAdId(ad.id)} />
+                  {ad.id === selectedAdId && (
+                    <div className="mt-1">
+                      <MediaPlanItemEditForm item={selectedAd ?? ad} creatives={creatives} onPatch={patchItem} onSave={saveItem} onRemove={removeItem} isPending={isPending} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

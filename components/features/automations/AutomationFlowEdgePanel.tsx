@@ -14,20 +14,33 @@ import type { AutomationEdgeCondition } from '@/lib/automations/automation-trave
  * qualquer outro passo, a conexão é só estrutural (define a ordem); o
  * painel mostra apenas a opção de remover.
  */
+const PANEL_WIDTH = 440
+
 export default function AutomationFlowEdgePanel({
-  condition, sourceIsWaitForReply, onChange, onRemoveEdge, onClose,
+  condition, sourceIsWaitForReply, onChange, onRemoveEdge, onClose, anchor,
 }: {
   condition: AutomationEdgeCondition | undefined
   sourceIsWaitForReply: boolean
   onChange: (condition: AutomationEdgeCondition | undefined) => void
   onRemoveEdge: () => void
   onClose: () => void
+  anchor?: { x: number; y: number; containerWidth: number; containerHeight: number }
 }) {
   const isKeyword = condition?.type === 'keyword'
   const isButton = condition?.type === 'button'
 
+  const style = anchor
+    ? {
+        top: Math.max(12, Math.min(anchor.y, anchor.containerHeight - 120)),
+        left: Math.max(12, Math.min(anchor.x + 16, anchor.containerWidth - PANEL_WIDTH - 12)),
+      }
+    : undefined
+
   return (
-    <div className="absolute top-3 right-3 z-10 w-72 rounded-md border bg-card shadow-lg p-3 space-y-3">
+    <div
+      className="absolute z-10 rounded-md border bg-card shadow-lg p-3 space-y-3"
+      style={{ width: PANEL_WIDTH, ...(style ?? { top: 12, right: 12 }) }}
+    >
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Conexão</p>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Fechar">

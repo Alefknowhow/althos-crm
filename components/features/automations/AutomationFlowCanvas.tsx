@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
-  useNodesState, useEdgesState, type Node, type Edge, type Connection,
+  useNodesState, useEdgesState, type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Plus, AlertTriangle } from 'lucide-react'
@@ -25,67 +25,17 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import type { AutomationFlow, AutomationFlowEdge, AutomationEdgeCondition } from '@/lib/automations/automation-traversal'
-import AutomationFlowCanvasNode, { type AutomationCanvasNodeData } from './AutomationFlowCanvasNode'
+import type { AutomationFlowEdge, AutomationEdgeCondition } from '@/lib/automations/automation-traversal'
+import AutomationFlowCanvasNode from './AutomationFlowCanvasNode'
 import AutomationFlowNodeEditPanel from './AutomationFlowNodeEditPanel'
 import AutomationFlowEdgePanel from './AutomationFlowEdgePanel'
 import DeletableEdge from '../flow/DeletableEdge'
 import {
   STEP_TYPES, describeTrigger, describeStep, type Step, type StepStat, type WaTemplate, type FormOpt, type StageOpt,
 } from './AutomationFlowMeta'
+import { buildInitialGraph, isInstagramTrigger, NODE_GAP_Y } from './automation-canvas-graph'
 
-const NODE_TYPES = { automation: AutomationFlowCanvasNode }
 const EDGE_TYPES = { default: DeletableEdge }
-const NODE_GAP_Y = 140
-
-function buildInitialGraph(
-  steps: Step[], auto: any, opts: { forms: FormOpt[]; stages: StageOpt[] },
-): { nodes: Node<AutomationCanvasNodeData>[]; edges: Edge[] } {
-  const { forms, stages } = opts
-  const flow: AutomationFlow | undefined = auto.flow
-  const ids = steps.map(s => s.id)
-  const chain = ['trigger', ...ids, 'end']
-  const positions = flow?.positions || {}
-
-  const nodes: Node<AutomationCanvasNodeData>[] = chain.map((id, i) => {
-    const step = ids.includes(id) ? steps[ids.indexOf(id)] : null
-    const kind: AutomationCanvasNodeData['kind'] = id === 'trigger' ? 'trigger' : id === 'end' ? 'end' : 'step'
-    const label = kind === 'trigger'
-      ? describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages) || 'Qualquer disparo'
-      : kind === 'step' && step ? describeStep(step, stages) || 'Sem configuração'
-      : ''
-    return {
-      id,
-      type: 'automation',
-      position: positions[id] || { x: 40, y: i * NODE_GAP_Y },
-      data: { kind, typeId: kind === 'trigger' ? auto.trigger_type : step?.type, label },
-    }
-  })
-
-  const savedEdges = flow?.edges
-  const sourceEdges: AutomationFlowEdge[] = savedEdges && savedEdges.length > 0
-    ? savedEdges
-    : chain.slice(0, -1).map((id, i) => ({ id: `${id}->${chain[i + 1]}`, from: id, to: chain[i + 1] }))
-
-  const edges: Edge[] = sourceEdges.map(e => ({
-    id: e.id,
-    source: e.from,
-    target: e.to,
-    sourceHandle: 'default',
-    animated: !e.condition,
-    label: e.condition?.type === 'keyword' ? 'palavra-chave' : e.condition?.type === 'button' ? `botão ${e.condition.buttonIndex}` : undefined,
-    data: { condition: e.condition },
-  }))
-
-  return { nodes, edges }
-}
-
-/** true quando o step é 'send_instagram_dm' — só pode existir num fluxo
- *  cujo gatilho seja de Instagram (regra de negócio pedida explicitamente:
- *  um disparo de Instagram só é aceito com um trigger de Instagram). */
-function isInstagramTrigger(triggerType: string): boolean {
-  return triggerType === 'instagram.dm.received' || triggerType === 'instagram.comment.received'
-}
 
 type Props = {
   auto: any
@@ -116,6 +66,18 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [panelAnchor, setPanelAnchor] = useState<{ x: number; y: number; containerWidth: number; containerHeight: number } | null>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  /** Posição do clique relativa ao container do canvas — os painéis de
+   *  configuração (nó/conexão) abrem do lado do mouse em vez de sempre
+   *  cravados num canto fixo (pedido explícito, campos de texto largos
+   *  demais cortavam no painel estreito de antes). */
+  function anchorFromEvent(event: React.MouseEvent): typeof panelAnchor {
+    const rect = canvasContainerRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top, containerWidth: rect.width, containerHeight: rect.height }
+  }
 
   const stepsById = useMemo(() => new Map(steps.map(s => [s.id, s])), [steps])
 
@@ -177,13 +139,14 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
     ])
   }
 
-  function addStep(type: string) {
+function addStep(type: string, afterNodeId?: string) {
+    const anchorId = afterNodeId ?? selectedNodeId
     const newStep: Step = { id: `step_${Date.now()}`, type, config: {} }
     if (type === 'wait')        newStep.config = { amount: 1, unit: 'minutes' }
     if (type === 'create_task') newStep.config = { title: 'Nova Tarefa', priority: 'normal', dueInDays: 1 }
     setSteps([...steps, newStep])
 
-    const basePos = nodes.find(n => n.id === selectedNodeId)?.position
+    const basePos = nodes.find(n => n.id === anchorId)?.position
       ?? { x: 40, y: Math.max(0, ...nodes.map(n => n.position.y)) + NODE_GAP_Y }
     const newPos = { x: basePos.x + 260, y: basePos.y }
     setNodes(curr => [...curr, {
@@ -192,8 +155,8 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
       position: newPos,
       data: { kind: 'step', typeId: type, label: '' },
     }])
-    if (selectedNodeId) {
-      setEdges(curr => addEdge({ id: `${selectedNodeId}->${newStep.id}`, source: selectedNodeId, target: newStep.id, sourceHandle: 'default', animated: true, data: {} }, curr))
+    if (anchorId) {
+      setEdges(curr => addEdge({ id: `${anchorId}->${newStep.id}`, source: anchorId, target: newStep.id, sourceHandle: 'default', animated: true, data: {} }, curr))
     }
     setSelectedNodeId(newStep.id)
     setSelectedEdgeId(null)
@@ -233,6 +196,20 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
   const addableStepTypes = STEP_TYPES.filter(t => t.id !== 'send_instagram_dm' || triggerIsInstagram)
   const hasInvalidInstagramStep = !triggerIsInstagram && steps.some(s => s.type === 'send_instagram_dm')
 
+  // Node type "injetado" a cada render (não memoizado por identidade
+  // estável) pra fechar sempre sobre o addStep/addableStepTypes atuais —
+  // o botão "+" do nó nunca usa uma closure obsoleta de nodes/edges.
+  const nodeTypes = useMemo(() => ({
+    automation: (nodeProps: { data: any; id: string }) => (
+      <AutomationFlowCanvasNode
+        data={nodeProps.data}
+        onAddNext={nodeProps.data.kind === 'end' ? undefined : (type: string) => addStep(type, nodeProps.id)}
+        addableStepTypes={addableStepTypes}
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [addableStepTypes, steps, nodes])
+
   return (
     <div className="absolute inset-0 bg-background flex flex-col">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0 gap-3">
@@ -263,17 +240,17 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
         </DropdownMenu>
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0" ref={canvasContainerRef}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          nodeTypes={NODE_TYPES}
+          nodeTypes={nodeTypes}
           edgeTypes={EDGE_TYPES}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null) }}
-          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null) }}
+          onEdgeClick={(event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setPanelAnchor(anchorFromEvent(event)) }}
+          onNodeClick={(event, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setPanelAnchor(anchorFromEvent(event)) }}
           onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null) }}
           fitView
         >
@@ -289,6 +266,7 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
             onChange={updateSelectedEdgeCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}
+            anchor={panelAnchor ?? undefined}
           />
         )}
 
@@ -305,6 +283,7 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
             flowEdges={[]}
             setStepEdges={setStepEdges}
             onClose={() => setSelectedNodeId(null)}
+            anchor={panelAnchor ?? undefined}
           />
         )}
 
@@ -325,6 +304,7 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
             setStepEdges={setStepEdges}
             onDeleteStep={() => removeStep(selectedStep.id)}
             onClose={() => setSelectedNodeId(null)}
+            anchor={panelAnchor ?? undefined}
           />
         )}
       </div>

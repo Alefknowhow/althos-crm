@@ -10,6 +10,7 @@ import { Sparkles, Send, Loader2, FileText } from 'lucide-react'
 import {
   generateFormWithAi, createFormFromAiSchema, type FormAiChatTurn, type FormAiSchema,
 } from '@/actions/forms-ai'
+import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
@@ -151,6 +152,7 @@ export default function CreateFormWithAiDialog({ orgSlug }: { orgSlug: string })
               className="flex-1 resize-none min-h-[40px] max-h-32"
               disabled={sending}
             />
+            <VoiceInputButton orgSlug={orgSlug} onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} disabled={sending} />
             <Button type="submit" size="icon" disabled={sending || !input.trim()} className="shrink-0">
               <Send className="w-4 h-4" />
             </Button>

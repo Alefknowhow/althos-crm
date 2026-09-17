@@ -1,10 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import {
+  UserCircle, ListChecks, BookOpen, Route, Clock, PhoneForwarded, Wrench, Brain, FlaskConical,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { VerticalTabsNav, type VerticalTabItem } from '@/components/ui/vertical-tabs'
+import { MobileSectionPicker } from '@/components/features/mobile/MobileSectionPicker'
 import { updateAttendantConfig, type AttendantConfig, type KnowledgeItem } from '@/actions/ai_attendant'
 import { DEFAULT_PERSONA_PROMPT } from '@/lib/ai/attendant-defaults'
 import { ATTENDANT_PRESETS } from '@/lib/ai/attendant-presets'
@@ -62,22 +67,19 @@ export default function AgenteIaTabs({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [tab, setTab] = useState(defaultTab)
 
-  // As sub-abas (Personalidade/Qualificação/...) também ficam fixas, logo
-  // abaixo do cabeçalho de Configurações — que também é sticky, mas tem
-  // altura variável (título+abas do topo). Mede a altura real dele em vez
-  // de cravar um valor fixo, que quebraria em qualquer mudança de conteúdo
-  // ali (ou no mobile, onde o texto quebra linha).
-  const [headerOffset, setHeaderOffset] = useState(0)
-  useEffect(() => {
-    const header = document.getElementById('configuracoes-sticky-header')
-    if (!header) return
-    const update = () => setHeaderOffset(header.offsetHeight)
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(header)
-    return () => observer.disconnect()
-  }, [])
+  const SUB_TABS: VerticalTabItem[] = [
+    { key: 'personalidade', label: 'Personalidade', icon: UserCircle },
+    { key: 'qualificacao', label: 'Qualificação', icon: ListChecks },
+    { key: 'conhecimento', label: 'Conhecimento', icon: BookOpen },
+    { key: 'fluxos', label: 'Fluxos', icon: Route },
+    { key: 'horarios', label: 'Horários', icon: Clock },
+    { key: 'transferencia', label: 'Transferência Humana', icon: PhoneForwarded },
+    { key: 'ferramentas', label: 'Ferramentas', icon: Wrench },
+    { key: 'memoria', label: 'Memória', icon: Brain },
+    { key: 'testar', label: 'Testar Agente', icon: FlaskConical },
+  ]
 
   const [enabled, setEnabled] = useState(initial.is_enabled)
   const [persona, setPersona] = useState(initial.persona_prompt)
@@ -191,28 +193,23 @@ export default function AgenteIaTabs({
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue={defaultTab}>
-        {/* Sticky logo abaixo do cabeçalho de Configurações, colada nele
-            (-mt-6 cancela o pt-6 do layout pai) — acompanha a altura real
-            dele (headerOffset). Mesmo visual (fundo + pill) das abas de
-            Financeiro/Dashboard (DashboardTabsShell). */}
-        <div
-          className="sticky z-10 -mt-6 -mx-3 sm:-mx-5 px-3 sm:px-5 pt-2 pb-2 bg-secondary/40 backdrop-blur supports-[backdrop-filter]:bg-secondary/70"
-          style={{ top: headerOffset }}
-        >
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="personalidade" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Personalidade</TabsTrigger>
-            <TabsTrigger value="qualificacao" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Qualificação</TabsTrigger>
-            <TabsTrigger value="conhecimento" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Conhecimento</TabsTrigger>
-            <TabsTrigger value="fluxos" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Fluxos</TabsTrigger>
-            <TabsTrigger value="horarios" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Horários</TabsTrigger>
-            <TabsTrigger value="transferencia" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Transferência Humana</TabsTrigger>
-            <TabsTrigger value="ferramentas" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Ferramentas</TabsTrigger>
-            <TabsTrigger value="memoria" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Memória</TabsTrigger>
-            <TabsTrigger value="testar" className="px-2.5 py-1.5 text-[11px] sm:text-sm sm:px-3 sm:py-1">Testar Agente</TabsTrigger>
-          </TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+      <div className="flex flex-col sm:flex-row gap-6 min-w-0">
+        {/* Sub-sidebar do Agente IA — segunda coluna, dentro da sidebar
+            principal de Configurações (3 colunas no total: Configurações |
+            Agente IA | conteúdo da sub-aba). No mobile vira dropdown. */}
+        <div className="sm:hidden pb-2">
+          <MobileSectionPicker
+            sections={SUB_TABS.map(t => ({ key: t.key, label: t.label }))}
+            activeKey={tab}
+            onChange={setTab}
+          />
+        </div>
+        <div className="hidden sm:block shrink-0">
+          <VerticalTabsNav items={SUB_TABS} activeKey={tab} onSelect={setTab} compact />
         </div>
 
+        <div className="flex-1 min-w-0">
         {/* ── Personalidade ──────────────────────────────────────────────── */}
         <AgenteIaPersonalidadeTab
           enabled={enabled} setEnabled={setEnabled}
@@ -257,7 +254,7 @@ export default function AgenteIaTabs({
 
         {/* ── Testar Agente ──────────────────────────────────────────────── */}
         <TabsContent value="testar" className="mt-4">
-          <div className="h-[70vh] border rounded-none overflow-hidden">
+          <div className="h-[70vh] border rounded-xl overflow-hidden">
             <SandboxPlayground
               orgSlug={orgSlug}
               hasApiKey={sandbox.hasApiKey}
@@ -268,6 +265,8 @@ export default function AgenteIaTabs({
             />
           </div>
         </TabsContent>
+        </div>
+      </div>
       </Tabs>
 
       {/* Botão de salvar no fim natural do conteúdo — sem barra flutuante/sticky. */}

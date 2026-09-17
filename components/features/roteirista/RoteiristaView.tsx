@@ -14,6 +14,7 @@ import {
 } from '@/actions/roteirista'
 import { QuickStartDialog } from './RoteiristaQuickStartDialog'
 import { KnowledgeDialog } from './RoteiristaKnowledgeDialog'
+import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
 
 const STATUS_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
   generating: { label: 'Gerando…', variant: 'secondary' },
@@ -183,6 +184,7 @@ export default function RoteiristaView({
                 disabled={sending}
                 className="flex-1 h-10 text-sm"
               />
+              <VoiceInputButton orgSlug={orgSlug} onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} disabled={sending} />
               <Button type="submit" size="icon" disabled={sending || !input.trim()} className="h-10 w-10 shrink-0">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
@@ -250,6 +252,7 @@ export default function RoteiristaView({
                 disabled={sending}
                 className="flex-1 h-10 text-sm"
               />
+              <VoiceInputButton orgSlug={orgSlug} onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} disabled={sending} />
               <Button type="submit" size="icon" disabled={sending || !input.trim()} className="h-10 w-10 shrink-0">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>

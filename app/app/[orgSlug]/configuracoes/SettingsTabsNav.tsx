@@ -1,16 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import { Building, UsersRound, Share2, Bell, ShieldCheck, Bot, Palette, KeyRound } from 'lucide-react'
 import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
+import { VerticalTabsNav, type VerticalTabItem } from '@/components/ui/vertical-tabs'
 
 /**
- * Shared tab navigation for the settings hub. Each tab is its own route so the
- * existing server pages (Equipe, …) are reused as-is. Highlights the
- * active tab from the current pathname. Include it at the top of each settings
- * hub page (NOT on detail sub-pages like /whatsapp or /meta).
+ * Navegação principal de Configurações — sidebar vertical à esquerda (era
+ * uma barra horizontal de abas no topo). Cada item é sua própria rota, os
+ * pages server-side existentes (Equipe, ...) continuam intactos. Destaca o
+ * item ativo a partir do pathname atual.
  *
  * "Assinatura" saiu daqui — virou janela independente (/app/[orgSlug]/assinatura,
  * fora de /configuracoes), acessível só pelo menu do usuário (Meu perfil),
@@ -37,38 +36,22 @@ export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
   const activeSeg = rest.split('/')[0] // '' for Geral
 
   const sections: MobileSection[] = TABS.map(t => ({ key: t.seg, label: t.label }))
+  const items: VerticalTabItem[] = TABS.map(t => ({
+    key: t.seg, label: t.label, icon: t.icon, href: t.seg ? `${base}/${t.seg}` : base,
+  }))
 
   return (
-    <div className="border-b border-border">
-      <div className="sm:hidden py-1">
+    <>
+      <div className="sm:hidden pb-3">
         <MobileSectionPicker
           sections={sections}
           activeKey={activeSeg}
           onChange={seg => router.push(seg ? `${base}/${seg}` : base)}
         />
       </div>
-      <nav className="hidden sm:flex -mb-px flex-wrap gap-1">
-        {TABS.map(t => {
-          const href = t.seg ? `${base}/${t.seg}` : base
-          const active = activeSeg === t.seg
-          const Icon = t.icon
-          return (
-            <Link
-              key={t.key}
-              href={href}
-              className={cn(
-                'flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
-                active
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {t.label}
-            </Link>
-          )
-        })}
-      </nav>
-    </div>
+      <div className="hidden sm:block">
+        <VerticalTabsNav items={items} activeKey={activeSeg} />
+      </div>
+    </>
   )
 }

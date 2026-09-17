@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Sparkles, Loader2, Wand2 } from 'lucide-react'
 import { startRoteiro } from '@/actions/roteirista'
+import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
 import type { RoteiroMode, RoteiroTurno } from '@/lib/ai/roteirista'
 
 const TURNO_OPTIONS: { id: RoteiroTurno; label: string }[] = [
@@ -204,7 +205,14 @@ export function QuickStartDialog({
 
           <div className="space-y-1">
             <Label className="text-xs">Observações</Label>
-            <Textarea rows={2} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Qualquer detalhe adicional pra IA considerar" />
+            <div className="relative">
+              <Textarea rows={2} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Qualquer detalhe adicional pra IA considerar" className="pr-10" />
+              <VoiceInputButton
+                orgSlug={orgSlug}
+                onTranscribed={text => setObservacoes(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))}
+                className="absolute right-1 top-1 h-7 w-7"
+              />
+            </div>
           </div>
         </div>
 

@@ -14,9 +14,11 @@ import type { AutomationFlowEdge } from '@/lib/automations/automation-traversal'
  * visíveis no card), mesmo padrão do canvas de funil de Instagram
  * (SocialFunnelNodeEditPanel.tsx).
  */
+const PANEL_WIDTH = 440
+
 export default function AutomationFlowNodeEditPanel({
   kind, auto, setAuto, step, index, steps, setSteps, forms, stages, whatsappTemplates, niche,
-  flowEdges, setStepEdges, onDeleteStep, onClose,
+  flowEdges, setStepEdges, onDeleteStep, onClose, anchor,
 }: {
   kind: 'trigger' | 'step'
   auto: any
@@ -33,11 +35,25 @@ export default function AutomationFlowNodeEditPanel({
   setStepEdges: (stepId: string, edges: AutomationFlowEdge[]) => void
   onDeleteStep?: () => void
   onClose: () => void
+  /** Posição do clique relativa ao container do canvas — o painel abre do
+   *  lado do mouse em vez de sempre no canto superior esquerdo. Ausente ⇒
+   *  cai no canto (fallback, ex.: aberto por outro fluxo que não um clique). */
+  anchor?: { x: number; y: number; containerWidth: number; containerHeight: number }
 }) {
   const title = kind === 'trigger' ? triggerMeta(auto.trigger_type).label : stepMeta(step?.type || '').label
 
+  const style = anchor
+    ? {
+        top: Math.max(12, Math.min(anchor.y, anchor.containerHeight - 120)),
+        left: Math.max(12, Math.min(anchor.x + 16, anchor.containerWidth - PANEL_WIDTH - 12)),
+      }
+    : undefined
+
   return (
-    <div className="absolute top-3 left-3 z-10 w-80 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-md border bg-card shadow-lg p-3 space-y-3">
+    <div
+      className="absolute z-10 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-md border bg-card shadow-lg p-3 space-y-3"
+      style={{ width: PANEL_WIDTH, ...(style ?? { top: 12, left: 12 }) }}
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold truncate">{title}</p>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar">

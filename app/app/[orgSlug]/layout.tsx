@@ -139,8 +139,11 @@ export default async function OrgLayout({
       {/* Header ocupa a largura inteira da tela (não fica mais restrito à
           coluna do conteúdo) — logo "Althos CRM" e o botão de colapsar a
           sidebar moram aqui agora. A sidebar passa a ficar abaixo desta
-          barra, não mais do topo ao fundo da tela. */}
-      <header className="print:hidden h-14 shrink-0 border-b border-border bg-card flex items-center px-3 md:px-5 gap-3 justify-between sticky top-0 z-30">
+          barra, não mais do topo ao fundo da tela. Flutuante: descolado do
+          topo/laterais (mx/mt-3, mesmo respiro que a sidebar já usa em
+          md:py-3 md:pl-3 abaixo) e com cantos suavizados + sombra leve, em
+          vez de colado na borda da tela. */}
+      <header className="print:hidden h-14 shrink-0 border border-border bg-card flex items-center px-3 md:px-5 gap-3 justify-between sticky top-3 z-30 mx-3 mt-3 rounded-xl shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="hidden md:flex items-center shrink-0">
             <Logo v2 showText textClassName="text-[15px]" />

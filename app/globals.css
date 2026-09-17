@@ -273,6 +273,31 @@
   box-shadow: none;
 }
 
+/* ── Sidebar scrollbar skin ───────────────────────────────────────────────── */
+/* Escopado só a `.sidebar-scroll` (nav da sidebar principal e das novas
+   sidebars verticais de Configurações/Clientes) — nunca o scrollbar do app
+   inteiro. Tom escuro (a sidebar principal já é sempre escura,
+   --sidebar: 0 0% 6%, nas duas temas) e sem as setas de extremidade. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 30%) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(0 0% 30%);
+  border-radius: 9999px;
+}
+.sidebar-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* ── Collapsed desktop sidebar (icons only) ──────────────────────────────── */
 /* Driven by the `.sidebar-collapsed` class toggled on the desktop <aside> in
    SidebarShell. Hides text labels/badges and centers the icons so the rail

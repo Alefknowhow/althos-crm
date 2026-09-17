@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { InsightsChatSidebar } from './InsightsChatSidebar'
 import { InsightsChatMessages } from './InsightsChatMessages'
+import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
 
 type ToolCall = {
   name: string
@@ -229,6 +230,11 @@ export default function InsightsChat({
               placeholder="Pergunte sobre vendas, leads, campanhas, agenda..."
               disabled={sending || !activeSessionId}
               autoFocus
+            />
+            <VoiceInputButton
+              orgSlug={orgSlug}
+              onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))}
+              disabled={sending || !activeSessionId}
             />
             <Button type="submit" disabled={sending || !input.trim() || !activeSessionId}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

@@ -26,6 +26,7 @@ import {
 } from '@/actions/ai_attendant'
 import { SandboxPlaygroundSidebar } from './SandboxPlaygroundSidebar'
 import { SandboxPlaygroundMessages } from './SandboxPlaygroundMessages'
+import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
 
 type Message = {
   id: string
@@ -245,6 +246,11 @@ export default function SandboxPlayground({
               placeholder="Digite como se fosse um cliente..."
               disabled={sending || !activeSessionId}
               autoFocus
+            />
+            <VoiceInputButton
+              orgSlug={orgSlug}
+              onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))}
+              disabled={sending || !activeSessionId}
             />
             <Button type="submit" disabled={sending || !input.trim() || !activeSessionId}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
