@@ -104,6 +104,9 @@ export default async function ConversasPage({
       stageName: c.contatos?.pipeline_stages?.name ?? null,
       stageColor: c.contatos?.pipeline_stages?.color ?? null,
       archived: !!c.archived,
+      lastMessageDirection: c.last_message_direction ?? null,
+      lastMessageStatus: c.last_message_status ?? null,
+      lastInboundAt: c.last_inbound_at ?? null,
     })),
     igConversations.map(c => {
       const contato = c.contato_id ? igContatoById.get(c.contato_id) : null
@@ -119,6 +122,9 @@ export default async function ConversasPage({
         stageName: contato?.pipeline_stages?.name ?? null,
         stageColor: contato?.pipeline_stages?.color ?? null,
         archived: !!c.archived,
+        lastMessageDirection: c.last_message_direction ?? null,
+        lastMessageStatus: c.last_message_status ?? null,
+        lastInboundAt: null,
       }
     }),
   )

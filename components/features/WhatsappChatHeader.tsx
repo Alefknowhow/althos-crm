@@ -1,8 +1,7 @@
 'use client'
 
 import { Switch } from '@/components/ui/switch'
-import Link from 'next/link'
-import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban, UserRound } from 'lucide-react'
+import { MoreVertical, Archive, BellOff, Bell, Pin, PinOff, Star, MailQuestion, Eraser, Trash2, Ban } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -44,27 +43,17 @@ export default function WhatsappChatHeader({
         <button
           type="button"
           onClick={() => setShowSearch((v: boolean) => { if (v) setMsgQuery(''); return !v })}
-          className={`h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted ${showSearch ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          className={`h-9 w-9 flex items-center justify-center rounded-full shadow-sm border border-border hover:bg-muted transition-colors ${showSearch ? 'bg-primary/10 text-primary' : 'bg-background text-muted-foreground'}`}
           title="Pesquisar nesta conversa"
           aria-label="Pesquisar nesta conversa"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>
-        {selectedConversation.contato_id && (
-          <Link
-            href={`/app/${orgSlug}/contatos/${selectedConversation.contato_id}`}
-            title="Abrir contato"
-            aria-label="Abrir contato"
-            className="h-9 w-9 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
-          >
-            <UserRound className="w-[18px] h-[18px]" />
-          </Link>
-        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground"
+              className="h-9 w-9 flex items-center justify-center rounded-full shadow-sm border border-border bg-background hover:bg-muted text-muted-foreground transition-colors"
               title="Mais opções"
               aria-label="Mais opções"
             >

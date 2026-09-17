@@ -20,6 +20,10 @@ export type UnifiedConversationRow = {
   stageName: string | null
   stageColor: string | null
   archived: boolean
+  lastMessageDirection: 'inbound' | 'outbound' | null
+  lastMessageStatus: string | null
+  /** Só o WhatsApp tem a janela grátis de 24h da API oficial — null no Instagram. */
+  lastInboundAt: string | null
 }
 
 export function mergeConversationsByRecency(

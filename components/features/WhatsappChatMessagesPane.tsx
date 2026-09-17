@@ -47,10 +47,8 @@ export default function WhatsappChatMessagesPane({
           return (
             <div key={m.id} className={`flex min-w-0 ${isInbound ? 'justify-start' : 'justify-end'}`}>
               <div
-                className={`max-w-[75%] min-w-0 rounded-[7px] px-2.5 py-1.5 relative shadow-sm text-foreground ${
-                  isInbound
-                    ? 'bg-card rounded-tl-[2px]'
-                    : 'bg-primary/10 rounded-tr-[2px]'
+                className={`max-w-[75%] min-w-0 rounded-2xl px-3 py-2 relative shadow-sm text-foreground ${
+                  isInbound ? 'bg-card' : 'bg-primary/10'
                 }`}
               >
                 <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">

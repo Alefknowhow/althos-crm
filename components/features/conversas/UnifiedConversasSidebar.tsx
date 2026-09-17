@@ -1,19 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
   MessageSquare, Search, MoreVertical, MessageCircle, MessageCircleMore, Archive, Bot,
-  Users, Filter as FilterIcon,
+  Users, Filter as FilterIcon, FileStack,
 } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { agentColor, memberShortLabel } from '@/components/features/ConversationDetailPanel'
-import { IgIcon, WhatsAppIcon } from './ConversasChannelIcons'
 import ConfigurarAgenteIaDialog from './ConfigurarAgenteIaDialog'
+import UnifiedConversaRow from './UnifiedConversaRow'
 import type { UnifiedConversationRow } from '@/lib/conversas/unify'
 
 type InboxView = 'all' | 'unread' | 'archived'
@@ -43,6 +42,14 @@ export default function UnifiedConversasSidebar({
   const [filterResponsavel, setFilterResponsavel] = useState<string>('all')
   const [filterStage, setFilterStage] = useState<string>('all')
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
+
+  // Contagem regressiva da janela de 24h do WhatsApp (WindowBadge) — atualiza
+  // a cada 30s pra todas as linhas sem precisar de um setInterval por linha.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const unreadCount = rows.filter(r => !r.archived && r.unreadCount > 0).length
   const stageNames = useMemo(
@@ -115,6 +122,11 @@ export default function UnifiedConversasSidebar({
                 <Archive className="w-4 h-4" /> Arquivadas
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="gap-2">
+                <Link href={`/app/${orgSlug}/whatsapp-templates`}>
+                  <FileStack className="w-4 h-4" /> Templates de WhatsApp
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setAiDialogOpen(true)} className="gap-2">
                 <Bot className="w-4 h-4" /> Configurar agente de IA
               </DropdownMenuItem>
@@ -256,86 +268,19 @@ export default function UnifiedConversasSidebar({
         {visibleRows.length === 0 && (
           <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma conversa encontrada.</div>
         )}
-        {visibleRows.map(row => {
-          const isSelected = row.id === selectedId
-          const responsavel = row.assignedTo ? memberById.get(row.assignedTo) : null
-          return (
-            <Link
-              key={`${row.channel}-${row.id}`}
-              href={`/app/${orgSlug}/conversas?id=${row.id}&ch=${row.channel}`}
-              className={cn('flex items-start gap-3 px-4 py-3 border-b border-border/50 hover:bg-muted/50', isSelected && 'bg-accent')}
-            >
-              <div className="relative shrink-0">
-                {row.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={row.avatarUrl} alt="" className="w-11 h-11 rounded-full object-cover" />
-                ) : (
-                  <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground">
-                    {row.name.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-                <span className="absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-background">
-                  {row.channel === 'whatsapp' ? <WhatsAppIcon className="w-4 h-4" /> : <IgIcon className="w-4 h-4" />}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={cn('text-sm truncate', row.unreadCount > 0 ? 'font-semibold' : 'font-medium')}>{row.name}</span>
-                  {row.lastMessageAt && (
-                    <span className={cn('text-[10px] shrink-0', row.unreadCount > 0 ? 'text-primary font-medium' : 'text-muted-foreground')}>
-                      {formatRelativeTime(row.lastMessageAt)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className={cn('text-xs truncate flex-1', row.unreadCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground')}>
-                    {row.preview || '—'}
-                  </p>
-                  {row.unreadCount > 0 && (
-                    <span className="shrink-0 bg-primary text-primary-foreground text-[10px] leading-none rounded-full w-5 h-5 flex items-center justify-center">
-                      {row.unreadCount > 9 ? '9+' : row.unreadCount}
-                    </span>
-                  )}
-                </div>
-                {(responsavel || row.stageName) && (
-                  <div className="flex items-center gap-1.5">
-                    {responsavel && (
-                      <span className={cn('h-2 w-2 rounded-full shrink-0', agentColor(row.assignedTo))} title={`Responsável: ${responsavel.name || responsavel.email}`} />
-                    )}
-                    {responsavel && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[90px]">{memberShortLabel(responsavel.name, responsavel.email)}</span>
-                    )}
-                    {row.stageName && (
-                      <span
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-white truncate max-w-[110px]"
-                        style={{ backgroundColor: row.stageColor || '#8a3ffc' }}
-                      >
-                        {row.stageName}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Link>
-          )
-        })}
+        {visibleRows.map(row => (
+          <UnifiedConversaRow
+            key={`${row.channel}-${row.id}`}
+            row={row}
+            orgSlug={orgSlug}
+            isSelected={row.id === selectedId}
+            responsavel={row.assignedTo ? memberById.get(row.assignedTo) ?? null : null}
+            now={now}
+          />
+        ))}
       </div>
 
       <ConfigurarAgenteIaDialog orgSlug={orgSlug} open={aiDialogOpen} onOpenChange={setAiDialogOpen} />
     </div>
   )
-}
-
-function formatRelativeTime(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'agora'
-  if (diffMin < 60) return `${diffMin}min`
-  const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `${diffH}h`
-  const diffD = Math.floor(diffH / 24)
-  if (diffD < 7) return `${diffD}d`
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }

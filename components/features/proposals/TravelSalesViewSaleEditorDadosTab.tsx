@@ -30,8 +30,9 @@ export default function TravelSalesViewSaleEditorDadosTab({
   onExtracted: (args: { voucher: Voucher; extracted: import('@/lib/ai/document-extract').ExtractedTravelDocument | null }) => void
 }) {
   return (
-    <TabsContent value="dados" className="space-y-4 pt-4">
-      <div className="space-y-4 max-w-3xl">
+    <TabsContent value="dados" className="pt-4">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="space-y-4 max-w-3xl flex-1 min-w-0">
         <div className="grid grid-cols-3 gap-2.5 items-end">
           <VoucherUploadWithOcr orgSlug={orgSlug} label="Add voucher" onExtracted={onExtracted} />
           <Field label="Cliente">
@@ -129,29 +130,32 @@ export default function TravelSalesViewSaleEditorDadosTab({
             />
           </div>
         </div>
+
+        {s.tasks_generated_at && (
+          <p className="text-xs text-success flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
+          </p>
+        )}
       </div>
 
-      <div className="grid gap-2.5 lg:grid-cols-2">
-        <Field label="Observações"><Textarea rows={2} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
+      {/* Observações/informações — ocupam o espaço vazio à direita do
+          formulário (coluna estreita antes, tela ampla sobrando do lado). */}
+      <div className="w-full lg:w-[380px] xl:w-[440px] shrink-0 space-y-3">
+        <Field label="Observações"><Textarea rows={4} value={s.notes || ''} onChange={e => set('notes', e.target.value)} /></Field>
         <Field label="Informações importantes">
-          <Textarea rows={2} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
+          <Textarea rows={4} value={s.important_info || ''} onChange={e => set('important_info', e.target.value)}
             placeholder="Contatos de emergência, como buscar atendimento etc." />
         </Field>
         <Field label="Política de cancelamento">
-          <Textarea rows={2} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
+          <Textarea rows={4} value={s.cancellation_policy || ''} onChange={e => set('cancellation_policy', e.target.value)}
             placeholder="Aparece no voucher/contrato só se preenchido." />
         </Field>
         <Field label="Informações de serviço">
-          <Textarea rows={2} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
+          <Textarea rows={4} value={s.service_info || ''} onChange={e => set('service_info', e.target.value)}
             placeholder="O que está incluso, horários, condições de uso etc." />
         </Field>
       </div>
-
-      {s.tasks_generated_at && (
-        <p className="text-xs text-success flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" /> Tarefas operacionais já geradas para esta venda.
-        </p>
-      )}
+      </div>
     </TabsContent>
   )
 }
