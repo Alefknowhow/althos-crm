@@ -11,6 +11,7 @@ import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads
 import { listAssignableMetaAdAccounts } from '@/actions/marketing'
 import { listTrackingLinksByClient } from '@/actions/tracking-links'
 import { getClientTrackingFunnel, listClientConvertedJourneys, listLinkPerformance } from '@/actions/trafego-tracking'
+import { listMediaPlans, getMediaPlanWithItems, type MediaPlanItem } from '@/actions/media-plans'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 import { requireModuleEnabled } from '@/lib/module-flags'
@@ -27,7 +28,7 @@ export default async function TrafficClientDetailPage({
   const supabase = createClient()
   const { data: client } = await supabase
     .from('contatos')
-    .select('id, name')
+    .select('id, name, email, phone')
     .eq('id', params.id)
     .eq('organization_id', org.id)
     .maybeSingle()
@@ -81,6 +82,11 @@ export default async function TrafficClientDetailPage({
     listLinkPerformance(params.orgSlug, params.id, range30d),
   ])
 
+  const mediaPlans = await listMediaPlans(params.orgSlug, params.id)
+  const mediaPlanItems: MediaPlanItem[] = mediaPlans[0]
+    ? (await getMediaPlanWithItems(params.orgSlug, mediaPlans[0].id))?.items || []
+    : []
+
   const lastSyncedAt = (accounts as any[])
     .map(a => a.updated_at || a.created_at)
     .filter(Boolean)
@@ -111,6 +117,9 @@ export default async function TrafficClientDetailPage({
       orgSlug={params.orgSlug}
       clientId={client.id}
       clientName={client.name}
+      clientEmail={client.email ?? null}
+      clientPhone={client.phone ?? null}
+      orgName={org.name}
       profile={profile}
       accounts={accounts as any[]}
       campaigns={campaigns as any[]}
@@ -129,6 +138,8 @@ export default async function TrafficClientDetailPage({
       trackingJourneys={trackingJourneys}
       trackingLinks={trackingLinks}
       trackingLinkPerformance={trackingLinkPerformance}
+      mediaPlans={mediaPlans}
+      mediaPlanItems={mediaPlanItems}
     />
   )
 }

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Sparkles, ChevronDown } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Loader2, TrendingUp, TrendingDown, Sparkles, ChevronDown, Calendar } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
@@ -16,7 +18,7 @@ import { computeClientHealthStatus, HEALTH_LABEL, HEALTH_BADGE_CLASS } from '@/l
 import { computeClientAlerts } from '@/lib/trafego/alerts'
 import MetricChart from '@/components/features/dashboard/MetricChart'
 
-type Period = 'hoje' | '7d' | '30d'
+type Period = 'hoje' | '7d' | '30d' | 'mes' | 'custom'
 
 const DAY_MS = 86_400_000
 
@@ -33,10 +35,14 @@ const DAY_MS = 86_400_000
  * o corte pro servidor sempre bata com o calendário que o usuário espera,
  * não com o horário do navegador.
  */
-function rangeFor(period: Period): { from: Date; to: Date } {
+function rangeFor(period: Exclude<Period, 'custom'>): { from: Date; to: Date } {
   const now = new Date()
   const todayUtcMidnight = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
   const to = new Date(todayUtcMidnight.getTime() + DAY_MS - 1)
+  if (period === 'mes') {
+    const from = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))
+    return { from, to }
+  }
   const daysBack = period === 'hoje' ? 0 : period === '7d' ? 6 : 29
   const from = new Date(todayUtcMidnight.getTime() - daysBack * DAY_MS)
   return { from, to }
@@ -92,15 +98,15 @@ export default function ClientOverviewTab({
   initialSeries: ClientDailyPoint[]
 }) {
   const [period, setPeriod] = useState<Period>('30d')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [current, setCurrent] = useState(initialCurrent)
   const [previous, setPrevious] = useState(initialPrevious)
   const [series, setSeries] = useState(initialSeries)
   const [metric, setMetric] = useState<typeof METRIC_OPTIONS[number]>(METRIC_OPTIONS[0])
   const [isPending, startTransition] = useTransition()
 
-  useEffect(() => {
-    if (period === '30d') { setCurrent(initialCurrent); setPrevious(initialPrevious); setSeries(initialSeries); return }
-    const range = rangeFor(period)
+  function fetchRange(range: { from: Date; to: Date }) {
     startTransition(async () => {
       const [{ current: c, previous: p }, s] = await Promise.all([
         getClientPerformanceComparison(orgSlug, clientId, range),
@@ -108,8 +114,22 @@ export default function ClientOverviewTab({
       ])
       setCurrent(c); setPrevious(p); setSeries(s)
     })
+  }
+
+  useEffect(() => {
+    if (period === '30d') { setCurrent(initialCurrent); setPrevious(initialPrevious); setSeries(initialSeries); return }
+    if (period === 'custom') return
+    fetchRange(rangeFor(period))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period])
+
+  function applyCustomRange() {
+    if (!customFrom || !customTo) return
+    const from = new Date(customFrom + 'T00:00:00Z')
+    const to = new Date(customTo + 'T23:59:59Z')
+    if (from > to) return
+    fetchRange({ from, to })
+  }
 
   const health = computeClientHealthStatus({
     investmentCents: current.investmentCents,
@@ -152,7 +172,7 @@ export default function ClientOverviewTab({
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {(['hoje', '7d', '30d'] as Period[]).map(p => (
+            {(['hoje', '7d', '30d', 'mes'] as Period[]).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -161,9 +181,34 @@ export default function ClientOverviewTab({
                   period === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary',
                 )}
               >
-                {p === 'hoje' ? 'Hoje' : p === '7d' ? '7 dias' : '30 dias'}
+                {p === 'hoje' ? 'Hoje' : p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : 'Este mês'}
               </button>
             ))}
+            <Popover onOpenChange={open => { if (open) setPeriod('custom') }}>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    'px-2.5 py-1 text-xs rounded-sm font-medium transition-colors inline-flex items-center gap-1',
+                    period === 'custom' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary',
+                  )}
+                >
+                  <Calendar className="w-3 h-3" /> Personalizado
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 space-y-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">De</label>
+                  <Input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Até</label>
+                  <Input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <Button size="sm" className="w-full" disabled={!customFrom || !customTo} onClick={applyCustomRange}>
+                  Aplicar
+                </Button>
+              </PopoverContent>
+            </Popover>
           </div>
         </CardContent>
       </Card>

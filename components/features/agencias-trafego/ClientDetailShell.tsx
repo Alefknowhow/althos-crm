@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -16,7 +17,11 @@ import ClientIntelligenceTab from '@/components/features/agencias-trafego/Client
 import ClientTrackingTab from '@/components/features/agencias-trafego/ClientTrackingTab'
 import ClientFunnelCard from '@/components/features/agencias-trafego/ClientFunnelCard'
 import CampaignCreativesSection from '@/components/features/agencias-trafego/CampaignCreativesSection'
-import ClientHistorySection from '@/components/features/agencias-trafego/ClientHistorySection'
+import ClientReportsTab from '@/components/features/agencias-trafego/ClientReportsTab'
+import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
+import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBuilder'
+import MarketingStrategistPanel from '@/components/features/agencias-trafego/MarketingStrategistPanel'
+import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
 import type { TrafficActivity } from '@/actions/trafego-history'
@@ -44,15 +49,21 @@ type SaleRow = { id: string; sale_date: string | null; amount_cents: number | nu
  * as contas do workspace".
  */
 export default function ClientDetailShell({
-  orgSlug, clientId, clientName, profile, accounts, campaigns, creatives, sales, activities,
+  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
+  mediaPlans, mediaPlanItems,
 }: {
   orgSlug: string
   clientId: string
   clientName: string
+  clientEmail: string | null
+  clientPhone: string | null
+  orgName: string
   profile: TrafficClientProfile | null
+  mediaPlans: MediaPlan[]
+  mediaPlanItems: MediaPlanItem[]
   accounts: AdAccount[]
   campaigns: CampaignRow[]
   creatives: Creative[]
@@ -71,16 +82,19 @@ export default function ClientDetailShell({
   trackingLinks: TrackingLink[]
   trackingLinkPerformance: LinkPerformance[]
 }) {
+  const router = useRouter()
   const [tab, setTab] = useState('visao-geral')
   const sections: MobileSection[] = [
     { key: 'visao-geral', label: 'Visão geral' },
+    { key: 'analytics', label: 'Analytics' },
     { key: 'estrategia', label: 'Estratégia' },
-    { key: 'performance', label: 'Performance' },
     { key: 'criativos', label: 'Criativos' },
-    { key: 'tracking', label: 'Tracking' },
+    { key: 'conversoes', label: 'Conversões' },
     { key: 'inteligencia', label: 'Inteligência' },
-    { key: 'historico', label: 'Histórico' },
+    { key: 'relatorios', label: 'Relatórios' },
+    { key: 'contrato', label: 'Contrato & Financeiro' },
   ]
+  const hasTrackingData = trackingFunnel.clicks > 0 || trackingLinks.length > 0
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -99,12 +113,13 @@ export default function ClientDetailShell({
         </div>
         <TabsList className="hidden sm:flex flex-wrap h-auto">
           <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="estrategia">Estratégia</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="criativos">Criativos</TabsTrigger>
-          <TabsTrigger value="tracking">Tracking</TabsTrigger>
+          <TabsTrigger value="conversoes">Conversões</TabsTrigger>
           <TabsTrigger value="inteligencia">Inteligência</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="contrato">Contrato & Financeiro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visao-geral">
@@ -121,16 +136,7 @@ export default function ClientDetailShell({
           />
         </TabsContent>
 
-        <TabsContent value="estrategia" className="space-y-4">
-          <TrafficClientProfileCard orgSlug={orgSlug} contatoId={clientId} initial={profile} />
-          <ClientFunnelCard
-            funnel={trackingFunnel}
-            hasData={trackingFunnel.clicks > 0 || trackingLinks.length > 0}
-            title="Funil (30 dias)"
-          />
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-4">
+        <TabsContent value="analytics" className="space-y-4">
           <ClientPerformanceChart current={performanceCurrent} previous={performancePrevious} series={performanceSeries} />
           <ClientSyncPanel
             orgSlug={orgSlug}
@@ -145,11 +151,24 @@ export default function ClientDetailShell({
           <ClientCampaignsTable campaigns={campaigns} />
         </TabsContent>
 
+        <TabsContent value="estrategia" className="space-y-4">
+          <TrafficClientProfileCard orgSlug={orgSlug} contatoId={clientId} initial={profile} />
+          <ClientFunnelCard funnel={trackingFunnel} hasData={hasTrackingData} title="Funil (30 dias)" />
+          <MediaPlanBuilder
+            orgSlug={orgSlug}
+            contatoId={clientId}
+            plans={mediaPlans}
+            initialItems={mediaPlanItems}
+            creatives={creatives.map(c => ({ id: c.id, title: c.title }))}
+          />
+          <MarketingStrategistPanel orgSlug={orgSlug} contatoId={clientId} onApplied={() => router.refresh()} />
+        </TabsContent>
+
         <TabsContent value="criativos">
           <CampaignCreativesSection orgSlug={orgSlug} contatoId={clientId} creatives={creatives} />
         </TabsContent>
 
-        <TabsContent value="tracking">
+        <TabsContent value="conversoes">
           <ClientTrackingTab
             orgSlug={orgSlug}
             clientId={clientId}
@@ -169,8 +188,32 @@ export default function ClientDetailShell({
           />
         </TabsContent>
 
-        <TabsContent value="historico">
-          <ClientHistorySection sales={sales} activities={activities} />
+        <TabsContent value="relatorios">
+          <ClientReportsTab
+            orgSlug={orgSlug}
+            clientId={clientId}
+            clientName={clientName}
+            orgName={orgName}
+            current={performanceCurrent}
+            previous={performancePrevious}
+            funnel={trackingFunnel}
+            hasFunnelData={hasTrackingData}
+            campaigns={campaigns}
+            sales={sales}
+            activities={activities}
+          />
+        </TabsContent>
+
+        <TabsContent value="contrato">
+          <ClientContractTab
+            orgSlug={orgSlug}
+            clientId={clientId}
+            clientName={clientName}
+            clientEmail={clientEmail}
+            clientPhone={clientPhone}
+            profile={profile}
+            sales={sales}
+          />
         </TabsContent>
       </Tabs>
     </div>

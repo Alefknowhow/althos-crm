@@ -38,6 +38,7 @@ async function registerObject(params: {
   filename?: string | null
   mimeType: string
   sizeBytes: number
+  metadata?: Record<string, unknown>
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const supabase = createClient()
   const { data, error } = await supabase
@@ -53,6 +54,7 @@ async function registerObject(params: {
       filename: params.filename ?? null,
       mime_type: params.mimeType,
       size_bytes: params.sizeBytes,
+      metadata: params.metadata ?? {},
     })
     .select('id')
     .single()
@@ -75,6 +77,7 @@ export async function uploadFile(
     filename: string
     contentType: string
     base64: string
+    metadata?: Record<string, unknown>
   },
 ): Promise<{ ok: true; objectId: string; storageKey: string } | { ok: false; error: string }> {
   const user = await requireAuth()
@@ -119,6 +122,7 @@ export async function uploadFile(
     filename: input.filename,
     mimeType: input.contentType,
     sizeBytes: result.size,
+    metadata: input.metadata,
   })
   if (!registered.ok) return registered
 
