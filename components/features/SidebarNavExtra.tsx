@@ -2,13 +2,14 @@ import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarSupportLink from './SidebarSupportLink'
 import SidebarConfigAccordion from './SidebarConfigAccordion'
+import SidebarClientAccordion from './SidebarClientAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
   FileText, Package, Zap, Megaphone, Send, FileSignature,
-  Star, Building2, ShieldAlert, Target, FileStack, Phone, MessageCircle,
+  Star, Building2, ShieldAlert, FileStack, Phone, MessageCircle,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -95,12 +96,7 @@ export async function SidebarNavExtra({
           {/* ── Agências de Tráfego ───────────────────── */}
           <SectionLabel>Agências de Tráfego</SectionLabel>
 
-          <SidebarNavLink href={`${base}/agencias-trafego/trafego`}>
-            <span className="flex items-center gap-2.5">
-              <Target className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Clientes</span>
-            </span>
-          </SidebarNavLink>
+          <SidebarClientAccordion base={base} />
         </>
       )}
 

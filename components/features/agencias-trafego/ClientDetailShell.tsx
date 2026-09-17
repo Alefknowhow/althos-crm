@@ -1,16 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import {
-  ArrowLeft, LayoutDashboard, BarChart3, Target, LayoutGrid, Image as ImageIcon,
-  Waypoints, Brain, FileBarChart, FileSignature,
-} from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
-import { VerticalTabsNav, type VerticalTabItem } from '@/components/ui/vertical-tabs'
 import TrafficClientProfileCard from '@/components/features/agencias-trafego/TrafficClientProfileCard'
 import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/TrafficClientCampaignsCard'
 import ClientCampaignsTable from '@/components/features/agencias-trafego/ClientCampaignsTable'
@@ -46,13 +41,16 @@ type CampaignRow = {
 type SaleRow = { id: string; sale_date: string | null; amount_cents: number | null; status: string; products: { name: string } | null }
 
 /**
- * Ambiente operacional de um cliente de tráfego — sidebar vertical com 9
- * seções (Estratégia e Estrutura de Campanhas separadas, antes uma coisa
- * só). Todo dado exibido aqui pertence exclusivamente a `clientId`: contas
- * via ad_accounts.contato_id, campanhas via join com essas contas, nunca
- * "todas as contas do workspace". O Marketing Strategist (IA) vira um
- * painel lateral fixo (MarketingStrategistDock) em vez de conteúdo de aba —
- * fica disponível em qualquer seção, sempre escopado a este cliente.
+ * Ambiente operacional de um cliente de tráfego — 9 seções (Estratégia e
+ * Estrutura de Campanhas separadas, antes uma coisa só). A navegação entre
+ * elas mora na sidebar principal do app (SidebarClientAccordion, acordeão
+ * "Clientes" — igual Configurações), não numa coluna própria aqui dentro
+ * (era redundante). A aba ativa vive em `?tab=` na URL, é isso que deixa a
+ * sidebar linkar direto pra uma aba específica. Todo dado exibido aqui
+ * pertence exclusivamente a `clientId`: contas via ad_accounts.contato_id,
+ * campanhas via join com essas contas, nunca "todas as contas do
+ * workspace". O Marketing Strategist (IA) é um painel lateral fixo
+ * (MarketingStrategistDock), disponível em qualquer seção.
  */
 export default function ClientDetailShell({
   orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, sales, activities,
@@ -89,19 +87,30 @@ export default function ClientDetailShell({
   trackingLinkPerformance: LinkPerformance[]
 }) {
   const router = useRouter()
-  const [tab, setTab] = useState('visao-geral')
-  const items: VerticalTabItem[] = [
-    { key: 'visao-geral', label: 'Visão geral', icon: LayoutDashboard },
-    { key: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { key: 'estrategia', label: 'Estratégia', icon: Target },
-    { key: 'campanhas', label: 'Estrutura de Campanhas', icon: LayoutGrid },
-    { key: 'criativos', label: 'Criativos', icon: ImageIcon },
-    { key: 'conversoes', label: 'Conversões', icon: Waypoints },
-    { key: 'inteligencia', label: 'Inteligência', icon: Brain },
-    { key: 'relatorios', label: 'Relatórios', icon: FileBarChart },
-    { key: 'contrato', label: 'Contrato & Financeiro', icon: FileSignature },
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // A aba ativa vive na URL (?tab=), não em estado local — é isso que
+  // permite o item "Clientes" da sidebar principal (SidebarClientAccordion)
+  // linkar direto pra uma aba específica deste cliente e destacar a aba
+  // certa, em vez de duplicar a navegação numa coluna própria da página.
+  const tab = searchParams.get('tab') || 'visao-geral'
+  function setTab(next: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const sections: MobileSection[] = [
+    { key: 'visao-geral', label: 'Visão geral' },
+    { key: 'analytics', label: 'Analytics' },
+    { key: 'estrategia', label: 'Estratégia' },
+    { key: 'campanhas', label: 'Estrutura de Campanhas' },
+    { key: 'criativos', label: 'Criativos' },
+    { key: 'conversoes', label: 'Conversões' },
+    { key: 'inteligencia', label: 'Inteligência' },
+    { key: 'relatorios', label: 'Relatórios' },
+    { key: 'contrato', label: 'Contrato & Financeiro' },
   ]
-  const sections: MobileSection[] = items.map(i => ({ key: i.key, label: i.label }))
   const hasTrackingData = trackingFunnel.clicks > 0 || trackingLinks.length > 0
 
   return (
@@ -119,12 +128,11 @@ export default function ClientDetailShell({
         <MobileSectionPicker sections={sections} activeKey={tab} onChange={setTab} />
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="flex flex-col sm:flex-row gap-6 min-w-0">
-        <div className="hidden sm:block shrink-0">
-          <VerticalTabsNav items={items} activeKey={tab} onSelect={setTab} />
-        </div>
-
-        <div className="flex-1 min-w-0">
+      {/* Navegação entre as 9 seções mora na sidebar principal
+          (SidebarClientAccordion, acordeão "Clientes") — não duplica mais
+          uma coluna própria aqui dentro (era redundante: a mesma lista já
+          aparecia nos dois lugares). */}
+      <Tabs value={tab} onValueChange={setTab} className="min-w-0">
         <TabsContent value="visao-geral">
           <ClientOverviewTab
             orgSlug={orgSlug}
@@ -220,7 +228,6 @@ export default function ClientDetailShell({
             sales={sales}
           />
         </TabsContent>
-        </div>
       </Tabs>
 
       <MarketingStrategistDock orgSlug={orgSlug} contatoId={clientId} onApplied={() => router.refresh()} />
