@@ -167,6 +167,58 @@ function PlatformConfigFields({ item, onPatch }: { item: MediaPlanItem; onPatch:
       </div>
     )
   }
+  if (item.level === 'adset' && item.platform === 'tiktok') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ConfigInput label="Posicionamento" value={cfg.placement} onChange={v => setCfg('placement', v)} placeholder="Automático/TikTok/Pangle" width="w-44" />
+        <ConfigInput label="Meta de otimização" value={cfg.optimization_goal} onChange={v => setCfg('optimization_goal', v)} width="w-40" />
+        <ConfigInput label="Tipo de lance" value={cfg.bid_type} onChange={v => setCfg('bid_type', v)} width="w-32" />
+        <ConfigInput label="Localização" value={cfg.location} onChange={v => setCfg('location', v)} width="w-36" />
+        <ConfigInput label="Idade" value={cfg.age_range} onChange={v => setCfg('age_range', v)} placeholder="18-65" width="w-24" />
+        <ConfigInput label="Gênero" value={cfg.gender} onChange={v => setCfg('gender', v)} width="w-24" />
+        <ConfigInput label="Interesses" value={cfg.interests} onChange={v => setCfg('interests', v)} width="w-52" />
+      </div>
+    )
+  }
+  // LinkedIn não tem nível de conjunto — a segmentação de público mora na
+  // própria campanha (ver PLATFORM_HAS_ADSET_LEVEL).
+  if (item.level === 'campaign' && item.platform === 'linkedin') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ConfigInput label="Formato do anúncio" value={cfg.ad_format} onChange={v => setCfg('ad_format', v)} placeholder="Imagem única/Vídeo/Carrossel/Texto" width="w-52" />
+        <ConfigInput label="Tipo de lance" value={cfg.bid_type} onChange={v => setCfg('bid_type', v)} width="w-32" />
+        <ConfigInput label="Cargo" value={cfg.job_title} onChange={v => setCfg('job_title', v)} width="w-40" />
+        <ConfigInput label="Função" value={cfg.job_function} onChange={v => setCfg('job_function', v)} width="w-40" />
+        <ConfigInput label="Senioridade" value={cfg.seniority} onChange={v => setCfg('seniority', v)} width="w-40" />
+        <ConfigInput label="Setor" value={cfg.industry} onChange={v => setCfg('industry', v)} width="w-40" />
+        <ConfigInput label="Tamanho da empresa" value={cfg.company_size} onChange={v => setCfg('company_size', v)} width="w-40" />
+        <ConfigInput label="Habilidades" value={cfg.skills} onChange={v => setCfg('skills', v)} width="w-52" />
+      </div>
+    )
+  }
+  if (item.level === 'adset' && item.platform === 'gpt_ads') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ConfigInput label="Estratégia de lances" value={cfg.bid_strategy} onChange={v => setCfg('bid_strategy', v)} width="w-40" />
+        <ConfigInput label="Veiculação e rastreamento" value={cfg.ad_serving_tracking} onChange={v => setCfg('ad_serving_tracking', v)} width="w-52" />
+        <ConfigInput label="URL padrão" value={cfg.default_url} onChange={v => setCfg('default_url', v)} width="w-52" />
+      </div>
+    )
+  }
+  if (item.level === 'ad' && item.platform === 'gpt_ads') {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ConfigInput label="URL de destino" value={cfg.destination_url} onChange={v => setCfg('destination_url', v)} width="w-64" />
+        <ConfigInput label="Parâmetros de consulta" value={cfg.url_query_params} onChange={v => setCfg('url_query_params', v)} placeholder="campaign_id={campaign_id}&ad_id={ad_id}" width="w-64" />
+        <ConfigInput label="Título (máx. 50)" value={cfg.headline} onChange={v => setCfg('headline', v.slice(0, 50))} width="w-52" />
+        <div className="space-y-1 w-64">
+          <Label className="text-xs">Descrição (máx. 100)</Label>
+          <Textarea value={(cfg.description as string) ?? ''} onChange={e => setCfg('description', e.target.value.slice(0, 100))} className="text-sm min-h-[50px]" />
+        </div>
+        <p className="text-xs text-muted-foreground w-full">Imagem do anúncio: selecione o criativo abaixo, na biblioteca do cliente.</p>
+      </div>
+    )
+  }
   if (item.level === 'ad') {
     return (
       <div className="flex flex-wrap gap-2">

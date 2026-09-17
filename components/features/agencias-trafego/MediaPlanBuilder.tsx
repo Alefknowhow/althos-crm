@@ -13,15 +13,19 @@ import {
 } from '@/actions/media-plans'
 import { MediaPlanItemRow, MediaPlanItemEditForm } from '@/components/features/agencias-trafego/MediaPlanItemNode'
 import MediaPlanMetaCard from '@/components/features/agencias-trafego/MediaPlanMetaCard'
-import { PLATFORM_LABEL, LEVEL_LABEL, type MediaPlanCreative } from '@/components/features/agencias-trafego/media-plan-shared'
+import {
+  PLATFORM_LABEL, LEVEL_LABEL, PLATFORM_HAS_ADSET_LEVEL, PLATFORM_ADSET_LABEL, type MediaPlanCreative,
+} from '@/components/features/agencias-trafego/media-plan-shared'
 
 /**
- * Estratégia estruturada — plano de mídia versionado + árvore
- * Campanha→Conjunto→Anúncio em 3 colunas lado a lado (Miller columns:
- * selecionar uma campanha mostra os conjuntos dela na coluna 2, selecionar
- * um conjunto mostra os anúncios dele na coluna 3) — antes era um único
- * Accordion recursivo empilhado verticalmente. Base pra futura publicação
- * via API (Meta/Google/etc.) e pro Marketing Strategist (IA). Ver
+ * Estratégia estruturada — plano de mídia versionado + árvore Campanha→
+ * Grupo→Anúncio em colunas lado a lado (Miller columns: selecionar uma
+ * campanha mostra o nível do meio na coluna 2, selecionar esse item mostra
+ * os anúncios na coluna 3). A estrutura real varia por plataforma — Meta/
+ * Google/TikTok/GPT Ads têm os 3 níveis, LinkedIn Ads não tem nível de
+ * conjunto/grupo (segmentação fica na campanha, anúncio pendura direto
+ * nela) — ver PLATFORM_HAS_ADSET_LEVEL em media-plan-shared.ts. Base pra
+ * futura publicação via API e pro Marketing Strategist (IA). Ver
  * actions/media-plans.ts e MediaPlanItemNode.tsx (linha/formulário de um item).
  */
 export default function MediaPlanBuilder({
@@ -165,10 +169,18 @@ export default function MediaPlanBuilder({
 
   const campaigns = items.filter(i => i.level === 'campaign' && i.media_plan_id === activePlanId)
   const adsets = selectedCampaignId ? items.filter(i => i.parent_id === selectedCampaignId) : []
-  const ads = selectedAdsetId ? items.filter(i => i.parent_id === selectedAdsetId) : []
   const selectedCampaign = items.find(i => i.id === selectedCampaignId) || null
   const selectedAdset = items.find(i => i.id === selectedAdsetId) || null
   const selectedAd = items.find(i => i.id === selectedAdId) || null
+
+  // LinkedIn Ads não tem nível de conjunto/grupo — a segmentação mora na
+  // própria campanha e o anúncio pendura direto nela. Pra qualquer outra
+  // plataforma, o anúncio pendura no conjunto/grupo selecionado, como
+  // sempre. `adParentId` é quem realmente vira `parent_id` do anúncio.
+  const hasAdsetLevel = selectedCampaign ? PLATFORM_HAS_ADSET_LEVEL[selectedCampaign.platform] : true
+  const adParent = hasAdsetLevel ? selectedAdset : selectedCampaign
+  const ads = adParent ? items.filter(i => i.parent_id === adParent.id) : []
+  const adsetColumnLabel = selectedCampaign ? PLATFORM_ADSET_LABEL[selectedCampaign.platform] : 'Conjuntos'
 
   return (
     <div className="space-y-4">
@@ -219,11 +231,12 @@ export default function MediaPlanBuilder({
             </CardContent>
           </Card>
 
-          {/* Coluna 2 — Conjuntos */}
+          {/* Coluna 2 — Conjuntos/Grupos (label e existência do nível variam
+              por plataforma — ver PLATFORM_HAS_ADSET_LEVEL). */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
-              <CardTitle className="text-sm">Conjuntos</CardTitle>
-              {selectedCampaign && (
+              <CardTitle className="text-sm">{adsetColumnLabel}</CardTitle>
+              {selectedCampaign && hasAdsetLevel && (
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addItem('adset', selectedCampaign.id, selectedCampaign.platform)}>
                   <Plus className="w-3.5 h-3.5" />
                 </Button>
@@ -232,6 +245,10 @@ export default function MediaPlanBuilder({
             <CardContent className="space-y-1">
               {!selectedCampaign ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">Selecione uma campanha.</p>
+              ) : !hasAdsetLevel ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">
+                  {PLATFORM_LABEL[selectedCampaign.platform]} não usa este nível — a segmentação de público fica na própria campanha.
+                </p>
               ) : adsets.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">Nenhum conjunto ainda.</p>
               ) : adsets.map(a => (
@@ -255,15 +272,17 @@ export default function MediaPlanBuilder({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 py-3">
               <CardTitle className="text-sm">Anúncios</CardTitle>
-              {selectedAdset && (
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addItem('ad', selectedAdset.id, selectedAdset.platform)}>
+              {adParent && (
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addItem('ad', adParent.id, adParent.platform)}>
                   <Plus className="w-3.5 h-3.5" />
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-1">
-              {!selectedAdset ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">Selecione um conjunto.</p>
+              {!adParent ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">
+                  {hasAdsetLevel || !selectedCampaign ? 'Selecione um conjunto.' : 'Selecione a campanha.'}
+                </p>
               ) : ads.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">Nenhum anúncio ainda.</p>
               ) : ads.map(ad => (
