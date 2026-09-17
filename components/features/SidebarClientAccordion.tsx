@@ -14,6 +14,7 @@ const SUB_ITEMS = [
   { key: 'criativos', label: 'Criativos' },
   { key: 'conversoes', label: 'Conversões' },
   { key: 'inteligencia', label: 'Inteligência' },
+  { key: 'projetos', label: 'Projetos' },
   { key: 'relatorios', label: 'Relatórios' },
   { key: 'contrato', label: 'Contrato & Financeiro' },
 ] as const

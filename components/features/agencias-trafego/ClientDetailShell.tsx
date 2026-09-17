@@ -20,6 +20,8 @@ import ClientReportsTab from '@/components/features/agencias-trafego/ClientRepor
 import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
 import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBuilder'
 import MarketingStrategistDock from '@/components/features/agencias-trafego/MarketingStrategistDock'
+import ProjectsView from '@/components/features/agencias-trafego/projetos/ProjectsView'
+import type { ProjectRow } from '@/actions/projects'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
@@ -57,7 +59,7 @@ export default function ClientDetailShell({
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
-  mediaPlans, mediaPlanItems,
+  mediaPlans, mediaPlanItems, projects, members,
 }: {
   orgSlug: string
   clientId: string
@@ -85,6 +87,8 @@ export default function ClientDetailShell({
   trackingJourneys: ConvertedLead[]
   trackingLinks: TrackingLink[]
   trackingLinkPerformance: LinkPerformance[]
+  projects: ProjectRow[]
+  members: { user_id: string; name: string }[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -108,6 +112,7 @@ export default function ClientDetailShell({
     { key: 'criativos', label: 'Criativos' },
     { key: 'conversoes', label: 'Conversões' },
     { key: 'inteligencia', label: 'Inteligência' },
+    { key: 'projetos', label: 'Projetos' },
     { key: 'relatorios', label: 'Relatórios' },
     { key: 'contrato', label: 'Contrato & Financeiro' },
   ]
@@ -198,6 +203,16 @@ export default function ClientDetailShell({
             previous={performancePrevious}
             profile={profile}
             lastSyncDaysAgo={lastSyncDaysAgo}
+          />
+        </TabsContent>
+
+        <TabsContent value="projetos">
+          <ProjectsView
+            orgSlug={orgSlug}
+            projects={projects}
+            clients={[{ id: clientId, name: clientName }]}
+            members={members}
+            hideClientFilter
           />
         </TabsContent>
 

@@ -15,6 +15,8 @@ import { listMediaPlans, getMediaPlanWithItems, type MediaPlanItem } from '@/act
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 import { requireModuleEnabled } from '@/lib/module-flags'
+import { listProjects } from '@/actions/projects'
+import { listOrgMembers } from '@/actions/team'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +89,16 @@ export default async function TrafficClientDetailPage({
     ? (await getMediaPlanWithItems(params.orgSlug, mediaPlans[0].id))?.items || []
     : []
 
+  const [projects, members] = await Promise.all([
+    listProjects(params.orgSlug, { clientId: params.id }),
+    listOrgMembers(params.orgSlug),
+  ])
+  const memberName = new Map(members.map((m: any) => [m.user_id, m.name]))
+  const enrichedProjects = projects.map(p => ({
+    ...p,
+    owner: p.owner_id ? { id: p.owner_id, name: memberName.get(p.owner_id) || null, email: null } : null,
+  }))
+
   const lastSyncedAt = (accounts as any[])
     .map(a => a.updated_at || a.created_at)
     .filter(Boolean)
@@ -140,6 +152,8 @@ export default async function TrafficClientDetailPage({
       trackingLinkPerformance={trackingLinkPerformance}
       mediaPlans={mediaPlans}
       mediaPlanItems={mediaPlanItems}
+      projects={enrichedProjects as any}
+      members={members as any}
     />
   )
 }

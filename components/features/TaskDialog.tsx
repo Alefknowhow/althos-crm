@@ -8,33 +8,13 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { traduzirErro } from '@/lib/utils/error-translator'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Label } from '@/components/ui/label'
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 import { createTask, type TaskInput } from '@/actions/tasks'
 import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
@@ -49,8 +29,7 @@ type FormValues = z.infer<typeof taskSchema>
 type Member = { user_id: string; name: string; email: string }
 
 /** Combina data (YYYY-MM-DD) + horário opcional (HH:mm) num ISO em UTC —
- *  mesma âncora usada em TasksBoard.tsx (dueDateOnly/fmtDate também tratam
- *  a data como UTC pra nunca "pular" de dia por causa do fuso do navegador). */
+ *  mesma âncora usada em TasksBoard.tsx, pra nunca "pular" de dia por fuso. */
 function combineDueDate(date: string, time: string): string {
   if (!date) return ''
   return `${date}T${time || '00:00'}:00.000Z`
@@ -61,22 +40,23 @@ interface Props {
   defaultLead?: { id: string; name: string } | null
   trigger?:    React.ReactNode
   members?:    Member[]
-  /** Preenche data/horário ao criar a partir de um dia/horário específico
-   *  do calendário (ex.: clique num dia da grade, ou num slot da timeline). */
+  /** Preenche data/horário ao criar a partir de um dia/horário do calendário. */
   defaultDate?: string
   defaultTime?: string
-  /** Controle externo do open state — usado quando o calendário abre este
-   *  diálogo programaticamente (sem trigger próprio visível). */
+  /** Controle externo do open state (calendário abre sem trigger visível). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  /** Vincula a tarefa criada a uma reserva (Reservas → aba Tarefas → "+ Nova tarefa"). */
+  /** Vincula a tarefa criada a uma reserva (Reservas → Tarefas → "+ Nova"). */
   saleId?: string
-  /** Nicho da org — filtra as opções de tipo em "Relacionado a". Sem isso,
-   *  cai no conjunto genérico (Contato/Agendamento/Venda). */
+  /** Nicho da org — filtra tipos em "Relacionado a" (senão cai no genérico). */
   niche?: string | null
+  /** Vincula a tarefa a um projeto (módulo Projetos) — independente do slot
+   *  "Relacionado a"; usado por ProjectTasksPanel.tsx. */
+  projectId?: string
+  projectGroupId?: string | null
 }
 
-export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange, saleId, niche }: Props) {
+export default function TaskDialog({ orgSlug, defaultLead, trigger, members = [], defaultDate, defaultTime, open: openProp, onOpenChange, saleId, niche, projectId, projectGroupId }: Props) {
   const router = useRouter()
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
@@ -133,6 +113,7 @@ export default function TaskDialog({ orgSlug, defaultLead, trigger, members = []
         due_date: combineDueDate(values.due_date || '', dueTime),
         duration_minutes: duration ? parseInt(duration, 10) : null,
         ...(saleId ? { sale_id: saleId } : {}),
+        ...(projectId ? { project_id: projectId, project_group_id: projectGroupId || '' } : {}),
       }
       const res = await createTask(orgSlug, payload as TaskInput)
       if (!res.ok) {

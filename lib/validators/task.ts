@@ -21,4 +21,6 @@ export const taskSchema = z.object({
   sale_id: z.string().uuid().optional().or(z.literal('')),
   related_entity_type: z.enum(RELATED_ENTITY_TYPES).optional().or(z.literal('')),
   related_entity_id: z.string().uuid().optional().or(z.literal('')),
+  project_id: z.string().uuid().optional().or(z.literal('')),
+  project_group_id: z.string().uuid().optional().or(z.literal('')),
 })

@@ -72,6 +72,8 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     assigned_to: v.assigned_to || user.id,
     status: 'open',
     column_id: columnId,
+    project_id: v.project_id || null,
+    project_group_id: v.project_group_id || null,
     ...relationshipUpdates(v),
   })
 
@@ -79,6 +81,7 @@ export async function createTask(orgSlug: string, input: TaskInput) {
   revalidatePath(`/app/${orgSlug}/tarefas`)
   if (v.contato_id) revalidatePath(`/app/${orgSlug}/contatos/${v.contato_id}`)
   if (v.sale_id) revalidatePath(`/app/${orgSlug}/reservas`)
+  if (v.project_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${v.project_id}`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
@@ -121,6 +124,21 @@ export async function listTasksForContato(orgSlug: string, contatoId: string) {
   return data ?? []
 }
 
+/** Tarefas vinculadas a um projeto (módulo Projetos, Agências de Tráfego) —
+ *  é a MESMA task do módulo global de Tasks, só filtrada por project_id. */
+export async function listTasksForProject(orgSlug: string, projectId: string) {
+  const org = await getCurrentOrganization(orgSlug)
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*, contatos:contato_id(id, name)')
+    .eq('organization_id', org.id)
+    .eq('project_id', projectId)
+    .order('due_date', { ascending: true, nullsFirst: false })
+  if (error) throw new Error('Não foi possível carregar as tarefas do projeto')
+  return data ?? []
+}
+
 export type TaskUpdateInput = Partial<TaskInput>
 
 export async function updateTask(orgSlug: string, taskId: string, input: TaskUpdateInput) {
@@ -143,11 +161,17 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   if (input.contato_id !== undefined || input.sale_id !== undefined || input.related_entity_type !== undefined || input.related_entity_id !== undefined) {
     Object.assign(updates, relationshipUpdates(input))
   }
+  // project_id/project_group_id não fazem parte do slot "Relacionado a" —
+  // uma task de projeto pode continuar tendo contato_id (cliente do
+  // projeto) preenchido ao mesmo tempo.
+  if (input.project_id !== undefined) updates.project_id = input.project_id || null
+  if (input.project_group_id !== undefined) updates.project_group_id = input.project_group_id || null
 
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/tarefas`)
+  if (input.project_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${input.project_id}`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }

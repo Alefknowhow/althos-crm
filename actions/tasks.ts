@@ -7,7 +7,7 @@
  */
 
 export {
-  createTask, listTasksForSale, listTasksForContato, updateTask, deleteTask,
+  createTask, listTasksForSale, listTasksForContato, listTasksForProject, updateTask, deleteTask,
   toggleTaskStatus, setTaskStatus, setTaskPriority,
   type TaskInput, type SaleTaskRow, type TaskUpdateInput,
 } from './tasks-crud'
