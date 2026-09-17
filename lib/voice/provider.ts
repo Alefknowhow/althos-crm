@@ -64,6 +64,13 @@ export interface VoiceProvider {
   purchaseNumber(e164Number: string, voiceWebhookUrl: string, smsWebhookUrl?: string): Promise<PurchasedNumber>
   releaseNumber(providerNumberSid: string): Promise<void>
 
+  /**
+   * Importa um número que já existe na conta master do provider (ex.: número
+   * trial) para a subconta da organização, configurando os webhooks. Usado
+   * quando não é possível comprar um número novo (conta trial/sem billing).
+   */
+  attachExistingNumber?(e164Number: string, voiceWebhookUrl: string, smsWebhookUrl?: string): Promise<PurchasedNumber>
+
   getCall(providerCallId: string): Promise<ProviderCallResult & { durationSeconds: number | null }>
   getRecording(providerRecordingSid: string): Promise<ProviderRecording>
   getUsage(sinceIso: string): Promise<ProviderUsageRecord[]>

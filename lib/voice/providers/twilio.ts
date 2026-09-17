@@ -116,6 +116,31 @@ export class TwilioVoiceProvider implements VoiceProvider {
     await this.client.incomingPhoneNumbers(providerNumberSid).remove()
   }
 
+  /**
+   * Move um número que já existe na conta MASTER (ex.: número trial, que a
+   * Twilio nunca lista como "disponível para compra") para a subconta desta
+   * organização, e configura os webhooks. Necessário porque contas trial não
+   * conseguem comprar números novos via API.
+   */
+  async attachExistingNumber(e164Number: string, voiceWebhookUrl: string, smsWebhookUrl?: string): Promise<PurchasedNumber> {
+    const master = getMasterClient()
+    const [existing] = await master.incomingPhoneNumbers.list({ phoneNumber: e164Number, limit: 1 })
+    if (!existing) {
+      throw new Error(`Número ${e164Number} não encontrado na conta Twilio master. Confirme se ele pertence à conta principal (não a outra subconta).`)
+    }
+
+    // Move o número para a subconta da organização (requer credenciais master).
+    await master.incomingPhoneNumbers(existing.sid).update({ accountSid: this.accountSid })
+
+    // Após a troca de dono, configura os webhooks já autenticado como a subconta.
+    const updated = await this.client.incomingPhoneNumbers(existing.sid).update({
+      voiceUrl: voiceWebhookUrl,
+      smsUrl: smsWebhookUrl,
+    })
+
+    return { providerNumberSid: updated.sid, e164Number: updated.phoneNumber }
+  }
+
   async getCall(providerCallId: string) {
     const call = await this.client.calls(providerCallId).fetch()
     return {

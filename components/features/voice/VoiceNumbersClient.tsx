@@ -8,7 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog'
 import { Plus } from 'lucide-react'
-import { listAvailableNumbers, purchaseNumber } from '@/actions/voice'
+import { listAvailableNumbers, purchaseNumber, attachExistingNumber } from '@/actions/voice'
 
 export function VoiceNumbersClient({ orgSlug }: { orgSlug: string }) {
   const [open, setOpen] = useState(false)
@@ -16,6 +16,8 @@ export function VoiceNumbersClient({ orgSlug }: { orgSlug: string }) {
   const [results, setResults] = useState<{ e164Number: string; friendlyName: string }[]>([])
   const [searching, startSearch] = useTransition()
   const [purchasing, startPurchase] = useTransition()
+  const [existingNumber, setExistingNumber] = useState('')
+  const [attaching, startAttach] = useTransition()
 
   function handleSearch() {
     startSearch(async () => {
@@ -30,6 +32,17 @@ export function VoiceNumbersClient({ orgSlug }: { orgSlug: string }) {
       const res = await purchaseNumber(orgSlug, e164)
       if (!res.ok) { toast.error(res.error); return }
       toast.success('Número adicionado.')
+      setOpen(false)
+      window.location.reload()
+    })
+  }
+
+  function handleAttachExisting() {
+    if (!existingNumber.trim()) return
+    startAttach(async () => {
+      const res = await attachExistingNumber(orgSlug, existingNumber.trim())
+      if (!res.ok) { toast.error(res.error); return }
+      toast.success('Número importado.')
       setOpen(false)
       window.location.reload()
     })
@@ -57,6 +70,23 @@ export function VoiceNumbersClient({ orgSlug }: { orgSlug: string }) {
               ))}
             </div>
           )}
+
+          <div className="border-t pt-3 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Já tem um número na sua conta Twilio (ex.: número trial)? Importe ele direto,
+              sem passar pela compra.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={existingNumber}
+                onChange={e => setExistingNumber(e.target.value)}
+                placeholder="+17372508034"
+              />
+              <Button variant="outline" disabled={attaching} onClick={handleAttachExisting}>
+                {attaching ? 'Importando...' : 'Importar'}
+              </Button>
+            </div>
+          </div>
         </div>
         <DialogFooter />
       </DialogContent>

@@ -32,9 +32,13 @@ export async function listOrgNumbers(orgSlug: string) {
 export async function listAvailableNumbers(orgSlug: string, areaCodeOrCountry: string) {
   const guard = await guardVoiceAdmin(orgSlug)
   if (!guard.ok) return { ok: false as const, error: guard.error, numbers: [] }
-  const provider = await getVoiceProvider(guard.org.id)
-  const numbers = await provider.listAvailableNumbers(areaCodeOrCountry)
-  return { ok: true as const, numbers }
+  try {
+    const provider = await getVoiceProvider(guard.org.id)
+    const numbers = await provider.listAvailableNumbers(areaCodeOrCountry)
+    return { ok: true as const, numbers }
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message || 'Falha ao buscar números disponíveis na Twilio.', numbers: [] }
+  }
 }
 
 export async function purchaseNumber(orgSlug: string, e164Number: string) {
@@ -42,19 +46,62 @@ export async function purchaseNumber(orgSlug: string, e164Number: string) {
   if (!guard.ok) return guard
   const { org } = guard
 
-  const provider = await getVoiceProvider(org.id)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
-  const purchased = await provider.purchaseNumber(
-    e164Number,
-    `${baseUrl}/api/webhooks/voice/twilio/answer`,
-    `${baseUrl}/api/webhooks/voice/twilio/sms`,
-  )
+  let purchased
+  try {
+    const provider = await getVoiceProvider(org.id)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+    purchased = await provider.purchaseNumber(
+      e164Number,
+      `${baseUrl}/api/webhooks/voice/twilio/answer`,
+      `${baseUrl}/api/webhooks/voice/twilio/sms`,
+    )
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message || 'Falha ao comprar número na Twilio.' }
+  }
 
   const admin = createAdminClient()
   const { error } = await admin.from('voice_numbers').insert({
     organization_id: org.id,
     provider_number_sid: purchased.providerNumberSid,
     e164_number: purchased.e164Number,
+    capabilities: { voice: true, sms: true },
+    status: 'active',
+  })
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath(`/app/${orgSlug}/voice/numeros`)
+  return { ok: true as const }
+}
+
+/**
+ * Importa um número que já existe na conta master da Twilio (ex.: número
+ * trial) para a organização, sem passar pelo fluxo de compra — necessário
+ * enquanto a conta Twilio não tem billing habilitado.
+ */
+export async function attachExistingNumber(orgSlug: string, e164Number: string) {
+  const guard = await guardVoiceAdmin(orgSlug)
+  if (!guard.ok) return guard
+  const { org } = guard
+
+  let attached
+  try {
+    const provider = await getVoiceProvider(org.id)
+    if (!provider.attachExistingNumber) return { ok: false as const, error: 'Provider atual não suporta importar número existente.' }
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+    attached = await provider.attachExistingNumber(
+      e164Number,
+      `${baseUrl}/api/webhooks/voice/twilio/answer`,
+      `${baseUrl}/api/webhooks/voice/twilio/sms`,
+    )
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message || 'Falha ao importar número da Twilio.' }
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('voice_numbers').insert({
+    organization_id: org.id,
+    provider_number_sid: attached.providerNumberSid,
+    e164_number: attached.e164Number,
     capabilities: { voice: true, sms: true },
     status: 'active',
   })
@@ -73,8 +120,12 @@ export async function releaseNumber(orgSlug: string, numberId: string) {
   const { data: number } = await admin.from('voice_numbers').select('provider_number_sid').eq('id', numberId).eq('organization_id', org.id).maybeSingle()
   if (!number?.provider_number_sid) return { ok: false as const, error: 'Número não encontrado.' }
 
-  const provider = await getVoiceProvider(org.id)
-  await provider.releaseNumber(number.provider_number_sid)
+  try {
+    const provider = await getVoiceProvider(org.id)
+    await provider.releaseNumber(number.provider_number_sid)
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message || 'Falha ao liberar número na Twilio.' }
+  }
 
   await admin.from('voice_numbers').update({ status: 'released' }).eq('id', numberId)
   revalidatePath(`/app/${orgSlug}/voice/numeros`)

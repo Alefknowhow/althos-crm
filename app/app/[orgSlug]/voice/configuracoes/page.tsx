@@ -4,6 +4,7 @@ import { VoicePaywall } from '@/components/features/voice/VoicePaywall'
 import { getVoiceAccountSettings } from '@/actions/voice'
 import { PageHeader } from '@/components/ui/page-header'
 import { VoiceSettingsForm } from '@/components/features/voice/VoiceSettingsForm'
+import { VoiceActivationCard } from '@/components/features/voice/VoiceActivationCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,15 +16,20 @@ export default async function VoiceConfiguracoesPage({ params }: { params: { org
 
   const result = await getVoiceAccountSettings(params.orgSlug)
   const account = result.ok ? result.account : null
+  const isActive = account?.status === 'active'
 
   return (
     <div className="space-y-6">
       <PageHeader title="Configurações" hint="Gravações, limites de segurança e provider do Althos Voice." />
-      <VoiceSettingsForm
-        orgSlug={params.orgSlug}
-        initialRecordingPolicy={account?.recording_policy || 'off'}
-        initialLimits={account?.limits || {}}
-      />
+      {isActive ? (
+        <VoiceSettingsForm
+          orgSlug={params.orgSlug}
+          initialRecordingPolicy={account?.recording_policy || 'off'}
+          initialLimits={account?.limits || {}}
+        />
+      ) : (
+        <VoiceActivationCard orgSlug={params.orgSlug} />
+      )}
     </div>
   )
 }
