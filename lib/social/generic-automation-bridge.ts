@@ -46,9 +46,18 @@ export async function resumeWaitingGenericAutomation(
 
   const steps: any[] = auto.steps || []
   const waitIdx = steps.findIndex(s => s.id === waitingRun.waiting_for_step_id)
+  const waitingStep = waitIdx >= 0 ? steps[waitIdx] : null
+  // Passo "DM do Instagram" com botões pausa nele mesmo (ver
+  // automation-run-graph.ts) — os botões estão no próprio passo que está
+  // esperando. Compatibilidade com o desenho antigo: um "Aguardar
+  // Resposta" (wait_for_reply) que pausa DEPOIS de um send_instagram_dm
+  // ainda funciona, buscando os botões no passo anterior.
   const prevStep = waitIdx > 0 ? steps[waitIdx - 1] : null
-  const matchedButtonIndex = prevStep?.type === 'send_instagram_dm'
-    ? (prevStep.config?.buttons || []).findIndex((b: any) => b.value === replyText)
+  const buttonsOwner = waitingStep?.type === 'send_instagram_dm' ? waitingStep
+    : prevStep?.type === 'send_instagram_dm' ? prevStep
+    : null
+  const matchedButtonIndex = buttonsOwner
+    ? (buttonsOwner.config?.buttons || []).findIndex((b: any) => b.value === replyText)
     : -1
 
   const { resumeWaitingAutomationRun } = await import('@/lib/inngest/automation')

@@ -238,7 +238,7 @@ export default function SandboxPlayground({
               e.preventDefault()
               send()
             }}
-            className="flex gap-2"
+            className="relative flex gap-2"
           >
             <Input
               value={input}

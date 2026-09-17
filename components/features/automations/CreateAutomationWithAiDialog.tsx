@@ -149,15 +149,15 @@ export default function CreateAutomationWithAiDialog({ orgSlug }: { orgSlug: str
 
           <form
             onSubmit={e => { e.preventDefault(); handleSend(input) }}
-            className="px-5 py-3 border-t border-border flex gap-2 items-end shrink-0"
+            className="relative px-5 py-3 border-t border-border flex gap-2 items-end shrink-0"
           >
             <Textarea
-              rows={1}
+              rows={3}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input) } }}
               placeholder="Descreva a automação..."
-              className="flex-1 resize-none min-h-[40px] max-h-32"
+              className="flex-1 resize-none min-h-[84px] max-h-52"
               disabled={sending}
             />
             <VoiceInputButton orgSlug={orgSlug} onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))} disabled={sending} />

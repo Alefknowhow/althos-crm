@@ -31,9 +31,9 @@ import AutomationFlowNodeEditPanel from './AutomationFlowNodeEditPanel'
 import AutomationFlowEdgePanel from './AutomationFlowEdgePanel'
 import DeletableEdge from '../flow/DeletableEdge'
 import {
-  STEP_TYPES, describeTrigger, describeStep, type Step, type StepStat, type WaTemplate, type FormOpt, type StageOpt,
+  STEP_TYPES, type Step, type StepStat, type WaTemplate, type FormOpt, type StageOpt,
 } from './AutomationFlowMeta'
-import { buildInitialGraph, isInstagramTrigger, NODE_GAP_Y } from './automation-canvas-graph'
+import { buildInitialGraph, isInstagramTrigger, syncNodeData, conditionFromSourceHandle, NODE_GAP_Y } from './automation-canvas-graph'
 
 const EDGE_TYPES = { default: DeletableEdge }
 
@@ -104,23 +104,19 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
   }, [nodes, edges])
 
   function onConnect(connection: Connection) {
-    setEdges(curr => addEdge({ ...connection, sourceHandle: 'default', animated: true, data: {} }, curr))
+    const condition = conditionFromSourceHandle(connection.sourceHandle)
+    setEdges(curr => addEdge({
+      ...connection,
+      animated: !condition,
+      label: condition?.type === 'button' ? `botão ${condition.buttonIndex}` : undefined,
+      data: { condition },
+    }, curr))
   }
 
-  // Sincroniza label/typeId dos nodes sempre que trigger ou steps mudam
-  // (edição pelo painel de config não atualiza o node sozinha).
+  // Sincroniza label/typeId/mensagem/botões dos nodes sempre que trigger ou
+  // steps mudam (edição pelo painel de config não atualiza o node sozinha).
   useEffect(() => {
-    setNodes(curr => curr.map(n => {
-      if (n.data.kind === 'trigger') {
-        return { ...n, data: { ...n.data, typeId: auto.trigger_type, label: describeTrigger(auto.trigger_type, auto.trigger_config, forms, stages) } }
-      }
-      if (n.data.kind === 'step') {
-        const step = stepsById.get(n.id)
-        if (!step) return n
-        return { ...n, data: { ...n.data, typeId: step.type, label: describeStep(step, stages) } }
-      }
-      return n
-    }))
+    setNodes(curr => curr.map(n => syncNodeData(n, auto, stepsById, { forms, stages })))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto.trigger_type, auto.trigger_config, steps])
 
@@ -175,19 +171,30 @@ function addStep(type: string, afterNodeId?: string) {
 
   const selectedEdge = edges.find(e => e.id === selectedEdgeId) || null
   const selectedEdgeCondition = (selectedEdge?.data as any)?.condition as AutomationEdgeCondition | undefined
-  const selectedEdgeSourceIsWait = selectedEdge ? stepsById.get(selectedEdge.source)?.type === 'wait_for_reply' : false
+  const selectedEdgeSourceStep = selectedEdge ? stepsById.get(selectedEdge.source) : undefined
+  // Painel de condição é editável saindo de "Aguardar Resposta" (ramifica
+  // texto/botão manualmente) OU de "DM do Instagram" com botões (a condição
+  // já vem fixada pelo handle, mas o painel ainda mostra/permite trocar).
+  const selectedEdgeSourceIsWait = selectedEdgeSourceStep?.type === 'wait_for_reply'
+    || (selectedEdgeSourceStep?.type === 'send_instagram_dm' && (selectedEdgeSourceStep.config?.buttons?.length || 0) > 0)
 
-  // Rótulos reais dos botões pro Select do painel de conexão: acha o passo
-  // que alimenta o "Aguardar Resposta" de origem desta edge (via a edge que
-  // chega nele) e lê os botões configurados nele.
+  // Rótulos reais dos botões pro Select do painel de conexão: se a edge sai
+  // de um "DM do Instagram", os botões estão no próprio passo; se sai de
+  // "Aguardar Resposta", busca o passo que alimenta ele (via a edge que
+  // chega nele).
   const selectedEdgeButtonOptions = useMemo(() => {
     if (!selectedEdge || !selectedEdgeSourceIsWait) return undefined
-    const incoming = edges.find(e => e.target === selectedEdge.source)
-    const sourceStep = incoming ? stepsById.get(incoming.source) : undefined
-    const buttons: { label: string; value: string }[] | undefined = sourceStep?.config?.buttons
+    let buttons: { label: string; value: string }[] | undefined
+    if (selectedEdgeSourceStep?.type === 'send_instagram_dm') {
+      buttons = selectedEdgeSourceStep.config?.buttons
+    } else {
+      const incoming = edges.find(e => e.target === selectedEdge.source)
+      const feederStep = incoming ? stepsById.get(incoming.source) : undefined
+      buttons = feederStep?.config?.buttons
+    }
     if (!buttons || buttons.length === 0) return undefined
     return buttons.map((b, i) => ({ label: b.label || `Botão ${i + 1}`, value: i }))
-  }, [selectedEdge, selectedEdgeSourceIsWait, edges, stepsById])
+  }, [selectedEdge, selectedEdgeSourceIsWait, selectedEdgeSourceStep, edges, stepsById])
 
   function updateSelectedEdgeCondition(condition: AutomationEdgeCondition | undefined) {
     setEdges(curr => curr.map(e => e.id === selectedEdgeId

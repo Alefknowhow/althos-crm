@@ -92,6 +92,19 @@ export async function runAutomationGraph(ctx: {
         })
       })
 
+      // "DM do Instagram" com botões pausa sozinho depois de enviar —
+      // cada botão vira um ponto de ligação próprio no canvas (edge
+      // condition button), sem precisar de um "Aguardar Resposta" à
+      // parte. Mesma retomada de wait_for_reply (resumeWaitingAutomationRun),
+      // só que o passo que fica esperando já é este.
+      const waitsForReply = stepDef.type === 'send_instagram_dm' && (stepDef.config?.buttons || []).length > 0
+      if (waitsForReply) {
+        await step.run(`pause-run-${currentId}`, async () => {
+          await supabase.from('automation_runs').update({ status: 'waiting', current_step_id: currentId, waiting_for_step_id: currentId }).eq('id', runId)
+        })
+        return
+      }
+
       currentId = getNextAutomationStepId(flow, currentId, { replyText: '', matchedButtonIndex: null, fallbackOrder })
       await step.run(`advance-run-${currentId}`, async () => {
         await supabase.from('automation_runs').update({ current_step_id: currentId }).eq('id', runId)

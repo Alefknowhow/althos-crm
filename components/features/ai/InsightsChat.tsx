@@ -222,7 +222,7 @@ export default function InsightsChat({
               e.preventDefault()
               send()
             }}
-            className="flex gap-2 max-w-3xl mx-auto"
+            className="relative flex gap-2 max-w-3xl mx-auto"
           >
             <Input
               value={input}

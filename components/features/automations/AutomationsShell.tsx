@@ -109,16 +109,14 @@ export default function AutomationsShell({
         {/* Some no mobile quando uma automação está aberta — só fazem
             sentido na tela de lista. */}
         <div className={cn('flex items-center gap-2 shrink-0', isDetail && 'hidden md:flex')}>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/app/${orgSlug}/email-templates`}>
-              <FileText className="w-4 h-4 mr-1.5" />
-              Templates de Email
+          <Button asChild variant="outline" size="icon" className="rounded-md shrink-0" title="Templates de e-mail">
+            <Link href={`/app/${orgSlug}/email-templates`} aria-label="Templates de e-mail">
+              <FileText className="w-4 h-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/app/${orgSlug}/whatsapp-templates`}>
-              <MessageCircle className="w-4 h-4 mr-1.5" />
-              Templates WhatsApp
+          <Button asChild variant="outline" size="icon" className="rounded-md shrink-0" title="Templates de WhatsApp">
+            <Link href={`/app/${orgSlug}/whatsapp-templates`} aria-label="Templates de WhatsApp">
+              <MessageCircle className="w-4 h-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">

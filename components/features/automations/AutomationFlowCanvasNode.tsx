@@ -15,6 +15,10 @@ export type AutomationCanvasNodeData = {
   typeId?: string
   label: string
   hasErrors?: boolean
+  /** Só pra 'send_instagram_dm' — texto da mensagem (fixa ou instruções da
+   *  IA) e botões, expostos direto no node em vez de escondidos no painel. */
+  message?: string
+  buttons?: { label: string; value: string }[]
 }
 
 type NodeExtraProps = {
@@ -26,13 +30,18 @@ type NodeExtraProps = {
 }
 
 /**
- * Node compacto do canvas de Automações — só ícone + tipo + um resumo de
- * uma linha. Configuração completa fica no painel do canto (ver
- * AutomationFlowNodeEditPanel), aberto ao clicar no node — mesmo padrão do
- * canvas de funil de Instagram (SocialFunnelNode.tsx).
+ * Node compacto do canvas de Automações — ícone + tipo + resumo de uma
+ * linha (configuração completa fica no painel do canto, ver
+ * AutomationFlowNodeEditPanel). Exceção: "DM do Instagram" expõe a
+ * mensagem e os botões direto no node, cada botão com seu próprio ponto de
+ * ligação (handle) — arrastar dali já fixa a condição de ramificação
+ * (qual botão foi clicado), sem precisar abrir painel nenhum. Mesmo
+ * princípio do node de funil de Instagram (SocialFunnelNode.tsx).
  */
 export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepTypes }: { data: AutomationCanvasNodeData } & NodeExtraProps) {
   const isEnd = data.kind === 'end'
+  const isInstagramDm = data.kind === 'step' && data.typeId === 'send_instagram_dm'
+  const buttons = isInstagramDm ? (data.buttons || []) : []
   const meta = data.kind === 'trigger'
     ? { icon: Zap, color: TRIGGER_COLOR, label: triggerMeta(data.typeId || '').label }
     : data.kind === 'step'
@@ -43,7 +52,7 @@ export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepT
   return (
     <div
       className={cn(
-        'relative rounded-md border bg-card shadow-sm px-3 py-2 min-w-[190px] max-w-[240px]',
+        'relative rounded-md border bg-card shadow-sm px-3 py-2 min-w-[190px] max-w-[260px]',
         isEnd && 'border-dashed bg-muted/40',
         data.hasErrors && 'border-destructive',
       )}
@@ -54,16 +63,48 @@ export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepT
         <Icon className="w-3 h-3 shrink-0" />
         <span className="truncate">{meta.label}</span>
       </div>
-      {!isEnd && <p className="text-xs font-medium mt-0.5 leading-snug line-clamp-3">{data.label}</p>}
+
+      {isInstagramDm ? (
+        <>
+          <p className="text-xs font-medium mt-0.5 leading-snug line-clamp-4 whitespace-pre-wrap">
+            {data.message || 'Sem mensagem configurada'}
+          </p>
+          {buttons.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {buttons.map((b, i) => (
+                <div key={i} className="text-[10px] rounded border bg-muted/50 px-1.5 py-1 truncate">
+                  {b.label || `Botão ${i + 1}`}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        !isEnd && <p className="text-xs font-medium mt-0.5 leading-snug line-clamp-3">{data.label}</p>
+      )}
 
       {data.kind !== 'end' && (
-        <Handle type="source" position={Position.Bottom} id="default" className="!bg-muted-foreground" />
+        buttons.length > 0 ? (
+          buttons.map((_, i) => (
+            <Handle
+              key={i}
+              type="source"
+              position={Position.Bottom}
+              id={`btn-${i}`}
+              style={{ left: `${((i + 1) / (buttons.length + 1)) * 100}%` }}
+              className="!bg-primary"
+            />
+          ))
+        ) : (
+          <Handle type="source" position={Position.Bottom} id="default" className="!bg-muted-foreground" />
+        )
       )}
 
       {/* Botão "+" pra adicionar o próximo passo direto a partir deste nó —
           mesmo resultado do botão "Adicionar passo" da barra superior, só
-          que já conectado e posicionado a partir daqui. */}
-      {!isEnd && onAddNext && addableStepTypes && addableStepTypes.length > 0 && (
+          que já conectado e posicionado a partir daqui. Some quando o node
+          tem botões (ramificação por handle própria, sem "próximo" único). */}
+      {!isEnd && buttons.length === 0 && onAddNext && addableStepTypes && addableStepTypes.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
