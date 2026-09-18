@@ -73,6 +73,10 @@ export type FlightLegInfo = {
   status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
   revised_departure: string | null
+  /** Campo "Localizador (web check-in)" do produto aéreo (Reservas ›
+   *  Produtos) — do voo em si, diferente do localizador de pacote/aéreo da
+   *  venda (`ScheduledTrip.package_locator`/`air_locator`). */
+  localizador: string | null
 }
 
 export type OtherProductSummary = { id: string; kind: string; title: string; subtitle: string | null }
@@ -100,14 +104,6 @@ function otherProductSummary(kind: string, data: Record<string, any>): { title: 
     default:
       return { title: data.nome || data.fornecedor || 'Item', subtitle: null }
   }
-}
-
-export type TripTask = {
-  id: string
-  title: string | null
-  status: string
-  priority: string | null
-  due_date: string | null
 }
 
 /**
@@ -201,6 +197,11 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
             horario_chegada: l.hora_chegada ?? null,
             conexao_local: l.escala_local ?? null,
             conexao_duracao: l.escala_duracao ?? null,
+            // Cada trecho de um voucher com vários pode ter seu próprio
+            // localizador de web check-in (bulkCreateSaleProductsFromExtraction
+            // grava um `localizador_checkin` por perna) — usa o do trecho em
+            // si, com o do produto (baseado só no 1º trecho) de fallback.
+            localizador: l.localizador_checkin ?? p.data?.localizador ?? null,
           }))
         : [{
             companhia: p.data?.companhia ?? null,
@@ -217,6 +218,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
             horario_chegada: p.data?.hora_chegada ?? null,
             conexao_local: p.data?.conexao_local ?? null,
             conexao_duracao: p.data?.conexao_duracao ?? null,
+            localizador: p.data?.localizador ?? null,
           }]
 
       for (let i = 0; i < rawLegs.length; i++) {
@@ -302,20 +304,4 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       other_items: otherBySale.get(r.id) ?? [],
     } as ScheduledTrip
   })
-}
-
-/** Tarefas operacionais vinculadas à reserva — hoje as tarefas de viagem
- *  são geradas presas à venda (`sale_id`, ver actions/travel-sales-tasks.ts),
- *  não ao lead, então é por ali que o painel de detalhe busca. */
-export async function getTripTasks(orgSlug: string, saleId: string): Promise<TripTask[]> {
-  const org = await getCurrentOrganization(orgSlug)
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('tasks')
-    .select('id, title, status, priority, due_date')
-    .eq('organization_id', org.id)
-    .eq('sale_id', saleId)
-    .order('due_date', { ascending: true })
-    .limit(200)
-  return (data as TripTask[]) ?? []
 }

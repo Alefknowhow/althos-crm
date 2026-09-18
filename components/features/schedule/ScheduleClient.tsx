@@ -5,22 +5,21 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
+import type { ScheduledTrip } from '@/actions/travel-schedule'
 import {
   getTripDetailExtra, type TripTraveler, type TripVoucher,
 } from '@/actions/travel-schedule-detail'
 import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
+import { listTasksForSale, type SaleTaskRow } from '@/actions/tasks-crud'
 import { ListChecks, CalendarDays } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
 import { ScheduleListView } from './ScheduleListView'
 import { ScheduleHeader } from './ScheduleHeader'
-import { ScheduleStatusTabs, type ScheduleStatusTab } from './ScheduleStatusTabs'
+import { ScheduleStatusTabs } from './ScheduleStatusTabs'
 import { tripState, tripPhase, hasAlert } from './schedule-phase'
-import {
-  ScheduleFiltersBar, type SchedulePeriod, type ScheduleHealthFilter,
-  type ScheduleStatusFilter, type ScheduleSort,
-} from './ScheduleFiltersBar'
+import { ScheduleFiltersBar } from './ScheduleFiltersBar'
+import { useScheduleFilters } from './useScheduleFilters'
 
 const DAY = 86400000
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
@@ -37,63 +36,15 @@ function firstOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 
 const TODAY_COLUMN = 4
 const NAV_STEP_DAYS = 30
 
-function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
-  const [statusTab, setStatusTab] = useState<ScheduleStatusTab>('all')
-  const [owner, setOwner] = useState('all')
-  const [search, setSearch] = useState('')
-  const [period, setPeriod] = useState<SchedulePeriod>('all')
-  const [health, setHealth] = useState<ScheduleHealthFilter>('all')
-  const [destination, setDestination] = useState('all')
-  const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>('all')
-  const [operator, setOperator] = useState('all')
-  const [sort, setSort] = useState<ScheduleSort>('departure')
-
-  const filtered = useMemo(() => {
-    let out = trips
-    if (statusTab === 'alerts') out = out.filter(hasAlert)
-    else if (statusTab !== 'all') out = out.filter(t => tripPhase(t, today) === statusTab)
-    if (owner !== 'all') out = out.filter(t => t.created_by === owner)
-    if (health !== 'all') out = out.filter(t => t.health === health)
-    if (destination !== 'all') out = out.filter(t => t.destination === destination)
-    if (operator !== 'all') out = out.filter(t => t.operator === operator)
-    if (statusFilter !== 'all') out = out.filter(t => (statusFilter === 'cancelled') === (t.status === 'cancelled'))
-    if (period !== 'all') {
-      out = out.filter(t => {
-        const dep = parseDate(t.departure_date)
-        if (!dep) return false
-        if (period === '30d') return dep >= today && dep <= addDays(today, 30)
-        const monthOffset = period === 'month' ? 0 : 1
-        const target = addMonths(today, monthOffset)
-        return dep.getFullYear() === target.getFullYear() && dep.getMonth() === target.getMonth()
-      })
-    }
-    const needle = search.trim().toLowerCase()
-    if (needle) {
-      out = out.filter(t =>
-        (t.client_name || '').toLowerCase().includes(needle) ||
-        (t.destination || '').toLowerCase().includes(needle) ||
-        (t.package_locator || '').toLowerCase().includes(needle) ||
-        (t.air_locator || '').toLowerCase().includes(needle),
-      )
-    }
-    const sorted = [...out]
-    sorted.sort((a, b) => {
-      switch (sort) {
-        case 'return': return (parseDate(a.return_date)?.getTime() || 0) - (parseDate(b.return_date)?.getTime() || 0)
-        case 'client': return (a.client_name || '').localeCompare(b.client_name || '')
-        case 'destination': return (a.destination || '').localeCompare(b.destination || '')
-        case 'tasks_pending': return (b.tasks_total - b.tasks_done) - (a.tasks_total - a.tasks_done)
-        default: return (parseDate(a.departure_date)?.getTime() || 0) - (parseDate(b.departure_date)?.getTime() || 0)
-      }
-    })
-    return sorted
-  }, [trips, statusTab, owner, health, destination, operator, statusFilter, period, search, sort, today])
-
-  return {
-    statusTab, setStatusTab, owner, setOwner, search, setSearch, period, setPeriod,
-    health, setHealth, destination, setDestination, statusFilter, setStatusFilter,
-    operator, setOperator, sort, setSort, filtered,
-  }
+/** Recalcula tasks_done/tasks_total/health de uma viagem a partir da lista
+ *  de tarefas atual — mesma regra de saúde usada no servidor
+ *  (listScheduledTrips): aberta com prioridade alta pesa mais que só aberta. */
+function summarizeTasks(tasks: SaleTaskRow[]) {
+  const openTasks = tasks.filter(t => t.status !== 'done')
+  const health: ScheduledTrip['health'] = openTasks.length === 0
+    ? 'green'
+    : openTasks.some(t => t.priority === 'high') ? 'red' : 'yellow'
+  return { tasks_done: tasks.length - openTasks.length, tasks_total: tasks.length, health }
 }
 
 export default function ScheduleClient({
@@ -104,11 +55,17 @@ export default function ScheduleClient({
   members?: { user_id: string; name: string }[]
 }) {
   const today = useMemo(() => startOfDay(new Date()), [])
-  const f = useScheduleFilters(trips, today)
+  // Cópia local — precisa ser mutável pra refletir na hora as mudanças de
+  // tarefa feitas no painel de detalhe (tasks_done/tasks_total/health), sem
+  // esperar um refetch do servidor. Ressincroniza se o server mandar uma
+  // lista nova (navegação/revalidação).
+  const [tripsState, setTripsState] = useState(trips)
+  useEffect(() => { setTripsState(trips) }, [trips])
+  const f = useScheduleFilters(tripsState, today)
   const [dayOffset, setDayOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const [tasks, setTasks] = useState<TripTask[]>([])
+  const [tasks, setTasks] = useState<SaleTaskRow[]>([])
   const [loadingTasks, startTasks] = useTransition()
   const [products, setProducts] = useState<SaleProduct[]>([])
   const [loadingProducts, startProducts] = useTransition()
@@ -131,12 +88,12 @@ export default function ScheduleClient({
   }, [])
 
   const destinations = useMemo(
-    () => Array.from(new Set(trips.map(t => t.destination).filter(Boolean))).sort() as string[],
-    [trips],
+    () => Array.from(new Set(tripsState.map(t => t.destination).filter(Boolean))).sort() as string[],
+    [tripsState],
   )
   const operators = useMemo(
-    () => Array.from(new Set(trips.map(t => t.operator).filter(Boolean))).sort() as string[],
-    [trips],
+    () => Array.from(new Set(tripsState.map(t => t.operator).filter(Boolean))).sort() as string[],
+    [tripsState],
   )
 
   const totalDays = Math.max(1, monthsSpan * 30)
@@ -204,7 +161,7 @@ export default function ScheduleClient({
     setTravelers([])
     setVouchers([])
     startTasks(async () => {
-      const res = await getTripTasks(orgSlug, t.id)
+      const res = await listTasksForSale(orgSlug, t.id)
       setTasks(res)
     })
     startProducts(async () => {
@@ -218,26 +175,38 @@ export default function ScheduleClient({
     })
   }
 
+  /** Sincroniza a mudança de tarefas (marcar concluída/excluir/criar, feito
+   *  direto no painel de detalhe) de volta pro card de progresso e pro
+   *  alerta de "tarefa crítica" — tanto na viagem selecionada quanto na
+   *  linha correspondente da lista, sem esperar reload da página. */
+  function handleTasksChange(next: SaleTaskRow[]) {
+    setTasks(next)
+    if (!selected) return
+    const summary = summarizeTasks(next)
+    setSelected(prev => (prev ? { ...prev, ...summary } : prev))
+    setTripsState(prev => prev.map(t => (t.id === selected.id ? { ...t, ...summary } : t)))
+  }
+
   const counts = useMemo(() => {
-    const c = { all: trips.length, pre: 0, em: 0, pos: 0, concluida: 0, cancelada: 0, alerts: 0 }
-    for (const t of trips) {
+    const c = { all: tripsState.length, pre: 0, em: 0, pos: 0, concluida: 0, cancelada: 0, alerts: 0 }
+    for (const t of tripsState) {
       c[tripPhase(t, today)]++
       if (hasAlert(t)) c.alerts++
     }
     return c
-  }, [trips, today])
+  }, [tripsState, today])
 
   const headerStats = useMemo(() => {
-    const embarking7d = trips.filter(t => {
+    const embarking7d = tripsState.filter(t => {
       const dep = parseDate(t.departure_date)
       if (!dep) return false
       const days = Math.round((dep.getTime() - today.getTime()) / DAY)
       return days >= 0 && days <= 7
     }).length
-    return { ativas: trips.length, embarking7d, emViagem: counts.em, alerts: counts.alerts }
-  }, [trips, counts, today])
+    return { ativas: tripsState.length, embarking7d, emViagem: counts.em, alerts: counts.alerts }
+  }, [tripsState, counts, today])
 
-  if (trips.length === 0) {
+  if (tripsState.length === 0) {
     return (
       <EmptyState
         icon={CalendarDays}
@@ -308,6 +277,7 @@ export default function ScheduleClient({
         trip={selected}
         tasks={tasks}
         loadingTasks={loadingTasks}
+        onTasksChange={handleTasksChange}
         products={products}
         loadingProducts={loadingProducts}
         travelers={travelers}

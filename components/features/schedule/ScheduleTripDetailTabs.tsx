@@ -6,27 +6,27 @@
  * limite de linhas do arquivo.
  */
 
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
 import {
-  CheckSquare, Loader2, FileIcon, ImageIcon, Users, ListChecks, Package, ExternalLink,
+  Loader2, FileIcon, ImageIcon, Users, ListChecks, Package, ExternalLink,
 } from 'lucide-react'
-import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
+import type { ScheduledTrip } from '@/actions/travel-schedule'
 import type { TripTraveler, TripVoucher } from '@/actions/travel-schedule-detail'
 import type { SaleProduct } from '@/actions/sale-products'
+import type { SaleTaskRow } from '@/actions/tasks-crud'
 import SaleProductCard from '@/components/features/reservas/SaleProductCard'
 import { fmtDate } from './ScheduleTripDetail'
+import { ScheduleTripTasksTab } from './ScheduleTripTasksTab'
 
 export function ScheduleTripDetailTabs({
-  orgSlug, trip, tasks, loadingTasks, products, loadingProducts, travelers, vouchers, loadingExtra,
+  orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
 }: {
   orgSlug: string
   trip: ScheduledTrip
-  tasks: TripTask[]
+  tasks: SaleTaskRow[]
   loadingTasks: boolean
+  onTasksChange: (tasks: SaleTaskRow[]) => void
   products: SaleProduct[]
   loadingProducts: boolean
   travelers: TripTraveler[]
@@ -55,33 +55,13 @@ export function ScheduleTripDetailTabs({
 
       {/* Tarefas — primeira aba, fica visível por padrão */}
       <TabsContent value="tarefas" className="flex-1 min-h-0 overflow-y-auto px-5 py-4 mt-0">
-        <div className="flex items-center gap-2 text-sm font-medium mb-2">
-          <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
-          {loadingTasks && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-        </div>
-        {!loadingTasks && tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma tarefa vinculada a esta reserva.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {tasks.map(t => {
-              const done = t.status === 'done' || t.status === 'completed'
-              return (
-                <li key={t.id} className="flex items-start gap-2 rounded-lg border p-2.5 text-sm">
-                  <CheckSquare className={cn('w-4 h-4 mt-0.5 shrink-0', done ? 'text-emerald-600' : 'text-muted-foreground')} />
-                  <div className="min-w-0 flex-1">
-                    <p className={cn('truncate', done && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
-                    {t.due_date && (
-                      <p className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</p>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        <Button size="sm" variant="ghost" className="mt-3" asChild>
-          <Link href={`/app/${orgSlug}/tarefas`}>Ver todas as tarefas</Link>
-        </Button>
+        <ScheduleTripTasksTab
+          orgSlug={orgSlug}
+          saleId={trip.id}
+          tasks={tasks}
+          loading={loadingTasks}
+          onTasksChange={onTasksChange}
+        />
       </TabsContent>
 
       {/* Produtos — todos os itens contratados na reserva, com detalhes completos */}
