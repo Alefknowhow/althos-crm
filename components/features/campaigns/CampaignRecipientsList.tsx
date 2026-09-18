@@ -8,12 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import type { AudienceRecipientPreview } from '@/actions/send-campaigns-audience'
 
 export default function CampaignRecipientsList({
-  recipients, truncated, excludedIds, channel, onToggle, onToggleAll,
+  recipients, truncated, excludedIds, channels, onToggle, onToggleAll,
 }: {
   recipients: AudienceRecipientPreview[]
   truncated: boolean
   excludedIds: Set<string>
-  channel: 'whatsapp' | 'email'
+  channels: ('whatsapp' | 'email' | 'sms')[]
   onToggle: (id: string) => void
   onToggleAll: () => void
 }) {
@@ -45,7 +45,10 @@ export default function CampaignRecipientsList({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{r.name || 'Sem nome'}</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {channel === 'whatsapp' ? (r.phone || 'Sem telefone') : (r.email || 'Sem e-mail')}
+                  {[
+                    channels.includes('whatsapp') ? (r.phone || 'sem telefone') : null,
+                    channels.includes('email') ? (r.email || 'sem e-mail') : null,
+                  ].filter(Boolean).join(' · ')}
                 </p>
               </div>
             </label>

@@ -9,12 +9,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ChevronDown, ChevronUp, Users } from 'lucide-react'
-import { createCampaignDraft, materializeAndScheduleCampaign } from '@/actions/send-campaigns'
+import { createCampaignDrafts, materializeAndScheduleCampaigns } from '@/actions/send-campaigns'
 import {
   previewAudienceCount, previewAudienceRecipients,
   type AudienceFilter, type AudienceRecipientPreview,
 } from '@/actions/send-campaigns-audience'
-import CampaignChannelTemplatePicker from './CampaignChannelTemplatePicker'
+import CampaignChannelTemplatePicker, { type SendChannel } from './CampaignChannelTemplatePicker'
 import CampaignAudienceMoreFilters from './CampaignAudienceMoreFilters'
 import CampaignRecipientsList from './CampaignRecipientsList'
 
@@ -36,7 +36,7 @@ interface Props {
 export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, sources, waTemplates, emailTemplates }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [channel, setChannel] = useState<'whatsapp' | 'email'>('whatsapp')
+  const [channels, setChannels] = useState<SendChannel[]>(['whatsapp'])
   const [waTemplateId, setWaTemplateId] = useState('')
   const [emailTemplateId, setEmailTemplateId] = useState('')
   const [pipelineId, setPipelineId] = useState('')
@@ -104,6 +104,10 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, sour
     setExcludedIds(new Set())
   }, [filterKey])
 
+  function toggleChannel(c: SendChannel) {
+    if (c === 'sms') return // ainda não disponível pra campanhas
+    setChannels(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
+  }
   function toggleTag(tag: string) {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
@@ -145,28 +149,29 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, sour
   function handleConfirm() {
     setError('')
     if (!name.trim()) return setError('Dê um nome à campanha.')
-    if (channel === 'whatsapp' && !waTemplateId) return setError('Selecione um template.')
-    if (channel === 'email' && !emailTemplateId) return setError('Selecione um template de e-mail.')
+    if (channels.length === 0) return setError('Selecione ao menos um canal.')
+    if (channels.includes('whatsapp') && !waTemplateId) return setError('Selecione um template de WhatsApp.')
+    if (channels.includes('email') && !emailTemplateId) return setError('Selecione um template de e-mail.')
     if (sendMode === 'schedule' && !scheduleAt) return setError('Escolha a data/hora do agendamento.')
     if (!recipients) return setError('Carregue o público antes de confirmar.')
     if (includedCount === 0) return setError('Nenhum contato selecionado na lista.')
 
     startTransition(async () => {
-      const draft = await createCampaignDraft(orgSlug, {
+      const draft = await createCampaignDrafts(orgSlug, {
         name,
-        channel,
-        waTemplateId: channel === 'whatsapp' ? waTemplateId : null,
-        emailTemplateId: channel === 'email' ? emailTemplateId : null,
+        channels: channels as ('whatsapp' | 'email')[],
+        waTemplateId: channels.includes('whatsapp') ? waTemplateId : null,
+        emailTemplateId: channels.includes('email') ? emailTemplateId : null,
         audience: filter,
       })
       if (!draft.ok) return setError(draft.error)
 
       const sendAtISO = sendMode === 'schedule' ? new Date(scheduleAt).toISOString() : null
       const includedIds = recipients.filter(r => !excludedIds.has(r.id)).map(r => r.id)
-      const result = await materializeAndScheduleCampaign(orgSlug, draft.campaignId, sendAtISO, includedIds)
+      const result = await materializeAndScheduleCampaigns(orgSlug, draft.campaignIds, sendAtISO, includedIds)
       if (!result.ok) return setError(result.error)
 
-      router.push(`/app/${orgSlug}/campanhas/${draft.campaignId}`)
+      router.push(`/app/${orgSlug}/campanhas/${draft.campaignIds[0]}`)
     })
   }
 
@@ -176,13 +181,6 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, sour
         <Label>Nome da campanha</Label>
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Promoção de Verão" />
       </div>
-
-      <CampaignChannelTemplatePicker
-        channel={channel} setChannel={setChannel}
-        waTemplateId={waTemplateId} setWaTemplateId={setWaTemplateId}
-        emailTemplateId={emailTemplateId} setEmailTemplateId={setEmailTemplateId}
-        waTemplates={waTemplates} emailTemplates={emailTemplates}
-      />
 
       <div className="space-y-3 border rounded-none p-4">
         <Label>Público</Label>
@@ -283,12 +281,19 @@ export default function NewCampaignForm({ orgSlug, pipelines, stages, tags, sour
             recipients={recipients}
             truncated={recipientsTruncated}
             excludedIds={excludedIds}
-            channel={channel}
+            channels={channels}
             onToggle={toggleRecipient}
             onToggleAll={toggleAllRecipients}
           />
         )}
       </div>
+
+      <CampaignChannelTemplatePicker
+        channels={channels} toggleChannel={toggleChannel}
+        waTemplateId={waTemplateId} setWaTemplateId={setWaTemplateId}
+        emailTemplateId={emailTemplateId} setEmailTemplateId={setEmailTemplateId}
+        waTemplates={waTemplates} emailTemplates={emailTemplates}
+      />
 
       <div className="space-y-1.5">
         <Label>Quando enviar</Label>

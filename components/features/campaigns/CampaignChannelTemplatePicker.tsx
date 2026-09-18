@@ -1,11 +1,15 @@
 'use client'
 
-/** Seletor de canal (WhatsApp/e-mail) + template correspondente — extraído
- *  de NewCampaignForm.tsx só por tamanho de arquivo. */
+/** Seletor de canais (WhatsApp/e-mail/SMS, múltipla escolha) + template de
+ *  cada canal selecionado — extraído de NewCampaignForm.tsx só por tamanho
+ *  de arquivo. SMS ainda não tem envio de campanha implementado (só
+ *  telefonia/Voice via Twilio) — aparece desabilitado, "em breve". */
 
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MessageSquare, Mail } from 'lucide-react'
+import { MessageSquare, Mail, Smartphone } from 'lucide-react'
+
+export type SendChannel = 'whatsapp' | 'email' | 'sms'
 
 type WaTemplate = { id: string; name: string; display_name: string; language: string; status: string }
 type EmailTemplate = { id: string; name: string; subject: string | null; category: string | null }
@@ -17,11 +21,11 @@ const WA_STATUS_LABEL: Record<string, string> = {
 }
 
 export default function CampaignChannelTemplatePicker({
-  channel, setChannel, waTemplateId, setWaTemplateId, emailTemplateId, setEmailTemplateId,
+  channels, toggleChannel, waTemplateId, setWaTemplateId, emailTemplateId, setEmailTemplateId,
   waTemplates, emailTemplates,
 }: {
-  channel: 'whatsapp' | 'email'
-  setChannel: (c: 'whatsapp' | 'email') => void
+  channels: SendChannel[]
+  toggleChannel: (c: SendChannel) => void
   waTemplateId: string
   setWaTemplateId: (v: string) => void
   emailTemplateId: string
@@ -34,28 +38,37 @@ export default function CampaignChannelTemplatePicker({
   return (
     <>
       <div className="space-y-1.5">
-        <Label>Canal</Label>
+        <Label>Canais</Label>
+        <p className="text-xs text-muted-foreground">Selecione um ou mais — cada canal envia com seu próprio template.</p>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setChannel('whatsapp')}
-            className={`flex-1 flex items-center justify-center gap-2 border rounded-none py-2.5 text-sm font-medium transition-colors ${channel === 'whatsapp' ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground hover:bg-muted/30'}`}
+            onClick={() => toggleChannel('whatsapp')}
+            className={`flex-1 flex items-center justify-center gap-2 border rounded-none py-2.5 text-sm font-medium transition-colors ${channels.includes('whatsapp') ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground hover:bg-muted/30'}`}
           >
             <MessageSquare className="w-4 h-4" /> WhatsApp
           </button>
           <button
             type="button"
-            onClick={() => setChannel('email')}
-            className={`flex-1 flex items-center justify-center gap-2 border rounded-none py-2.5 text-sm font-medium transition-colors ${channel === 'email' ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground hover:bg-muted/30'}`}
+            onClick={() => toggleChannel('email')}
+            className={`flex-1 flex items-center justify-center gap-2 border rounded-none py-2.5 text-sm font-medium transition-colors ${channels.includes('email') ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground hover:bg-muted/30'}`}
           >
             <Mail className="w-4 h-4" /> E-mail
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Envio de SMS em campanhas ainda não está disponível"
+            className="flex-1 flex items-center justify-center gap-2 border rounded-none py-2.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
+          >
+            <Smartphone className="w-4 h-4" /> SMS <span className="text-[10px]">(em breve)</span>
           </button>
         </div>
       </div>
 
-      {channel === 'whatsapp' ? (
+      {channels.includes('whatsapp') && (
         <div className="space-y-1.5">
-          <Label>Template</Label>
+          <Label>Template de WhatsApp</Label>
           {waTemplates.length === 0 ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none p-3">
               Nenhum template criado ainda. Crie um em Templates de WhatsApp primeiro.
@@ -80,7 +93,9 @@ export default function CampaignChannelTemplatePicker({
             </>
           )}
         </div>
-      ) : (
+      )}
+
+      {channels.includes('email') && (
         <div className="space-y-1.5">
           <Label>Template de e-mail</Label>
           {emailTemplates.length === 0 ? (

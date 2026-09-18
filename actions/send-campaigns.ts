@@ -40,6 +40,36 @@ export interface CreateCampaignInput {
   audience: AudienceFilter
 }
 
+/**
+ * Cria uma campanha por canal selecionado. O schema (`send_campaigns.channel`)
+ * é de um canal por linha — pra permitir seleção múltipla no formulário sem
+ * migração, cada canal marcado vira sua própria campanha (mesmo público,
+ * mesmo nome), todas disparadas juntas em materializeAndScheduleCampaigns.
+ */
+export async function createCampaignDrafts(orgSlug: string, input: {
+  name: string
+  channels: ('whatsapp' | 'email')[]
+  waTemplateId?: string | null
+  emailTemplateId?: string | null
+  audience: AudienceFilter
+}) {
+  if (input.channels.length === 0) return { ok: false as const, error: 'Selecione ao menos um canal.' }
+
+  const campaignIds: string[] = []
+  for (const channel of input.channels) {
+    const result = await createCampaignDraft(orgSlug, {
+      name: input.name,
+      channel,
+      waTemplateId: input.waTemplateId,
+      emailTemplateId: input.emailTemplateId,
+      audience: input.audience,
+    })
+    if (!result.ok) return result
+    campaignIds.push(result.campaignId)
+  }
+  return { ok: true as const, campaignIds }
+}
+
 export async function createCampaignDraft(orgSlug: string, input: CreateCampaignInput) {
   if (!(await checkFeatureAccessByOrgSlug(orgSlug, 'bulk_campaigns'))) {
     return { ok: false as const, error: UPGRADE_ERROR }
@@ -116,6 +146,18 @@ export async function createCampaignDraft(orgSlug: string, input: CreateCampaign
   if (error) return { ok: false as const, error: error.message }
   revalidatePath(`/app/${orgSlug}/campanhas`)
   return { ok: true as const, campaignId: row.id }
+}
+
+/** Materializa e agenda várias campanhas (uma por canal) de uma vez —
+ *  usado quando o usuário seleciona mais de um canal no formulário. */
+export async function materializeAndScheduleCampaigns(
+  orgSlug: string, campaignIds: string[], sendAtISO?: string | null, contatoIds?: string[],
+) {
+  for (const campaignId of campaignIds) {
+    const result = await materializeAndScheduleCampaign(orgSlug, campaignId, sendAtISO, contatoIds)
+    if (!result.ok) return result
+  }
+  return { ok: true as const }
 }
 
 export async function materializeAndScheduleCampaign(
