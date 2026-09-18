@@ -13,7 +13,7 @@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Search, AlarmClock, X, LayoutGrid, List, SlidersHorizontal, Plus } from 'lucide-react'
+import { Search, AlarmClock, X, LayoutGrid, List, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Member = { id: string; name: string; email: string }
@@ -102,26 +102,26 @@ function FilterFields({
 export function KanbanBoardToolbar(props: {
   toolbarStart?: React.ReactNode
   totalLabel?: string
-  onNewLead?: () => void
   view: 'board' | 'list'
   setView: (v: 'board' | 'list') => void
   search: string
   setSearch: (v: string) => void
 } & FilterFieldsProps) {
-  const { toolbarStart, totalLabel, onNewLead, view, setView, search, setSearch, filtersActive } = props
+  const { toolbarStart, totalLabel, view, setView, search, setSearch, filtersActive } = props
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Título curto do módulo + valor em aberto — como no canvas, à
-          esquerda do seletor de pipeline. */}
-      <div className="flex items-baseline gap-1.5 pr-1">
-        <h1 className="text-[15px] font-bold">Pipeline</h1>
-        {totalLabel && (
-          <span className="text-xs font-medium text-muted-foreground">· {totalLabel} em aberto</span>
-        )}
-      </div>
-
       {toolbarStart}
+
+      {/* Etiqueta de valor em aberto — ao lado do seletor/configurador de
+          pipeline, atualiza sozinha quando troca de pipeline (totalLabel
+          já vem calculado a partir dos leads do pipeline atual). Substitui
+          o título fixo "Pipeline" que ficava aqui antes. */}
+      {totalLabel && (
+        <span className="inline-flex items-center h-8 px-3 rounded-lg bg-secondary text-[12.5px] font-medium text-muted-foreground whitespace-nowrap">
+          Total em aberto <span className="ml-1 font-semibold text-foreground">{totalLabel}</span>
+        </span>
+      )}
 
       <div className="flex-1 hidden md:block" />
 
@@ -153,8 +153,8 @@ export function KanbanBoardToolbar(props: {
         </button>
       </div>
 
-      {/* Busca — sempre visível, único controle solto no mobile */}
-      <div className="relative min-w-[140px] flex-1 max-w-xs">
+      {/* Busca — maior, pra caber mais texto sem cortar */}
+      <div className="relative min-w-[200px] flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -164,41 +164,27 @@ export function KanbanBoardToolbar(props: {
         />
       </div>
 
-      {/* Mobile: resto dos filtros dentro de um popover de ícone */}
+      {/* Responsável/IA/Ordenar/Parados — um botão "Filtro" só, mesmo
+          padrão de Tarefas/Cotações/Reservas, em vez de ficarem soltos em
+          linha (desktop) ou escondidos atrás de um ícone sem rótulo (mobile). */}
       <Popover>
         <PopoverTrigger asChild>
           <button
             type="button"
             className={cn(
-              'md:hidden relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors',
+              'relative inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm shrink-0 transition-colors',
               filtersActive ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-secondary',
             )}
-            aria-label="Mais filtros"
           >
             <SlidersHorizontal className="h-4 w-4" />
+            Filtro
             {filtersActive && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />}
           </button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-64 space-y-2 md:hidden">
+        <PopoverContent align="end" className="w-64 space-y-2">
           <FilterFields {...props} />
         </PopoverContent>
       </Popover>
-
-      {/* Desktop: tudo em linha, como sempre foi */}
-      <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
-        <FilterFields {...props} />
-      </div>
-
-      {onNewLead && (
-        <button
-          type="button"
-          onClick={onNewLead}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Novo negócio
-        </button>
-      )}
     </div>
   )
 }

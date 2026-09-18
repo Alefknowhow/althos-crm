@@ -34,7 +34,10 @@ export default function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col bg-muted/50 dark:bg-black/20 rounded-lg w-full md:w-[280px] shrink-0 md:snap-center overflow-hidden h-auto md:h-full max-h-[75vh] md:max-h-none transition-colors',
+        // Opaco (era bg-muted/50, quase igual ao fundo da página) + borda,
+        // pra destacar o bloco da etapa do background — os cards (bg-card)
+        // continuam se destacando por cima, já que o tom aqui é mais escuro.
+        'flex flex-col bg-muted border border-border/70 shadow-sm rounded-lg w-full md:w-[280px] shrink-0 md:snap-center overflow-hidden h-auto md:h-full max-h-[75vh] md:max-h-none transition-colors',
         isOver && 'ring-2 ring-primary/50',
       )}
     >

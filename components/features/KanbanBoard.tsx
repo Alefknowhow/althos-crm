@@ -241,7 +241,6 @@ export default function KanbanBoard({
       <KanbanBoardToolbar
         toolbarStart={toolbarStart}
         totalLabel={openValueLabel}
-        onNewLead={() => setCreateStageId(stages[0]?.id ?? null)}
         view={view} setView={setView}
         members={members}
         ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}

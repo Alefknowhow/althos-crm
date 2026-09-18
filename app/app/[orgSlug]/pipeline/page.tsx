@@ -2,11 +2,13 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { getProfilesMap } from '@/lib/profiles'
+import { listPipelines } from '@/actions/pipeline'
 import { redirect } from 'next/navigation'
 import KanbanBoard from '@/components/features/KanbanBoard'
 import PipelineConfigDialog from '@/components/features/PipelineConfigDialog'
 import PipelineDistributionDialog from '@/components/features/pipeline/PipelineDistributionDialog'
 import PipelineSwitcher from '@/components/features/pipeline/PipelineSwitcher'
+import PipelinesManagerDialog from '@/components/features/pipeline/PipelinesManagerDialog'
 
 export default async function PipelinePage({
   params,
@@ -39,12 +41,9 @@ export default async function PipelinePage({
     return (
       <div className="p-8 text-center">
         <p className="mb-4">Nenhum pipeline configurado.</p>
-        <a
-          href={`/app/${params.orgSlug}/configuracoes/pipelines`}
-          className="text-primary underline text-sm"
-        >
-          Criar primeiro pipeline
-        </a>
+        <div className="flex justify-center">
+          <PipelinesManagerDialog orgSlug={params.orgSlug} pipelines={[]} trigger="button" triggerLabel="Criar primeiro pipeline" />
+        </div>
       </div>
     )
   }
@@ -60,6 +59,11 @@ export default async function PipelinePage({
   if (requested && requested !== pipeline.id) {
     redirect(`/app/${params.orgSlug}/pipeline?pipeline_id=${pipeline.id}`)
   }
+
+  // Lista enriquecida (contagem de estágios/leads por pipeline) só pro
+  // popup de gerenciar pipelines — a lista simples acima já basta pro
+  // switcher e pra resolver qual pipeline está ativo.
+  const managerPipelines = await listPipelines(params.orgSlug)
 
   const [{ data: stages }, { data: leads }] = await Promise.all([
     supabase
@@ -118,11 +122,14 @@ export default async function PipelinePage({
           members={members}
           staleDays={staleDays}
           toolbarStart={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <PipelineSwitcher
-                orgSlug={params.orgSlug}
                 pipelines={pipelines}
                 currentId={pipeline.id}
+              />
+              <PipelinesManagerDialog
+                orgSlug={params.orgSlug}
+                pipelines={managerPipelines}
               />
               <PipelineConfigDialog
                 orgSlug={params.orgSlug}

@@ -1,26 +1,25 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, Settings, Star } from 'lucide-react'
+import { ChevronDown, Star } from 'lucide-react'
 
 type Pipeline = { id: string; name: string; is_default: boolean }
 
+/** Escolhe entre os pipelines existentes — criar/renomear/excluir agora é o
+ *  popup PipelinesManagerDialog (botão de engrenagem ao lado), sem navegar
+ *  pra Configurações. */
 export default function PipelineSwitcher({
-  orgSlug,
   pipelines,
   currentId,
 }: {
-  orgSlug: string
   pipelines: Pipeline[]
   currentId: string
 }) {
@@ -37,13 +36,6 @@ export default function PipelineSwitcher({
     return (
       <div className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card text-[12.5px] font-semibold shadow-[0_1px_2px_rgba(0,0,0,.05)]">
         {current?.name || 'Pipeline'}
-        <Link
-          href={`/app/${orgSlug}/configuracoes/pipelines`}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center"
-          title="Gerenciar pipelines"
-        >
-          <Settings className="w-3.5 h-3.5" />
-        </Link>
       </div>
     )
   }
@@ -75,12 +67,6 @@ export default function PipelineSwitcher({
             )}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href={`/app/${orgSlug}/configuracoes/pipelines`}>
-            <Settings className="w-4 h-4 mr-2" /> Gerenciar pipelines
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
