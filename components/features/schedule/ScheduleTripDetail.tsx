@@ -1,35 +1,36 @@
 'use client'
 
 /**
- * Trip detail dialog content for ScheduleClient. Prop-driven, split out
- * of ScheduleClient.tsx.
+ * Painel lateral (Sheet) de detalhe da viagem/reserva — aberto a partir da
+ * lista ou do Gantt de Gestão de Viagens. Substitui o antigo Dialog central
+ * por um painel deslizante (~40% da largura), com os dados principais da
+ * reserva no topo e o restante organizado em abas (Tarefas/Produtos/
+ * Viajantes/Vouchers) pra caber tudo sem virar uma parede de texto.
  */
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
-  MapPin, Plane, Hotel, MessageCircle, ExternalLink, CheckSquare, Loader2,
-  CalendarDays, Ticket, Building2, UserRound,
+  Plane, MessageCircle, ExternalLink, CalendarDays, Ticket, Building2, UserRound, AlertTriangle,
 } from 'lucide-react'
-import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
+import type { ScheduledTrip, TripTask, TripTraveler, TripVoucher } from '@/actions/travel-schedule'
+import type { SaleProduct } from '@/actions/sale-products'
 import { STATE_META, type TripState } from './ScheduleGanttView'
+import { ScheduleTripDetailTabs } from './ScheduleTripDetailTabs'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
   const d = new Date(s + 'T12:00:00')
   return isNaN(d.getTime()) ? null : d
 }
-function fmtDate(s?: string | null) {
+export function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
-}
-function fmtTime(iso?: string | null) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 const DAY = 86400000
 
@@ -60,7 +61,7 @@ export const DATE_ICON_COLOR: Record<'cancelled' | TripState, string> = {
 /** Rótulo/cor da etiqueta principal — sobrepõe o rótulo de data (upcoming/
  *  ongoing/past) com o status real da venda (cancelada) ou uma redação mais
  *  natural para viagem em curso/já realizada. Compartilhado entre a lista e
- *  o popup de detalhe. */
+ *  o painel de detalhe. */
 export function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, today: Date) {
   if (t.status === 'cancelled') {
     return { key: 'cancelled' as const, label: 'Cancelada', badge: 'bg-destructive text-destructive-foreground border-transparent' }
@@ -89,13 +90,109 @@ export function whatsappLink(phone?: string | null): string | null {
   return `https://wa.me/${digits}`
 }
 
+/** Etiquetas de alerta no topo do painel — voo cancelado/desviado/atrasado,
+ *  reserva cancelada ou tarefa crítica pendente. Só aparece o que se aplica. */
+function AlertBadges({ trip }: { trip: ScheduledTrip }) {
+  const badges: { key: string; label: string; cls: string }[] = []
+  if (trip.status === 'cancelled') {
+    badges.push({ key: 'cancelled', label: 'Reserva cancelada', cls: 'bg-destructive text-destructive-foreground border-transparent' })
+  }
+  if (trip.flights.some(f => f.status === 'cancelled')) {
+    badges.push({ key: 'flight_cancelled', label: 'Voo cancelado', cls: 'bg-destructive text-destructive-foreground border-transparent' })
+  }
+  if (trip.flights.some(f => f.status === 'diverted')) {
+    badges.push({ key: 'flight_diverted', label: 'Voo desviado', cls: 'bg-warning text-warning-foreground border-transparent' })
+  }
+  const maxDelay = Math.max(0, ...trip.flights.map(f => f.delay_minutes || 0))
+  if (maxDelay > 0) {
+    badges.push({ key: 'delay', label: `Voo atrasado +${Math.floor(maxDelay / 60)}h${maxDelay % 60 || ''}`, cls: 'bg-warning text-warning-foreground border-transparent' })
+  }
+  if (trip.status !== 'cancelled' && trip.health === 'red') {
+    badges.push({ key: 'health', label: 'Tarefa pendente crítica', cls: 'bg-destructive/15 text-destructive border-destructive/30' })
+  }
+  if (badges.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {badges.map(b => (
+        <Badge key={b.key} variant="outline" className={cn('text-[10px] gap-1', b.cls)}>
+          <AlertTriangle className="w-3 h-3" /> {b.label}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+function Info({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="font-medium break-words">{value}</p>
+      </div>
+    </div>
+  )
+}
+
 export function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, state, today, sellerName,
+  orgSlug, trip, tasks, loadingTasks, products, loadingProducts, travelers, vouchers, loadingExtra,
+  state, today, sellerName, open, onOpenChange,
+}: {
+  orgSlug: string
+  trip: ScheduledTrip | null
+  tasks: TripTask[]
+  loadingTasks: boolean
+  products: SaleProduct[]
+  loadingProducts: boolean
+  travelers: TripTraveler[]
+  vouchers: TripVoucher[]
+  loadingExtra: boolean
+  state: TripState
+  today: Date
+  sellerName?: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-none sm:w-[40vw] sm:min-w-[440px] p-0 flex flex-col gap-0"
+      >
+        {trip && (
+          <TripDetailBody
+            orgSlug={orgSlug}
+            trip={trip}
+            tasks={tasks}
+            loadingTasks={loadingTasks}
+            products={products}
+            loadingProducts={loadingProducts}
+            travelers={travelers}
+            vouchers={vouchers}
+            loadingExtra={loadingExtra}
+            state={state}
+            today={today}
+            sellerName={sellerName}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function TripDetailBody({
+  orgSlug, trip, tasks, loadingTasks, products, loadingProducts, travelers, vouchers, loadingExtra,
+  state, today, sellerName,
 }: {
   orgSlug: string
   trip: ScheduledTrip
   tasks: TripTask[]
   loadingTasks: boolean
+  products: SaleProduct[]
+  loadingProducts: boolean
+  travelers: TripTraveler[]
+  vouchers: TripVoucher[]
+  loadingExtra: boolean
   state: TripState
   today: Date
   sellerName?: string
@@ -103,80 +200,51 @@ export function TripDetail({
   const wa = whatsappLink(trip.lead_phone)
   const dep = parseDate(trip.departure_date)
   const status = rowStatus(trip, state, dep, today)
+
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 pr-6">
+      {/* ── topo: dados principais da reserva ─────────────────────── */}
+      <SheetHeader className="p-5 pb-4 border-b shrink-0 space-y-3 text-left">
+        <SheetTitle className="flex items-center gap-2 pr-6">
           <span
             className={cn('w-3 h-3 rounded-full shrink-0', HEALTH_META[trip.health]?.dot)}
             title={HEALTH_META[trip.health]?.title}
           />
           <span className="truncate">{trip.client_name || trip.lead_name || 'Viagem'}</span>
           <Badge variant="outline" className={cn('shrink-0 text-[10px]', status.badge)}>{status.label}</Badge>
-        </DialogTitle>
-      </DialogHeader>
+        </SheetTitle>
 
-      <div className="space-y-4">
-        {/* período */}
+        <AlertBadges trip={trip} />
+
         <div className="rounded-lg border bg-muted/30 p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-sm flex-wrap">
             <CalendarDays className={cn('w-4 h-4 shrink-0', DATE_ICON_COLOR[status.key])} />
             <span className="font-medium">{fmtDate(trip.departure_date)}</span>
             <span className="text-muted-foreground">→</span>
             <span className="font-medium">{fmtDate(trip.return_date)}</span>
+            {trip.destination && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                {trip.destination_flag && <span>{trip.destination_flag}</span>}
+                <span className="font-medium">{trip.destination}</span>
+              </>
+            )}
           </div>
           <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(trip.total_cents || 0)}</span>
         </div>
 
-        {/* infos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {sellerName && <Info icon={UserRound} label="Agente de viagem" value={sellerName} />}
-          {trip.destination && <Info icon={MapPin} label="Destino" value={trip.destination} />}
-          {trip.hotel_name && <Info icon={Hotel} label="Hospedagem" value={trip.hotel_name} />}
-          {trip.airline && <Info icon={Plane} label="Cia aérea" value={trip.airline} />}
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          {sellerName && <Info icon={UserRound} label="Vendedor" value={sellerName} />}
           {trip.operator && <Info icon={Building2} label="Operadora" value={trip.operator} />}
           {trip.package_locator && <Info icon={Ticket} label="Localizador pacote" value={trip.package_locator} />}
           {trip.air_locator && <Info icon={Ticket} label="Localizador aéreo" value={trip.air_locator} />}
         </div>
 
-        {/* voos */}
-        {trip.flights.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium mb-2">
-              <Plane className="w-4 h-4 text-primary" /> Voos
-            </div>
-            <div className="space-y-1.5">
-              {trip.flights.map((f, i) => {
-                const fmeta = FLIGHT_STATUS_META[f.status || 'scheduled']
-                return (
-                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className="font-medium text-foreground/80">{f.sentido === 'volta' ? 'Volta' : 'Ida'}</span>
-                      {f.numero_voo && <span className="text-muted-foreground">{f.numero_voo}</span>}
-                      {(f.origem || f.destino) && <span className="text-muted-foreground">{f.origem}→{f.destino}</span>}
-                      {f.horario && <span className="text-muted-foreground">{f.horario}</span>}
-                      {f.data && <span className="text-muted-foreground">{fmtDate(f.data)}</span>}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn('text-[10px] shrink-0', fmeta?.badge)}
-                      title={f.revised_departure ? `Novo horário: ${fmtTime(f.revised_departure)}` : undefined}
-                    >
-                      {fmeta?.label}{f.delay_minutes ? ` +${f.delay_minutes}min` : ''}
-                    </Badge>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ações */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-1">
           {wa ? (
             <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700">
               <a href={wa} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp do cliente
+                <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp
               </a>
             </Button>
           ) : (
@@ -197,52 +265,20 @@ export function TripDetail({
             </Link>
           </Button>
         </div>
+      </SheetHeader>
 
-        {/* tarefas */}
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
-            <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
-            {loadingTasks && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-          </div>
-          {!trip.contato_id ? (
-            <p className="text-sm text-muted-foreground">Viagem sem lead vinculado — sem tarefas.</p>
-          ) : !loadingTasks && tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma tarefa para este cliente.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {tasks.map(t => {
-                const done = t.status === 'done' || t.status === 'completed'
-                return (
-                  <li key={t.id} className="flex items-start gap-2 rounded-lg border p-2.5 text-sm">
-                    <CheckSquare className={cn('w-4 h-4 mt-0.5 shrink-0', done ? 'text-emerald-600' : 'text-muted-foreground')} />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn('truncate', done && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
-                      {t.due_date && (
-                        <p className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</p>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          <Button size="sm" variant="ghost" className="mt-2" asChild>
-            <Link href={`/app/${orgSlug}/tarefas`}>Ver todas as tarefas</Link>
-          </Button>
-        </div>
-      </div>
+      {/* ── abas (Tarefas/Produtos/Viajantes/Vouchers) — ver ScheduleTripDetailTabs ── */}
+      <ScheduleTripDetailTabs
+        orgSlug={orgSlug}
+        trip={trip}
+        tasks={tasks}
+        loadingTasks={loadingTasks}
+        products={products}
+        loadingProducts={loadingProducts}
+        travelers={travelers}
+        vouchers={vouchers}
+        loadingExtra={loadingExtra}
+      />
     </>
-  )
-}
-
-function Info({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-      <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="font-medium break-words">{value}</p>
-      </div>
-    </div>
   )
 }

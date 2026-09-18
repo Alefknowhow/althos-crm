@@ -304,6 +304,8 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   })
 }
 
+export { getTripDetailExtra, type TripTraveler, type TripVoucher, type TripDetailExtra } from './travel-schedule-detail'
+
 /** Tarefas operacionais vinculadas ao lead da viagem. */
 export async function getTripTasks(orgSlug: string, leadId: string): Promise<TripTask[]> {
   const org = await getCurrentOrganization(orgSlug)

@@ -102,10 +102,13 @@ function totalDuration(first: FlightLegInfo, last: FlightLegInfo): string | null
   return `${h}h${m > 0 ? `${m}m` : ''}`
 }
 
-/** Bloco de voo (ida ou volta) — 3 linhas fixas:
- *  1. Cia + número · status · localizador
- *  2. Origem+horário+data → Destino+horário+data (duração total)
- *  3. Conexão + local (só quando houver) */
+/** Bloco de voo (ida ou volta) — 4 linhas fixas, cada uma em grid de
+ *  colunas (não flex de largura variável) pra manter tudo alinhado mesmo
+ *  quando o conteúdo muda de tamanho entre um voo e outro:
+ *  1. Cia + número | localizador (etiqueta) | status (etiqueta)
+ *  2. Data de embarque  —  data de chegada
+ *  3. Origem (destaque) + horário (menor/apagado)  →  destino (destaque) + horário (menor/apagado) + duração
+ *  4. Conexão, em etiqueta — só quando houver */
 function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string | null }) {
   if (legs.length === 0) return <span className="text-xs text-muted-foreground">—</span>
   const first = legs[0]
@@ -117,7 +120,8 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
   const delay = legs.reduce((sum, l) => sum + (l.delay_minutes || 0), 0)
   const conn = connectionLabel(legs)
   const duration = totalDuration(first, last)
-  const nextDayArrival = last.data_chegada && first.data && last.data_chegada !== first.data
+  const arrivalDate = last.data_chegada || last.data
+  const nextDayArrival = arrivalDate && first.data && arrivalDate !== first.data
 
   function copy() {
     if (!locator) return
@@ -125,39 +129,62 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
   }
 
   return (
-    <div className="min-w-[200px] space-y-0.5 text-xs">
-      {/* Linha 1 — cia + número · status · localizador */}
+    <div className="min-w-[210px] space-y-1 text-xs">
+      {/* Linha 1 — cia + número | localizador | status */}
       <div className="flex flex-wrap items-center gap-1.5">
         <AirlineMark name={first.companhia} />
         <span className="font-semibold">{first.companhia || 'Cia não informada'}</span>
         <span className="text-muted-foreground">{numero}</span>
-        <Badge variant="outline" className={cn('text-[9px] px-1 py-0', meta?.badge)}>
-          {meta?.label}{delay > 0 ? ` +${Math.floor(delay / 60)}h${delay % 60 || ''}` : ''}
-        </Badge>
+        {locator && <span className="text-muted-foreground/40">|</span>}
         {locator && (
           <button
             type="button"
             onClick={copy}
-            className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
             title="Copiar localizador"
+            className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
           >
-            LOC: <span className="font-medium text-foreground">{locator}</span>
-            <ClipboardCopy className="w-3 h-3" />
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-mono font-medium">{locator}</Badge>
+            <ClipboardCopy className="w-3 h-3 text-muted-foreground" />
           </button>
         )}
+        <span className="text-muted-foreground/40">|</span>
+        <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0', meta?.badge)}>
+          {meta?.label}{delay > 0 ? ` +${Math.floor(delay / 60)}h${delay % 60 || ''}` : ''}
+        </Badge>
       </div>
 
-      {/* Linha 2 — origem+horário+data → destino+horário+data (duração) */}
-      <div className="font-medium tabular-nums">
-        {first.origem || '—'} {first.horario || ''} {fmtShort(first.data)}
-        {' → '}
-        {last.destino || '—'} {last.horario_chegada || ''} {fmtShort(last.data_chegada || last.data)}
-        {nextDayArrival && <sup className="text-primary font-semibold">+1</sup>}
-        {duration && <span className="text-muted-foreground"> ({duration})</span>}
+      {/* Linha 2 — data de embarque — data de chegada */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-1.5 text-muted-foreground">
+        <span className="text-left">{fmtShort(first.data)}</span>
+        <span>—</span>
+        <span className="text-right">
+          {fmtShort(arrivalDate)}
+          {nextDayArrival && <sup className="text-primary font-semibold ml-0.5">+1</sup>}
+        </span>
       </div>
 
-      {/* Linha 3 — conexão, só quando houver */}
-      {conn && <div className="text-muted-foreground">{conn}</div>}
+      {/* Linha 3 — origem+horário → destino+horário (duração) */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-x-1.5 tabular-nums">
+        <span className="text-left">
+          <span className="font-bold text-foreground">{first.origem || '—'}</span>
+          {first.horario && <span className="text-[10px] font-normal text-muted-foreground ml-1">{first.horario}</span>}
+        </span>
+        <span className="text-muted-foreground">→</span>
+        <span className="text-right">
+          <span className="font-bold text-foreground">{last.destino || '—'}</span>
+          {last.horario_chegada && <span className="text-[10px] font-normal text-muted-foreground ml-1">{last.horario_chegada}</span>}
+          {duration && <span className="text-[10px] font-normal text-muted-foreground ml-1">({duration})</span>}
+        </span>
+      </div>
+
+      {/* Linha 4 — conexão, em etiqueta, só quando houver */}
+      {conn && (
+        <div>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-normal text-muted-foreground">
+            {conn}
+          </Badge>
+        </div>
+      )}
     </div>
   )
 }

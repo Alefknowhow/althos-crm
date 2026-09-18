@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Pencil, Trash2, Plane, Hotel, Car, Ship, ShieldCheck, Ticket, MapPinned, Package } from 'lucide-react'
 import type { SaleProduct, SaleProductKind } from '@/actions/sale-products'
 import { cityFromAirportCode } from '@/lib/airports'
+import { cn } from '@/lib/utils'
 
 // Mesmos rótulos usados no formulário (SaleProductDedicatedForms.tsx) —
 // duplicado aqui só pra exibição, sem acoplar os dois arquivos.
@@ -177,12 +178,15 @@ function AereoLegs({ legs }: { legs: any[] }) {
 }
 
 export default function SaleProductCard({
-  product, onEdit, onDelete, onToggleStatus,
+  product, onEdit, onDelete, onToggleStatus, readOnly = false,
 }: {
   product: SaleProduct
-  onEdit: () => void
-  onDelete: () => void
-  onToggleStatus: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onToggleStatus?: () => void
+  /** Sem botões de ação (editar/excluir/status) — usado em visualizações
+   *  fora do editor de Reservas, como o painel de detalhe de Embarques. */
+  readOnly?: boolean
 }) {
   const meta = KIND_META[product.kind] || KIND_META.outro
   const Icon = meta.icon
@@ -207,22 +211,29 @@ export default function SaleProductCard({
         {product.kind === 'aereo' && !legs && <AereoInlineDetails data={data} />}
         {legs && legs.length > 0 && <AereoLegs legs={legs} />}
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={onToggleStatus}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-          title={confirmed ? 'Marcar como pendente' : 'Marcar como confirmado'}
-        >
-          {confirmed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4" />}
-        </button>
-        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} aria-label="Editar produto">
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir produto">
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={onToggleStatus}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            title={confirmed ? 'Marcar como pendente' : 'Marcar como confirmado'}
+          >
+            {confirmed ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Circle className="w-4 h-4" />}
+          </button>
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit} aria-label="Editar produto">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="Excluir produto">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
+      {readOnly && (
+        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 shrink-0', confirmed ? 'text-success border-success/30' : 'text-muted-foreground')}>
+          {confirmed ? 'Confirmado' : 'Pendente'}
+        </Badge>
+      )}
     </div>
   )
 }

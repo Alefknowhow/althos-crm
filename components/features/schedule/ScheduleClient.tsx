@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
+import {
+  getTripTasks, getTripDetailExtra, type ScheduledTrip, type TripTask,
+  type TripTraveler, type TripVoucher,
+} from '@/actions/travel-schedule'
+import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
 import { ListChecks, CalendarDays } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
@@ -104,8 +107,14 @@ export default function ScheduleClient({
   const f = useScheduleFilters(trips, today)
   const [dayOffset, setDayOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [tasks, setTasks] = useState<TripTask[]>([])
   const [loadingTasks, startTasks] = useTransition()
+  const [products, setProducts] = useState<SaleProduct[]>([])
+  const [loadingProducts, startProducts] = useTransition()
+  const [travelers, setTravelers] = useState<TripTraveler[]>([])
+  const [vouchers, setVouchers] = useState<TripVoucher[]>([])
+  const [loadingExtra, startExtra] = useTransition()
   const [monthsSpan, setMonthsSpan] = useState(1)
   const ganttRef = useRef<HTMLDivElement>(null)
 
@@ -189,13 +198,26 @@ export default function ScheduleClient({
 
   function openTrip(t: ScheduledTrip) {
     setSelected(t)
+    setDetailOpen(true)
     setTasks([])
+    setProducts([])
+    setTravelers([])
+    setVouchers([])
     if (t.contato_id) {
       startTasks(async () => {
         const res = await getTripTasks(orgSlug, t.contato_id!)
         setTasks(res)
       })
     }
+    startProducts(async () => {
+      const res = await listSaleProducts(orgSlug, t.id)
+      setProducts(res)
+    })
+    startExtra(async () => {
+      const res = await getTripDetailExtra(orgSlug, t.id)
+      setTravelers(res?.travelers ?? [])
+      setVouchers(res?.vouchers ?? [])
+    })
   }
 
   const counts = useMemo(() => {
@@ -283,21 +305,22 @@ export default function ScheduleClient({
       </Tabs>
 
       {/* ── Detalhe ──────────────────────────────────────────── */}
-      <Dialog open={!!selected} onOpenChange={o => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          {selected && (
-            <TripDetail
-              orgSlug={orgSlug}
-              trip={selected}
-              tasks={tasks}
-              loadingTasks={loadingTasks}
-              state={tripState(selected, today)}
-              today={today}
-              sellerName={members.find(m => m.user_id === selected.created_by)?.name}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <TripDetail
+        orgSlug={orgSlug}
+        trip={selected}
+        tasks={tasks}
+        loadingTasks={loadingTasks}
+        products={products}
+        loadingProducts={loadingProducts}
+        travelers={travelers}
+        vouchers={vouchers}
+        loadingExtra={loadingExtra}
+        state={selected ? tripState(selected, today) : 'upcoming'}
+        today={today}
+        sellerName={selected ? members.find(m => m.user_id === selected.created_by)?.name : undefined}
+        open={detailOpen}
+        onOpenChange={o => { setDetailOpen(o); if (!o) setSelected(null) }}
+      />
     </>
   )
 }
