@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
+import type { ScheduledTrip } from '@/actions/travel-schedule'
 import {
   getTripDetailExtra, type TripTraveler, type TripVoucher,
 } from '@/actions/travel-schedule-detail'
 import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
+import { listTasksForSale, type SaleTaskRow } from '@/actions/tasks-crud'
 import { ListChecks, CalendarDays } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
@@ -108,7 +109,7 @@ export default function ScheduleClient({
   const [dayOffset, setDayOffset] = useState(0)
   const [selected, setSelected] = useState<ScheduledTrip | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const [tasks, setTasks] = useState<TripTask[]>([])
+  const [tasks, setTasks] = useState<SaleTaskRow[]>([])
   const [loadingTasks, startTasks] = useTransition()
   const [products, setProducts] = useState<SaleProduct[]>([])
   const [loadingProducts, startProducts] = useTransition()
@@ -204,7 +205,7 @@ export default function ScheduleClient({
     setTravelers([])
     setVouchers([])
     startTasks(async () => {
-      const res = await getTripTasks(orgSlug, t.id)
+      const res = await listTasksForSale(orgSlug, t.id)
       setTasks(res)
     })
     startProducts(async () => {
@@ -308,6 +309,7 @@ export default function ScheduleClient({
         trip={selected}
         tasks={tasks}
         loadingTasks={loadingTasks}
+        onTasksChange={setTasks}
         products={products}
         loadingProducts={loadingProducts}
         travelers={travelers}

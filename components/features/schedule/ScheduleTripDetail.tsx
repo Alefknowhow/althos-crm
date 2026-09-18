@@ -18,9 +18,10 @@ import { cn, formatCurrency } from '@/lib/utils'
 import {
   Plane, MessageCircle, ExternalLink, CalendarDays, Ticket, Building2, UserRound, AlertTriangle,
 } from 'lucide-react'
-import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
+import type { ScheduledTrip } from '@/actions/travel-schedule'
 import type { TripTraveler, TripVoucher } from '@/actions/travel-schedule-detail'
 import type { SaleProduct } from '@/actions/sale-products'
+import type { SaleTaskRow } from '@/actions/tasks-crud'
 import { STATE_META, type TripState } from './ScheduleGanttView'
 import { ScheduleTripDetailTabs } from './ScheduleTripDetailTabs'
 
@@ -136,13 +137,14 @@ function Info({ icon: Icon, label, value }: { icon: any; label: string; value: s
 }
 
 export function TripDetail({
-  orgSlug, trip, tasks, loadingTasks, products, loadingProducts, travelers, vouchers, loadingExtra,
+  orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
   state, today, sellerName, open, onOpenChange,
 }: {
   orgSlug: string
   trip: ScheduledTrip | null
-  tasks: TripTask[]
+  tasks: SaleTaskRow[]
   loadingTasks: boolean
+  onTasksChange: (tasks: SaleTaskRow[]) => void
   products: SaleProduct[]
   loadingProducts: boolean
   travelers: TripTraveler[]
@@ -166,6 +168,7 @@ export function TripDetail({
             trip={trip}
             tasks={tasks}
             loadingTasks={loadingTasks}
+            onTasksChange={onTasksChange}
             products={products}
             loadingProducts={loadingProducts}
             travelers={travelers}
@@ -182,13 +185,14 @@ export function TripDetail({
 }
 
 function TripDetailBody({
-  orgSlug, trip, tasks, loadingTasks, products, loadingProducts, travelers, vouchers, loadingExtra,
+  orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
   state, today, sellerName,
 }: {
   orgSlug: string
   trip: ScheduledTrip
-  tasks: TripTask[]
+  tasks: SaleTaskRow[]
   loadingTasks: boolean
+  onTasksChange: (tasks: SaleTaskRow[]) => void
   products: SaleProduct[]
   loadingProducts: boolean
   travelers: TripTraveler[]
@@ -274,6 +278,7 @@ function TripDetailBody({
         trip={trip}
         tasks={tasks}
         loadingTasks={loadingTasks}
+        onTasksChange={onTasksChange}
         products={products}
         loadingProducts={loadingProducts}
         travelers={travelers}

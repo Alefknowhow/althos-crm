@@ -9,7 +9,9 @@
 import type { ScheduledTrip } from '@/actions/travel-schedule'
 import { ScheduleTripRow } from './ScheduleTripRow'
 
-const COLUMNS = ['EMBARQUE', 'VIAGEM / CLIENTE', 'DATAS / DESTINO', 'VOO DE IDA', 'VOO DE VOLTA', 'SERVIÇOS', 'TAREFAS', '']
+const COLUMNS = [
+  'EMBARQUE', 'VIAGEM / CLIENTE', 'DATAS / DESTINO', 'OPERADORA', 'VOO DE IDA', 'VOO DE VOLTA', 'SERVIÇOS', 'TAREFAS', '',
+]
 
 export function ScheduleListView({
   orgSlug, filtered, today, onOpenTrip,
@@ -30,7 +32,7 @@ export function ScheduleListView({
           <thead>
             <tr className="border-b bg-muted/40">
               {COLUMNS.map(col => (
-                <th key={col} className="py-2 px-3 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap first:pl-4 last:pr-4">
+                <th key={col} className="py-2 px-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap first:pl-4 last:pr-4">
                   {col}
                 </th>
               ))}

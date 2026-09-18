@@ -1,0 +1,144 @@
+'use client'
+
+/**
+ * Conteúdo da aba "Tarefas" do painel de detalhe de Embarques — permite
+ * gerenciar direto dali (marcar concluída, excluir, criar uma nova) em vez
+ * de só listar e mandar pro módulo de Tarefas. Extraído de
+ * ScheduleTripDetailTabs.tsx pra isolar o estado/as mutações.
+ */
+
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { CheckSquare, Circle, Loader2, Plus, Trash2 } from 'lucide-react'
+import {
+  createTask, deleteTask, listTasksForSale, toggleTaskStatus, type SaleTaskRow,
+} from '@/actions/tasks-crud'
+
+function isDone(status: string) {
+  return status === 'done' || status === 'completed'
+}
+
+export function ScheduleTripTasksTab({
+  orgSlug, saleId, tasks, loading, onTasksChange,
+}: {
+  orgSlug: string
+  saleId: string
+  tasks: SaleTaskRow[]
+  loading: boolean
+  onTasksChange: (tasks: SaleTaskRow[]) => void
+}) {
+  const [newTitle, setNewTitle] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [creating, startCreating] = useTransition()
+
+  function toggle(task: SaleTaskRow) {
+    const nextStatus = isDone(task.status) ? 'open' : 'done'
+    setBusyId(task.id)
+    onTasksChange(tasks.map(t => (t.id === task.id ? { ...t, status: nextStatus } : t)))
+    toggleTaskStatus(orgSlug, task.id, nextStatus).then(res => {
+      if (!res.ok) {
+        toast.error('Não foi possível atualizar a tarefa.')
+        onTasksChange(tasks.map(t => (t.id === task.id ? { ...t, status: task.status } : t)))
+      }
+      setBusyId(null)
+    })
+  }
+
+  function remove(task: SaleTaskRow) {
+    setBusyId(task.id)
+    const previous = tasks
+    onTasksChange(tasks.filter(t => t.id !== task.id))
+    deleteTask(orgSlug, task.id).then(res => {
+      if (!res.ok) {
+        toast.error('Não foi possível excluir a tarefa.')
+        onTasksChange(previous)
+      }
+      setBusyId(null)
+    })
+  }
+
+  function add() {
+    const title = newTitle.trim()
+    if (!title) return
+    startCreating(async () => {
+      const res = await createTask(orgSlug, { title, sale_id: saleId })
+      if (!res.ok) { toast.error(res.error || 'Não foi possível criar a tarefa.'); return }
+      setNewTitle('')
+      // createTask não devolve o id da linha criada — recarrega a lista da
+      // reserva pra pegar a tarefa nova com id de verdade.
+      onTasksChange(await listTasksForSale(orgSlug, saleId))
+    })
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 text-sm font-medium mb-2">
+        <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+      </div>
+
+      {!loading && tasks.length === 0 ? (
+        <p className="text-sm text-muted-foreground mb-3">Nenhuma tarefa vinculada a esta reserva.</p>
+      ) : (
+        <ul className="space-y-1.5 mb-3">
+          {tasks.map(t => {
+            const done = isDone(t.status)
+            const busy = busyId === t.id
+            return (
+              <li key={t.id} className="flex items-start gap-2 rounded-lg border p-2.5 text-sm group">
+                <button
+                  type="button"
+                  onClick={() => toggle(t)}
+                  disabled={busy}
+                  className="mt-0.5 shrink-0 disabled:opacity-50"
+                  aria-label={done ? 'Marcar como pendente' : 'Marcar como concluída'}
+                >
+                  {done
+                    ? <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    : <Circle className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className={cn('truncate', done && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
+                  {t.due_date && (
+                    <p className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => remove(t)}
+                  disabled={busy}
+                  className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                  aria-label="Excluir tarefa"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <div className="flex items-center gap-2 mb-3">
+        <Input
+          value={newTitle}
+          onChange={e => setNewTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !creating) add() }}
+          placeholder="Nova tarefa para esta reserva…"
+          className="h-9 text-sm"
+          disabled={creating}
+        />
+        <Button type="button" size="sm" onClick={add} disabled={creating || !newTitle.trim()}>
+          {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+        </Button>
+      </div>
+
+      <Button size="sm" variant="ghost" className="w-fit" asChild>
+        <Link href={`/app/${orgSlug}/tarefas`}>Ver todas as tarefas</Link>
+      </Button>
+    </div>
+  )
+}
