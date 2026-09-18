@@ -122,23 +122,25 @@ export default async function PipelinePage({
           members={members}
           staleDays={staleDays}
           toolbarStart={
+            <PipelineSwitcher
+              pipelines={pipelines}
+              currentId={pipeline.id}
+            />
+          }
+          toolbarEnd={
             <div className="flex items-center gap-1">
-              <PipelineSwitcher
-                pipelines={pipelines}
-                currentId={pipeline.id}
-              />
-              <PipelinesManagerDialog
+              <PipelineDistributionDialog
                 orgSlug={params.orgSlug}
-                pipelines={managerPipelines}
+                pipelineId={pipeline.id}
               />
               <PipelineConfigDialog
                 orgSlug={params.orgSlug}
                 pipeline={pipeline}
                 stages={stages || []}
               />
-              <PipelineDistributionDialog
+              <PipelinesManagerDialog
                 orgSlug={params.orgSlug}
-                pipelineId={pipeline.id}
+                pipelines={managerPipelines}
               />
             </div>
           }

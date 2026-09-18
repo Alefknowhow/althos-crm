@@ -35,14 +35,16 @@ export default function KanbanBoard({
   initialLeads,
   members = [],
   toolbarStart,
+  toolbarEnd,
   staleDays = 7,
 }: {
   orgSlug: string
   initialStages: any[]
   initialLeads: any[]
   members?: Member[]
-  /** Botões extras (switcher/config de pipeline) renderizados no início da barra de filtros. */
   toolbarStart?: React.ReactNode
+  /** Switcher no início da barra; distribuição/gerenciar/configurar no fim. */
+  toolbarEnd?: React.ReactNode
   /** Dias sem atividade pra um lead ser considerado "parado" (org_settings.stale_lead_days). */
   staleDays?: number
 }) {
@@ -239,7 +241,7 @@ export default function KanbanBoard({
     <div className="flex h-full flex-col gap-3">
       {/* Toolbar */}
       <KanbanBoardToolbar
-        toolbarStart={toolbarStart}
+        toolbarStart={toolbarStart} toolbarEnd={toolbarEnd}
         totalLabel={openValueLabel}
         view={view} setView={setView}
         members={members}

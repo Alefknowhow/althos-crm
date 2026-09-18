@@ -11,6 +11,18 @@ import { assignLead, updateLeadTags } from '@/actions/contatos'
 import { cn } from '@/lib/utils'
 import { UserPlus, Check, Tag, Plus, X } from 'lucide-react'
 import { initials, type CardMember } from './LeadCard'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+
+// Os 3 pickers abaixo usavam um <div absolute> feito à mão pro dropdown —
+// dentro de uma coluna do Kanban (que tem overflow-y-auto/overflow-hidden
+// pro scroll da lista de leads), isso cortava o popover quando ele
+// extrapolava a largura/altura da coluna, ou deixava ele atrás da coluna
+// vizinha (a posição "absolute" não escapa do clipping do ancestral, e o
+// z-index só compete dentro do mesmo contexto de empilhamento). Trocado
+// pelo Popover do design system (Radix): renderiza num portal direto no
+// <body>, então nunca é cortado nem fica atrás de outro elemento — e abre
+// sempre para a direita do gatilho (side="right"), com colisão de viewport
+// automática do Radix se não couber.
 
 // ── Seller / responsável picker ─────────────────────────────────────────────────
 // Small avatar button on the card; clicking opens a dropdown to pick one of the
@@ -27,18 +39,8 @@ export function SellerPicker({
   const [open, setOpen] = useState(false)
   const [assignedTo, setAssignedTo] = useState<string | null>(lead.assigned_to ?? null)
   const [saving, setSaving] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
 
   const current = assignedTo ? members.find(m => m.id === assignedTo) : null
-
-  useEffect(() => {
-    if (!open) return
-    function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [open])
 
   async function pick(userId: string | null) {
     setOpen(false)
@@ -56,24 +58,24 @@ export function SellerPicker({
   const currentLabel = currentName.length > 20 ? `${currentName.slice(0, 20)}…` : currentName
 
   return (
-    <div ref={rootRef} className="relative shrink-0" onPointerDown={stop} onClick={stop}>
-      <button
-        type="button"
-        title={current ? `Vendedor: ${currentName}` : 'Atribuir vendedor'}
-        onClick={() => setOpen(o => !o)}
-        className={cn(
-          'flex h-6 max-w-[124px] shrink-0 items-center justify-center gap-1 rounded-pill px-2 text-[10px] font-semibold transition-colors',
-          current
-            ? 'bg-brand-100 text-brand-700 hover:ring-2 hover:ring-brand-200'
-            : 'w-6 border border-dashed border-border text-muted-foreground/60 hover:text-foreground hover:border-foreground/40',
-          saving && 'opacity-50',
-        )}
-      >
-        {current ? <span className="truncate">{currentLabel}</span> : <UserPlus className="h-3 w-3" />}
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-7 z-30 w-48 rounded-lg border bg-popover p-1  ">
+    <div className="shrink-0" onPointerDown={stop} onClick={stop}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title={current ? `Vendedor: ${currentName}` : 'Atribuir vendedor'}
+            className={cn(
+              'flex h-6 max-w-[124px] shrink-0 items-center justify-center gap-1 rounded-pill px-2 text-[10px] font-semibold transition-colors',
+              current
+                ? 'bg-brand-100 text-brand-700 hover:ring-2 hover:ring-brand-200'
+                : 'w-6 border border-dashed border-border text-muted-foreground/60 hover:text-foreground hover:border-foreground/40',
+              saving && 'opacity-50',
+            )}
+          >
+            {current ? <span className="truncate">{currentLabel}</span> : <UserPlus className="h-3 w-3" />}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" sideOffset={6} className="w-48 p-1">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Vendedor
           </div>
@@ -104,8 +106,8 @@ export function SellerPicker({
           {members.length === 0 && (
             <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum membro encontrado</div>
           )}
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -127,17 +129,11 @@ export function TagEditor({
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
-    function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
     setTimeout(() => inputRef.current?.focus(), 10)
-    return () => document.removeEventListener('mousedown', onDocClick)
   }, [open])
 
   async function commit(next: string[]) {
@@ -160,29 +156,21 @@ export function TagEditor({
   }
 
   return (
-    <div ref={rootRef} className="inline-flex" onPointerDown={stop} onClick={stop}>
-      <button
-        type="button"
-        title="Adicionar tags"
-        onClick={() => setOpen(o => !o)}
-        className={cn(
-          'inline-flex items-center gap-0.5 rounded-full border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/70 transition-colors hover:border-foreground/40 hover:text-foreground',
-          saving && 'opacity-50',
-        )}
-      >
-        <Plus className="h-2.5 w-2.5" /> Tag
-      </button>
-
-      {/* Ancorado no canto da linha de badges/tags (ancestral `relative` mais
-          próximo — ver o wrapper em LeadCard), não neste botão: como o botão
-          "+ Tag" fica depois das tags já existentes numa linha que quebra
-          (flex-wrap), a posição dele muda conforme tags são adicionadas. Se o
-          popover seguisse o botão, ele "andava" a cada tag nova e acabava
-          escondido atrás da coluna vizinha do Kanban. Ancorar no canto direito
-          da linha (que sempre ocupa a largura inteira do card) mantém o
-          popover sempre no mesmo lugar. */}
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border bg-popover p-2  ">
+    <div className="inline-flex" onPointerDown={stop} onClick={stop}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title="Adicionar tags"
+            className={cn(
+              'inline-flex items-center gap-0.5 rounded-full border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/70 transition-colors hover:border-foreground/40 hover:text-foreground',
+              saving && 'opacity-50',
+            )}
+          >
+            <Plus className="h-2.5 w-2.5" /> Tag
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" sideOffset={6} className="w-52 p-2">
           <div className="mb-1.5 flex items-center gap-1 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <Tag className="h-3 w-3" /> Tags
           </div>
@@ -229,8 +217,8 @@ export function TagEditor({
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -248,39 +236,29 @@ export function StagePicker({
   onPick: (stageId: string) => void
 }) {
   const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
   const current = stages.find(s => s.id === lead.stage_id)
   const accent = current?.color || '#6366f1'
-
-  useEffect(() => {
-    if (!open) return
-    function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [open])
 
   function stop(e: React.MouseEvent | React.PointerEvent) {
     e.stopPropagation()
   }
 
   return (
-    <div ref={rootRef} className="relative" onPointerDown={stop} onClick={stop}>
-      <button
-        type="button"
-        title={current ? `Estágio: ${current.name} — clique para mover` : 'Mover para outro estágio'}
-        onClick={() => setOpen(o => !o)}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
-      >
-        <span
-          className="h-3 w-3 rounded-full ring-2 ring-background"
-          style={{ backgroundColor: accent, boxShadow: `0 0 0 1px ${accent}55` }}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-6 z-30 w-48 rounded-lg border bg-popover p-1  ">
+    <div onPointerDown={stop} onClick={stop}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title={current ? `Estágio: ${current.name} — clique para mover` : 'Mover para outro estágio'}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
+          >
+            <span
+              className="h-3 w-3 rounded-full ring-2 ring-background"
+              style={{ backgroundColor: accent, boxShadow: `0 0 0 1px ${accent}55` }}
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" sideOffset={6} className="w-48 p-1">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Mover para
           </div>
@@ -298,8 +276,8 @@ export function StagePicker({
               {s.id === lead.stage_id && <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />}
             </button>
           ))}
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

@@ -10,7 +10,7 @@
  *  emparelhados lado a lado num grid 12 colunas. Era h-[380px]; aumentado
  *  pra dar mais espaço vertical pros funis (Pipeline/Funil de Conversão),
  *  que com muitas etapas ficavam apertados. */
-export const CHART_CARD_H = 'h-[440px]'
+export const CHART_CARD_H = 'h-[500px]'
 
 /** Card de gráfico/ranking secundário (pizza, barras horizontais). */
 export const COMPACT_CARD_H = 'h-[320px]'

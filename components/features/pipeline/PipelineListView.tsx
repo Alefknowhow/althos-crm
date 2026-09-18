@@ -6,10 +6,9 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronRight, Plus, Mail } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import LeadFormResponsesButton from '../LeadFormResponsesButton'
-import LeadProposalsButton from '../LeadProposalsButton'
 import {
   StagePicker, SellerPicker, ValueEditor, TagEditor, OpenWabaButton,
-  WhatsAppGlyph, TIER, onlyDigits, type CardMember,
+  TIER, type CardMember,
 } from '../LeadCard'
 
 /**
@@ -34,7 +33,6 @@ function ListLeadRow({
   const visibleTags = tags.slice(0, 3)
   const extraTags = tags.length - visibleTags.length
   const tier = lead.ai_tier ? TIER[String(lead.ai_tier).toLowerCase() as keyof typeof TIER] : null
-  const phoneDigits = onlyDigits(lead.phone)
 
   function stop(e: React.MouseEvent) {
     e.stopPropagation()
@@ -86,20 +84,7 @@ function ListLeadRow({
 
       <div className="flex shrink-0 items-center gap-0.5" onClick={stop}>
         <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />
-        <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />
         <OpenWabaButton orgSlug={orgSlug} leadId={lead.id} />
-        {phoneDigits && (
-          <a
-            href={`https://wa.me/${phoneDigits}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={stop}
-            title="WhatsApp"
-            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-emerald-50"
-          >
-            <WhatsAppGlyph color="#25D366" />
-          </a>
-        )}
         {lead.email && (
           <a
             href={`mailto:${lead.email}`}

@@ -12,7 +12,6 @@ import { getOrCreateConversationForLead } from '@/actions/whatsapp'
 import { cn } from '@/lib/utils'
 import { Mail, UserCheck, Sparkles, X, PhoneCall } from 'lucide-react'
 import LeadFormResponsesButton from './LeadFormResponsesButton'
-import LeadProposalsButton from './LeadProposalsButton'
 import { SellerPicker, TagEditor, StagePicker } from './LeadCardPickers'
 import { useCallDialer } from './voice/CallDialerModal'
 
@@ -197,7 +196,6 @@ export default function LeadCard({
   const extraTags = tags.length - visibleTags.length
 
   const tier = lead.ai_tier ? TIER[String(lead.ai_tier).toLowerCase() as keyof typeof TIER] : null
-  const phoneDigits = onlyDigits(lead.phone)
   const openDialer = useCallDialer()
 
   function stop(e: React.MouseEvent | React.PointerEvent) {
@@ -298,7 +296,6 @@ export default function LeadCard({
             </span>
           ) : null}
           {!isOverlay && <LeadFormResponsesButton orgSlug={orgSlug} leadId={lead.id} />}
-          {!isOverlay && <LeadProposalsButton orgSlug={orgSlug} leadId={lead.id} />}
           {!isOverlay && (
             <OpenWabaButton orgSlug={orgSlug} leadId={lead.id} />
           )}
@@ -312,19 +309,6 @@ export default function LeadCard({
             >
               <PhoneCall className="h-3.5 w-3.5" />
             </button>
-          )}
-          {phoneDigits && (
-            <a
-              href={`https://wa.me/${phoneDigits}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onPointerDown={stop}
-              onClick={stop}
-              title="WhatsApp"
-              className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-emerald-50"
-            >
-              <WhatsAppGlyph color="#25D366" />
-            </a>
           )}
           {lead.email && (
             <a

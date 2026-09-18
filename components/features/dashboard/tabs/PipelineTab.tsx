@@ -97,7 +97,7 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+        <Suspense fallback={<Skeleton className="h-[500px] w-full" />}>
           <ConversionFunnelWidget
             orgSlug={ctx.orgSlug}
             pipelineId={ctx.pipelineId}
@@ -106,7 +106,7 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           />
         </Suspense>
 
-        <Suspense fallback={<Skeleton className="h-[380px] w-full" />}>
+        <Suspense fallback={<Skeleton className="h-[500px] w-full" />}>
           <StageThroughputWidget orgSlug={ctx.orgSlug} pipelineId={ctx.pipelineId} />
         </Suspense>
       </div>
@@ -124,20 +124,22 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+      {/* Tempo médio por estágio ocupa a coluna inteira (h-full) — cresce
+          pra baixo até igualar a altura das duas colunas empilhadas ao
+          lado (Motivos de perda + MQL/SQL, ambas "meia tela"). */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
         <div className="md:col-span-6">
           <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <TimeInStageWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
-        <div className="md:col-span-6">
+        <div className="md:col-span-6 flex flex-col gap-5">
           <LossReasonsBySourceWidget rows={lossReasons} />
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
+            <MqlSqlBySourceWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} period={ctx.period} />
+          </Suspense>
         </div>
       </div>
-
-      <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
-        <MqlSqlBySourceWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} period={ctx.period} />
-      </Suspense>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="pipeline" />

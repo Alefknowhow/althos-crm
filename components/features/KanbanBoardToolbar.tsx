@@ -101,29 +101,31 @@ function FilterFields({
 
 export function KanbanBoardToolbar(props: {
   toolbarStart?: React.ReactNode
+  toolbarEnd?: React.ReactNode
   totalLabel?: string
   view: 'board' | 'list'
   setView: (v: 'board' | 'list') => void
   search: string
   setSearch: (v: string) => void
 } & FilterFieldsProps) {
-  const { toolbarStart, totalLabel, view, setView, search, setSearch, filtersActive } = props
+  const { toolbarStart, toolbarEnd, totalLabel, view, setView, search, setSearch, filtersActive } = props
 
+  // Sequência pedida: seletor de pipeline · total em aberto · quadro/lista ·
+  // busca · filtro · distribuição de leads · configurar pipeline (os dois
+  // últimos vêm por `toolbarEnd`, no fim da barra).
   return (
     <div className="flex flex-wrap items-center gap-2">
       {toolbarStart}
 
-      {/* Etiqueta de valor em aberto — ao lado do seletor/configurador de
-          pipeline, atualiza sozinha quando troca de pipeline (totalLabel
-          já vem calculado a partir dos leads do pipeline atual). Substitui
-          o título fixo "Pipeline" que ficava aqui antes. */}
+      {/* Etiqueta de valor em aberto — ao lado do seletor de pipeline,
+          atualiza sozinha quando troca de pipeline (totalLabel já vem
+          calculado a partir dos leads do pipeline atual). Substitui o
+          título fixo "Pipeline" que ficava aqui antes. */}
       {totalLabel && (
         <span className="inline-flex items-center h-8 px-3 rounded-lg bg-secondary text-[12.5px] font-medium text-muted-foreground whitespace-nowrap">
           Total em aberto <span className="ml-1 font-semibold text-foreground">{totalLabel}</span>
         </span>
       )}
-
-      <div className="flex-1 hidden md:block" />
 
       {/* Board / list view toggle — desktop only (mobile uses the stage accordion) */}
       <div className="hidden md:inline-flex h-9 items-center rounded-md border border-border p-0.5">
@@ -153,8 +155,10 @@ export function KanbanBoardToolbar(props: {
         </button>
       </div>
 
-      {/* Busca — maior, pra caber mais texto sem cortar */}
-      <div className="relative min-w-[200px] flex-1 max-w-md">
+      {/* Busca — maior e centralizada (flex-1 nos dois lados empurra ela
+          pro meio da barra, em vez de ficar espremida perto da esquerda). */}
+      <div className="flex-1 hidden md:block" />
+      <div className="relative w-full md:w-[360px] lg:w-[440px] max-w-full">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -163,6 +167,7 @@ export function KanbanBoardToolbar(props: {
           className="h-9 pl-9"
         />
       </div>
+      <div className="flex-1 hidden md:block" />
 
       {/* Responsável/IA/Ordenar/Parados — um botão "Filtro" só, mesmo
           padrão de Tarefas/Cotações/Reservas, em vez de ficarem soltos em
@@ -185,6 +190,8 @@ export function KanbanBoardToolbar(props: {
           <FilterFields {...props} />
         </PopoverContent>
       </Popover>
+
+      {toolbarEnd}
     </div>
   )
 }

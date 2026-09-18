@@ -3,7 +3,7 @@ import { Target } from 'lucide-react'
 import { getMqlSqlByCampaign } from '@/actions/dashboard-tabs'
 import type { Period } from '@/actions/dashboard-core'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
-import { CHART_CARD_H } from './dashboardSizes'
+import { COMPACT_CARD_H } from './dashboardSizes'
 
 /**
  * MQL/SQL por campanha — colunas pareadas (MQL cheio, SQL sólido por cima)
@@ -23,7 +23,7 @@ export default async function MqlSqlBySourceWidget({
   const hasAnyData = rows.some(r => r.mql > 0)
 
   return (
-    <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
+    <Card className={`${COMPACT_CARD_H} flex flex-col overflow-hidden`}>
       <CardHeader className="shrink-0 pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Target className="w-4 h-4 text-primary" />

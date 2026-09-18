@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock } from 'lucide-react'
 import { getAverageTimePerStage } from '@/actions/dashboard'
-import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtDays(days: number): string {
   if (days < 1) return '< 1d'
@@ -27,7 +26,7 @@ export default async function TimeInStageWidget({
 
   if (rows.length === 0) {
     return (
-      <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+      <Card className="h-full flex flex-col">
         <CardHeader className="shrink-0">
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
@@ -49,7 +48,7 @@ export default async function TimeInStageWidget({
   const maxAvg = Math.max(1, ...rows.map(r => r.avg_days))
 
   return (
-    <Card className={`${COMPACT_CARD_H} flex flex-col`}>
+    <Card className="h-full flex flex-col">
       <CardHeader className="shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
@@ -59,7 +58,7 @@ export default async function TimeInStageWidget({
           Últimos 90 dias. Estágio mais demorado = gargalo do funil.
         </p>
       </CardHeader>
-      <CardContent className={`${LIST_SCROLL_H} overflow-y-auto shrink-0`}>
+      <CardContent className="flex-1 min-h-0 overflow-y-auto">
         <div className="space-y-2 pr-1">
           {rows.map(row => {
             const widthPct = (row.avg_days / maxAvg) * 100
