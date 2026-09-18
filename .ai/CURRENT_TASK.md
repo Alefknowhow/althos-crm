@@ -12,9 +12,25 @@
 > `Pending`) antes de tocar em qualquer arquivo — não sobrescreva o trabalho
 > dele. Se a tarefa daqui for diferente da sua, e a branch permitir, prefira
 > anotar a sua como uma nova entrada abaixo em vez de apagar a anterior.
+>
+> **Processo (a partir daqui)**: o pipeline Issue → branch → PR → Codex
+> Review → Vercel Preview → merge é definido em
+> [`.harness/workflow.md`](../.harness/workflow.md) — este arquivo não
+> redefine esse processo, só registra em que ponto dele a tarefa está
+> (bloco `## Workflow Status` abaixo) e o contexto necessário pra
+> continuar. Estados possíveis: `not_started | pending | in_progress |
+> passed | failed | blocked | completed | not_applicable`. Uma tarefa sem
+> Issue/PR correspondente (ex.: trabalho anterior a este pipeline) usa
+> `not_applicable` nesses campos, sem forçar um número que não existe.
 
 ## Title
 Nova arquitetura de Pricing/Billing/Althos Credits — repricing + Credit Engine (Fase 2/3 de um pedido de 33 seções)
+
+## Issue
+not_applicable — tarefa iniciada em 2026-09-13, antes da existência de `.harness/workflow.md`. Continuações desta tarefa (ver "Recommended Next Steps" mais abaixo) devem abrir uma Issue própria e seguir o pipeline novo.
+
+## Type
+feature
 
 ## Status
 IN PROGRESS (Fases 2-10 do pedido original executadas nesta sessão — Fase 6, reconciliação COMPLETA das duas taxonomias de plano, é o maior item que ainda falta e fica para a próxima sessão)
@@ -24,6 +40,23 @@ Claude (Claude Code)
 
 ## Branch
 master
+
+## PR
+not_applicable — trabalho commitado/pushado direto em `master` (histórico, anterior ao workflow atual; ver nota em `.harness/workflow.md` § 0). Não repita esse padrão em continuações futuras.
+
+## Workflow Status
+```
+Issue:          not_applicable (anterior ao pipeline atual)
+Implementation: in_progress    (Fases 2-7 e ajustes pós-Fase-10 concluídos; Fase 6 completa, 8-10 restantes seguem pendentes)
+Validation:     passed         (última rodada: tsc/lint/test/build — ver "Verificação final desta sessão" em HANDOFF.md)
+Push:           completed      (direto em master — histórico)
+PR:             not_applicable
+Codex Review:   not_applicable
+Vercel Preview: not_applicable (predata o workflow; mudança já está em Production)
+Human QA:       not_applicable
+Merge:          completed      (já em master/Production — não requer nova autorização; qualquer CONTINUAÇÃO nova exige PR + aprovação humana normalmente)
+Production:     deployed
+```
 
 ## Started At
 2026-09-13
@@ -517,3 +550,13 @@ Credit Engine — por design, não por lacuna); (3) começar pela Fase
 2/3 (schema+engine) antes de tocar em UI. Próxima sessão deve continuar
 pela Fase 4 (Voice/SMS/WhatsApp) ou Fase 5 (Billing Center UI) — ambas
 dependem do que foi construído aqui, nenhuma bloqueia a outra.
+
+## Blockers
+none
+
+## Next Action
+Abrir uma Issue para a próxima fase pendente (reconciliação completa das
+duas taxonomias de plano — item 0/1 de "Recommended Next Steps" em
+`.ai/HANDOFF.md`), criar branch a partir dela (`feat/<issue>-...`) e seguir
+`.harness/workflow.md` do zero — esta tarefa não tem PR/branch isolada
+porque foi feita antes desse pipeline existir.
