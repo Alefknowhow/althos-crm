@@ -39,3 +39,50 @@ Veredito claro: **aprovado**, **aprovado com ressalvas** (lista o que ficou como
 
 ## Definition of Done
 Veredito emitido com justificativa concreta — nunca "parece bom" sem apontar o que foi verificado.
+
+---
+
+## Code Review Rules
+
+Este checklist vale tanto para o Reviewer Agent interno quanto para o **Codex Code Review** automático configurado nos Pull Requests deste repositório (ver [`.harness/workflow.md`](../workflow.md) § 7 para o papel do Codex no pipeline). Severidade de finding segue `.harness/workflow.md` § 7 (BLOCKER/HIGH/MEDIUM/LOW).
+
+### Issue compliance
+- A implementação resolve a Issue relacionada ao PR?
+- Todos os critérios de aceite foram atendidos?
+- Houve mudança fora do escopo da Issue/tarefa?
+- Algum comportamento pedido ficou incompleto?
+
+### Regression
+- A alteração pode quebrar módulo existente?
+- Existem efeitos colaterais em fluxos vizinhos?
+- Fluxos relacionados (não tocados diretamente pelo diff) continuam funcionando?
+
+### Multi-tenancy (crítico)
+Althos é multi-tenant — qualquer possibilidade de uma organização acessar dado de outra é **BLOCKER**. Verificar `organization_id` e isolamento em: queries, mutations, APIs, Server Actions, jobs (Inngest), automações, webhooks, storage, cache, relatórios, exportações.
+
+### Supabase / Database / RLS
+RLS, policies, migrations, queries, filtros, foreign keys, índices, constraints, operações destrutivas, N+1, queries excessivas. Alteração de banco preserva dado existente salvo autorização explícita.
+
+### Authentication / Authorization
+Autenticação, autorização, permissões, roles, acesso administrativo, endpoints protegidos, Server Actions, APIs internas. Estar autenticado não significa estar autorizado — checagem server-side é obrigatória (ver `invariants.md` § Authorization).
+
+### Secrets / Security
+Secrets expostos, tokens, API keys, service role keys, dado sensível em log, validação de input, injection, acesso indevido, trust boundaries. Secret nunca vai pro client bundle.
+
+### APIs / Integrations
+Atenção a integrações externas (WhatsApp, Instagram, Resend, Asaas, Twilio, ElevenLabs, etc.): autenticação, retry, idempotência, tratamento de erro, rate limits, webhooks, duplicação de evento, timeouts.
+
+### Performance
+Queries redundantes, N+1, polling desnecessário, loops, chamadas repetidas, processamento excessivo, bundle desnecessariamente grande, impacto em Vercel Functions (CPU/memória/invocations/storage).
+
+### Architecture
+Aderência aos padrões existentes, separação de responsabilidades, duplicação, abstração desnecessária, código morto, dependência desnecessária, consistência entre módulos.
+
+### TypeScript
+Tipos incorretos, `any` desnecessário, cast inseguro, null/undefined, contrato entre frontend/backend, erro escondido por suppression.
+
+### Async / Concurrency
+Race condition, operação duplicada, falta de idempotência, concorrência, promise não tratada, estado inconsistente.
+
+### UI/UX (quando aplicável)
+Desktop, mobile, responsividade, loading, empty state, error state, permissões, acessibilidade básica, regressão visual óbvia. **Code Review não substitui homologação visual humana no Vercel Preview** — ver `.harness/workflow.md` § 8.

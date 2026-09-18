@@ -2,7 +2,7 @@
 
 Este arquivo é **independente de modelo**. Vale para Claude Code, Codex, e qualquer outro agente automatizado que trabalhe neste repositório. Onde este documento fala de "agente", leia "qualquer IA operando sobre este código".
 
-Para instruções específicas de Claude Code (context engineering, workflow detalhado), ver [CLAUDE.md](./CLAUDE.md). Para regras invioláveis de arquitetura, ver [.harness/invariants.md](./.harness/invariants.md). Para o protocolo de continuidade entre agentes/sessões, ver a § 0 abaixo e [.ai/](./.ai/).
+Para instruções específicas de Claude Code (context engineering, workflow detalhado), ver [CLAUDE.md](./CLAUDE.md). Para regras invioláveis de arquitetura, ver [.harness/invariants.md](./.harness/invariants.md). Para o protocolo de continuidade entre agentes/sessões, ver a § 0 abaixo e [.ai/](./.ai/). Para o processo de Issue → branch → PR → Codex Review → Vercel Preview → merge (git/GitHub, obrigatório em toda tarefa não-trivial), ver [.harness/workflow.md](./.harness/workflow.md).
 
 ---
 
@@ -24,8 +24,8 @@ O diretório [`.ai/`](./.ai/) existe pra que um agente consiga continuar exatame
 
 1. Revise as próprias mudanças (`git diff`).
 2. Rode as validações apropriadas (ver § 4/5 abaixo — `npx tsc --noEmit`, `npm test`, `bash scripts/verify.sh` quando o ambiente permitir).
-3. Atualize [`.ai/CURRENT_TASK.md`](./.ai/CURRENT_TASK.md) com o estado real (Status, Completed, In Progress, Pending).
-4. Atualize [`.ai/HANDOFF.md`](./.ai/HANDOFF.md) § Agent Context (Summary, Completed, Pending, Recommended Next Steps, Continuation Instructions — a lista completa de campos está no próprio arquivo).
+3. Atualize [`.ai/CURRENT_TASK.md`](./.ai/CURRENT_TASK.md) com o estado real (Status, `Workflow Status`, Completed, In Progress, Pending, Blockers, Next Action).
+4. Atualize [`.ai/HANDOFF.md`](./.ai/HANDOFF.md) § Agent Context (`Workflow Status`, Summary, Completed, Pending, Recommended Next Steps, Continuation Instructions — a lista completa de campos está no próprio arquivo). O bloco `Workflow Status` reflete em que ponto do pipeline de [`.harness/workflow.md`](./.harness/workflow.md) a tarefa está (Issue/branch/PR/Codex Review/Vercel Preview/Human QA/Merge/Production) — nunca marque `Merge` como `approved`/`completed` sem autorização humana explícita já registrada.
 5. Se houve decisão arquitetural relevante (provider novo, mudança de schema importante, nova abstração, decisão de segurança/multi-tenancy), registre em [`.ai/DECISIONS.md`](./.ai/DECISIONS.md). Não registre decisões triviais.
 6. Se sobrou um problema técnico real e não-trivial, registre em [`.ai/KNOWN_ISSUES.md`](./.ai/KNOWN_ISSUES.md).
 7. Rode `npm run handoff` (`scripts/generate-handoff.mjs`) — atualiza automaticamente a seção "Automatic Context" de `HANDOFF.md` (branch, commits, git status, diff --stat). Nunca edite essa seção à mão; ela é sobrescrita a cada execução.
@@ -38,6 +38,7 @@ O diretório [`.ai/`](./.ai/) existe pra que um agente consiga continuar exatame
 - Não sobrescreva trabalho não relacionado nem apague contexto útil deixado por outro agente — `HANDOFF.md`/`CURRENT_TASK.md` são atualizados, não recriados do zero, a menos que a tarefa anterior esteja genuinamente concluída.
 - `scripts/generate-handoff.mjs` nunca faz `git add`/`commit`/`push` — commit e push seguem as mesmas regras de confirmação humana já estabelecidas no resto deste documento (§ 8).
 - **Manutenção do contexto persistente**: se a tarefa alterou algo estruturalmente (novo módulo, nova integração/provider, nova tabela central, mudança de stack, novo padrão global, mudança relevante em auth/multi-tenancy), atualize [`.ai/PROJECT_CONTEXT.md`](./.ai/PROJECT_CONTEXT.md) de acordo. Para bugs e features pequenas, não mexa no contexto global.
+- **Quando atualizar `Workflow Status`**: depois de mudança relevante de estado — Issue assumida, branch criada, implementação concluída, validação rodada, push feito, PR criado, Codex Review recebido, findings corrigidos, Preview disponível, Human QA feito, autorização de merge recebida, merge concluído, Production validada. Não atualize a cada edição pequena de arquivo — o Handoff registra estado, não é um log.
 - Para tarefas grandes o suficiente pra justificar plano formal (múltiplos módulos, schema, autorização), use o sistema já existente em [`.harness/tasks/`](./.harness/tasks/README.md) — `.ai/CURRENT_TASK.md` é o ponteiro rápido do "agora"; `.harness/tasks/active/<slug>.md` é o plano detalhado quando ele existir.
 
 ---
@@ -91,6 +92,8 @@ Antes de alterar código:
 - Nenhuma migration destrutiva (drop, truncate, rename que quebra FK) sem confirmação explícita do humano.
 - Nenhuma alteração em RLS, autenticação, ou RBAC sem entender o impacto de isolamento entre organizações — esse é o maior risco de negócio deste produto (vazamento de dado entre tenants).
 - Deploy, push para `master`, e qualquer ação com efeito em produção seguem a política de confirmação do harness do agente que estiver rodando (ex.: Claude Code pede confirmação explícita antes de `git push`).
+- `master` é a branch de produção (Vercel Production publica a partir dela). Trabalho normal de desenvolvimento vai em branch isolada (`feat/`, `fix/`, `refactor/`, `perf/`, `chore/`, `hotfix/`), nunca direto em `master`. "Commit e push" autoriza commit + push da branch atual — **nunca** merge, push em `master`, ou deploy em Production, mesmo implícito.
+- Processo completo (Issue → branch → PR → Codex Review → Vercel Preview → aprovação humana → merge) em [.harness/workflow.md](./.harness/workflow.md) — obrigatório para qualquer tarefa não-trivial daqui em diante.
 
 ## 9. Escalation
 

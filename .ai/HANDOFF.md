@@ -13,6 +13,24 @@ Duas partes:
 - **Agent Context**: escrita pelo agente. O script nunca toca aqui — só a
   seção Automatic Context é regenerada.
 
+> **Relação com o workflow**: este arquivo registra o **estado atual** de
+> uma tarefa dentro do pipeline Issue → branch → PR → Codex Review →
+> Vercel Preview → merge — ele **não redefine** esse processo. A fonte de
+> verdade do processo é [`.harness/workflow.md`](../.harness/workflow.md);
+> a fonte de verdade do requisito é a Issue; a fonte de verdade da
+> implementação é o Git; a fonte de verdade da proposta/discussão/review é
+> o Pull Request. O Handoff é só o que falta pra outro agente continuar sem
+> reconstruir tudo isso do zero — não é log: não copie o review do Codex
+> nem o diff inteiro aqui, aponte para o PR.
+>
+> Toda entrada de "Agent Context" para uma tarefa nova deve abrir com um
+> bloco `Workflow Status` (mesmo formato usado em `CURRENT_TASK.md`) —
+> estados: `not_started | pending | in_progress | passed | failed |
+> blocked | completed | not_applicable`. Nunca marcar `Codex Review:
+> passed` ou `Human QA: approved` como autorização implícita de merge —
+> `Merge` continua `blocked` até autorização humana explícita (ver
+> `.harness/workflow.md` § 9).
+
 ---
 
 ## Automatic Context
@@ -119,6 +137,29 @@ _(nenhuma alteração)_
 ---
 
 ## Agent Context
+
+### Workflow Status
+```
+Issue:          not_applicable (tarefa iniciada em 2026-09-13, antes de
+                 .harness/workflow.md existir)
+Implementation: in_progress    (Fases 2-7 + ajustes pós-Fase-10 concluídos;
+                 Fase 6 completa e Fases 8-10 seguem pendentes — ver
+                 .ai/CURRENT_TASK.md § Pending)
+Validation:     passed         (ver "Verificação final desta sessão" abaixo)
+Push:           completed      (direto em master — histórico, anterior ao
+                 workflow atual; não é o padrão daqui em diante)
+PR:             not_applicable
+Codex Review:   not_applicable
+Vercel Preview: not_applicable (predata o workflow; já está em Production)
+Human QA:       not_applicable
+Merge:          completed      (já em master/Production)
+Production:     deployed
+```
+Continuações desta tarefa (reconciliação das duas taxonomias de plano,
+testes de concorrência real, etc. — ver "Recommended Next Steps" abaixo)
+NÃO herdam este status retroativo: devem abrir Issue própria e seguir
+`.harness/workflow.md` do zero (branch isolada, PR, Codex Review, Preview,
+aprovação humana antes de qualquer merge).
 
 ### Previous Agent
 Claude (Claude Code)

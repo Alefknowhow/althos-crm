@@ -96,6 +96,7 @@ Althos CRM é um CRM multi-tenant que atende várias verticais (não só agênci
 ### Deployment
 - CI (`.github/workflows/ci.yml`) roda `bash scripts/verify.sh` — o MESMO script que roda localmente (Harness), sem pipeline paralelo. Ordem real: env check → integridade de deps → `tsc --noEmit` → `npm run lint` (ESLint 9) → `npm test` → integração/segurança/E2E (todos reportam `NOT CONFIGURED`, não fingir que existem) → `npm run build` → `git status`/`git diff` de sanidade.
 - Deploy real é via Vercel (não está no workflow do GitHub — integração direta Vercel↔GitHub, auto-deploy em push pra `master`).
+- **Processo de git/PR** (branch a partir de Issue, commits, PR, Codex Review, Vercel Preview, aprovação humana, merge): não documentado aqui para evitar duplicação — ver [.harness/workflow.md](./.harness/workflow.md), fonte de verdade única. Resumo: nunca trabalhar direto em `master`; "commit e push" nunca implica merge/deploy.
 
 ---
 
@@ -159,6 +160,7 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 
 ## 5. Onde encontrar o quê
 
+- Processo de git/GitHub (Issue → branch → PR → Codex Review → Vercel Preview → merge): [.harness/workflow.md](./.harness/workflow.md).
 - Documentação de features já auditadas: `docs/audit/*.md` (não confiar cegamente — são snapshots, confirme contra o código se a tarefa depende disso).
 - Guia de deploy: `DEPLOY.md`.
 - Perfil de projeto herdado (pré-Harness, pode conter itens desatualizados — ex.: menciona Stripe/Pino/Playwright que não existem no código real): `.agent.md`.

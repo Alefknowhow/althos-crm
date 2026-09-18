@@ -2,6 +2,8 @@
 
 Sistema simples de arquivos markdown para tarefas que justificam planejamento explícito (múltiplos módulos, schema de banco, autorização, ou qualquer coisa onde vale a pena registrar o plano antes de implementar). Tarefas triviais (1 arquivo, comportamento óbvio) não precisam passar por aqui.
 
+Este sistema registra o **plano e o estado** da tarefa; o processo de git/GitHub em si (Issue, branch, PR, Codex Review, Vercel Preview, merge) é definido em [`.harness/workflow.md`](../workflow.md) — o template em `templates/feature.md` já inclui os campos (`Issue`/`Branch`/`PR`/`Workflow Status`) alinhados com esse processo.
+
 ## Lifecycle
 
 ```
