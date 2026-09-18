@@ -156,10 +156,10 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
       {/* Linha 2 — data de embarque — data de chegada — colunas de largura fixa,
           coladas (sem esticar pra largura do card), pra ficar no mesmo lugar
           em toda linha da tabela. */}
-      <div className="grid grid-cols-[44px_14px_44px] items-center gap-x-1 text-muted-foreground">
-        <span className="text-left">{fmtShort(first.data)}</span>
-        <span className="text-center">—</span>
-        <span className="text-left">
+      <div className="flex items-center gap-1 text-muted-foreground whitespace-nowrap">
+        <span>{fmtShort(first.data)}</span>
+        <span>—</span>
+        <span>
           {fmtShort(arrivalDate)}
           {nextDayArrival && <sup className="text-primary font-semibold ml-0.5">+1</sup>}
         </span>
@@ -167,7 +167,7 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
 
       {/* Linha 3 — origem+horário → destino+horário (duração) — mesma lógica
           de colunas fixas e coladas, horário do lado do código do aeroporto. */}
-      <div className="grid grid-cols-[30px_38px_14px_30px_38px_auto] items-baseline gap-x-1 tabular-nums">
+      <div className="grid grid-cols-[30px_38px_14px_30px_38px_auto] items-baseline gap-x-1 tabular-nums whitespace-nowrap">
         <span className="font-bold text-foreground">{first.origem || '—'}</span>
         <span className="text-[10px] font-normal text-muted-foreground">{first.horario || ''}</span>
         <span className="text-center text-muted-foreground">→</span>
