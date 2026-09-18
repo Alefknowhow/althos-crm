@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import { buildFlightDesignator } from '@/actions/flight-lookup'
+import { AIRPORTS } from '@/lib/airports'
+import { flagForCountry } from '@/lib/travel/country-flag'
 
 export type ScheduledTrip = {
   id: string
@@ -25,6 +27,17 @@ export type ScheduledTrip = {
   created_by: string | null
   /** Saúde da reserva por tarefas pendentes — ver listScheduledTrips. */
   health: 'green' | 'yellow' | 'red'
+  /** Tarefas concluídas / total vinculadas à reserva — coluna Tarefas do
+   *  painel de Gestão de Viagens (mesmas tarefas do módulo Tarefas). */
+  tasks_done: number
+  tasks_total: number
+  /** Bandeira do destino (emoji) — deduzida do aeroporto de chegada do 1º
+   *  trecho de ida via lib/airports.ts, quando disponível. */
+  destination_flag: string | null
+  /** País do destino (deduzido do aeroporto de chegada), pra mostrar abaixo
+   *  do nome da cidade na coluna Datas/Destino — 'Brasil' quando o aeroporto
+   *  é doméstico (sem `country` em AIRPORTS). */
+  destination_country: string | null
   flights: FlightLegInfo[]
   /** Itens inclusos na reserva (voos/hospedagem/transfer/passeios/...) —
    *  mesmas chaves de INCLUDED_ITEMS (proposals/TravelSalesViewShared.tsx),
@@ -133,6 +146,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   // Saúde da reserva: verde = todas as tarefas concluídas, vermelho = alguma
   // pendente de alta prioridade, amarelo = pendente sem ser alta prioridade.
   const healthBySale = new Map<string, 'green' | 'yellow' | 'red'>()
+  const taskCountsBySale = new Map<string, { done: number; total: number }>()
   if (saleIds.length > 0) {
     const { data: allTasks } = await supabase
       .from('tasks')
@@ -150,6 +164,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       if (openTasks.length === 0) healthBySale.set(saleId, 'green')
       else if (openTasks.some((t: any) => t.priority === 'high')) healthBySale.set(saleId, 'red')
       else healthBySale.set(saleId, 'yellow')
+      taskCountsBySale.set(saleId, { done: tasks.length - openTasks.length, total: tasks.length })
     })
   }
 
@@ -245,7 +260,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
     for (const leg of pending) {
       if (!legsBySale.has(leg.sale_id)) legsBySale.set(leg.sale_id, [])
-      const { sale_id, designator, ...rest } = leg
+      const { sale_id, designator: _designator, ...rest } = leg
       legsBySale.get(sale_id)!.push(rest)
     }
   }
@@ -269,12 +284,20 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
   return rows.map(r => {
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
+    const flights = legsBySale.get(r.id) ?? []
+    const outbound = flights.find(f => f.sentido !== 'volta') ?? flights[0]
+    const airport = outbound?.destino ? AIRPORTS[outbound.destino.toUpperCase()] : null
+    const counts = taskCountsBySale.get(r.id)
     return {
       ...r,
       lead_name: lead?.name ?? null,
       lead_phone: lead?.phone ?? null,
       health: healthBySale.get(r.id) ?? 'green',
-      flights: legsBySale.get(r.id) ?? [],
+      tasks_done: counts?.done ?? 0,
+      tasks_total: counts?.total ?? 0,
+      destination_flag: flagForCountry(airport?.country) || (airport && !airport.country ? '🇧🇷' : null),
+      destination_country: airport ? (airport.country ?? 'Brasil') : null,
+      flights,
       included_items: Array.isArray(r.included_items) ? r.included_items : [],
       other_items: otherBySale.get(r.id) ?? [],
     } as ScheduledTrip

@@ -4,15 +4,20 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
-import { cn } from '@/lib/utils'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
-import { CalendarClock, CalendarDays, ListChecks, CheckCircle2 } from 'lucide-react'
+import { ListChecks, CalendarDays } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
 import { TripDetail } from './ScheduleTripDetail'
 import { ScheduleListView } from './ScheduleListView'
-import { ScheduleFiltersBar, type SchedulePeriod, type ScheduleHealthFilter } from './ScheduleFiltersBar'
+import { ScheduleHeader } from './ScheduleHeader'
+import { ScheduleStatusTabs, type ScheduleStatusTab } from './ScheduleStatusTabs'
+import { tripState, tripPhase, hasAlert } from './schedule-phase'
+import {
+  ScheduleFiltersBar, type SchedulePeriod, type ScheduleHealthFilter,
+  type ScheduleStatusFilter, type ScheduleSort,
+} from './ScheduleFiltersBar'
 
 const DAY = 86400000
 const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
@@ -26,70 +31,29 @@ function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); re
 function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
 function addDays(d: Date, n: number) { return new Date(d.getTime() + n * DAY) }
 function firstOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
-// Coluna em que "hoje" deve ficar posicionado sempre que o módulo é aberto
-// (não no início/borda da janela) — a navegação avança/retrocede o mesmo
-// número de colunas (dias) por clique.
 const TODAY_COLUMN = 4
 const NAV_STEP_DAYS = 30
 
-function tripState(t: ScheduledTrip, today: Date): TripState {
-  const dep = parseDate(t.departure_date)
-  const ret = parseDate(t.return_date) || dep
-  if (!dep) return 'upcoming'
-  const end = ret || dep
-  if (end < today) return 'past'
-  if (dep <= today && today <= end) return 'ongoing'
-  return 'upcoming'
-}
-
-export default function ScheduleClient({
-  orgSlug, trips, members = [],
-}: {
-  orgSlug: string
-  trips: ScheduledTrip[]
-  members?: { user_id: string; name: string }[]
-}) {
-  const today = useMemo(() => startOfDay(new Date()), [])
-  const [filter, setFilter] = useState<'all' | TripState>('all')
-  const [owner, setOwner] = useState<string>('all')
+function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
+  const [statusTab, setStatusTab] = useState<ScheduleStatusTab>('all')
+  const [owner, setOwner] = useState('all')
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState<SchedulePeriod>('all')
   const [health, setHealth] = useState<ScheduleHealthFilter>('all')
-  // Deslocamento em dias a partir da posição padrão (hoje na coluna
-  // TODAY_COLUMN) — navegação avança/retrocede NAV_STEP_DAYS colunas por vez.
-  const [dayOffset, setDayOffset] = useState(0)
-  const [selected, setSelected] = useState<ScheduledTrip | null>(null)
-  const [tasks, setTasks] = useState<TripTask[]>([])
-  const [loadingTasks, startTasks] = useTransition()
-  // Zoom (Ctrl+scroll): quantos meses cabem na janela visível — menos meses
-  // = colunas de dia mais largas (zoom in), mais meses = mais estreitas.
-  // Padrão ao abrir a tela: 1 mês (28-31 colunas de dia, ~30) em vez dos
-  // 3 meses anteriores — a janela é sempre alinhada a mês inteiro (ver
-  // months/dayNumbers abaixo), por isso não dá pra travar em exatos 30 dias
-  // sem também reformular os cabeçalhos de mês pra janelas parciais.
-  const [monthsSpan, setMonthsSpan] = useState(1)
-  const ganttRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ganttRef.current
-    if (!el) return
-    // preventDefault só funciona com um listener nativo não-passivo — o
-    // onWheel do React é passivo por padrão, não bloquearia o zoom do
-    // navegador (Ctrl+scroll também dá zoom na página inteira).
-    function onWheel(e: WheelEvent) {
-      if (!e.ctrlKey) return
-      e.preventDefault()
-      setMonthsSpan(v => Math.min(6, Math.max(1, v + (e.deltaY < 0 ? -1 : 1))))
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  const [destination, setDestination] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>('all')
+  const [operator, setOperator] = useState('all')
+  const [sort, setSort] = useState<ScheduleSort>('departure')
 
   const filtered = useMemo(() => {
     let out = trips
-    if (filter !== 'all') out = out.filter(t => tripState(t, today) === filter)
+    if (statusTab === 'alerts') out = out.filter(hasAlert)
+    else if (statusTab !== 'all') out = out.filter(t => tripPhase(t, today) === statusTab)
     if (owner !== 'all') out = out.filter(t => t.created_by === owner)
     if (health !== 'all') out = out.filter(t => t.health === health)
+    if (destination !== 'all') out = out.filter(t => t.destination === destination)
+    if (operator !== 'all') out = out.filter(t => t.operator === operator)
+    if (statusFilter !== 'all') out = out.filter(t => (statusFilter === 'cancelled') === (t.status === 'cancelled'))
     if (period !== 'all') {
       out = out.filter(t => {
         const dep = parseDate(t.departure_date)
@@ -109,22 +73,67 @@ export default function ScheduleClient({
         (t.air_locator || '').toLowerCase().includes(needle),
       )
     }
-    return out
-  }, [trips, filter, owner, health, period, search, today])
+    const sorted = [...out]
+    sorted.sort((a, b) => {
+      switch (sort) {
+        case 'return': return (parseDate(a.return_date)?.getTime() || 0) - (parseDate(b.return_date)?.getTime() || 0)
+        case 'client': return (a.client_name || '').localeCompare(b.client_name || '')
+        case 'destination': return (a.destination || '').localeCompare(b.destination || '')
+        case 'tasks_pending': return (b.tasks_total - b.tasks_done) - (a.tasks_total - a.tasks_done)
+        default: return (parseDate(a.departure_date)?.getTime() || 0) - (parseDate(b.departure_date)?.getTime() || 0)
+      }
+    })
+    return sorted
+  }, [trips, statusTab, owner, health, destination, operator, statusFilter, period, search, sort, today])
 
-  // Janela do gantt: ~monthsSpan meses (30 dias cada) a partir de uma
-  // posição fixa em dias antes de hoje (TODAY_COLUMN), deslocada por
-  // dayOffset (navegação em blocos de NAV_STEP_DAYS colunas).
-  const totalDays = Math.max(1, monthsSpan * 30)
-  const windowStart = useMemo(
-    () => addDays(startOfDay(today), dayOffset - TODAY_COLUMN),
-    [today, dayOffset],
+  return {
+    statusTab, setStatusTab, owner, setOwner, search, setSearch, period, setPeriod,
+    health, setHealth, destination, setDestination, statusFilter, setStatusFilter,
+    operator, setOperator, sort, setSort, filtered,
+  }
+}
+
+export default function ScheduleClient({
+  orgSlug, trips, members = [],
+}: {
+  orgSlug: string
+  trips: ScheduledTrip[]
+  members?: { user_id: string; name: string }[]
+}) {
+  const today = useMemo(() => startOfDay(new Date()), [])
+  const f = useScheduleFilters(trips, today)
+  const [dayOffset, setDayOffset] = useState(0)
+  const [selected, setSelected] = useState<ScheduledTrip | null>(null)
+  const [tasks, setTasks] = useState<TripTask[]>([])
+  const [loadingTasks, startTasks] = useTransition()
+  const [monthsSpan, setMonthsSpan] = useState(1)
+  const ganttRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ganttRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      setMonthsSpan(v => Math.min(6, Math.max(1, v + (e.deltaY < 0 ? -1 : 1))))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const destinations = useMemo(
+    () => Array.from(new Set(trips.map(t => t.destination).filter(Boolean))).sort() as string[],
+    [trips],
   )
+  const operators = useMemo(
+    () => Array.from(new Set(trips.map(t => t.operator).filter(Boolean))).sort() as string[],
+    [trips],
+  )
+
+  const totalDays = Math.max(1, monthsSpan * 30)
+  const windowStart = useMemo(() => addDays(startOfDay(today), dayOffset - TODAY_COLUMN), [today, dayOffset])
   const windowEnd = useMemo(() => addDays(windowStart, totalDays), [windowStart, totalDays])
 
-  // Janela não é mais alinhada ao início do mês, então o cabeçalho de meses
-  // precisa fatiar por mês-calendário sobreposto à janela, em vez de assumir
-  // meses inteiros a partir de windowStart.
   const months = useMemo(() => {
     const out: { label: string; leftPct: number; widthPct: number }[] = []
     let cursor = firstOfMonth(windowStart)
@@ -147,10 +156,6 @@ export default function ScheduleClient({
     return p >= 0 && p <= 100 ? p : null
   }, [today, windowStart, totalDays])
 
-  // Cada dia vira uma linha vertical fina, e o número do dia fica
-  // centralizado exatamente em cima dela (mesma posição, não uma coluna) —
-  // só o próprio início (0%) fica de fora, já coberto pela borda do
-  // container.
   const dayLines = useMemo(() => {
     const lines: number[] = []
     for (let i = 1; i < totalDays; i++) lines.push((i / totalDays) * 100)
@@ -166,26 +171,21 @@ export default function ScheduleClient({
     return out
   }, [windowStart, totalDays])
 
-  // Trips que aparecem no gantt: que sobrepõem a janela
   const ganttTrips = useMemo(() => {
-    return filtered.map(t => {
+    return f.filtered.map(t => {
       const depRaw = parseDate(t.departure_date)
       const retRaw = parseDate(t.return_date) || depRaw
       if (!depRaw) return null
-      // parseDate ancora em T12:00:00 (meio-dia) — windowStart/windowEnd são
-      // meia-noite. Sem normalizar pra início do dia aqui, a marcação nasce
-      // deslocada meio dia (metade de uma coluna) pra direita.
       const dep = startOfDay(depRaw)
       const end = startOfDay(retRaw || depRaw)
-      // overlap test
       if (end < windowStart || dep >= windowEnd) return null
       const clampedStart = Math.max(dep.getTime(), windowStart.getTime())
-      const clampedEnd = Math.min(end.getTime() + DAY, windowEnd.getTime()) // inclui o dia de retorno
+      const clampedEnd = Math.min(end.getTime() + DAY, windowEnd.getTime())
       const left = (clampedStart - windowStart.getTime()) / DAY / totalDays * 100
       const width = Math.max(1.5, (clampedEnd - clampedStart) / DAY / totalDays * 100)
       return { trip: t, left, width, state: tripState(t, today) }
     }).filter(Boolean) as { trip: ScheduledTrip; left: number; width: number; state: TripState }[]
-  }, [filtered, windowStart, windowEnd, totalDays, today])
+  }, [f.filtered, windowStart, windowEnd, totalDays, today])
 
   function openTrip(t: ScheduledTrip) {
     setSelected(t)
@@ -199,15 +199,28 @@ export default function ScheduleClient({
   }
 
   const counts = useMemo(() => {
-    const c = { all: trips.length, upcoming: 0, ongoing: 0, past: 0 }
-    for (const t of trips) c[tripState(t, today)]++
+    const c = { all: trips.length, pre: 0, em: 0, pos: 0, concluida: 0, cancelada: 0, alerts: 0 }
+    for (const t of trips) {
+      c[tripPhase(t, today)]++
+      if (hasAlert(t)) c.alerts++
+    }
     return c
   }, [trips, today])
+
+  const headerStats = useMemo(() => {
+    const embarking7d = trips.filter(t => {
+      const dep = parseDate(t.departure_date)
+      if (!dep) return false
+      const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+      return days >= 0 && days <= 7
+    }).length
+    return { ativas: trips.length, embarking7d, emViagem: counts.em, alerts: counts.alerts }
+  }, [trips, counts, today])
 
   if (trips.length === 0) {
     return (
       <EmptyState
-        icon={CalendarClock}
+        icon={CalendarDays}
         title="Nenhum embarque programado"
         description="As viagens vendidas com data de partida aparecem aqui em um painel visual. Registre uma reserva em Reservas para começar."
       >
@@ -220,37 +233,27 @@ export default function ScheduleClient({
 
   return (
     <>
-      <Tabs defaultValue="list">
-        <ScheduleFiltersBar
-          search={search} setSearch={setSearch}
-          owner={owner} setOwner={setOwner} members={members}
-          period={period} setPeriod={setPeriod}
-          health={health} setHealth={setHealth}
-        />
+      <ScheduleHeader orgSlug={orgSlug} stats={headerStats} />
 
-        {/* Status (Todas/Próximas/Em andamento/Concluídas) + Lista/Linha do tempo — mesma linha, sempre nessa posição. */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {([
-              { id: 'all', label: `Todas (${counts.all})`, icon: ListChecks },
-              { id: 'upcoming', label: `Próximas (${counts.upcoming})`, icon: CalendarClock },
-              { id: 'ongoing', label: `Em andamento (${counts.ongoing})`, icon: CalendarDays },
-              { id: 'past', label: `Concluídas (${counts.past})`, icon: CheckCircle2 },
-            ] as const).map(b => (
-              <button
-                key={b.id}
-                onClick={() => setFilter(b.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
-                  filter === b.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground border-border',
-                )}
-              >
-                <b.icon className="w-3.5 h-3.5" /> {b.label}
-              </button>
-            ))}
+      <Tabs defaultValue="list" className="mt-4">
+        <div className="mb-3">
+          <ScheduleStatusTabs value={f.statusTab} onChange={f.setStatusTab} counts={counts} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <ScheduleFiltersBar
+              search={f.search} setSearch={f.setSearch}
+              owner={f.owner} setOwner={f.setOwner} members={members}
+              period={f.period} setPeriod={f.setPeriod}
+              health={f.health} setHealth={f.setHealth}
+              destination={f.destination} setDestination={f.setDestination} destinations={destinations}
+              status={f.statusFilter} setStatus={f.setStatusFilter}
+              operator={f.operator} setOperator={f.setOperator} operators={operators}
+              sort={f.sort} setSort={f.setSort}
+            />
           </div>
-
-          <TabsList>
+          <TabsList className="shrink-0">
             <TabsTrigger value="list"><ListChecks className="w-4 h-4 mr-1.5" /> Lista</TabsTrigger>
             <TabsTrigger value="gantt"><CalendarDays className="w-4 h-4 mr-1.5" /> Linha do tempo</TabsTrigger>
           </TabsList>
@@ -274,15 +277,8 @@ export default function ScheduleClient({
         </TabsContent>
 
         {/* ── Lista ───────────────────────────────────────────── */}
-        <TabsContent value="list" className="mt-4">
-          <ScheduleListView
-            orgSlug={orgSlug}
-            filtered={filtered}
-            today={today}
-            tripState={tripState}
-            members={members}
-            onOpenTrip={openTrip}
-          />
+        <TabsContent value="list" className="mt-0">
+          <ScheduleListView orgSlug={orgSlug} filtered={f.filtered} today={today} onOpenTrip={openTrip} />
         </TabsContent>
       </Tabs>
 

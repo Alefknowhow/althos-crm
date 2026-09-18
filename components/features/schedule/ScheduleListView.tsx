@@ -1,23 +1,22 @@
 'use client'
 
 /**
- * List view for ScheduleClient. Prop-driven, split out of
- * ScheduleClient.tsx. Um card por linha, ocupando toda a largura
- * disponível (pedido explícito) — o card em si é ScheduleTripCard.tsx.
+ * List view for ScheduleClient — tabela compacta (1 linha por viagem),
+ * fiel ao mockup de Gestão de Viagens. Prop-driven, split out of
+ * ScheduleClient.tsx.
  */
 
 import type { ScheduledTrip } from '@/actions/travel-schedule'
-import { type TripState } from './ScheduleGanttView'
-import { ScheduleTripCard } from './ScheduleTripCard'
+import { ScheduleTripRow } from './ScheduleTripRow'
+
+const COLUMNS = ['EMBARQUE', 'VIAGEM / CLIENTE', 'DATAS / DESTINO', 'VOO DE IDA', 'VOO DE VOLTA', 'SERVIÇOS', 'TAREFAS', '']
 
 export function ScheduleListView({
-  orgSlug, filtered, today, tripState, members, onOpenTrip,
+  orgSlug, filtered, today, onOpenTrip,
 }: {
   orgSlug: string
   filtered: ScheduledTrip[]
   today: Date
-  tripState: (t: ScheduledTrip, today: Date) => TripState
-  members: { user_id: string; name: string }[]
   onOpenTrip: (t: ScheduledTrip) => void
 }) {
   if (filtered.length === 0) {
@@ -25,19 +24,24 @@ export function ScheduleListView({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3">
-        {filtered.map(t => (
-          <ScheduleTripCard
-            key={t.id}
-            orgSlug={orgSlug}
-            t={t}
-            today={today}
-            tripState={tripState}
-            sellerName={members.find(m => m.user_id === t.created_by)?.name}
-            onOpenTrip={onOpenTrip}
-          />
-        ))}
+    <div className="space-y-2">
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b bg-muted/40">
+              {COLUMNS.map(col => (
+                <th key={col} className="py-2 px-3 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap first:pl-4 last:pr-4">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(t => (
+              <ScheduleTripRow key={t.id} orgSlug={orgSlug} t={t} today={today} onOpenTrip={onOpenTrip} />
+            ))}
+          </tbody>
+        </table>
       </div>
       <p className="text-xs text-muted-foreground">{filtered.length} viagem{filtered.length !== 1 ? 's' : ''} encontrada{filtered.length !== 1 ? 's' : ''}</p>
     </div>

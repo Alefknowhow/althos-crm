@@ -20,10 +20,10 @@ export default async function ViagensProgramadasPage({ params }: { params: { org
   ])
 
   return (
-    <div className="pt-3 -mb-5 space-y-6">
+    <div className="pt-3 -mb-5 space-y-4">
       <PageHeader
-        title="Embarques"
-        hint="Acompanhe visualmente as viagens vendidas — datas de partida e retorno, tarefas relacionadas e atalho direto para o WhatsApp do cliente."
+        title="Gestão de Viagens"
+        hint="Central operacional de viagens — cliente, destino, voos, localizadores, status de voo, serviços contratados e tarefas de cada reserva, tudo escaneável numa lista só."
       />
 
       <ScheduleClient orgSlug={params.orgSlug} trips={trips} members={members} />
