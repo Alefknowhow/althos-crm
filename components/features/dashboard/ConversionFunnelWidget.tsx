@@ -210,7 +210,7 @@ function FunnelChart({
   fmtCurrency: (cents: number) => string
   onOpen: () => void
 }) {
-  const MIN_PCT = 28
+  const MIN_PCT = 12
 
   return (
     <div
@@ -219,22 +219,31 @@ function FunnelChart({
       onClick={onOpen}
       onKeyDown={e => { if (e.key === 'Enter') onOpen() }}
       title="Ver no Pipeline"
-      className="flex-1 min-h-0 flex flex-col gap-2 py-1 overflow-y-auto cursor-pointer"
+      className="flex-1 min-h-0 flex items-stretch gap-3 py-1 px-1 overflow-x-auto cursor-pointer"
     >
       {stages.map((stage, i) => {
-        const widthPct = MIN_PCT + (100 - MIN_PCT) * (stage.count / maxCount)
+        const heightPct = MIN_PCT + (100 - MIN_PCT) * (stage.count / maxCount)
         const fill = stage.color || `var(--chart-${(i % 6) + 1})`
         return (
-          <div key={stage.id} className="flex-1 min-h-[40px] flex justify-center">
-            <div
-              className="h-full rounded-md flex flex-col items-center justify-center text-center px-4 transition-opacity hover:opacity-90 min-w-0"
-              style={{ width: `${widthPct}%`, backgroundColor: fill }}
-            >
-              <div className="text-[13px] font-bold text-white leading-tight tabular-nums truncate max-w-full">
-                {stage.count} · {stage.name}
+          <div key={stage.id} className="flex flex-col items-center flex-1 min-w-0">
+            <div className="flex-1 w-full flex items-end justify-center min-h-0">
+              <div
+                className="w-full max-w-[64px] rounded-t-md flex flex-col items-center justify-start pt-1 transition-opacity hover:opacity-90 min-h-0"
+                style={{ height: `${heightPct}%`, backgroundColor: fill }}
+              >
+                <div className="text-[13px] font-bold text-white leading-tight tabular-nums truncate max-w-full px-1">
+                  {stage.count}
+                </div>
+                {i > 0 && (
+                  <div className="text-[10px] text-white/80 leading-tight tabular-nums truncate max-w-full px-1">
+                    {stage.conversion_from_previous.toFixed(0)}%
+                  </div>
+                )}
               </div>
-              <div className="text-[10px] text-white/80 leading-tight tabular-nums truncate max-w-full">
-                {i > 0 ? `${stage.conversion_from_previous.toFixed(0)}% · ` : ''}
+            </div>
+            <div className="mt-2 text-center min-w-0 w-full">
+              <div className="text-xs font-medium truncate" title={stage.name}>{stage.name}</div>
+              <div className="text-[10px] text-muted-foreground tabular-nums truncate">
                 {stage.value_cents > 0 ? fmtCurrency(stage.value_cents) : ''}
               </div>
             </div>

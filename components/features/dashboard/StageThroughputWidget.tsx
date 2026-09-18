@@ -75,25 +75,33 @@ export default function StageThroughputWidget({ orgSlug, pipelineId }: Props) {
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex items-stretch gap-3 pt-2 pb-1">
-            {stages.map((stage: StageThroughputRow) => {
-              const heightPct = Math.max(6, (stage.count / maxCount) * 100)
-              const color = stage.stage_color || '#0f62fe'
+            {(() => {
+              const baseCount = stages[0]?.count || 0
+              return stages.map((stage: StageThroughputRow) => {
+                const heightPct = Math.max(6, (stage.count / maxCount) * 100)
+                const color = stage.stage_color || '#0f62fe'
+                const pct = baseCount > 0 ? (stage.count / baseCount) * 100 : 0
 
-              return (
-                <div key={stage.stage_id} className="flex flex-col items-center flex-1 min-w-0">
-                  <div className="flex-1 w-full flex items-end justify-center min-h-0">
-                    <div
-                      className="w-full max-w-[56px] rounded-t-md"
-                      style={{ height: `${heightPct}%`, backgroundColor: color }}
-                    />
+                return (
+                  <div key={stage.stage_id} className="flex flex-col items-center flex-1 min-w-0">
+                    <div className="flex-1 w-full flex items-end justify-center min-h-0">
+                      <div
+                        className="w-full max-w-[56px] rounded-t-md flex items-start justify-center pt-1"
+                        style={{ height: `${heightPct}%`, backgroundColor: color }}
+                      >
+                        <span className="text-[10px] font-semibold text-white tabular-nums leading-tight">
+                          {pct.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-center min-w-0 w-full">
+                      <div className="text-base font-bold tabular-nums leading-tight">{stage.count}</div>
+                      <div className="text-xs font-medium truncate" title={stage.stage_name}>{stage.stage_name}</div>
+                    </div>
                   </div>
-                  <div className="mt-2 text-center min-w-0 w-full">
-                    <div className="text-base font-bold tabular-nums leading-tight">{stage.count}</div>
-                    <div className="text-xs font-medium truncate" title={stage.stage_name}>{stage.stage_name}</div>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            })()}
           </div>
         )}
       </CardContent>
