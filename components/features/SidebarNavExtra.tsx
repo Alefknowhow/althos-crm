@@ -2,6 +2,7 @@ import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarSupportLink from './SidebarSupportLink'
 import SidebarConfigAccordion from './SidebarConfigAccordion'
+import SidebarVoiceAccordion from './SidebarVoiceAccordion'
 import SidebarClientAccordion from './SidebarClientAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
@@ -9,7 +10,7 @@ import { isModuleEnabled } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
   FileText, Package, Zap, Megaphone, Send, FileSignature,
-  Star, Building2, ShieldAlert, FileStack, Phone, MessageCircle, Headset,
+  Star, Building2, ShieldAlert, FileStack, MessageCircle, Headset,
   FolderKanban,
 } from 'lucide-react'
 
@@ -141,14 +142,7 @@ export async function SidebarNavExtra({
         </div>
       )}
 
-      {can('voice') && (
-        <SidebarNavLink href={`${base}/voice`}>
-          <span className="flex items-center gap-2.5">
-            <Phone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Voice</span>
-          </span>
-        </SidebarNavLink>
-      )}
+      {can('voice') && <SidebarVoiceAccordion base={base} />}
 
       {can('sales_coach') && (
         <SidebarNavLink href={`${base}/sales-coach`}>
