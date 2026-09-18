@@ -115,6 +115,7 @@ function AereoInlineDetails({ data }: { data: Record<string, any> }) {
   if (!route && !data.data) return null
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+      {data.numero_voo && <span className="font-medium text-foreground">Voo {data.numero_voo}</span>}
       {route && (
         <span className="font-medium text-foreground">
           {data.origem}{originCity ? ` (${originCity})` : ''} → {data.destino}{destCity ? ` (${destCity})` : ''}

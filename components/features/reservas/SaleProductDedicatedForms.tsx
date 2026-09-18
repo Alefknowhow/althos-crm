@@ -8,10 +8,11 @@
  * SaleProductsTab.tsx (que ficou grande demais).
  */
 
+import { useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Backpack, Briefcase, PackageCheck } from 'lucide-react'
+import { Backpack, Briefcase, PackageCheck, CalendarClock } from 'lucide-react'
 import { cityFromAirportCode } from '@/lib/airports'
 
 // Mesmas opções de regime de hospedagem do bloco Hospedagens em Cotações
@@ -74,16 +75,30 @@ function BaggagePicker({ value, onChange }: { value: string | string[] | undefin
 function DateTimeField({
   label, required, date, time, onChange,
 }: { label: string; required?: boolean; date: string; time: string; onChange: (date: string, time: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
   return (
     <Field label={label} required={required}>
-      <Input
-        type="datetime-local"
-        value={date && time ? `${date}T${time}` : ''}
-        onChange={e => {
-          const [d, t] = e.target.value.split('T')
-          onChange(d || '', t || '')
-        }}
-      />
+      <div className="relative">
+        <Input
+          ref={ref}
+          type="datetime-local"
+          className="pr-9 [&::-webkit-calendar-picker-indicator]:opacity-0"
+          value={date && time ? `${date}T${time}` : ''}
+          onChange={e => {
+            const [d, t] = e.target.value.split('T')
+            onChange(d || '', t || '')
+          }}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => ref.current?.showPicker?.()}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+          title="Selecionar dia e hora"
+        >
+          <CalendarClock className="w-4 h-4" />
+        </button>
+      </div>
     </Field>
   )
 }

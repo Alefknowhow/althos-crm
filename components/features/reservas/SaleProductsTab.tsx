@@ -4,15 +4,9 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -24,126 +18,7 @@ import {
 } from '@/actions/sale-products'
 import SaleProductCard from '@/components/features/reservas/SaleProductCard'
 import { AereoFormFields, HospedagemFormFields } from '@/components/features/reservas/SaleProductDedicatedForms'
-
-const KIND_OPTIONS: { value: SaleProductKind; label: string }[] = [
-  { value: 'aereo', label: 'Aéreo' },
-  { value: 'hospedagem', label: 'Hospedagem' },
-  { value: 'transfer', label: 'Transfer' },
-  { value: 'passeio', label: 'Passeio' },
-  { value: 'cruzeiro', label: 'Cruzeiro' },
-  { value: 'seguro', label: 'Seguro' },
-  { value: 'ingresso', label: 'Ingresso' },
-  { value: 'veiculo', label: 'Locação de veículo' },
-  { value: 'outro', label: 'Outro' },
-]
-
-type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea'; required?: boolean }
-
-const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
-  aereo: [
-    { key: 'companhia', label: 'Companhia' },
-    { key: 'numero_voo', label: 'Número do voo' },
-    { key: 'sentido', label: 'Sentido (ida/volta)', required: true },
-    { key: 'localizador', label: 'Localizador (web check-in)' },
-    { key: 'bilhete', label: 'Nº do bilhete' },
-    { key: 'origem', label: 'Origem (código)', required: true },
-    { key: 'destino', label: 'Destino (código)', required: true },
-    { key: 'data', label: 'Data de embarque', type: 'date', required: true },
-    { key: 'hora_embarque', label: 'Hora de embarque', required: true },
-    { key: 'data_chegada', label: 'Data de chegada', type: 'date' },
-    { key: 'hora_chegada', label: 'Hora de chegada' },
-    { key: 'categoria', label: 'Categoria (econômica/executiva/...)' },
-    { key: 'classe', label: 'Classe (X, Y, Z...)' },
-    { key: 'bagagem', label: 'Franquia de bagagem' },
-    { key: 'conexao_local', label: 'Conexão — aeroporto/cidade (se houver)' },
-    { key: 'conexao_duracao', label: 'Conexão — tempo de espera (se houver)' },
-    { key: 'observacoes', label: 'Observação', type: 'textarea' },
-  ],
-  hospedagem: [
-    { key: 'hotel', label: 'Hotel' },
-    { key: 'localizador', label: 'Localizador (RES...)' },
-    { key: 'titular', label: 'Titular da reserva' },
-    { key: 'check_in', label: 'Check-in', type: 'date' },
-    { key: 'hora_checkin', label: 'Horário do check-in' },
-    { key: 'check_out', label: 'Check-out', type: 'date' },
-    { key: 'hora_checkout', label: 'Horário do check-out' },
-    { key: 'tipo_quarto', label: 'Tipo de quarto' },
-    { key: 'regime', label: 'Regime' },
-    { key: 'endereco', label: 'Endereço do hotel' },
-    { key: 'email', label: 'E-mail do hotel' },
-    { key: 'telefone', label: 'Telefone do hotel' },
-    { key: 'informacoes_adicionais', label: 'Informações adicionais', type: 'textarea' },
-    { key: 'politica_cancelamento', label: 'Política de cancelamento', type: 'textarea' },
-    { key: 'condicoes', label: 'Condições da reserva', type: 'textarea' },
-  ],
-  transfer: [
-    { key: 'titular', label: 'Titular' },
-    { key: 'codigo_reserva', label: 'Código da reserva' },
-    { key: 'data', label: 'Data', type: 'date' },
-    { key: 'horario', label: 'Horário' },
-    { key: 'origem', label: 'Local de partida' },
-    { key: 'destino', label: 'Destino' },
-    { key: 'tipo_servico', label: 'Tipo de serviço' },
-    { key: 'fornecedor', label: 'Empresa/motorista' },
-    { key: 'contato', label: 'Contato (telefone/e-mail)' },
-    { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
-  ],
-  cruzeiro: [
-    { key: 'titular', label: 'Titular' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'companhia', label: 'Companhia marítima' },
-    { key: 'navio', label: 'Navio' },
-    { key: 'roteiro', label: 'Roteiro' },
-    { key: 'embarque_porto', label: 'Porto de embarque' },
-    { key: 'embarque_data', label: 'Data de embarque', type: 'date' },
-    { key: 'desembarque_porto', label: 'Porto de desembarque' },
-    { key: 'desembarque_data', label: 'Data de desembarque', type: 'date' },
-    { key: 'cabine', label: 'Nº da cabine' },
-    { key: 'categoria', label: 'Categoria da cabine' },
-    { key: 'deck', label: 'Deck' },
-    { key: 'localizacao', label: 'Localização (proa/meio/popa)' },
-    { key: 'vista', label: 'Vista' },
-    { key: 'regime', label: 'Plano de alimentação' },
-    { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
-  ],
-  passeio: [
-    { key: 'nome', label: 'Nome' },
-    { key: 'data', label: 'Data', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
-  ],
-  seguro: [
-    { key: 'nome', label: 'Seguradora / plano' },
-    { key: 'data', label: 'Vigência a partir de', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Apólice' },
-    { key: 'observacoes', label: 'Observações' },
-  ],
-  ingresso: [
-    { key: 'atracao', label: 'Atração' },
-    { key: 'titular', label: 'Titular' },
-    { key: 'data', label: 'Data', type: 'date' },
-    { key: 'codigo_reserva', label: 'Código da reserva' },
-    { key: 'fornecedor', label: 'Prestador de serviço' },
-    { key: 'contato', label: 'Contato (telefone/e-mail)' },
-    { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
-  ],
-  veiculo: [
-    { key: 'nome', label: 'Veículo' },
-    { key: 'data', label: 'Retirada', type: 'date' },
-    { key: 'fornecedor', label: 'Locadora' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
-  ],
-  outro: [
-    { key: 'nome', label: 'Nome' },
-    { key: 'data', label: 'Data', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
-  ],
-}
+import { KIND_FIELDS, ProductKindPicker, GenericProductFields } from '@/components/features/reservas/SaleProductKindConfig'
 
 export default function SaleProductsTab({
   orgSlug, saleId, refreshKey,
@@ -255,11 +130,15 @@ function ProductFormDialog({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [kind, setKind] = useState<SaleProductKind>(product?.kind || 'aereo')
+  // Produto novo começa sem tipo escolhido — mostra a grade de tipos
+  // primeiro; escolher um avança direto pro formulário (sem precisar de um
+  // segundo clique num select). Editar um produto existente já entra
+  // direto no formulário, com o tipo fixo.
+  const [kind, setKind] = useState<SaleProductKind | null>(product?.kind ?? null)
   const [data, setData] = useState<Record<string, any>>(product?.data || {})
   const [saving, setSaving] = useState(false)
 
-  const fields = KIND_FIELDS[kind]
+  const fields = kind ? KIND_FIELDS[kind] : []
   const dedicated = kind === 'aereo' || kind === 'hospedagem'
 
   function set(key: string, value: string | string[]) {
@@ -276,6 +155,7 @@ function ProductFormDialog({
   }
 
   async function handleSave() {
+    if (!kind) return
     const missing = missingRequiredLabel()
     if (missing) { toast.error(`Preencha "${missing}" antes de salvar.`); return }
     setSaving(true)
@@ -290,22 +170,23 @@ function ProductFormDialog({
 
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className={cn('max-h-[85vh] overflow-y-auto', dedicated ? 'max-w-2xl' : 'max-w-lg')}>
+      <DialogContent className={cn('max-h-[85vh] overflow-y-auto', kind && dedicated ? 'max-w-3xl' : 'max-w-lg')}>
         <DialogHeader>
           <DialogTitle>{product ? 'Editar produto' : 'Adicionar produto'}</DialogTitle>
         </DialogHeader>
 
+        {!kind ? (
+          <ProductKindPicker onPick={setKind} />
+        ) : (
         <div className="space-y-3">
           {!product && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tipo</Label>
-              <Select value={kind} onValueChange={v => { setKind(v as SaleProductKind); setData({}) }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {KIND_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setKind(null); setData({}) }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              ← Trocar tipo de produto
+            </button>
           )}
 
           {kind === 'aereo' ? (
@@ -313,35 +194,18 @@ function ProductFormDialog({
           ) : kind === 'hospedagem' ? (
             <HospedagemFormFields data={data} set={set} />
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              {fields.map(f => (
-                <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
-                  <Label className="text-xs">{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
-                  {f.type === 'textarea' ? (
-                    <Textarea
-                      rows={2}
-                      className="text-xs"
-                      value={data[f.key] || ''}
-                      onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    />
-                  ) : (
-                    <Input
-                      type={f.type === 'date' ? 'date' : 'text'}
-                      value={data[f.key] || ''}
-                      onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            <GenericProductFields fields={fields} data={data} setData={setData} />
           )}
         </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Salvando…</> : 'Salvar'}
-          </Button>
+          {kind && (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Salvando…</> : 'Salvar'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
