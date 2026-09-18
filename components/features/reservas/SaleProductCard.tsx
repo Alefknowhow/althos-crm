@@ -4,6 +4,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, Pencil, Trash2, Plane, Hotel, Car, Ship, ShieldCheck, Ticket, MapPinned, Package } from 'lucide-react'
 import type { SaleProduct, SaleProductKind } from '@/actions/sale-products'
+import { cityFromAirportCode } from '@/lib/airports'
+
+// Mesmos rótulos usados no formulário (SaleProductDedicatedForms.tsx) —
+// duplicado aqui só pra exibição, sem acoplar os dois arquivos.
+const CABIN_LABEL: Record<string, string> = {
+  economica: 'Econômica', premium: 'Premium Economy', executiva: 'Executiva', primeira: 'Primeira Classe',
+}
+const BAGGAGE_LABEL: Record<string, string> = {
+  item_pessoal: 'Item pessoal', mao: 'Bagagem de mão', despachada: 'Bagagem despachada',
+}
 
 const KIND_META: Record<SaleProductKind, { icon: any; label: string }> = {
   aereo: { icon: Plane, label: 'Aéreo' },
@@ -26,6 +36,9 @@ function fmtDate(d: string | null | undefined): string {
 function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title: string; lines: string[] } {
   switch (kind) {
     case 'aereo':
+      // Trecho único (o caso normal, preenchido pelo formulário) ganha um
+      // layout dedicado em linha só — ver AereoInlineDetails — então aqui só
+      // precisa cobrir o caso de múltiplos trechos extraídos por OCR.
       return {
         title: `${data.companhia || 'Companhia não informada'}${data.sentido ? ` (${data.sentido})` : ''}`,
         lines: Array.isArray(data.legs) && data.legs.length > 1
@@ -35,11 +48,7 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
               fmtDate(data.data),
               data.localizador ? `Localizador: ${data.localizador}` : null,
             ].filter(Boolean) as string[]
-          : [
-              [data.origem, data.destino].filter(Boolean).join(' → '),
-              fmtDate(data.data),
-              data.localizador ? `Localizador: ${data.localizador}` : null,
-            ].filter(Boolean) as string[],
+          : [],
       }
     case 'hospedagem': {
       const nights = data.check_in && data.check_out
@@ -93,6 +102,45 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
         lines: [data.fornecedor || null, data.data ? fmtDate(data.data) : null, data.localizador ? `Localizador: ${data.localizador}` : null].filter(Boolean) as string[],
       }
   }
+}
+
+/** Detalhes do trecho único (produto 'aereo' preenchido pelo formulário,
+ *  sem `data.legs[]`) — todas as informações organizadas ao longo da
+ *  linha (chips flex-wrap), em vez de uma embaixo da outra, pra caber mais
+ *  detalhe sem estourar a altura do card. */
+function AereoInlineDetails({ data }: { data: Record<string, any> }) {
+  const originCity = cityFromAirportCode(data.origem)
+  const destCity = cityFromAirportCode(data.destino)
+  const route = [data.origem, data.destino].filter(Boolean).join(' → ')
+  if (!route && !data.data) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+      {route && (
+        <span className="font-medium text-foreground">
+          {data.origem}{originCity ? ` (${originCity})` : ''} → {data.destino}{destCity ? ` (${destCity})` : ''}
+        </span>
+      )}
+      {data.data && (
+        <span>
+          {fmtDate(data.data)}{data.hora_embarque ? ` ${data.hora_embarque}` : ''}
+          {(data.data_chegada || data.hora_chegada) && (
+            <> → {fmtDate(data.data_chegada) || fmtDate(data.data)}{data.hora_chegada ? ` ${data.hora_chegada}` : ''}</>
+          )}
+        </span>
+      )}
+      {data.conexao_local && <span>Conexão: {data.conexao_local}{data.conexao_duracao ? ` (${data.conexao_duracao})` : ''}</span>}
+      {(data.categoria || data.classe) && (
+        <span>{[CABIN_LABEL[data.categoria] || data.categoria, data.classe ? `Classe ${data.classe}` : null].filter(Boolean).join(' · ')}</span>
+      )}
+      {data.localizador && <span>Localizador: <span className="text-foreground">{data.localizador}</span></span>}
+      {data.bilhete && <span>Bilhete: {data.bilhete}</span>}
+      {Array.isArray(data.bagagem) && data.bagagem.length > 0 && (
+        <span>{data.bagagem.map((k: string) => BAGGAGE_LABEL[k] || k).join(' + ')}</span>
+      )}
+      {typeof data.bagagem === 'string' && data.bagagem && <span>{data.bagagem}</span>}
+      {data.observacoes && <span className="italic">{data.observacoes}</span>}
+    </div>
+  )
 }
 
 function AereoLegs({ legs }: { legs: any[] }) {
@@ -155,6 +203,7 @@ export default function SaleProductCard({
         {lines.map((l, i) => (
           <div key={i} className="text-xs text-muted-foreground truncate">{l}</div>
         ))}
+        {product.kind === 'aereo' && !legs && <AereoInlineDetails data={data} />}
         {legs && legs.length > 0 && <AereoLegs legs={legs} />}
       </div>
       <div className="flex items-center gap-1 shrink-0">

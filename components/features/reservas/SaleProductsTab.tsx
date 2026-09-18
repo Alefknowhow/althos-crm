@@ -23,6 +23,7 @@ import {
   type SaleProduct, type SaleProductKind,
 } from '@/actions/sale-products'
 import SaleProductCard from '@/components/features/reservas/SaleProductCard'
+import { AereoFormFields, HospedagemFormFields } from '@/components/features/reservas/SaleProductDedicatedForms'
 
 const KIND_OPTIONS: { value: SaleProductKind; label: string }[] = [
   { value: 'aereo', label: 'Aéreo' },
@@ -51,11 +52,12 @@ const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
     { key: 'hora_embarque', label: 'Hora de embarque', required: true },
     { key: 'data_chegada', label: 'Data de chegada', type: 'date' },
     { key: 'hora_chegada', label: 'Hora de chegada' },
-    { key: 'horario', label: 'Horário (partida-chegada)', required: true },
-    { key: 'passageiros', label: 'Passageiros' },
+    { key: 'categoria', label: 'Categoria (econômica/executiva/...)' },
+    { key: 'classe', label: 'Classe (X, Y, Z...)' },
     { key: 'bagagem', label: 'Franquia de bagagem' },
     { key: 'conexao_local', label: 'Conexão — aeroporto/cidade (se houver)' },
     { key: 'conexao_duracao', label: 'Conexão — tempo de espera (se houver)' },
+    { key: 'observacoes', label: 'Observação', type: 'textarea' },
   ],
   hospedagem: [
     { key: 'hotel', label: 'Hotel' },
@@ -258,6 +260,15 @@ function ProductFormDialog({
   const [saving, setSaving] = useState(false)
 
   const fields = KIND_FIELDS[kind]
+  const dedicated = kind === 'aereo' || kind === 'hospedagem'
+
+  function set(key: string, value: string | string[]) {
+    setData(prev => ({ ...prev, [key]: value }))
+  }
+
+  function setMany(patch: Record<string, string | string[]>) {
+    setData(prev => ({ ...prev, ...patch }))
+  }
 
   function missingRequiredLabel(): string | null {
     const missing = fields.find(f => f.required && !String(data[f.key] || '').trim())
@@ -279,7 +290,7 @@ function ProductFormDialog({
 
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className={cn('max-h-[85vh] overflow-y-auto', dedicated ? 'max-w-2xl' : 'max-w-lg')}>
         <DialogHeader>
           <DialogTitle>{product ? 'Editar produto' : 'Adicionar produto'}</DialogTitle>
         </DialogHeader>
@@ -296,27 +307,34 @@ function ProductFormDialog({
               </Select>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2.5">
-            {fields.map(f => (
-              <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
-                <Label className="text-xs">{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
-                {f.type === 'textarea' ? (
-                  <Textarea
-                    rows={2}
-                    className="text-xs"
-                    value={data[f.key] || ''}
-                    onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  />
-                ) : (
-                  <Input
-                    type={f.type === 'date' ? 'date' : 'text'}
-                    value={data[f.key] || ''}
-                    onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+
+          {kind === 'aereo' ? (
+            <AereoFormFields data={data} set={set} setMany={setMany} />
+          ) : kind === 'hospedagem' ? (
+            <HospedagemFormFields data={data} set={set} />
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              {fields.map(f => (
+                <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
+                  <Label className="text-xs">{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
+                  {f.type === 'textarea' ? (
+                    <Textarea
+                      rows={2}
+                      className="text-xs"
+                      value={data[f.key] || ''}
+                      onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  ) : (
+                    <Input
+                      type={f.type === 'date' ? 'date' : 'text'}
+                      value={data[f.key] || ''}
+                      onChange={e => setData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
