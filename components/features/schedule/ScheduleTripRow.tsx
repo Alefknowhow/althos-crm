@@ -129,7 +129,7 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
   }
 
   return (
-    <div className="min-w-[210px] space-y-1 text-xs">
+    <div className="min-w-[210px] w-fit rounded-lg border bg-muted/10 px-2.5 py-2 space-y-1 text-xs">
       {/* Linha 1 — cia + número | localizador | status */}
       <div className="flex flex-wrap items-center gap-1.5">
         <AirlineMark name={first.companhia} />
@@ -153,28 +153,27 @@ function FlightBlock({ legs, locator }: { legs: FlightLegInfo[]; locator: string
         </Badge>
       </div>
 
-      {/* Linha 2 — data de embarque — data de chegada */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-1.5 text-muted-foreground">
+      {/* Linha 2 — data de embarque — data de chegada — colunas de largura fixa,
+          coladas (sem esticar pra largura do card), pra ficar no mesmo lugar
+          em toda linha da tabela. */}
+      <div className="grid grid-cols-[44px_14px_44px] items-center gap-x-1 text-muted-foreground">
         <span className="text-left">{fmtShort(first.data)}</span>
-        <span>—</span>
-        <span className="text-right">
+        <span className="text-center">—</span>
+        <span className="text-left">
           {fmtShort(arrivalDate)}
           {nextDayArrival && <sup className="text-primary font-semibold ml-0.5">+1</sup>}
         </span>
       </div>
 
-      {/* Linha 3 — origem+horário → destino+horário (duração) */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-x-1.5 tabular-nums">
-        <span className="text-left">
-          <span className="font-bold text-foreground">{first.origem || '—'}</span>
-          {first.horario && <span className="text-[10px] font-normal text-muted-foreground ml-1">{first.horario}</span>}
-        </span>
-        <span className="text-muted-foreground">→</span>
-        <span className="text-right">
-          <span className="font-bold text-foreground">{last.destino || '—'}</span>
-          {last.horario_chegada && <span className="text-[10px] font-normal text-muted-foreground ml-1">{last.horario_chegada}</span>}
-          {duration && <span className="text-[10px] font-normal text-muted-foreground ml-1">({duration})</span>}
-        </span>
+      {/* Linha 3 — origem+horário → destino+horário (duração) — mesma lógica
+          de colunas fixas e coladas, horário do lado do código do aeroporto. */}
+      <div className="grid grid-cols-[30px_38px_14px_30px_38px_auto] items-baseline gap-x-1 tabular-nums">
+        <span className="font-bold text-foreground">{first.origem || '—'}</span>
+        <span className="text-[10px] font-normal text-muted-foreground">{first.horario || ''}</span>
+        <span className="text-center text-muted-foreground">→</span>
+        <span className="font-bold text-foreground">{last.destino || '—'}</span>
+        <span className="text-[10px] font-normal text-muted-foreground">{last.horario_chegada || ''}</span>
+        <span className="text-[10px] font-normal text-muted-foreground">{duration ? `(${duration})` : ''}</span>
       </div>
 
       {/* Linha 4 — conexão, em etiqueta, só quando houver */}
