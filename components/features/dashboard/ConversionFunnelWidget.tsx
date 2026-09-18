@@ -194,8 +194,14 @@ export default function ConversionFunnelWidget({
 }
 
 /** Funil de barras horizontais retas e centralizadas — sem taper diagonal
- *  entre etapas. Linha grossa, espaçamento generoso entre elas (dá espaço
- *  pro dado, sempre centralizado dentro da própria barra, ficar legível). */
+ *  entre etapas. Cada barra divide igualmente a altura disponível (`flex-1`
+ *  em vez de altura fixa) — com poucas etapas elas ficam mais grossas, com
+ *  muitas ficam mais finas, mas nunca ultrapassam a área do card (bug
+ *  antigo: altura fixa de 56px por barra + espaçamento estourava o card em
+ *  pipelines com 5+ etapas, sobrepondo o resumo acima). Uma altura mínima
+ *  por barra evita que fiquem ilegíveis; se ainda assim não couber (muitas
+ *  etapas), rola dentro do próprio card em vez de vazar por cima de outro
+ *  elemento. */
 function FunnelChart({
   stages, maxCount, fmtCurrency, onOpen,
 }: {
@@ -213,15 +219,15 @@ function FunnelChart({
       onClick={onOpen}
       onKeyDown={e => { if (e.key === 'Enter') onOpen() }}
       title="Ver no Pipeline"
-      className="flex-1 min-h-0 flex flex-col justify-center gap-3 py-1 cursor-pointer"
+      className="flex-1 min-h-0 flex flex-col gap-2 py-1 overflow-y-auto cursor-pointer"
     >
       {stages.map((stage, i) => {
         const widthPct = MIN_PCT + (100 - MIN_PCT) * (stage.count / maxCount)
         const fill = stage.color || `var(--chart-${(i % 6) + 1})`
         return (
-          <div key={stage.id} className="flex justify-center">
+          <div key={stage.id} className="flex-1 min-h-[40px] flex justify-center">
             <div
-              className="h-14 rounded-md flex flex-col items-center justify-center text-center px-4 transition-opacity hover:opacity-90 min-w-0"
+              className="h-full rounded-md flex flex-col items-center justify-center text-center px-4 transition-opacity hover:opacity-90 min-w-0"
               style={{ width: `${widthPct}%`, backgroundColor: fill }}
             >
               <div className="text-[13px] font-bold text-white leading-tight tabular-nums truncate max-w-full">
