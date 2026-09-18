@@ -59,10 +59,8 @@ export function ScheduleTripDetailTabs({
           <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
           {loadingTasks && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
         </div>
-        {!trip.contato_id ? (
-          <p className="text-sm text-muted-foreground">Viagem sem lead vinculado — sem tarefas.</p>
-        ) : !loadingTasks && tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma tarefa para este cliente.</p>
+        {!loadingTasks && tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma tarefa vinculada a esta reserva.</p>
         ) : (
           <ul className="space-y-1.5">
             {tasks.map(t => {

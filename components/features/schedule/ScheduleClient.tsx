@@ -203,12 +203,10 @@ export default function ScheduleClient({
     setProducts([])
     setTravelers([])
     setVouchers([])
-    if (t.contato_id) {
-      startTasks(async () => {
-        const res = await getTripTasks(orgSlug, t.contato_id!)
-        setTasks(res)
-      })
-    }
+    startTasks(async () => {
+      const res = await getTripTasks(orgSlug, t.id)
+      setTasks(res)
+    })
     startProducts(async () => {
       const res = await listSaleProducts(orgSlug, t.id)
       setProducts(res)

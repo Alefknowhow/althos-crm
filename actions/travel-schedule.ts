@@ -304,15 +304,17 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   })
 }
 
-/** Tarefas operacionais vinculadas ao lead da viagem. */
-export async function getTripTasks(orgSlug: string, leadId: string): Promise<TripTask[]> {
+/** Tarefas operacionais vinculadas à reserva — hoje as tarefas de viagem
+ *  são geradas presas à venda (`sale_id`, ver actions/travel-sales-tasks.ts),
+ *  não ao lead, então é por ali que o painel de detalhe busca. */
+export async function getTripTasks(orgSlug: string, saleId: string): Promise<TripTask[]> {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data } = await supabase
     .from('tasks')
     .select('id, title, status, priority, due_date')
     .eq('organization_id', org.id)
-    .eq('contato_id', leadId)
+    .eq('sale_id', saleId)
     .order('due_date', { ascending: true })
     .limit(200)
   return (data as TripTask[]) ?? []
