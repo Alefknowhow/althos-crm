@@ -60,6 +60,66 @@ export async function markSessionEnded(
     .eq('organization_id', organizationId)
 }
 
+export async function markAssistedSessionLive(sessionId: string, organizationId: string): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  await supabase
+    .from('voice_assisted_sessions')
+    .update({ status: 'live', started_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('organization_id', organizationId)
+}
+
+export async function markAssistedSessionEnded(
+  sessionId: string,
+  organizationId: string,
+  opts: { status: 'ended' | 'failed'; durationSeconds: number },
+): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  await supabase
+    .from('voice_assisted_sessions')
+    .update({
+      status: opts.status,
+      ended_at: new Date().toISOString(),
+      duration_seconds: opts.durationSeconds,
+    })
+    .eq('id', sessionId)
+    .eq('organization_id', organizationId)
+}
+
+export async function getAssistedSession(sessionId: string, organizationId: string) {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('voice_assisted_sessions')
+    .select('id, status, target_language')
+    .eq('id', sessionId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+  return data
+}
+
+export async function insertAssistedTranscriptSegment(row: {
+  organizationId: string
+  sessionId: string
+  speaker: 'supplier' | 'agent'
+  originalText: string
+  originalLanguage?: string
+  translatedText?: string
+  startedAtMs?: number
+  endedAtMs?: number
+}): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  await supabase.from('voice_assisted_transcript_segments').insert({
+    organization_id: row.organizationId,
+    session_id: row.sessionId,
+    speaker: row.speaker,
+    original_text: row.originalText,
+    original_language: row.originalLanguage ?? null,
+    translated_text: row.translatedText ?? null,
+    started_at_ms: row.startedAtMs ?? null,
+    ended_at_ms: row.endedAtMs ?? null,
+  })
+}
+
 export async function insertTranscriptSegment(row: {
   organizationId: string
   sessionId: string

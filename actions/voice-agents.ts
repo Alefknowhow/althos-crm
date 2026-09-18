@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { VOICE_AGENT_TOOLS } from '@/lib/voice/ai-tools'
+import { listElevenLabsVoices } from '@/lib/voice/elevenlabs'
+import { hasElevenLabsKey } from '@/lib/ai/api-key'
 
 export interface VoiceAgentInput {
   name: string
@@ -30,6 +32,18 @@ async function guardVoice(orgSlug: string) {
 
 export async function listVoiceAgentTools() {
   return VOICE_AGENT_TOOLS.map(t => ({ name: t.name, description: t.description }))
+}
+
+export async function listAvailableVoices(orgSlug: string) {
+  const guard = await guardVoice(orgSlug)
+  if (!guard.ok) return guard
+  if (!hasElevenLabsKey()) return { ok: true as const, configured: false as const, voices: [] }
+  try {
+    const voices = await listElevenLabsVoices()
+    return { ok: true as const, configured: true as const, voices }
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : 'Falha ao buscar vozes da ElevenLabs.' }
+  }
 }
 
 export async function listVoiceAgents(orgSlug: string) {

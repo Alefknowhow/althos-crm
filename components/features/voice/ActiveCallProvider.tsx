@@ -11,7 +11,6 @@
  */
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
-import { toast } from 'sonner'
 import { getBrowserCallToken, hangupCall as hangupCallAction } from '@/actions/voice'
 
 interface ActiveCall {
@@ -19,11 +18,13 @@ interface ActiveCall {
   name: string
   startedAt: number
   muted: boolean
+  /** Modo assistido (CallDialerModal) — idioma do outro lado da ligação, pra AssistedCallPanel. */
+  assistedTargetLanguage?: string
 }
 
 interface ActiveCallContextValue {
   activeCall: ActiveCall | null
-  placeCall: (opts: { voiceCallId: string; name: string }) => void
+  placeCall: (opts: { voiceCallId: string; name: string; assistedTargetLanguage?: string }) => void
   hangup: () => void
   toggleMute: () => void
 }
@@ -67,8 +68,8 @@ export function ActiveCallProvider({ orgSlug, identity, enabled, children }: { o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgSlug, identity, enabled])
 
-  const placeCall = useCallback((opts: { voiceCallId: string; name: string }) => {
-    setActiveCall({ voiceCallId: opts.voiceCallId, name: opts.name, startedAt: Date.now(), muted: false })
+  const placeCall = useCallback((opts: { voiceCallId: string; name: string; assistedTargetLanguage?: string }) => {
+    setActiveCall({ voiceCallId: opts.voiceCallId, name: opts.name, startedAt: Date.now(), muted: false, assistedTargetLanguage: opts.assistedTargetLanguage })
   }, [])
 
   const hangup = useCallback(() => {

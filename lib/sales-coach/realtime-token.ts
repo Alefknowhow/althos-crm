@@ -33,6 +33,25 @@ export function signSalesCoachRealtimeToken(payload: {
   organizationId: string
   userId: string
 }): string {
+  return signRealtimeToken(payload)
+}
+
+/**
+ * Chamada assistida (Voice → CallDialerModal, modo "assistida") reaproveita
+ * o MESMO serviço/segredo do IA Sales Coach (services/sales-coach-realtime)
+ * — é a mesma peça de infra (WebSocket persistente + ElevenLabs Scribe),
+ * só com um novo par de rotas (`/twilio-media`, `/assist-chat`) lá dentro
+ * para essa finalidade. Ver services/sales-coach-realtime/src/server.ts.
+ */
+export function signVoiceAssistRealtimeToken(payload: {
+  sessionId: string
+  organizationId: string
+  userId: string
+}): string {
+  return signRealtimeToken(payload)
+}
+
+function signRealtimeToken(payload: { sessionId: string; organizationId: string; userId: string }): string {
   const secret = getSalesCoachRealtimeSecret()
   if (!secret) {
     throw new Error('SALES_COACH_REALTIME_SECRET não configurado neste ambiente.')

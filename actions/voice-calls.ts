@@ -70,7 +70,7 @@ export async function startCall(orgSlug: string, opts: { contatoId?: string; toN
   if (error || !call) return { ok: false as const, error: error?.message || 'Erro ao criar a chamada.' }
 
   await inngest.send({ name: 'voice/call.requested', data: { voiceCallId: call.id, organizationId: org.id } })
-  revalidatePath(`/app/${orgSlug}/voice/chamadas`)
+  revalidatePath(`/app/${orgSlug}/voice/interacoes`)
   return { ok: true as const, voiceCallId: call.id }
 }
 

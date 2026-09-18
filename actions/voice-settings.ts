@@ -45,7 +45,7 @@ export async function updateVoiceAccountSettings(orgSlug: string, patch: { recor
     .upsert({ organization_id: org.id, ...update }, { onConflict: 'organization_id' })
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/voice/configuracoes`)
+  revalidatePath(`/app/${orgSlug}/voice/conta`)
   return { ok: true as const }
 }
 
@@ -101,6 +101,6 @@ export async function activateVoiceAccount(orgSlug: string) {
 
   if (credsError) return { ok: false as const, error: credsError.message }
 
-  revalidatePath(`/app/${orgSlug}/voice/configuracoes`)
+  revalidatePath(`/app/${orgSlug}/voice/conta`)
   return { ok: true as const }
 }

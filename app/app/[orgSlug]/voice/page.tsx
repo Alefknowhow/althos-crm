@@ -1,10 +1,11 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccessByOrgSlug } from '@/lib/plans/server'
 import { VoicePaywall } from '@/components/features/voice/VoicePaywall'
-import { getVoiceDashboardSummary } from '@/actions/voice'
+import { getVoiceDashboardSummary, listVoiceTeam } from '@/actions/voice'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock, Wallet } from 'lucide-react'
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Clock, Wallet, Users2 } from 'lucide-react'
+import { VoiceTeamClient } from '@/components/features/voice/VoiceTeamClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,12 +20,16 @@ function formatCents(cents: number): string {
 }
 
 export default async function VoiceDashboardPage({ params }: { params: { orgSlug: string } }) {
-  await requireAuth()
+  const user = await requireAuth()
   await getCurrentOrganization(params.orgSlug)
   const allowed = await checkFeatureAccessByOrgSlug(params.orgSlug, 'voice')
   if (!allowed) return <VoicePaywall orgSlug={params.orgSlug} />
 
-  const summary = await getVoiceDashboardSummary(params.orgSlug)
+  const [summary, teamResult] = await Promise.all([
+    getVoiceDashboardSummary(params.orgSlug),
+    listVoiceTeam(params.orgSlug),
+  ])
+  const team = teamResult.ok ? teamResult.team : []
   if (!summary.ok) {
     return (
       <div className="max-w-3xl space-y-6">
@@ -91,6 +96,15 @@ export default async function VoiceDashboardPage({ params }: { params: { orgSlug
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-1.5"><Users2 className="w-4 h-4" /> Equipe</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VoiceTeamClient orgSlug={params.orgSlug} currentUserId={user.id} team={team} />
+        </CardContent>
+      </Card>
     </div>
   )
 }

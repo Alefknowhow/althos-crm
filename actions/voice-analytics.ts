@@ -23,19 +23,33 @@ export async function getVoiceAnalytics(orgSlug: string, days = 30) {
     .eq('organization_id', org.id)
     .gte('created_at', since.toISOString())
 
+  const { data: smsRows } = await supabase
+    .from('sms_messages')
+    .select('id, direction, created_by, althos_cost_cents, created_at')
+    .eq('organization_id', org.id)
+    .gte('created_at', since.toISOString())
+
   const rows = calls ?? []
   const answered = rows.filter(c => c.status === 'completed')
   const totalDuration = rows.reduce((a, c) => a + (c.duration_seconds ?? 0), 0)
 
-  // Por usuário (humano)
-  const byUser = new Map<string, { calls: number; answered: number; duration: number; qualified: number }>()
+  // Por usuário (humano) — chamadas + SMS, com custo total (rastreamento de equipe)
+  const byUser = new Map<string, { calls: number; answered: number; duration: number; qualified: number; costCents: number; smsSent: number }>()
   for (const c of rows) {
     if (c.human_or_ai !== 'human' || !c.user_id) continue
-    const entry = byUser.get(c.user_id) ?? { calls: 0, answered: 0, duration: 0, qualified: 0 }
+    const entry = byUser.get(c.user_id) ?? { calls: 0, answered: 0, duration: 0, qualified: 0, costCents: 0, smsSent: 0 }
     entry.calls++
     if (c.status === 'completed') { entry.answered++; entry.duration += c.duration_seconds ?? 0 }
     if (c.outcome === 'qualificado') entry.qualified++
+    entry.costCents += c.althos_cost_cents ?? 0
     byUser.set(c.user_id, entry)
+  }
+  for (const s of smsRows ?? []) {
+    if (!s.created_by || s.direction !== 'outbound') continue
+    const entry = byUser.get(s.created_by) ?? { calls: 0, answered: 0, duration: 0, qualified: 0, costCents: 0, smsSent: 0 }
+    entry.smsSent++
+    entry.costCents += s.althos_cost_cents ?? 0
+    byUser.set(s.created_by, entry)
   }
 
   // Por agente de IA

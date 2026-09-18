@@ -232,7 +232,7 @@ export default async function OrgLayout({
       <div className="print:hidden">
         <SupportWidget orgSlug={params.orgSlug} />
         {canUseCopilot && <CopilotDock orgSlug={params.orgSlug} />}
-        {canUseVoice && <ActiveCallBar />}
+        {canUseVoice && <ActiveCallBar orgSlug={params.orgSlug} />}
       </div>
     </div>
     </SmsComposeProvider>

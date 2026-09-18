@@ -6,6 +6,11 @@ Vercel/Next.js não consegue sustentar (função serverless não mantém socket
 de longa duração). Faz parte do módulo **IA Sales Coach**
 (`.harness/tasks/active/ia-sales-coach.md`, fatia 3).
 
+Também sustenta a **chamada assistida** do Althos Voice (rotas
+`/twilio-media` e `/assist-chat`, ver seção própria abaixo) — mesma peça de
+infra, reaproveitada para um segundo caso de uso em vez de duplicar o
+serviço.
+
 ## Fluxo
 
 ```
@@ -28,10 +33,38 @@ browser — o browser só tem esse token escopado a UMA sessão.
 | Variável | Obrigatória | Descrição |
 |---|---|---|
 | `PORT` | não (default 8080) | Porta HTTP/WS — Railway injeta automaticamente. |
-| `SALES_COACH_REALTIME_SECRET` | sim | Segredo HMAC compartilhado com o Next.js (mesmo valor nos dois lados). Gerar com `openssl rand -hex 32`. |
+| `SALES_COACH_REALTIME_SECRET` | sim | Segredo HMAC compartilhado com o Next.js (mesmo valor nos dois lados). Gerar com `openssl rand -hex 32`. Usado tanto pelo IA Sales Coach quanto pela chamada assistida do Voice (`signVoiceAssistRealtimeToken`, mesmo segredo). |
 | `ELEVENLABS_API_KEY` | sim | Mesma chave já usada em `lib/ai/api-key.ts::getElevenLabsKey()` no repo principal — aqui é usada direto (server-to-server), sem precisar do single-use token de 15min documentado para uso client-side. |
 | `SUPABASE_URL` | sim | URL do projeto Supabase (São Paulo, `boggtwpywbkpzkmvnbng`) — mesma do Next.js. |
 | `SUPABASE_SERVICE_ROLE_KEY` | sim | Service role key — bypassa RLS deliberadamente; toda query já filtra `organization_id` manualmente (ver `src/supabase.ts`). Nunca usar a chave publishable aqui. |
+| `ANTHROPIC_API_KEY` | só p/ chamada assistida | Mesma chave central do repo principal (`getPlatformAiKey()`) — usada em `src/translate.ts` para traduzir a fala do fornecedor pro português. Sem ela, o serviço ainda funciona (IA Sales Coach intacto) mas a chamada assistida devolve o texto original sem tradução. |
+
+## Chamada assistida (Althos Voice)
+
+```
+Twilio Media Stream (mulaw 8kHz, both_tracks)
+  → wss://<este-serviço>/twilio-media?sessionId=...&token=...
+  → decodifica mulaw→PCM16 16kHz (src/twilio-media-adapter.ts)
+  → 2 conexões ElevenLabs Scribe (uma por perna: agente pt-BR, fornecedor no idioma-alvo)
+  → fala do fornecedor: traduzida (src/translate.ts, Claude Haiku) + persistida
+  → fala do agente: persistida sem tradução
+  → ambas relayed em tempo real para
+      wss://<este-serviço>/assist-chat?sessionId=...&token=...  (painel no CRM)
+```
+
+A Twilio conecta em `/twilio-media` sozinha (anexada à chamada via
+`lib/voice/providers/twilio.ts::startMediaStream`, subrecurso REST
+`calls(sid).streams.create` — não interrompe o `<Dial><Client>` já em
+andamento). O browser do vendedor conecta em `/assist-chat` para ver a
+transcrição em tempo real e mandar orientação de texto (sem síntese de voz
+de volta pra ligação — decisão de produto, só chat). Ver
+`actions/voice-assisted.ts` no repo principal para o fluxo completo de
+início/fim de sessão.
+
+**Assunção a validar no primeiro teste real**: qual track (`inbound`/
+`outbound`) da Twilio corresponde à voz do fornecedor vs. do agente —
+documentado como comentário em `src/server.ts`, mas só confirmável numa
+ligação de teste de verdade.
 
 ## Deploy no Railway
 

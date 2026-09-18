@@ -12,15 +12,11 @@ import { MobileSectionPicker, type MobileSection } from '@/components/features/m
  * configuracoes/SettingsTabsNav.tsx.
  */
 const TABS = [
-  { key: 'geral',         label: 'Visão geral',    seg: '' },
-  { key: 'chamadas',      label: 'Chamadas',       seg: 'chamadas' },
-  { key: 'sms',           label: 'SMS',            seg: 'sms' },
-  { key: 'agentes',       label: 'Agentes de IA',  seg: 'agentes' },
-  { key: 'equipe',        label: 'Equipe',         seg: 'equipe' },
-  { key: 'analytics',     label: 'Analytics',      seg: 'analytics' },
-  { key: 'numeros',       label: 'Números',        seg: 'numeros' },
-  { key: 'creditos',      label: 'Créditos',       seg: 'creditos' },
-  { key: 'configuracoes', label: 'Configurações',  seg: 'configuracoes' },
+  { key: 'geral',      label: 'Visão geral',        seg: '' },
+  { key: 'interacoes', label: 'Chamadas & SMS',     seg: 'interacoes' },
+  { key: 'agentes',    label: 'Agentes de IA',      seg: 'agentes' },
+  { key: 'analytics',  label: 'Analytics & Equipe', seg: 'analytics' },
+  { key: 'conta',      label: 'Conta',              seg: 'conta' },
 ] as const
 
 export default function VoiceTabsNav({ orgSlug }: { orgSlug: string }) {

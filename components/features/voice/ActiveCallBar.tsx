@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Mic, MicOff, PhoneOff } from 'lucide-react'
 import { useActiveCall } from './ActiveCallProvider'
+import { AssistedCallPanel } from './AssistedCallPanel'
 
 function useElapsed(startedAt: number): string {
   const [now, setNow] = useState(Date.now())
@@ -15,10 +16,17 @@ function useElapsed(startedAt: number): string {
 }
 
 /** Barra persistente da chamada ativa — montada no layout, some quando não há chamada. */
-export function ActiveCallBar() {
+export function ActiveCallBar({ orgSlug }: { orgSlug: string }) {
   const { activeCall, hangup, toggleMute } = useActiveCall()
   if (!activeCall) return null
-  return <ActiveCallBarContent name={activeCall.name} startedAt={activeCall.startedAt} muted={activeCall.muted} onHangup={hangup} onToggleMute={toggleMute} />
+  return (
+    <>
+      {activeCall.assistedTargetLanguage && (
+        <AssistedCallPanel orgSlug={orgSlug} voiceCallId={activeCall.voiceCallId} targetLanguage={activeCall.assistedTargetLanguage} />
+      )}
+      <ActiveCallBarContent name={activeCall.name} startedAt={activeCall.startedAt} muted={activeCall.muted} onHangup={hangup} onToggleMute={toggleMute} />
+    </>
+  )
 }
 
 function ActiveCallBarContent({ name, startedAt, muted, onHangup, onToggleMute }: {

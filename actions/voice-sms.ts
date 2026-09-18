@@ -54,7 +54,7 @@ export async function sendSMS(orgSlug: string, opts: { contatoId?: string; toNum
     return { ok: false as const, error: err?.message || 'Erro ao enviar SMS.' }
   }
 
-  revalidatePath(`/app/${orgSlug}/voice/sms`)
+  revalidatePath(`/app/${orgSlug}/voice/interacoes`)
   return { ok: true as const }
 }
 

@@ -14,7 +14,7 @@ export async function setMyVoicePresence(orgSlug: string, status: 'online' | 'bu
     { onConflict: 'organization_id,user_id' },
   )
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/voice/equipe`)
+  revalidatePath(`/app/${orgSlug}/voice`)
   return { ok: true as const }
 }
 

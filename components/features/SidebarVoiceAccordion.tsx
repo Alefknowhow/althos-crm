@@ -4,20 +4,16 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  ChevronDown, Phone, PhoneCall, MessageSquareText, Bot, Users2, BarChart3, Hash, Wallet, Sliders,
+  ChevronDown, Phone, PhoneCall, Bot, BarChart3, Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SUB_ITEMS = [
-  { seg: '',              label: 'Visão geral',    icon: Phone },
-  { seg: 'chamadas',      label: 'Chamadas',       icon: PhoneCall },
-  { seg: 'sms',           label: 'SMS',            icon: MessageSquareText },
-  { seg: 'agentes',       label: 'Agentes de IA',  icon: Bot },
-  { seg: 'equipe',        label: 'Equipe',         icon: Users2 },
-  { seg: 'analytics',     label: 'Analytics',      icon: BarChart3 },
-  { seg: 'numeros',       label: 'Números',        icon: Hash },
-  { seg: 'creditos',      label: 'Créditos',       icon: Wallet },
-  { seg: 'configuracoes', label: 'Configurações',  icon: Sliders },
+  { seg: '',           label: 'Visão geral',      icon: Phone },
+  { seg: 'interacoes', label: 'Chamadas & SMS',   icon: PhoneCall },
+  { seg: 'agentes',    label: 'Agentes de IA',    icon: Bot },
+  { seg: 'analytics',  label: 'Analytics & Equipe', icon: BarChart3 },
+  { seg: 'conta',      label: 'Conta',            icon: Wallet },
 ] as const
 
 /** Item "Voice" da sidebar — expansível (acordeão), mesmo padrão de

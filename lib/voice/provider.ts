@@ -80,4 +80,15 @@ export interface VoiceProvider {
 
   /** Reservado para Voice AI (Fase 3) — stream bidirecional de áudio da chamada. */
   streamAudio?(providerCallId: string, onAudioChunk: (chunk: Buffer) => void): Promise<{ stop: () => void }>
+
+  /**
+   * Anexa um Media Stream (só leitura, ambas as pernas) de uma chamada JÁ EM
+   * ANDAMENTO a `wsUrl`, sem interromper o fluxo de voz existente (ex.: o
+   * <Dial><Client> que conecta o agente humano). Usado pela chamada
+   * assistida (lib/voice/assisted.ts) para alimentar o serviço realtime que
+   * transcreve+traduz em tempo real. Diferente de `streamAudio` acima (que
+   * assumia o provider entregando chunks em-processo) — aqui o provider
+   * empurra o áudio direto para um servidor WebSocket externo.
+   */
+  startMediaStream?(providerCallId: string, wsUrl: string): Promise<void>
 }

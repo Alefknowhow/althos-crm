@@ -13,22 +13,26 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { PhoneCall } from 'lucide-react'
-import { listOrgNumbers, listVoiceAgents, startCall } from '@/actions/voice'
+import { listOrgNumbers, listVoiceAgents, startCall, ASSISTED_CALL_LANGUAGES } from '@/actions/voice'
 import { useActiveCall } from './ActiveCallProvider'
 
 interface DialTarget { contatoId?: string; name: string; phone: string }
 
 const CallDialerContext = createContext<(target: DialTarget) => void>(() => {})
 
+/** Chamador do modal sem contato pré-selecionado (ex.: botão "Nova chamada"
+ *  dentro do próprio módulo Voice) — o usuário digita o número na hora. */
 export function useCallDialer() {
   return useContext(CallDialerContext)
 }
 
 export function CallDialerProvider({ orgSlug, children }: { orgSlug: string; children: React.ReactNode }) {
   const [target, setTarget] = useState<DialTarget | null>(null)
+  const [manualPhone, setManualPhone] = useState('')
   const [numbers, setNumbers] = useState<{ id: string; e164_number: string }[]>([])
   const [fromNumberId, setFromNumberId] = useState('')
-  const [mode, setMode] = useState<'human' | 'ai'>('human')
+  const [mode, setMode] = useState<'human' | 'ai' | 'assisted'>('human')
+  const [assistedLanguage, setAssistedLanguage] = useState(ASSISTED_CALL_LANGUAGES[0].value)
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([])
   const [agentId, setAgentId] = useState('')
   const [starting, setStarting] = useState(false)
@@ -37,6 +41,7 @@ export function CallDialerProvider({ orgSlug, children }: { orgSlug: string; chi
   useEffect(() => {
     if (!target) return
     setMode('human')
+    setManualPhone(target.phone)
     listOrgNumbers(orgSlug).then(res => {
       if (!res.ok) { toast.error(res.error); return }
       setNumbers(res.numbers as any)
@@ -54,13 +59,15 @@ export function CallDialerProvider({ orgSlug, children }: { orgSlug: string; chi
 
   async function handleStart() {
     if (!target || !fromNumberId) return
+    const toNumber = target.contatoId ? target.phone : manualPhone.trim()
+    if (!toNumber) { toast.error('Informe o número de telefone.'); return }
     if (mode === 'ai' && !agentId) { toast.error('Selecione um agente de Voice AI.'); return }
     setStarting(true)
-    const res = await startCall(orgSlug, { contatoId: target.contatoId, toNumber: target.phone, fromNumberId, aiAgentId: mode === 'ai' ? agentId : undefined })
+    const res = await startCall(orgSlug, { contatoId: target.contatoId, toNumber, fromNumberId, aiAgentId: mode === 'ai' ? agentId : undefined })
     setStarting(false)
     if (!res.ok) { toast.error(res.error); return }
-    if (mode === 'human') placeCall({ voiceCallId: res.voiceCallId, name: target.name })
-    else toast.success('Voice AI iniciando a ligação...')
+    if (mode === 'ai') toast.success('Voice AI iniciando a ligação...')
+    else placeCall({ voiceCallId: res.voiceCallId, name: target.name, assistedTargetLanguage: mode === 'assisted' ? assistedLanguage : undefined })
     setTarget(null)
   }
 
@@ -69,18 +76,44 @@ export function CallDialerProvider({ orgSlug, children }: { orgSlug: string; chi
       {children}
       <Dialog open={!!target} onOpenChange={v => !v && setTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{target?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{target?.name || 'Nova ligação'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{target?.phone}</p>
+            {target?.contatoId ? (
+              <p className="text-sm text-muted-foreground">{target?.phone}</p>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Número de destino</label>
+                <input
+                  type="tel"
+                  value={manualPhone}
+                  onChange={e => setManualPhone(e.target.value)}
+                  placeholder="+55 11 91234-5678"
+                  className="w-full rounded-md border border-input bg-input/25 p-2 text-sm"
+                />
+              </div>
+            )}
 
-            <div className="flex gap-3 text-sm">
+            <div className="flex flex-wrap gap-3 text-sm">
               <label className="flex items-center gap-1.5">
                 <input type="radio" checked={mode === 'human'} onChange={() => setMode('human')} /> Ligação humana
               </label>
               <label className="flex items-center gap-1.5">
                 <input type="radio" checked={mode === 'ai'} onChange={() => setMode('ai')} /> Voice AI
               </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={mode === 'assisted'} onChange={() => setMode('assisted')} /> Assistida
+              </label>
             </div>
+
+            {mode === 'assisted' && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Idioma do outro lado da ligação</label>
+                <ResponsiveSelect className="w-full" value={assistedLanguage} onValueChange={setAssistedLanguage} options={ASSISTED_CALL_LANGUAGES} />
+                <p className="text-xs text-muted-foreground">
+                  Você liga normalmente; assim que a chamada conectar, um chat traduzido em tempo real fica disponível na barra da ligação.
+                </p>
+              </div>
+            )}
 
             {mode === 'ai' && (
               agents.length === 0 ? (
@@ -110,7 +143,7 @@ export function CallDialerProvider({ orgSlug, children }: { orgSlug: string; chi
             )}
           </div>
           <DialogFooter>
-            <Button className="w-full gap-1.5" disabled={starting || numbers.length === 0 || (mode === 'ai' && agents.length === 0)} onClick={handleStart}>
+            <Button className="w-full gap-1.5" disabled={starting || numbers.length === 0 || (mode === 'ai' && agents.length === 0) || (!target?.contatoId && !manualPhone.trim())} onClick={handleStart}>
               <PhoneCall className="w-4 h-4" /> {starting ? 'Iniciando...' : mode === 'ai' ? 'Iniciar Voice AI' : 'Iniciar ligação'}
             </Button>
           </DialogFooter>

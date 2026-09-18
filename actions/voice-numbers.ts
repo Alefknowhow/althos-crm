@@ -69,7 +69,7 @@ export async function purchaseNumber(orgSlug: string, e164Number: string) {
   })
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/voice/numeros`)
+  revalidatePath(`/app/${orgSlug}/voice/conta`)
   return { ok: true as const }
 }
 
@@ -107,7 +107,7 @@ export async function attachExistingNumber(orgSlug: string, e164Number: string) 
   })
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/voice/numeros`)
+  revalidatePath(`/app/${orgSlug}/voice/conta`)
   return { ok: true as const }
 }
 
@@ -128,6 +128,6 @@ export async function releaseNumber(orgSlug: string, numberId: string) {
   }
 
   await admin.from('voice_numbers').update({ status: 'released' }).eq('id', numberId)
-  revalidatePath(`/app/${orgSlug}/voice/numeros`)
+  revalidatePath(`/app/${orgSlug}/voice/conta`)
   return { ok: true as const }
 }

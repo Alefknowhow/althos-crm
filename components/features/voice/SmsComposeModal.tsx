@@ -18,6 +18,7 @@ export function useSmsComposer() {
 
 export function SmsComposeProvider({ orgSlug, children }: { orgSlug: string; children: React.ReactNode }) {
   const [target, setTarget] = useState<SmsTarget | null>(null)
+  const [manualPhone, setManualPhone] = useState('')
   const [numbers, setNumbers] = useState<{ id: string; e164_number: string }[]>([])
   const [fromNumberId, setFromNumberId] = useState('')
   const [body, setBody] = useState('')
@@ -26,6 +27,7 @@ export function SmsComposeProvider({ orgSlug, children }: { orgSlug: string; chi
   useEffect(() => {
     if (!target) return
     setBody('')
+    setManualPhone(target.phone)
     listOrgNumbers(orgSlug).then(res => {
       if (!res.ok) { toast.error(res.error); return }
       setNumbers(res.numbers as any)
@@ -37,8 +39,10 @@ export function SmsComposeProvider({ orgSlug, children }: { orgSlug: string; chi
 
   async function handleSend() {
     if (!target || !fromNumberId || !body.trim()) return
+    const toNumber = target.contatoId ? target.phone : manualPhone.trim()
+    if (!toNumber) { toast.error('Informe o número de telefone.'); return }
     setSending(true)
-    const res = await sendSMS(orgSlug, { contatoId: target.contatoId, toNumber: target.phone, fromNumberId, body: body.trim() })
+    const res = await sendSMS(orgSlug, { contatoId: target.contatoId, toNumber, fromNumberId, body: body.trim() })
     setSending(false)
     if (!res.ok) { toast.error(res.error); return }
     toast.success('SMS enviado.')
@@ -50,8 +54,20 @@ export function SmsComposeProvider({ orgSlug, children }: { orgSlug: string; chi
       {children}
       <Dialog open={!!target} onOpenChange={v => !v && setTarget(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>SMS para {target?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{target?.name ? `SMS para ${target.name}` : 'Novo SMS'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {!target?.contatoId && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Número de destino</label>
+                <input
+                  type="tel"
+                  value={manualPhone}
+                  onChange={e => setManualPhone(e.target.value)}
+                  placeholder="+55 11 91234-5678"
+                  className="w-full rounded-md border border-input bg-input/25 p-2 text-sm"
+                />
+              </div>
+            )}
             {numbers.length > 0 && (
               <ResponsiveSelect className="w-full" value={fromNumberId} onValueChange={setFromNumberId} options={numbers.map(n => ({ value: n.id, label: n.e164_number }))} />
             )}
@@ -64,7 +80,7 @@ export function SmsComposeProvider({ orgSlug, children }: { orgSlug: string; chi
             />
           </div>
           <DialogFooter>
-            <Button className="w-full gap-1.5" disabled={sending || numbers.length === 0 || !body.trim()} onClick={handleSend}>
+            <Button className="w-full gap-1.5" disabled={sending || numbers.length === 0 || !body.trim() || (!target?.contatoId && !manualPhone.trim())} onClick={handleSend}>
               <Send className="w-4 h-4" /> {sending ? 'Enviando...' : 'Enviar SMS'}
             </Button>
           </DialogFooter>

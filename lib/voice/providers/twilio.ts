@@ -168,6 +168,19 @@ export class TwilioVoiceProvider implements VoiceProvider {
     }))
   }
 
+  /**
+   * Anexa um Media Stream de só-leitura a uma chamada já em andamento via o
+   * subrecurso REST Streams (`calls(sid).streams.create`) — NÃO usa
+   * `calls(sid).update({twiml})`, que substituiria todo o TwiML em execução
+   * e derrubaria o <Dial><Client> que conecta o agente humano. `track:
+   * 'both_tracks'` faz a Twilio mandar frames separados marcados
+   * `inbound`/`outbound` (mulaw 8kHz) — o serviço realtime do outro lado
+   * decodifica (ver services/sales-coach-realtime/src/twilio-media-adapter.ts).
+   */
+  async startMediaStream(providerCallId: string, wsUrl: string): Promise<void> {
+    await (this.client.calls(providerCallId) as any).streams.create({ url: wsUrl, track: 'both_tracks' })
+  }
+
   async createBrowserAccessToken(identity: string): Promise<{ token: string; ttlSeconds: number }> {
     const apiKeySid = process.env.TWILIO_API_KEY_SID
     const apiKeySecret = process.env.TWILIO_API_KEY_SECRET
