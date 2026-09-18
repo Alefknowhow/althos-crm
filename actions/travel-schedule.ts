@@ -197,7 +197,11 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
             horario_chegada: l.hora_chegada ?? null,
             conexao_local: l.escala_local ?? null,
             conexao_duracao: l.escala_duracao ?? null,
-            localizador: p.data?.localizador ?? null,
+            // Cada trecho de um voucher com vários pode ter seu próprio
+            // localizador de web check-in (bulkCreateSaleProductsFromExtraction
+            // grava um `localizador_checkin` por perna) — usa o do trecho em
+            // si, com o do produto (baseado só no 1º trecho) de fallback.
+            localizador: l.localizador_checkin ?? p.data?.localizador ?? null,
           }))
         : [{
             companhia: p.data?.companhia ?? null,

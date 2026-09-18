@@ -7,7 +7,7 @@
  * ScheduleTripDetailTabs.tsx pra isolar o estado/as mutações.
  */
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -33,45 +33,76 @@ export function ScheduleTripTasksTab({
 }) {
   const [newTitle, setNewTitle] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [creating, startCreating] = useTransition()
+  const [creating, setCreating] = useState(false)
 
-  function toggle(task: SaleTaskRow) {
+  // A reserva selecionada pode mudar (usuário fecha o painel e abre outra
+  // viagem) enquanto uma mutação ainda está em voo — guarda a reserva "dona"
+  // de cada chamada e descarta a resposta se ela não bater mais com a atual
+  // quando voltar, pra não vazar dado de uma reserva pra outra.
+  const saleIdRef = useRef(saleId)
+  useEffect(() => { saleIdRef.current = saleId }, [saleId])
+
+  async function toggle(task: SaleTaskRow) {
+    const sid = saleId
     const nextStatus = isDone(task.status) ? 'open' : 'done'
     setBusyId(task.id)
     onTasksChange(tasks.map(t => (t.id === task.id ? { ...t, status: nextStatus } : t)))
-    toggleTaskStatus(orgSlug, task.id, nextStatus).then(res => {
+    try {
+      const res = await toggleTaskStatus(orgSlug, task.id, nextStatus)
+      if (saleIdRef.current !== sid) return
       if (!res.ok) {
         toast.error('Não foi possível atualizar a tarefa.')
         onTasksChange(tasks.map(t => (t.id === task.id ? { ...t, status: task.status } : t)))
       }
-      setBusyId(null)
-    })
+    } catch {
+      if (saleIdRef.current !== sid) return
+      toast.error('Não foi possível atualizar a tarefa.')
+      onTasksChange(tasks.map(t => (t.id === task.id ? { ...t, status: task.status } : t)))
+    } finally {
+      if (saleIdRef.current === sid) setBusyId(null)
+    }
   }
 
-  function remove(task: SaleTaskRow) {
-    setBusyId(task.id)
+  async function remove(task: SaleTaskRow) {
+    const sid = saleId
     const previous = tasks
+    setBusyId(task.id)
     onTasksChange(tasks.filter(t => t.id !== task.id))
-    deleteTask(orgSlug, task.id).then(res => {
+    try {
+      const res = await deleteTask(orgSlug, task.id)
+      if (saleIdRef.current !== sid) return
       if (!res.ok) {
         toast.error('Não foi possível excluir a tarefa.')
         onTasksChange(previous)
       }
-      setBusyId(null)
-    })
+    } catch {
+      if (saleIdRef.current !== sid) return
+      toast.error('Não foi possível excluir a tarefa.')
+      onTasksChange(previous)
+    } finally {
+      if (saleIdRef.current === sid) setBusyId(null)
+    }
   }
 
-  function add() {
+  async function add() {
     const title = newTitle.trim()
-    if (!title) return
-    startCreating(async () => {
-      const res = await createTask(orgSlug, { title, sale_id: saleId })
+    if (!title || creating) return
+    const sid = saleId
+    setCreating(true)
+    try {
+      const res = await createTask(orgSlug, { title, sale_id: sid })
       if (!res.ok) { toast.error(res.error || 'Não foi possível criar a tarefa.'); return }
-      setNewTitle('')
       // createTask não devolve o id da linha criada — recarrega a lista da
       // reserva pra pegar a tarefa nova com id de verdade.
-      onTasksChange(await listTasksForSale(orgSlug, saleId))
-    })
+      const fresh = await listTasksForSale(orgSlug, sid)
+      if (saleIdRef.current !== sid) return
+      setNewTitle('')
+      onTasksChange(fresh)
+    } catch {
+      if (saleIdRef.current === sid) toast.error('Não foi possível criar a tarefa.')
+    } finally {
+      if (saleIdRef.current === sid) setCreating(false)
+    }
   }
 
   return (
@@ -111,7 +142,11 @@ export function ScheduleTripTasksTab({
                   type="button"
                   onClick={() => remove(t)}
                   disabled={busy}
-                  className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                  className={cn(
+                    'shrink-0 text-muted-foreground hover:text-destructive transition-opacity disabled:opacity-50',
+                    'opacity-100 focus-visible:opacity-100 focus-visible:outline-none',
+                    '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100',
+                  )}
                   aria-label="Excluir tarefa"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
