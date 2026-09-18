@@ -10,6 +10,7 @@ import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
 import RevenueForecastWidget from '../RevenueForecastWidget'
 import TopProductsWidget from '../TopProductsWidget'
 import LeadSourceReturnsWidget from '../LeadSourceReturnsWidget'
+import SourceRankingWidget from '../SourceRankingWidget'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -85,6 +86,14 @@ export default async function VendasTab({ ctx }: { ctx: WidgetCtx }) {
         <div className="md:col-span-6">
           <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
             <LeadSourceReturnsWidget orgId={ctx.orgId} since={sinceFromPeriod(ctx.period)} />
+          </Suspense>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-6">
+          <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
+            <SourceRankingWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} />
           </Suspense>
         </div>
       </div>

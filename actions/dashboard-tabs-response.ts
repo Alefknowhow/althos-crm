@@ -83,7 +83,26 @@ export async function getResponseMetrics(orgId: string, since: Date, limit = 500
 
 /* -------- Motivos de perda -------- */
 
-export type LossReasonRow = { reason: string; count: number }
+/** Mesma normalização de `source` usada em dashboard-revenue-rankings.ts
+ *  (getSourcePerformance) — duplicada aqui (é só um switch pequeno) pra não
+ *  criar uma dependência cruzada entre os dois arquivos de actions. */
+function normalizeSourceLabel(source: string | null): string {
+  if (!source) return 'Manual'
+  if (source.startsWith('form:')) return `Formulário · ${source.slice(5)}`
+  if (source.startsWith('agendamento:')) return `Agendamento · ${source.slice(12)}`
+  if (source.startsWith('campaign:')) return `Campanha · ${source.slice(9)}`
+  return source
+}
+
+export type LossReasonSourceSegment = { source: string; count: number }
+export type LossReasonBySourceRow = {
+  reason: string
+  count: number
+  /** % sobre o total de perdas/desqualificações no período (todas as linhas somadas). */
+  pct: number
+  /** Quebra da mesma linha por origem do lead — usada pra segmentar a barra. */
+  bySource: LossReasonSourceSegment[]
+}
 
 /**
  * Motivos de perda = contatos.close_reason (texto livre, preenchido no
@@ -92,36 +111,90 @@ export type LossReasonRow = { reason: string; count: number }
  * (case-insensitive, trim). Não é uma taxonomia fixa — como o campo é
  * livre, motivos parecidos escritos diferente ("sem resposta" vs "Sem
  * resposta do lead") não se juntam. Ainda assim é dado real, não mock.
+ *
+ * Cada motivo também é quebrado por origem do lead (`source`) — uma linha
+ * por motivo, segmentada por origem, com o total e o % do motivo sobre
+ * todas as perdas no final.
  */
-export async function getLossReasons(orgId: string, limit = 6): Promise<LossReasonRow[]> {
+export async function getLossReasonsBySource(orgId: string, limit = 6): Promise<LossReasonBySourceRow[]> {
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')
-    .select('close_reason')
+    .select('close_reason, source')
     .eq('organization_id', orgId)
     .in('deal_status', ['perdido', 'desqualificado'])
     .not('close_reason', 'is', null)
 
-  const byReason = new Map<string, number>()
+  type Bucket = { label: string; count: number; bySource: Map<string, number> }
+  const byReason = new Map<string, Bucket>()
+  let total = 0
   for (const r of data || []) {
     const reason = (r.close_reason || '').trim()
     if (!reason) continue
     const key = reason.toLowerCase()
-    byReason.set(key, (byReason.get(key) || 0) + 1)
+    const bucket = byReason.get(key) || { label: reason, count: 0, bySource: new Map<string, number>() }
+    bucket.count += 1
+    const sourceLabel = normalizeSourceLabel(r.source)
+    bucket.bySource.set(sourceLabel, (bucket.bySource.get(sourceLabel) || 0) + 1)
+    byReason.set(key, bucket)
+    total += 1
   }
 
-  // Mantém a primeira grafia encontrada como rótulo (case original), só a
-  // contagem usa a chave normalizada.
-  const labelByKey = new Map<string, string>()
-  for (const r of data || []) {
-    const reason = (r.close_reason || '').trim()
-    if (!reason) continue
-    const key = reason.toLowerCase()
-    if (!labelByKey.has(key)) labelByKey.set(key, reason)
-  }
-
-  return Array.from(byReason.entries())
-    .map(([key, count]) => ({ reason: labelByKey.get(key) || key, count }))
+  return Array.from(byReason.values())
+    .map(b => ({
+      reason: b.label,
+      count: b.count,
+      pct: total > 0 ? (b.count / total) * 100 : 0,
+      bySource: Array.from(b.bySource.entries())
+        .map(([source, count]) => ({ source, count }))
+        .sort((a, c) => c.count - a.count),
+    }))
     .sort((a, b) => b.count - a.count)
     .slice(0, limit)
+}
+
+export type MqlSqlCampaignRow = { campaign: string; mql: number; sql: number }
+
+/**
+ * MQL/SQL por campanha — não existe uma coluna "is_mql"/"is_sql" no schema
+ * (só a pontuação de IA em `ai_tier`/`ai_score`, lib/ai/qualifier.ts), então
+ * usa uma definição por proxy, documentada aqui pra poder ser revista:
+ *   MQL (Marketing Qualified Lead) = lead com `ai_tier` 'hot' ou 'warm' —
+ *     a IA de qualificação avaliou o lead como bom o suficiente pra
+ *     interesse comercial real, não só "chegou".
+ *   SQL (Sales Qualified Lead)     = MQL que já tem `assigned_to` —
+ *     vendas aceitou/está trabalhando o lead (só a IA achar bom não basta;
+ *     alguém do time precisa ter assumido).
+ * Segmentado por campanha (`source` = 'campaign:<utm_campaign>'); leads de
+ * outras origens (manual, formulário, agendamento, direto) somam em
+ * "Outras origens" pra o total continuar batendo.
+ */
+export async function getMqlSqlByCampaign(
+  orgId: string,
+  since: Date,
+  options: { pipelineId?: string | null } = {},
+): Promise<MqlSqlCampaignRow[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('contatos')
+    .select('source, ai_tier, assigned_to')
+    .eq('organization_id', orgId)
+    .gte('created_at', since.toISOString())
+    .in('ai_tier', ['hot', 'warm'])
+  if (options.pipelineId) query = query.eq('pipeline_id', options.pipelineId)
+  const { data } = await query
+
+  const byCampaign = new Map<string, { mql: number; sql: number }>()
+  for (const l of data || []) {
+    const campaign = l.source?.startsWith('campaign:') ? l.source.slice(9) : 'Outras origens'
+    const cur = byCampaign.get(campaign) || { mql: 0, sql: 0 }
+    cur.mql += 1
+    if (l.assigned_to) cur.sql += 1
+    byCampaign.set(campaign, cur)
+  }
+
+  return Array.from(byCampaign.entries())
+    .map(([campaign, v]) => ({ campaign, mql: v.mql, sql: v.sql }))
+    .sort((a, b) => b.mql - a.mql)
+    .slice(0, 8)
 }

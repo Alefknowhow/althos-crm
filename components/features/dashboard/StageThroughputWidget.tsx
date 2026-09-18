@@ -47,7 +47,7 @@ export default function StageThroughputWidget({ orgSlug, pipelineId }: Props) {
     <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 shrink-0 pb-2">
         <div>
-          <CardTitle className="text-base">Funil Histórico</CardTitle>
+          <CardTitle className="text-base">Funil de Conversão</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
             Leads que entraram em cada estágio no período — soma em todos os estágios percorridos.
           </p>

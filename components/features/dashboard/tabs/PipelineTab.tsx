@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { getAverageTimePerStage } from '@/actions/dashboard'
-import { getTicketMedio, getLossReasons } from '@/actions/dashboard-tabs'
+import { getTicketMedio, getLossReasonsBySource } from '@/actions/dashboard-tabs'
 import { sinceFromPeriod } from '@/lib/dashboard/period'
 import KpiCard from '../KpiCard'
 import ConversionFunnelWidget from '../ConversionFunnelWidget'
@@ -10,8 +10,9 @@ import StageThroughputWidget from '../StageThroughputWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'
 import SourcePerformanceWidget from '../SourcePerformanceWidget'
 import TimeInStageWidget from '../TimeInStageWidget'
-import BarListCard from '../BarListCard'
-import { TrendingDown, Users, Wallet, Percent, Clock, Receipt, Gauge, Target, CheckCircle2 } from 'lucide-react'
+import LossReasonsBySourceWidget from '../LossReasonsBySourceWidget'
+import MqlSqlBySourceWidget from '../MqlSqlBySourceWidget'
+import { Users, Wallet, Percent, Clock, Receipt, Gauge, Target, CheckCircle2 } from 'lucide-react'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
@@ -28,7 +29,7 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
   const [ticket, timeInStage, lossReasons] = await Promise.all([
     getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
     getAverageTimePerStage(ctx.orgId, { pipelineId: ctx.pipelineId }),
-    getLossReasons(ctx.orgId),
+    getLossReasonsBySource(ctx.orgId),
   ])
 
   const funnel = ctx.initialFunnel
@@ -130,16 +131,13 @@ export default async function PipelineTab({ ctx }: { ctx: WidgetCtx }) {
           </Suspense>
         </div>
         <div className="md:col-span-6">
-          <BarListCard
-            title="Motivos de perda"
-            help="Motivo informado ao mover um lead para perdido/desqualificado — texto livre agrupado por igualdade exata, sem taxonomia fixa."
-            icon={TrendingDown}
-            rows={lossReasons.map(r => ({ label: r.reason, value: r.count, valueLabel: String(r.count) }))}
-            color="#da1e28"
-            emptyText="Nenhum motivo de perda registrado ainda."
-          />
+          <LossReasonsBySourceWidget rows={lossReasons} />
         </div>
       </div>
+
+      <Suspense fallback={<Skeleton className="h-[320px] w-full" />}>
+        <MqlSqlBySourceWidget orgId={ctx.orgId} pipelineId={ctx.pipelineId} period={ctx.period} />
+      </Suspense>
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="pipeline" />

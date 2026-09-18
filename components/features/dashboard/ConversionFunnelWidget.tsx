@@ -89,7 +89,7 @@ export default function ConversionFunnelWidget({
     <Card className={`${CHART_CARD_H} flex flex-col overflow-hidden`}>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 shrink-0 pb-2">
         <div>
-          <CardTitle className="text-base">Funil de Conversão</CardTitle>
+          <CardTitle className="text-base">Pipeline</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
             Distribuição atual de leads por estágio, filtrável por origem.
           </p>

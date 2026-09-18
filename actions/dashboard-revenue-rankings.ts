@@ -18,8 +18,15 @@ export type SourceRow = {
 
 /**
  * Per-source performance over the last `windowDays` days. Tracks leads
- * created from each source and how many ended up in a terminal stage
- * (= won). Useful to answer "which channel gives me the best ROI?".
+ * created from each source and how many are actually won. Useful to answer
+ * "which channel gives me the best ROI?".
+ *
+ * "Won" = `deal_status === 'ganho'` — mesmo critério usado em todo o resto
+ * do dashboard/pipeline (dashboard-core.ts, dashboard-tabs-sellers.ts,
+ * marketing-overview.ts). Antes contava como ganho qualquer lead que
+ * estivesse na etapa de MAIOR `position` do pipeline — o que classificava
+ * errado sempre que a última etapa por posição não fosse de fato a etapa
+ * "Fechado"/ganho (ex.: pipeline com uma etapa "Perdido" no final).
  */
 export async function getSourcePerformance(
   orgId: string,
@@ -29,7 +36,7 @@ export async function getSourcePerformance(
   const start = new Date()
   start.setDate(start.getDate() - (options.windowDays ?? 90))
 
-  // Resolve pipeline + terminal stages.
+  // Resolve pipeline(s) in scope.
   let pipelineIds: string[] = []
   if (options.pipelineId) {
     pipelineIds = [options.pipelineId]
@@ -44,28 +51,10 @@ export async function getSourcePerformance(
 
   if (pipelineIds.length === 0) return []
 
-  const { data: allStages } = await supabase
-    .from('pipeline_stages')
-    .select('id, position, pipeline_id')
-    .in('pipeline_id', pipelineIds)
-
-  type StageRow = { id: string; position: number; pipeline_id: string }
-  const terminalIds = new Set<string>()
-  const byPipeline = new Map<string, StageRow[]>()
-  for (const s of allStages || []) {
-    const arr = byPipeline.get(s.pipeline_id) || []
-    arr.push(s as StageRow)
-    byPipeline.set(s.pipeline_id, arr)
-  }
-  for (const arr of Array.from(byPipeline.values())) {
-    const last = arr.sort((a, b) => a.position - b.position)[arr.length - 1]
-    if (last) terminalIds.add(last.id)
-  }
-
-  // Pull all leads in window with source + stage + value.
+  // Pull all leads in window with source + deal_status + value.
   const { data: leads } = await supabase
     .from('contatos')
-    .select('source, stage_id, value_cents')
+    .select('source, deal_status, value_cents')
     .eq('organization_id', orgId)
     .in('pipeline_id', pipelineIds)
     .gte('created_at', start.toISOString())
@@ -86,7 +75,7 @@ export async function getSourcePerformance(
 
     const cur = buckets.get(label) || { leads: 0, won: 0, value: 0 }
     cur.leads += 1
-    if (l.stage_id && terminalIds.has(l.stage_id)) {
+    if (l.deal_status === 'ganho') {
       cur.won += 1
       cur.value += l.value_cents || 0
     }
