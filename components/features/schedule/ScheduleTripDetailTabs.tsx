@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils'
 import {
   CheckSquare, Loader2, FileIcon, ImageIcon, Users, ListChecks, Package, ExternalLink,
 } from 'lucide-react'
-import type { ScheduledTrip, TripTask, TripTraveler, TripVoucher } from '@/actions/travel-schedule'
+import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
+import type { TripTraveler, TripVoucher } from '@/actions/travel-schedule-detail'
 import type { SaleProduct } from '@/actions/sale-products'
 import SaleProductCard from '@/components/features/reservas/SaleProductCard'
 import { fmtDate } from './ScheduleTripDetail'

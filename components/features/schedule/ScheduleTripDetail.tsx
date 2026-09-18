@@ -18,7 +18,8 @@ import { cn, formatCurrency } from '@/lib/utils'
 import {
   Plane, MessageCircle, ExternalLink, CalendarDays, Ticket, Building2, UserRound, AlertTriangle,
 } from 'lucide-react'
-import type { ScheduledTrip, TripTask, TripTraveler, TripVoucher } from '@/actions/travel-schedule'
+import type { ScheduledTrip, TripTask } from '@/actions/travel-schedule'
+import type { TripTraveler, TripVoucher } from '@/actions/travel-schedule-detail'
 import type { SaleProduct } from '@/actions/sale-products'
 import { STATE_META, type TripState } from './ScheduleGanttView'
 import { ScheduleTripDetailTabs } from './ScheduleTripDetailTabs'

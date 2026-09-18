@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { getTripTasks, type ScheduledTrip, type TripTask } from '@/actions/travel-schedule'
 import {
-  getTripTasks, getTripDetailExtra, type ScheduledTrip, type TripTask,
-  type TripTraveler, type TripVoucher,
-} from '@/actions/travel-schedule'
+  getTripDetailExtra, type TripTraveler, type TripVoucher,
+} from '@/actions/travel-schedule-detail'
 import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
 import { ListChecks, CalendarDays } from 'lucide-react'
 import { ScheduleGanttView, type TripState } from './ScheduleGanttView'
