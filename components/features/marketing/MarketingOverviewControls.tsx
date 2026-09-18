@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { TrendingUp, TrendingDown, CalendarRange, Check } from 'lucide-react'
 import { PERIODS } from './MarketingOverviewShared'
 
 /** Um número atual x anterior, com % de variação — sem julgar se subir é bom
@@ -42,11 +43,15 @@ export function ComparisonStat({
   )
 }
 
+/** Dropdown compacto (mesmo padrão do AccountFilter) — era uma barra de
+ *  pills sempre visível; virou um botão só, liberando espaço vertical pros
+ *  cards de indicador subirem. */
 export function PeriodTabs() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const current = searchParams?.get('period') || '30d'
+  const currentLabel = PERIODS.find(p => p.value === current)?.label ?? current
 
   function set(value: string) {
     const params = new URLSearchParams(searchParams?.toString() || '')
@@ -55,19 +60,27 @@ export function PeriodTabs() {
   }
 
   return (
-    <Tabs value={current} onValueChange={set}>
-      <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5">
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-normal">
+          <CalendarRange className="w-3.5 h-3.5" />
+          <span className="font-medium">{currentLabel}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-48 p-1">
         {PERIODS.map(p => (
-          <TabsTrigger
+          <button
             key={p.value}
-            value={p.value}
-            className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background  "
+            type="button"
+            onClick={() => set(p.value)}
+            className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
           >
-            {p.label}
-          </TabsTrigger>
+            <span className="truncate">{p.label}</span>
+            {p.value === current && <Check className="w-3.5 h-3.5 shrink-0" />}
+          </button>
         ))}
-      </TabsList>
-    </Tabs>
+      </PopoverContent>
+    </Popover>
   )
 }
 

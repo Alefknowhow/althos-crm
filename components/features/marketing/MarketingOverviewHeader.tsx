@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,7 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Upload, Settings, ChevronDown, RefreshCw } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Upload, Settings, ChevronDown, RefreshCw, Filter, Check } from 'lucide-react'
 import MetricPicker from './MetricPicker'
 import AccountFilter from './AccountFilter'
 import type { ObjectiveGroup } from '@/lib/marketing/objective'
@@ -84,6 +84,34 @@ export default function MarketingOverviewHeader({
             selected={accountFilter}
             onChange={setAccountFilter}
           />
+          {/* Filtro por objetivo — mostra a métrica de conversão certa por
+              tipo de campanha. Virou dropdown (era uma 2ª linha de pills)
+              pra liberar espaço vertical e ficar junto dos outros filtros. */}
+          {!noAccountsYet && !noCampaignsYet && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-normal">
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="font-medium">
+                    {OBJECTIVE_FILTERS.find(f => f.value === objectiveFilter)?.label ?? 'Todos'}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-1">
+                {OBJECTIVE_FILTERS.map(f => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setObjectiveFilter(f.value)}
+                    className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <span className="truncate">{f.label}</span>
+                    {f.value === objectiveFilter && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
           <MetricPicker
             visibleCardMetrics={visibleCardMetrics}
             onChangeCardMetrics={onChangeCardMetrics}
@@ -142,25 +170,6 @@ export default function MarketingOverviewHeader({
           </DropdownMenu>
         )}
       </div>
-
-      {/* Filtro por objetivo — mostra a métrica de conversão certa por tipo
-          de campanha. Fica dentro do painel fixo junto com o resto dos
-          filtros (período/conta/etc), não solto mais abaixo. */}
-      {!noAccountsYet && !noCampaignsYet && (
-        <Tabs value={objectiveFilter} onValueChange={v => setObjectiveFilter(v as ObjectiveGroup | 'all')}>
-          <TabsList className="bg-secondary rounded-full p-1 h-auto gap-0.5 flex-wrap">
-            {OBJECTIVE_FILTERS.map(f => (
-              <TabsTrigger
-                key={f.value}
-                value={f.value}
-                className="rounded-full px-3.5 py-1.5 text-xs font-medium data-[state=active]:bg-background"
-              >
-                {f.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
     </div>
   )
 }
