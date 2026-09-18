@@ -20,7 +20,7 @@ export default function TravelSalesViewSaleEditorHeader({
 }) {
   return (
     <div className="sticky top-0 bg-card border-b p-3 sm:p-4 flex items-center gap-3 z-10 flex-wrap">
-      <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
+      <Button variant="ghost" size="icon" className="shrink-0" title="Voltar à lista" onClick={onBack}>
         <ArrowLeft className="w-4 h-4" />
       </Button>
 

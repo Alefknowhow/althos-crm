@@ -17,10 +17,9 @@ import {
 } from '@/actions/travel-sales'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
 import { toast } from 'sonner'
-import {
-  MapPin, Calendar, Receipt, Plus, Search, UserCircle2, Building2, Ticket,
-} from 'lucide-react'
-import { FOCUS_RING, TravelSalesFiltersMenu, type ProposalOption, type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
+import { Receipt, Plus, Search } from 'lucide-react'
+import { TravelSalesFiltersMenu, type ProposalOption, type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
+import { TravelSalesListTable } from './TravelSalesListTable'
 import NewSaleDialog from './TravelSalesViewNewSaleDialog'
 import SaleEditor from './TravelSalesViewSaleEditor'
 
@@ -37,8 +36,11 @@ export default function TravelSalesView({
   headerAction?: React.ReactNode
 }) {
   const router = useRouter()
+  // Lista-ou-detalhe em tela cheia (mesmo padrão de Cotações/Automações):
+  // abre direto na lista, a não ser que um `sale` específico tenha vindo
+  // por link (?sale=... de Embarques, por exemplo).
   const [selectedId, setSelectedId] = useState<string | null>(
-    (initialSelectedId && sales.some(s => s.id === initialSelectedId) ? initialSelectedId : sales[0]?.id) ?? null,
+    (initialSelectedId && sales.some(s => s.id === initialSelectedId) ? initialSelectedId : null),
   )
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -186,107 +188,34 @@ export default function TravelSalesView({
         </Button>
       </div>
 
-      <div className={cn(
-        'grid md:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0',
-      )}>
-        {/* ── List ─────────────────────────────────────────────── */}
-        <div className={cn(
-          'rounded-lg bg-card overflow-y-auto divide-y h-full',
-          selected && 'hidden md:block',
-        )}>
-          {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              Nenhuma venda encontrada com esses filtros.
-            </div>
-          ) : filtered.map(s => {
-            const active = s.id === selectedId
-            const seller = s.created_by ? sellerName.get(s.created_by) : null
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedId(s.id)}
-                className={cn(
-                  'w-full text-left p-3 transition-colors',
-                  FOCUS_RING,
-                  active ? 'bg-primary/5' : 'hover:bg-muted/50',
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-[15px] leading-tight truncate">
-                    {s.client_name || 'Cliente'}
-                  </span>
-                  {s.created_at && (
-                    <span className="shrink-0 text-[10px] text-muted-foreground/70 whitespace-nowrap">
-                      {new Date(s.created_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  )}
-                </div>
-                {(s.destination || s.departure_date || s.return_date) && (
-                  <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                    {s.destination && (
-                      <span className="flex items-center gap-1 min-w-0">
-                        <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{s.destination}</span>
-                      </span>
-                    )}
-                    {(s.departure_date || s.return_date) && (
-                      <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        {s.departure_date ? new Date(s.departure_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) : '—'}
-                        {' a '}
-                        {s.return_date ? new Date(s.return_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' }) : '—'}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {(s.operator || s.package_locator || seller) && (
-                  <div className="mt-1 flex items-center gap-2.5 text-[11px] text-muted-foreground">
-                    {s.operator && (
-                      <span className="flex items-center gap-1 min-w-0 truncate" title={`Operadora: ${s.operator}`}>
-                        <Building2 className="w-3 h-3 shrink-0 opacity-70" /> <span className="truncate">{s.operator}</span>
-                      </span>
-                    )}
-                    {s.package_locator && (
-                      <span className="flex items-center gap-1 min-w-0 truncate font-mono" title={`Localizador: ${s.package_locator}`}>
-                        <Ticket className="w-3 h-3 shrink-0 opacity-70 font-sans" /> <span className="truncate">{s.package_locator}</span>
-                      </span>
-                    )}
-                    {seller && (
-                      <span className="flex items-center gap-1 min-w-0 truncate" title={`Responsável: ${seller}`}>
-                        <UserCircle2 className="w-3 h-3 shrink-0 opacity-70" /> <span className="truncate">{seller}</span>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ── Detail ───────────────────────────────────────────── */}
-        <div className={cn(
-          'rounded-lg bg-card overflow-hidden h-full',
-          !selected && 'hidden md:flex',
-        )}>
-          {selected
-            ? <SaleEditor
-                key={selected.id}
-                orgSlug={orgSlug}
-                sale={selected}
-                saving={saving}
-                sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
-                leads={leads}
-                onBack={() => setSelectedId(null)}
-                onDelete={() => setDeleteId(selected.id)}
-                onSave={(patch, generate) => handleSave(selected.id, patch, generate)}
-              />
-            : (
-              <div className="m-auto text-center text-sm text-muted-foreground p-8">
-                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                Selecione uma venda para ver os detalhes.
-              </div>
-            )}
-        </div>
+      {/* Lista-ou-detalhe em tela cheia (mesmo padrão de Cotações/
+          Automações) — nunca lado a lado: ou a tabela ocupa toda a
+          largura, ou a reserva aberta ocupa. */}
+      <div className="flex-1 min-h-0">
+        {!selected ? (
+          <div className="rounded-lg bg-card overflow-auto h-full">
+            <TravelSalesListTable
+              sales={filtered}
+              sellerName={sellerName}
+              onOpen={setSelectedId}
+              onDelete={id => setDeleteId(id)}
+            />
+          </div>
+        ) : (
+          <div className="rounded-lg bg-card overflow-hidden h-full flex">
+            <SaleEditor
+              key={selected.id}
+              orgSlug={orgSlug}
+              sale={selected}
+              saving={saving}
+              sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
+              leads={leads}
+              onBack={() => setSelectedId(null)}
+              onDelete={() => setDeleteId(selected.id)}
+              onSave={(patch, generate) => handleSave(selected.id, patch, generate)}
+            />
+          </div>
+        )}
       </div>
 
       <NewSaleDialog

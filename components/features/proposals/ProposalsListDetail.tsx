@@ -116,7 +116,7 @@ export function ProposalDetail({
           {p.title || 'Proposta sem título'}
         </h2>
         <div className="order-2 flex items-center gap-1.5 sm:gap-2 shrink-0 overflow-x-auto">
-          <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={onBack}>
+          <Button variant="ghost" size="icon" className="shrink-0" title="Voltar à lista" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <Button

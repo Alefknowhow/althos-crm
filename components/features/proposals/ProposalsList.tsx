@@ -21,7 +21,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { fmtTimestamp, destOf, sellerLabelColor, proposalStatusMeta } from './ProposalsListHelpers'
+import { fmtTimestamp, fmtDate, destOf, sellerLabelColor, proposalStatusMeta } from './ProposalsListHelpers'
 import { ProposalRowActions } from './ProposalsListRowActions'
 import { ProposalDetail } from './ProposalsListDetail'
 import { DuplicateProposalDialog } from './ProposalsListDuplicateDialog'
@@ -194,111 +194,110 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[50fr_48fr] gap-4 flex-1 min-h-0">
-        {/* ── List (tabela) ────────────────────────────────────── */}
-        <div className={cn(
-          'rounded-lg bg-card overflow-auto h-full',
-          selected && 'hidden md:block',
-        )}>
-          {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              Nenhuma proposta encontrada com esses filtros.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden lg:table-cell">Destino</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="hidden md:table-cell whitespace-nowrap">Data</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Responsável</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map(p => {
-                  const dest = destOf(p)
-                  const active = p.id === selectedId
-                  const seller = p.created_by ? sellerName.get(p.created_by) : null
-                  return (
-                    <TableRow
-                      key={p.id}
-                      className={cn('cursor-pointer', active && 'bg-primary/5')}
-                      onClick={() => setSelectedId(p.id)}
-                    >
-                      <TableCell className="max-w-[220px]">
-                        <span className="font-medium text-sm truncate block">
-                          {p.client_name || p.title || 'Proposta sem título'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell max-w-[180px]">
-                        {dest ? (
-                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                            <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-medium tabular-nums whitespace-nowrap">
-                        {formatCurrency(p.total_cents || 0)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
-                        {fmtTimestamp(p.created_at)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {(() => {
-                          const meta = proposalStatusMeta(p.status)
-                          return (
-                            <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap', meta.cls)}>
-                              {meta.label}
-                            </span>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {seller ? (
-                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
-                            {seller}
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell onClick={ev => ev.stopPropagation()}>
-                        <ProposalRowActions
-                          orgSlug={orgSlug}
-                          p={p}
-                          onDelete={() => setDeleteId(p.id)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-
-        {/* ── Detail ───────────────────────────────────────────── */}
-        <div className={cn(
-          'rounded-lg bg-card overflow-y-auto h-full',
-          !selected && 'hidden md:flex',
-        )}>
-          {selected
-            ? <ProposalDetail
-                key={selected.id}
-                orgSlug={orgSlug}
-                p={selected}
-                sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
-                onBack={() => setSelectedId(null)}
-                onDuplicate={() => setDuplicateFor(selected)}
-              />
-            : (
-              <div className="m-auto text-center text-sm text-muted-foreground p-8">
-                <FileSignature className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                Selecione uma proposta para ver os detalhes.
+      {/* Lista-ou-detalhe em tela cheia (mesmo padrão de Automações/
+          Formulários) — nunca os dois lado a lado: ou a tabela ocupa toda
+          a largura, ou o detalhe da proposta ocupa. */}
+      <div className="flex-1 min-h-0">
+        {!selected ? (
+          <div className="rounded-lg bg-card overflow-auto h-full">
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                Nenhuma proposta encontrada com esses filtros.
               </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden lg:table-cell">Destino</TableHead>
+                    <TableHead className="hidden lg:table-cell whitespace-nowrap">Período</TableHead>
+                    <TableHead className="hidden xl:table-cell text-right whitespace-nowrap">Pessoas</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="hidden md:table-cell whitespace-nowrap">Criada em</TableHead>
+                    <TableHead className="hidden md:table-cell">Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Responsável</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map(p => {
+                    const dest = destOf(p)
+                    const seller = p.created_by ? sellerName.get(p.created_by) : null
+                    return (
+                      <TableRow
+                        key={p.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedId(p.id)}
+                      >
+                        <TableCell className="max-w-[220px]">
+                          <span className="font-medium text-sm truncate block">
+                            {p.client_name || p.title || 'Proposta sem título'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell max-w-[180px]">
+                          {dest ? (
+                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
+                            </span>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                          {p.start_date || p.end_date
+                            ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date)}`
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-right text-xs text-muted-foreground tabular-nums">
+                          {p.pax_count ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-medium tabular-nums whitespace-nowrap">
+                          {formatCurrency(p.total_cents || 0)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
+                          {fmtTimestamp(p.created_at)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {(() => {
+                            const meta = proposalStatusMeta(p.status)
+                            return (
+                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap', meta.cls)}>
+                                {meta.label}
+                              </span>
+                            )
+                          })()}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {seller ? (
+                            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
+                              {seller}
+                            </span>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell onClick={ev => ev.stopPropagation()}>
+                          <ProposalRowActions
+                            orgSlug={orgSlug}
+                            p={p}
+                            onDelete={() => setDeleteId(p.id)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             )}
-        </div>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-card overflow-y-auto h-full">
+            <ProposalDetail
+              key={selected.id}
+              orgSlug={orgSlug}
+              p={selected}
+              sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
+              onBack={() => setSelectedId(null)}
+              onDuplicate={() => setDuplicateFor(selected)}
+            />
+          </div>
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>

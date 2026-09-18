@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
 import { CheckCircle2, Copy, ExternalLink, FileText, Pencil, Trash2 } from 'lucide-react'
 import type { ProposalRow } from '@/actions/travel-proposals'
 
-/** Botão de ação quadrado, só ícone — usado na linha da tabela de propostas
- *  pra permitir agir direto na lista, sem precisar abrir o detalhe. */
+/** Botão de ação só ícone — mesmo estilo (`Button variant="outline"
+ *  size="icon"`) usado nas outras listas em grid de cards (Automações,
+ *  Formulários), pra ficar consistente em todo o app. */
 function RowActionButton({
   icon: Icon, label, onClick, href, newTab = true, disabled, tone,
 }: {
@@ -22,9 +24,9 @@ function RowActionButton({
   tone?: 'destructive'
 }) {
   const className = cn(
-    'inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-md border border-input bg-background transition-colors',
-    'hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-background',
-    tone === 'destructive' && 'text-destructive hover:bg-destructive/10 hover:text-destructive',
+    buttonVariants({ variant: 'outline', size: 'icon' }),
+    'h-8 w-8 shrink-0',
+    tone === 'destructive' && 'text-destructive hover:text-destructive',
   )
   if (href && !disabled) {
     if (!newTab) {
