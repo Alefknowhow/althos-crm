@@ -18,21 +18,17 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { cn, formatPhoneDisplay } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Search, Users, MessageCircle, FileSignature, Plane, PhoneCall, MessageSquareText,
-  MoreVertical,
-} from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 import { useSmsComposer } from '@/components/features/voice/SmsComposeModal'
 import { CONTATO_STATUS_META, type ContatoStatus } from '@/lib/contatos'
 import { getOrCreateConversationForLead } from '@/actions/whatsapp'
+import { deleteLead } from '@/actions/contatos'
 import {
   type ListRow, type Props, relativeTime, initials,
 } from './ContatosViewShared'
 import { ListAvatar, LinkedRecordsDialog, NewContatoDialog } from './ContatosViewWidgets'
+import { ContatosViewRowActions } from './ContatosViewRowActions'
 import { DetailPanel } from './ContatosViewDetailPanel'
 import { FiltersSheet, countActiveFilters } from './ContatosViewFilters'
 
@@ -93,6 +89,19 @@ export default function ContatosView({
     router.push(`/app/${orgSlug}/conversas?id=${res.conversationId}`)
   }
 
+  // Excluir direto da lista (mesma ação/confirmação do menu ⋮ do painel de
+  // detalhe — ContatosViewDetailPanel.tsx::handleDelete).
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  async function handleDeleteRow(contatoId: string) {
+    if (!window.confirm('Excluir este contato? Essa ação não pode ser desfeita — o contato e todas as suas atividades serão perdidos.')) return
+    setDeletingId(contatoId)
+    const res = await deleteLead(orgSlug, contatoId)
+    setDeletingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Contato excluído.')
+    router.refresh()
+  }
+
   // ── Busca com debounce → URL ──────────────────────────────────────
   const [searchInput, setSearchInput] = useState(filters.q || '')
   useEffect(() => {
@@ -130,6 +139,7 @@ export default function ContatosView({
         isTravel={isTravel}
         isRealEstate={isRealEstate}
         properties={properties}
+        autoEditOpen={searchParams?.get('edit') === '1'}
       />
     )
   }
@@ -173,7 +183,7 @@ export default function ContatosView({
       {/* ── Tabela ──────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 rounded-lg bg-card overflow-hidden flex flex-col">
         {/* Cabeçalho — só desktop, a lista mobile usa cards empilhados */}
-        <div className="hidden md:grid grid-cols-[1fr_140px_150px_170px_120px_40px] gap-3 px-4 py-2.5 border-b border-border/60 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+        <div className="hidden md:grid grid-cols-[1fr_140px_150px_170px_120px_252px] gap-3 px-4 py-2.5 border-b border-border/60 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
           <div>Contato</div>
           <div>Etapa</div>
           <div>Telefone</div>
@@ -190,7 +200,7 @@ export default function ContatosView({
               <div
                 key={c.id}
                 onClick={() => selectRow(c.id)}
-                className="grid grid-cols-1 md:grid-cols-[1fr_140px_150px_170px_120px_40px] gap-2 md:gap-3 items-center px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40"
+                className="grid grid-cols-1 md:grid-cols-[1fr_140px_150px_170px_120px_252px] gap-2 md:gap-3 items-center px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40"
               >
                 {/* Contato */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -234,45 +244,21 @@ export default function ContatosView({
                   {relativeTime(c.last_activity_at || c.updated_at)}
                 </div>
 
-                {/* Kebab — atalhos rápidos, sem sair da lista */}
-                <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="w-7 h-7 grid place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                        aria-label="Ações rápidas"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenConversation(c.id)}>
-                        <MessageCircle className="w-3.5 h-3.5 mr-2" /> Conversas
-                      </DropdownMenuItem>
-                      {c.phone && (
-                        <DropdownMenuItem onClick={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}>
-                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> Ligar
-                        </DropdownMenuItem>
-                      )}
-                      {c.phone && (
-                        <DropdownMenuItem onClick={() => openSms({ contatoId: c.id, name: c.name, phone: c.phone! })}>
-                          <MessageSquareText className="w-3.5 h-3.5 mr-2" /> SMS
-                        </DropdownMenuItem>
-                      )}
-                      {isTravel && (
-                        <>
-                          <DropdownMenuItem onClick={() => setLinksFor({ kind: 'quotes', contato: c })}>
-                            <FileSignature className="w-3.5 h-3.5 mr-2" /> Cotações enviadas
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setLinksFor({ kind: 'reservations', contato: c })}>
-                            <Plane className="w-3.5 h-3.5 mr-2" /> Reservas
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {/* Ações rápidas — só ícone, sem sair da lista — + o menu
+                    ⋮ com editar/excluir. */}
+                <ContatosViewRowActions
+                  c={c}
+                  isTravel={isTravel}
+                  conversationLoading={conversationLoadingId === c.id}
+                  deleting={deletingId === c.id}
+                  onOpenConversation={() => handleOpenConversation(c.id)}
+                  onCall={() => openDialer({ contatoId: c.id, name: c.name, phone: c.phone! })}
+                  onSms={() => openSms({ contatoId: c.id, name: c.name, phone: c.phone! })}
+                  onShowQuotes={() => setLinksFor({ kind: 'quotes', contato: c })}
+                  onShowReservations={() => setLinksFor({ kind: 'reservations', contato: c })}
+                  onEdit={() => navigate({ sel: c.id, edit: '1' })}
+                  onDelete={() => handleDeleteRow(c.id)}
+                />
               </div>
             )
           })}

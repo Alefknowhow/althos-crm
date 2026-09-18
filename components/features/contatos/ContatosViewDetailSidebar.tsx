@@ -30,7 +30,7 @@ export function DetailSidebar({
   orgSlug, selected, c, isTravel, sellerName,
   savingStatus, onChangeStatus, savingSource, onChangeSource,
   tags, tagInput, setTagInput, onAddTag, onRemoveTag,
-  openingConversation, onOpenConversation,
+  openingConversation, onOpenConversation, autoEditOpen,
 }: {
   orgSlug:             string
   selected:            NonNullable<Selected>
@@ -48,9 +48,10 @@ export function DetailSidebar({
   onRemoveTag:         (t: string) => void
   openingConversation: boolean
   onOpenConversation:  () => void
+  autoEditOpen?:       boolean
 }) {
   const openDialer = useCallDialer()
-  const [editOpen, setEditOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(!!autoEditOpen)
   const meta = CONTATO_STATUS_META[(c.status as keyof typeof CONTATO_STATUS_META)] || null
 
   const addressParts = [c.street, c.number, c.complement, c.district, c.city, c.state].filter(Boolean)

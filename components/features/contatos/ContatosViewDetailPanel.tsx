@@ -38,7 +38,7 @@ const TABS = [
 ] as const
 
 export function DetailPanel({
-  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [],
+  orgSlug, selected, onBack, members, isTravel, isRealEstate, properties = [], autoEditOpen,
 }: {
   orgSlug: string
   selected: NonNullable<Selected>
@@ -47,6 +47,10 @@ export function DetailPanel({
   isTravel: boolean
   isRealEstate?: boolean
   properties?: { id: string; title: string; code: string | null }[]
+  /** Abre o modal de edição completa (CustomerProfileForm) já ao carregar —
+   *  vem de "Editar" no menu ⋮ da lista (ContatosView), que navega direto
+   *  pra cá com `?edit=1` em vez de exigir clicar no lápis de novo aqui. */
+  autoEditOpen?: boolean
 }) {
   const router = useRouter()
   const c = selected.contato
@@ -210,6 +214,7 @@ export function DetailPanel({
           onRemoveTag={removeTag}
           openingConversation={openingConversation}
           onOpenConversation={() => handleOpenConversation(c.id)}
+          autoEditOpen={autoEditOpen}
         />
 
         <div className="flex-1 min-w-0">
