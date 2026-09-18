@@ -13,7 +13,8 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Languages, Send, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { startAssistedCallSession, endAssistedCallSession, ASSISTED_CALL_LANGUAGES } from '@/actions/voice'
+import { startAssistedCallSession, endAssistedCallSession } from '@/actions/voice'
+import { ASSISTED_CALL_LANGUAGES } from '@/lib/voice/assisted-languages'
 
 interface Segment {
   id: string

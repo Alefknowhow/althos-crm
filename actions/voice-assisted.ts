@@ -38,16 +38,6 @@ async function guardVoice(orgSlug: string) {
   return { ok: true as const, user, org }
 }
 
-/** Idiomas com atalho na UI — o campo aceita qualquer texto além destes. */
-export const ASSISTED_CALL_LANGUAGES = [
-  { value: 'en', label: 'Inglês' },
-  { value: 'es', label: 'Espanhol' },
-  { value: 'fr', label: 'Francês' },
-  { value: 'de', label: 'Alemão' },
-  { value: 'it', label: 'Italiano' },
-  { value: 'zh', label: 'Mandarim' },
-]
-
 export async function startAssistedCallSession(orgSlug: string, voiceCallId: string, targetLanguage: string) {
   const guard = await guardVoice(orgSlug)
   if (!guard.ok) return guard

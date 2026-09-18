@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { PhoneCall } from 'lucide-react'
-import { listOrgNumbers, listVoiceAgents, startCall, ASSISTED_CALL_LANGUAGES } from '@/actions/voice'
+import { listOrgNumbers, listVoiceAgents, startCall } from '@/actions/voice'
+import { ASSISTED_CALL_LANGUAGES } from '@/lib/voice/assisted-languages'
 import { useActiveCall } from './ActiveCallProvider'
 
 interface DialTarget { contatoId?: string; name: string; phone: string }
