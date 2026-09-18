@@ -71,8 +71,9 @@ export default function QuotationEditorToolbar({
           </Button>
         )}
         {/* Enviar ao cliente / Adicionar a ofertas / Gerar reserva ficam na
-            prévia da lista (ProposalsList.tsx → ProposalDetail), ao lado de
-            "Duplicar" — menos botões aqui, o essencial pra quem tá editando. */}
+            linha da lista (ProposalsList.tsx → ProposalRowActions), ao lado
+            de "Duplicar" — menos botões aqui, o essencial pra quem tá
+            editando. */}
       </div>
       <GroupNavMobile active={activeGroup} onChange={setActiveGroup} completeness={completeness} />
     </div>

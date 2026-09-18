@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { fmtTimestamp, fmtDate, destOf, sellerLabelColor, proposalStatusMeta } from './ProposalsListHelpers'
 import { ProposalRowActions } from './ProposalsListRowActions'
-import { ProposalDetail } from './ProposalsListDetail'
 import { DuplicateProposalDialog } from './ProposalsListDuplicateDialog'
 
 type Member = { user_id: string; name: string; email: string }
@@ -34,22 +33,16 @@ export default function ProposalsList({
   proposals,
   members = [],
   contatos = [],
-  onSelectionChange,
 }: {
   orgSlug: string
   proposals: ProposalRow[]
   members?: Member[]
   contatos?: Contato[]
-  /** Notifica o pai quando uma proposta abre/fecha, se precisar reagir. */
-  onSelectionChange?: (hasSelection: boolean) => void
 }) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [duplicateFor, setDuplicateFor] = useState<ProposalRow | null>(null)
-  // Sem auto-seleção — abrir "Cotações" mostra a lista primeiro, nunca uma
-  // proposta já aberta direto.
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
   const [seller, setSeller] = useState<string>('all')
@@ -79,13 +72,6 @@ export default function ProposalsList({
     })
   }, [proposals, query, seller, dateBucket])
 
-  const selected = proposals.find(p => p.id === selectedId) ?? null
-
-  useEffect(() => {
-    onSelectionChange?.(!!selected)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected])
-
   async function handleCreate() {
     setCreating(true)
     const res = await createProposal(orgSlug, {})
@@ -98,7 +84,6 @@ export default function ProposalsList({
     const res = await deleteProposal(orgSlug, id)
     if (res.ok) {
       toast.success('Proposta excluída')
-      if (selectedId === id) setSelectedId(null)
       router.refresh()
     } else {
       toast.error(res.error)
@@ -121,9 +106,8 @@ export default function ProposalsList({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas.
-          Some no mobile quando uma proposta está aberta: só fazem sentido na busca. */}
-      <div className={cn('flex items-center gap-1.5 mb-4 flex-wrap shrink-0', selected && 'hidden md:flex')}>
+      {/* Filters — tudo numa linha só (encolhe/quebra no mobile), mesmo padrão de Reservas. */}
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap shrink-0">
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -194,109 +178,94 @@ export default function ProposalsList({
         </Button>
       </div>
 
-      {/* Lista-ou-detalhe em tela cheia (mesmo padrão de Automações/
-          Formulários) — nunca os dois lado a lado: ou a tabela ocupa toda
-          a largura, ou o detalhe da proposta ocupa. */}
-      <div className="flex-1 min-h-0">
-        {!selected ? (
-          <div className="rounded-lg bg-card overflow-auto h-full">
-            {filtered.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                Nenhuma proposta encontrada com esses filtros.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="hidden lg:table-cell">Destino</TableHead>
-                    <TableHead className="hidden lg:table-cell whitespace-nowrap">Período</TableHead>
-                    <TableHead className="hidden xl:table-cell text-right whitespace-nowrap">Pessoas</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="hidden md:table-cell whitespace-nowrap">Criada em</TableHead>
-                    <TableHead className="hidden md:table-cell">Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Responsável</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(p => {
-                    const dest = destOf(p)
-                    const seller = p.created_by ? sellerName.get(p.created_by) : null
-                    return (
-                      <TableRow
-                        key={p.id}
-                        className="cursor-pointer"
-                        onClick={() => setSelectedId(p.id)}
-                      >
-                        <TableCell className="max-w-[220px]">
-                          <span className="font-medium text-sm truncate block">
-                            {p.client_name || p.title || 'Proposta sem título'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell max-w-[180px]">
-                          {dest ? (
-                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
-                            </span>
-                          ) : <span className="text-xs text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
-                          {p.start_date || p.end_date
-                            ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date)}`
-                            : '—'}
-                        </TableCell>
-                        <TableCell className="hidden xl:table-cell text-right text-xs text-muted-foreground tabular-nums">
-                          {p.pax_count ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums whitespace-nowrap">
-                          {formatCurrency(p.total_cents || 0)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
-                          {fmtTimestamp(p.created_at)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {(() => {
-                            const meta = proposalStatusMeta(p.status)
-                            return (
-                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap', meta.cls)}>
-                                {meta.label}
-                              </span>
-                            )
-                          })()}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {seller ? (
-                            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
-                              {seller}
-                            </span>
-                          ) : <span className="text-xs text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell onClick={ev => ev.stopPropagation()}>
-                          <ProposalRowActions
-                            orgSlug={orgSlug}
-                            p={p}
-                            onDelete={() => setDeleteId(p.id)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
+      {/* Tabela em tela cheia — clicar na linha abre o editor da cotação
+          direto (rota /cotacoes/[id]), sem tela intermediária de prévia. */}
+      <div className="flex-1 min-h-0 rounded-lg bg-card overflow-auto">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            Nenhuma proposta encontrada com esses filtros.
           </div>
         ) : (
-          <div className="rounded-lg bg-card overflow-y-auto h-full">
-            <ProposalDetail
-              key={selected.id}
-              orgSlug={orgSlug}
-              p={selected}
-              sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
-              onBack={() => setSelectedId(null)}
-              onDuplicate={() => setDuplicateFor(selected)}
-            />
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="hidden lg:table-cell">Destino</TableHead>
+                <TableHead className="hidden lg:table-cell whitespace-nowrap">Período</TableHead>
+                <TableHead className="hidden xl:table-cell text-right whitespace-nowrap">Pessoas</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="hidden md:table-cell whitespace-nowrap">Criada em</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Responsável</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(p => {
+                const dest = destOf(p)
+                const seller = p.created_by ? sellerName.get(p.created_by) : null
+                return (
+                  <TableRow
+                    key={p.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/app/${orgSlug}/cotacoes/${p.id}`)}
+                  >
+                    <TableCell className="max-w-[220px]">
+                      <span className="font-medium text-sm truncate block">
+                        {p.client_name || p.title || 'Proposta sem título'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[180px]">
+                      {dest ? (
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                          <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{dest}</span>
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                      {p.start_date || p.end_date
+                        ? `${fmtDate(p.start_date)} – ${fmtDate(p.end_date)}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-right text-xs text-muted-foreground tabular-nums">
+                      {p.pax_count ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-medium tabular-nums whitespace-nowrap">
+                      {formatCurrency(p.total_cents || 0)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-[11px] text-muted-foreground whitespace-nowrap">
+                      {fmtTimestamp(p.created_at)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {(() => {
+                        const meta = proposalStatusMeta(p.status)
+                        return (
+                          <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap', meta.cls)}>
+                            {meta.label}
+                          </span>
+                        )
+                      })()}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {seller ? (
+                        <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[110px]', sellerLabelColor(p.created_by))}>
+                          {seller}
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell onClick={ev => ev.stopPropagation()}>
+                      <ProposalRowActions
+                        orgSlug={orgSlug}
+                        p={p}
+                        onDelete={() => setDeleteId(p.id)}
+                        onDuplicate={() => setDuplicateFor(p)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -323,7 +292,7 @@ export default function ProposalsList({
         proposal={duplicateFor}
         contatos={contatos}
         onClose={() => setDuplicateFor(null)}
-        onDone={(newId) => { setDuplicateFor(null); setSelectedId(newId); router.refresh() }}
+        onDone={(newId) => { setDuplicateFor(null); router.push(`/app/${orgSlug}/cotacoes/${newId}`) }}
       />
     </div>
   )
