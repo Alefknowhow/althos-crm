@@ -301,13 +301,26 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   }
 
   return rows.map(r => {
+    // `travelers` sai do objeto antes do spread — carrega nome/nascimento/
+    // CPF/passaporte de cada viajante, e a lista só é necessária no painel
+    // de detalhe (getTripDetailExtra, carregado sob demanda). Mandar isso
+    // pro cliente pra até 500 reservas de uma vez só pra contar quantos
+    // viajantes cada uma tem seria vazar PII sem necessidade.
+    const { travelers: rawTravelers, ...rest } = r
+    const travelersList: { name?: string }[] = Array.isArray(rawTravelers) ? rawTravelers : []
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
     const flights = legsBySale.get(r.id) ?? []
     const outbound = flights.find(f => f.sentido !== 'volta') ?? flights[0]
     const airport = outbound?.destino ? AIRPORTS[outbound.destino.toUpperCase()] : null
     const counts = taskCountsBySale.get(r.id)
+    // O titular (client_name) só entra na contagem se ainda não estiver
+    // listado dentro de `travelers` — a extração de voucher (extractedTravelers)
+    // grava todo mundo citado no documento, e o comprador às vezes já vem
+    // incluído ali (ou nem viaja).
+    const titularName = (r.client_name || lead?.name || '').trim().toLowerCase()
+    const titularAlreadyListed = titularName !== '' && travelersList.some(t => (t.name || '').trim().toLowerCase() === titularName)
     return {
-      ...r,
+      ...rest,
       lead_name: lead?.name ?? null,
       lead_phone: lead?.phone ?? null,
       health: healthBySale.get(r.id) ?? 'green',
@@ -318,7 +331,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       flights,
       included_items: Array.isArray(r.included_items) ? r.included_items : [],
       other_items: otherBySale.get(r.id) ?? [],
-      travelers_count: 1 + (Array.isArray(r.travelers) ? r.travelers.length : 0),
+      travelers_count: (titularAlreadyListed ? 0 : 1) + travelersList.length,
     } as ScheduledTrip
   })
 }

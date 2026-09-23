@@ -16,9 +16,7 @@ import { ScheduleListView } from './ScheduleListView'
 import { ScheduleStatusTabs } from './ScheduleStatusTabs'
 import { ScheduleFiltersBar } from './ScheduleFiltersBar'
 import { useScheduleFilters } from './useScheduleFilters'
-import { tripState as tripStateOf } from './schedule-phase'
-
-const DAY = 86400000
+import { tripState as tripStateOf, daysFromToday } from './schedule-phase'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -113,8 +111,8 @@ export default function ScheduleClient({
     for (const t of tripsState) {
       const dep = parseDate(t.departure_date)
       if (dep) {
-        if (dep.getTime() === today.getTime()) c.today++
-        const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+        const days = daysFromToday(dep, today)
+        if (days === 0) c.today++
         if (days >= 0 && days <= 7) c.next7++
       }
       if (t.tasks_total - t.tasks_done > 0) c.pending++

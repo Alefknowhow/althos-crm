@@ -25,7 +25,7 @@ import { toast } from 'sonner'
 import type { ScheduledTrip } from '@/actions/travel-schedule'
 import { whatsappLink } from './ScheduleTripDetail'
 import { FlightBlock } from './ScheduleFlightBlock'
-import { tripState } from './schedule-phase'
+import { tripState, daysFromToday } from './schedule-phase'
 import { STATE_META } from './ScheduleGanttView'
 
 /** Grade fixa 4×2 = 8 posições de Serviços (issue #9 § 3.6) — ordem e
@@ -56,7 +56,7 @@ function fmtShort(s?: string | null) {
 }
 function daysUntil(dep: Date | null, today: Date): number | null {
   if (!dep) return null
-  return Math.round((dep.getTime() - today.getTime()) / 86400000)
+  return daysFromToday(dep, today)
 }
 
 const RED_BADGE = 'bg-destructive text-destructive-foreground border-transparent'
@@ -96,7 +96,14 @@ function ClienteDestinoCell({ t, onOpenTrip }: { t: ScheduledTrip; onOpenTrip: (
   const locator = t.package_locator
   return (
     <div className="space-y-0.5 max-w-[220px]">
-      <button type="button" onClick={() => onOpenTrip(t)} className="block font-semibold text-sm hover:underline truncate text-left">
+      {/* stopPropagation — o <td> pai já abre a viagem em qualquer clique na
+          célula; sem isso, clicar no nome disparava onOpenTrip duas vezes
+          (bolha até o td) e duplicava as chamadas de tarefas/produtos/extra. */}
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); onOpenTrip(t) }}
+        className="block font-semibold text-sm hover:underline truncate text-left"
+      >
         {t.client_name || t.lead_name || 'Cliente'}
       </button>
       <p className="text-xs text-muted-foreground truncate">

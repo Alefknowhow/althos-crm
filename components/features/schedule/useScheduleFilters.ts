@@ -11,6 +11,7 @@ import {
   type SchedulePeriod, type ScheduleHealthFilter, type ScheduleStatusFilter, type ScheduleSort,
 } from './ScheduleFiltersBar'
 import { type ScheduleStatusTab } from './ScheduleStatusTabs'
+import { daysFromToday } from './schedule-phase'
 
 const DAY = 86400000
 
@@ -43,13 +44,13 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
     if (statusTab === 'today') {
       out = out.filter(t => {
         const dep = parseDate(t.departure_date)
-        return !!dep && dep.getTime() === today.getTime()
+        return !!dep && daysFromToday(dep, today) === 0
       })
     } else if (statusTab === 'next7') {
       out = out.filter(t => {
         const dep = parseDate(t.departure_date)
         if (!dep) return false
-        const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+        const days = daysFromToday(dep, today)
         return days >= 0 && days <= 7
       })
     } else if (statusTab === 'pending') {

@@ -28,9 +28,13 @@ function fmtTime(hhmm?: string | null): string {
 }
 
 /** "Direto" / "N conexões" — sem listar os aeroportos de escala (fora do
- *  escopo desta linha; detalhes completos ficam em Produtos). */
+ *  escopo desta linha; detalhes completos ficam em Produtos). Um produto
+ *  aéreo pode virar vários `legs` (voucher com trechos extraídos, uma
+ *  conexão por trecho extra) OU um único `leg` com `conexao_local`
+ *  preenchido (trecho único cadastrado manualmente com escala anotada em
+ *  texto) — os dois casos contam como conexão. */
 function connectionLabel(legs: FlightLegInfo[]): string {
-  const stops = legs.length - 1
+  const stops = legs.length > 1 ? legs.length - 1 : (legs[0]?.conexao_local ? 1 : 0)
   if (stops <= 0) return 'Direto'
   return `${stops} conexão${stops > 1 ? 'ões' : ''}`
 }

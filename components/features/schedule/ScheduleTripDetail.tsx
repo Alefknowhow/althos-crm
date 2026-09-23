@@ -24,6 +24,7 @@ import type { SaleProduct } from '@/actions/sale-products'
 import type { SaleTaskRow } from '@/actions/tasks-crud'
 import { STATE_META, type TripState } from './ScheduleGanttView'
 import { ScheduleTripDetailTabs } from './ScheduleTripDetailTabs'
+import { daysFromToday } from './schedule-phase'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -34,7 +35,6 @@ export function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
 }
-const DAY = 86400000
 
 export const HEALTH_META: Record<string, { dot: string; title: string }> = {
   green: { dot: 'bg-emerald-500', title: 'Saúde da reserva: em dia — todas as tarefas concluídas' },
@@ -78,7 +78,7 @@ export function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, 
  *  priorizar o que precisa de atenção primeiro. */
 export function stateLabel(state: TripState, dep: Date | null, today: Date): string {
   if (state !== 'upcoming' || !dep) return STATE_META[state].label
-  const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+  const days = daysFromToday(dep, today)
   if (days <= 0) return 'Embarca hoje'
   if (days === 1) return 'Falta 1 dia'
   return `Faltam ${days} dias`
