@@ -1,22 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import EmptyState from '@/components/ui/empty-state'
 import type { ScheduledTrip } from '@/actions/travel-schedule'
-import {
-  getTripDetailExtra, type TripTraveler, type TripVoucher,
-} from '@/actions/travel-schedule-detail'
-import { listSaleProducts, type SaleProduct } from '@/actions/sale-products'
-import { listTasksForSale, type SaleTaskRow } from '@/actions/tasks-crud'
 import { CalendarDays } from 'lucide-react'
 import { TripDetail } from './ScheduleTripDetail'
 import { ScheduleListView } from './ScheduleListView'
-import { ScheduleStatusTabs } from './ScheduleStatusTabs'
 import { ScheduleFiltersBar } from './ScheduleFiltersBar'
 import { useScheduleFilters } from './useScheduleFilters'
-import { tripState as tripStateOf, daysFromToday } from './schedule-phase'
+import { useTripDetailPanel } from './useTripDetailPanel'
+import { tripState as tripStateOf } from './schedule-phase'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -24,17 +19,6 @@ function parseDate(s?: string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
-
-/** Recalcula tasks_done/tasks_total/health de uma viagem a partir da lista
- *  de tarefas atual — mesma regra de saúde usada no servidor
- *  (listScheduledTrips): aberta com prioridade alta pesa mais que só aberta. */
-function summarizeTasks(tasks: SaleTaskRow[]) {
-  const openTasks = tasks.filter(t => t.status !== 'done')
-  const health: ScheduledTrip['health'] = openTasks.length === 0
-    ? 'green'
-    : openTasks.some(t => t.priority === 'high') ? 'red' : 'yellow'
-  return { tasks_done: tasks.length - openTasks.length, tasks_total: tasks.length, health }
-}
 
 export default function ScheduleClient({
   orgSlug, trips, members = [],
@@ -51,16 +35,7 @@ export default function ScheduleClient({
   const [tripsState, setTripsState] = useState(trips)
   useEffect(() => { setTripsState(trips) }, [trips])
   const f = useScheduleFilters(tripsState, today)
-  const [selected, setSelected] = useState<ScheduledTrip | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [detailTab, setDetailTab] = useState<'produtos' | 'tarefas'>('produtos')
-  const [tasks, setTasks] = useState<SaleTaskRow[]>([])
-  const [loadingTasks, startTasks] = useTransition()
-  const [products, setProducts] = useState<SaleProduct[]>([])
-  const [loadingProducts, startProducts] = useTransition()
-  const [travelers, setTravelers] = useState<TripTraveler[]>([])
-  const [vouchers, setVouchers] = useState<TripVoucher[]>([])
-  const [loadingExtra, startExtra] = useTransition()
+  const panel = useTripDetailPanel(orgSlug, setTripsState)
 
   const destinations = useMemo(
     () => Array.from(new Set(tripsState.map(t => t.destination).filter(Boolean))).sort() as string[],
@@ -71,54 +46,23 @@ export default function ScheduleClient({
     [tripsState],
   )
 
-  function openTrip(t: ScheduledTrip, tab: 'produtos' | 'tarefas' = 'produtos') {
-    setSelected(t)
-    setDetailTab(tab)
-    setDetailOpen(true)
-    setTasks([])
-    setProducts([])
-    setTravelers([])
-    setVouchers([])
-    startTasks(async () => {
-      const res = await listTasksForSale(orgSlug, t.id)
-      setTasks(res)
-    })
-    startProducts(async () => {
-      const res = await listSaleProducts(orgSlug, t.id)
-      setProducts(res)
-    })
-    startExtra(async () => {
-      const res = await getTripDetailExtra(orgSlug, t.id)
-      setTravelers(res?.travelers ?? [])
-      setVouchers(res?.vouchers ?? [])
-    })
-  }
-
-  /** Sincroniza a mudança de tarefas (marcar concluída/excluir/criar, feito
-   *  direto no painel de detalhe) de volta pro card de progresso e pro
-   *  alerta de "tarefa crítica" — tanto na viagem selecionada quanto na
-   *  linha correspondente da lista, sem esperar reload da página. */
-  function handleTasksChange(next: SaleTaskRow[]) {
-    setTasks(next)
-    if (!selected) return
-    const summary = summarizeTasks(next)
-    setSelected(prev => (prev ? { ...prev, ...summary } : prev))
-    setTripsState(prev => prev.map(t => (t.id === selected.id ? { ...t, ...summary } : t)))
-  }
-
-  const counts = useMemo(() => {
-    const c = { all: tripsState.length, today: 0, next7: 0, pending: 0 }
+  const quickCounts = useMemo(() => {
+    const c = { all: tripsState.length, week: 0, month: 0, pending: 0 }
+    const dow = today.getDay()
+    const weekStart = new Date(today.getTime() + (dow === 0 ? -6 : 1 - dow) * 86400000)
+    const weekEnd = new Date(weekStart.getTime() + 6 * 86400000)
     for (const t of tripsState) {
       const dep = parseDate(t.departure_date)
       if (dep) {
-        const days = daysFromToday(dep, today)
-        if (days === 0) c.today++
-        if (days >= 0 && days <= 7) c.next7++
+        if (dep >= weekStart && dep <= weekEnd) c.week++
+        if (dep.getFullYear() === today.getFullYear() && dep.getMonth() === today.getMonth()) c.month++
       }
       if (t.tasks_total - t.tasks_done > 0) c.pending++
     }
     return c
   }, [tripsState, today])
+
+  const selectedTrip = panel.selected
 
   if (tripsState.length === 0) {
     return (
@@ -136,8 +80,8 @@ export default function ScheduleClient({
 
   return (
     <>
-      {/* Busca e filtros → atalhos com contadores → tabela → contagem/
-          paginação (issue #9 § 1) — a página começa direto na busca. */}
+      {/* Busca e filtros → indicadores → tabela → contagem/paginação (issue
+          #9 § 1) — a página começa direto na busca. */}
       <ScheduleFiltersBar
         search={f.search} setSearch={f.setSearch}
         owner={f.owner} setOwner={f.setOwner} members={members}
@@ -147,39 +91,38 @@ export default function ScheduleClient({
         status={f.statusFilter} setStatus={f.setStatusFilter}
         operator={f.operator} setOperator={f.setOperator} operators={operators}
         sort={f.sort} setSort={f.setSort}
+        quickView={f.quickView} setQuickView={f.setQuickView} quickCounts={quickCounts}
       />
 
-      <div className="mt-3 mb-3">
-        <ScheduleStatusTabs value={f.statusTab} onChange={f.setStatusTab} counts={counts} />
+      <div className="mt-3">
+        <ScheduleListView
+          orgSlug={orgSlug}
+          filtered={f.filtered}
+          today={today}
+          onOpenTrip={(t, tab) => panel.openTrip(t, tab === 'tarefas' ? 'tarefas' : 'produtos')}
+          page={f.page}
+          setPage={f.setPage}
+        />
       </div>
-
-      <ScheduleListView
-        orgSlug={orgSlug}
-        filtered={f.filtered}
-        today={today}
-        onOpenTrip={(t, tab) => openTrip(t, tab === 'tarefas' ? 'tarefas' : 'produtos')}
-        page={f.page}
-        setPage={f.setPage}
-      />
 
       {/* ── Detalhe (painel sobreposto, não desloca a lista) ────────── */}
       <TripDetail
         orgSlug={orgSlug}
-        trip={selected}
-        tasks={tasks}
-        loadingTasks={loadingTasks}
-        onTasksChange={handleTasksChange}
-        products={products}
-        loadingProducts={loadingProducts}
-        travelers={travelers}
-        vouchers={vouchers}
-        loadingExtra={loadingExtra}
-        state={selected ? tripStateOf(selected, today) : 'upcoming'}
+        trip={selectedTrip}
+        tasks={panel.tasks}
+        loadingTasks={panel.loadingTasks}
+        onTasksChange={panel.handleTasksChange}
+        products={panel.products}
+        loadingProducts={panel.loadingProducts}
+        travelers={panel.travelers}
+        vouchers={panel.vouchers}
+        loadingExtra={panel.loadingExtra}
+        state={selectedTrip ? tripStateOf(selectedTrip, today) : 'upcoming'}
         today={today}
-        sellerName={selected ? members.find(m => m.user_id === selected.created_by)?.name : undefined}
-        open={detailOpen}
-        onOpenChange={o => { setDetailOpen(o); if (!o) setSelected(null) }}
-        defaultTab={detailTab}
+        sellerName={selectedTrip ? members.find(m => m.user_id === selectedTrip.created_by)?.name : undefined}
+        open={panel.detailOpen}
+        onOpenChange={panel.onOpenChange}
+        defaultTab={panel.detailTab}
       />
     </>
   )

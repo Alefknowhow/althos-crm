@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import SidebarNavLink from './SidebarNavLink'
+import SidebarEmbarquesAccordion from './SidebarEmbarquesAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
@@ -129,12 +130,7 @@ export async function SidebarNavVendas({
       )}
 
       {can('embarques') && isModuleEnabled(niche, 'embarques', disabledModules) && (
-        <SidebarNavLink href={`${base}/embarques`}>
-          <span className="flex items-center gap-2.5">
-            <CalendarClock className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Embarques</span>
-          </span>
-        </SidebarNavLink>
+        <SidebarEmbarquesAccordion base={base} />
       )}
 
       {can('catalog') && isModuleEnabled(niche, 'catalogo', disabledModules) && (

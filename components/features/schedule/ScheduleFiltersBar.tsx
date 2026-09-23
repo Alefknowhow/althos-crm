@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { ScheduleIndicators } from './ScheduleIndicators'
+import type { ScheduleQuickView } from './useScheduleFilters'
 
-export type SchedulePeriod = 'all' | '30d' | 'month' | 'next_month'
+export type SchedulePeriod = 'all' | 'today' | 'next7' | '30d' | 'month' | 'next_month'
 export type ScheduleHealthFilter = 'all' | 'green' | 'yellow' | 'red'
 export type ScheduleStatusFilter = 'all' | 'active' | 'cancelled'
 export type ScheduleSort = 'departure' | 'return' | 'client' | 'destination' | 'tasks_pending'
@@ -26,6 +28,7 @@ export function ScheduleFiltersBar({
   destination, setDestination, destinations,
   status, setStatus, operator, setOperator, operators,
   sort, setSort,
+  quickView, setQuickView, quickCounts,
 }: {
   search: string
   setSearch: (v: string) => void
@@ -46,6 +49,9 @@ export function ScheduleFiltersBar({
   operators: string[]
   sort: ScheduleSort
   setSort: (v: ScheduleSort) => void
+  quickView: ScheduleQuickView
+  setQuickView: (v: ScheduleQuickView) => void
+  quickCounts: Record<ScheduleQuickView, number>
 }) {
   const hasMoreFilters = health !== 'all' || destination !== 'all' || operator !== 'all' || sort !== 'departure'
   function clearMoreFilters() { setHealth('all'); setDestination('all'); setOperator('all'); setSort('departure') }
@@ -72,6 +78,8 @@ export function ScheduleFiltersBar({
         <SelectTrigger className="h-9 text-xs w-[130px] shrink-0"><SelectValue placeholder="Período" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Período</SelectItem>
+          <SelectItem value="today">Hoje</SelectItem>
+          <SelectItem value="next7">Próximos 7 dias</SelectItem>
           <SelectItem value="30d">Próximos 30 dias</SelectItem>
           <SelectItem value="month">Este mês</SelectItem>
           <SelectItem value="next_month">Mês que vem</SelectItem>
@@ -163,6 +171,8 @@ export function ScheduleFiltersBar({
           )}
         </PopoverContent>
       </Popover>
+
+      <ScheduleIndicators value={quickView} onChange={setQuickView} counts={quickCounts} />
     </div>
   )
 }
