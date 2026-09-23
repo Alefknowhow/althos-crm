@@ -6,24 +6,34 @@ import {
 } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
 import { usePageHint } from './PageHintContext'
-import { getPageTitle } from '@/lib/route-titles'
+import { getPageTitle, getRouteSegment, getConfigSubLabel } from '@/lib/route-titles'
 import { PageIcon } from '@/lib/route-icons'
 
 /** Título do módulo atual (desktop) — ícone em container arredondado +
- *  nome em destaque forte, como título principal da página. */
+ *  nome em destaque forte, como título principal da página. Quando a rota
+ *  tem uma sub-seção mapeada (hoje só Configurações), mostra o caminho
+ *  completo — ex.: "Configurações / Agente IA" — no mesmo ícone/tamanho de
+ *  fonte de sempre. */
 export function HeaderModuleTitle({ orgSlug }: { orgSlug: string }) {
-  const pathname = usePathname()
-  const title = getPageTitle(pathname ?? '', orgSlug)
+  const pathname = usePathname() ?? ''
+  const title = getPageTitle(pathname, orgSlug)
   const { hint } = usePageHint()
 
   if (!title) return null
+
+  const seg1 = getRouteSegment(pathname, orgSlug)
+  const prefix = `/app/${orgSlug}`
+  const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname
+  const seg2 = rest.split('/').filter(Boolean)[1] ?? ''
+  const subLabel = seg1 === 'configuracoes' ? getConfigSubLabel(seg2) : null
+  const displayTitle = subLabel ? `${title} / ${subLabel}` : title
 
   return (
     <div className="flex items-center gap-2.5 min-w-0">
       <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0">
         <PageIcon orgSlug={orgSlug} className="w-[18px] h-[18px]" />
       </span>
-      <h1 className="text-lg font-bold tracking-apple-snug truncate">{title}</h1>
+      <h1 className="text-lg font-bold tracking-apple-snug truncate">{displayTitle}</h1>
       {hint && (
         <TooltipProvider>
           <Tooltip delayDuration={200}>

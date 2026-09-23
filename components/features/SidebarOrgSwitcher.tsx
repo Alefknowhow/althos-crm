@@ -44,7 +44,7 @@ export function SidebarOrgSwitcher({
   const router = useRouter()
 
   const brandMark = (
-    <span className="w-9 h-9 shrink-0 rounded-md bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-[12px] font-semibold overflow-hidden">
+    <span className="w-11 h-11 shrink-0 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-sm font-semibold overflow-hidden">
       {currentLogoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- logo de cliente vindo do R2, sem domínio fixo pra next/image
         <img src={currentLogoUrl} alt="" className="w-full h-full object-contain p-0.5" />
@@ -60,12 +60,12 @@ export function SidebarOrgSwitcher({
         <button
           type="button"
           data-orgswitcher
-          className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-sidebar-accent transition-colors"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-sidebar-accent transition-colors"
           aria-label={`Organização ativa: ${currentName}. Trocar organização.`}
         >
           {brandMark}
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold text-sidebar-foreground truncate">
+            <span className="block text-[13.5px] font-semibold text-sidebar-foreground truncate">
               {currentName}
             </span>
           </span>

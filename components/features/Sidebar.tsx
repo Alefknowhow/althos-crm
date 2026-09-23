@@ -5,7 +5,6 @@ import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
 import { SidebarOrgSwitcher } from './SidebarOrgSwitcher'
 import { SidebarBrandSignature } from './SidebarBrandSignature'
-import { SidebarRouteBreadcrumb } from './SidebarRouteBreadcrumb'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { checkFeatureAccess } from '@/lib/plans/server'
@@ -137,7 +136,6 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           NENHUMA forma de trocar (achado da revisão automática da PR #35).
           O cabeçalho do drawer (logo + X) continua fixo acima disto. */}
       <div className="px-3 pt-3">
-        <SidebarRouteBreadcrumb orgSlug={orgSlug} />
         <SidebarOrgSwitcher
           currentSlug={orgSlug}
           currentName={org.name}

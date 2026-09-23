@@ -121,13 +121,12 @@ export default async function OrgLayout({
       </div>
       <SidebarCollapseProvider>
       <PageHintProvider>
-      {/* Sidebar sobe até o topo (sem respiro acima) e é fixa (sem opção de
-          recolher). O header vive na coluna à direita da sidebar — começa
-          onde a sidebar termina, não mais atravessando a tela inteira —
-          com um respiro curto entre os dois (pl da coluna da direita) e
-          acima dele (mt-2, menor que o da sidebar). */}
+      {/* Sidebar é fixa (sem opção de recolher) e fica ao lado do header —
+          mesmo respiro acima dos dois (pt-2/mt-2), pra alinhar os topos. O
+          header começa onde a sidebar termina, não mais atravessando a tela
+          inteira. */}
       <div className="flex flex-1 min-h-0 print:block">
-        <div className="print:hidden md:pb-3 md:pl-3 min-h-0">
+        <div className="print:hidden md:pt-2 md:pb-3 md:pl-3 min-h-0">
           <Sidebar orgSlug={params.orgSlug} />
         </div>
 
@@ -146,11 +145,9 @@ export default async function OrgLayout({
             </div>
 
             {/* Busca centralizada entre o bloco da esquerda (módulo) e o
-                bloco da direita (notificações/suporte/usuário) — pedido
-                explícito de ficar mais central e maior, em vez de colada nos
-                ícones da direita. */}
+                bloco da direita (notificações/suporte/usuário). */}
             <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-2">
-              <HeaderSearchBar />
+              <HeaderSearchBar orgSlug={params.orgSlug} />
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
