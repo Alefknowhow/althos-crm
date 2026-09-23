@@ -14,6 +14,8 @@ import { canAccess } from '@/lib/permissions'
 export type AgentContext = {
   orgId: string
   orgSlug: string
+  accountId: string | null
+  niche: string | null
   userId: string
   role: MemberRole
   permissions: Permissions
@@ -38,7 +40,7 @@ export async function resolveAgentContext(bearerToken: string): Promise<AgentCon
   if (!tokenRow || tokenRow.revoked_at) return null
 
   const [{ data: org }, { data: membership }] = await Promise.all([
-    supabase.from('organizations').select('id, slug').eq('id', tokenRow.organization_id).maybeSingle(),
+    supabase.from('organizations').select('id, slug, niche, account_id').eq('id', tokenRow.organization_id).maybeSingle(),
     supabase
       .from('memberships')
       .select('role, permissions')
@@ -55,6 +57,8 @@ export async function resolveAgentContext(bearerToken: string): Promise<AgentCon
   return {
     orgId: org.id,
     orgSlug: org.slug,
+    accountId: (org as { account_id?: string | null }).account_id ?? null,
+    niche: (org as { niche?: string | null }).niche ?? null,
     userId: tokenRow.user_id,
     role: membership.role as MemberRole,
     permissions: (membership.permissions ?? {}) as Permissions,

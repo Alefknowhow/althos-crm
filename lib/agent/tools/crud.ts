@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { ToolDef } from '@/lib/agent/execute'
 import type { PermissionKey } from '@/lib/permissions'
+import type { CapabilityKey } from '@/lib/capabilities/types'
 
 /**
  * Etapa 4 (Agent Layer) — CRUD genérico por módulo. Em vez de escrever um
@@ -28,6 +29,8 @@ export type ModuleConfig = {
   table: string
   label: string
   permissionKey: PermissionKey
+  /** Opcional (issue #31) — capability composta (plano + nicho/kill-switch) exigida além da permissão. Módulos de vertical devem declarar. */
+  capabilityKey?: CapabilityKey
   /** Colunas seguras pra devolver (nunca 'select *' — evita vazar coluna
    *  sensível nova que alguém adicione na tabela sem pensar no agente). */
   selectColumns: string
@@ -68,6 +71,7 @@ export function buildModuleTools(cfg: ModuleConfig): { tool: ToolDef<any>; input
     riskLevel: 'READ',
     requiresApproval: false,
     permissionKey: cfg.permissionKey,
+    capabilityKey: cfg.capabilityKey,
     handler: async (ctx, input) => {
       let q = supabase().from(cfg.table).select(cfg.selectColumns).eq('organization_id', ctx.orgId)
       if (cfg.searchColumn && input.search) q = q.ilike(cfg.searchColumn, `%${input.search}%`)
@@ -86,6 +90,7 @@ export function buildModuleTools(cfg: ModuleConfig): { tool: ToolDef<any>; input
     riskLevel: 'READ',
     requiresApproval: false,
     permissionKey: cfg.permissionKey,
+    capabilityKey: cfg.capabilityKey,
     handler: async (ctx, input) => {
       const { data, error } = await supabase().from(cfg.table).select(cfg.selectColumns)
         .eq('organization_id', ctx.orgId).eq('id', input.id).maybeSingle()
@@ -102,6 +107,7 @@ export function buildModuleTools(cfg: ModuleConfig): { tool: ToolDef<any>; input
     riskLevel: 'LOW',
     requiresApproval: false,
     permissionKey: cfg.permissionKey,
+    capabilityKey: cfg.capabilityKey,
     handler: async (ctx, input) => {
       const patch = pick(input.data || {}, cfg.writableFields)
       for (const f of cfg.requiredCreateFields || []) {
@@ -125,6 +131,7 @@ export function buildModuleTools(cfg: ModuleConfig): { tool: ToolDef<any>; input
     riskLevel: 'MEDIUM',
     requiresApproval: false,
     permissionKey: cfg.permissionKey,
+    capabilityKey: cfg.capabilityKey,
     handler: async (ctx, input) => {
       const patch = pick(input.data || {}, cfg.writableFields)
       if (Object.keys(patch).length === 0) throw new Error('Nenhum campo permitido em "data".')
@@ -167,6 +174,7 @@ export function buildModuleTools(cfg: ModuleConfig): { tool: ToolDef<any>; input
       riskLevel: 'HIGH',
       requiresApproval: false,
       permissionKey: cfg.permissionKey,
+      capabilityKey: cfg.capabilityKey,
       handler: async (ctx, input) => {
         const { data: current, error: findErr } = await supabase().from(cfg.table).select(cfg.selectColumns)
           .eq('organization_id', ctx.orgId).eq('id', input.id).maybeSingle()
