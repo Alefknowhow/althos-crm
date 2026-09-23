@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { MobileKpiCard } from './MobileKpiCard'
 import { MobileButton } from './MobileButton'
 
-export type MobileKpiItem = { label: string; value: string; comparisonLabel?: string; trend?: 'up' | 'down' | 'neutral' }
+export type MobileKpiItem = { label: string; value: string; comparisonLabel?: string; trend?: 'up' | 'down' | 'neutral'; progressPct?: number }
 
 /**
  * Grade 2×2 de KPIs mobile (spec mobile M01/5.1) — mostra `priorityCount`
@@ -20,7 +20,7 @@ export function MobileKpiGrid({ items, priorityCount = 4 }: { items: MobileKpiIt
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-3">
         {visible.map(item => (
-          <MobileKpiCard key={item.label} label={item.label} value={item.value} comparisonLabel={item.comparisonLabel} trend={item.trend} />
+          <MobileKpiCard key={item.label} label={item.label} value={item.value} comparisonLabel={item.comparisonLabel} trend={item.trend} progressPct={item.progressPct} />
         ))}
       </div>
       {hasMore && (

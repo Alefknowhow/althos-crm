@@ -58,16 +58,19 @@ export async function isOrgTravelNiche(supabase: Supa, orgId: string): Promise<b
 export async function fetchNormalizedSales(
   supabase: Supa,
   orgId: string,
-  opts: { since?: Date; onlyCompleted?: boolean } = {},
+  opts: { since?: Date; until?: Date; onlyCompleted?: boolean } = {},
 ): Promise<NormalizedSale[]> {
   const since = opts.since ?? new Date(0)
+  const until = opts.until ?? null
 
   if (await isOrgTravelNiche(supabase, orgId)) {
-    const { data } = await supabase
+    let q = supabase
       .from('travel_sales')
       .select('total_cents, commission_cents, created_at, created_by, status')
       .eq('organization_id', orgId)
       .gte('created_at', since.toISOString())
+    if (until) q = q.lte('created_at', until.toISOString())
+    const { data } = await q
     return (data || [])
       .filter((r: any) => r.status !== 'canceled')
       .map((r: any) => ({
@@ -83,6 +86,7 @@ export async function fetchNormalizedSales(
     .select('amount_cents, sale_date, seller_id, status')
     .eq('organization_id', orgId)
     .gte('sale_date', since.toISOString().slice(0, 10))
+  if (until) q = q.lte('sale_date', until.toISOString().slice(0, 10))
   q = opts.onlyCompleted ? q.eq('status', 'completed') : q.neq('status', 'canceled')
 
   const { data } = await q

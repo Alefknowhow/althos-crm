@@ -1,17 +1,6 @@
-'use client'
-
-// Lazy boundary: recharts (~heavy) is deferred off the dashboard's initial
-// render. The Card + title are still rendered immediately; only the chart body
-// hydrates in after load, behind a fixed-height skeleton (no layout shift).
-import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { LeadSourcesChartProps } from './LeadSourcesChartInner'
+import LeadSourcesChartInner, { type LeadSourcesChartProps } from './LeadSourcesChartInner'
 import { COMPACT_CARD_H } from './dashboardSizes'
-
-const LeadSourcesChartInner = dynamic(() => import('./LeadSourcesChartInner'), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-none bg-muted/40" />,
-})
 
 export default function LeadSourcesChart({ data }: LeadSourcesChartProps) {
   return (

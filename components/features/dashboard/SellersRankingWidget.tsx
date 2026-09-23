@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy, Medal } from 'lucide-react'
 import { getSellersRanking } from '@/actions/dashboard'
 import { listOrgMembers } from '@/actions/sales'
+import { deriveInitials } from '@/lib/organization/initials'
 import { COMPACT_CARD_H, LIST_SCROLL_H } from './dashboardSizes'
 
 function fmtCurrency(cents: number): string {
@@ -65,14 +66,21 @@ export default async function SellersRankingWidget({
                   key={row.seller_id}
                   className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted/30 transition-colors"
                 >
+                  {/* Posição — destaque discreto (cor), sem competir com os
+                      números da linha. Iniciais em elemento separado logo
+                      ao lado dão a identidade do vendedor (issue #26 §6). */}
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{
                       backgroundColor: isPodium ? `${podiumColor}22` : 'hsl(var(--muted))',
                       color: isPodium ? podiumColor : 'hsl(var(--muted-foreground))',
                     }}
+                    aria-hidden
                   >
                     {isPodium ? <Medal className="w-3.5 h-3.5" /> : idx + 1}
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+                    {deriveInitials(name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{name}</div>

@@ -19,6 +19,7 @@ export default function KpiCard({
   className,
   compact,
   icon,
+  progressPct,
 }: {
   label: string
   value: string
@@ -35,6 +36,10 @@ export default function KpiCard({
    *  call sites são Server Components — passar a referência do componente
    *  (em vez do elemento já renderizado) quebra a serialização RSC. */
   icon?: React.ReactNode
+  /** Barra de progresso opcional (ex.: Meta do mês) — valor real (pode
+   *  passar de 100) fica em `value`/`trendLabel`; a barra em si é sempre
+   *  clampada em [0, 100] pra nunca estourar o card mesmo com superação. */
+  progressPct?: number
 }) {
   const helpId = useId()
   const trendColor =
@@ -76,8 +81,18 @@ export default function KpiCard({
         )}
       </div>
       <div className={cn('min-w-0', compact ? 'mt-0.5' : 'mt-1 sm:mt-2')}>
-        <div className={cn('font-bold tabular-nums truncate', compact ? 'text-sm' : 'text-base sm:text-2xl')}>{value}</div>
-        {trendLabel && <div className={cn('mt-0.5 truncate', compact ? 'text-[9px]' : 'text-[10px] sm:text-[11px]', trendColor)}>{trendLabel}</div>}
+        {/* Sem truncate: valor e comparação são a informação essencial do
+            card (issue #26) — corta linha antes de cortar texto. */}
+        <div className={cn('font-bold tabular-nums break-words', compact ? 'text-sm' : 'text-base sm:text-2xl')}>{value}</div>
+        {trendLabel && <div className={cn('mt-0.5', compact ? 'text-[9px]' : 'text-[10px] sm:text-[11px]', trendColor)}>{trendLabel}</div>}
+        {progressPct !== undefined && (
+          <div className={cn('rounded-full bg-muted overflow-hidden', compact ? 'mt-1 h-1' : 'mt-1.5 h-1.5')}>
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+            />
+          </div>
+        )}
       </div>
       {mock && (
         <div className={compact ? 'mt-1' : 'mt-2'}>

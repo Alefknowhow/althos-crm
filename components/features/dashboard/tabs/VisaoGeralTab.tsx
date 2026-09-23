@@ -2,10 +2,9 @@ import { Suspense } from 'react'
 import { DollarSign, ShoppingCart, Receipt, TrendingUp, Target, ShoppingBasket } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
-import { getDashboardMetrics } from '@/actions/dashboard'
+import { getDashboardMetrics, getDates, getMonthlyGoalProgress } from '@/actions/dashboard'
 import { getTicketMedio } from '@/actions/dashboard-tabs'
-import { getMonthlyRevenueGoal } from '@/actions/organization'
-import { sinceFromPeriod } from '@/lib/dashboard/period'
+import { compareValues, comparePoints } from '@/lib/dashboard/compare'
 import KpiCard from '../KpiCard'
 import { MobileKpiGrid } from '@/components/features/mobile/MobileKpiGrid'
 import RevenueVsGoalWidget from '../RevenueVsGoalWidget'
@@ -27,69 +26,117 @@ function fmtCurrency(cents: number): string {
  * vendas, clientes, equipe) mora nas outras abas.
  */
 export default async function VisaoGeralTab({ ctx }: { ctx: WidgetCtx }) {
-  const [metrics, ticket, monthlyGoalCents] = await Promise.all([
+  const { start, previousStart, previousEnd } = getDates(ctx.period)
+
+  const [metrics, ticket, prevTicket, monthlyGoal] = await Promise.all([
     getDashboardMetrics(ctx.orgId, ctx.period, ctx.pipelineId, ctx.sellerId),
-    getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
-    getMonthlyRevenueGoal(ctx.orgSlug),
+    getTicketMedio(ctx.orgId, start),
+    getTicketMedio(ctx.orgId, previousStart, previousEnd),
+    getMonthlyGoalProgress(ctx.orgId),
   ])
+
   const conversionPct = metrics.newLeads.value > 0
     ? (metrics.conversions.value / metrics.newLeads.value) * 100
     : 0
+  const previousConversionPct = metrics.newLeads.previousValue > 0
+    ? (metrics.conversions.previousValue / metrics.newLeads.previousValue) * 100
+    : null
   const pipelineValueCents = ctx.initialFunnel.total_value_cents
+
+  const revenueCmp = compareValues(metrics.revenue.value, metrics.revenue.previousValue)
+  const salesCmp = compareValues(ticket.sales_count, prevTicket.sales_count)
+  const ticketCmp = compareValues(ticket.avg_cents, prevTicket.avg_cents)
+  const conversionCmp = comparePoints(conversionPct, previousConversionPct)
+
+  // Meta do mês: sempre o mês calendário corrente (não o período filtrado —
+  // ver getMonthlyGoalProgress) e sempre da organização como um todo (uma
+  // meta mensal não tem recorte por vendedor). Três estados possíveis: sem
+  // meta configurada, meta configurada como zero (sem referência válida de
+  // progresso) e meta > 0 (percentual real, sem limitar acima de 100% no
+  // texto — só a barra visual é que nunca estoura o card).
+  let metaValue: string
+  let metaContext: string
+  let metaProgressPct: number | undefined
+  if (monthlyGoal.goalCents === null) {
+    metaValue = '—'
+    metaContext = 'Meta não configurada — defina em Configurações › Metas.'
+  } else if (monthlyGoal.goalCents <= 0) {
+    metaValue = fmtCurrency(monthlyGoal.realizedCents)
+    metaContext = 'Meta configurada como R$ 0 — sem referência de progresso.'
+  } else {
+    const pct = Math.round((monthlyGoal.realizedCents / monthlyGoal.goalCents) * 100)
+    metaValue = `${pct}%`
+    metaProgressPct = pct
+    metaContext = `${pct}% de ${fmtCurrency(monthlyGoal.goalCents)} · mês corrente`
+  }
 
   return (
     <div className="space-y-5">
       {/* Mobile (spec M01): 4 KPIs prioritários em 2x2 (Receita/Conversão/
           Vendas/Pipeline aberto — os que respondem "como está o negócio"
           mais rápido), "Todos os indicadores" revela Ticket médio/Meta.
-          Desktop mantém a grade de 6 colunas original, inalterada. */}
+          Desktop mantém a grade de indicadores abaixo, agora responsiva por
+          largura disponível em vez de 6 colunas fixas (issue #26). */}
       <div className="sm:hidden">
         <MobileKpiGrid
           items={[
-            { label: 'Receita', value: fmtCurrency(metrics.revenue.value * 100) },
-            { label: 'Conversão', value: `${conversionPct.toFixed(1)}%` },
-            { label: 'Vendas', value: String(ticket.sales_count) },
+            { label: 'Receita', value: fmtCurrency(metrics.revenue.value * 100), comparisonLabel: revenueCmp.trendLabel, trend: revenueCmp.trend },
+            { label: 'Conversão', value: `${conversionPct.toFixed(1)}%`, comparisonLabel: conversionCmp.trendLabel, trend: conversionCmp.trend },
+            { label: 'Vendas', value: String(ticket.sales_count), comparisonLabel: salesCmp.trendLabel, trend: salesCmp.trend },
             { label: 'Pipeline aberto', value: fmtCurrency(pipelineValueCents) },
-            { label: 'Ticket médio', value: fmtCurrency(ticket.avg_cents) },
-            { label: 'Meta do mês', value: monthlyGoalCents ? fmtCurrency(monthlyGoalCents) : '—' },
+            { label: 'Ticket médio', value: fmtCurrency(ticket.avg_cents), comparisonLabel: ticketCmp.trendLabel, trend: ticketCmp.trend },
+            { label: 'Meta do mês', value: metaValue, comparisonLabel: metaContext, progressPct: metaProgressPct },
           ]}
         />
       </div>
-      <div className="hidden sm:grid sm:grid-cols-6 gap-3">
+      {/* `auto-fit`/`minmax` em vez de `grid-cols-6` fixo: a quantidade de
+          cards por linha depende do espaço disponível, nunca força os 6 na
+          mesma linha nem comprime o conteúdo pra caber (issue #26 §3). */}
+      <div className="hidden sm:grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <KpiCard
           label="Receita"
           value={fmtCurrency(metrics.revenue.value * 100)}
           help="Soma das vendas concluídas no período selecionado."
+          trend={revenueCmp.trend}
+          trendLabel={revenueCmp.trendLabel}
           icon={<DollarSign />}
         />
         <KpiCard
           label="Vendas"
           value={String(ticket.sales_count)}
           help="Número de vendas concluídas no período selecionado."
+          trend={salesCmp.trend}
+          trendLabel={salesCmp.trendLabel}
           icon={<ShoppingCart />}
         />
         <KpiCard
           label="Ticket médio"
           value={fmtCurrency(ticket.avg_cents)}
           help="Receita do período dividida pelo número de vendas concluídas."
+          trend={ticketCmp.trend}
+          trendLabel={ticketCmp.trendLabel}
           icon={<Receipt />}
         />
         <KpiCard
           label="Conversão"
           value={`${conversionPct.toFixed(1)}%`}
           help="Percentual de leads do período que chegaram a um estágio de fechamento."
+          trend={conversionCmp.trend}
+          trendLabel={conversionCmp.trendLabel}
           icon={<TrendingUp />}
         />
         <KpiCard
           label="Meta do mês"
-          value={monthlyGoalCents ? fmtCurrency(monthlyGoalCents) : '—'}
-          help="Meta de receita mensal configurada para a organização (Configurações › Metas)."
+          value={metaValue}
+          help="Meta de receita mensal da organização (Configurações › Metas) x receita realizada no mês corrente. Sempre o mês calendário atual, independente do período/vendedor selecionado nos filtros acima."
+          trendLabel={metaContext}
+          progressPct={metaProgressPct}
           icon={<Target />}
         />
         <KpiCard
           label="Pipeline aberto"
           value={fmtCurrency(pipelineValueCents)}
-          help="Soma do valor de todas as oportunidades em aberto no funil, na filtragem atual."
+          help="Soma do valor de todas as oportunidades em aberto no funil, na filtragem atual. Foto do momento — não compara com período anterior."
           icon={<ShoppingBasket />}
         />
       </div>

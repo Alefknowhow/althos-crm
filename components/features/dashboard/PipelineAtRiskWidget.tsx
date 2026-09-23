@@ -52,7 +52,7 @@ export default async function PipelineAtRiskWidget({
             Pipeline em risco
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Leads sem atividade há mais de 7 dias por estágio. Hora de ligar.
+            Leads sem atividade há mais de {thresholdDays} dias por estágio. Hora de ligar.
           </p>
         </div>
         {totalAtRisk > 0 ? (
@@ -65,7 +65,7 @@ export default async function PipelineAtRiskWidget({
         {stages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-sm text-muted-foreground">
             <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-70" />
-            Nenhum lead parado há mais de 7 dias. Pipeline saudável.
+            Nenhum lead parado há mais de {thresholdDays} dias. Pipeline saudável.
           </div>
         ) : (
           <div className="h-full overflow-y-auto pr-1 space-y-4">

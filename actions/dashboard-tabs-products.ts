@@ -16,9 +16,9 @@ export type TicketMedio = {
   revenue_cents: number
 }
 
-export async function getTicketMedio(orgId: string, since: Date): Promise<TicketMedio> {
+export async function getTicketMedio(orgId: string, since: Date, until?: Date): Promise<TicketMedio> {
   const supabase = createClient()
-  const rows = await fetchNormalizedSales(supabase, orgId, { since, onlyCompleted: true })
+  const rows = await fetchNormalizedSales(supabase, orgId, { since, until, onlyCompleted: true })
   const revenue = rows.reduce((a, r) => a + (r.amount_cents || 0), 0)
   return {
     avg_cents: rows.length > 0 ? Math.round(revenue / rows.length) : 0,
