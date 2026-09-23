@@ -1,7 +1,5 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
-import { Logo } from '@/components/brand/Logo'
-import SidebarCollapseToggleButton from '@/components/features/SidebarCollapseToggleButton'
 import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
@@ -123,71 +121,62 @@ export default async function OrgLayout({
       </div>
       <SidebarCollapseProvider>
       <PageHintProvider>
-      {/* Header ocupa a largura inteira da tela (não fica mais restrito à
-          coluna do conteúdo) — logo "Althos CRM" e o botão de colapsar a
-          sidebar moram aqui agora. A sidebar passa a ficar abaixo desta
-          barra, não mais do topo ao fundo da tela. Flutuante: descolado do
-          topo/laterais (mx/mt-3, mesmo respiro que a sidebar já usa em
-          md:py-3 md:pl-3 abaixo) e com cantos suavizados + sombra leve, em
-          vez de colado na borda da tela. */}
-      <header className="print:hidden h-14 shrink-0 border border-border bg-card flex items-center px-3 md:px-5 gap-3 justify-between sticky top-3 z-30 mx-3 mt-3 rounded-xl shadow-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="hidden md:flex items-center shrink-0">
-            <Logo v2 showText textClassName="text-[15px]" />
-          </div>
-          <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
-          <div className="hidden md:block shrink-0">
-            <SidebarCollapseToggleButton />
-          </div>
-          <GlobalBackButton orgSlug={params.orgSlug} />
-          {/* Mobile: título compacto (inalterado). Desktop: ícone +
-              nome do módulo em destaque. */}
-          <div className="md:hidden min-w-0">
-            <HeaderSidebarToggle orgSlug={params.orgSlug} />
-          </div>
-          <div className="hidden md:block min-w-0">
-            <HeaderModuleTitle orgSlug={params.orgSlug} />
-          </div>
-        </div>
-
-        {/* Busca centralizada entre o bloco da esquerda (logo/módulo) e o
-            bloco da direita (notificações/suporte/usuário) — pedido
-            explícito de ficar mais central e maior, em vez de colada nos
-            ícones da direita. */}
-        <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-2">
-          <HeaderSearchBar />
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Busca vira exclusiva do desktop — no mobile já tem entrada
-              própria na barra inferior (Consultar), manter no header
-              também duplicava a ação (pedido explícito: remover a
-              duplicidade). Copiloto de IA removido do header (pedido
-              explícito) — continua acessível pelo widget flutuante
-              (CopilotDock) e pela barra inferior mobile. */}
-          {/* Push toggle e alternância de tema saíram do header — moveram
-              pro menu do usuário (mesma consolidação do canvas do
-              /design, artboard 05: "só o sino permanece" no header). */}
-          <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
-          <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
-          <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
-          <div className="hidden md:inline-flex">
-            <SupportHeaderButton />
-          </div>
-          <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
-          <div className="hidden md:inline-flex">
-            <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
-          </div>
-          <HeaderMobileMenu orgSlug={params.orgSlug} />
-        </div>
-      </header>
-
+      {/* Sidebar sobe até o topo (sem respiro acima) e é fixa (sem opção de
+          recolher). O header vive na coluna à direita da sidebar — começa
+          onde a sidebar termina, não mais atravessando a tela inteira —
+          com um respiro curto entre os dois (pl da coluna da direita) e
+          acima dele (mt-2, menor que o da sidebar). */}
       <div className="flex flex-1 min-h-0 print:block">
-        <div className="print:hidden md:py-3 md:pl-3 min-h-0">
+        <div className="print:hidden md:pb-3 md:pl-3 min-h-0">
           <Sidebar orgSlug={params.orgSlug} />
         </div>
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0 print:block">
+          <header className="print:hidden h-12 shrink-0 border border-border bg-card flex items-center px-3 md:px-5 gap-3 justify-between sticky top-2 z-30 mx-3 mt-2 rounded-xl shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <GlobalBackButton orgSlug={params.orgSlug} />
+              {/* Mobile: título compacto (inalterado). Desktop: ícone +
+                  nome do módulo em destaque. */}
+              <div className="md:hidden min-w-0">
+                <HeaderSidebarToggle orgSlug={params.orgSlug} />
+              </div>
+              <div className="hidden md:block min-w-0">
+                <HeaderModuleTitle orgSlug={params.orgSlug} />
+              </div>
+            </div>
+
+            {/* Busca centralizada entre o bloco da esquerda (módulo) e o
+                bloco da direita (notificações/suporte/usuário) — pedido
+                explícito de ficar mais central e maior, em vez de colada nos
+                ícones da direita. */}
+            <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-2">
+              <HeaderSearchBar />
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Busca vira exclusiva do desktop — no mobile já tem entrada
+                  própria na barra inferior (Consultar), manter no header
+                  também duplicava a ação (pedido explícito: remover a
+                  duplicidade). Copiloto de IA removido do header (pedido
+                  explícito) — continua acessível pelo widget flutuante
+                  (CopilotDock) e pela barra inferior mobile. */}
+              {/* Push toggle e alternância de tema saíram do header — moveram
+                  pro menu do usuário (mesma consolidação do canvas do
+                  /design, artboard 05: "só o sino permanece" no header). */}
+              <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
+              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
+              <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
+              <div className="hidden md:inline-flex">
+                <SupportHeaderButton />
+              </div>
+              <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
+              <div className="hidden md:inline-flex">
+                <HeaderUserMenu orgSlug={params.orgSlug} name={headerUserName} email={user.email ?? ''} avatarUrl={headerAvatarUrl} isOwner={membership?.role === 'owner'} planKey={getPlan((org as any).plan).key} planLabel={getPlan((org as any).plan).label} />
+              </div>
+              <HeaderMobileMenu orgSlug={params.orgSlug} />
+            </div>
+          </header>
+
           <main className="flex-1 flex flex-col min-h-0 px-3 sm:px-5 pt-3 pb-5 overflow-y-auto overflow-x-hidden bg-background print:block print:h-auto print:overflow-visible print:p-0 print:bg-white">
             <div className="mx-auto w-full max-w-[1760px] flex-1 flex flex-col min-h-0 print:block print:max-w-none">
               {children}

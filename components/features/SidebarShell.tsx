@@ -12,7 +12,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
   // Estado do drawer mobile vem do contexto compartilhado (não mais
   // useState local) — permite a barra inferior "Módulos" (MobileBottomNav,
   // reformulação mobile G2) abrir este mesmo drawer.
-  const { collapsed, mobileOpen: open, setMobileOpen: setOpen } = useSidebarCollapse()
+  const { mobileOpen: open, setMobileOpen: setOpen } = useSidebarCollapse()
   const pathname          = usePathname()
   const closeRef          = useRef<HTMLButtonElement>(null)
 
@@ -39,13 +39,11 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
     <>
       {/* Desktop aside — card flutuante (cantos arredondados + sombra),
           mesma pegada do header, em vez de rail retangular grudado nas
-          bordas. */}
+          bordas. Sidebar fixa (sem opção de recolher). */}
       <aside
-        data-collapsed={collapsed}
         className={cn(
-          'group hidden md:flex shrink-0 bg-sidebar flex-col relative h-full min-h-0 transition-[width] duration-200 ease-out',
+          'hidden md:flex shrink-0 w-64 bg-sidebar flex-col relative h-full min-h-0',
           'rounded-lg shadow-[0_1px_2px_rgba(0,0,0,.05),0_6px_16px_rgba(0,0,0,.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,.3),0_6px_20px_rgba(0,0,0,.4)] overflow-hidden',
-          collapsed ? 'w-16 sidebar-collapsed' : 'w-64',
         )}
       >
         {children}

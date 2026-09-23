@@ -78,3 +78,18 @@ export function getRouteSegment2(pathname: string, orgSlug: string): string {
 export function getPageTitle(pathname: string, orgSlug: string): string {
   return ROUTE_TITLES_2SEG[getRouteSegment2(pathname, orgSlug)] ?? ROUTE_TITLES[getRouteSegment(pathname, orgSlug)] ?? ''
 }
+
+/** Sub-seções de /configuracoes — fonte única usada pelo acordeão da sidebar
+ *  (SidebarConfigAccordion), pelo dropdown mobile (SettingsTabsNav) e pelo
+ *  breadcrumb do topo da sidebar (SidebarRouteBreadcrumb). */
+export const CONFIG_SUB_ITEMS = [
+  { seg: '',             label: 'Geral' },
+  { seg: 'agente-ia',    label: 'Agente IA' },
+  { seg: 'dados',        label: 'Importação/Exportação' },
+  { seg: 'integracoes',  label: 'Integrações' },
+  { seg: 'agentes',      label: 'Conector MCP' },
+] as const
+
+export function getConfigSubLabel(seg: string): string | null {
+  return CONFIG_SUB_ITEMS.find(i => i.seg === seg)?.label ?? null
+}

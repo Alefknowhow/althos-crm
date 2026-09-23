@@ -44,10 +44,10 @@ export function SidebarOrgSwitcher({
   const router = useRouter()
 
   const brandMark = (
-    <span className="w-7 h-7 shrink-0 rounded-md bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-[11px] font-semibold overflow-hidden">
+    <span className="w-9 h-9 shrink-0 rounded-md bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center text-[12px] font-semibold overflow-hidden">
       {currentLogoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- logo de cliente vindo do R2, sem domínio fixo pra next/image
-        <img src={currentLogoUrl} alt="" className="w-full h-full object-cover" />
+        <img src={currentLogoUrl} alt="" className="w-full h-full object-contain p-0.5" />
       ) : (
         currentInitials
       )}

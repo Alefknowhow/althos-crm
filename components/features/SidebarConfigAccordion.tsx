@@ -5,14 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { ChevronDown, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const SUB_ITEMS = [
-  { seg: '',             label: 'Geral' },
-  { seg: 'agente-ia',    label: 'Agente IA' },
-  { seg: 'dados',        label: 'Importação/Exportação' },
-  { seg: 'integracoes',  label: 'Integrações' },
-  { seg: 'agentes',      label: 'Conector MCP' },
-] as const
+import { CONFIG_SUB_ITEMS as SUB_ITEMS } from '@/lib/route-titles'
 
 /** Item "Configurações" da sidebar — expansível (acordeão), como no canvas
  *  do /design: a linha inteira é o gatilho que abre/fecha a lista de

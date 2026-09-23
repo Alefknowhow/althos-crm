@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
+import { CONFIG_SUB_ITEMS } from '@/lib/route-titles'
 
 /**
  * Navegação de Configurações — só o dropdown mobile. No desktop, a lista de
@@ -9,13 +10,7 @@ import { MobileSectionPicker, type MobileSection } from '@/components/features/m
  * acordeão "Configurações") — mostrar a mesma lista aqui de novo era
  * redundante (a mesma navegação duplicada em dois lugares da tela).
  */
-const TABS = [
-  { key: 'geral',        label: 'Geral',                 seg: '' },
-  { key: 'agente-ia',    label: 'Agente IA',             seg: 'agente-ia' },
-  { key: 'dados',        label: 'Importação/Exportação', seg: 'dados' },
-  { key: 'integracoes',  label: 'Integrações',           seg: 'integracoes' },
-  { key: 'agentes',      label: 'Conector MCP',          seg: 'agentes' },
-] as const
+const TABS = CONFIG_SUB_ITEMS.map(i => ({ key: i.seg || 'geral', label: i.label, seg: i.seg }))
 
 export default function SettingsTabsNav({ orgSlug }: { orgSlug: string }) {
   const router = useRouter()
