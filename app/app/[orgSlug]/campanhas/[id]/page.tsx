@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/supabase/types'
 import { notFound } from 'next/navigation'
-import { getCampaignDetail } from '@/actions/send-campaigns'
+import { getCampaignDetail } from '@/actions/send-campaigns-manage'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import CampaignDetailActions, { ResendRecipient } from '@/components/features/campaigns/CampaignDetailActions'

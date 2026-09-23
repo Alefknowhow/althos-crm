@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { setMyVoicePresence } from '@/actions/voice'

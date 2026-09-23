@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, X, Loader2, Plus, PanelLeft, Mic, Square } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
-import { getCopilotInit, transcribeCopilotAudio } from '@/actions/copilot'
+import { getCopilotInit } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
 import {
   listInsightsSessions, createInsightsSession, deleteInsightsSession, renameInsightsSession, listInsightsMessages,
@@ -15,6 +15,7 @@ import {
 import { useCopilot } from '@/components/features/CopilotProvider'
 import { CopilotDockSidebar } from './CopilotDockSidebar'
 import { CopilotDockMessages } from './CopilotDockMessages'
+import { useCopilotAudioRecording } from './useCopilotAudioRecording'
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: any } }
 type Message = { id: string; role: 'user' | 'assistant' | 'system'; content: string; tool_calls: ToolCall[] | null }
@@ -41,12 +42,12 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [, startTransition] = useTransition()
-  const [recording, setRecording] = useState(false)
-  const [transcribing, setTranscribing] = useState(false)
   const router = useRouter()
   const endRef = useRef<HTMLDivElement>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
+  const { recording, transcribing, startRecording, stopRecording } = useCopilotAudioRecording(
+    orgSlug,
+    text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text)),
+  )
 
   useEffect(() => {
     if (!open || initialized) return
@@ -207,44 +208,6 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     send(input)
-  }
-
-  // Grava um áudio curto do microfone e transcreve via ElevenLabs
-  // (actions/copilot.ts::transcribeCopilotAudio) — o texto cai no campo de
-  // input, o usuário revê e envia como uma mensagem normal.
-  async function startRecording() {
-    if (recording || streaming || transcribing) return
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        setRecording(false)
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        if (blob.size === 0) return
-        setTranscribing(true)
-        try {
-          const fd = new FormData()
-          fd.append('audio', blob, 'audio.webm')
-          const res = await transcribeCopilotAudio(orgSlug, fd)
-          if (!res.ok) { toast.error('Não foi possível transcrever', { description: res.error }); return }
-          setInput(prev => (prev.trim() ? `${prev.trim()} ${res.text}` : res.text))
-        } finally {
-          setTranscribing(false)
-        }
-      }
-      recorder.start()
-      mediaRecorderRef.current = recorder
-      setRecording(true)
-    } catch {
-      toast.error('Não foi possível acessar o microfone')
-    }
-  }
-
-  function stopRecording() {
-    mediaRecorderRef.current?.stop()
   }
 
   return (
