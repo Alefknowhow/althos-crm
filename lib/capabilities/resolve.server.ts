@@ -3,11 +3,11 @@
 
 import { canAccess, type MemberRole, type Permissions } from '@/lib/permissions'
 import { checkFeatureAccess } from '@/lib/plans/server'
-import { isModuleEnabled } from '@/lib/niche-modules'
+import { isModuleEnabled, type ModuleKey } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import { nicheKeyFor } from '@/lib/niche'
 import { CAPABILITY_REGISTRY } from './registry'
-import type { CapabilityKey } from './types'
+import type { CapabilityKey, CapabilityRule } from './types'
 
 export interface CapabilityContext {
   accountId: string | null
@@ -32,6 +32,23 @@ export async function hasCapability(ctx: CapabilityContext, key: CapabilityKey):
     return { allowed: false, reason: `Capability desconhecida: "${key}".` }
   }
 
+  // `anyOf`: caminhos alternativos (ex.: core.conversations — permissão de
+  // WhatsApp OU de Social/Instagram, cada um com seu próprio feature flag).
+  // Passa se QUALQUER alternativa passar; nenhuma outra regra no nível
+  // superior é avaliada junto (achado da revisão automática da PR #36: o
+  // modelo original só suportava AND de um único permission/feature/module,
+  // então core.conversations só refletia a metade WhatsApp do produto real).
+  if (rule.anyOf) {
+    const results = await Promise.all(rule.anyOf.map(sub => evaluateRule(ctx, sub)))
+    const pass = results.find(r => r.allowed)
+    if (pass) return pass
+    return { allowed: false, reason: `Nenhum dos critérios alternativos de "${key}" foi atendido.` }
+  }
+
+  return evaluateRule(ctx, rule)
+}
+
+async function evaluateRule(ctx: CapabilityContext, rule: CapabilityRule): Promise<CapabilityCheck> {
   if (rule.requiresNiche && nicheKeyFor(ctx.niche) !== rule.requiresNiche) {
     return { allowed: false, reason: `Disponível apenas para organizações da vertical "${rule.requiresNiche}".` }
   }
@@ -41,7 +58,16 @@ export async function hasCapability(ctx: CapabilityContext, key: CapabilityKey):
   }
 
   if (rule.module) {
-    const disabled = await getDisabledModulesForNiche(ctx.niche)
+    let disabled: ModuleKey[]
+    try {
+      disabled = await getDisabledModulesForNiche(ctx.niche)
+    } catch (e: any) {
+      // Fail-closed de verdade: se não dá pra saber o estado do
+      // kill-switch, não presume que nada está desabilitado (achado da
+      // revisão automática da PR #36 — getDisabledModules() antes
+      // descartava o erro e devolvia {} nesse caso).
+      return { allowed: false, reason: `Não foi possível verificar o estado do módulo "${rule.module}": ${e?.message || 'erro desconhecido'}.` }
+    }
     if (!isModuleEnabled(ctx.niche, rule.module, disabled)) {
       return { allowed: false, reason: `Módulo "${rule.module}" não disponível para esta organização.` }
     }

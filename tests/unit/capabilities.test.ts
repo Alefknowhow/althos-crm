@@ -27,6 +27,30 @@ describe('CAPABILITY_REGISTRY', () => {
     expect(CAPABILITY_REGISTRY['vertical.travel'].requiresNiche).toBe('viagens')
     expect(CAPABILITY_REGISTRY['vertical.clinic'].requiresNiche).toBe('clinicas')
   })
+
+  // Regressão da revisão automática da PR #36: core.ads e core.campaigns
+  // estavam com a permissão trocada.
+  it('core.ads uses the marketing permission, not campaigns', () => {
+    expect(CAPABILITY_REGISTRY['core.ads'].permission).toBe('marketing')
+  })
+
+  it('core.campaigns uses the campaigns permission, not marketing', () => {
+    expect(CAPABILITY_REGISTRY['core.campaigns'].permission).toBe('campaigns')
+  })
+
+  // Regressão: core.conversations só cobria o caminho WhatsApp.
+  it('core.conversations offers both the WhatsApp and Instagram paths via anyOf', () => {
+    const rule = CAPABILITY_REGISTRY['core.conversations']
+    expect(rule.anyOf).toBeDefined()
+    expect(rule.anyOf).toContainEqual({ permission: 'conversations', feature: 'whatsapp' })
+    expect(rule.anyOf).toContainEqual({ permission: 'social', feature: 'instagram_automation' })
+  })
+
+  // Regressão: core.reviews estava sem regra (equivalente a "sempre
+  // permitido"), mas o produto real gateia por 'marketing'.
+  it('core.reviews requires the marketing permission', () => {
+    expect(CAPABILITY_REGISTRY['core.reviews'].permission).toBe('marketing')
+  })
 })
 
 describe('resolveEntitlementState', () => {

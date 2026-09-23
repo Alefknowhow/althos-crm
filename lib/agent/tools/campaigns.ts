@@ -23,6 +23,7 @@ export const getCampaignsTool: ToolDef<{ client: string }> = {
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const resolved = await resolveClientId(ctx.orgId, input.client)
     if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
@@ -43,6 +44,7 @@ export const getCampaignPerformanceTool: ToolDef<{ client: string; campaignId: s
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const resolved = await resolveClientId(ctx.orgId, input.client)
     if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
