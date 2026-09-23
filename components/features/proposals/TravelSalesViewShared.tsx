@@ -186,29 +186,28 @@ export function ContactCombobox({ leads, value, onChange }: {
   )
 }
 
-/** Operadora — Select com as operadoras cadastradas em Financeiro (Configurações
- *  > Operadoras); "Outra…" abre um campo de texto livre pra quem ainda não
- *  cadastrou lá, sem bloquear o preenchimento da venda. */
+/** Operadora — Select travado nas operadoras cadastradas em Financeiro
+ *  (Configurações > Operadoras): sem campo de texto livre, só correspondência
+ *  exata de nome. Um valor legado que não bate mais com nenhuma cadastrada
+ *  entra como opção extra (só pra não sumir da tela) — selecionar outra
+ *  operadora sempre exige escolher uma das cadastradas. */
 export function OperatorInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
-  const [freeText, setFreeText] = useState(!!value && !options.includes(value))
+  const allOptions = value && !options.includes(value) ? [value, ...options] : options
 
-  if (freeText || options.length === 0) {
+  if (allOptions.length === 0) {
     return (
-      <div className="flex gap-1.5">
-        <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Ex.: CVC, Azul Viagens…" />
-        {options.length > 0 && (
-          <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setFreeText(false)}>Lista</Button>
-        )}
-      </div>
+      <Select disabled>
+        <SelectTrigger><SelectValue placeholder="Nenhuma operadora cadastrada" /></SelectTrigger>
+        <SelectContent />
+      </Select>
     )
   }
 
   return (
-    <Select value={value || undefined} onValueChange={v => v === '__other__' ? setFreeText(true) : onChange(v)}>
+    <Select value={value || undefined} onValueChange={onChange}>
       <SelectTrigger><SelectValue placeholder="Selecione a operadora" /></SelectTrigger>
       <SelectContent>
-        {options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-        <SelectItem value="__other__">Outra (digitar)…</SelectItem>
+        {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
       </SelectContent>
     </Select>
   )
