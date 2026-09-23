@@ -10,10 +10,14 @@ import type { ScheduledTrip } from '@/actions/travel-schedule'
 import {
   type SchedulePeriod, type ScheduleHealthFilter, type ScheduleStatusFilter, type ScheduleSort,
 } from './ScheduleFiltersBar'
-import { type ScheduleStatusTab } from './ScheduleStatusTabs'
 import { daysFromToday } from './schedule-phase'
 
 const DAY = 86400000
+
+/** Seleção do painel de indicadores (Todas/Essa semana/Esse mês/Pendências)
+ *  — combinável com os demais filtros (busca, Período, Responsável...), o
+ *  mesmo padrão de "tudo se combina" que os atalhos antigos já tinham. */
+export type ScheduleQuickView = 'all' | 'week' | 'month' | 'pending'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -23,8 +27,17 @@ function parseDate(s?: string | null): Date | null {
 function addMonths(d: Date, n: number) { const x = new Date(d); x.setMonth(x.getMonth() + n); return x }
 function addDays(d: Date, n: number) { return new Date(d.getTime() + n * DAY) }
 
+/** Início (segunda) e fim (domingo) da semana corrente de `today`. */
+function currentWeekRange(today: Date): { start: Date; end: Date } {
+  const dow = today.getDay() // 0 = domingo
+  const mondayOffset = dow === 0 ? -6 : 1 - dow
+  const start = addDays(today, mondayOffset)
+  const end = addDays(start, 6)
+  return { start, end }
+}
+
 export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
-  const [statusTab, setStatusTab] = useState<ScheduleStatusTab>('all')
+  const [quickView, setQuickView] = useState<ScheduleQuickView>('all')
   const [owner, setOwner] = useState('all')
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState<SchedulePeriod>('all')
@@ -41,20 +54,19 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
 
   const filtered = useMemo(() => {
     let out = trips
-    if (statusTab === 'today') {
-      out = out.filter(t => {
-        const dep = parseDate(t.departure_date)
-        return !!dep && daysFromToday(dep, today) === 0
-      })
-    } else if (statusTab === 'next7') {
-      out = out.filter(t => {
-        const dep = parseDate(t.departure_date)
-        if (!dep) return false
-        const days = daysFromToday(dep, today)
-        return days >= 0 && days <= 7
-      })
-    } else if (statusTab === 'pending') {
+    if (quickView === 'pending') {
       out = out.filter(t => t.tasks_total - t.tasks_done > 0)
+    } else if (quickView === 'week') {
+      const { start, end } = currentWeekRange(today)
+      out = out.filter(t => {
+        const dep = parseDate(t.departure_date)
+        return !!dep && dep >= start && dep <= end
+      })
+    } else if (quickView === 'month') {
+      out = out.filter(t => {
+        const dep = parseDate(t.departure_date)
+        return !!dep && dep.getFullYear() === today.getFullYear() && dep.getMonth() === today.getMonth()
+      })
     }
     if (owner !== 'all') out = out.filter(t => t.created_by === owner)
     if (health !== 'all') out = out.filter(t => t.health === health)
@@ -65,6 +77,8 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
       out = out.filter(t => {
         const dep = parseDate(t.departure_date)
         if (!dep) return false
+        if (period === 'today') return daysFromToday(dep, today) === 0
+        if (period === 'next7') { const d = daysFromToday(dep, today); return d >= 0 && d <= 7 }
         if (period === '30d') return dep >= today && dep <= addDays(today, 30)
         const monthOffset = period === 'month' ? 0 : 1
         const target = addMonths(today, monthOffset)
@@ -91,12 +105,12 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
       }
     })
     return sorted
-  }, [trips, statusTab, owner, health, destination, operator, statusFilter, period, search, sort, today])
+  }, [trips, quickView, owner, health, destination, operator, statusFilter, period, search, sort, today])
 
-  useEffect(() => { setPage(1) }, [statusTab, owner, search, period, health, destination, statusFilter, operator, sort])
+  useEffect(() => { setPage(1) }, [quickView, owner, search, period, health, destination, statusFilter, operator, sort])
 
   return {
-    statusTab, setStatusTab, owner, setOwner, search, setSearch, period, setPeriod,
+    quickView, setQuickView, owner, setOwner, search, setSearch, period, setPeriod,
     health, setHealth, destination, setDestination, statusFilter, setStatusFilter,
     operator, setOperator, sort, setSort, filtered, page, setPage,
   }
