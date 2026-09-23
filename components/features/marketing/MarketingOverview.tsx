@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CampaignsTable from './CampaignsTable'
@@ -29,11 +29,17 @@ import MarketingOverviewSetupBanner from './MarketingOverviewSetupBanner'
 export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period, metaLoginUserName, initialMetricsPrefs }: Props) {
   const [, startTransition] = useTransition()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
   // Só 1 conta por vez nos gráficos/tabela — misturar métricas de contas
-  // diferentes na mesma série confundia mais do que ajudava. Começa com a
-  // primeira conta da lista.
-  const [accountFilter, setAccountFilter] = useState<string | null>(accounts[0]?.id ?? null)
+  // diferentes na mesma série confundia mais do que ajudava. `?account=`
+  // (deep link vindo da tabela "Distribuição por plataforma" da Visão Geral,
+  // issue #24) tem prioridade sobre o default de "primeira conta da lista",
+  // mas só se essa conta realmente pertencer a este provider/aba.
+  const accountParam = searchParams?.get('account') ?? null
+  const [accountFilter, setAccountFilter] = useState<string | null>(
+    accountParam && accounts.some(a => a.id === accountParam) ? accountParam : (accounts[0]?.id ?? null),
+  )
   // Quais campanhas entram no gráfico — checkbox por linha na tabela.
   // 'all' = todas (default); um Set explícito = só as marcadas.
   const [chartCampaignFilter, setChartCampaignFilter] = useState<Set<string> | 'all'>('all')

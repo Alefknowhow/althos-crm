@@ -6,14 +6,15 @@ import {
 } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
 import { usePageHint } from './PageHintContext'
-import { getPageTitle, getRouteSegment, getConfigSubLabel } from '@/lib/route-titles'
+import { getPageTitle, getRouteSegment, getSubLabel } from '@/lib/route-titles'
 import { PageIcon } from '@/lib/route-icons'
 
 /** Título do módulo atual (desktop) — ícone em container arredondado +
  *  nome em destaque forte, como título principal da página. Quando a rota
- *  tem uma sub-seção mapeada (hoje só Configurações), mostra o caminho
- *  completo — ex.: "Configurações / Agente IA" — no mesmo ícone/tamanho de
- *  fonte de sempre. */
+ *  tem uma sub-seção mapeada (Configurações, Anúncios — ver
+ *  lib/route-titles.ts), mostra o caminho completo — ex.: "Configurações /
+ *  Agente IA", "Anúncios / Meta Ads" — no mesmo ícone/tamanho de fonte de
+ *  sempre. */
 export function HeaderModuleTitle({ orgSlug }: { orgSlug: string }) {
   const pathname = usePathname() ?? ''
   const title = getPageTitle(pathname, orgSlug)
@@ -25,7 +26,7 @@ export function HeaderModuleTitle({ orgSlug }: { orgSlug: string }) {
   const prefix = `/app/${orgSlug}`
   const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname
   const seg2 = rest.split('/').filter(Boolean)[1] ?? ''
-  const subLabel = seg1 === 'configuracoes' ? getConfigSubLabel(seg2) : null
+  const subLabel = getSubLabel(seg1, seg2)
   const displayTitle = subLabel ? `${title} / ${subLabel}` : title
 
   return (
