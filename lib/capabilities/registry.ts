@@ -8,13 +8,13 @@ import type { CapabilityKey, CapabilityRule } from './types'
  * regras existem).
  *
  * Capabilities sem nenhuma regra (objeto vazio) são intencionalmente
- * "sempre permitidas a qualquer membro" — hoje é o caso de Dashboards,
- * Reviews e Contracts, que a auditoria #31 confirmou não terem gate
- * dedicado nenhum sistema existente. Registrá-las mesmo assim (em vez de
- * omitir) é o que torna o registry "fonte central": todo capability key
- * usado em algum lugar do app aparece aqui, mesmo que hoje não bloqueie
- * ninguém — fica explícito, revisável, e pronto pra ganhar uma regra real
- * sem precisar caçar quem consome.
+ * "sempre permitidas a qualquer membro" — hoje é o caso de Dashboards e
+ * Contracts, que a auditoria #31 confirmou não terem gate dedicado nenhum
+ * sistema existente. Registrá-las mesmo assim (em vez de omitir) é o que
+ * torna o registry "fonte central": todo capability key usado em algum
+ * lugar do app aparece aqui, mesmo que hoje não bloqueie ninguém — fica
+ * explícito, revisável, e pronto pra ganhar uma regra real sem precisar
+ * caçar quem consome.
  */
 export const CAPABILITY_REGISTRY: Record<CapabilityKey, CapabilityRule> = {
   // ── Core ──────────────────────────────────────────────────────────────
@@ -24,14 +24,31 @@ export const CAPABILITY_REGISTRY: Record<CapabilityKey, CapabilityRule> = {
   'core.agenda':         { permission: 'calendar', module: 'agendamentos' },
   'core.forms':          { permission: 'forms' },
   'core.automations':    { permission: 'automations' },
-  'core.conversations':  { permission: 'conversations', feature: 'whatsapp' },
-  'core.ads':            { permission: 'campaigns', feature: 'meta_ads_panel' },
+  // Conversas libera por dois caminhos alternativos (SidebarNavExtra.tsx:
+  // `(can('conversations') && planWhatsapp) || (can('social') && planInstagram)`)
+  // — um membro com só Social/Instagram (sem WhatsApp) também tem acesso.
+  'core.conversations':  {
+    anyOf: [
+      { permission: 'conversations', feature: 'whatsapp' },
+      { permission: 'social', feature: 'instagram_automation' },
+    ],
+  },
+  // Ads/Marketing usa a permissão 'marketing' (actions/marketing-*.ts,
+  // SidebarNavExtra.tsx) — 'campaigns' é a permissão de Campanhas de Envio
+  // (core.campaigns abaixo). Estavam trocados (achado da revisão automática
+  // da PR #36): um membro com só 'campaigns' passava core.ads e vice-versa.
+  'core.ads':            { permission: 'marketing', feature: 'meta_ads_panel' },
   'core.sales_coach':    { permission: 'sales_coach', feature: 'sales_coach' },
   'core.voice':          { permission: 'voice', feature: 'voice' },
-  'core.campaigns':      { permission: 'marketing', feature: 'bulk_campaigns' },
+  'core.campaigns':      { permission: 'campaigns', feature: 'bulk_campaigns' },
   'core.dashboards':     {},
   'core.reports':        { feature: 'export_reports' },
-  'core.reviews':        {},
+  // syncGoogleBusinessReviews/replyToGoogleReview/deleteGoogleReviewReply
+  // (actions/google-business-reviews.ts) e o Sidebar já gateiam por
+  // 'marketing' — registrar sem regra (como estava) permitiria qualquer
+  // membro gerenciar reviews via um consumidor futuro deste registry,
+  // afrouxando o controle real (achado da revisão automática da PR #36).
+  'core.reviews':        { permission: 'marketing' },
   'core.contracts':      {},
 
   // ── Vertical: Viagens ─────────────────────────────────────────────────

@@ -14,10 +14,16 @@ import type { NicheKey } from '@/lib/niche'
  * `lib/module-flags.ts`).
  *
  * `permission`/`feature`/`module`/`requiresNiche` são independentes: uma
- * capability só passa se TODAS as regras presentes passarem. Nenhuma regra
- * presente = sempre permitido a qualquer membro autenticado da org (uso
- * hoje: Dashboards, Reviews, Contracts — Core sem gate dedicado ainda,
+ * capability só passa se TODAS as regras presentes passarem (AND). Nenhuma
+ * regra presente = sempre permitido a qualquer membro autenticado da org
+ * (uso hoje: Dashboards, Contracts — Core sem gate dedicado ainda,
  * documentado inline no registry).
+ *
+ * `anyOf` cobre os casos em que o produto real aceita caminhos alternativos
+ * (ex.: Conversas libera com permissão de WhatsApp OU de Social/Instagram)
+ * — quando presente, as outras chaves deste objeto são ignoradas e a
+ * capability passa se qualquer regra da lista passar (OR entre sub-regras,
+ * cada uma com seu próprio AND interno).
  */
 export interface CapabilityRule {
   /** Exige essa permissão no membership (owner sempre passa, admin passa por padrão, member exige grant explícito — ver canAccess). */
@@ -28,6 +34,8 @@ export interface CapabilityRule {
   module?: ModuleKey
   /** Exige que a org seja dessa vertical — usado pelas capabilities "guarda-chuva" (vertical.travel, vertical.clinic) que não mapeiam pra um único ModuleKey. */
   requiresNiche?: NicheKey
+  /** Caminhos alternativos — a capability passa se QUALQUER item passar. Substitui as demais chaves quando presente. */
+  anyOf?: CapabilityRule[]
 }
 
 export type CapabilityKey =

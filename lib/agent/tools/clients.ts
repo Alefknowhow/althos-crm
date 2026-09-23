@@ -39,6 +39,7 @@ export const getClientsTool: ToolDef<{ search?: string; limit?: number; offset?:
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const supabase = createAdminClient()
     let q = supabase
@@ -72,6 +73,7 @@ export const getClientTool: ToolDef<{ client: string }> = {
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const resolved = await resolveClient(ctx, input.client)
     if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
@@ -95,6 +97,7 @@ export const getClientPerformanceTool: ToolDef<{ client: string; startDate?: str
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const resolved = await resolveClient(ctx, input.client)
     if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
@@ -114,6 +117,7 @@ export const getClientTargetsTool: ToolDef<{ client: string }> = {
   riskLevel: 'READ',
   requiresApproval: false,
   permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
   handler: async (ctx, input) => {
     const resolved = await resolveClient(ctx, input.client)
     if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
