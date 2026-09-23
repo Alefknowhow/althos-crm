@@ -4,7 +4,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { RotateCw, X } from 'lucide-react'
-import { cancelCampaign, resendFailedRecipient } from '@/actions/send-campaigns'
+import { cancelCampaign, resendFailedRecipient } from '@/actions/send-campaigns-manage'
 
 interface Props {
   orgSlug: string

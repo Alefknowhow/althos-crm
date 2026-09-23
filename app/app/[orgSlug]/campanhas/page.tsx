@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Plus, MessageSquare, Mail } from 'lucide-react'
-import { listCampaigns } from '@/actions/send-campaigns'
+import { listCampaigns } from '@/actions/send-campaigns-manage'
 
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   draft:     { label: 'Rascunho',  className: 'bg-muted-foreground/60 text-white' },

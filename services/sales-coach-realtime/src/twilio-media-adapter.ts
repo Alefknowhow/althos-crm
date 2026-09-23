@@ -17,7 +17,7 @@ const MULAW_DECODE_TABLE = new Int16Array(256)
 ;(function buildMulawTable() {
   const MULAW_BIAS = 0x84
   for (let i = 0; i < 256; i++) {
-    let muVal = ~i & 0xff
+    const muVal = ~i & 0xff
     const sign = muVal & 0x80
     const exponent = (muVal >> 4) & 0x07
     const mantissa = muVal & 0x0f
