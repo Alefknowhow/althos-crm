@@ -129,9 +129,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   return (
     <SidebarShell>
       {/* Seletor de organização no topo (issue #10) — reflete o contrato de
-          #30. Só desktop por enquanto: o drawer mobile já tem seu próprio
-          cabeçalho (logo + X) renderizado pelo SidebarShell. */}
-      <div className="hidden md:block px-3 pt-3">
+          #30. Renderiza em desktop (aside) E no drawer mobile (mesmo JSX,
+          via SidebarShell) — a versão anterior escondia isto com
+          `hidden md:block` e, como o switcher antigo do header também foi
+          removido, usuários mobile com mais de uma org ficavam sem
+          NENHUMA forma de trocar (achado da revisão automática da PR #35).
+          O cabeçalho do drawer (logo + X) continua fixo acima disto. */}
+      <div className="px-3 pt-3">
         <SidebarOrgSwitcher
           currentSlug={orgSlug}
           currentName={org.name}

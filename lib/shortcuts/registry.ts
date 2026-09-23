@@ -18,9 +18,16 @@ export interface ShortcutEntry {
 export function comboFromEvent(e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>): string {
   const parts: string[] = []
   if (e.metaKey || e.ctrlKey) parts.push('mod')
-  if (e.shiftKey) parts.push('shift')
-  if (e.altKey) parts.push('alt')
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+  // Shift só vira modificador explícito pra letras (perdem maiúscula ao
+  // serem lowercased acima, ex.: Shift+K precisa de "shift" pra não colidir
+  // com "k" puro). Teclas de símbolo (?, !, /) já são caracteres distintos
+  // do não-shiftado — "?" (Shift+/) e "/" nunca colidem — então exigir
+  // "shift+?" seria redundante e quebra o registro de quem passou só "?"
+  // (achado da revisão automática da PR #35: '?' nunca disparava).
+  const isLetter = /^[a-z]$/.test(key)
+  if (e.shiftKey && isLetter) parts.push('shift')
+  if (e.altKey) parts.push('alt')
   // Avoid double-counting the modifier as the "key" itself (e.g. pressing
   // just Shift fires a keydown with key === 'Shift').
   if (!['Control', 'Meta', 'Shift', 'Alt'].includes(e.key)) {
