@@ -10,6 +10,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin, getUser } from '@/lib/supabase/types'
+import { logAdminAction } from '@/lib/super-admin/audit'
 import type { NicheKey } from '@/lib/niche'
 import type { ModuleKey } from '@/lib/niche-modules'
 import type { ModuleFlags } from '@/lib/module-flags'
@@ -32,17 +33,25 @@ export async function setModuleEnabled(niche: NicheKey, moduleKey: ModuleKey, en
   const next: ModuleFlags = { ...current, [niche]: Array.from(list) }
 
   const me = await getUser()
+  if (!me) return { ok: false as const, error: 'Não autenticado' }
+
   const { error } = await admin
     .from('system_config')
-    .update({ value: next, updated_at: new Date().toISOString(), updated_by: me?.id ?? null })
+    .update({ value: next, updated_at: new Date().toISOString(), updated_by: me.id })
     .eq('key', 'disabled_modules')
   if (error) return { ok: false as const, error: error.message }
 
-  await admin.from('super_admin_audit_log').insert({
-    super_admin_user_id: me?.id,
-    action: `module_flag:${niche}:${moduleKey}:${enabled ? 'on' : 'off'}`,
-    target_organization_id: null,
-  })
+  try {
+    await logAdminAction({
+      actorUserId: me.id,
+      action: 'module_flag_toggle',
+      oldValue: { niche, moduleKey, enabled: !enabled },
+      newValue: { niche, moduleKey, enabled },
+      reason: `Kill-switch de módulo via /super-admin/modulos`,
+    })
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Módulo atualizado, mas o log de auditoria falhou.' }
+  }
 
   revalidatePath('/super-admin/modulos')
   return { ok: true as const }
