@@ -9,7 +9,6 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { logAdminAction } from '@/lib/super-admin/audit'
 import type { AdminAccountRow } from './super-admin-users'
 
 function currentPeriod(): string {
@@ -128,86 +127,30 @@ export async function updateAccountPlan(accountId: string, raw: unknown, reason:
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
   const d = parsed.data
 
-  const admin = createAdminClient()
-
-  // Estado anterior — pro log de auditoria (issue #33: valor anterior/novo valor).
-  const { data: previousSub } = await admin
-    .from('subscriptions')
-    .select('plan_id, status, billing_cycle')
-    .eq('account_id', accountId)
-    .maybeSingle()
-
-  // Plan catalog → créditos de IA inclusos no período.
-  const { data: planRow } = await admin
-    .from('plans')
-    .select('ai_credits_monthly')
-    .eq('id', d.plan)
-    .maybeSingle()
-  const aiCredits = (planRow as any)?.ai_credits_monthly ?? 0
-
-  // 1. Assinatura da conta (1 por conta — unique account_id).
-  const { error: subErr } = await admin
-    .from('subscriptions')
-    .upsert(
-      {
-        account_id:    accountId,
-        plan_id:       d.plan,
-        status:        d.subscription_status,
-        billing_cycle: d.billing_cycle ?? 'monthly',
-      },
-      { onConflict: 'account_id' },
-    )
-  if (subErr) return { ok: false as const, error: subErr.message }
-
-  // 2. Fan-out para todas as organizações da conta (mantém gating consistente).
-  const { error: orgErr } = await admin
-    .from('organizations')
-    .update({
-      plan:                   d.plan,
-      subscription_status:    d.subscription_status,
-      limit_leads:            d.limit_leads,
-      limit_users:            d.limit_users,
-      limit_whatsapp_monthly: d.limit_whatsapp_monthly,
-      limit_email_monthly:    d.limit_email_monthly,
-    })
-    .eq('account_id', accountId)
-  if (orgErr) return { ok: false as const, error: orgErr.message }
-
-  // 3. Créditos de IA do período atual (sincronizados com o catálogo do plano).
-  const period = currentPeriod()
-  const { data: existingCredits } = await admin
-    .from('ai_credits')
-    .select('id')
-    .eq('account_id', accountId)
-    .eq('period_month', period)
-    .maybeSingle()
-  if (existingCredits) {
-    await admin.from('ai_credits').update({ credits_included: aiCredits }).eq('id', (existingCredits as any).id)
-  } else {
-    await admin.from('ai_credits').insert({
-      account_id:        accountId,
-      period_month:      period,
-      credits_included:  aiCredits,
-      credits_purchased: 0,
-      credits_used:      0,
-    })
-  }
-
   const me = await getUser()
   if (!me) return { ok: false as const, error: 'Não autenticado' }
 
-  try {
-    await logAdminAction({
-      actorUserId: me.id,
-      action: 'update_account_plan',
-      targetAccountId: accountId,
-      oldValue: previousSub ?? null,
-      newValue: { plan_id: d.plan, status: d.subscription_status, billing_cycle: d.billing_cycle ?? 'monthly' },
-      reason,
-    })
-  } catch (e: any) {
-    return { ok: false as const, error: e?.message || 'Plano atualizado, mas o log de auditoria falhou.' }
-  }
+  const admin = createAdminClient()
+
+  // RPC transacional (0266): subscriptions + organizations (fan-out pra
+  // toda a conta) + ai_credits + o log de auditoria acontecem na MESMA
+  // transação — se qualquer passo falhar (inclusive o insert de
+  // auditoria), tudo é revertido. Antes eram writes separados via
+  // PostgREST; um erro no log de auditoria deixava a mutação já commitada
+  // mas reportava falha pro admin (achado da revisão automática da PR #38).
+  const { error } = await admin.rpc('admin_update_account_plan', {
+    p_account_id: accountId,
+    p_plan_id: d.plan,
+    p_status: d.subscription_status,
+    p_billing_cycle: d.billing_cycle ?? 'monthly',
+    p_limit_leads: d.limit_leads,
+    p_limit_users: d.limit_users,
+    p_limit_whatsapp: d.limit_whatsapp_monthly,
+    p_limit_email: d.limit_email_monthly,
+    p_actor_id: me.id,
+    p_reason: reason,
+  })
+  if (error) return { ok: false as const, error: error.message }
 
   revalidatePath('/super-admin/users')
   revalidatePath('/super-admin')

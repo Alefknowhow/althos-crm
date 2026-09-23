@@ -6,6 +6,7 @@ import { checkFeatureAccess } from '@/lib/plans/server'
 import { isModuleEnabled, type ModuleKey } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import { nicheKeyFor } from '@/lib/niche'
+import { resolveEffectiveNiche } from './vertical-access.server'
 import { CAPABILITY_REGISTRY } from './registry'
 import type { CapabilityKey, CapabilityRule } from './types'
 
@@ -32,6 +33,15 @@ export async function hasCapability(ctx: CapabilityContext, key: CapabilityKey):
     return { allowed: false, reason: `Capability desconhecida: "${key}".` }
   }
 
+  // Verticais compradas/concedidas via account_verticals (#32/#33) contam
+  // como se a org fosse nativamente dessa vertical, além do
+  // organizations.niche nativo — achado P1 da revisão automática da PR #38:
+  // sem isto, "conceder vertical" no Super Admin gravava a linha mas não
+  // liberava nada de verdade. Só afeta capabilities vertical.* (core.* usa
+  // o niche real sem alteração).
+  const effectiveNiche = await resolveEffectiveNiche(key, ctx.niche, ctx.accountId)
+  const effectiveCtx: CapabilityContext = effectiveNiche === ctx.niche ? ctx : { ...ctx, niche: effectiveNiche }
+
   // `anyOf`: caminhos alternativos (ex.: core.conversations — permissão de
   // WhatsApp OU de Social/Instagram, cada um com seu próprio feature flag).
   // Passa se QUALQUER alternativa passar; nenhuma outra regra no nível
@@ -39,13 +49,13 @@ export async function hasCapability(ctx: CapabilityContext, key: CapabilityKey):
   // modelo original só suportava AND de um único permission/feature/module,
   // então core.conversations só refletia a metade WhatsApp do produto real).
   if (rule.anyOf) {
-    const results = await Promise.all(rule.anyOf.map(sub => evaluateRule(ctx, sub)))
+    const results = await Promise.all(rule.anyOf.map(sub => evaluateRule(effectiveCtx, sub)))
     const pass = results.find(r => r.allowed)
     if (pass) return pass
     return { allowed: false, reason: `Nenhum dos critérios alternativos de "${key}" foi atendido.` }
   }
 
-  return evaluateRule(ctx, rule)
+  return evaluateRule(effectiveCtx, rule)
 }
 
 async function evaluateRule(ctx: CapabilityContext, rule: CapabilityRule): Promise<CapabilityCheck> {

@@ -59,14 +59,22 @@ END $$;
 -- corretamente usa `app_metadata`). Checagem direta no banco de produção
 -- (auditoria #33) mostrou que a função REAL já foi corrigida pra
 -- `app_metadata` fora do fluxo de migrations — só o histórico rastreado
--- ficou desatualizado/inseguro. Este CREATE OR REPLACE não muda
--- comportamento (idempotente com o que já roda em produção); só faz o
--- git refletir a versão segura real, pro próximo `supabase db reset`
--- local não regredir pra versão vulnerável de 0060.
+-- ficou desatualizado/inseguro. Este CREATE OR REPLACE só faz o git
+-- refletir a versão segura real, pro próximo `supabase db reset` local não
+-- regredir pra versão vulnerável de 0060.
+--
+-- IMPORTANTE — STABLE: 0140_audit_p0_rls_and_indexes.sql já tinha marcado
+-- esta função como STABLE de propósito (é usada por dezenas de RLS
+-- policies; sem STABLE o planner reavalia a cada linha em vez de cachear
+-- por statement). A primeira versão deste CREATE OR REPLACE (aplicada
+-- nesta mesma sessão) esqueceu o `STABLE` e resetou a função pro default
+-- VOLATILE em produção — regressão de performance real, não só teórica
+-- (achado da revisão automática da PR #38). Corrigido abaixo.
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.is_super_admin()
  RETURNS boolean
  LANGUAGE plpgsql
+ STABLE
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$

@@ -24,11 +24,12 @@ import type { NicheKey } from '@/lib/niche'
 // confundir com NICHE_OPTIONS (lib/niche.ts), que é texto livre pra
 // organizations.niche. Aqui precisa bater exatamente com o CHECK da tabela.
 const VERTICAL_OPTIONS: Array<{ value: NicheKey; label: string }> = [
-  { value: 'viagens',  label: 'Viagens' },
-  { value: 'clinicas', label: 'Clínicas' },
-  { value: 'imoveis',  label: 'Imobiliárias' },
-  { value: 'seguros',  label: 'Seguros' },
-  { value: 'trafego',  label: 'Agências de Tráfego' },
+  { value: 'viagens',   label: 'Viagens' },
+  { value: 'clinicas',  label: 'Clínicas' },
+  { value: 'imoveis',   label: 'Imobiliárias' },
+  { value: 'seguros',   label: 'Seguros' },
+  { value: 'trafego',   label: 'Agências de Tráfego' },
+  { value: 'advocacia', label: 'Jurídico' },
 ]
 
 export type PlanOption = {
@@ -178,12 +179,16 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
 
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-[#1a1a1f] border-white/10 text-white">
+      {/* max-h + overflow: a seção de verticais (issue #33) deixou o
+          conteúdo alto o bastante pra cortar rodapé/campos em viewports
+          menores (notebook, mobile) — achado da revisão automática da
+          PR #38. Header/footer ficam fixos; só o corpo rola. */}
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col bg-[#1a1a1f] border-white/10 text-white">
         <DialogHeader>
           <DialogTitle className="text-white">Plano &amp; Limites — {account.account_name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto min-h-0">
           {/* Owner + scope */}
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs space-y-1.5">
             <p className="text-slate-300">
