@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { MobileSectionPicker, type MobileSection } from '@/components/features/mobile/MobileSectionPicker'
 
 export default function DashboardTabsShell({
-  stickyHeader,
+  filtersSlot,
   visaoGeral,
   pipeline,
   vendas,
@@ -18,9 +18,10 @@ export default function DashboardTabsShell({
   defaultTab,
   isClinic = false,
 }: {
-  /** Filtros/título da Inicial — renderizado junto com as abas dentro do
-   *  mesmo container sticky, pra ambos ficarem fixos ao rolar a página. */
-  stickyHeader?: ReactNode
+  /** Filtros (pipeline/vendedor/período) — renderizados ao lado do título da
+   *  aba ativa, dentro do mesmo container sticky (issue #26: título só no
+   *  conteúdo à esquerda, filtros à direita, sem saudação/data/breadcrumb). */
+  filtersSlot?: ReactNode
   visaoGeral: ReactNode
   pipeline: ReactNode
   vendas: ReactNode
@@ -43,13 +44,6 @@ export default function DashboardTabsShell({
    *  comportamento existente pra quem não passa essa prop. */
   defaultTab?: string
 }) {
-  // Nicho Clínicas troca "Vendas" por "Clínica" (renomeada pra Atendimentos)
-  // no mesmo slot — 5 abas fixas, sem crescer a barra. Nos demais nichos,
-  // "Clínica"/Imobiliária/Tráfego são extras opcionais de verdade.
-  const extraTabs = (clinica && !isClinic ? 1 : 0) + (imoveis ? 1 : 0) + (trafego ? 1 : 0) + (whatsapp ? 1 : 0)
-  const tabCount = 5 + extraTabs
-  const gridColsClass = tabCount === 9 ? 'grid-cols-9' : tabCount === 8 ? 'grid-cols-8' : tabCount === 7 ? 'grid-cols-7' : tabCount === 6 ? 'grid-cols-6' : 'grid-cols-5'
-
   const sections: MobileSection[] = [
     { key: 'visao-geral', label: 'Visão Geral' },
     { key: 'pipeline', label: 'Pipeline' },
@@ -63,10 +57,21 @@ export default function DashboardTabsShell({
   ]
   const validTabs = sections.map(s => s.key)
   const initialTab = defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral'
-  // Tabs vira controlado (era defaultValue não-controlado) só pra o seletor
-  // mobile (MobileSectionPicker, G3) conseguir mudar a aba ativa também —
-  // desktop continua clicando direto no TabsTrigger, mesmo comportamento.
+  // Tabs vira controlado (era defaultValue não-controlado) pro seletor mobile
+  // (MobileSectionPicker, G3) e o acordeão "Dashboards" da sidebar
+  // (SidebarDashboardsAccordion, issue #26) conseguirem mudar a aba ativa.
   const [active, setActive] = useState(initialTab)
+
+  // `useState(initialTab)` só roda no 1º mount — sem isto, clicar num
+  // sub-item do acordeão da sidebar (nova URL com ?tab=X, mesma rota)
+  // atualiza `defaultTab` mas o componente já montado ignoraria o valor
+  // inicial de novo. Sincroniza sempre que a prop mudar.
+  useEffect(() => {
+    setActive(defaultTab && validTabs.includes(defaultTab) ? defaultTab : 'visao-geral')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultTab])
+
+  const activeLabel = sections.find(s => s.key === active)?.label ?? 'Visão Geral'
 
   return (
     <Tabs value={active} onValueChange={setActive} className="space-y-4">
@@ -75,24 +80,25 @@ export default function DashboardTabsShell({
           precisar de margin-top negativo, de -top-3 nem de pt-* próprio (ver
           .harness/agents/ux.md). */}
       <div className="sticky top-0 z-20 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-2 space-y-2 bg-background">
-        {stickyHeader}
-        {/* Abaixo de sm: seletor de seção (bottom sheet, G3) em vez da
-            grade de abas espremidas em fonte 11px — nome da seção sempre
-            por extenso. sm+ mantém o TabsList original, inalterado. */}
+        {/* Título da aba ativa à esquerda, filtros à direita, uma linha só
+            no desktop (issue #26) — sem saudação/data/breadcrumb repetido:
+            o header global já mostra "Dashboards" (módulo), este título
+            identifica a visão específica dentro dele. */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-xl font-semibold tracking-apple-tight text-foreground truncate">
+            {activeLabel}
+          </h1>
+          <div className="flex items-center flex-wrap gap-1.5 sm:gap-3 w-full sm:w-auto [&_[data-radix-select-trigger]]:shrink-0">
+            {filtersSlot}
+          </div>
+        </div>
+        {/* Abas horizontais removidas (issue #26) — a navegação entre visões
+            do dashboard mora no acordeão "Dashboards" da sidebar
+            (SidebarDashboardsAccordion), conforme #10. No mobile, sem
+            sidebar sempre visível, mantém o seletor de seção inline. */}
         <div className="sm:hidden">
           <MobileSectionPicker sections={sections} activeKey={active} onChange={setActive} />
         </div>
-        <TabsList className={`hidden sm:inline-flex sm:w-auto sm:gap-0 ${gridColsClass}`}>
-          <TabsTrigger value="visao-geral" className="text-sm px-3 py-1 truncate">Visão Geral</TabsTrigger>
-          <TabsTrigger value="pipeline" className="text-sm px-3 py-1 truncate">Pipeline</TabsTrigger>
-          {!isClinic && <TabsTrigger value="vendas" className="text-sm px-3 py-1 truncate">Vendas</TabsTrigger>}
-          <TabsTrigger value="clientes" className="text-sm px-3 py-1 truncate">{isClinic ? 'Pacientes' : 'Clientes'}</TabsTrigger>
-          <TabsTrigger value="equipe" className="text-sm px-3 py-1 truncate">Equipe</TabsTrigger>
-          {clinica && <TabsTrigger value="clinica" className="text-sm px-3 py-1 truncate">{isClinic ? 'Atendimentos' : 'Clínica'}</TabsTrigger>}
-          {imoveis && <TabsTrigger value="imoveis" className="text-sm px-3 py-1 truncate">Imobiliária</TabsTrigger>}
-          {trafego && <TabsTrigger value="trafego" className="text-sm px-3 py-1 truncate">Tráfego</TabsTrigger>}
-          {whatsapp && <TabsTrigger value="whatsapp" className="text-sm px-3 py-1 truncate">WhatsApp</TabsTrigger>}
-        </TabsList>
       </div>
       <TabsContent value="visao-geral" className="space-y-4">
         {visaoGeral}

@@ -2,7 +2,6 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
-import DashboardHeader from '@/components/features/dashboard/DashboardHeader'
 import PeriodFilter from '@/components/features/dashboard/PeriodFilter'
 import PipelineFilter from '@/components/features/dashboard/PipelineFilter'
 import SellerFilter from '@/components/features/dashboard/SellerFilter'
@@ -20,8 +19,6 @@ import WhatsAppTab from '@/components/features/dashboard/tabs/WhatsAppTab'
 import { isClinicNiche, isRealEstateNiche, isTrafficNiche } from '@/lib/niche'
 import { Period, getAdvancedFunnel, getFunnelSourceOptions } from '@/actions/dashboard'
 import { getDashboardLayout } from '@/actions/dashboard-layout'
-import { listDashboardInsights } from '@/actions/dashboard-insights'
-import InsightsStrip from '@/components/features/dashboard/InsightsStrip'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
 import { listOrgMembers } from '@/actions/sales'
 import OnboardingChecklistCard from '@/components/features/onboarding/OnboardingChecklistCard'
@@ -35,19 +32,14 @@ export default async function OrgDashboard({
   searchParams: { period?: string; pipeline_id?: string; metric?: string; seller_id?: string; tab?: string }
 }) {
   const org = await getCurrentOrganization(params.orgSlug)
-  const user = await requireAuth()
-  const [layout, insights] = await Promise.all([
-    getDashboardLayout(params.orgSlug),
-    listDashboardInsights(params.orgSlug),
-  ])
+  await requireAuth()
+  const layout = await getDashboardLayout(params.orgSlug)
   const period = (searchParams.period as Period) || (layout.periodDefault as Period) || '30d'
   const pipelineId = searchParams.pipeline_id || null
   const validMetrics = ['leads', 'revenue', 'sales', 'appointments'] as const
   const metric = (validMetrics as readonly string[]).includes(searchParams.metric || '')
     ? (searchParams.metric as (typeof validMetrics)[number])
     : 'leads'
-
-  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário'
 
   // Pipelines list is small (per org) and shared by both filter UI and the
   // pipeline_id validation — fetch once at the page level.
@@ -104,19 +96,11 @@ export default async function OrgDashboard({
       <DashboardTabsShell
         defaultTab={searchParams.tab}
         isClinic={isClinicNiche((org as any).niche)}
-        stickyHeader={
+        filtersSlot={
           <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
-              <DashboardHeader
-                userName={userName}
-                insightsSlot={<InsightsStrip orgSlug={params.orgSlug} initialInsights={insights} />}
-              />
-              <div className="flex items-center flex-wrap gap-1.5 sm:gap-3 w-full md:w-auto [&_[data-radix-select-trigger]]:shrink-0">
-                <PipelineFilter pipelines={pipelines || []} />
-                <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
-                <PeriodFilter orgSlug={params.orgSlug} />
-              </div>
-            </div>
+            <PipelineFilter pipelines={pipelines || []} />
+            <SellerFilter sellers={members.map(m => ({ id: m.id, name: m.name }))} />
+            <PeriodFilter orgSlug={params.orgSlug} />
           </>
         }
         visaoGeral={

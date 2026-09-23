@@ -9,9 +9,11 @@ import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { checkFeatureAccess } from '@/lib/plans/server'
 import { deriveInitials } from '@/lib/organization/initials'
-import { LayoutDashboard, Wallet, FileText } from 'lucide-react'
+import { Wallet, FileText } from 'lucide-react'
 import { SidebarNavVendas } from './SidebarNavVendas'
 import { SidebarNavExtra } from './SidebarNavExtra'
+import SidebarDashboardsAccordion from './SidebarDashboardsAccordion'
+import { isClinicNiche, isRealEstateNiche, isTrafficNiche } from '@/lib/niche'
 
 /** Non-interactive section divider label. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -148,12 +150,13 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
       <nav className="sidebar-scroll flex-1 min-h-0 px-3 pt-3 pb-4 space-y-0.5 overflow-y-auto">
 
         {/* ── Topo ──────────────────────────────────── */}
-        <SidebarNavLink href={base} exact dataTour="insights">
-          <span className="flex items-center gap-2.5">
-            <LayoutDashboard className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Dashboards</span>
-          </span>
-        </SidebarNavLink>
+        <SidebarDashboardsAccordion
+          base={base}
+          isClinic={isClinicNiche(org.niche)}
+          hasClinica={isClinicNiche(org.niche)}
+          hasImoveis={isRealEstateNiche(org.niche)}
+          hasTrafego={isTrafficNiche(org.niche)}
+        />
 
         {can('financial') && (
           <SidebarNavLink href={`${base}/financeiro`}>
