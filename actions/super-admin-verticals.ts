@@ -6,16 +6,18 @@
  * "Concessão manual não cria compra fictícia" — por isso `reason` é
  * obrigatório e sempre gravado tanto em account_verticals.granted_reason
  * quanto em super_admin_audit_log.
+ *
+ * A mutação de account_verticals e o insert de auditoria acontecem na
+ * mesma transação (RPCs admin_grant_account_vertical/
+ * admin_revoke_account_vertical, migration 0266) — um erro no log de
+ * auditoria reverte a concessão/revogação inteira em vez de deixá-la
+ * commitada sem registro (achado da revisão automática da PR #38).
  */
 
 import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin, getUser } from '@/lib/supabase/types'
-import { logAdminAction } from '@/lib/super-admin/audit'
-import {
-  getAccountVerticals,
-  grantAccountVertical,
-  requestAccountVerticalCancellation,
-} from '@/lib/verticals/account-verticals.server'
+import { getAccountVerticals } from '@/lib/verticals/account-verticals.server'
 import type { NicheKey } from '@/lib/niche'
 
 export async function getAccountVerticalsForAdmin(accountId: string) {
@@ -30,31 +32,17 @@ export async function grantVerticalToAccount(accountId: string, vertical: NicheK
   const me = await getUser()
   if (!me) return { ok: false as const, error: 'Não autenticado' }
 
-  const before = await getAccountVerticals(accountId)
-  const previous = before.find(v => v.vertical === vertical) ?? null
-
-  const granted = await grantAccountVertical({
-    accountId,
-    vertical,
-    grantedBy: me.id,
-    reason: reason.trim(),
+  const admin = createAdminClient()
+  const { error } = await admin.rpc('admin_grant_account_vertical', {
+    p_account_id: accountId,
+    p_vertical: vertical,
+    p_granted_by: me.id,
+    p_reason: reason.trim(),
   })
-
-  try {
-    await logAdminAction({
-      actorUserId: me.id,
-      action: 'grant_account_vertical',
-      targetAccountId: accountId,
-      oldValue: previous ? { vertical: previous.vertical, status: previous.status } : null,
-      newValue: { vertical: granted.vertical, status: granted.status },
-      reason: reason.trim(),
-    })
-  } catch (e: any) {
-    return { ok: false as const, error: e?.message || 'Vertical concedida, mas o log de auditoria falhou.' }
-  }
+  if (error) return { ok: false as const, error: error.message }
 
   revalidatePath('/super-admin/users')
-  return { ok: true as const, vertical: granted }
+  return { ok: true as const }
 }
 
 export async function revokeVerticalFromAccount(accountId: string, vertical: NicheKey, reason: string) {
@@ -64,24 +52,15 @@ export async function revokeVerticalFromAccount(accountId: string, vertical: Nic
   const me = await getUser()
   if (!me) return { ok: false as const, error: 'Não autenticado' }
 
-  const before = await getAccountVerticals(accountId)
-  const previous = before.find(v => v.vertical === vertical) ?? null
-
-  // Não apaga dados operacionais (issue #32) — só marca pending_cancellation.
-  await requestAccountVerticalCancellation(accountId, vertical)
-
-  try {
-    await logAdminAction({
-      actorUserId: me.id,
-      action: 'revoke_account_vertical',
-      targetAccountId: accountId,
-      oldValue: previous ? { vertical: previous.vertical, status: previous.status } : null,
-      newValue: { vertical, status: 'pending_cancellation' },
-      reason: reason.trim(),
-    })
-  } catch (e: any) {
-    return { ok: false as const, error: e?.message || 'Revogação registrada, mas o log de auditoria falhou.' }
-  }
+  const admin = createAdminClient()
+  // Não apaga dados operacionais (issue #32) — a RPC só marca pending_cancellation.
+  const { error } = await admin.rpc('admin_revoke_account_vertical', {
+    p_account_id: accountId,
+    p_vertical: vertical,
+    p_actor_id: me.id,
+    p_reason: reason.trim(),
+  })
+  if (error) return { ok: false as const, error: error.message }
 
   revalidatePath('/super-admin/users')
   return { ok: true as const }

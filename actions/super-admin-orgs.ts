@@ -107,9 +107,14 @@ export type AuditLogEntry = {
   created_at:             string
   super_admin_user_id:    string
   super_admin_email:      string | null
-  target_organization_id: string
+  target_organization_id: string | null
   org_name:               string | null
   org_slug:               string | null
+  target_account_id:      string | null
+  account_name:           string | null
+  old_value:              unknown
+  new_value:              unknown
+  reason:                 string | null
 }
 
 export async function getAuditLogs(limit = 100): Promise<AuditLogEntry[]> {
@@ -121,7 +126,9 @@ export async function getAuditLogs(limit = 100): Promise<AuditLogEntry[]> {
     .from('super_admin_audit_log')
     .select(`
       id, action, created_at, super_admin_user_id, target_organization_id,
-      organizations ( name, slug )
+      target_account_id, old_value, new_value, reason,
+      organizations ( name, slug ),
+      accounts ( name )
     `)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -146,6 +153,11 @@ export async function getAuditLogs(limit = 100): Promise<AuditLogEntry[]> {
     target_organization_id: log.target_organization_id,
     org_name:               log.organizations?.name ?? null,
     org_slug:               log.organizations?.slug ?? null,
+    target_account_id:      log.target_account_id,
+    account_name:           log.accounts?.name ?? null,
+    old_value:              log.old_value,
+    new_value:              log.new_value,
+    reason:                 log.reason,
   }))
 }
 
