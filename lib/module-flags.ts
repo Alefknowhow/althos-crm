@@ -23,11 +23,17 @@ export type ModuleFlags = Partial<Record<NicheKey, ModuleKey[]>>
  *  atual do banco. */
 export const getDisabledModules = cache(async (): Promise<ModuleFlags> => {
   const admin = createAdminClient()
-  const { data } = await admin
+  const { data, error } = await admin
     .from('system_config')
     .select('value')
     .eq('key', 'disabled_modules')
     .maybeSingle()
+  // Antes o erro era descartado e uma falha de leitura virava "nada
+  // desabilitado" — o pior default possível pra um kill-switch (achado da
+  // revisão automática da PR #36, via lib/capabilities/resolve.server.ts,
+  // que documenta fail-closed mas herdava esse fail-open silencioso). Uma
+  // falha real aqui deve estourar, não fingir que está tudo liberado.
+  if (error) throw new Error(`Falha ao ler disabled_modules: ${error.message}`)
   return (data?.value ?? {}) as ModuleFlags
 })
 
