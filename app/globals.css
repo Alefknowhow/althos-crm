@@ -343,3 +343,11 @@
 /* User menu: hide name/email + chevron, center the avatar. */
 .sidebar-collapsed [data-usermenu] > button { justify-content: center; }
 .sidebar-collapsed [data-usermenu] > button > :not(:first-child) { display: none; }
+
+/* Org switcher (topo): hide name + chevron, center the logo/initials mark. */
+.sidebar-collapsed [data-orgswitcher] { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar-collapsed [data-orgswitcher] > :not(:first-child) { display: none; }
+
+/* Brand signature (rodapé): hide "Althos CRM" text, keep only the mark, centered. */
+.sidebar-collapsed [data-brand-signature] { display: flex; justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar-collapsed [data-brand-signature] span > span:last-child { display: none; }
