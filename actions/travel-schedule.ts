@@ -43,6 +43,10 @@ export type ScheduledTrip = {
    *  mesmas chaves de INCLUDED_ITEMS (proposals/TravelSalesViewShared.tsx),
    *  usado pra montar os mini-cards de resumo do painel de embarques. */
   included_items: string[]
+  /** Quantidade de viajantes da reserva — titular + `travel_sales.travelers`
+   *  (array separado do titular, ver getTripDetailExtra). Usado na coluna
+   *  Cliente/destino da lista ("4 viajantes"). */
+  travelers_count: number
   /** Demais produtos contratados (tudo que não é voo) — versão resumida
    *  (só kind + título), pra mostrar um card simples por item na linha
    *  abaixo do itinerário no painel de Embarques. */
@@ -72,7 +76,15 @@ export type FlightLegInfo = {
   conexao_duracao: string | null
   status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown' | null
   delay_minutes: number | null
+  /** Horário de partida programado, segundo a última consulta à API —
+   *  comparado com `data`+`horario` (registrado na reserva) pra detectar
+   *  divergência no verificador do aéreo (issue #9 § 3.5). */
+  scheduled_departure: string | null
   revised_departure: string | null
+  /** Quando a API foi consultada pela última vez (sale_flight_status.
+   *  last_checked_at) — mostrado no tooltip do verificador. `null` quando o
+   *  voo ainda não foi verificado (cron roda só pra embarques em até 7 dias). */
+  last_checked_at: string | null
   /** Campo "Localizador (web check-in)" do produto aéreo (Reservas ›
    *  Produtos) — do voo em si, diferente do localizador de pacote/aéreo da
    *  venda (`ScheduledTrip.package_locator`/`air_locator`). */
@@ -116,7 +128,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
 
   const { data: sales } = await supabase
     .from('travel_sales')
-    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes, created_by, included_items')
+    .select('id, contato_id, status, client_name, destination, departure_date, return_date, total_cents, hotel_name, airline, operator, package_locator, air_locator, airline_checkin_url, notes, created_by, included_items, travelers')
     .eq('organization_id', org.id)
     .not('departure_date', 'is', null)
     .order('departure_date', { ascending: true })
@@ -235,7 +247,9 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
           ...raw,
           status: null,
           delay_minutes: null,
+          scheduled_departure: null,
           revised_departure: null,
+          last_checked_at: null,
         })
       }
     }
@@ -244,7 +258,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
     if (designators.length > 0) {
       const { data: statuses } = await supabase
         .from('sale_flight_status')
-        .select('flight_designator, flight_date, status, delay_minutes, revised_departure')
+        .select('flight_designator, flight_date, status, delay_minutes, scheduled_departure, revised_departure, last_checked_at')
         .eq('organization_id', org.id)
         .in('flight_designator', designators)
       const statusByKey = new Map((statuses as any[] ?? []).map(s => [`${s.flight_designator}|${s.flight_date}`, s]))
@@ -255,7 +269,9 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
         if (found) {
           leg.status = found.status
           leg.delay_minutes = found.delay_minutes
+          leg.scheduled_departure = found.scheduled_departure
           leg.revised_departure = found.revised_departure
+          leg.last_checked_at = found.last_checked_at
         }
       }
     }
@@ -285,13 +301,26 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
   }
 
   return rows.map(r => {
+    // `travelers` sai do objeto antes do spread — carrega nome/nascimento/
+    // CPF/passaporte de cada viajante, e a lista só é necessária no painel
+    // de detalhe (getTripDetailExtra, carregado sob demanda). Mandar isso
+    // pro cliente pra até 500 reservas de uma vez só pra contar quantos
+    // viajantes cada uma tem seria vazar PII sem necessidade.
+    const { travelers: rawTravelers, ...rest } = r
+    const travelersList: { name?: string }[] = Array.isArray(rawTravelers) ? rawTravelers : []
     const lead = r.contato_id ? leadById.get(r.contato_id) : null
     const flights = legsBySale.get(r.id) ?? []
     const outbound = flights.find(f => f.sentido !== 'volta') ?? flights[0]
     const airport = outbound?.destino ? AIRPORTS[outbound.destino.toUpperCase()] : null
     const counts = taskCountsBySale.get(r.id)
+    // O titular (client_name) só entra na contagem se ainda não estiver
+    // listado dentro de `travelers` — a extração de voucher (extractedTravelers)
+    // grava todo mundo citado no documento, e o comprador às vezes já vem
+    // incluído ali (ou nem viaja).
+    const titularName = (r.client_name || lead?.name || '').trim().toLowerCase()
+    const titularAlreadyListed = titularName !== '' && travelersList.some(t => (t.name || '').trim().toLowerCase() === titularName)
     return {
-      ...r,
+      ...rest,
       lead_name: lead?.name ?? null,
       lead_phone: lead?.phone ?? null,
       health: healthBySale.get(r.id) ?? 'green',
@@ -302,6 +331,7 @@ export async function listScheduledTrips(orgSlug: string): Promise<ScheduledTrip
       flights,
       included_items: Array.isArray(r.included_items) ? r.included_items : [],
       other_items: otherBySale.get(r.id) ?? [],
+      travelers_count: (titularAlreadyListed ? 0 : 1) + travelersList.length,
     } as ScheduledTrip
   })
 }

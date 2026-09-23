@@ -13,7 +13,7 @@ export default function TravelSalesViewSaleEditorViajantesTab({
   orgSlug, travelers, leads, set,
 }: {
   orgSlug: string
-  travelers: { name?: string; birth_date?: string; cpf?: string }[]
+  travelers: { name?: string; birth_date?: string; cpf?: string; passport_number?: string; passport_expiry?: string }[]
   leads: LeadOption[]
   set: (k: keyof TravelSaleRow, v: any) => void
 }) {
@@ -44,13 +44,23 @@ export default function TravelSalesViewSaleEditorViajantesTab({
             <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
               onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
           </div>
+          <div className="w-36 space-y-1">
+            <Label className="text-xs text-muted-foreground">Nº Passaporte</Label>
+            <Input value={t.passport_number || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_number: e.target.value }; set('travelers', n) }} />
+          </div>
+          <div className="w-32 space-y-1">
+            <Label className="text-xs text-muted-foreground">Vencimento passaporte</Label>
+            <Input type="date" value={t.passport_expiry || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_expiry: e.target.value }; set('travelers', n) }} />
+          </div>
           <Button type="button" variant="ghost" size="icon" className="shrink-0 text-destructive hover:bg-destructive/10"
             onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '' }])}>
+      <Button type="button" variant="outline" size="sm" onClick={() => set('travelers', [...travelers, { name: '', birth_date: '', cpf: '', passport_number: '', passport_expiry: '' }])}>
         <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar viajante
       </Button>
     </TabsContent>

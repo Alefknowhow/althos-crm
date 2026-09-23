@@ -24,6 +24,7 @@ import type { SaleProduct } from '@/actions/sale-products'
 import type { SaleTaskRow } from '@/actions/tasks-crud'
 import { STATE_META, type TripState } from './ScheduleGanttView'
 import { ScheduleTripDetailTabs } from './ScheduleTripDetailTabs'
+import { daysFromToday } from './schedule-phase'
 
 function parseDate(s?: string | null): Date | null {
   if (!s) return null
@@ -34,7 +35,6 @@ export function fmtDate(s?: string | null) {
   const d = parseDate(s)
   return d ? d.toLocaleDateString('pt-BR') : '—'
 }
-const DAY = 86400000
 
 export const HEALTH_META: Record<string, { dot: string; title: string }> = {
   green: { dot: 'bg-emerald-500', title: 'Saúde da reserva: em dia — todas as tarefas concluídas' },
@@ -78,7 +78,7 @@ export function rowStatus(t: ScheduledTrip, state: TripState, dep: Date | null, 
  *  priorizar o que precisa de atenção primeiro. */
 export function stateLabel(state: TripState, dep: Date | null, today: Date): string {
   if (state !== 'upcoming' || !dep) return STATE_META[state].label
-  const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+  const days = daysFromToday(dep, today)
   if (days <= 0) return 'Embarca hoje'
   if (days === 1) return 'Falta 1 dia'
   return `Faltam ${days} dias`
@@ -138,7 +138,7 @@ function Info({ icon: Icon, label, value }: { icon: any; label: string; value: s
 
 export function TripDetail({
   orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
-  state, today, sellerName, open, onOpenChange,
+  state, today, sellerName, open, onOpenChange, defaultTab,
 }: {
   orgSlug: string
   trip: ScheduledTrip | null
@@ -155,6 +155,9 @@ export function TripDetail({
   sellerName?: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Produtos por padrão; Tarefas quando aberto a partir das Pendências
+   *  (issue #9 § 4). */
+  defaultTab?: 'produtos' | 'tarefas'
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -177,6 +180,7 @@ export function TripDetail({
             state={state}
             today={today}
             sellerName={sellerName}
+            defaultTab={defaultTab}
           />
         )}
       </SheetContent>
@@ -186,7 +190,7 @@ export function TripDetail({
 
 function TripDetailBody({
   orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
-  state, today, sellerName,
+  state, today, sellerName, defaultTab,
 }: {
   orgSlug: string
   trip: ScheduledTrip
@@ -201,6 +205,7 @@ function TripDetailBody({
   state: TripState
   today: Date
   sellerName?: string
+  defaultTab?: 'produtos' | 'tarefas'
 }) {
   const wa = whatsappLink(trip.lead_phone)
   const dep = parseDate(trip.departure_date)
@@ -210,6 +215,7 @@ function TripDetailBody({
     <>
       {/* ── topo: dados principais da reserva ─────────────────────── */}
       <SheetHeader className="p-5 pb-4 border-b shrink-0 space-y-3 text-left">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Detalhes da viagem</p>
         <SheetTitle className="flex items-center gap-2 pr-6">
           <span
             className={cn('w-3 h-3 rounded-full shrink-0', HEALTH_META[trip.health]?.dot)}
@@ -218,6 +224,9 @@ function TripDetailBody({
           <span className="truncate">{trip.client_name || trip.lead_name || 'Viagem'}</span>
           <Badge variant="outline" className={cn('shrink-0 text-[10px]', status.badge)}>{status.label}</Badge>
         </SheetTitle>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Titular da reserva · {trip.travelers_count} viajante{trip.travelers_count !== 1 ? 's' : ''}
+        </p>
 
         <AlertBadges trip={trip} />
 
@@ -284,6 +293,7 @@ function TripDetailBody({
         travelers={travelers}
         vouchers={vouchers}
         loadingExtra={loadingExtra}
+        defaultTab={defaultTab}
       />
     </>
   )

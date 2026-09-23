@@ -21,6 +21,7 @@ import { ScheduleTripTasksTab } from './ScheduleTripTasksTab'
 
 export function ScheduleTripDetailTabs({
   orgSlug, trip, tasks, loadingTasks, onTasksChange, products, loadingProducts, travelers, vouchers, loadingExtra,
+  defaultTab = 'produtos',
 }: {
   orgSlug: string
   trip: ScheduledTrip
@@ -32,14 +33,13 @@ export function ScheduleTripDetailTabs({
   travelers: TripTraveler[]
   vouchers: TripVoucher[]
   loadingExtra: boolean
+  /** Aba inicial — Produtos por padrão (clique na linha); Tarefas quando o
+   *  clique vem das Pendências (issue #9 § 4). */
+  defaultTab?: 'produtos' | 'tarefas'
 }) {
   return (
-    <Tabs defaultValue="tarefas" className="flex-1 min-h-0 flex flex-col">
+    <Tabs key={trip.id} defaultValue={defaultTab} className="flex-1 min-h-0 flex flex-col">
       <TabsList className="mx-5 mt-3 w-fit shrink-0">
-        <TabsTrigger value="tarefas" className="gap-1.5">
-          <ListChecks className="w-3.5 h-3.5" /> Tarefas
-          {tasks.length > 0 && <span className="text-[10px] text-muted-foreground">({tasks.length})</span>}
-        </TabsTrigger>
         <TabsTrigger value="produtos" className="gap-1.5">
           <Package className="w-3.5 h-3.5" /> Produtos
           {products.length > 0 && <span className="text-[10px] text-muted-foreground">({products.length})</span>}
@@ -47,22 +47,15 @@ export function ScheduleTripDetailTabs({
         <TabsTrigger value="viajantes" className="gap-1.5">
           <Users className="w-3.5 h-3.5" /> Viajantes
         </TabsTrigger>
+        <TabsTrigger value="tarefas" className="gap-1.5">
+          <ListChecks className="w-3.5 h-3.5" /> Tarefas
+          {tasks.length > 0 && <span className="text-[10px] text-muted-foreground">({tasks.length})</span>}
+        </TabsTrigger>
         <TabsTrigger value="vouchers" className="gap-1.5">
           <FileIcon className="w-3.5 h-3.5" /> Vouchers
           {vouchers.length > 0 && <span className="text-[10px] text-muted-foreground">({vouchers.length})</span>}
         </TabsTrigger>
       </TabsList>
-
-      {/* Tarefas — primeira aba, fica visível por padrão */}
-      <TabsContent value="tarefas" className="flex-1 min-h-0 overflow-y-auto px-5 py-4 mt-0">
-        <ScheduleTripTasksTab
-          orgSlug={orgSlug}
-          saleId={trip.id}
-          tasks={tasks}
-          loading={loadingTasks}
-          onTasksChange={onTasksChange}
-        />
-      </TabsContent>
 
       {/* Produtos — todos os itens contratados na reserva, com detalhes completos */}
       <TabsContent value="produtos" className="flex-1 min-h-0 overflow-y-auto px-5 py-4 mt-0">
@@ -92,15 +85,34 @@ export function ScheduleTripDetailTabs({
               <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">Titular</Badge>
             </li>
             {travelers.map((t, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-                <span className="truncate">{t.name || '—'}</span>
-                <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                  {t.birth_date ? fmtDate(t.birth_date) : ''}{t.cpf ? ` · ${t.cpf}` : ''}
-                </span>
+              <li key={i} className="rounded-lg border p-3 text-sm space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate font-medium">{t.name || '—'}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                    {t.birth_date ? fmtDate(t.birth_date) : ''}{t.cpf ? ` · CPF ${t.cpf}` : ''}
+                  </span>
+                </div>
+                {(t.passport_number || t.passport_expiry) && (
+                  <p className="text-xs text-muted-foreground">
+                    Passaporte {t.passport_number || '—'}
+                    {t.passport_expiry && ` · Vencimento ${fmtDate(t.passport_expiry)}`}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
         )}
+      </TabsContent>
+
+      {/* Tarefas — checklist de embarque (Tasks globais, ver ScheduleTripTasksTab) */}
+      <TabsContent value="tarefas" className="flex-1 min-h-0 overflow-y-auto px-5 py-4 mt-0">
+        <ScheduleTripTasksTab
+          orgSlug={orgSlug}
+          saleId={trip.id}
+          tasks={tasks}
+          loading={loadingTasks}
+          onTasksChange={onTasksChange}
+        />
       </TabsContent>
 
       {/* Vouchers — tudo que foi enviado na reserva, pra acesso rápido */}
