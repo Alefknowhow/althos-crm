@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { logAdminAction } from '@/lib/super-admin/audit'
 import type { AdminAccountRow } from './super-admin-users'
 
 function currentPeriod(): string {
@@ -119,14 +120,22 @@ const updateAccountPlanSchema = z.object({
 
 export type UpdateAccountPlanInput = z.infer<typeof updateAccountPlanSchema>
 
-export async function updateAccountPlan(accountId: string, raw: unknown) {
+export async function updateAccountPlan(accountId: string, raw: unknown, reason: string) {
   if (!(await isSuperAdmin())) return { ok: false as const, error: 'Não autorizado' }
+  if (!reason || !reason.trim()) return { ok: false as const, error: 'Informe o motivo da alteração.' }
 
   const parsed = updateAccountPlanSchema.safeParse(raw)
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message }
   const d = parsed.data
 
   const admin = createAdminClient()
+
+  // Estado anterior — pro log de auditoria (issue #33: valor anterior/novo valor).
+  const { data: previousSub } = await admin
+    .from('subscriptions')
+    .select('plan_id, status, billing_cycle')
+    .eq('account_id', accountId)
+    .maybeSingle()
 
   // Plan catalog → créditos de IA inclusos no período.
   const { data: planRow } = await admin
@@ -185,11 +194,20 @@ export async function updateAccountPlan(accountId: string, raw: unknown) {
   }
 
   const me = await getUser()
-  await admin.from('super_admin_audit_log').insert({
-    super_admin_user_id:    me?.id,
-    action:                 'update_account_plan:' + d.plan,
-    target_organization_id: null,
-  })
+  if (!me) return { ok: false as const, error: 'Não autenticado' }
+
+  try {
+    await logAdminAction({
+      actorUserId: me.id,
+      action: 'update_account_plan',
+      targetAccountId: accountId,
+      oldValue: previousSub ?? null,
+      newValue: { plan_id: d.plan, status: d.subscription_status, billing_cycle: d.billing_cycle ?? 'monthly' },
+      reason,
+    })
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Plano atualizado, mas o log de auditoria falhou.' }
+  }
 
   revalidatePath('/super-admin/users')
   revalidatePath('/super-admin')
