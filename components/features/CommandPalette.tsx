@@ -50,6 +50,7 @@ import {
 } from 'lucide-react'
 import { searchEverything, type SearchHit } from '@/actions/search'
 import { replayOnboardingTour } from '@/components/features/OnboardingTour'
+import { useShortcut } from '@/components/features/ShortcutProvider'
 
 type NavEntry = {
   label: string
@@ -66,17 +67,18 @@ export default function CommandPalette({ orgSlug }: { orgSlug: string }) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 
-  // ⌘K / Ctrl+K to toggle. Capture phase so we win against page-level handlers.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen(v => !v)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  // ⌘K / Ctrl+K to toggle — registrado na infraestrutura centralizada de
+  // atalhos (issue #10) em vez de um listener próprio.
+  useShortcut({
+    combo: 'mod+k',
+    description: 'Busca rápida / command palette',
+    group: 'Global',
+    allowInTypingContext: true,
+    handler: e => {
+      e.preventDefault()
+      setOpen(v => !v)
+    },
+  })
 
   // Debounced server search. Empty query clears results immediately.
   useEffect(() => {
