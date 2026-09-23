@@ -14,6 +14,43 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
+-- -1) BASELINE — accounts/account_members/organizations.account_id.
+--
+--     Adicionado retroativamente (revisão automática da PR #34, achado P1):
+--     esta migration sempre presumiu que accounts/account_members/
+--     organizations.account_id já existiam (lê e escreve neles logo abaixo),
+--     mas nenhuma migration rastreada os criava antes de 0262_accounts_
+--     baseline_reconciliation.sql — um replay do zero (`supabase db reset`,
+--     ambiente novo) quebrava exatamente aqui. Na cronologia real de
+--     produção esse baseline sempre existiu antes deste ponto (criado fora
+--     do fluxo de migrations, só formalizado depois em 0262); este bloco
+--     idempotente (IF NOT EXISTS) restaura essa ordem para quem reconstrói
+--     o banco do zero. Não muda nada em produção (já aplicado há muito,
+--     rastreado sob outro timestamp). RLS/policies/funções auxiliares
+--     (get_user_accounts, get_user_admin_accounts) continuam só em 0262 —
+--     nada abaixo depende delas, só das tabelas/coluna em si.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS accounts (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name               text NOT NULL,
+  niche              text,
+  owner_user_id      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS account_members (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role       text NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (account_id, user_id)
+);
+
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS account_id uuid REFERENCES accounts(id) ON DELETE SET NULL;
+
+-- ----------------------------------------------------------------------------
 -- 0) PRÉ-REQUISITO: garantir que toda organização tenha account_id.
 --    Cria uma conta para cada org órfã e vincula o owner como admin.
 -- ----------------------------------------------------------------------------
