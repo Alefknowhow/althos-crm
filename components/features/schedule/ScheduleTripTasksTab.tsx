@@ -105,19 +105,32 @@ export function ScheduleTripTasksTab({
     }
   }
 
+  const done = tasks.filter(t => isDone(t.status)).length
+  const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 text-sm font-medium mb-2">
-        <CheckSquare className="w-4 h-4 text-primary" /> Tarefas relacionadas
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <CheckSquare className="w-4 h-4 text-primary" /> Checklist de embarque
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+        </div>
+        {tasks.length > 0 && (
+          <span className="text-xs text-muted-foreground tabular-nums shrink-0">{done} de {tasks.length}</span>
+        )}
       </div>
+      {tasks.length > 0 && (
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-3">
+          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+        </div>
+      )}
 
       {!loading && tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground mb-3">Nenhuma tarefa vinculada a esta reserva.</p>
       ) : (
         <ul className="space-y-1.5 mb-3">
           {tasks.map(t => {
-            const done = isDone(t.status)
+            const taskDone = isDone(t.status)
             const busy = busyId === t.id
             return (
               <li key={t.id} className="flex items-start gap-2 rounded-lg border p-2.5 text-sm group">
@@ -126,17 +139,22 @@ export function ScheduleTripTasksTab({
                   onClick={() => toggle(t)}
                   disabled={busy}
                   className="mt-0.5 shrink-0 disabled:opacity-50"
-                  aria-label={done ? 'Marcar como pendente' : 'Marcar como concluída'}
+                  aria-label={taskDone ? 'Marcar como pendente' : 'Marcar como concluída'}
                 >
-                  {done
+                  {taskDone
                     ? <CheckSquare className="w-4 h-4 text-emerald-600" />
                     : <Circle className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <p className={cn('truncate', done && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
-                  {t.due_date && (
-                    <p className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</p>
-                  )}
+                  <p className={cn('truncate', taskDone && 'line-through text-muted-foreground')}>{t.title || 'Tarefa'}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    {t.due_date && (
+                      <span className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString('pt-BR')}</span>
+                    )}
+                    {t.priority === 'high' && !taskDone && (
+                      <span className="text-[10px] font-medium px-1.5 py-0 rounded-full bg-destructive/15 text-destructive">Alta prioridade</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"

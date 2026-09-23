@@ -5,9 +5,8 @@
  * (que passou do limite de linhas do projeto) só pra isolar esse estado.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ScheduledTrip } from '@/actions/travel-schedule'
-import { tripPhase, hasAlert } from './schedule-phase'
 import {
   type SchedulePeriod, type ScheduleHealthFilter, type ScheduleStatusFilter, type ScheduleSort,
 } from './ScheduleFiltersBar'
@@ -33,11 +32,29 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
   const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>('all')
   const [operator, setOperator] = useState('all')
   const [sort, setSort] = useState<ScheduleSort>('departure')
+  // Página da lista — só reseta quando um critério de filtro/busca/ordenação
+  // muda de verdade, nunca quando `trips` é atualizado por uma mutação local
+  // (ex.: marcar tarefa concluída no painel), pra não perder a posição do
+  // usuário (issue #9 § 4: "preservar página e rolagem").
+  const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
     let out = trips
-    if (statusTab === 'alerts') out = out.filter(hasAlert)
-    else if (statusTab !== 'all') out = out.filter(t => tripPhase(t, today) === statusTab)
+    if (statusTab === 'today') {
+      out = out.filter(t => {
+        const dep = parseDate(t.departure_date)
+        return !!dep && dep.getTime() === today.getTime()
+      })
+    } else if (statusTab === 'next7') {
+      out = out.filter(t => {
+        const dep = parseDate(t.departure_date)
+        if (!dep) return false
+        const days = Math.round((dep.getTime() - today.getTime()) / DAY)
+        return days >= 0 && days <= 7
+      })
+    } else if (statusTab === 'pending') {
+      out = out.filter(t => t.tasks_total - t.tasks_done > 0)
+    }
     if (owner !== 'all') out = out.filter(t => t.created_by === owner)
     if (health !== 'all') out = out.filter(t => t.health === health)
     if (destination !== 'all') out = out.filter(t => t.destination === destination)
@@ -75,9 +92,11 @@ export function useScheduleFilters(trips: ScheduledTrip[], today: Date) {
     return sorted
   }, [trips, statusTab, owner, health, destination, operator, statusFilter, period, search, sort, today])
 
+  useEffect(() => { setPage(1) }, [statusTab, owner, search, period, health, destination, statusFilter, operator, sort])
+
   return {
     statusTab, setStatusTab, owner, setOwner, search, setSearch, period, setPeriod,
     health, setHealth, destination, setDestination, statusFilter, setStatusFilter,
-    operator, setOperator, sort, setSort, filtered,
+    operator, setOperator, sort, setSort, filtered, page, setPage,
   }
 }

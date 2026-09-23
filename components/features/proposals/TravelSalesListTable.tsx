@@ -10,8 +10,11 @@
 
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { buttonVariants } from '@/components/ui/button'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { MapPin, Building2, Ticket, ExternalLink, Trash2 } from 'lucide-react'
+import { MapPin, Building2, Ticket, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 
 function fmtDate(d?: string | null) {
@@ -114,15 +117,26 @@ export function TravelSalesListTable({
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    title="Excluir"
-                    aria-label="Excluir"
-                    className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8 shrink-0 text-destructive hover:text-destructive')}
-                    onClick={() => onDelete(s.id)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        title="Mais ações"
+                        aria-label="Mais ações"
+                        className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8 shrink-0')}
+                      >
+                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer text-destructive focus:text-destructive"
+                        onClick={() => onDelete(s.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </TableCell>
             </TableRow>

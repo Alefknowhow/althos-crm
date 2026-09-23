@@ -9,7 +9,16 @@ import { getCurrentOrganization } from '@/lib/supabase/types'
  * pra não estourar o limite de linhas do arquivo.
  */
 
-export type TripTraveler = { name?: string; birth_date?: string; cpf?: string }
+export type TripTraveler = {
+  name?: string
+  birth_date?: string
+  cpf?: string
+  /** Nº Passaporte / Vencimento do passaporte — preservados da versão
+   *  anterior desta issue (issue #9 § 5), preenchidos em Reservas ›
+   *  Viajantes (getContatoTravelerInfo ou digitação manual). */
+  passport_number?: string
+  passport_expiry?: string
+}
 export type TripVoucher = { url: string; name: string }
 
 export type TripDetailExtra = {

@@ -1,9 +1,12 @@
 'use client'
 
 /**
- * Barra horizontal de busca + filtros do painel de Gestão de Viagens —
- * busca, Período/Destino/Status/Responsável/Operadora, "Mais filtros"
- * (Saúde da reserva) e Ordenar por. Extraída de ScheduleClient.tsx.
+ * Barra horizontal de busca + filtros do painel de Embarques — issue #9
+ * § 2: primeira faixa é Busca · Período (embarque) · Responsável · Situação,
+ * nesta ordem. Destino/Operadora/Saúde da reserva/Ordenar continuam
+ * disponíveis em "Mais filtros" (requisitos funcionais preservados, só não
+ * fazem parte da faixa principal definida pela issue). Extraída de
+ * ScheduleClient.tsx.
  */
 
 import { cn } from '@/lib/utils'
@@ -44,18 +47,18 @@ export function ScheduleFiltersBar({
   sort: ScheduleSort
   setSort: (v: ScheduleSort) => void
 }) {
-  const hasActiveFilters = health !== 'all'
-  function clearFilters() { setHealth('all') }
+  const hasMoreFilters = health !== 'all' || destination !== 'all' || operator !== 'all' || sort !== 'departure'
+  function clearMoreFilters() { setHealth('all'); setDestination('all'); setOperator('all'); setSort('departure') }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative flex-1 min-w-[220px] max-w-sm">
+      <div className="relative flex-1 min-w-[240px] max-w-sm">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por cliente, destino, localizador, reserva..."
+          placeholder="Buscar cliente, destino ou localizador"
           className="h-9 w-full rounded-md border border-input bg-input/25 pl-8 pr-7 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         {search && (
@@ -75,26 +78,9 @@ export function ScheduleFiltersBar({
         </SelectContent>
       </Select>
 
-      <Select value={destination} onValueChange={setDestination}>
-        <SelectTrigger className="h-9 text-xs w-[130px] shrink-0"><SelectValue placeholder="Destino" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Destino</SelectItem>
-          {destinations.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-        </SelectContent>
-      </Select>
-
-      <Select value={status} onValueChange={v => setStatus(v as ScheduleStatusFilter)}>
-        <SelectTrigger className="h-9 text-xs w-[110px] shrink-0"><SelectValue placeholder="Status" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Status</SelectItem>
-          <SelectItem value="active">Ativa</SelectItem>
-          <SelectItem value="cancelled">Cancelada</SelectItem>
-        </SelectContent>
-      </Select>
-
       {members.length > 0 && (
         <Select value={owner} onValueChange={setOwner}>
-          <SelectTrigger className="h-9 text-xs w-[140px] shrink-0"><SelectValue placeholder="Responsável" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs w-[150px] shrink-0"><SelectValue placeholder="Responsável" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Responsável</SelectItem>
             {members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}
@@ -102,11 +88,12 @@ export function ScheduleFiltersBar({
         </Select>
       )}
 
-      <Select value={operator} onValueChange={setOperator}>
-        <SelectTrigger className="h-9 text-xs w-[130px] shrink-0"><SelectValue placeholder="Operadora" /></SelectTrigger>
+      <Select value={status} onValueChange={v => setStatus(v as ScheduleStatusFilter)}>
+        <SelectTrigger className="h-9 text-xs w-[120px] shrink-0"><SelectValue placeholder="Situação" /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Operadora</SelectItem>
-          {operators.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          <SelectItem value="all">Situação</SelectItem>
+          <SelectItem value="active">Ativa</SelectItem>
+          <SelectItem value="cancelled">Cancelada</SelectItem>
         </SelectContent>
       </Select>
 
@@ -120,10 +107,30 @@ export function ScheduleFiltersBar({
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Mais filtros
-            {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+            {hasMoreFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 space-y-3">
+        <PopoverContent align="start" className="w-72 space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Destino</Label>
+            <Select value={destination} onValueChange={setDestination}>
+              <SelectTrigger className="h-9 text-xs w-full"><SelectValue placeholder="Destino" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os destinos</SelectItem>
+                {destinations.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Operadora</Label>
+            <Select value={operator} onValueChange={setOperator}>
+              <SelectTrigger className="h-9 text-xs w-full"><SelectValue placeholder="Operadora" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as operadoras</SelectItem>
+                {operators.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1">
             <Label className="text-xs">Saúde da reserva</Label>
             <Select value={health} onValueChange={v => setHealth(v as ScheduleHealthFilter)}>
@@ -136,27 +143,26 @@ export function ScheduleFiltersBar({
               </SelectContent>
             </Select>
           </div>
-          {hasActiveFilters && (
-            <button type="button" onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Ordenar por</Label>
+            <Select value={sort} onValueChange={v => setSort(v as ScheduleSort)}>
+              <SelectTrigger className="h-9 text-xs w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="departure">Data de embarque (mais próxima)</SelectItem>
+                <SelectItem value="return">Data de retorno</SelectItem>
+                <SelectItem value="client">Cliente</SelectItem>
+                <SelectItem value="destination">Destino</SelectItem>
+                <SelectItem value="tasks_pending">Nº de tarefas pendentes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {hasMoreFilters && (
+            <button type="button" onClick={clearMoreFilters} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
               Limpar filtros
             </button>
           )}
         </PopoverContent>
       </Popover>
-
-      <div className="ml-auto flex items-center gap-1.5 shrink-0">
-        <span className="text-xs text-muted-foreground whitespace-nowrap">Ordenar por</span>
-        <Select value={sort} onValueChange={v => setSort(v as ScheduleSort)}>
-          <SelectTrigger className="h-9 text-xs w-[190px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="departure">Data de embarque (mais próxima)</SelectItem>
-            <SelectItem value="return">Data de retorno</SelectItem>
-            <SelectItem value="client">Cliente</SelectItem>
-            <SelectItem value="destination">Destino</SelectItem>
-            <SelectItem value="tasks_pending">Nº de tarefas pendentes</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
     </div>
   )
 }

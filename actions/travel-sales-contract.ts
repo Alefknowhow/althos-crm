@@ -58,7 +58,7 @@ export async function getContatoTravelerInfo(orgSlug: string, contatoId: string)
   const supabase = createClient()
   const { data } = await supabase
     .from('contatos')
-    .select('name, cpf, date_of_birth')
+    .select('name, cpf, date_of_birth, passport_number, passport_expiry')
     .eq('organization_id', org.id)
     .eq('id', contatoId)
     .maybeSingle()
@@ -69,6 +69,8 @@ export async function getContatoTravelerInfo(orgSlug: string, contatoId: string)
       name: (data as any).name as string,
       cpf: ((data as any).cpf as string | null) ?? '',
       birth_date: ((data as any).date_of_birth as string | null) ?? '',
+      passport_number: ((data as any).passport_number as string | null) ?? '',
+      passport_expiry: ((data as any).passport_expiry as string | null) ?? '',
     },
   }
 }

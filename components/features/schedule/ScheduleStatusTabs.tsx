@@ -1,31 +1,28 @@
 'use client'
 
 /**
- * Tabs rápidas de status (Todas/Pré-viagem/Em viagem/Pós-viagem/Concluídas/
- * Com alertas) do painel de Gestão de Viagens. Extraído de
- * ScheduleClient.tsx.
+ * Atalhos rápidos de filtro (issue #9 § 2): Todas · Hoje · Próximos 7 dias ·
+ * Com pendências — com contador e estado ativo do Design System. Substitui
+ * as antigas tabs de fase (Pré-viagem/Em viagem/Pós-viagem/Concluídas).
+ * Extraído de ScheduleClient.tsx.
  */
 
 import { cn } from '@/lib/utils'
-import { AlertTriangle } from 'lucide-react'
-import type { TripPhase } from './schedule-phase'
 
-export type ScheduleStatusTab = 'all' | TripPhase | 'alerts'
+export type ScheduleStatusTab = 'all' | 'today' | 'next7' | 'pending'
 
 export function ScheduleStatusTabs({
   value, onChange, counts,
 }: {
   value: ScheduleStatusTab
   onChange: (v: ScheduleStatusTab) => void
-  counts: { all: number; pre: number; em: number; pos: number; concluida: number; alerts: number }
+  counts: { all: number; today: number; next7: number; pending: number }
 }) {
   const items = ([
     { id: 'all', label: `Todas (${counts.all})` },
-    { id: 'pre', label: `Pré-viagem (${counts.pre})` },
-    { id: 'em', label: `Em viagem (${counts.em})` },
-    { id: 'pos', label: `Pós-viagem (${counts.pos})` },
-    { id: 'concluida', label: `Concluídas (${counts.concluida})` },
-    { id: 'alerts', label: `Com alertas (${counts.alerts})` },
+    { id: 'today', label: `Hoje (${counts.today})` },
+    { id: 'next7', label: `Próximos 7 dias (${counts.next7})` },
+    { id: 'pending', label: `Com pendências (${counts.pending})` },
   ] as const)
 
   return (
@@ -33,15 +30,15 @@ export function ScheduleStatusTabs({
       {items.map(b => (
         <button
           key={b.id}
+          type="button"
           onClick={() => onChange(b.id)}
           className={cn(
             'inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium transition-colors',
             value === b.id
-              ? (b.id === 'alerts' ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-primary text-primary-foreground border-primary')
+              ? 'bg-primary text-primary-foreground border-primary'
               : 'bg-background hover:bg-muted text-muted-foreground border-border',
           )}
         >
-          {b.id === 'alerts' && <AlertTriangle className="w-3.5 h-3.5" />}
           {b.label}
         </button>
       ))}
