@@ -10,7 +10,10 @@ function csvEscape(v: string | number): string {
 
 export default function AuditExportButton({ logs }: { logs: AuditLogEntry[] }) {
   function download() {
-    const header = ['data_hora', 'acao', 'super_admin_email', 'super_admin_id', 'organizacao', 'org_slug']
+    const header = [
+      'data_hora', 'acao', 'super_admin_email', 'super_admin_id',
+      'organizacao', 'org_slug', 'conta', 'motivo', 'valor_anterior', 'valor_novo',
+    ]
     const lines = [
       header.join(','),
       ...logs.map(l =>
@@ -21,6 +24,10 @@ export default function AuditExportButton({ logs }: { logs: AuditLogEntry[] }) {
           l.super_admin_user_id,
           l.org_name ?? '',
           l.org_slug ?? '',
+          l.account_name ?? '',
+          l.reason ?? '',
+          l.old_value != null ? JSON.stringify(l.old_value) : '',
+          l.new_value != null ? JSON.stringify(l.new_value) : '',
         ].map(csvEscape).join(','),
       ),
     ]

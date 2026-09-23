@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -12,8 +12,25 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Building2, Sparkles } from 'lucide-react'
-import { updateAccountPlan, type AdminAccountRow } from '@/actions/super-admin'
+import { Building2, Sparkles, X, Plus } from 'lucide-react'
+import {
+  updateAccountPlan, type AdminAccountRow,
+  getAccountVerticalsForAdmin, grantVerticalToAccount, revokeVerticalFromAccount,
+} from '@/actions/super-admin'
+import type { AccountVertical } from '@/lib/verticals/account-verticals.server'
+import type { NicheKey } from '@/lib/niche'
+
+// Valores canônicos de account_verticals.vertical (migration 0263) — NÃO
+// confundir com NICHE_OPTIONS (lib/niche.ts), que é texto livre pra
+// organizations.niche. Aqui precisa bater exatamente com o CHECK da tabela.
+const VERTICAL_OPTIONS: Array<{ value: NicheKey; label: string }> = [
+  { value: 'viagens',   label: 'Viagens' },
+  { value: 'clinicas',  label: 'Clínicas' },
+  { value: 'imoveis',   label: 'Imobiliárias' },
+  { value: 'seguros',   label: 'Seguros' },
+  { value: 'trafego',   label: 'Agências de Tráfego' },
+  { value: 'advocacia', label: 'Jurídico' },
+]
 
 export type PlanOption = {
   id:                  string
@@ -62,6 +79,56 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
     limit_whatsapp_monthly: catalogToInput(account.limit_whatsapp_monthly),
     limit_email_monthly:    catalogToInput(account.limit_email_monthly),
   })
+  const [reason, setReason] = useState('')
+  const [verticals, setVerticals] = useState<AccountVertical[]>([])
+  const [newVertical, setNewVertical] = useState<NicheKey>('viagens')
+  const [verticalReason, setVerticalReason] = useState('')
+  const [verticalBusy, setVerticalBusy] = useState(false)
+
+  const loadVerticals = useCallback(() => {
+    getAccountVerticalsForAdmin(account.account_id).then(setVerticals)
+  }, [account.account_id])
+
+  useEffect(() => {
+    if (open) loadVerticals()
+  }, [open, loadVerticals])
+
+  async function handleGrantVertical() {
+    if (!verticalReason.trim()) {
+      toast.error('Informe o motivo da concessão.')
+      return
+    }
+    setVerticalBusy(true)
+    try {
+      const res = await grantVerticalToAccount(account.account_id, newVertical, verticalReason.trim())
+      if (res.ok) {
+        toast.success('Vertical concedida')
+        setVerticalReason('')
+        loadVerticals()
+      } else {
+        toast.error(res.error || 'Erro ao conceder vertical')
+      }
+    } finally {
+      setVerticalBusy(false)
+    }
+  }
+
+  async function handleRevokeVertical(vertical: NicheKey) {
+    const revokeReason = window.prompt('Motivo da revogação (fica registrado no log de auditoria):')
+    if (!revokeReason || !revokeReason.trim()) return
+    setVerticalBusy(true)
+    try {
+      const res = await revokeVerticalFromAccount(account.account_id, vertical, revokeReason.trim())
+      if (res.ok) {
+        toast.success('Vertical marcada para cancelamento — dados operacionais preservados')
+        loadVerticals()
+      } else {
+        toast.error(res.error || 'Erro ao revogar vertical')
+      }
+    } finally {
+      setVerticalBusy(false)
+    }
+  }
 
   const selectedPlan = plans.find(p => p.id === form.plan)
 
@@ -81,6 +148,10 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
   }
 
   async function handleSave() {
+    if (!reason.trim()) {
+      toast.error('Informe o motivo da alteração — fica registrado no log de auditoria.')
+      return
+    }
     setSaving(true)
     try {
       const res = await updateAccountPlan(account.account_id, {
@@ -91,7 +162,7 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
         limit_users:            form.limit_users            ? parseInt(form.limit_users)            : null,
         limit_whatsapp_monthly: form.limit_whatsapp_monthly ? parseInt(form.limit_whatsapp_monthly) : null,
         limit_email_monthly:    form.limit_email_monthly    ? parseInt(form.limit_email_monthly)    : null,
-      })
+      }, reason.trim())
       if (res.ok) {
         toast.success('Plano e limites atualizados')
         router.refresh()
@@ -108,12 +179,16 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
 
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-[#1a1a1f] border-white/10 text-white">
+      {/* max-h + overflow: a seção de verticais (issue #33) deixou o
+          conteúdo alto o bastante pra cortar rodapé/campos em viewports
+          menores (notebook, mobile) — achado da revisão automática da
+          PR #38. Header/footer ficam fixos; só o corpo rola. */}
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col bg-[#1a1a1f] border-white/10 text-white">
         <DialogHeader>
           <DialogTitle className="text-white">Plano &amp; Limites — {account.account_name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto min-h-0">
           {/* Owner + scope */}
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs space-y-1.5">
             <p className="text-slate-300">
@@ -189,6 +264,76 @@ export default function AccountPlanDialog({ account, plans, open, onClose }: Pro
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Verticais (issue #32/#33) — entitlement por conta, separado do
+              organizations.niche imutável. Concessão/revogação manual aqui
+              nunca cria uma "compra" — é só registro, sempre com motivo. */}
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <Label className="text-slate-400 text-xs">Verticais concedidas</Label>
+            {verticals.length === 0 && (
+              <p className="text-xs text-slate-500">Nenhuma vertical concedida a esta conta ainda.</p>
+            )}
+            <div className="space-y-1.5">
+              {verticals.map(v => (
+                <div key={v.id} className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs">
+                  <span className="text-slate-200">
+                    {VERTICAL_OPTIONS.find(o => o.value === v.vertical)?.label ?? v.vertical}
+                    <span className="ml-2 text-slate-500">{v.status}</span>
+                  </span>
+                  {v.status === 'active' && (
+                    <button
+                      type="button"
+                      onClick={() => handleRevokeVertical(v.vertical)}
+                      disabled={verticalBusy}
+                      className="text-slate-500 hover:text-red-400"
+                      aria-label={`Revogar vertical ${v.vertical}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Select value={newVertical} onValueChange={v => setNewVertical(v as NicheKey)}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VERTICAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-[2] space-y-1.5">
+                <Input
+                  value={verticalReason}
+                  onChange={e => setVerticalReason(e.target.value)}
+                  placeholder="Motivo da concessão"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-9"
+                />
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                onClick={handleGrantVertical}
+                disabled={verticalBusy}
+                aria-label="Conceder vertical"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Motivo — obrigatório, gravado em super_admin_audit_log (#33: nenhuma concessão/alteração manual sem origem registrada). */}
+          <div className="space-y-1.5">
+            <Label className="text-slate-400 text-xs">Motivo da alteração (fica registrado no log de auditoria)</Label>
+            <Input
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Ex.: upgrade solicitado pelo cliente via suporte, ticket #123"
+              className="bg-white/5 border-white/10 text-white placeholder:text-slate-600"
+            />
           </div>
         </div>
 

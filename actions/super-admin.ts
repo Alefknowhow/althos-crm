@@ -10,6 +10,7 @@
  *   - super-admin-accounts.ts: platform accounts overview + plan updates
  *   - super-admin-referrals.ts: referral program, system config
  *   - module-flags.ts: kill-switch global de módulos por nicho
+ *   - super-admin-verticals.ts: concessão/revogação manual de vertical por conta (#33)
  */
 
 export * from './super-admin-metrics'
@@ -21,3 +22,4 @@ export * from './super-admin-users'
 export * from './super-admin-accounts'
 export * from './super-admin-referrals'
 export * from './module-flags'
+export * from './super-admin-verticals'

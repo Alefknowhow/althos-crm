@@ -12,37 +12,26 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin, getUser } from '@/lib/supabase/types'
 import type { NicheKey } from '@/lib/niche'
 import type { ModuleKey } from '@/lib/niche-modules'
-import type { ModuleFlags } from '@/lib/module-flags'
 
 export async function setModuleEnabled(niche: NicheKey, moduleKey: ModuleKey, enabled: boolean) {
   if (!(await isSuperAdmin())) return { ok: false as const, error: 'Não autorizado' }
 
-  const admin = createAdminClient()
-  const { data, error: readError } = await admin
-    .from('system_config')
-    .select('value')
-    .eq('key', 'disabled_modules')
-    .maybeSingle()
-  if (readError) return { ok: false as const, error: readError.message }
-
-  const current = (data?.value ?? {}) as ModuleFlags
-  const list = new Set(current[niche] ?? [])
-  if (enabled) list.delete(moduleKey)
-  else list.add(moduleKey)
-  const next: ModuleFlags = { ...current, [niche]: Array.from(list) }
-
   const me = await getUser()
-  const { error } = await admin
-    .from('system_config')
-    .update({ value: next, updated_at: new Date().toISOString(), updated_by: me?.id ?? null })
-    .eq('key', 'disabled_modules')
-  if (error) return { ok: false as const, error: error.message }
+  if (!me) return { ok: false as const, error: 'Não autenticado' }
 
-  await admin.from('super_admin_audit_log').insert({
-    super_admin_user_id: me?.id,
-    action: `module_flag:${niche}:${moduleKey}:${enabled ? 'on' : 'off'}`,
-    target_organization_id: null,
+  const admin = createAdminClient()
+
+  // RPC transacional (0266): lê o estado atual, calcula o valor anterior
+  // de verdade (não o inverso lógico do pedido), grava e audita numa
+  // transação só — achados #1 e #8 da revisão automática da PR #38.
+  const { error } = await admin.rpc('admin_set_module_flag', {
+    p_niche: niche,
+    p_module_key: moduleKey,
+    p_enabled: enabled,
+    p_actor_id: me.id,
+    p_reason: 'Kill-switch de módulo via /super-admin/modulos',
   })
+  if (error) return { ok: false as const, error: error.message }
 
   revalidatePath('/super-admin/modulos')
   return { ok: true as const }
