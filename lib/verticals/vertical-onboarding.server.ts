@@ -34,16 +34,23 @@ export async function updateVerticalOnboardingStep(
   opts?: { completed?: boolean },
 ): Promise<void> {
   const supabase = createClient()
+
+  // completed_at só entra no payload quando `completed` é passado
+  // explicitamente. Antes, qualquer chamada sem opts.completed (o formato
+  // padrão de salvar um passo intermediário) escrevia completed_at: null
+  // incondicionalmente — reabrindo silenciosamente um onboarding já
+  // concluído a cada save de passo seguinte (achado da revisão automática
+  // da PR #37). onConflict faz UPDATE só das colunas presentes no objeto,
+  // então omitir a chave preserva o valor já gravado.
+  const payload: { organization_id: string; vertical: NicheKey; step: number; completed_at?: string } = {
+    organization_id: orgId,
+    vertical,
+    step,
+  }
+  if (opts?.completed) payload.completed_at = new Date().toISOString()
+
   const { error } = await supabase
     .from('vertical_onboarding_progress')
-    .upsert(
-      {
-        organization_id: orgId,
-        vertical,
-        step,
-        completed_at: opts?.completed ? new Date().toISOString() : null,
-      },
-      { onConflict: 'organization_id,vertical' },
-    )
+    .upsert(payload, { onConflict: 'organization_id,vertical' })
   if (error) throw new Error(error.message)
 }
