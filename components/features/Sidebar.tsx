@@ -3,9 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarShell from './SidebarShell'
 import SidebarUserMenu from './SidebarUserMenu'
+import { SidebarOrgSwitcher } from './SidebarOrgSwitcher'
+import { SidebarBrandSignature } from './SidebarBrandSignature'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { checkFeatureAccess } from '@/lib/plans/server'
+import { deriveInitials } from '@/lib/organization/initials'
 import { LayoutDashboard, Wallet, FileText } from 'lucide-react'
 import { SidebarNavVendas } from './SidebarNavVendas'
 import { SidebarNavExtra } from './SidebarNavExtra'
@@ -45,7 +48,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   // Todas as queries do sidebar dependem só de org/user (já resolvidos), então
   // disparam JUNTAS em vez de em cascata: membership, tarefas vencidas,
   // conversas não lidas e os 3 checks de plano. Colapsa ~5 round-trips em 1 fase.
-  const [membershipRes, overdueRes, convsRes, socialConvsRes, planChecks] = await Promise.all([
+  const [membershipRes, overdueRes, convsRes, socialConvsRes, planChecks, orgsRes] = await Promise.all([
     user
       ? supabase
           .from('memberships')
@@ -81,6 +84,12 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
           checkFeatureAccess(accountId, 'bulk_campaigns'),
         ])
       : Promise.resolve<[boolean, boolean, boolean, boolean, boolean]>([true, true, true, true, true]),
+    // Organizações do usuário (seletor no topo da sidebar, #10/#30) — filtra
+    // por user.id explicitamente pelo mesmo motivo do antigo switcher no
+    // header: super-admins não devem ver todas as orgs via RLS de super-admin.
+    user
+      ? supabase.from('memberships').select('organizations(id, name, slug)').eq('user_id', user.id)
+      : Promise.resolve({ data: null }),
   ])
 
   // Membership → role + permissions
@@ -109,12 +118,33 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
 
   const base = `/app/${orgSlug}`
 
+  const orgsData = (orgsRes as { data: { organizations: unknown }[] | null }).data
+  const orgs: { id: string; name: string; slug: string }[] =
+    orgsData?.flatMap(m => {
+      const o = m.organizations as any
+      if (!o) return []
+      return Array.isArray(o) ? o : [o]
+    }) || []
+
   return (
     <SidebarShell>
-      {/* Logo + botão de colapsar saíram daqui — agora moram no header
-          (largura cheia da tela, acima da sidebar). O drawer mobile
-          continua com seu próprio cabeçalho (logo + X), renderizado
-          direto pelo SidebarShell. */}
+      {/* Seletor de organização no topo (issue #10) — reflete o contrato de
+          #30. Renderiza em desktop (aside) E no drawer mobile (mesmo JSX,
+          via SidebarShell) — a versão anterior escondia isto com
+          `hidden md:block` e, como o switcher antigo do header também foi
+          removido, usuários mobile com mais de uma org ficavam sem
+          NENHUMA forma de trocar (achado da revisão automática da PR #35).
+          O cabeçalho do drawer (logo + X) continua fixo acima disto. */}
+      <div className="px-3 pt-3">
+        <SidebarOrgSwitcher
+          currentSlug={orgSlug}
+          currentName={org.name}
+          currentInitials={deriveInitials(org.name)}
+          currentLogoUrl={(org as any).logo_url ?? null}
+          organizations={orgs}
+          canManage={isOwnerOrAdmin}
+        />
+      </div>
       <nav className="sidebar-scroll flex-1 min-h-0 px-3 pt-3 pb-4 space-y-0.5 overflow-y-auto">
 
         {/* ── Topo ──────────────────────────────────── */}
@@ -169,6 +199,12 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
         />
 
       </nav>
+
+      {/* Assinatura "Althos CRM" (issue #10) — só desktop; o drawer mobile
+          já mostra a marca no seu próprio cabeçalho (SidebarShell). */}
+      <div className="hidden md:block border-t border-sidebar-border">
+        <SidebarBrandSignature />
+      </div>
 
       {/* Menu do usuário: no header (canto direito) na versão desktop —
           ver HeaderUserMenu.tsx em app/app/[orgSlug]/layout.tsx. Aqui na

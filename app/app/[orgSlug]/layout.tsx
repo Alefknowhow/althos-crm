@@ -2,7 +2,6 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
 import { Logo } from '@/components/brand/Logo'
 import SidebarCollapseToggleButton from '@/components/features/SidebarCollapseToggleButton'
-import OrganizationSwitcher from '@/components/features/OrganizationSwitcher'
 import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
@@ -19,6 +18,7 @@ import { HeaderSidebarToggle } from '@/components/features/HeaderSidebarToggle'
 import { HeaderModuleTitle } from '@/components/features/HeaderModuleTitle'
 import { GlobalBackButton } from '@/components/features/GlobalBackButton'
 import QueryProvider from '@/components/providers/QueryProvider'
+import { ShortcutProvider } from '@/components/features/ShortcutProvider'
 import CommandPalette from '@/components/features/CommandPalette'
 import { HeaderSearchBar } from '@/components/features/HeaderSearchBar'
 import HeaderUserMenu from '@/components/features/HeaderUserMenu'
@@ -63,19 +63,6 @@ export default async function OrgLayout({
   })
 
   const supabase = createClient()
-  // Filter by user.id explicitly so super-admins only see their OWN orgs
-  // in the switcher (not every org in the system via the super-admin RLS policy).
-  const { data: memberships } = await supabase
-    .from('memberships')
-    .select('organizations(id, name, slug)')
-    .eq('user_id', user.id)
-
-  const orgs: { id: string; name: string; slug: string }[] =
-    memberships?.flatMap(m => {
-      const o = m.organizations as any
-      if (!o) return []
-      return Array.isArray(o) ? o : [o]
-    }) || []
 
   // Copiloto IA — botão flutuante presente em toda tela do app (não só no
   // dashboard). Gate pela permissão 'insights'; o plano/créditos é checado
@@ -128,6 +115,7 @@ export default async function OrgLayout({
       </div>
       <OnboardingTour userName={userName} />
       <ImpersonationBanner />
+      <ShortcutProvider>
       {/* Diálogo montado uma única vez — os triggers (mobile e desktop) só
           disparam o mesmo toggle global, evitando 2 diálogos concorrentes. */}
       <div className="print:hidden">
@@ -160,16 +148,6 @@ export default async function OrgLayout({
           <div className="hidden md:block min-w-0">
             <HeaderModuleTitle orgSlug={params.orgSlug} />
           </div>
-          {/* Uma org por conta: só mostra o seletor quando há mais de uma. */}
-          {orgs.length > 1 && (
-            <>
-              <div className="hidden md:block w-px h-[22px] bg-foreground/10" />
-              <span className="hidden md:inline text-[12.5px] font-medium tracking-apple-snug text-muted-foreground">
-                Organização
-              </span>
-              <OrganizationSwitcher currentSlug={params.orgSlug} organizations={orgs} />
-            </>
-          )}
         </div>
 
         {/* Busca centralizada entre o bloco da esquerda (logo/módulo) e o
@@ -228,6 +206,7 @@ export default async function OrgLayout({
 
       </PageHintProvider>
       </SidebarCollapseProvider>
+      </ShortcutProvider>
 
       <div className="print:hidden">
         <SupportWidget orgSlug={params.orgSlug} />
