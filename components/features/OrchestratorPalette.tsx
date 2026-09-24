@@ -18,6 +18,26 @@ import { useShortcut } from '@/components/features/ShortcutProvider'
 type ToolCall = { name: string; input: Record<string, unknown>; result: unknown }
 type Message = { id: string; role: 'user' | 'assistant'; content: string; toolCalls: ToolCall[] }
 
+/**
+ * O histórico mandado pro server é só {role, content} em texto (ver
+ * app/api/orchestrator/chat/route.ts — sem sessão persistida, sem blocos
+ * tool_use/tool_result nativos da API da Claude entre requisições). Sem
+ * isso, o fluxo de confirmação em dois turnos (tool devolve preview sem
+ * confirm:true → usuário diz "sim" → modelo repete a chamada com
+ * confirm:true) perde o id/valores propostos entre um turno e outro, porque
+ * o modelo não tem mais acesso à tool call que ele mesmo fez (achado da
+ * revisão automática da PR #52). Serializar as tool calls no próprio texto
+ * da mensagem do assistente preserva esse contexto sem exigir estado no
+ * servidor.
+ */
+function serializeMessageForHistory(m: Message): string {
+  if (m.toolCalls.length === 0) return m.content
+  const toolsSummary = m.toolCalls
+    .map(tc => `- ${tc.name}(${JSON.stringify(tc.input)}) => ${JSON.stringify(tc.result)}`)
+    .join('\n')
+  return `${m.content}\n\n[ferramentas usadas nesta resposta]\n${toolsSummary}`
+}
+
 const SUGGESTED_PROMPTS = [
   'Quais leads importantes estão sem resposta?',
   'Quanto vendemos este mês?',
@@ -75,7 +95,7 @@ export default function OrchestratorPalette({ orgSlug }: { orgSlug: string }) {
     setInput('')
     setStreaming(true)
 
-    const history = messages.map(m => ({ role: m.role, content: m.content }))
+    const history = messages.map(m => ({ role: m.role, content: serializeMessageForHistory(m) }))
     setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', content: message, toolCalls: [] }])
     const draftId = `a-${Date.now()}`
     setMessages(prev => [...prev, { id: draftId, role: 'assistant', content: '', toolCalls: [] }])

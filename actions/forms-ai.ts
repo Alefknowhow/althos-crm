@@ -185,10 +185,12 @@ export async function generateFormWithAi(
     }
 
     const input = toolBlock.input as any
-    await audit('success', input)
     const reply = typeof input.reply === 'string' ? input.reply : 'Certo.'
     const ready = !!input.ready
-    if (!ready) return { ok: true, reply, ready: false }
+    if (!ready) {
+      await audit('success', input)
+      return { ok: true, reply, ready: false }
+    }
 
     const rawFields = Array.isArray(input.schema?.fields) ? input.schema.fields : []
     const fields: FormAiSchemaField[] = rawFields
@@ -201,8 +203,12 @@ export async function generateFormWithAi(
         placeholder: typeof f.placeholder === 'string' ? f.placeholder : undefined,
         options: Array.isArray(f.options) ? f.options.filter((o: any) => typeof o === 'string') : undefined,
       }))
-    if (fields.length === 0) return { ok: false, error: 'IA não retornou campos válidos.' }
+    if (fields.length === 0) {
+      await audit('error', input, 'IA não retornou campos válidos.')
+      return { ok: false, error: 'IA não retornou campos válidos.' }
+    }
 
+    await audit('success', input)
     return {
       ok: true,
       reply,

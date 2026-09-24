@@ -25,29 +25,49 @@ async function requireAgentDefinitionsAccess(orgSlug: string) {
   return { ok: true as const, user, org }
 }
 
-const AgentDefinitionInput = z.object({
+// Campos sem .default() — base compartilhada. Zod v4 NÃO desliga .default()
+// dentro de .partial() (achado da revisão automática da PR #52: um update
+// parcial tipo {name: "Novo nome"} reaplicava os defaults de TODOS os
+// campos ausentes, resetando silenciosamente allowed_tools/model/is_active
+// etc. em qualquer edição). Por isso create e update usam schemas
+// distintos: só o de criação declara defaults.
+const AgentDefinitionFields = {
   key: z.string().trim().min(1).max(60).regex(/^[a-z0-9_-]+$/, 'Use letras minúsculas, números, "-" ou "_".'),
   name: z.string().trim().min(1).max(120),
   role_label: z.string().trim().max(120).optional().nullable(),
   description: z.string().trim().max(2000).optional().nullable(),
   personality: z.string().trim().max(4000).optional().nullable(),
   persona: z.string().trim().max(4000).optional().nullable(),
-  tone: z.string().trim().min(1).max(60).default('profissional'),
-  language: z.string().trim().min(1).max(20).default('pt-BR'),
+  tone: z.string().trim().min(1).max(60),
+  language: z.string().trim().min(1).max(20),
   objective: z.string().trim().max(2000).optional().nullable(),
   success_criteria: z.string().trim().max(2000).optional().nullable(),
   rules: z.string().trim().max(4000).optional().nullable(),
   additional_instructions: z.string().trim().max(4000).optional().nullable(),
   handoff_conditions: z.string().trim().max(2000).optional().nullable(),
-  autonomy_limits: z.record(z.string(), z.unknown()).default({}),
+  autonomy_limits: z.record(z.string(), z.unknown()),
   knowledge: z.string().trim().max(8000).optional().nullable(),
+  allowed_tools: z.array(z.string()),
+  allowed_skills: z.array(z.string()),
+  model: z.string().trim().min(1).max(60),
+  is_active: z.boolean(),
+}
+
+const AgentDefinitionCreateInput = z.object(AgentDefinitionFields).extend({
+  tone: z.string().trim().min(1).max(60).default('profissional'),
+  language: z.string().trim().min(1).max(20).default('pt-BR'),
+  autonomy_limits: z.record(z.string(), z.unknown()).default({}),
   allowed_tools: z.array(z.string()).default([]),
   allowed_skills: z.array(z.string()).default([]),
   model: z.string().trim().min(1).max(60).default('claude-haiku-4-5'),
   is_active: z.boolean().default(true),
 })
 
-export type AgentDefinitionInputType = z.infer<typeof AgentDefinitionInput>
+// Sem .default() em nenhum campo — .partial() aqui nunca reintroduz um
+// valor que o caller não mandou.
+const AgentDefinitionUpdateInput = z.object(AgentDefinitionFields).partial()
+
+export type AgentDefinitionInputType = z.infer<typeof AgentDefinitionCreateInput>
 
 export async function listAgentDefinitions(orgSlug: string): Promise<{ ok: true; items: AgentDefinition[] } | { ok: false; error: string }> {
   const access = await requireAgentDefinitionsAccess(orgSlug)
@@ -85,7 +105,7 @@ export async function createAgentDefinition(orgSlug: string, input: unknown): Pr
   const access = await requireAgentDefinitionsAccess(orgSlug)
   if (!access.ok) return access
 
-  const parsed = AgentDefinitionInput.safeParse(input)
+  const parsed = AgentDefinitionCreateInput.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' }
 
   const supabase = createClient()
@@ -106,7 +126,7 @@ export async function updateAgentDefinition(orgSlug: string, id: string, input: 
   const access = await requireAgentDefinitionsAccess(orgSlug)
   if (!access.ok) return access
 
-  const parsed = AgentDefinitionInput.partial().safeParse(input)
+  const parsed = AgentDefinitionUpdateInput.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' }
   if (Object.keys(parsed.data).length === 0) return { ok: false, error: 'Nada para atualizar.' }
 

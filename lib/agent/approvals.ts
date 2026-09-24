@@ -53,6 +53,12 @@ export async function enqueueApproval(params: { ctx: AgentContext; tool: string;
  * eleva o acesso de quem a disparou. Se a permissão não existe mais (ex.:
  * usuário perdeu acesso ao módulo entre o pedido e a revisão), a execução é
  * recusada mesmo já aprovada pelo revisor.
+ *
+ * A transição pending -> approved/rejected é um UPDATE ... WHERE
+ * status='pending' atômico (claim): se dois revisores aprovarem a mesma
+ * linha ao mesmo tempo, só um efetivamente transiciona o status e executa
+ * o handler — o outro vê 0 linhas afetadas e para sem duplicar a ação
+ * (achado da revisão automática da PR #52).
  */
 export async function resolvePendingApproval(
   approvalId: string,
@@ -62,29 +68,33 @@ export async function resolvePendingApproval(
   reviewNote?: string,
 ): Promise<{ ok: true; executed: boolean } | { ok: false; error: string }> {
   const supabase = createAdminClient()
-  const { data: approval } = await supabase
-    .from('agent_pending_approvals')
-    .select('*')
-    .eq('id', approvalId)
-    .eq('organization_id', organizationId)
-    .maybeSingle()
-  if (!approval) return { ok: false, error: 'Aprovação não encontrada.' }
-  if (approval.status !== 'pending') return { ok: false, error: 'Esta aprovação já foi revisada.' }
-
   const reviewedAt = new Date().toISOString()
 
+  const { data: approval } = await supabase
+    .from('agent_pending_approvals')
+    .update({ status: decision, reviewed_by: reviewedBy, reviewed_at: reviewedAt, review_note: reviewNote ?? null })
+    .eq('id', approvalId)
+    .eq('organization_id', organizationId)
+    .eq('status', 'pending')
+    .select('*')
+    .maybeSingle()
+
+  if (!approval) {
+    const { data: existing } = await supabase
+      .from('agent_pending_approvals')
+      .select('id')
+      .eq('id', approvalId)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+    return { ok: false, error: existing ? 'Esta aprovação já foi revisada.' : 'Aprovação não encontrada.' }
+  }
+
   if (decision === 'rejected') {
-    await supabase.from('agent_pending_approvals').update({
-      status: 'rejected', reviewed_by: reviewedBy, reviewed_at: reviewedAt, review_note: reviewNote ?? null,
-    }).eq('id', approvalId)
     return { ok: true, executed: false }
   }
 
-  const finish = async (result: { ok: boolean; error?: string; data?: unknown }) => {
-    await supabase.from('agent_pending_approvals').update({
-      status: 'approved', reviewed_by: reviewedBy, reviewed_at: reviewedAt, review_note: reviewNote ?? null, result,
-    }).eq('id', approvalId)
-  }
+  const setResult = (result: { ok: boolean; error?: string; data?: unknown }) =>
+    supabase.from('agent_pending_approvals').update({ result }).eq('id', approvalId)
 
   const [{ data: org }, { data: membership }] = await Promise.all([
     supabase.from('organizations').select('id, slug, niche, account_id').eq('id', organizationId).maybeSingle(),
@@ -92,7 +102,7 @@ export async function resolvePendingApproval(
   ])
   if (!org || !membership) {
     const error = 'Usuário que pediu a ação não pertence mais à organização.'
-    await finish({ ok: false, error })
+    await setResult({ ok: false, error })
     return { ok: false, error }
   }
 
@@ -110,20 +120,20 @@ export async function resolvePendingApproval(
   const entry = TOOL_REGISTRY.find(({ tool }) => tool.name === approval.tool)
   if (!entry) {
     const error = 'Ferramenta não existe mais.'
-    await finish({ ok: false, error })
+    await setResult({ ok: false, error })
     return { ok: false, error }
   }
 
   if (!agentCanAccess(ctx, entry.tool.permissionKey)) {
     const error = 'Usuário não tem mais permissão pra este módulo.'
-    await finish({ ok: false, error })
+    await setResult({ ok: false, error })
     return { ok: false, error }
   }
 
   if (entry.tool.capabilityKey) {
     const capability = await hasCapability({ accountId: ctx.accountId, niche: ctx.niche, role: ctx.role, permissions: ctx.permissions }, entry.tool.capabilityKey)
     if (!capability.allowed) {
-      await finish({ ok: false, error: capability.reason })
+      await setResult({ ok: false, error: capability.reason })
       return { ok: false, error: capability.reason }
     }
   }
@@ -136,7 +146,7 @@ export async function resolvePendingApproval(
     outcome = { ok: false, error: e?.message || 'Erro desconhecido.' }
   }
 
-  await finish(outcome)
+  await setResult(outcome)
   await logAiExecution({
     organizationId: ctx.orgId,
     userId: ctx.userId,
@@ -147,5 +157,9 @@ export async function resolvePendingApproval(
     error: outcome.ok ? undefined : outcome.error,
   })
 
+  // Propaga a falha de execução pro caller (UI) em vez de reportar sucesso
+  // só porque o REVISOR aprovou — "aprovado" e "executado com sucesso" são
+  // coisas diferentes (achado da revisão automática da PR #52).
+  if (!outcome.ok) return { ok: false, error: outcome.error }
   return { ok: true, executed: true }
 }

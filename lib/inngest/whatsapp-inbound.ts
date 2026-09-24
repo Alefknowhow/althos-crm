@@ -213,7 +213,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
     try {
       result = await respondAsAttendant(
         {
-          personaPrompt:   assignedDefinition ? buildPersonaPromptFromDefinition(assignedDefinition) : attendant.persona_prompt,
+          personaPrompt:   assignedDefinition ? buildPersonaPromptFromDefinition(assignedDefinition, { supportsStructuredResults: false }) : attendant.persona_prompt,
           businessContext: org.ai_business_context,
           knowledgeBase:   knowledgeBase as any,
           handoffPhrases:  (attendant.handoff_phrases as any) || [],

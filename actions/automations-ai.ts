@@ -189,14 +189,19 @@ export async function generateAutomationWithAi(
     }
 
     const input = toolBlock.input as any
-    await audit('success', input)
     const reply = typeof input.reply === 'string' ? input.reply : 'Certo.'
     const ready = !!input.ready
-    if (!ready) return { ok: true, reply, ready: false }
+    if (!ready) {
+      await audit('success', input)
+      return { ok: true, reply, ready: false }
+    }
 
     const triggerType = typeof input.trigger_type === 'string' ? input.trigger_type : ''
     const validTriggerIds = visibleTriggerTypes(nicheKeyFor((access.org as any).niche ?? null)).map(t => t.id)
-    if (!validTriggerIds.includes(triggerType)) return { ok: false, error: 'IA retornou um gatilho inválido.' }
+    if (!validTriggerIds.includes(triggerType)) {
+      await audit('error', input, 'IA retornou um gatilho inválido.')
+      return { ok: false, error: 'IA retornou um gatilho inválido.' }
+    }
 
     const isInstagramTrigger = triggerType === 'instagram.dm.received' || triggerType === 'instagram.comment.received'
     const rawSteps = Array.isArray(input.steps) ? input.steps : []
@@ -210,7 +215,10 @@ export async function generateAutomationWithAi(
         type: s.type,
         config: s.config && typeof s.config === 'object' ? s.config : {},
       }))
-    if (steps.length === 0) return { ok: false, error: 'IA não retornou passos válidos.' }
+    if (steps.length === 0) {
+      await audit('error', input, 'IA não retornou passos válidos.')
+      return { ok: false, error: 'IA não retornou passos válidos.' }
+    }
 
     const stepIds = new Set(steps.map(s => s.id))
     const rawEdges = Array.isArray(input.flow_edges) ? input.flow_edges : []
@@ -225,6 +233,7 @@ export async function generateAutomationWithAi(
         return { id: `edge_${i}_${Date.now()}`, from: e.from, to: e.to, condition }
       })
 
+    await audit('success', input)
     return {
       ok: true,
       reply,

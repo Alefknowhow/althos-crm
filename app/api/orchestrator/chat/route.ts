@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
-import { sanitizeChatHistory } from '@/lib/ai/chat-history'
+import { sanitizeChatHistory, type ChatTurn } from '@/lib/ai/chat-history'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { getActiveLibraryItems, libraryItemsToKnowledgeBase } from '@/lib/ai/library'
@@ -30,20 +31,41 @@ import type { AgentResultEvent } from '@/lib/agent-definitions/types'
  */
 export const maxDuration = 60
 
+/** Cada entrada precisa ter o shape exato que sanitizeChatHistory()/a API da
+ *  Claude esperam — um item malformado (ex.: history: [null]) só seria
+ *  descoberto depois de já ter cobrado o crédito, então valida aqui antes. */
+function isValidHistory(history: unknown): history is ChatTurn[] {
+  if (!Array.isArray(history)) return false
+  return history.every(
+    (m): m is ChatTurn =>
+      !!m && typeof m === 'object' &&
+      (m.role === 'user' || m.role === 'assistant') &&
+      typeof m.content === 'string' && m.content.length <= 20000,
+  )
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const orgSlug = body?.orgSlug as string | undefined
   const userMessage = (body?.message as string | undefined)?.trim()
-  const history = Array.isArray(body?.history) ? body.history : []
+  const history = body?.history ?? []
   const pageContext = body?.pageContext as string | undefined
 
-  if (!orgSlug || !userMessage) {
+  if (!orgSlug || !userMessage || !isValidHistory(history)) {
     return new Response(JSON.stringify({ type: 'error', error: 'Requisição inválida.' }), { status: 400 })
   }
 
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
+
+  // Mesma permissão que gateia a montagem do painel em layout.tsx — o
+  // painel escondido no client não é enforcement, só UX; a rota precisa
+  // revalidar server-side (achado da revisão automática da PR #52).
+  const perm = await checkMemberPermission(org.id, user.id, 'insights')
+  if (!perm.allowed) {
+    return new Response(JSON.stringify({ type: 'error', error: perm.reason }), { status: 403 })
+  }
 
   const accountId = (org as { account_id?: string | null }).account_id ?? null
   if (accountId) {
@@ -61,8 +83,19 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ type: 'error', error: 'IA temporariamente indisponível. Tente novamente em instantes.' }), { status: 503 })
   }
 
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('name, ai_qualifier_model, ai_business_context')
+    .eq('id', org.id)
+    .maybeSingle()
+
   if (accountId) {
-    const credit = await consumeAiCredits({ accountId, action: 'orchestrator_chat', metadata: { feature: 'orchestrator', orgSlug } })
+    const credit = await consumeAiCredits({
+      accountId,
+      action: 'orchestrator_chat',
+      model: orgData?.ai_qualifier_model,
+      metadata: { feature: 'orchestrator', orgSlug },
+    })
     if (!credit.success) {
       return new Response(
         JSON.stringify({
@@ -76,12 +109,6 @@ export async function POST(req: NextRequest) {
       )
     }
   }
-
-  const { data: orgData } = await supabase
-    .from('organizations')
-    .select('name, ai_qualifier_model, ai_business_context')
-    .eq('id', org.id)
-    .maybeSingle()
 
   const runtimeContext = await resolveMemberRuntimeContext(orgSlug)
   const agentCtx: AgentContext = {

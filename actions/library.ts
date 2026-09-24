@@ -36,19 +36,31 @@ export async function listLibraryItems(orgSlug: string): Promise<{ ok: true; ite
   return { ok: true, items: (data ?? []) as LibraryItem[] }
 }
 
-const LibraryItemInput = z.object({
+// Campos sem .default() — Zod v4 não desliga .default() dentro de
+// .partial() (mesmo achado da revisão automática da PR #52 aplicado em
+// actions/agent-definitions.ts): um update parcial tipo {title: "..."}
+// reaplicaria priority=0/is_active=true mesmo sem o caller ter mandado
+// esses campos. create e update usam schemas separados por isso.
+const LibraryItemFields = {
   category: z.string().trim().max(80).optional().nullable(),
   title: z.string().trim().min(1).max(200),
   content: z.string().trim().min(1).max(8000),
+  priority: z.number().int(),
+  is_active: z.boolean(),
+}
+
+const LibraryItemCreateInput = z.object(LibraryItemFields).extend({
   priority: z.number().int().default(0),
   is_active: z.boolean().default(true),
 })
+
+const LibraryItemUpdateInput = z.object(LibraryItemFields).partial()
 
 export async function createLibraryItem(orgSlug: string, input: unknown): Promise<{ ok: true; item: LibraryItem } | { ok: false; error: string }> {
   const access = await requireLibraryAccess(orgSlug)
   if (!access.ok) return access
 
-  const parsed = LibraryItemInput.safeParse(input)
+  const parsed = LibraryItemCreateInput.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' }
 
   const supabase = createClient()
@@ -66,7 +78,7 @@ export async function updateLibraryItem(orgSlug: string, id: string, input: unkn
   const access = await requireLibraryAccess(orgSlug)
   if (!access.ok) return access
 
-  const parsed = LibraryItemInput.partial().safeParse(input)
+  const parsed = LibraryItemUpdateInput.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' }
   if (Object.keys(parsed.data).length === 0) return { ok: false, error: 'Nada para atualizar.' }
 
