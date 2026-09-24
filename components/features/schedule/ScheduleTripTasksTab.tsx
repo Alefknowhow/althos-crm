@@ -190,7 +190,7 @@ export function ScheduleTripTasksTab({
       </div>
 
       <Button size="sm" variant="ghost" className="w-fit" asChild>
-        <Link href={`/app/${orgSlug}/tarefas`}>Ver todas as tarefas</Link>
+        <Link href={`/app/${orgSlug}/agenda/tarefas`}>Ver todas as tarefas</Link>
       </Button>
     </div>
   )

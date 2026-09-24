@@ -1,6 +1,6 @@
-import { Badge } from '@/components/ui/badge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarEmbarquesAccordion from './SidebarEmbarquesAccordion'
+import SidebarAgendaAccordion from './SidebarAgendaAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
 import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
@@ -8,7 +8,7 @@ import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import { isTrafficNiche } from '@/lib/niche'
 import { TRAVEL_PLANNER_ENABLED } from '@/lib/ai/roteirista'
 import {
-  Kanban, Users, CheckSquare, Package, ShoppingCart, Calendar,
+  Kanban, Users, Package, ShoppingCart, Calendar,
   FileSignature, PlaneTakeoff, Store, CalendarClock, FileStack, Armchair, Sparkles,
   Stethoscope, ClipboardList, ListChecks, Hourglass, Percent, CalendarCheck2,
   HeartPulse, Home, Handshake, Boxes,
@@ -53,18 +53,14 @@ export async function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
-      {can('tasks') && (
-        <SidebarNavLink href={`${base}/tarefas`}>
-          <span className="flex items-center gap-2.5">
-            <CheckSquare className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-            <span>Tarefas</span>
-            {!!overdueCount && overdueCount > 0 && (
-              <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1.5 py-0 leading-none">
-                {overdueCount}
-              </Badge>
-            )}
-          </span>
-        </SidebarNavLink>
+      {(can('tasks') || can('events') || can('projects')) && (
+        <SidebarAgendaAccordion
+          base={base}
+          showTasks={can('tasks')}
+          showEvents={can('events')}
+          showProjects={can('projects')}
+          overdueCount={overdueCount}
+        />
       )}
 
       {can('ofertas') && isModuleEnabled(niche, 'ofertas', disabledModules) && (

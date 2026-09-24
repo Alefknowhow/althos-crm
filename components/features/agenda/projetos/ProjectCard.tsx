@@ -25,7 +25,7 @@ export default function ProjectCard({ orgSlug, project, draggable, onDragStart }
 
   return (
     <Link
-      href={`/app/${orgSlug}/agencias-trafego/projetos/${project.id}`}
+      href={`/app/${orgSlug}/agenda/projetos/${project.id}`}
       draggable={draggable}
       onDragStart={onDragStart}
       className="block rounded-lg border bg-card p-3 hover:border-primary/50 transition-colors cursor-pointer"
@@ -33,7 +33,7 @@ export default function ProjectCard({ orgSlug, project, draggable, onDragStart }
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-medium truncate">{project.name}</div>
-          <div className="text-xs text-muted-foreground truncate">{project.client?.name}</div>
+          <div className="text-xs text-muted-foreground truncate">{project.client?.name || 'Uso interno'}</div>
         </div>
         {project.owner?.name && (
           <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center justify-center" title={project.owner.name}>

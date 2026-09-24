@@ -138,7 +138,7 @@ export async function scheduleVisit(orgSlug: string, input: {
 
   revalidatePath(`/app/${orgSlug}/imoveis/${input.propertyId}`)
   revalidatePath(`/app/${orgSlug}/contatos`)
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const, id: visit.id as string }
 }
 

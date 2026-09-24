@@ -107,7 +107,7 @@ export async function createClinicReturnTask(orgSlug: string, attendanceId: stri
     .eq('organization_id', org.id)
 
   revalidatePath(`/app/${orgSlug}/retornos`)
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const }
 }
 

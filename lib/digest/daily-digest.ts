@@ -313,7 +313,7 @@ export function buildDigestHtml(orgName: string, orgSlug: string, data: DigestDa
         <!-- CTA -->
         <tr><td style="padding:32px;">
           <table cellpadding="0" cellspacing="0"><tr><td>
-            <a href="${appUrl}/app/${orgSlug}/tarefas" style="display:inline-block;background:#1D1D1F;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:100px;font-size:14px;font-weight:600;">
+            <a href="${appUrl}/app/${orgSlug}/agenda/tarefas" style="display:inline-block;background:#1D1D1F;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:100px;font-size:14px;font-weight:600;">
               Abrir o CRM →
             </a>
           </td></tr></table>

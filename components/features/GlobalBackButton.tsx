@@ -23,7 +23,14 @@ export function GlobalBackButton({ orgSlug }: { orgSlug: string }) {
   // Tela de conexão do Instagram: fica dentro de Configurações, mas tem
   // seu próprio botão "Ir para Instagram" no conteúdo — não precisa do
   // "voltar" genérico do header em cima disso.
-  if (segments.length <= 1 || (segments[0] === 'configuracoes' && segments[1] === 'social')) return null
+  //
+  // Agenda (issue #14): Tarefas/Calendário/Projetos são raízes de módulo
+  // (equivalentes a uma rota de 1 segmento), só que aninhadas sob /agenda/
+  // por organização — não existe (nem deveria existir) uma página em
+  // /agenda sozinho pra "subir" até ela. Achado da revisão automática do
+  // PR #53: sem essa exceção, "voltar" nessas 3 telas levava a um 404.
+  const isAgendaModuleRoot = segments[0] === 'agenda' && segments.length === 2
+  if (segments.length <= 1 || isAgendaModuleRoot || (segments[0] === 'configuracoes' && segments[1] === 'social')) return null
 
   const parentPath = `${prefix}/${segments.slice(0, -1).join('/')}`
 

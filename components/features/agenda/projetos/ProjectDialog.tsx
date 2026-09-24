@@ -83,10 +83,11 @@ export default function ProjectDialog({ orgSlug, clients = [], members = [], def
 
           {!defaultClientId && (
             <div className="space-y-2">
-              <Label>Cliente *</Label>
-              <Select value={clientId} onValueChange={setClientId}>
+              <Label>Cliente <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Select value={clientId || '__none__'} onValueChange={v => setClientId(v === '__none__' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Nenhum (uso interno)</SelectItem>
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -129,7 +130,7 @@ export default function ProjectDialog({ orgSlug, clients = [], members = [], def
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancelar</Button>
-            <Button type="submit" pending={isPending} disabled={!name || !clientId}>Criar projeto</Button>
+            <Button type="submit" pending={isPending} disabled={!name}>Criar projeto</Button>
           </DialogFooter>
         </form>
       </DialogContent>

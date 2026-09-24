@@ -69,7 +69,7 @@ export default function ProjectDetailShell({
       const res = await archiveProject(orgSlug, project.id, !project.archived_at)
       if (!res.ok) { toast.error(res.error || 'Erro ao arquivar projeto'); return }
       toast.success(project.archived_at ? 'Projeto reaberto' : 'Projeto arquivado')
-      router.push(`/app/${orgSlug}/agencias-trafego/projetos`)
+      router.push(`/app/${orgSlug}/agenda/projetos`)
     })
   }
 
@@ -79,7 +79,7 @@ export default function ProjectDetailShell({
       const res = await deleteProject(orgSlug, project.id)
       if (!res.ok) { toast.error(res.error || 'Erro ao excluir projeto'); return }
       toast.success('Projeto excluído')
-      router.push(`/app/${orgSlug}/agencias-trafego/projetos`)
+      router.push(`/app/${orgSlug}/agenda/projetos`)
     })
   }
 
@@ -87,13 +87,17 @@ export default function ProjectDetailShell({
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href={`/app/${orgSlug}/agencias-trafego/projetos`} className="text-xs text-muted-foreground hover:underline inline-flex items-center gap-1 mb-1">
+          <Link href={`/app/${orgSlug}/agenda/projetos`} className="text-xs text-muted-foreground hover:underline inline-flex items-center gap-1 mb-1">
             <ArrowLeft className="w-3 h-3" /> Projetos
           </Link>
           <h1 className="text-xl font-semibold truncate">{project.name}</h1>
-          <Link href={`/app/${orgSlug}/agencias-trafego/trafego/${project.client_id}`} className="text-sm text-primary hover:underline">
-            {project.client?.name}
-          </Link>
+          {project.client_id ? (
+            <Link href={`/app/${orgSlug}/contatos/${project.client_id}`} className="text-sm text-primary hover:underline">
+              {project.client?.name}
+            </Link>
+          ) : (
+            <span className="text-sm text-muted-foreground">Uso interno — sem cliente vinculado</span>
+          )}
         </div>
 
         <DropdownMenu>

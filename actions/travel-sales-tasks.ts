@@ -146,6 +146,6 @@ export async function saveTravelSaleAndGenerateTasks(orgSlug: string, id: string
   }
 
   revalidatePath(`/app/${orgSlug}/reservas`)
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const, data: s, tasksCreated, alreadyGenerated: false }
 }

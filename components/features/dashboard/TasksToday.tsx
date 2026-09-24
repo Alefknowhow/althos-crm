@@ -14,7 +14,7 @@ export default function TasksToday({ tasks, orgSlug }: TasksTodayProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base tracking-apple-tighter">Tarefas hoje</CardTitle>
         <Link
-          href={`/app/${orgSlug}/tarefas`}
+          href={`/app/${orgSlug}/agenda/tarefas`}
           className="text-xs text-primary hover:text-primary/80 font-medium tracking-apple-snug inline-flex items-center gap-0.5 transition-colors"
         >
           Ver todas <ArrowRight className="w-3 h-3" />

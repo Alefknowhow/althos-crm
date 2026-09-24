@@ -70,7 +70,7 @@ export async function createTaskColumn(orgSlug: string, name: string) {
     .single()
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const, column: data as { id: string; name: string; position: number } }
 }
 
@@ -88,7 +88,7 @@ export async function renameTaskColumn(orgSlug: string, columnId: string, name: 
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const }
 }
 
@@ -127,7 +127,7 @@ export async function deleteTaskColumn(orgSlug: string, columnId: string) {
     .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const, fallbackColumnId: fallback.id }
 }
 
@@ -143,6 +143,6 @@ export async function moveTaskToColumn(orgSlug: string, taskId: string, columnId
     .eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const }
 }
