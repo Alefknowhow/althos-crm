@@ -22,7 +22,10 @@ export default function MarketingTabsNav({ orgSlug }: { orgSlug: string }) {
   const sections: MobileSection[] = TABS.map(t => ({ key: t.seg, label: t.label }))
 
   return (
-    <div className="sm:hidden pb-3">
+    // md:hidden (não sm:hidden) — precisa casar com o breakpoint em que a
+    // sidebar (hidden md:block) assume a navegação; entre sm e md nenhuma
+    // das duas apareceria, achado do Codex review na PR #44.
+    <div className="md:hidden pb-3">
       <MobileSectionPicker
         sections={sections}
         activeKey={activeSeg}

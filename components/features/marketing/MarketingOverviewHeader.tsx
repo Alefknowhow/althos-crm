@@ -32,6 +32,7 @@ export default function MarketingOverviewHeader({
   onChangeChartMetrics,
   syncing,
   onResyncAccount,
+  canResync,
   noAccountsYet,
   noCampaignsYet,
   objectiveFilter,
@@ -50,6 +51,11 @@ export default function MarketingOverviewHeader({
   onChangeChartMetrics: (next: Set<MetricKey>) => void
   syncing: boolean
   onResyncAccount: () => void
+  /** Sincronização automática só existe pra contas Meta — syncAdAccountCampaigns
+   *  rejeita qualquer outro provider. Sem este gate, o botão aparecia (e
+   *  sempre falhava) também nas contas Google/manuais reaproveitando este
+   *  mesmo painel (issue #24). */
+  canResync: boolean
   noAccountsYet: boolean
   noCampaignsYet: boolean
   objectiveFilter: ObjectiveGroup | 'all'
@@ -118,7 +124,7 @@ export default function MarketingOverviewHeader({
             visibleChartMetrics={visibleChartMetrics}
             onChangeChartMetrics={onChangeChartMetrics}
           />
-          {accountFilter && (
+          {accountFilter && canResync && (
             <Button
               size="sm"
               variant="outline"

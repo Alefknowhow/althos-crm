@@ -43,8 +43,14 @@ type AccountSummary = {
   revenue_cents: number
 }
 
-function summarizeByAccount(campaigns: CampaignRow[]): AccountSummary[] {
+/** Uma linha por CONTA conectada, não por conta-com-campanha — semeia o mapa
+ *  a partir de `accounts` primeiro pra uma conta recém-conectada (ainda sem
+ *  campanha nenhuma) aparecer com zeros em vez de sumir da distribuição. */
+function summarizeByAccount(accounts: Account[], campaigns: CampaignRow[]): AccountSummary[] {
   const map = new Map<string, AccountSummary>()
+  for (const a of accounts) {
+    map.set(a.id, { ad_account_id: a.id, provider: a.provider, account_name: a.name, spend_cents: 0, leads: 0, won_deals: 0, revenue_cents: 0 })
+  }
   for (const c of campaigns) {
     const cur = map.get(c.ad_account_id) ?? {
       ad_account_id: c.ad_account_id,
@@ -112,11 +118,14 @@ export default function MarketingOverviewCrossChannel({
   // hook devolver os totais/série somados de TODAS as contas (issue #24 §2/§3).
   const { filteredTotals, filteredTimeSeries } = useMarketingOverviewMetrics(overview, 'all', null, 'all')
 
+  // fmtCurrency já divide por 100 internamente — os três valores abaixo
+  // ficam em CENTAVOS (nunca pré-divididos), assim como spend/revenue_cents
+  // usados direto nos KPIs e na tabela logo adiante.
   const ctr = filteredTotals.impressions > 0 ? (filteredTotals.clicks / filteredTotals.impressions) * 100 : 0
-  const cpc = filteredTotals.clicks > 0 ? filteredTotals.spend_cents / 100 / filteredTotals.clicks : 0
-  const cpl = filteredTotals.leads > 0 ? filteredTotals.spend_cents / 100 / filteredTotals.leads : 0
+  const cpcCents = filteredTotals.clicks > 0 ? filteredTotals.spend_cents / filteredTotals.clicks : 0
+  const cplCents = filteredTotals.leads > 0 ? filteredTotals.spend_cents / filteredTotals.leads : 0
 
-  const byAccount = summarizeByAccount(overview.campaigns)
+  const byAccount = summarizeByAccount(accounts, overview.campaigns)
   const totalSpend = byAccount.reduce((a, r) => a + r.spend_cents, 0)
 
   return (
@@ -141,11 +150,11 @@ export default function MarketingOverviewCrossChannel({
       {!noAccountsYet && !noCampaignsYet && (
         <>
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <KPICard label="Investimento" value={fmtCurrency(filteredTotals.spend_cents / 100)} icon={DollarSign} iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" />
+            <KPICard label="Investimento" value={fmtCurrency(filteredTotals.spend_cents)} icon={DollarSign} iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" />
             <KPICard label="Cliques" value={fmtNumber(filteredTotals.clicks)} sublabel={`CTR: ${ctr.toFixed(2)}%`} icon={MousePointerClick} iconBg="bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400" />
-            <KPICard label="Leads" value={fmtNumber(filteredTotals.leads)} sublabel={filteredTotals.leads > 0 ? `CPL: ${fmtCurrency(cpl)}` : undefined} icon={Users} iconBg="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" />
-            <KPICard label="CPC médio" value={fmtCurrency(cpc)} icon={Target} iconBg="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400" />
-            <KPICard label="Receita atribuída" value={fmtCurrency(filteredTotals.revenue_cents / 100)} sublabel={`${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`} icon={Receipt} iconBg="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" />
+            <KPICard label="Leads" value={fmtNumber(filteredTotals.leads)} sublabel={filteredTotals.leads > 0 ? `CPL: ${fmtCurrency(cplCents)}` : undefined} icon={Users} iconBg="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" />
+            <KPICard label="CPC médio" value={fmtCurrency(cpcCents)} icon={Target} iconBg="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400" />
+            <KPICard label="Receita atribuída" value={fmtCurrency(filteredTotals.revenue_cents)} sublabel={`${fmtNumber(filteredTotals.won_deals)} negócio(s) ganho(s)`} icon={Receipt} iconBg="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" />
             <KPICard label="ROAS" value={roasLabel(filteredTotals.spend_cents, filteredTotals.revenue_cents)} icon={TrendingUp} iconBg="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" />
           </div>
 
@@ -200,11 +209,11 @@ export default function MarketingOverviewCrossChannel({
                             </Link>
                           ) : nameCell}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{fmtCurrency(row.spend_cents / 100)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtCurrency(row.spend_cents)}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{pct}%</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNumber(row.leads)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{cplOrCpa(row.spend_cents / 100, row.leads, row.won_deals)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmtCurrency(row.revenue_cents / 100)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{cplOrCpa(row.spend_cents, row.leads, row.won_deals)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtCurrency(row.revenue_cents)}</TableCell>
                         <TableCell className="text-right tabular-nums">{roasLabel(row.spend_cents, row.revenue_cents)}</TableCell>
                       </TableRow>
                     )
@@ -213,11 +222,11 @@ export default function MarketingOverviewCrossChannel({
                 <TableFooter>
                   <TableRow>
                     <TableCell className="font-semibold">Total</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{fmtCurrency(filteredTotals.spend_cents / 100)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{fmtCurrency(filteredTotals.spend_cents)}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">100%</TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{fmtNumber(filteredTotals.leads)}</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{cplOrCpa(filteredTotals.spend_cents / 100, filteredTotals.leads, filteredTotals.won_deals)}</TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">{fmtCurrency(filteredTotals.revenue_cents / 100)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{cplOrCpa(filteredTotals.spend_cents, filteredTotals.leads, filteredTotals.won_deals)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{fmtCurrency(filteredTotals.revenue_cents)}</TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{roasLabel(filteredTotals.spend_cents, filteredTotals.revenue_cents)}</TableCell>
                   </TableRow>
                 </TableFooter>
