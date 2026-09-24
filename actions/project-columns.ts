@@ -9,7 +9,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization, requireAuth } from '@/lib/supabase/types'
 import { checkMemberPermission, isOrgManager } from '@/lib/permissions.server'
+import { isAccessBlocked } from '@/lib/billing/plans'
 import { revalidatePath } from 'next/cache'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 export type ProjectColumn = { id: string; name: string; position: number; is_done: boolean }
 
@@ -34,7 +37,10 @@ export async function ensureDefaultProjectColumnId(supabase: ReturnType<typeof c
 }
 
 export async function listProjectColumns(orgSlug: string): Promise<ProjectColumn[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) throw new Error(check.reason)
   const supabase = createClient()
 
   await ensureDefaultProjectColumnId(supabase, org.id)
@@ -60,6 +66,7 @@ async function requireProjectManager(orgId: string, userId: string) {
 export async function createProjectColumn(orgSlug: string, name: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await requireProjectManager(org.id, user.id)
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -89,6 +96,7 @@ export async function createProjectColumn(orgSlug: string, name: string) {
 export async function renameProjectColumn(orgSlug: string, columnId: string, name: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await requireProjectManager(org.id, user.id)
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -112,6 +120,7 @@ export async function renameProjectColumn(orgSlug: string, columnId: string, nam
 export async function toggleProjectColumnDone(orgSlug: string, columnId: string, isDone: boolean) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await requireProjectManager(org.id, user.id)
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -132,6 +141,7 @@ export async function toggleProjectColumnDone(orgSlug: string, columnId: string,
 export async function deleteProjectColumn(orgSlug: string, columnId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await requireProjectManager(org.id, user.id)
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -150,9 +160,16 @@ export async function deleteProjectColumn(orgSlug: string, columnId: string) {
   const fallback = columns.find(c => c.id !== columnId)
   if (!fallback) return { ok: false as const, error: 'Etapa não encontrada.' }
 
+  const { data: fallbackFull } = await supabase
+    .from('project_columns')
+    .select('is_done')
+    .eq('id', fallback.id)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+
   const { error: moveErr } = await supabase
     .from('projetos')
-    .update({ column_id: fallback.id })
+    .update({ column_id: fallback.id, completed_at: fallbackFull?.is_done ? new Date().toISOString() : null })
     .eq('organization_id', org.id)
     .eq('column_id', columnId)
   if (moveErr) return { ok: false as const, error: moveErr.message }

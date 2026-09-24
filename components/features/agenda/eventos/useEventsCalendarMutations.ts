@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { updateEvent, type EventRow } from '@/actions/events'
-import { ROW_H } from './EventsShared'
+import { ROW_H, addDaysToYmd } from './EventsShared'
 
 /**
  * Drag-and-drop de reagendamento na timeline de Semana/Dia (Agenda →
@@ -64,9 +64,12 @@ export function useEventsCalendarMutations({
 
     const durationMin = event.all_day ? 30 : Math.max(15, Math.round((new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) / 60000))
     const endTotal = hour * 60 + minute + durationMin
-    const endTime = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`
+    const daysCrossed = Math.floor(endTotal / 1440)
+    const endMinuteOfDay = endTotal % 1440
+    const endTime = `${String(Math.floor(endMinuteOfDay / 60)).padStart(2, '0')}:${String(endMinuteOfDay % 60).padStart(2, '0')}`
+    const endDate = daysCrossed > 0 ? addDaysToYmd(dayYmd, daysCrossed) : dayYmd
 
-    applyReschedule(id!, { start_date: dayYmd, start_time: startTime, end_date: dayYmd, end_time: endTime, all_day: false })
+    applyReschedule(id!, { start_date: dayYmd, start_time: startTime, end_date: endDate, end_time: endTime, all_day: false })
   }
 
   /** Solta em "Dia inteiro" → vira evento de dia inteiro nesse dia. */

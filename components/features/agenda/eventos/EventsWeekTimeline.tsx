@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { WEEKDAYS_PT, ymd } from '@/components/features/tasks/TasksBoardShared'
-import { ROW_H, eventDaySegment } from './EventsShared'
+import { ROW_H, eventDaySegment, computeOverlapLayout } from './EventsShared'
 import EventChip from './EventChip'
 import type { EventRow } from '@/actions/events'
 import type { EventRangeSelection } from './EventQuickCreatePopover'
@@ -175,6 +175,7 @@ export default function EventsWeekTimeline({
         {days.map(d => {
           const key = ymd(d)
           const timed = (eventsByDay.get(key) || []).filter(e => !e.all_day)
+          const overlapLayout = computeOverlapLayout(timed.map(ev => ({ id: ev.id, ...eventDaySegment(ev, key) })))
           const dayPreview = preview && preview.day === key ? preview : null
           return (
             <div key={key} className="relative border-l min-w-0 cursor-crosshair" onMouseDown={e => handleColumnMouseDown(e, key)}>
@@ -215,14 +216,12 @@ export default function EventsWeekTimeline({
                 const { startMin: segStart, endMin: segEnd } = eventDaySegment(ev, key)
                 const top = ((segStart - hours[0] * 60) / 60) * ROW_H
                 const height = ((segEnd - segStart) / 60) * ROW_H
-                const sameStart = timed.filter(o => eventDaySegment(o, key).startMin === segStart)
-                const overlap = sameStart.length
-                const overlapIdx = sameStart.indexOf(ev)
+                const { col, cols } = overlapLayout.get(ev.id) ?? { col: 0, cols: 1 }
                 return (
                   <div
                     key={ev.id}
                     data-quickadd-ignore
-                    style={{ top, height, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
+                    style={{ top, height, left: cols > 1 ? `${(col / cols) * 100}%` : 0, width: cols > 1 ? `${100 / cols}%` : '100%' }}
                     className="absolute px-0.5 z-10"
                   >
                     <div className="h-full">

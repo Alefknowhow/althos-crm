@@ -24,12 +24,13 @@ import { useEventsCalendarMutations } from './useEventsCalendarMutations'
 type Member = { user_id: string; name: string; email: string }
 
 export default function EventsView({
-  orgSlug, initialEvents, members = [], niche,
+  orgSlug, initialEvents, members = [], niche, canCreateTasks = true,
 }: {
   orgSlug: string
   initialEvents: EventRow[]
   members?: Member[]
   niche?: string | null
+  canCreateTasks?: boolean
 }) {
   const [view, setView] = useState<CalView>('month')
   const [anchor, setAnchor] = useState(() => new Date())
@@ -108,7 +109,7 @@ export default function EventsView({
               <SelectItem value="day">Dia</SelectItem>
             </SelectContent>
           </Select>
-          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} />
+          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} canCreateTasks={canCreateTasks} />
         </div>
       </div>
 

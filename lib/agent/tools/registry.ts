@@ -23,6 +23,7 @@ import {
   listProjectTemplatesTool, listProjectTemplatesShape,
   applyProjectTemplateTool, applyProjectTemplateShape,
 } from '@/lib/agent/tools/project-templates'
+import { createProjetoTool, createProjetoShape } from '@/lib/agent/tools/project-create'
 
 /**
  * Etapa 3/4 (Agent Layer) — Tool Registry. Cada entrada pareia o ToolDef
@@ -50,6 +51,7 @@ export const TOOL_REGISTRY: { tool: ToolDef<any>; inputShape: Record<string, any
   { tool: createTaskTool, inputShape: createTaskShape },
   { tool: listProjectTemplatesTool, inputShape: listProjectTemplatesShape },
   { tool: applyProjectTemplateTool, inputShape: applyProjectTemplateShape },
+  { tool: createProjetoTool, inputShape: createProjetoShape },
   ...[...CRM_MODULES, ...VIAGENS_MODULES, ...CLINICAS_IMOVEIS_MODULES, ...SEGUROS_TRAFEGO_MODULES, ...AGENDA_MODULES]
     .flatMap(buildModuleTools),
 ]

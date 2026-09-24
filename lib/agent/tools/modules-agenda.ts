@@ -18,5 +18,10 @@ export const AGENDA_MODULES: ModuleConfig[] = [
     orderBy: { column: 'created_at', ascending: false },
     writableFields: ['name', 'description', 'objective', 'client_id', 'owner_id', 'column_id', 'tags', 'health', 'start_date', 'due_date'],
     requiredCreateFields: ['name'],
+    // create_projetos é bespoke (project-create.ts) — precisa de
+    // ensureDefaultProjectColumnId quando o agente não manda column_id, senão
+    // o projeto nasce com column_id NULL e fica invisível no board (achado
+    // da revisão do PR #55: a UI de Projetos filtra cards por coluna real).
+    creatable: false,
   },
 ]

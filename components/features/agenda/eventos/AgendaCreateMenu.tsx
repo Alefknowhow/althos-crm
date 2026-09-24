@@ -13,7 +13,7 @@ type Member = { user_id: string; name: string; email: string }
  *  evento, cada um com seu próprio formulário/dialog. Usado no cabeçalho da
  *  visão Calendário (a visão Tarefas já tem seu próprio botão dedicado). */
 export default function AgendaCreateMenu({
-  orgSlug, members = [], niche, defaultDate, onEventSaved,
+  orgSlug, members = [], niche, defaultDate, onEventSaved, canCreateTasks = true,
 }: {
   orgSlug: string
   members?: Member[]
@@ -24,6 +24,10 @@ export default function AgendaCreateMenu({
    *  (que não força o efeito de busca a rerodar, já que orgSlug/view/anchor
    *  não mudam). */
   onEventSaved?: () => void
+  /** Esconde "Nova tarefa" pra quem não tem a permissão `tasks` — o servidor
+   *  já recusa a criação (createTask), isso só evita mostrar uma opção que
+   *  falharia (achado da revisão do PR #55). */
+  canCreateTasks?: boolean
 }) {
   const [openTask, setOpenTask] = useState(false)
   const [openEvent, setOpenEvent] = useState(false)
@@ -40,9 +44,11 @@ export default function AgendaCreateMenu({
           <DropdownMenuItem onSelect={() => setOpenEvent(true)}>
             <Calendar className="w-4 h-4 mr-2" /> Novo evento
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setOpenTask(true)}>
-            <CheckSquare className="w-4 h-4 mr-2" /> Nova tarefa
-          </DropdownMenuItem>
+          {canCreateTasks && (
+            <DropdownMenuItem onSelect={() => setOpenTask(true)}>
+              <CheckSquare className="w-4 h-4 mr-2" /> Nova tarefa
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

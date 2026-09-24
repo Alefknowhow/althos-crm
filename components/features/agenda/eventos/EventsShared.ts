@@ -40,7 +40,7 @@ function utcDateOnly(iso: string): string {
   return iso.split('T')[0]
 }
 
-function addDaysToYmd(value: string, n: number): string {
+export function addDaysToYmd(value: string, n: number): string {
   const [y, m, d] = value.split('-').map(Number)
   const dt = new Date(Date.UTC(y, m - 1, d))
   dt.setUTCDate(dt.getUTCDate() + n)
@@ -118,6 +118,47 @@ export function eventDaySegment(e: EventRow, dayKey: string): { startMin: number
   const startMin = isFirst ? minutesOfDayUTC(e.start_at) : 0
   const endMin = isLast ? minutesOfDayUTC(e.end_at) : 24 * 60
   return { startMin, endMin: Math.max(endMin, startMin + 15) }
+}
+
+/** Agrupa eventos do dia por INTERSECÇÃO de intervalo (não por igualdade de
+ *  horário de início) e atribui coluna/largura a cada um — dois eventos que
+ *  só se sobrepõem parcialmente (ex.: 10h–12h e 11h–13h) precisam dividir
+ *  espaço horizontal mesmo com starts diferentes, senão um cobre o outro
+ *  (achado da revisão do PR #55). Clusteriza por varredura (eventos
+ *  ordenados por início; um novo cluster começa quando o próximo evento
+ *  começa depois do fim máximo já visto no cluster atual) e, dentro de cada
+ *  cluster, aloca colunas de forma gulosa (primeira coluna livre). */
+export function computeOverlapLayout(events: { id: string; startMin: number; endMin: number }[]): Map<string, { col: number; cols: number }> {
+  const sorted = [...events].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
+  const result = new Map<string, { col: number; cols: number }>()
+
+  let cluster: typeof sorted = []
+  let clusterMaxEnd = -Infinity
+
+  function flush() {
+    if (cluster.length === 0) return
+    const columnEnds: number[] = []
+    const colOf = new Map<string, number>()
+    for (const ev of cluster) {
+      let col = columnEnds.findIndex(end => end <= ev.startMin)
+      if (col === -1) { col = columnEnds.length; columnEnds.push(ev.endMin) }
+      else columnEnds[col] = ev.endMin
+      colOf.set(ev.id, col)
+    }
+    const cols = columnEnds.length
+    for (const ev of cluster) result.set(ev.id, { col: colOf.get(ev.id)!, cols })
+    cluster = []
+    clusterMaxEnd = -Infinity
+  }
+
+  for (const ev of sorted) {
+    if (cluster.length > 0 && ev.startMin >= clusterMaxEnd) flush()
+    cluster.push(ev)
+    clusterMaxEnd = Math.max(clusterMaxEnd, ev.endMin)
+  }
+  flush()
+
+  return result
 }
 
 /** Faixa de horas da timeline: padrão comercial (7h–20h), expandida se

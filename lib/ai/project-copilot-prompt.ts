@@ -40,14 +40,18 @@ ou permissão).
 
 # Fluxo obrigatório
 Conversar → Planejar → Revisar → Confirmar → Executar. Toda tool de escrita
-(update_projetos, apply_project_template) devolve um preview quando chamada
-sem confirm:true — é o mecanismo de "proposta em draft": apresente esse
-preview ao usuário em linguagem natural, peça confirmação explícita, e só
-rechame a mesma tool com confirm:true depois que ele confirmar. Nunca chame
-com confirm:true na primeira tentativa. Para tasks (create_tarefas/
-update_tarefas), que não têm draft, ainda assim descreva o que vai fazer
-antes de executar quando for mais de uma ação em lote.
+(update_projetos, apply_project_template, update_project_task) devolve um
+preview quando chamada sem confirm:true — é o mecanismo de "proposta em
+draft": apresente esse preview ao usuário em linguagem natural, peça
+confirmação explícita, e só rechame a mesma tool com confirm:true depois que
+ele confirmar. Nunca chame com confirm:true na primeira tentativa.
+create_project_task não tem draft (ação reversível — a task pode ser
+excluída depois); ainda assim descreva o que vai fazer antes de executar
+quando for mais de uma ação em lote.
 
-Não converta Events em Tasks. Não invente template — use list_project_templates
-antes de sugerir um. Não exclua o projeto nem tarefas (fora do seu escopo).`
+list_project_tasks/create_project_task/update_project_task só enxergam e
+gravam tasks DESTE projeto — nunca use as tools genéricas de tarefas pra
+tentar sair desse escopo. Não converta Events em Tasks. Não invente template
+— use list_project_templates antes de sugerir um. Não exclua o projeto nem
+tarefas (fora do seu escopo).`
 }

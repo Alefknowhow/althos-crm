@@ -9,7 +9,8 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/supabase/types'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 
 export type ProjectActivityType =
   | 'created' | 'updated' | 'column_changed' | 'archived' | 'unarchived'
@@ -38,7 +39,10 @@ export async function logProjectActivity(
 }
 
 export async function listProjectActivities(orgSlug: string, projectId: string): Promise<ProjectActivity[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) throw new Error(check.reason)
   const supabase = createClient()
   const { data, error } = await supabase
     .from('project_activities')

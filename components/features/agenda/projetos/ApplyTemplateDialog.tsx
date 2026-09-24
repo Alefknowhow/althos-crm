@@ -15,6 +15,14 @@ import type { ProjectTemplateRow } from '@/actions/project-templates'
 type ClientOption = { id: string; name: string }
 type MemberOption = { user_id: string; name: string }
 
+/** YYYY-MM-DD do dia local do navegador — toISOString() usa UTC e "pula" pro
+ *  dia seguinte pra usuários em UTC-3 depois das 21h (achado da revisão do
+ *  PR #55). */
+function localYmd(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function ApplyTemplateDialog({
   orgSlug, templates, clients = [], members = [], defaultClientId, trigger, open: openProp, onOpenChange,
 }: {
@@ -36,13 +44,13 @@ export default function ApplyTemplateDialog({
   const [name, setName] = useState('')
   const [clientId, setClientId] = useState(defaultClientId || '')
   const [ownerId, setOwnerId] = useState('')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(() => localYmd())
 
   const template = templates.find(t => t.id === templateId)
 
   function reset() {
     setTemplateId(''); setName(''); setClientId(defaultClientId || ''); setOwnerId('')
-    setStartDate(new Date().toISOString().split('T')[0])
+    setStartDate(localYmd())
   }
 
   function submit() {

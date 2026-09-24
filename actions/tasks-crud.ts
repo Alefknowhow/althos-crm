@@ -8,9 +8,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { taskSchema } from '@/lib/validators/task'
 import { isAccessBlocked } from '@/lib/billing/plans'
 import { ensureDefaultColumnId } from './tasks-columns'
+import { resolveTaskRelatedLabels, buildTaskRelated } from '@/lib/tasks/related-label'
+import { logProjectActivity } from './project-activities'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -59,9 +62,17 @@ export async function createTask(orgSlug: string, input: TaskInput) {
 
   const { data: v } = validation
 
+  // 'projects' também autoriza — Agenda → Projetos gerencia suas tasks
+  // in-place (issue #17). Sem project_id, é o fluxo normal de Tarefas, que
+  // exige a permissão 'tasks' de fato (achado da revisão do PR #55: o menu
+  // "+ Novo" de Eventos criava tasks sem checar 'tasks' no servidor).
+  const permKey = v.project_id ? 'projects' : 'tasks'
+  const check = await checkMemberPermission(org.id, user.id, permKey)
+  if (!check.allowed) return { ok: false as const, error: check.reason }
+
   const columnId = await ensureDefaultColumnId(supabase, org.id)
 
-  const { error } = await supabase.from('tasks').insert({
+  const { data: created, error } = await supabase.from('tasks').insert({
     organization_id: org.id,
     title:       v.title,
     description: v.description || null,
@@ -75,9 +86,15 @@ export async function createTask(orgSlug: string, input: TaskInput) {
     project_id: v.project_id || null,
     project_group_id: v.project_group_id || null,
     ...relationshipUpdates(v),
-  })
+  }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
+  if (v.project_id && created) {
+    await logProjectActivity(supabase, {
+      organizationId: org.id, projectId: v.project_id, type: 'task_created',
+      payload: { taskId: created.id, title: v.title }, userId: user.id,
+    })
+  }
   revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   if (v.contato_id) revalidatePath(`/app/${orgSlug}/contatos/${v.contato_id}`)
   if (v.sale_id) revalidatePath(`/app/${orgSlug}/reservas`)
@@ -141,7 +158,18 @@ export async function listTasksForProject(orgSlug: string, projectId: string) {
     .eq('project_id', projectId)
     .order('due_date', { ascending: true, nullsFirst: false })
   if (error) throw new Error('Não foi possível carregar as tarefas do projeto')
-  return data ?? []
+  const rows = (data ?? []) as any[]
+
+  // `related` (reserva/cotação/agendamento/venda/negócio imobiliário) —
+  // EditSheet zera o vínculo existente no Salvar se essas tasks chegarem só
+  // com `leads`, sem normalizar as outras relações (achado da revisão do
+  // PR #55). Mesma resolução usada pela página global de Tarefas.
+  const labels = await resolveTaskRelatedLabels(supabase, rows)
+  return rows.map(row => ({
+    ...row,
+    leads: Array.isArray(row.leads) ? (row.leads[0] ?? null) : (row.leads ?? null),
+    related: buildTaskRelated(row, labels),
+  }))
 }
 
 export type TaskUpdateInput = Partial<TaskInput>
@@ -195,13 +223,22 @@ export async function deleteTask(orgSlug: string, taskId: string) {
 }
 
 export async function toggleTaskStatus(orgSlug: string, taskId: string, status: 'open' | 'done') {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { error } = await supabase.from('tasks')
+  const { data: updated, error } = await supabase.from('tasks')
     .update({ status, completed_at: status === 'done' ? new Date().toISOString() : null })
     .eq('id', taskId).eq('organization_id', org.id)
+    .select('project_id, title').single()
   if (error) return { ok: false, error: error.message }
+
+  if (status === 'done' && updated?.project_id) {
+    await logProjectActivity(supabase, {
+      organizationId: org.id, projectId: updated.project_id, type: 'task_completed',
+      payload: { taskId, title: updated.title }, userId: user.id,
+    })
+  }
 
   revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
@@ -211,13 +248,22 @@ export async function toggleTaskStatus(orgSlug: string, taskId: string, status: 
 /** Kanban-aware status setter: supports the three-state workflow
  *  (A Fazer → Em Andamento → Concluído) used by the board view. */
 export async function setTaskStatus(orgSlug: string, taskId: string, status: 'open' | 'doing' | 'done') {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
-  const { error } = await supabase.from('tasks')
+  const { data: updated, error } = await supabase.from('tasks')
     .update({ status, completed_at: status === 'done' ? new Date().toISOString() : null })
     .eq('id', taskId).eq('organization_id', org.id)
+    .select('project_id, title').single()
   if (error) return { ok: false as const, error: error.message }
+
+  if (status === 'done' && updated?.project_id) {
+    await logProjectActivity(supabase, {
+      organizationId: org.id, projectId: updated.project_id, type: 'task_completed',
+      payload: { taskId, title: updated.title }, userId: user.id,
+    })
+  }
 
   revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)

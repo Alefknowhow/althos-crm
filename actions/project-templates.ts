@@ -11,11 +11,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { isAccessBlocked } from '@/lib/billing/plans'
 import { projectTemplateSchema, applyProjectTemplateSchema, type ProjectTemplateInput, type ApplyProjectTemplateInput } from '@/lib/validators/project-template'
 import { ensureDefaultProjectColumnId } from './project-columns'
 import { ensureDefaultColumnId as ensureDefaultTaskColumnId } from './tasks-columns'
 import { logProjectActivity } from './project-activities'
 import { revalidatePath } from 'next/cache'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 export type ProjectTemplateRow = {
   id: string
@@ -26,7 +29,10 @@ export type ProjectTemplateRow = {
 }
 
 export async function listProjectTemplates(orgSlug: string): Promise<ProjectTemplateRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) throw new Error(check.reason)
   const supabase = createClient()
   const { data, error } = await supabase
     .from('project_templates')
@@ -38,7 +44,10 @@ export async function listProjectTemplates(orgSlug: string): Promise<ProjectTemp
 }
 
 export async function getProjectTemplate(orgSlug: string, templateId: string): Promise<ProjectTemplateRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return null
   const supabase = createClient()
   const { data, error } = await supabase
     .from('project_templates')
@@ -53,6 +62,7 @@ export async function getProjectTemplate(orgSlug: string, templateId: string): P
 export async function createProjectTemplate(orgSlug: string, input: ProjectTemplateInput) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -77,6 +87,7 @@ export async function createProjectTemplate(orgSlug: string, input: ProjectTempl
 export async function updateProjectTemplate(orgSlug: string, templateId: string, input: ProjectTemplateInput) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -96,6 +107,7 @@ export async function updateProjectTemplate(orgSlug: string, templateId: string,
 export async function deleteProjectTemplate(orgSlug: string, templateId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -111,6 +123,7 @@ export async function deleteProjectTemplate(orgSlug: string, templateId: string)
 export async function applyProjectTemplate(orgSlug: string, templateId: string, input: ApplyProjectTemplateInput) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -135,13 +148,21 @@ export async function applyProjectTemplate(orgSlug: string, templateId: string, 
   }).select('id').single()
   if (projErr) return { ok: false as const, error: projErr.message }
 
+  // Falha em qualquer etapa a partir daqui desfaz o projeto inteiro (apagar
+  // projetos.id cai em cascata sobre projeto_grupos via ON DELETE CASCADE, e
+  // nenhuma task chega a existir antes do insert final) — evita projeto
+  // "fantasma" sem grupos/tasks se um passo intermediário falhar.
   const groupIdByName = new Map<string, string>()
   const groupNames = Array.from(new Set(template.steps.map(s => s.group).filter((g): g is string => !!g)))
   for (const [i, name] of Array.from(groupNames.entries())) {
     const { data: group, error: groupErr } = await supabase.from('projeto_grupos').insert({
       organization_id: org.id, project_id: project.id, name, position: i,
     }).select('id').single()
-    if (!groupErr && group) groupIdByName.set(name, group.id)
+    if (groupErr || !group) {
+      await supabase.from('projetos').delete().eq('id', project.id).eq('organization_id', org.id)
+      return { ok: false as const, error: groupErr?.message || 'Erro ao criar grupo do template' }
+    }
+    groupIdByName.set(name, group.id)
   }
 
   const taskColumnId = await ensureDefaultTaskColumnId(supabase, org.id)
@@ -164,7 +185,10 @@ export async function applyProjectTemplate(orgSlug: string, templateId: string, 
   })
   if (rows.length > 0) {
     const { error: tasksErr } = await supabase.from('tasks').insert(rows)
-    if (tasksErr) return { ok: false as const, error: tasksErr.message }
+    if (tasksErr) {
+      await supabase.from('projetos').delete().eq('id', project.id).eq('organization_id', org.id)
+      return { ok: false as const, error: tasksErr.message }
+    }
   }
 
   await logProjectActivity(supabase, {

@@ -9,6 +9,7 @@ import { getActiveLibraryItems, libraryItemsToKnowledgeBase } from '@/lib/ai/lib
 import { buildProjectCopilotSystemPrompt } from '@/lib/ai/project-copilot-prompt'
 import { resolveMemberRuntimeContext } from '@/lib/agent-definitions/context'
 import { resolveAnthropicTools, buildToolExecutor } from '@/lib/agent-definitions/tools'
+import { projectTaskAnthropicTools, buildProjectTaskExecutor } from '@/lib/agent/tools/project-tasks'
 import { logAiExecution } from '@/lib/agent/audit'
 import type { AgentContext } from '@/lib/agent/context'
 import type { AgentResultEvent } from '@/lib/agent-definitions/types'
@@ -23,9 +24,13 @@ import type { AgentResultEvent } from '@/lib/agent-definitions/types'
  */
 export const maxDuration = 60
 
+// Tasks NÃO usa as tools genéricas list_tarefas/create_tarefas/update_tarefas
+// (org-wide, sem project_id em selectColumns/writableFields) — usa as
+// bespoke de lib/agent/tools/project-tasks.ts, com o projeto em foco travado
+// no servidor (achado da revisão do PR #55: o Copilot enxergava/gravava
+// tasks de fora do projeto).
 const PROJECT_COPILOT_TOOLS = [
   'list_projetos', 'get_projetos', 'update_projetos',
-  'list_tarefas', 'get_tarefas', 'create_tarefas', 'update_tarefas',
   'list_project_templates', 'apply_project_template',
 ]
 
@@ -56,6 +61,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const perm = await checkMemberPermission(org.id, user.id, 'projects')
   if (!perm.allowed) {
     return new Response(JSON.stringify({ type: 'error', error: perm.reason }), { status: 403 })
+  }
+  const insightsPerm = await checkMemberPermission(org.id, user.id, 'insights')
+  if (!insightsPerm.allowed) {
+    return new Response(JSON.stringify({ type: 'error', error: insightsPerm.reason }), { status: 403 })
   }
 
   const { data: project, error: projErr } = await supabase
@@ -126,8 +135,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const structuredResults: AgentResultEvent[] = []
-  const tools = resolveAnthropicTools(PROJECT_COPILOT_TOOLS)
-  const executeToolFn = buildToolExecutor(agentCtx, structuredResults)
+  const tools = [...resolveAnthropicTools(PROJECT_COPILOT_TOOLS), ...projectTaskAnthropicTools()]
+  const genericExecuteTool = buildToolExecutor(agentCtx, structuredResults)
+  const projectTaskExecuteTool = buildProjectTaskExecutor(orgSlug, params.id)
+  const executeToolFn = async (name: string, input: Record<string, unknown>) => {
+    const scoped = await projectTaskExecuteTool(name, input)
+    if (scoped !== null) return scoped
+    return genericExecuteTool(name, input)
+  }
   const knowledgeBase = libraryItemsToKnowledgeBase(await getActiveLibraryItems(supabase, org.id))
 
   const chatHistory = [
