@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { getProject, listProjectGroups } from '@/actions/projects'
 import { listTasksForProject } from '@/actions/tasks'
 import { listOrgMembers } from '@/actions/team'
@@ -8,8 +9,10 @@ import ProjectDetailShell from '@/components/features/agenda/projetos/ProjectDet
 export const dynamic = 'force-dynamic'
 
 export default async function ProjetoDetailPage({ params }: { params: { orgSlug: string; id: string } }) {
-  await requireAuth()
-  await getCurrentOrganization(params.orgSlug)
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(params.orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!perm.allowed) notFound()
 
   const project = await getProject(params.orgSlug, params.id)
   if (!project) redirect(`/app/${params.orgSlug}/agenda/projetos`)

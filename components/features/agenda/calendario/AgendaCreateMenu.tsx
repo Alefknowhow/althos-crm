@@ -13,12 +13,17 @@ type Member = { user_id: string; name: string; email: string }
  *  evento, cada um com seu próprio formulário/dialog. Usado no cabeçalho da
  *  visão Calendário (a visão Tarefas já tem seu próprio botão dedicado). */
 export default function AgendaCreateMenu({
-  orgSlug, members = [], niche, defaultDate,
+  orgSlug, members = [], niche, defaultDate, onEventSaved,
 }: {
   orgSlug: string
   members?: Member[]
   niche?: string | null
   defaultDate?: string
+  /** Chamado depois de criar um evento por aqui — deixa a visão Calendário
+   *  refazer o fetch da janela atual sem depender de router.refresh()
+   *  (que não força o efeito de busca a rerodar, já que orgSlug/view/anchor
+   *  não mudam). */
+  onEventSaved?: () => void
 }) {
   const [openTask, setOpenTask] = useState(false)
   const [openEvent, setOpenEvent] = useState(false)
@@ -48,6 +53,7 @@ export default function AgendaCreateMenu({
         defaultDate={defaultDate}
         open={openEvent}
         onOpenChange={setOpenEvent}
+        onSaved={onEventSaved}
       />
       <TaskDialog
         orgSlug={orgSlug}

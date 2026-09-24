@@ -10,8 +10,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
+import { isAccessBlocked } from '@/lib/billing/plans'
 import { eventSchema, type EventInput } from '@/lib/validators/event'
 import { revalidatePath } from 'next/cache'
+
+const FROZEN_ERROR = 'Conta em modo somente leitura (teste expirado ou assinatura cancelada). Assine um plano para continuar editando.'
 
 export type EventRow = {
   id: string
@@ -65,7 +68,10 @@ function buildTimeRange(v: EventInput) {
 }
 
 export async function listEventsForRange(orgSlug: string, range: { from: string; to: string }): Promise<EventRow[]> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'events')
+  if (!check.allowed) throw new Error(check.reason)
   const supabase = createClient()
   const { data, error } = await supabase
     .from('events')
@@ -79,7 +85,10 @@ export async function listEventsForRange(orgSlug: string, range: { from: string;
 }
 
 export async function getEvent(orgSlug: string, eventId: string): Promise<EventRow | null> {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'events')
+  if (!check.allowed) return null
   const supabase = createClient()
   const { data, error } = await supabase
     .from('events')
@@ -95,6 +104,7 @@ export async function getEvent(orgSlug: string, eventId: string): Promise<EventR
 export async function createEvent(orgSlug: string, input: EventInput) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'events')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -129,31 +139,37 @@ export async function createEvent(orgSlug: string, input: EventInput) {
 export async function updateEvent(orgSlug: string, eventId: string, input: Partial<EventInput>) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'events')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
 
-  const updates: Record<string, unknown> = {}
-  if (input.title !== undefined) updates.title = input.title
-  if (input.description !== undefined) updates.description = input.description || null
-  if (input.notes !== undefined) updates.notes = input.notes || null
-  if (input.event_type !== undefined) updates.event_type = input.event_type
-  if (input.location !== undefined) updates.location = input.location || null
-  if (input.organizer_id !== undefined) updates.organizer_id = input.organizer_id || null
-  if (input.participant_ids !== undefined) updates.participant_ids = input.participant_ids ?? []
-  if (input.color !== undefined) updates.color = input.color ?? null
+  const validation = eventSchema.partial().safeParse(input)
+  if (!validation.success) return { ok: false as const, error: validation.error.issues[0].message }
+  const v = validation.data
 
-  if (input.start_date !== undefined) {
-    const merged = { ...input } as EventInput
-    const { startAt, endAt } = buildTimeRange(merged)
+  const updates: Record<string, unknown> = {}
+  if (v.title !== undefined) updates.title = v.title
+  if (v.description !== undefined) updates.description = v.description || null
+  if (v.notes !== undefined) updates.notes = v.notes || null
+  if (v.event_type !== undefined) updates.event_type = v.event_type
+  if (v.location !== undefined) updates.location = v.location || null
+  if (v.organizer_id !== undefined) updates.organizer_id = v.organizer_id || null
+  if (v.participant_ids !== undefined) updates.participant_ids = v.participant_ids ?? []
+  if (v.color !== undefined) updates.color = v.color ?? null
+
+  if (v.start_date !== undefined) {
+    const { startAt, endAt } = buildTimeRange(v as EventInput)
     updates.start_at = startAt
     updates.end_at = endAt
-    if (input.all_day !== undefined) updates.all_day = input.all_day
+    if (v.all_day !== undefined) updates.all_day = v.all_day
   }
 
-  if (input.contato_id !== undefined || input.related_entity_type !== undefined || input.related_entity_id !== undefined) {
-    Object.assign(updates, relationshipUpdates(input))
+  if (v.contato_id !== undefined || v.related_entity_type !== undefined || v.related_entity_id !== undefined) {
+    Object.assign(updates, relationshipUpdates(v))
   }
+
+  if (Object.keys(updates).length === 0) return { ok: true as const }
 
   const { error } = await supabase.from('events').update(updates).eq('id', eventId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
@@ -164,6 +180,7 @@ export async function updateEvent(orgSlug: string, eventId: string, input: Parti
 export async function cancelEvent(orgSlug: string, eventId: string, canceled: boolean) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'events')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
@@ -178,6 +195,7 @@ export async function cancelEvent(orgSlug: string, eventId: string, canceled: bo
 export async function deleteEvent(orgSlug: string, eventId: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  if (isAccessBlocked(org as any)) return { ok: false as const, error: FROZEN_ERROR }
   const check = await checkMemberPermission(org.id, user.id, 'events')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()

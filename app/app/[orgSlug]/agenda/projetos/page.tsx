@@ -1,5 +1,7 @@
+import { notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { listProjects } from '@/actions/projects'
 import { listOrgMembers } from '@/actions/team'
 import { PageHeader } from '@/components/ui/page-header'
@@ -9,9 +11,14 @@ export const dynamic = 'force-dynamic'
 
 // Agenda → Projetos (issue #14) — generalizado pra qualquer nicho, não
 // exclusivo mais de Agências de Tráfego (sem requireModuleEnabled aqui).
+// Gate por permissão aqui é obrigatório: esconder o link na sidebar não é
+// autorização — acesso direto pela URL bypassava a checagem (achado da
+// revisão automática do PR #53).
 export default async function ProjetosPage({ params }: { params: { orgSlug: string } }) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(params.orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!perm.allowed) notFound()
 
   const supabase = createClient()
 

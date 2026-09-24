@@ -35,13 +35,15 @@ export default function CalendarView({
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null)
   const requestId = useRef(0)
 
-  useEffect(() => {
+  async function refetch() {
     const id = ++requestId.current
     const range = rangeForView(view, anchor)
-    listEventsForRange(orgSlug, range).then(data => {
-      if (requestId.current === id) setEvents(data)
-    })
-  }, [orgSlug, view, anchor])
+    const data = await listEventsForRange(orgSlug, range)
+    if (requestId.current === id) setEvents(data)
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { refetch() }, [orgSlug, view, anchor])
 
   const eventsByDay = useMemo(() => groupEventsByDay(events), [events])
   const todayYmd = ymd(new Date())
@@ -91,7 +93,7 @@ export default function CalendarView({
               <SelectItem value="day">Dia</SelectItem>
             </SelectContent>
           </Select>
-          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} />
+          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} />
         </div>
       </div>
 
@@ -131,6 +133,8 @@ export default function CalendarView({
         event={editing}
         open={!!editing}
         onOpenChange={o => !o && setEditing(null)}
+        onSaved={refetch}
+        onDeleted={refetch}
       />
 
       <EventDialog
@@ -140,6 +144,7 @@ export default function CalendarView({
         defaultDate={quickAddDate || undefined}
         open={!!quickAddDate}
         onOpenChange={o => !o && setQuickAddDate(null)}
+        onSaved={refetch}
       />
     </div>
   )

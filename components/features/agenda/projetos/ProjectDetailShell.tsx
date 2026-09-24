@@ -92,7 +92,7 @@ export default function ProjectDetailShell({
           </Link>
           <h1 className="text-xl font-semibold truncate">{project.name}</h1>
           {project.client_id ? (
-            <Link href={`/app/${orgSlug}/agencias-trafego/trafego/${project.client_id}`} className="text-sm text-primary hover:underline">
+            <Link href={`/app/${orgSlug}/contatos/${project.client_id}`} className="text-sm text-primary hover:underline">
               {project.client?.name}
             </Link>
           ) : (
