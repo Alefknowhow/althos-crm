@@ -83,7 +83,8 @@ export default function KanbanBoard({
     for (const s of stages) map[s.id] = s
     return map
   }, [stages])
-
+  // Ganho/Perdido não viram mais colunas — `stages` completo ainda vai pro StagePicker
+  const activeStages = useMemo(() => stages.filter(s => !s.is_won && !s.is_lost), [stages])
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -257,7 +258,7 @@ export default function KanbanBoard({
       {/* Mobile — stage accordion (replaces board/list on small screens) */}
       <div className="flex md:hidden flex-1 min-h-0">
         <MobilePipelineList
-          stages={stages}
+          stages={activeStages}
           leads={visibleLeads}
           orgSlug={orgSlug}
           membersById={membersById}
@@ -278,7 +279,7 @@ export default function KanbanBoard({
           onDragEnd={handleDragEnd}
         >
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-2 md:flex-row md:overflow-x-auto md:overflow-y-hidden md:snap-x hide-scrollbar">
-            {stages.map(stage => {
+            {activeStages.map(stage => {
               const stageLeads = visibleLeads.filter(l => l.stage_id === stage.id)
               return (
                 <KanbanColumn
@@ -304,7 +305,7 @@ export default function KanbanBoard({
       ) : (
         /* List view — estágios resumidos numa linha expansível */
         <PipelineListView
-          stages={stages}
+          stages={activeStages} allStages={stages}
           leads={visibleLeads}
           orgSlug={orgSlug}
           members={members}

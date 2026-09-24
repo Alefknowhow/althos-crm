@@ -21,6 +21,9 @@ function ListLeadRow({
 }: {
   lead: any
   orgSlug: string
+  /** Todos os estágios (inclusive Ganho/Perdido) — o StagePicker é onde a
+   * ação de encerrar o negócio é acionada, já que essas etapas não viram
+   * mais colunas/seções visíveis. */
   stages: any[]
   members: CardMember[]
   onStageChange: (leadId: string, stageId: string) => void
@@ -104,9 +107,12 @@ function ListLeadRow({
  * uma revelando os leads daquele estágio (mesmo espírito do accordion
  * mobile), com o conteúdo do card distribuído horizontalmente por linha. */
 export default function PipelineListView({
-  stages, leads, orgSlug, members, onLeadClick, onAddLead, onStageChange, staleDays = 7,
+  stages, allStages, leads, orgSlug, members, onLeadClick, onAddLead, onStageChange, staleDays = 7,
 }: {
+  /** Estágios ativos — cada um vira uma seção do acordeão. */
   stages: any[]
+  /** Todos os estágios (inclusive Ganho/Perdido), usado só pelo StagePicker de cada linha. */
+  allStages?: any[]
   leads: any[]
   orgSlug: string
   members: CardMember[]
@@ -171,7 +177,7 @@ export default function PipelineListView({
                         key={lead.id}
                         lead={lead}
                         orgSlug={orgSlug}
-                        stages={stages}
+                        stages={allStages && allStages.length > 0 ? allStages : stages}
                         members={members}
                         onStageChange={onStageChange}
                         onClick={() => onLeadClick(lead.id)}

@@ -9,7 +9,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { assignLead, updateLeadTags } from '@/actions/contatos'
 import { cn } from '@/lib/utils'
-import { UserPlus, Check, Tag, Plus, X } from 'lucide-react'
+import { UserPlus, Check, Tag, Plus, X, CheckCircle2, XCircle } from 'lucide-react'
 import { initials, type CardMember } from './LeadCard'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 
@@ -226,6 +226,11 @@ export function TagEditor({
 // ── Stage picker ───────────────────────────────────────────────────────────────
 // Small pill on the card showing the current pipeline stage; clicking opens a
 // dropdown to move the lead to another stage directly. Stops dnd propagation.
+//
+// Ganho/Perdido (is_won/is_lost) não aparecem mais como colunas do Kanban —
+// aqui é onde a ação "Marcar como ganho/perdido" continua disponível
+// (reaproveita o mesmo fluxo de onPick → requestStageMove → diálogo de
+// confirmação/motivo, sem duplicar lógica).
 export function StagePicker({
   lead,
   stages,
@@ -238,9 +243,16 @@ export function StagePicker({
   const [open, setOpen] = useState(false)
   const current = stages.find(s => s.id === lead.stage_id)
   const accent = current?.color || '#6366f1'
+  const activeStages = stages.filter(s => !s.is_won && !s.is_lost)
+  const closingStages = stages.filter(s => s.is_won || s.is_lost)
 
   function stop(e: React.MouseEvent | React.PointerEvent) {
     e.stopPropagation()
+  }
+
+  function pick(stageId: string) {
+    setOpen(false)
+    if (stageId !== lead.stage_id) onPick(stageId)
   }
 
   return (
@@ -258,15 +270,15 @@ export function StagePicker({
             />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" align="start" sideOffset={6} className="w-48 p-1">
+        <PopoverContent side="right" align="start" sideOffset={6} className="w-52 p-1">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Mover para
           </div>
-          {stages.map(s => (
+          {activeStages.map(s => (
             <button
               key={s.id}
               type="button"
-              onClick={() => { setOpen(false); if (s.id !== lead.stage_id) onPick(s.id) }}
+              onClick={() => pick(s.id)}
               className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
             >
               <span className="flex items-center gap-2 min-w-0">
@@ -276,6 +288,30 @@ export function StagePicker({
               {s.id === lead.stage_id && <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" />}
             </button>
           ))}
+          {closingStages.length > 0 && (
+            <>
+              <div className="mt-1 border-t px-2 pt-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Encerrar negócio
+              </div>
+              {closingStages.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pick(s.id)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    {s.is_won ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                    )}
+                    <span className="truncate">{s.is_won ? 'Marcar como ganho' : 'Marcar como perdido'}</span>
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
         </PopoverContent>
       </Popover>
     </div>
