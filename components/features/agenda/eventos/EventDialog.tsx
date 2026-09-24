@@ -21,6 +21,7 @@ import { Trash2 } from 'lucide-react'
 import { createEvent, updateEvent, deleteEvent, type EventRow } from '@/actions/events'
 import RelatedEntityCombobox, { type RelatedOption } from '@/components/features/tasks/RelatedEntityCombobox'
 import { relatedTypeOptions, type RelatedTypeValue } from '@/lib/tasks/related-types'
+import TaskColorPicker from '@/components/features/tasks/TaskColorPicker'
 import { eventSchema, EVENT_TYPES, EVENT_TYPE_LABEL } from '@/lib/validators/event'
 
 type FormValues = z.infer<typeof eventSchema>
@@ -71,6 +72,7 @@ export default function EventDialog({
       location: '',
       organizer_id: '',
       participant_ids: [],
+      color: 'blue',
     },
   })
 
@@ -94,6 +96,7 @@ export default function EventDialog({
         location: event.location || '',
         organizer_id: event.organizer_id || '',
         participant_ids: event.participant_ids || [],
+        color: event.color ?? 'blue',
       })
       if (event.contato_id) {
         setRelatedType('contato')
@@ -111,6 +114,7 @@ export default function EventDialog({
         start_date: defaultDate || todayStr(), start_time: defaultTime || '',
         end_date: '', end_time: '', all_day: false,
         event_type: 'presencial', location: '', organizer_id: '', participant_ids: [],
+        color: 'blue',
       })
       setRelatedType('contato')
       setRelatedOption(null)
@@ -168,6 +172,13 @@ export default function EventDialog({
               <FormItem>
                 <FormLabel>Título *</FormLabel>
                 <FormControl><Input placeholder="Ex.: Reunião com o cliente" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="color" render={({ field }) => (
+              <FormItem>
+                <TaskColorPicker value={field.value ?? 'blue'} onChange={field.onChange} />
                 <FormMessage />
               </FormItem>
             )} />

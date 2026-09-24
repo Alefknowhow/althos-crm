@@ -1,7 +1,9 @@
 /**
- * Types e helpers puros da visão Calendário (Agenda → Calendário, issue
- * #14). Reaproveita os helpers de data genéricos de TasksBoardShared em vez
- * de duplicar (startOfMonth/addMonths/startOfWeek/addWeeks/ymd/WEEKDAYS_PT).
+ * Types e helpers puros da visão Agenda → Eventos. Reaproveita os helpers de
+ * data genéricos de TasksBoardShared em vez de duplicar (startOfMonth/
+ * addMonths/startOfWeek/addWeeks/ymd/WEEKDAYS_PT) — só a matemática de data,
+ * nunca o motor de Tasks: Eventos tem base (events) e UI isoladas de Tasks,
+ * por pedido explícito (set/2026).
  */
 import type { EventRow } from '@/actions/events'
 import { startOfMonth, startOfWeek, addDays, ymd } from '@/components/features/tasks/TasksBoardShared'
@@ -17,7 +19,7 @@ export function rangeForView(view: CalView, anchor: Date): { from: string; to: s
     const end = addDays(start, 6)
     return { from: `${ymd(start)}T00:00:00.000Z`, to: `${ymd(end)}T23:59:59.999Z` }
   }
-  // month — a grade sempre desenha 42 dias (6 linhas fixas, CalendarMonthGrid),
+  // month — a grade sempre desenha 42 dias (6 linhas fixas, EventsMonthGrid),
   // então a janela consultada tem que cobrir os 42, não só até o fim da
   // semana do 1º dia do mês seguinte (que em meses de 5 linhas fica curta
   // e deixa a 6ª linha sem eventos).
@@ -94,4 +96,46 @@ export function groupEventsByDay(events: EventRow[]): Map<string, EventRow[]> {
 export const EVENT_STATUS_LABEL: Record<EventRow['status'], string> = {
   scheduled: 'Agendado',
   canceled: 'Cancelado',
+}
+
+export const ROW_H = 64 // px por hora, na timeline de Semana/Dia
+
+/** Minutos desde 00:00 do wall-clock ancorado (mesma convenção de
+ *  eventTimeLabel/utcDateOnly acima) — nunca usar getters locais aqui. */
+function minutesOfDayUTC(iso: string): number {
+  const t = iso.split('T')[1]?.slice(0, 5) ?? '00:00'
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+/** Recorte [startMin, endMin) do evento dentro de um dia específico —
+ *  eventos de vários dias mostram só a fatia que cabe em cada dia (meia-
+ *  noite a meia-noite nos dias do meio), igual Google Agenda. */
+export function eventDaySegment(e: EventRow, dayKey: string): { startMin: number; endMin: number } {
+  const keys = dayKeysForEvent(e)
+  const isFirst = keys[0] === dayKey
+  const isLast = keys[keys.length - 1] === dayKey
+  const startMin = isFirst ? minutesOfDayUTC(e.start_at) : 0
+  const endMin = isLast ? minutesOfDayUTC(e.end_at) : 24 * 60
+  return { startMin, endMin: Math.max(endMin, startMin + 15) }
+}
+
+/** Faixa de horas da timeline: padrão comercial (7h–20h), expandida se
+ *  algum evento com horário visível ficar fora desse intervalo — mesmo
+ *  espírito de useTasksBoardGrid (removido de Tasks, hoje só existe aqui). */
+export function computeHourRange(days: Date[], eventsByDay: Map<string, EventRow[]>): { start: number; end: number } {
+  let min = 7
+  let max = 20
+  for (const d of days) {
+    const key = ymd(d)
+    for (const e of eventsByDay.get(key) || []) {
+      if (e.all_day) continue
+      const { startMin, endMin } = eventDaySegment(e, key)
+      const startH = Math.floor(startMin / 60)
+      const endH = Math.ceil(endMin / 60)
+      if (startH < min) min = startH
+      if (endH > max) max = endH
+    }
+  }
+  return { start: min, end: Math.min(max, 24) }
 }

@@ -68,7 +68,7 @@ export type PermissionModule = {
 export const PERMISSION_MODULES: PermissionModule[] = [
   // Agenda (Tarefas/Calendário/Projetos — issue #14, disponível a qualquer nicho)
   { key: 'tasks',         label: 'Tarefas',           section: 'Agenda' },
-  { key: 'events',        label: 'Calendário',        section: 'Agenda' },
+  { key: 'events',        label: 'Eventos',           section: 'Agenda' },
   { key: 'projects',      label: 'Projetos',          section: 'Agenda' },
   // Vendas (nichos não-viagens)
   { key: 'pipeline',      label: 'Pipeline',         section: 'Vendas' },

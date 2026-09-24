@@ -1,22 +1,17 @@
 'use client'
 
-/** Grade mensal do Calendário da Agenda — mesmo padrão visual de
- *  TasksBoardMonthGrid.tsx (chip com bolinha + horário + título por dia),
- *  trocando a fonte de dados de tasks (due_date) por events (start_at/end_at). */
+/** Grade mensal de Agenda → Eventos — chip colorido + horário + título por
+ *  dia, mesmo padrão visual da timeline de Semana/Dia (EventsWeekTimeline). */
 
 import { cn } from '@/lib/utils'
 import { WEEKDAYS_PT, ymd } from '@/components/features/tasks/TasksBoardShared'
-import { eventTimeLabel } from './CalendarShared'
+import { taskColor } from '@/lib/tasks/colors'
+import { eventTimeLabel } from './EventsShared'
 import type { EventRow } from '@/actions/events'
 
 const MAX_CHIPS_PER_DAY = 3
 
-function chipClass(e: EventRow): string {
-  if (e.status === 'canceled') return 'bg-muted text-muted-foreground line-through'
-  return 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
-}
-
-export default function CalendarMonthGrid({
+export default function EventsMonthGrid({
   days, calMonth, todayYmd, eventsByDay, onDayClick, onOpenEvent,
 }: {
   days: Date[]
@@ -65,20 +60,27 @@ export default function CalendarMonthGrid({
               </span>
 
               <div className="flex flex-col gap-0.5 min-w-0">
-                {dayEvents.slice(0, MAX_CHIPS_PER_DAY).map(event => (
-                  <span
-                    key={event.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={e => { e.stopPropagation(); onOpenEvent(event) }}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); onOpenEvent(event) } }}
-                    className={cn('flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate cursor-pointer', chipClass(event))}
-                    title={event.title}
-                  >
-                    {!event.all_day && <span className="tabular-nums shrink-0">{eventTimeLabel(event).split(' – ')[0]}</span>}
-                    <span className="truncate">{event.title}</span>
-                  </span>
-                ))}
+                {dayEvents.slice(0, MAX_CHIPS_PER_DAY).map(event => {
+                  const canceled = event.status === 'canceled'
+                  return (
+                    <span
+                      key={event.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={e => { e.stopPropagation(); onOpenEvent(event) }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); onOpenEvent(event) } }}
+                      className={cn(
+                        'flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-medium truncate cursor-pointer',
+                        taskColor(event.color).className,
+                        canceled && 'opacity-50 line-through',
+                      )}
+                      title={event.title}
+                    >
+                      {!event.all_day && <span className="tabular-nums shrink-0">{eventTimeLabel(event).split(' – ')[0]}</span>}
+                      <span className="truncate">{event.title}</span>
+                    </span>
+                  )
+                })}
                 {overflow > 0 && (
                   <span className="text-[10px] text-muted-foreground pl-1">+{overflow} mais</span>
                 )}

@@ -1,10 +1,12 @@
 'use server'
 
 /**
- * Agenda → Calendário (issue #14) — CRUD de Events.
+ * Agenda → Eventos (issue #14) — CRUD de Events.
  * Event é um compromisso que ocupa um intervalo de tempo (start_at/end_at),
- * distinto de Task (ação a executar, devido_date sem duração obrigatória) e
- * de appointments (booking público). Ver supabase/migrations/0267_agenda_events_and_projetos_generalizados.sql.
+ * distinto de Task (ação a executar, sem marcar essa agenda) e de
+ * appointments (booking público). Tarefas não aparece aqui, Eventos não
+ * aparece em Tarefas — bases e UIs isoladas (set/2026). Ver
+ * supabase/migrations/0272_agenda_events_and_projetos_generalizados.sql.
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -132,7 +134,7 @@ export async function createEvent(orgSlug: string, input: EventInput) {
   }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agenda/calendario`)
+  revalidatePath(`/app/${orgSlug}/agenda/eventos`)
   return { ok: true as const, id: data.id as string }
 }
 
@@ -173,7 +175,7 @@ export async function updateEvent(orgSlug: string, eventId: string, input: Parti
 
   const { error } = await supabase.from('events').update(updates).eq('id', eventId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agenda/calendario`)
+  revalidatePath(`/app/${orgSlug}/agenda/eventos`)
   return { ok: true as const }
 }
 
@@ -188,7 +190,7 @@ export async function cancelEvent(orgSlug: string, eventId: string, canceled: bo
     .update({ status: canceled ? 'canceled' : 'scheduled' })
     .eq('id', eventId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agenda/calendario`)
+  revalidatePath(`/app/${orgSlug}/agenda/eventos`)
   return { ok: true as const }
 }
 
@@ -201,6 +203,6 @@ export async function deleteEvent(orgSlug: string, eventId: string) {
   const supabase = createClient()
   const { error } = await supabase.from('events').delete().eq('id', eventId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agenda/calendario`)
+  revalidatePath(`/app/${orgSlug}/agenda/eventos`)
   return { ok: true as const }
 }
