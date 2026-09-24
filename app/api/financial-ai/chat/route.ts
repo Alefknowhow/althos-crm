@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
+import { logAiExecution } from '@/lib/agent/audit'
 
 /**
  * Streaming endpoint for the Financeiro AI analyst chat. Same shape as
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_qualifier_model')
+    .select('name, ai_qualifier_model, ai_business_context')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
   const richToolCalls: Array<{ name: string; input: Record<string, any>; result: any }> = []
 
   const encoder = new TextEncoder()
+  const turnStartedAt = Date.now()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
@@ -111,7 +113,7 @@ export async function POST(req: NextRequest) {
         for await (const event of respondAsAttendantStream(
           {
             personaPrompt: FINANCIAL_ANALYST_SYSTEM_PROMPT,
-            businessContext: '',
+            businessContext: orgData?.ai_business_context || '',
             knowledgeBase: [],
             handoffPhrases: [],
             leadProfile: null,
@@ -131,7 +133,23 @@ export async function POST(req: NextRequest) {
             send({ type: 'text_delta', text: event.text })
           } else if (event.type === 'tool_call') {
             send({ type: 'tool_call', name: event.name, input: event.input, result: event.result })
+            await logAiExecution({
+              organizationId: org.id,
+              userId: user.id,
+              agentLabel: 'internal:financial_ai',
+              tool: event.name,
+              input: event.input,
+              status: 'success',
+            })
           } else if (event.type === 'done') {
+            await logAiExecution({
+              organizationId: org.id,
+              userId: user.id,
+              agentLabel: 'internal:financial_ai',
+              tool: 'chat_reply',
+              status: 'success',
+              executionMs: Date.now() - turnStartedAt,
+            })
             const { data: assistantMsg } = await supabase
               .from('ai_financial_messages')
               .insert({
@@ -160,6 +178,15 @@ export async function POST(req: NextRequest) {
         }
       } catch (e: any) {
         send({ type: 'error', error: e?.message || 'Erro ao chamar a IA' })
+        await logAiExecution({
+          organizationId: org.id,
+          userId: user.id,
+          agentLabel: 'internal:financial_ai',
+          tool: 'chat_reply',
+          status: 'error',
+          error: e?.message || 'Erro ao chamar a IA',
+          executionMs: Date.now() - turnStartedAt,
+        })
       } finally {
         controller.close()
       }

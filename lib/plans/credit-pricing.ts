@@ -118,6 +118,13 @@ export const AI_CREDIT_COST = {
   // Gera/ajusta uma automação inteira (gatilho + passos + ramificações)
   // por conversa (módulo Automações) — mesmo custo-base do form_ai_generate.
   automation_ai_generate: 10,
+  // Orquestrador Global (issue #48/#19) — chat com tool-use livre sobre
+  // TODAS as tools do Agent Layer, até 8 iterações. Mesmo custo-base
+  // estático dos demais chats com tool-use (ai_insights_query/
+  // financial_ai_chat); ajustável ao vivo via ai_action_cost_catalog se o
+  // uso real justificar, mesmo padrão hoje sem linha própria no catálogo
+  // que automation_ai_generate/form_ai_generate/form_ai_insights já têm.
+  orchestrator_chat: 10,
 } as const
 
 export type AiAction = keyof typeof AI_CREDIT_COST

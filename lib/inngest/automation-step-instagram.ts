@@ -62,6 +62,8 @@ export async function runSendInstagramDmStep(
       apiKey, baseURL, model: orgConfig?.ai_qualifier_model, orgName: orgConfig?.name,
       businessContext: orgConfig?.ai_business_context, instructions: config.aiInstructions, lead,
     })
+    const { logAiExecution } = await import('@/lib/agent/audit')
+    await logAiExecution({ organizationId: orgId, userId: null, agentLabel: 'internal:social_ai', tool: 'generate_message', status: text ? 'success' : 'error', error: text ? undefined : 'IA não gerou texto.' })
     if (!text) return { status: 'error', message: 'IA não gerou texto pra mensagem.', sent: null }
   } else {
     text = interpolateLeadVars(config.message, lead)

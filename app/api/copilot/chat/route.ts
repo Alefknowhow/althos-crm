@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
+import { logAiExecution } from '@/lib/agent/audit'
 
 /**
  * Streaming endpoint for the copiloto dock (Inicial). Mirrors
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ type: 'error', error: 'Requisição inválida.' }), { status: 400 })
   }
 
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_qualifier_model, niche')
+    .select('name, ai_qualifier_model, niche, ai_business_context')
     .eq('id', org.id)
     .maybeSingle()
 
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest) {
   const richToolCalls: Array<{ name: string; input: Record<string, any>; result: any }> = []
 
   const encoder = new TextEncoder()
+  const turnStartedAt = Date.now()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
         for await (const event of respondAsAttendantStream(
           {
             personaPrompt: systemPrompt,
-            businessContext: panelContext || '',
+            businessContext: [orgData?.ai_business_context, panelContext].filter(Boolean).join('\n\n'),
             knowledgeBase: [],
             handoffPhrases: [],
             leadProfile: null,
@@ -170,7 +172,23 @@ export async function POST(req: NextRequest) {
             send({ type: 'text_delta', text: event.text })
           } else if (event.type === 'tool_call') {
             send({ type: 'tool_call', name: event.name, input: event.input, result: event.result })
+            await logAiExecution({
+              organizationId: org.id,
+              userId: user.id,
+              agentLabel: 'internal:copilot',
+              tool: event.name,
+              input: event.input,
+              status: 'success',
+            })
           } else if (event.type === 'done') {
+            await logAiExecution({
+              organizationId: org.id,
+              userId: user.id,
+              agentLabel: 'internal:copilot',
+              tool: 'chat_reply',
+              status: 'success',
+              executionMs: Date.now() - turnStartedAt,
+            })
             const { data: assistantMsg } = await supabase
               .from('ai_insights_messages')
               .insert({
@@ -200,6 +218,15 @@ export async function POST(req: NextRequest) {
         }
       } catch (e: any) {
         send({ type: 'error', error: e?.message || 'Erro ao chamar a IA' })
+        await logAiExecution({
+          organizationId: org.id,
+          userId: user.id,
+          agentLabel: 'internal:copilot',
+          tool: 'chat_reply',
+          status: 'error',
+          error: e?.message || 'Erro ao chamar a IA',
+          executionMs: Date.now() - turnStartedAt,
+        })
       } finally {
         controller.close()
       }

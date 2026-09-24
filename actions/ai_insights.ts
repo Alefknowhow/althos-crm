@@ -6,6 +6,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
+import { logAiExecution } from '@/lib/agent/audit'
 
 /* -------- Sessions -------- */
 
@@ -87,7 +88,7 @@ export async function sendInsightMessage(
   sessionId: string,
   userMessage: string,
 ) {
-  await requireAuth()
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
 
@@ -106,7 +107,7 @@ export async function sendInsightMessage(
 
   const { data: orgData } = await supabase
     .from('organizations')
-    .select('name, ai_qualifier_model, niche')
+    .select('name, ai_qualifier_model, niche, ai_business_context')
     .eq('id', org.id)
     .maybeSingle()
   // AI runs on the platform's centralized token (env), metered per account by
@@ -197,12 +198,13 @@ export async function sendInsightMessage(
   // AnalyticsResult objects, not the JSON strings we sent back to Claude).
   const richToolCalls: Array<{ name: string; input: Record<string, any>; result: any }> = []
 
+  const turnStartedAt = Date.now()
   let result
   try {
     result = await respondAsAttendant(
       {
         personaPrompt: buildAnalystSystemPrompt(niche),
-        businessContext: '',
+        businessContext: orgData?.ai_business_context || '',
         knowledgeBase: [],
         handoffPhrases: [],
         leadProfile: null,
@@ -237,8 +239,38 @@ export async function sendInsightMessage(
       role: 'system',
       content: `Erro: ${e?.message || 'falha ao chamar Claude'}`,
     })
+    await logAiExecution({
+      organizationId: org.id,
+      userId: user.id,
+      agentLabel: 'internal:copilot',
+      tool: 'chat_reply',
+      status: 'error',
+      error: e?.message || 'Erro ao chamar a IA',
+      executionMs: Date.now() - turnStartedAt,
+    })
     return { ok: false as const, error: e?.message || 'Erro ao chamar a IA' }
   }
+
+  await Promise.all([
+    ...richToolCalls.map(call =>
+      logAiExecution({
+        organizationId: org.id,
+        userId: user.id,
+        agentLabel: 'internal:copilot',
+        tool: call.name,
+        input: call.input,
+        status: 'success',
+      }),
+    ),
+    logAiExecution({
+      organizationId: org.id,
+      userId: user.id,
+      agentLabel: 'internal:copilot',
+      tool: 'chat_reply',
+      status: 'success',
+      executionMs: Date.now() - turnStartedAt,
+    }),
+  ])
 
   // Persist assistant reply + tool_calls + cost.
   const { data: assistantMsg } = await supabase

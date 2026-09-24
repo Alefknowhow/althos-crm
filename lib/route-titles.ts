@@ -88,6 +88,7 @@ export const CONFIG_SUB_ITEMS = [
   { seg: 'dados',        label: 'Importação/Exportação' },
   { seg: 'integracoes',  label: 'Integrações' },
   { seg: 'agentes',      label: 'Conector MCP' },
+  { seg: 'aprovacoes',   label: 'Aprovações de IA' },
 ] as const
 
 /** Sub-seções de /marketing (issue #24) — mesmo papel do CONFIG_SUB_ITEMS

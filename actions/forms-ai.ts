@@ -18,6 +18,8 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { getAccountIdForOrgSlug, consumeAiCredits } from '@/lib/plans/server'
 import { revalidatePath } from 'next/cache'
 import { generateUniqueFormSlug } from './forms-slug'
+import { appendBusinessContext } from '@/lib/ai/business-context'
+import { logAiExecution } from '@/lib/agent/audit'
 
 const FIELD_TYPES = [
   'short_text', 'long_text', 'email', 'phone', 'number',
@@ -141,6 +143,7 @@ export async function generateFormWithAi(
   if (!history.length || history[history.length - 1].role !== 'user') {
     return { ok: false, error: 'Nenhuma mensagem para processar.' }
   }
+  const systemPrompt = appendBusinessContext(FORM_AI_SYSTEM_PROMPT, (access.org as any).ai_business_context)
 
   const { hasPlatformAiKey, resolveAnthropicEngine } = await import('@/lib/ai/api-key')
   if (!hasPlatformAiKey()) return { ok: false, error: 'IA não configurada.' }
@@ -152,23 +155,42 @@ export async function generateFormWithAi(
   const { apiKey, baseURL } = await resolveAnthropicEngine()
   const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
+  const startedAt = Date.now()
+  const audit = (status: 'success' | 'error', toolInput?: unknown, error?: string) =>
+    logAiExecution({
+      organizationId: access.org.id,
+      userId: access.user.id,
+      agentLabel: 'internal:forms_ai',
+      tool: 'propose_form',
+      input: toolInput,
+      status,
+      error,
+      executionMs: Date.now() - startedAt,
+    })
+
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-5',
       max_tokens: 4000,
-      system: FORM_AI_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: history.map(m => ({ role: m.role, content: m.content })),
       tools: [PROPOSE_FORM_TOOL],
       tool_choice: { type: 'tool', name: 'propose_form' },
     })
 
     const toolBlock = response.content.find((b): b is any => b.type === 'tool_use')
-    if (!toolBlock) return { ok: false, error: 'IA não retornou resposta.' }
+    if (!toolBlock) {
+      await audit('error', undefined, 'IA não retornou resposta.')
+      return { ok: false, error: 'IA não retornou resposta.' }
+    }
 
     const input = toolBlock.input as any
     const reply = typeof input.reply === 'string' ? input.reply : 'Certo.'
     const ready = !!input.ready
-    if (!ready) return { ok: true, reply, ready: false }
+    if (!ready) {
+      await audit('success', input)
+      return { ok: true, reply, ready: false }
+    }
 
     const rawFields = Array.isArray(input.schema?.fields) ? input.schema.fields : []
     const fields: FormAiSchemaField[] = rawFields
@@ -181,8 +203,12 @@ export async function generateFormWithAi(
         placeholder: typeof f.placeholder === 'string' ? f.placeholder : undefined,
         options: Array.isArray(f.options) ? f.options.filter((o: any) => typeof o === 'string') : undefined,
       }))
-    if (fields.length === 0) return { ok: false, error: 'IA não retornou campos válidos.' }
+    if (fields.length === 0) {
+      await audit('error', input, 'IA não retornou campos válidos.')
+      return { ok: false, error: 'IA não retornou campos válidos.' }
+    }
 
+    await audit('success', input)
     return {
       ok: true,
       reply,
@@ -196,6 +222,7 @@ export async function generateFormWithAi(
       },
     }
   } catch (err: any) {
+    await audit('error', undefined, err?.message || 'Erro ao consultar IA.')
     return { ok: false, error: err?.message || 'Erro ao consultar IA.' }
   }
 }
